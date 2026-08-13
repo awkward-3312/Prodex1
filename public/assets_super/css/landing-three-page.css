@@ -1,0 +1,55 @@
+/* landing-three.blade.php (Tailwind layout) */
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+details > summary {
+    list-style: none;
+}
+
+details > summary::-webkit-details-marker {
+    display: none;
+}
+
+@keyframes fade-in-up {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.delay-100 {
+    animation-delay: 100ms;
+}
+
+.delay-200 {
+    animation-delay: 200ms;
+}
+
+.delay-300 {
+    animation-delay: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-fade-in-up,
+    .delay-100,
+    .delay-200,
+    .delay-300 {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
+#l3DrawerPanel {
+    transition: transform 0.3s ease-out;
+}

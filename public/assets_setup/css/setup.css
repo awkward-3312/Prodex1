@@ -1,0 +1,11 @@
+/**
+ * Stocky installer / setup views.
+ */
+
+.setup-req-icon--ok {
+    color: #22bb33;
+}
+
+.setup-req-icon--fail {
+    color: red;
+}

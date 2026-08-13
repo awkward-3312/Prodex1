@@ -1,0 +1,544 @@
+/**
+ * Sales return PDF (dompdf-safe).
+ * Accent: red #ef4444. Prefix: sret-
+ */
+
+@page {
+    size: A4;
+    margin: 10mm 15mm;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body,
+body * {
+    font-family: 'DejaVu Sans', sans-serif !important;
+}
+
+body {
+    font-size: 9pt;
+    color: #1f2937;
+    line-height: 1.4;
+    padding: 15px 20px;
+    max-width: 100%;
+}
+
+body.rtl {
+    direction: rtl;
+    text-align: right;
+}
+
+body.rtl table {
+    direction: rtl;
+}
+
+.sret-header-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.sret-cell-logo {
+    width: 30%;
+    vertical-align: top;
+}
+
+.sret-logo {
+    max-height: 60px;
+    max-width: 180px;
+}
+
+.sret-cell-title {
+    width: 70%;
+    vertical-align: top;
+    text-align: right;
+}
+
+.sret-title {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #ef4444;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.sret-ref-badge {
+    display: inline-block;
+    background: #fee2e2;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #991b1b;
+    margin-bottom: 8px;
+}
+
+.sret-meta-table {
+    width: 100%;
+    font-size: 8pt;
+    margin-top: 6px;
+}
+
+.sret-meta-label {
+    text-align: right;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.sret-meta-value {
+    text-align: right;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.sret-meta-value--badge {
+    text-align: right;
+}
+
+.sret-meta-value--badge {
+    text-align: right;
+}
+
+.sret-badge {
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 7pt;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.sret-badge--ok {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.sret-badge--pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.sret-badge--default {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.sret-divider {
+    height: 2px;
+    background: #ef4444;
+    margin: 8px 0 10px 0;
+}
+
+.sret-panels-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.sret-col-48 {
+    width: 48%;
+    vertical-align: top;
+}
+
+.sret-col-gap {
+    width: 4%;
+}
+
+.sret-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.sret-card-hdr {
+    background: #ef4444;
+    padding: 5px 10px;
+    border-bottom: 1px solid #dc2626;
+    text-align: left;
+}
+
+body.rtl .sret-card-hdr {
+    text-align: right;
+}
+
+.sret-card-hdr-title {
+    color: #ffffff;
+    font-size: 9pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.sret-card-body {
+    padding: 8px 10px;
+    background: #fef2f2;
+}
+
+.sret-party-name {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 4px;
+    text-align: left;
+}
+
+body.rtl .sret-party-name {
+    text-align: right;
+}
+
+.sret-info-table {
+    width: 100%;
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.sret-info-cell-val {
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: left;
+    direction: ltr;
+}
+
+.sret-info-cell-lbl-rtl {
+    width: 32%;
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: right;
+    direction: rtl;
+}
+
+.sret-info-cell-lbl-ltr {
+    width: 28%;
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: left;
+}
+
+.sret-info-val-ltr {
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: left;
+}
+
+.sret-strong {
+    color: #1f2937;
+}
+
+.sret-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.sret-items-thead {
+    background: #ef4444;
+}
+
+.sret-th {
+    padding: 6px 5px;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    border-right: 1px solid #f87171;
+    text-align: left;
+}
+
+body.rtl .sret-th {
+    text-align: right;
+}
+
+.sret-th:last-child {
+    border-right: none;
+}
+
+.sret-th--right {
+    text-align: right;
+}
+
+.sret-item-row {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sret-item-row--even {
+    background: #ffffff;
+}
+
+.sret-item-row--odd {
+    background: #fef2f2;
+}
+
+.sret-item-main {
+    padding: 5px;
+    vertical-align: top;
+}
+
+.sret-item-name {
+    font-weight: 600;
+    font-size: 8.5pt;
+    color: #1f2937;
+    margin-bottom: 1px;
+}
+
+.sret-item-code {
+    font-size: 7pt;
+    color: #6b7280;
+}
+
+.sret-item-imei {
+    font-size: 7pt;
+    color: #2563eb;
+    margin-top: 1px;
+}
+
+.sret-cell-num {
+    padding: 5px;
+    text-align: right;
+    font-size: 8.5pt;
+    color: #1f2937;
+}
+
+.sret-cell-disc {
+    color: #10b981;
+}
+
+.sret-cell-total {
+    font-size: 9pt;
+    font-weight: bold;
+    color: #ef4444;
+}
+
+.sret-summary-outer {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.sret-summary-spacer {
+    width: 58%;
+}
+
+.sret-summary-cell {
+    width: 42%;
+    vertical-align: top;
+    text-align: left;
+}
+
+body.rtl .sret-summary-cell {
+    text-align: right;
+}
+
+.sret-summary-table {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    border-collapse: collapse;
+}
+
+.sret-sum-row {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sret-sum-row--pink {
+    background: #fef2f2;
+}
+
+.sret-sum-row--white {
+    background: #ffffff;
+}
+
+.sret-sum-row--total {
+    background: #ef4444;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sret-sum-row--paid {
+    background: #d1fae5;
+}
+
+.sret-sum-row--due {
+    background: #fef3c7;
+}
+
+.sret-sum-label-ltr {
+    padding: 5px 10px;
+    font-size: 8pt;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.sret-sum-val-ltr {
+    padding: 5px 10px;
+    text-align: right;
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.sret-sum-val-ltr--disc {
+    color: #10b981;
+}
+
+.sret-sum-label-total-ltr {
+    padding: 8px 10px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.sret-sum-val-total-ltr {
+    padding: 8px 10px;
+    text-align: right;
+    font-size: 11pt;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.sret-sum-label-paid-ltr {
+    padding: 6px 10px;
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #065f46;
+}
+
+.sret-sum-val-paid-ltr {
+    padding: 6px 10px;
+    text-align: right;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #065f46;
+}
+
+.sret-sum-label-due-ltr {
+    padding: 6px 10px;
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #92400e;
+}
+
+.sret-sum-val-due-ltr {
+    padding: 6px 10px;
+    text-align: right;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #92400e;
+}
+
+.sret-sum-amt-rtl {
+    padding: 5px 10px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    text-align: left;
+    direction: ltr;
+    color: #1f2937;
+}
+
+.sret-sum-amt-rtl--disc {
+    color: #10b981;
+}
+
+.sret-sum-lbl-rtl {
+    padding: 5px 10px;
+    font-size: 8pt;
+    font-weight: 600;
+    text-align: right;
+    direction: rtl;
+    color: #6b7280;
+}
+
+.sret-sum-amt-total-rtl {
+    padding: 8px 10px;
+    font-size: 11pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: left;
+    direction: ltr;
+}
+
+.sret-sum-lbl-total-rtl {
+    padding: 8px 10px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: right;
+    direction: rtl;
+}
+
+.sret-sum-amt-paid-rtl {
+    padding: 6px 10px;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #065f46;
+    text-align: left;
+    direction: ltr;
+}
+
+.sret-sum-lbl-paid-rtl {
+    padding: 6px 10px;
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #065f46;
+    text-align: right;
+    direction: rtl;
+}
+
+.sret-sum-amt-due-rtl {
+    padding: 6px 10px;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #92400e;
+    text-align: left;
+    direction: ltr;
+}
+
+.sret-sum-lbl-due-rtl {
+    padding: 6px 10px;
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #92400e;
+    text-align: right;
+    direction: rtl;
+}
+
+.sret-footer {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 2px solid #e5e7eb;
+    text-align: left;
+}
+
+body.rtl .sret-footer {
+    text-align: right;
+}
+
+.sret-footer-note {
+    padding: 8px 10px;
+    background: #fef2f2;
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+
+.sret-footer-note--ltr {
+    border-left: 3px solid #ef4444;
+}
+
+.sret-footer-note--rtl {
+    border-right: 3px solid #ef4444;
+}
+
+.sret-footer-note-text {
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.sret-footer-thanks {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #ef4444;
+    margin: 0;
+    letter-spacing: 0.3px;
+}

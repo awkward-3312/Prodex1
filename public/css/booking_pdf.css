@@ -1,0 +1,341 @@
+/**
+ * Booking PDF (dompdf-safe: tables, no flexbox/grid).
+ */
+
+@page {
+    size: A4;
+    margin: 10mm 15mm;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body,
+body * {
+    font-family: 'DejaVu Sans', sans-serif !important;
+}
+
+body {
+    font-size: 9pt;
+    color: #1f2937;
+    line-height: 1.4;
+    padding: 15px 20px;
+    max-width: 100%;
+}
+
+body.rtl {
+    direction: rtl;
+    text-align: right;
+}
+
+body.rtl table {
+    direction: rtl;
+}
+
+/* --- Header --- */
+
+.book-header-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.book-cell-logo {
+    width: 30%;
+    vertical-align: top;
+}
+
+.book-logo {
+    max-height: 60px;
+    max-width: 180px;
+}
+
+.book-cell-header {
+    width: 70%;
+    vertical-align: top;
+    text-align: right;
+}
+
+.book-title {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #1a56db;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.book-ref-badge {
+    display: inline-block;
+    background: #f3f4f6;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #4b5563;
+    margin-bottom: 8px;
+}
+
+.book-meta-table {
+    width: 100%;
+    font-size: 8pt;
+    margin-top: 6px;
+}
+
+.book-meta-label {
+    text-align: right;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.book-meta-value {
+    text-align: right;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.book-divider {
+    height: 2px;
+    background: #1a56db;
+    margin: 8px 0 10px 0;
+}
+
+/* --- Status badge --- */
+
+.book-status-badge {
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 7pt;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.book-status--pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.book-status--confirmed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.book-status--cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.book-status--completed {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.book-status--default {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+/* --- Customer / company cards --- */
+
+.book-cards-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.book-card-cell {
+    width: 48%;
+    vertical-align: top;
+}
+
+.book-card-gap {
+    width: 4%;
+}
+
+.book-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.book-card-hd {
+    background: #1a56db;
+    padding: 5px 10px;
+    border-bottom: 1px solid #3b82f6;
+}
+
+.book-card-hd-title {
+    color: #ffffff;
+    font-size: 9pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.book-card-body {
+    padding: 8px 10px;
+    background: #f9fafb;
+}
+
+.book-card-name {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.book-card-details {
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.book-card-strong {
+    color: #1f2937;
+}
+
+/* --- Details table --- */
+
+.book-details-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.book-details-thead-row {
+    background: #1a56db;
+}
+
+.book-details-th {
+    padding: 6px 10px;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    border-right: 1px solid #4d7fd8;
+}
+
+[dir="ltr"] .book-details-th--label {
+    text-align: left;
+}
+
+[dir="rtl"] .book-details-th--label {
+    text-align: right;
+}
+
+.book-details-th--value {
+    padding: 6px 10px;
+    text-align: right;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+}
+
+.book-data-row--a {
+    border-bottom: 1px solid #e5e7eb;
+    background: #ffffff;
+}
+
+.book-data-row--b {
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.book-data-label {
+    padding: 8px 10px;
+    font-weight: 600;
+    font-size: 8.5pt;
+    color: #1f2937;
+}
+
+.book-data-value {
+    padding: 8px 10px;
+    text-align: right;
+    font-size: 8.5pt;
+    color: #1f2937;
+}
+
+.book-data-value--price {
+    padding: 8px 10px;
+    text-align: right;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #1a56db;
+}
+
+/* --- Notes --- */
+
+.book-notes {
+    margin-top: 15px;
+    padding: 10px;
+    background: #f9fafb;
+    border-radius: 3px;
+}
+
+.book-notes--ltr {
+    border-left: 3px solid #1a56db;
+}
+
+.book-notes--rtl {
+    border-right: 3px solid #1a56db;
+}
+
+.book-notes-title {
+    font-size: 8pt;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.book-notes-body {
+    font-size: 8pt;
+    color: #6b7280;
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
+/* --- Footer --- */
+
+.book-footer-wrap {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 2px solid #e5e7eb;
+}
+
+.book-footer-invoice {
+    padding: 8px 10px;
+    background: #f9fafb;
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+
+.book-footer-invoice--ltr {
+    border-left: 3px solid #1a56db;
+}
+
+.book-footer-invoice--rtl {
+    border-right: 3px solid #1a56db;
+}
+
+.book-footer-invoice-text {
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.book-footer-thanks-wrap {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.book-footer-thanks {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1a56db;
+    margin: 0;
+    letter-spacing: 0.3px;
+}

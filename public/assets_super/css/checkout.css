@@ -1,0 +1,183 @@
+/* ============================================================
+   Checkout Page Styles
+   ============================================================ */
+
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #eef2ff;
+    --surface: #ffffff;
+    --bg: #f8fafc;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --radius: 12px;
+    --radius-lg: 16px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background: var(--bg);
+    background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.08), transparent);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+}
+.checkout-container { max-width: 960px; margin: 0 auto; }
+.checkout-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+.checkout-card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+}
+.checkout-card-body { padding: 1.5rem; }
+.gateway-option { cursor: pointer; }
+.gateway-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    transition: all 0.15s;
+}
+.gateway-option:hover .gateway-card { border-color: #cbd5e1; }
+.gateway-option.selected .gateway-card {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+.gateway-check { color: var(--border); font-size: 1.25rem; transition: color 0.15s; }
+.gateway-option.selected .gateway-check { color: var(--primary); }
+.btn-pay {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: #fff;
+    font-weight: 700;
+    padding: 0.85rem 2rem;
+    border-radius: var(--radius);
+    font-size: 1rem;
+    width: 100%;
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-pay:hover {
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(102, 126, 234, 0.45);
+}
+.btn-pay:disabled { opacity: 0.7; transform: none; }
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+.back-link:hover { color: var(--primary); }
+
+/* ── Gateway icon box ──────────────────────────────── */
+.gateway-icon-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.gateway-icon { font-size: 1.15rem; }
+.gateway-label { font-size: 0.92rem; }
+.gateway-desc { font-size: 0.75rem; }
+
+/* ── Offline payment ──────────────────────────────── */
+.offline-amount-box {
+    background: var(--primary-light);
+    border: 1px solid #c7d2fe;
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    text-align: center;
+}
+.bank-details-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.bank-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+}
+.bank-detail-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+.bank-detail-row:nth-child(even) { background: #f8fafc; }
+.bank-detail-label { color: var(--muted); font-weight: 500; }
+.bank-detail-value { font-weight: 600; color: var(--text); text-align: right; word-break: break-all; }
+.bank-instructions {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+}
+.offline-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+.offline-upload-area:hover { border-color: var(--primary); background: var(--primary-light); }
+.offline-upload-area.drag-over { border-color: var(--primary); background: var(--primary-light); }
+
+/* ── Misc ──────────────────────────────────────────── */
+.no-gateways-icon { font-size: 2rem; color: var(--warning); }
+.checkout-secure-note { font-size: 0.78rem; }
+
+/* ── Pending payment notice ────────────────────────── */
+.billing-card-pending { border-left: 4px solid #f59e0b; }
+.billing-pending-icon { font-size: 1.5rem; color: #f59e0b; }
+.billing-pending-meta { font-size: 0.9rem; }
+
+/* ── Offline section ───────────────────────────────── */
+#offlineSection { display: none; }
+.offline-amount-label { font-size: 0.8rem; }
+.offline-amount-value { font-size: 1.35rem; color: var(--primary, #0d9488); }
+.bank-instructions-label { font-size: 0.82rem; }
+.bank-instructions-text { font-size: 0.82rem; }
+.bank-not-configured { font-size: 0.85rem; }
+
+/* ── Upload area ───────────────────────────────────── */
+.upload-label { font-size: 0.88rem; }
+.upload-icon-placeholder { font-size: 2rem; color: var(--muted, #94a3b8); }
+.upload-hint-text { font-size: 0.75rem; }
+#uploadPreview { display: none; }
+.upload-icon-preview { font-size: 2rem; color: var(--success, #10b981); }
+.upload-file-name { font-size: 0.85rem; }
+
+/* ── offline_submitted.blade.php ───────────────────── */
+.billing-result-icon-success { background: #f0fdfa; }
+.billing-result-icon-success i { color: #0d9488; }
+.billing-status-pending { color: #d97706; }
+.billing-next-steps-title { font-size: 0.9rem; }
+.billing-step-badge {
+    width: 28px;
+    height: 28px;
+    background: #0d9488;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.billing-step-text { font-size: 0.88rem; }

@@ -1,0 +1,319 @@
+/**
+ * Payment sale / purchase payment receipt PDF (dompdf-safe).
+ * Theme: green #10b981. Prefix: pays-
+ */
+
+@page {
+    size: A4;
+    margin: 10mm 15mm;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body,
+body * {
+    font-family: 'DejaVu Sans', sans-serif !important;
+}
+
+body {
+    font-size: 9pt;
+    color: #1f2937;
+    line-height: 1.4;
+    padding: 15px 20px;
+    max-width: 100%;
+}
+
+body.rtl {
+    direction: rtl;
+    text-align: right;
+}
+
+body.rtl table {
+    direction: rtl;
+}
+
+.pays-header-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.pays-cell-logo {
+    width: 30%;
+    vertical-align: top;
+}
+
+.pays-logo {
+    max-height: 60px;
+    max-width: 180px;
+}
+
+.pays-cell-title {
+    width: 70%;
+    vertical-align: top;
+    text-align: right;
+}
+
+.pays-title {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #10b981;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.pays-ref-badge {
+    display: inline-block;
+    background: #d1fae5;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #065f46;
+    margin-bottom: 8px;
+}
+
+.pays-meta-table {
+    width: 100%;
+    font-size: 8pt;
+    margin-top: 6px;
+}
+
+.pays-meta-label {
+    text-align: right;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.pays-meta-value {
+    text-align: right;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.pays-divider {
+    height: 2px;
+    background: #10b981;
+    margin: 8px 0 10px 0;
+}
+
+.pays-panels-table {
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.pays-col-48 {
+    width: 48%;
+    vertical-align: top;
+}
+
+.pays-col-gap {
+    width: 4%;
+}
+
+.pays-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.pays-card-hdr {
+    background: #10b981;
+    padding: 5px 10px;
+    border-bottom: 1px solid #059669;
+    text-align: left;
+}
+
+body.rtl .pays-card-hdr {
+    text-align: right;
+}
+
+.pays-card-hdr-title {
+    color: #ffffff;
+    font-size: 9pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.pays-card-body {
+    padding: 10px;
+    background: #ecfdf5;
+}
+
+.pays-party-name {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 5px;
+    text-align: left;
+}
+
+body.rtl .pays-party-name {
+    text-align: right;
+}
+
+.pays-info-table {
+    width: 100%;
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.6;
+}
+
+.pays-info-cell-val {
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: left;
+    direction: ltr;
+}
+
+.pays-info-cell-lbl-rtl {
+    width: 32%;
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: right;
+    direction: rtl;
+}
+
+.pays-info-cell-lbl-ltr {
+    width: 28%;
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: left;
+}
+
+.pays-info-val-ltr {
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: left;
+}
+
+.pays-strong {
+    color: #1f2937;
+}
+
+.pays-lines-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+    border: 1px solid #e5e7eb;
+}
+
+.pays-lines-thead {
+    background: #10b981;
+}
+
+.pays-th {
+    padding: 10px;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    border-right: 1px solid #34d399;
+    text-align: left;
+}
+
+body.rtl .pays-th {
+    text-align: right;
+}
+
+.pays-th:last-child {
+    border-right: none;
+}
+
+.pays-th--amount {
+    text-align: right;
+}
+
+.pays-line-row {
+    background: #ecfdf5;
+}
+
+.pays-line-ref {
+    padding: 12px 10px;
+    font-size: 10pt;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.pays-line-method {
+    padding: 12px 10px;
+    font-size: 10pt;
+    color: #1f2937;
+}
+
+.pays-line-amount {
+    padding: 12px 10px;
+    text-align: right;
+    font-size: 13pt;
+    font-weight: bold;
+    color: #10b981;
+}
+
+.pays-grand-wrap {
+    text-align: center;
+    margin: 25px 0;
+}
+
+.pays-grand-box {
+    display: inline-block;
+    background: #10b981;
+    padding: 15px 30px;
+    border-radius: 8px;
+}
+
+.pays-grand-label {
+    color: #d1fae5;
+    font-size: 9pt;
+    margin-bottom: 3px;
+}
+
+.pays-grand-value {
+    color: #ffffff;
+    font-size: 22pt;
+    font-weight: bold;
+}
+
+.pays-footer {
+    margin-top: 30px;
+    padding-top: 10px;
+    border-top: 2px solid #e5e7eb;
+    text-align: left;
+}
+
+body.rtl .pays-footer {
+    text-align: right;
+}
+
+.pays-footer-note {
+    padding: 8px 10px;
+    background: #ecfdf5;
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+
+.pays-footer-note--ltr {
+    border-left: 3px solid #10b981;
+}
+
+.pays-footer-note--rtl {
+    border-right: 3px solid #10b981;
+}
+
+.pays-footer-note-text {
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.pays-footer-thanks {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #10b981;
+    margin: 0;
+    letter-spacing: 0.3px;
+}

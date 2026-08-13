@@ -1,0 +1,396 @@
+/**
+ * Service job PDF (dompdf-safe).
+ * Theme: blue #1a56db. Prefix: sjp-
+ */
+
+@page {
+    size: A4;
+    margin: 10mm 15mm;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body,
+body * {
+    font-family: 'DejaVu Sans', sans-serif !important;
+}
+
+body {
+    font-size: 9pt;
+    color: #1f2937;
+    line-height: 1.4;
+    padding: 15px 20px;
+    max-width: 100%;
+}
+
+body.rtl {
+    direction: rtl;
+    text-align: right;
+}
+
+body.rtl table {
+    direction: rtl;
+}
+
+.sjp-header-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.sjp-cell-logo {
+    width: 30%;
+    vertical-align: top;
+}
+
+.sjp-logo {
+    max-height: 60px;
+    max-width: 180px;
+}
+
+.sjp-cell-title {
+    width: 70%;
+    vertical-align: top;
+    text-align: right;
+}
+
+.sjp-title {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #1a56db;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.sjp-ref-badge {
+    display: inline-block;
+    background: #f3f4f6;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #4b5563;
+    margin-bottom: 8px;
+}
+
+.sjp-meta-table {
+    width: 100%;
+    font-size: 8pt;
+    margin-top: 6px;
+}
+
+.sjp-meta-label {
+    text-align: right;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.sjp-meta-value {
+    text-align: right;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.sjp-meta-value--badge {
+    text-align: right;
+}
+
+.sjp-divider {
+    height: 2px;
+    background: #1a56db;
+    margin: 8px 0 10px 0;
+}
+
+.sjp-panels-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.sjp-col-48 {
+    width: 48%;
+    vertical-align: top;
+}
+
+.sjp-col-gap {
+    width: 4%;
+}
+
+.sjp-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.sjp-card-hdr {
+    background: #1a56db;
+    padding: 5px 10px;
+    border-bottom: 1px solid #2563eb;
+}
+
+.sjp-card-hdr-title {
+    color: #ffffff;
+    font-size: 9pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.sjp-card-body {
+    padding: 8px 10px;
+    background: #f9fafb;
+}
+
+.sjp-party-name {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.sjp-party-lines {
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.sjp-party-line {
+    margin-bottom: 2px;
+}
+
+.sjp-strong {
+    color: #1f2937;
+}
+
+.sjp-details-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.sjp-details-thead {
+    background: #1a56db;
+}
+
+.sjp-th {
+    padding: 6px 10px;
+    text-align: left;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    border-right: 1px solid #3b82f6;
+}
+
+body.rtl .sjp-th {
+    text-align: right;
+}
+
+.sjp-th:last-child {
+    border-right: none;
+}
+
+.sjp-th--right {
+    text-align: right;
+}
+
+.sjp-detail-row {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sjp-detail-row--white {
+    background: #ffffff;
+}
+
+.sjp-detail-row--gray {
+    background: #f9fafb;
+}
+
+.sjp-detail-label {
+    padding: 8px 10px;
+    font-weight: 600;
+    font-size: 8.5pt;
+    color: #1f2937;
+}
+
+.sjp-detail-value {
+    padding: 8px 10px;
+    text-align: right;
+    font-size: 8.5pt;
+    color: #1f2937;
+}
+
+.sjp-badge {
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 7pt;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.sjp-badge--pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.sjp-badge--in_progress {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.sjp-badge--completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.sjp-badge--cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.sjp-badge--default {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.sjp-checklist-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.sjp-checklist-thead {
+    background: #1a56db;
+}
+
+.sjp-checklist-th {
+    padding: 6px 10px;
+    text-align: left;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+}
+
+.sjp-checklist-th--narrow {
+    width: 5%;
+}
+
+.sjp-checklist-th--cat {
+    width: 30%;
+}
+
+.sjp-checklist-row {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sjp-checklist-row--even {
+    background: #ffffff;
+}
+
+.sjp-checklist-row--odd {
+    background: #f9fafb;
+}
+
+.sjp-check-cell {
+    padding: 8px 10px;
+    text-align: center;
+    font-size: 9pt;
+}
+
+.sjp-check-cell--done {
+    color: #10b981;
+}
+
+.sjp-check-cell--open {
+    color: #9ca3af;
+}
+
+.sjp-check-cat {
+    padding: 8px 10px;
+    font-size: 8pt;
+    color: #6b7280;
+}
+
+.sjp-check-item {
+    padding: 8px 10px;
+    font-size: 8.5pt;
+    color: #1f2937;
+}
+
+.sjp-check-item--struck {
+    text-decoration: line-through;
+}
+
+.sjp-notes {
+    margin-top: 15px;
+    padding: 10px;
+    background: #f9fafb;
+    border-left: 3px solid #1a56db;
+    border-radius: 3px;
+}
+
+body.rtl .sjp-notes {
+    border-left: none;
+    border-right: 3px solid #1a56db;
+}
+
+.sjp-notes-title {
+    font-size: 8pt;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.sjp-notes-body {
+    font-size: 8pt;
+    color: #6b7280;
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
+.sjp-footer {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 2px solid #e5e7eb;
+}
+
+.sjp-footer-note {
+    padding: 8px 10px;
+    background: #f9fafb;
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+
+.sjp-footer-note--ltr {
+    border-left: 3px solid #1a56db;
+}
+
+.sjp-footer-note--rtl {
+    border-right: 3px solid #1a56db;
+}
+
+.sjp-footer-note-text {
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.sjp-footer-msg {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.sjp-footer-thanks {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1a56db;
+    margin: 0;
+    letter-spacing: 0.3px;
+}

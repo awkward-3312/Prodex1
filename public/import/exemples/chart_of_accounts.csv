@@ -1,0 +1,11 @@
+code,name,type,parent_code,is_active
+1000,Assets,asset,,1
+1100,Cash and Bank,asset,1000,1
+1200,Accounts Receivable,asset,1000,1
+2000,Liabilities,liability,,1
+2100,Accounts Payable,liability,2000,1
+3000,Equity,equity,,1
+4000,Income,income,,1
+4100,Sales Revenue,income,4000,1
+5000,Expenses,expense,,1
+5100,Rent Expense,expense,5000,1

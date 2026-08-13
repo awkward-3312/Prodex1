@@ -1,0 +1,36 @@
+/* landing-six.blade.php (Tailwind layout) */
+
+body {
+    font-family: 'Manrope', system-ui, sans-serif;
+}
+
+details > summary {
+    list-style: none;
+}
+
+details > summary::-webkit-details-marker {
+    display: none;
+}
+
+#l6DrawerPanel {
+    transition: transform 0.3s ease-out;
+}
+
+.l6-price-tab {
+    transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.l6-price-tab.is-active {
+    background: #0a2640;
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(10, 38, 64, 0.2);
+}
+
+.l6-price-tab:not(.is-active) {
+    background: transparent;
+    color: rgba(10, 38, 64, 0.45);
+}
+
+.l6-price-tab:not(.is-active):hover {
+    color: #0a2640;
+}

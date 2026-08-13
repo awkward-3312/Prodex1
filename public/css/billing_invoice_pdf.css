@@ -1,0 +1,204 @@
+/**
+ * Billing subscription invoice PDF (dompdf-safe: table layout, no flexbox/grid).
+ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'DejaVu Sans', Arial, sans-serif;
+    color: #1f2937;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.bil-invoice-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px;
+}
+
+.bil-flex-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.bil-flex-table td {
+    vertical-align: top;
+    padding: 0;
+}
+
+.bil-header-table {
+    margin-bottom: 40px;
+}
+
+.bil-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: #6366f1;
+    margin-bottom: 4px;
+}
+
+.bil-subtitle {
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.bil-cell-right {
+    text-align: right;
+}
+
+.bil-invoice-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #6b7280;
+}
+
+.bil-invoice-number {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.bil-date-line {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.bil-info-table {
+    margin-bottom: 30px;
+}
+
+.bil-info-cell {
+    width: 50%;
+}
+
+.bil-info-cell p {
+    margin-bottom: 3px;
+    font-size: 13px;
+}
+
+.bil-info-cell--right {
+    text-align: right;
+}
+
+.bil-section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.bil-name {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.bil-muted {
+    color: #6b7280;
+}
+
+.bil-ref {
+    color: #6b7280;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+.bil-badge {
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.bil-badge--paid {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.bil-table-wrapper {
+    margin-bottom: 30px;
+}
+
+.bil-line-items-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.bil-line-items-table thead th {
+    background: #f8fafc;
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    font-weight: 600;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.bil-line-items-table tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px;
+}
+
+.bil-text-right {
+    text-align: right;
+}
+
+.bil-period-muted {
+    color: #6b7280;
+    font-size: 11px;
+}
+
+.bil-totals-table {
+    width: 300px;
+    margin-left: auto;
+    margin-bottom: 30px;
+    border-collapse: collapse;
+}
+
+.bil-totals-row td {
+    padding: 6px 0;
+    font-size: 13px;
+}
+
+.bil-totals-value {
+    text-align: right;
+}
+
+.bil-totals-row--grand td {
+    padding: 10px 0 6px;
+    font-size: 15px;
+    font-weight: 700;
+    border-top: 2px solid #1f2937;
+}
+
+.bil-currency-note {
+    background: #fef3c7;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 30px;
+    font-size: 12px;
+    color: #92400e;
+}
+
+.bil-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 11px;
+}
+
+.bil-footer-extra {
+    margin-top: 4px;
+}

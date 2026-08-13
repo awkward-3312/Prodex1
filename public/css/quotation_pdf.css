@@ -1,0 +1,457 @@
+/**
+ * Quotation PDF (dompdf-safe). Loaded after public/css/pdf.css.
+ * Prefix: quo- (quotation)
+ */
+
+.quo-header-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.quo-cell-logo {
+    width: 30%;
+    vertical-align: top;
+}
+
+.quo-logo {
+    max-height: 60px;
+    max-width: 180px;
+}
+
+.quo-cell-header {
+    width: 70%;
+    vertical-align: top;
+    text-align: right;
+}
+
+.quo-title {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #1a56db;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.quo-ref-badge {
+    display: inline-block;
+    background: #f3f4f6;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #4b5563;
+    margin-bottom: 8px;
+}
+
+.quo-meta-table {
+    width: 100%;
+    font-size: 8pt;
+    margin-top: 6px;
+}
+
+.quo-meta-label {
+    text-align: right;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.quo-meta-value {
+    text-align: right;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.quo-pill {
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 7pt;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.quo-pill--sent {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.quo-pill--pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.quo-pill--draft {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.quo-pill--default {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.quo-divider {
+    height: 2px;
+    background: #1a56db;
+    margin: 8px 0 10px 0;
+}
+
+.quo-parties-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.quo-party-col {
+    width: 48%;
+    vertical-align: top;
+}
+
+.quo-party-gap {
+    width: 4%;
+}
+
+.quo-party-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.quo-party-card-hdr {
+    background: #1a56db;
+    padding: 5px 10px;
+    border-bottom: 1px solid #3b82f6;
+}
+
+[dir="ltr"] .quo-party-card-hdr {
+    text-align: left;
+}
+
+[dir="rtl"] .quo-party-card-hdr {
+    text-align: right;
+}
+
+.quo-party-card-hdr-title {
+    color: #ffffff;
+    font-size: 9pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.quo-party-card-body {
+    padding: 8px 10px;
+    background: #f9fafb;
+}
+
+.quo-party-name {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+[dir="ltr"] .quo-party-name {
+    text-align: left;
+}
+
+[dir="rtl"] .quo-party-name {
+    text-align: right;
+}
+
+.quo-kv-table {
+    width: 100%;
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.quo-kv-cell {
+    padding: 1px 0;
+    vertical-align: top;
+}
+
+.quo-kv-lbl-ltr {
+    width: 28%;
+    text-align: left;
+}
+
+.quo-kv-val-ltr {
+    text-align: left;
+}
+
+.quo-kv-val-rtl-row {
+    text-align: left;
+    direction: ltr;
+}
+
+.quo-kv-lbl-rtl-row {
+    width: 32%;
+    text-align: right;
+    direction: rtl;
+}
+
+.quo-strong {
+    color: #1f2937;
+}
+
+.quo-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.quo-items-thead {
+    background: #1a56db;
+}
+
+.quo-th-product {
+    padding: 6px 5px;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    border-right: 1px solid #4d7fd8;
+}
+
+[dir="ltr"] .quo-th-product {
+    text-align: left;
+}
+
+[dir="rtl"] .quo-th-product {
+    text-align: right;
+}
+
+.quo-th-num {
+    padding: 6px 5px;
+    text-align: right;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    border-right: 1px solid #4d7fd8;
+}
+
+.quo-th-num-last {
+    padding: 6px 5px;
+    text-align: right;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+}
+
+.quo-item-row {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.quo-item-row--a {
+    background: #ffffff;
+}
+
+.quo-item-row--b {
+    background: #f9fafb;
+}
+
+.quo-item-cell {
+    padding: 5px;
+    vertical-align: top;
+}
+
+.quo-item-name {
+    font-weight: 600;
+    font-size: 8.5pt;
+    color: #1f2937;
+    margin-bottom: 1px;
+}
+
+.quo-item-code {
+    font-size: 7pt;
+    color: #6b7280;
+}
+
+.quo-item-sn {
+    font-size: 7pt;
+    color: #3b82f6;
+    margin-top: 1px;
+}
+
+.quo-num-cell {
+    padding: 5px;
+    text-align: right;
+    font-size: 8.5pt;
+    color: #1f2937;
+}
+
+.quo-num-cell--disc {
+    color: #ef4444;
+}
+
+.quo-num-cell--total {
+    font-size: 9pt;
+    font-weight: bold;
+    color: #1a56db;
+}
+
+.quo-summary-outer {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.quo-summary-spacer {
+    width: 58%;
+}
+
+.quo-summary-wrap {
+    width: 42%;
+    vertical-align: top;
+}
+
+[dir="ltr"] .quo-summary-wrap {
+    text-align: left;
+}
+
+[dir="rtl"] .quo-summary-wrap {
+    text-align: right;
+}
+
+.quo-sum-table {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    border-collapse: collapse;
+}
+
+.quo-sum-row {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.quo-sum-row--alt {
+    background: #f9fafb;
+}
+
+.quo-sum-row--plain {
+    background: #ffffff;
+}
+
+.quo-sum-row--grand {
+    background: #1a56db;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.quo-sum-lbl-ltr {
+    padding: 5px 10px;
+    font-size: 8pt;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.quo-sum-amt-ltr {
+    padding: 5px 10px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: #1f2937;
+    text-align: right;
+}
+
+.quo-sum-amt-ltr--disc {
+    color: #ef4444;
+}
+
+.quo-sum-amt-rtl {
+    padding: 5px 10px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    text-align: left;
+    direction: ltr;
+    color: #1f2937;
+}
+
+.quo-sum-amt-rtl--disc {
+    color: #ef4444;
+}
+
+.quo-sum-lbl-rtl {
+    padding: 5px 10px;
+    font-size: 8pt;
+    font-weight: 600;
+    text-align: right;
+    direction: rtl;
+    color: #6b7280;
+}
+
+.quo-sum-grand-amt {
+    padding: 8px 10px;
+    font-size: 11pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: left;
+    direction: ltr;
+}
+
+.quo-sum-grand-lbl {
+    padding: 8px 10px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: right;
+    direction: rtl;
+}
+
+.quo-sum-grand-lbl-ltr {
+    padding: 8px 10px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.quo-sum-grand-amt-ltr {
+    padding: 8px 10px;
+    font-size: 11pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: right;
+}
+
+.quo-footer {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 2px solid #e5e7eb;
+}
+
+[dir="ltr"] .quo-footer {
+    text-align: left;
+}
+
+[dir="rtl"] .quo-footer {
+    text-align: right;
+}
+
+.quo-footer-note {
+    padding: 8px 10px;
+    background: #f9fafb;
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+
+.quo-footer-note--ltr {
+    border-left: 3px solid #1a56db;
+}
+
+.quo-footer-note--rtl {
+    border-right: 3px solid #1a56db;
+}
+
+.quo-footer-note-text {
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.quo-footer-thanks {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1a56db;
+    margin: 0;
+    letter-spacing: 0.3px;
+}

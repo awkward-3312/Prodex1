@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" height="512" width="512" id="flag-icon-css-pk" viewBox="0 0 512 512">
+  <path fill="#01411c" d="M0 0h512v512H0z"/>
+  <path fill="#fff" d="M0 0h95v512H0z"/>
+  <circle cx="295" cy="270" r="150" fill="#fff"/>
+  <circle cx="330" cy="235" r="126" fill="#01411c"/>
+  <path fill="#fff" d="M383.6 111.3 403.8 133.6 431.7 122.4 416.7 148.5 436 171.6 406.6 165.5 390.6 190.9 387.3 161 358.2 153.7 385.6 141.3z"/>
+</svg>

@@ -1,0 +1,88 @@
+/**
+ * System health report PDF (dompdf-safe).
+ */
+
+@page {
+    size: A4;
+    margin: 10mm 15mm;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body,
+body * {
+    font-family: 'DejaVu Sans', sans-serif !important;
+}
+
+body {
+    font-size: 9pt;
+    color: #1f2937;
+    line-height: 1.4;
+    padding: 15px 20px;
+    max-width: 100%;
+}
+
+body.rtl {
+    direction: rtl;
+    text-align: right;
+}
+
+.sysh-title {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #6366f1;
+    margin-bottom: 4px;
+}
+
+.sysh-meta {
+    font-size: 8pt;
+    color: #6b7280;
+}
+
+.sysh-divider {
+    height: 2px;
+    background: #6366f1;
+    margin: 10px 0 14px 0;
+}
+
+table.sysh-metrics {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+}
+
+table.sysh-metrics th,
+table.sysh-metrics td {
+    border: 1px solid #e5e7eb;
+    padding: 8px 10px;
+    text-align: left;
+}
+
+body.rtl table.sysh-metrics th,
+body.rtl table.sysh-metrics td {
+    text-align: right;
+}
+
+table.sysh-metrics th {
+    background: #6366f1;
+    color: #fff;
+    font-weight: bold;
+}
+
+.sysh-th-metric {
+    width: 38%;
+}
+
+table.sysh-metrics tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.sysh-footer {
+    margin-top: 16px;
+    font-size: 8pt;
+    color: #6b7280;
+}

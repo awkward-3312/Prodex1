@@ -1,0 +1,544 @@
+/**
+ * Purchase return PDF (dompdf-safe).
+ * Accent: red #ef4444. Prefix: pret-
+ */
+
+@page {
+    size: A4;
+    margin: 10mm 15mm;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body,
+body * {
+    font-family: 'DejaVu Sans', sans-serif !important;
+}
+
+body {
+    font-size: 9pt;
+    color: #1f2937;
+    line-height: 1.4;
+    padding: 15px 20px;
+    max-width: 100%;
+}
+
+body.rtl {
+    direction: rtl;
+    text-align: right;
+}
+
+body.rtl table {
+    direction: rtl;
+}
+
+.pret-header-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.pret-cell-logo {
+    width: 30%;
+    vertical-align: top;
+}
+
+.pret-logo {
+    max-height: 60px;
+    max-width: 180px;
+}
+
+.pret-cell-title {
+    width: 70%;
+    vertical-align: top;
+    text-align: right;
+}
+
+.pret-title {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #ef4444;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.pret-ref-badge {
+    display: inline-block;
+    background: #fee2e2;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #991b1b;
+    margin-bottom: 8px;
+}
+
+.pret-meta-table {
+    width: 100%;
+    font-size: 8pt;
+    margin-top: 6px;
+}
+
+.pret-meta-label {
+    text-align: right;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.pret-meta-value {
+    text-align: right;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.pret-meta-value--badge {
+    text-align: right;
+}
+
+.pret-meta-value--badge {
+    text-align: right;
+}
+
+.pret-badge {
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 7pt;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.pret-badge--ok {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.pret-badge--pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.pret-badge--default {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.pret-divider {
+    height: 2px;
+    background: #ef4444;
+    margin: 8px 0 10px 0;
+}
+
+.pret-panels-table {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.pret-col-48 {
+    width: 48%;
+    vertical-align: top;
+}
+
+.pret-col-gap {
+    width: 4%;
+}
+
+.pret-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.pret-card-hdr {
+    background: #ef4444;
+    padding: 5px 10px;
+    border-bottom: 1px solid #dc2626;
+    text-align: left;
+}
+
+body.rtl .pret-card-hdr {
+    text-align: right;
+}
+
+.pret-card-hdr-title {
+    color: #ffffff;
+    font-size: 9pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.pret-card-body {
+    padding: 8px 10px;
+    background: #fef2f2;
+}
+
+.pret-party-name {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 4px;
+    text-align: left;
+}
+
+body.rtl .pret-party-name {
+    text-align: right;
+}
+
+.pret-info-table {
+    width: 100%;
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.pret-info-cell-val {
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: left;
+    direction: ltr;
+}
+
+.pret-info-cell-lbl-rtl {
+    width: 32%;
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: right;
+    direction: rtl;
+}
+
+.pret-info-cell-lbl-ltr {
+    width: 28%;
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: left;
+}
+
+.pret-info-val-ltr {
+    padding: 1px 0;
+    vertical-align: top;
+    text-align: left;
+}
+
+.pret-strong {
+    color: #1f2937;
+}
+
+.pret-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.pret-items-thead {
+    background: #ef4444;
+}
+
+.pret-th {
+    padding: 6px 5px;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    border-right: 1px solid #f87171;
+    text-align: left;
+}
+
+body.rtl .pret-th {
+    text-align: right;
+}
+
+.pret-th:last-child {
+    border-right: none;
+}
+
+.pret-th--right {
+    text-align: right;
+}
+
+.pret-item-row {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.pret-item-row--even {
+    background: #ffffff;
+}
+
+.pret-item-row--odd {
+    background: #fef2f2;
+}
+
+.pret-item-main {
+    padding: 5px;
+    vertical-align: top;
+}
+
+.pret-item-name {
+    font-weight: 600;
+    font-size: 8.5pt;
+    color: #1f2937;
+    margin-bottom: 1px;
+}
+
+.pret-item-code {
+    font-size: 7pt;
+    color: #6b7280;
+}
+
+.pret-item-imei {
+    font-size: 7pt;
+    color: #2563eb;
+    margin-top: 1px;
+}
+
+.pret-cell-num {
+    padding: 5px;
+    text-align: right;
+    font-size: 8.5pt;
+    color: #1f2937;
+}
+
+.pret-cell-disc {
+    color: #10b981;
+}
+
+.pret-cell-total {
+    font-size: 9pt;
+    font-weight: bold;
+    color: #ef4444;
+}
+
+.pret-summary-outer {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.pret-summary-spacer {
+    width: 58%;
+}
+
+.pret-summary-cell {
+    width: 42%;
+    vertical-align: top;
+    text-align: left;
+}
+
+body.rtl .pret-summary-cell {
+    text-align: right;
+}
+
+.pret-summary-table {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    border-collapse: collapse;
+}
+
+.pret-sum-row {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.pret-sum-row--pink {
+    background: #fef2f2;
+}
+
+.pret-sum-row--white {
+    background: #ffffff;
+}
+
+.pret-sum-row--total {
+    background: #ef4444;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.pret-sum-row--paid {
+    background: #d1fae5;
+}
+
+.pret-sum-row--due {
+    background: #fef3c7;
+}
+
+.pret-sum-label-ltr {
+    padding: 5px 10px;
+    font-size: 8pt;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.pret-sum-val-ltr {
+    padding: 5px 10px;
+    text-align: right;
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.pret-sum-val-ltr--disc {
+    color: #10b981;
+}
+
+.pret-sum-label-total-ltr {
+    padding: 8px 10px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.pret-sum-val-total-ltr {
+    padding: 8px 10px;
+    text-align: right;
+    font-size: 11pt;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.pret-sum-label-paid-ltr {
+    padding: 6px 10px;
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #065f46;
+}
+
+.pret-sum-val-paid-ltr {
+    padding: 6px 10px;
+    text-align: right;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #065f46;
+}
+
+.pret-sum-label-due-ltr {
+    padding: 6px 10px;
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #92400e;
+}
+
+.pret-sum-val-due-ltr {
+    padding: 6px 10px;
+    text-align: right;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #92400e;
+}
+
+.pret-sum-amt-rtl {
+    padding: 5px 10px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    text-align: left;
+    direction: ltr;
+    color: #1f2937;
+}
+
+.pret-sum-amt-rtl--disc {
+    color: #10b981;
+}
+
+.pret-sum-lbl-rtl {
+    padding: 5px 10px;
+    font-size: 8pt;
+    font-weight: 600;
+    text-align: right;
+    direction: rtl;
+    color: #6b7280;
+}
+
+.pret-sum-amt-total-rtl {
+    padding: 8px 10px;
+    font-size: 11pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: left;
+    direction: ltr;
+}
+
+.pret-sum-lbl-total-rtl {
+    padding: 8px 10px;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: right;
+    direction: rtl;
+}
+
+.pret-sum-amt-paid-rtl {
+    padding: 6px 10px;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #065f46;
+    text-align: left;
+    direction: ltr;
+}
+
+.pret-sum-lbl-paid-rtl {
+    padding: 6px 10px;
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #065f46;
+    text-align: right;
+    direction: rtl;
+}
+
+.pret-sum-amt-due-rtl {
+    padding: 6px 10px;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #92400e;
+    text-align: left;
+    direction: ltr;
+}
+
+.pret-sum-lbl-due-rtl {
+    padding: 6px 10px;
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #92400e;
+    text-align: right;
+    direction: rtl;
+}
+
+.pret-footer {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 2px solid #e5e7eb;
+    text-align: left;
+}
+
+body.rtl .pret-footer {
+    text-align: right;
+}
+
+.pret-footer-note {
+    padding: 8px 10px;
+    background: #fef2f2;
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+
+.pret-footer-note--ltr {
+    border-left: 3px solid #ef4444;
+}
+
+.pret-footer-note--rtl {
+    border-right: 3px solid #ef4444;
+}
+
+.pret-footer-note-text {
+    font-size: 7.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.pret-footer-thanks {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #ef4444;
+    margin: 0;
+    letter-spacing: 0.3px;
+}
