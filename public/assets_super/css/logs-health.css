@@ -251,6 +251,113 @@ body.dark-mode .badge-status-resolved   { color: #6ee7b7; }
 }
 .tenant-link:hover { text-decoration: underline; }
 
+/* Tenant schema health */
+.tenant-health-card {
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+.tenant-health-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.08));
+}
+.tenant-health-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+}
+.tenant-health-header p {
+    margin: 4px 0 0;
+    color: var(--bs-secondary-color, #64748b);
+    font-size: 13px;
+}
+.tenant-health-summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.tenant-health-pill,
+.schema-status {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.tenant-health-pill {
+    padding: 6px 10px;
+}
+.schema-status {
+    padding: 4px 9px;
+}
+.tenant-health-pill-healthy,
+.schema-status-healthy,
+.schema-status-ok {
+    background: rgba(16,185,129,.12);
+    color: #047857;
+}
+.tenant-health-pill-warning,
+.schema-status-warning {
+    background: rgba(245,158,11,.14);
+    color: #b45309;
+}
+.tenant-health-pill-error,
+.schema-status-error {
+    background: rgba(239,68,68,.12);
+    color: #b91c1c;
+}
+.tenant-health-table td,
+.tenant-health-table th {
+    vertical-align: top;
+}
+.tenant-health-row-warning td:first-child {
+    border-left: 3px solid #f59e0b;
+}
+.tenant-health-row-error td:first-child {
+    border-left: 3px solid #ef4444;
+}
+.tenant-health-row-healthy td:first-child {
+    border-left: 3px solid #10b981;
+}
+.tenant-health-missing {
+    min-width: 260px;
+    max-width: 520px;
+}
+.tenant-health-missing ul {
+    margin: 0;
+    padding-left: 18px;
+}
+.tenant-health-missing li {
+    margin: 0 0 3px;
+    font-size: 12px;
+}
+body.dark-mode .tenant-health-pill-healthy,
+body.dark-mode .schema-status-healthy,
+body.dark-mode .schema-status-ok {
+    color: #6ee7b7;
+}
+body.dark-mode .tenant-health-pill-warning,
+body.dark-mode .schema-status-warning {
+    color: #fcd34d;
+}
+body.dark-mode .tenant-health-pill-error,
+body.dark-mode .schema-status-error {
+    color: #fca5a5;
+}
+@media (max-width: 768px) {
+    .tenant-health-header {
+        flex-direction: column;
+    }
+    .tenant-health-summary {
+        justify-content: flex-start;
+    }
+}
+
 /* Detail page */
 /* Detail cards place content directly inside .content-card (no card-body
    wrapper), which has no padding of its own — give them comfortable padding. */

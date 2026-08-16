@@ -15,6 +15,8 @@ use App\Models\SaleDetail;
 use App\Models\SaleReturn;
 use App\Models\SaleReturnDetails;
 use App\Models\Setting;
+use App\Models\StoreCreditVoucher;
+use App\Models\StoreCreditVoucherTransaction;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\UserWarehouse;
@@ -27,6 +29,7 @@ use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use PDF;
 
 class SalesReturnController extends BaseController
@@ -77,7 +80,7 @@ class SalesReturnController extends BaseController
         $data = [];
 
         // Check If User Has Permission View  All Records
-        $SaleReturn = SaleReturn::with('sale', 'facture', 'client', 'warehouse')
+        $SaleReturn = SaleReturn::with('sale', 'facture', 'client', 'warehouse', 'storeCreditVoucher')
             ->where('deleted_at', '=', null)
             ->where(function ($query) use ($view_records) {
                 if (! $view_records) {
@@ -147,6 +150,9 @@ class SalesReturnController extends BaseController
             $item['paid_amount'] = number_format($Sale_Return['paid_amount'], helpers::price_decimals(), '.', '');
             $item['due'] = number_format($item['GrandTotal'] - $item['paid_amount'], helpers::price_decimals(), '.', '');
             $item['payment_status'] = $Sale_Return['payment_statut'];
+            $item['refund_mode'] = $Sale_Return->refund_mode;
+            $item['store_credit_amount'] = number_format((float) ($Sale_Return->store_credit_amount ?? 0), helpers::price_decimals(), '.', '');
+            $item['store_credit_code'] = optional($Sale_Return->storeCreditVoucher)->code;
 
             $data[] = $item;
         }
@@ -297,6 +303,10 @@ class SalesReturnController extends BaseController
                 }
             }
 
+            if ($order->statut == 'received') {
+                $this->issueStoreCreditVoucher($order);
+            }
+
             return $order;
         }, 10);
 
@@ -308,7 +318,19 @@ class SalesReturnController extends BaseController
             \Log::warning('ZATCA submit dispatch failed (non-blocking): '.$e->getMessage(), ['sale_return_id' => $createdReturn->id]);
         }
 
-        return response()->json(['success' => true]);
+        $createdReturn->load([
+            'storeCreditVoucher',
+            'client',
+            'warehouse',
+            'sale',
+            'user',
+            'details.product.unitSale',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'store_credit_voucher' => $this->formatStoreCreditVoucherResponse($createdReturn),
+        ]);
     }
 
     // ------------ Update Return Sale--------------\\
@@ -324,6 +346,9 @@ class SalesReturnController extends BaseController
             // Backward compatibility: If record_view is null, fall back to role permission check
             $view_records = $user->hasRecordView();
             $current_SaleReturn = SaleReturn::findOrFail($id);
+            if ($current_SaleReturn->store_credit_voucher_id) {
+                abort(422, 'Esta devolución ya generó un vale de crédito y no puede modificarse sin cancelar el vale.');
+            }
 
             /**
              * Warehouses restriction
@@ -553,6 +578,11 @@ class SalesReturnController extends BaseController
                 'payment_statut' => $payment_statut,
             ]);
 
+            $current_SaleReturn->refresh();
+            if ($current_SaleReturn->statut == 'received') {
+                $this->issueStoreCreditVoucher($current_SaleReturn);
+            }
+
         }, 10);
 
         return response()->json(['success' => true]);
@@ -570,6 +600,9 @@ class SalesReturnController extends BaseController
             // Backward compatibility: If record_view is null, fall back to role permission check
             $view_records = $user->hasRecordView();
             $current_SaleReturn = SaleReturn::findOrFail($id);
+            if ($current_SaleReturn->store_credit_voucher_id) {
+                abort(422, 'Esta devolución ya generó un vale de crédito y no puede eliminarse sin cancelar el vale.');
+            }
 
             /**
              * Warehouses restriction
@@ -714,6 +747,9 @@ class SalesReturnController extends BaseController
             foreach ($selectedIds as $SaleReturn_id) {
 
                 $current_SaleReturn = SaleReturn::findOrFail($SaleReturn_id);
+                if ($current_SaleReturn->store_credit_voucher_id) {
+                    abort(422, 'Una de las devoluciones seleccionadas ya generó un vale de crédito.');
+                }
 
                 /**
                  * Warehouses restriction
@@ -905,6 +941,143 @@ class SalesReturnController extends BaseController
         return $code;
     }
 
+    protected function issueStoreCreditVoucher(SaleReturn $saleReturn): ?StoreCreditVoucher
+    {
+        if ((float) $saleReturn->GrandTotal <= 0 || $saleReturn->store_credit_voucher_id) {
+            return $saleReturn->store_credit_voucher_id
+                ? StoreCreditVoucher::find($saleReturn->store_credit_voucher_id)
+                : null;
+        }
+
+        $existing = StoreCreditVoucher::where('sale_return_id', $saleReturn->id)->first();
+        if ($existing) {
+            $saleReturn->update([
+                'refund_mode' => 'store_credit',
+                'store_credit_voucher_id' => $existing->id,
+                'store_credit_amount' => $existing->original_amount,
+                'paid_amount' => $saleReturn->GrandTotal,
+                'payment_statut' => 'paid',
+            ]);
+
+            return $existing;
+        }
+
+        $amount = round((float) $saleReturn->GrandTotal, 2);
+        $voucher = StoreCreditVoucher::create([
+            'code' => $this->generateStoreCreditCode(),
+            'tenant_id' => $this->tenantSnapshotId(),
+            'client_id' => $saleReturn->client_id,
+            'original_sale_id' => $saleReturn->sale_id,
+            'sale_return_id' => $saleReturn->id,
+            'warehouse_id' => $saleReturn->warehouse_id,
+            'issued_by_user_id' => Auth::id(),
+            'original_amount' => $amount,
+            'remaining_balance' => $amount,
+            'currency' => (new helpers)->Get_Currency_Code(),
+            'status' => 'active',
+            'issued_at' => now(),
+            'notes' => $saleReturn->notes,
+        ]);
+
+        StoreCreditVoucherTransaction::create([
+            'voucher_id' => $voucher->id,
+            'sale_return_id' => $saleReturn->id,
+            'user_id' => Auth::id(),
+            'warehouse_id' => $saleReturn->warehouse_id,
+            'type' => 'issue',
+            'amount' => $amount,
+            'balance_before' => 0,
+            'balance_after' => $amount,
+            'notes' => 'Emitido por devolución '.$saleReturn->Ref,
+        ]);
+
+        $saleReturn->update([
+            'refund_mode' => 'store_credit',
+            'store_credit_voucher_id' => $voucher->id,
+            'store_credit_amount' => $amount,
+            'paid_amount' => $amount,
+            'payment_statut' => 'paid',
+        ]);
+
+        return $voucher;
+    }
+
+    protected function generateStoreCreditCode(): string
+    {
+        do {
+            $code = 'VAL-HN-'.now()->format('Ymd').'-'.strtoupper(Str::random(6));
+        } while (StoreCreditVoucher::where('code', $code)->exists());
+
+        return $code;
+    }
+
+    protected function tenantSnapshotId(): ?string
+    {
+        try {
+            return function_exists('tenant') && tenant() ? (string) tenant()->id : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    protected function formatStoreCreditVoucherResponse(SaleReturn $saleReturn): ?array
+    {
+        $voucher = $saleReturn->storeCreditVoucher;
+        if (! $voucher) {
+            return null;
+        }
+
+        $details = $saleReturn->details->map(function ($detail) {
+            $unit = $detail->sale_unit_id ? Unit::find($detail->sale_unit_id) : optional($detail->product)->unitSale;
+
+            return [
+                'product_id' => $detail->product_id,
+                'code' => optional($detail->product)->code,
+                'name' => optional($detail->product)->name,
+                'quantity' => number_format((float) $detail->quantity, helpers::price_decimals(), '.', ''),
+                'unit' => optional($unit)->ShortName,
+                'amount' => number_format((float) $detail->total, helpers::price_decimals(), '.', ''),
+            ];
+        })->values()->all();
+
+        return [
+            'voucher_id' => $voucher->id,
+            'code' => $voucher->code,
+            'original_amount' => number_format((float) $voucher->original_amount, helpers::price_decimals(), '.', ''),
+            'remaining_balance' => number_format((float) $voucher->remaining_balance, helpers::price_decimals(), '.', ''),
+            'status' => $voucher->status,
+            'client' => [
+                'id' => $saleReturn->client_id,
+                'name' => optional($saleReturn->client)->name,
+                'code' => optional($saleReturn->client)->code,
+                'tax_number' => optional($saleReturn->client)->tax_number,
+            ],
+            'sale_return_id' => $saleReturn->id,
+            'sale_return_ref' => $saleReturn->Ref,
+            'original_sale_id' => $saleReturn->sale_id,
+            'original_sale_ref' => optional($saleReturn->sale)->Ref,
+            'issued_at' => optional($voucher->issued_at)->format('Y-m-d H:i:s'),
+            'expires_at' => optional($voucher->expires_at)->format('Y-m-d H:i:s'),
+            'cashier' => optional($saleReturn->user)->username ?: trim((optional($saleReturn->user)->firstname ?? '').' '.(optional($saleReturn->user)->lastname ?? '')),
+            'warehouse' => [
+                'id' => $saleReturn->warehouse_id,
+                'name' => optional($saleReturn->warehouse)->name,
+            ],
+            'items' => $details,
+            'company' => optional(Setting::where('deleted_at', '=', null)->first())->only([
+                'CompanyName',
+                'company_name',
+                'logo',
+                'tax_number',
+                'company_tax_number',
+                'adresse',
+                'address',
+                'phone',
+                'CompanyPhone',
+            ]),
+        ];
+    }
+
     // ---------------- Get Details Sale Return  -----------------\\
 
     public function show(Request $request, $id)
@@ -915,7 +1088,7 @@ class SalesReturnController extends BaseController
         // New way: Check user's record_view field (user-level boolean)
         // Backward compatibility: If record_view is null, fall back to role permission check
         $view_records = $user->hasRecordView();
-        $Sale_Return = SaleReturn::with('sale', 'details.product.unitSale')
+        $Sale_Return = SaleReturn::with('sale', 'details.product.unitSale', 'storeCreditVoucher.transactions')
             ->where('deleted_at', '=', null)
             ->findOrFail($id);
 
@@ -947,6 +1120,16 @@ class SalesReturnController extends BaseController
         $return_details['paid_amount'] = number_format($Sale_Return->paid_amount, helpers::price_decimals(), '.', '');
         $return_details['due'] = number_format($return_details['GrandTotal'] - $return_details['paid_amount'], helpers::price_decimals(), '.', '');
         $return_details['payment_status'] = $Sale_Return->payment_statut;
+        $return_details['refund_mode'] = $Sale_Return->refund_mode;
+        $return_details['store_credit_amount'] = number_format((float) ($Sale_Return->store_credit_amount ?? 0), helpers::price_decimals(), '.', '');
+        $return_details['store_credit_voucher'] = $Sale_Return->storeCreditVoucher ? [
+            'id' => $Sale_Return->storeCreditVoucher->id,
+            'code' => $Sale_Return->storeCreditVoucher->code,
+            'original_amount' => number_format((float) $Sale_Return->storeCreditVoucher->original_amount, helpers::price_decimals(), '.', ''),
+            'remaining_balance' => number_format((float) $Sale_Return->storeCreditVoucher->remaining_balance, helpers::price_decimals(), '.', ''),
+            'status' => $Sale_Return->storeCreditVoucher->status,
+            'issued_at' => optional($Sale_Return->storeCreditVoucher->issued_at)->format('Y-m-d H:i:s'),
+        ] : null;
 
         $batchesByDetail = app(BatchService::class)->batchesForSaleReturnDetails($Sale_Return['details']);
 

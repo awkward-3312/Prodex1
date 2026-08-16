@@ -197,6 +197,19 @@
                       >{{ formatPriceWithSymbol(currentUser.currency, sale_return.GrandTotal, 2) }}</span>
                     </td>
                   </tr>
+                  <tr v-if="sale_return.store_credit_voucher">
+                    <td>
+                      <span class="font-weight-bold">{{ $t('Store_Credit') || 'Vale emitido' }}</span>
+                    </td>
+                    <td>
+                      <span class="font-weight-bold">
+                        {{ sale_return.store_credit_voucher.code }}
+                      </span>
+                      <div class="text-muted">
+                        {{ formatPriceWithSymbol(currentUser.currency, sale_return.store_credit_voucher.remaining_balance, 2) }}
+                      </div>
+                    </td>
+                  </tr>
                   <tr>
                     <td>
                       <span class="font-weight-bold">{{$t('Paid')}}</span>

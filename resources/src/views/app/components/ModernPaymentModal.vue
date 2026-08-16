@@ -55,6 +55,15 @@
             <div class="payment-status-card">
               <h3 class="card-title">{{$t('Payment_Breakdown')}}</h3>
               <div class="status-grid">
+                <div class="status-box" v-if="storeCreditApplied > 0">
+                  <div class="status-icon paying">
+                    <lucide-icon name="ticket" />
+                  </div>
+                  <div class="status-details">
+                    <span class="status-name">{{ $t('Store_Credit') || 'Vale aplicado' }}</span>
+                    <span class="status-amount">-{{ formatCurrency(storeCreditApplied) }}</span>
+                  </div>
+                </div>
                 <div class="status-box">
                   <div class="status-icon paying">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -339,7 +348,8 @@ export default {
     // Promotion checkout context — forwarded as-is to /pos/create_pos so the
     // backend can re-evaluate promotions and create PromotionUsage rows. Without
     // this, sales submitted through the modern modal never persist promotions.
-    promotionContext: { type: Object, default: () => ({}) }
+    promotionContext: { type: Object, default: () => ({}) },
+    storeCreditVouchers: { type: Array, default: () => [] }
   },
   data() {
     return {
@@ -390,6 +400,9 @@ export default {
     },
     totalPaid() {
       return (this.paymentLines || []).reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
+    },
+    storeCreditApplied() {
+      return (this.storeCreditVouchers || []).reduce((sum, voucher) => sum + (Number(voucher.amount) || 0), 0);
     },
     balance() {
       const amountDue = this.paymentForm.amountDue || 0;
@@ -890,6 +903,7 @@ export default {
           shipping: this.sale && this.sale.shipping ? this.sale.shipping : 0,
           details: this.details,
           GrandTotal: this.grandTotal || this.paymentForm.amountDue || this.totalPaid,
+          store_credit_vouchers: this.storeCreditVouchers || [],
           // Multi-payment array with optional per-line account and saved card
           payments: (this.paymentLines || []).map((l) => ({
             amount: Number(l.amount) || 0,
@@ -1022,6 +1036,7 @@ export default {
           notes: this.saleNote || (this.sale && this.sale.notes) || '',
           details: normalizedDetails,
           GrandTotal: this.grandTotal || this.paymentForm.amountDue || total,
+          store_credit_vouchers: this.storeCreditVouchers || [],
           // Multi-payment array including per-line account (no global)
           payments: (this.paymentLines || []).map((l) => ({
             amount: Number(l.amount) || 0,
@@ -2430,4 +2445,3 @@ export default {
   }
 }
 </style>
-

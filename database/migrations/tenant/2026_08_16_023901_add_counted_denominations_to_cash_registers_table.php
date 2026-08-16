@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('cash_registers') || Schema::hasColumn('cash_registers', 'counted_denominations')) {
+            return;
+        }
+
         Schema::table('cash_registers', function (Blueprint $table) {
             $table->json('counted_denominations')->nullable()->after('difference');
         });
@@ -21,6 +25,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (! Schema::hasTable('cash_registers') || ! Schema::hasColumn('cash_registers', 'counted_denominations')) {
+            return;
+        }
+
         Schema::table('cash_registers', function (Blueprint $table) {
             $table->dropColumn('counted_denominations');
         });

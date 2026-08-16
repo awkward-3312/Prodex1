@@ -12,7 +12,7 @@ class SaleReturn extends Model
         'date', 'Ref', 'GrandTotal', 'time',
         'user_id', 'discount', 'shipping',
         'warehouse_id', 'client_id', 'sale_id', 'notes', 'TaxNet', 'tax_rate', 'statut',
-        'paid_amount', 'payment_statut', 'created_at', 'updated_at', 'deleted_at',
+        'paid_amount', 'payment_statut', 'refund_mode', 'store_credit_voucher_id', 'store_credit_amount', 'created_at', 'updated_at', 'deleted_at',
     ];
 
     protected $casts = [
@@ -26,6 +26,8 @@ class SaleReturn extends Model
         'TaxNet' => 'double',
         'tax_rate' => 'double',
         'paid_amount' => 'double',
+        'store_credit_voucher_id' => 'integer',
+        'store_credit_amount' => 'double',
     ];
 
     public function user()
@@ -61,5 +63,10 @@ class SaleReturn extends Model
     public function facture()
     {
         return $this->hasMany('App\Models\PaymentSaleReturns');
+    }
+
+    public function storeCreditVoucher()
+    {
+        return $this->hasOne(StoreCreditVoucher::class, 'sale_return_id');
     }
 }

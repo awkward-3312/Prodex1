@@ -29,6 +29,7 @@ use App\Models\Setting;
 use App\Models\Shipment;
 use App\Models\sms_gateway;
 use App\Models\SMSMessage;
+use App\Models\StoreCreditVoucherTransaction;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\UserWarehouse;
@@ -1561,6 +1562,18 @@ class SalesController extends BaseController
         $item['discount_from_points'] = number_format($sale->discount_from_points ?? 0, helpers::price_decimals(), '.', ''); // Include points discount for receipt display
         $item['promotion_discount'] = number_format($sale->promotion_discount ?? 0, helpers::price_decimals(), '.', '');
         $item['promotion_code'] = $sale->promotion_code ?? null;
+        $storeCreditTransactions = StoreCreditVoucherTransaction::with('voucher:id,code')
+            ->where('sale_id', $sale->id)
+            ->where('type', 'redeem')
+            ->orderBy('id', 'asc')
+            ->get();
+        $item['store_credit_amount'] = number_format((float) ($sale->store_credit_amount ?? $storeCreditTransactions->sum('amount')), helpers::price_decimals(), '.', '');
+        $item['store_credit_vouchers'] = $storeCreditTransactions->map(function ($transaction) {
+            return [
+                'code' => optional($transaction->voucher)->code,
+                'amount' => number_format((float) $transaction->amount, helpers::price_decimals(), '.', ''),
+            ];
+        })->all();
         // Per-promotion breakdown for the receipt: each applied promotion gets
         // its own line with the promotion name + amount. Falls back gracefully
         // to the single `promotion_discount` row for older sales that have no

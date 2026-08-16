@@ -24,6 +24,8 @@ use App\Models\Role;
 use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\Setting;
+use App\Models\StoreCreditVoucher;
+use App\Models\StoreCreditVoucherTransaction;
 use App\Models\SMSMessage;
 use App\Models\Unit;
 use App\Models\User;
@@ -103,9 +105,12 @@ class PosController extends BaseController
         request()->validate([
             'client_id' => 'required',
             'warehouse_id' => 'required',
-            'payments' => 'required|array|min:1',
+            'payments' => 'required|array',
             'payments.*.amount' => 'required|numeric',
             'payments.*.payment_method_id' => 'required',
+            'store_credit_vouchers' => 'nullable|array',
+            'store_credit_vouchers.*.code' => 'required_with:store_credit_vouchers|string',
+            'store_credit_vouchers.*.amount' => 'nullable|numeric|min:0',
         ]);
 
         // Multi-Pack Selling: a pack line consumes pack_multiplier base units per
@@ -114,10 +119,13 @@ class PosController extends BaseController
 
         // Block overpayment if multiple methods used
         $totalPaid = collect($request->payments)->sum('amount');
-        if (count($request->payments) > 1 && $totalPaid > $request->GrandTotal) {
+        $requestedStoreCredit = collect($request->input('store_credit_vouchers', []))->sum(function ($voucher) {
+            return (float) ($voucher['amount'] ?? 0);
+        });
+        if (count($request->payments) > 1 && ($totalPaid + $requestedStoreCredit) > $request->GrandTotal) {
             return response()->json([
                 'message' => 'Total Paid Exceeds Grand Total',
-                'change_return' => $totalPaid - $request->GrandTotal,
+                'change_return' => ($totalPaid + $requestedStoreCredit) - $request->GrandTotal,
             ], 422);
         }
 
@@ -340,6 +348,12 @@ class PosController extends BaseController
                 // Optional Stripe per-line metadata coming from modern payment modal / legacy POS
                 // NOTE: Saved-card usage has been disabled; we only accept per-transaction tokens.
                 $cardTokensByLine = $request->card_tokens_by_line ?? [];
+                $storeCreditApplied = $this->redeemStoreCreditVouchers($request, $order);
+                $remainingAfterStoreCredit = max(0, (float) $order->GrandTotal - $storeCreditApplied);
+
+                if ($storeCreditApplied > 0 && $totalPaid > $remainingAfterStoreCredit + 0.005) {
+                    throw new \Exception('El pago real excede el total pendiente después de aplicar el vale.');
+                }
 
                 foreach ($request->payments as $index => $payment) {
                     if (isset($payment['amount']) && $payment['amount'] > 0) {
@@ -351,7 +365,7 @@ class PosController extends BaseController
                         $changeReturn = 0;
 
                         // Adjust if overpaid in single-payment mode
-                        if (count($request->payments) === 1 && $originalAmount > $request->GrandTotal) {
+                        if (count($request->payments) === 1 && $storeCreditApplied <= 0 && $originalAmount > $request->GrandTotal) {
                             $paymentAmount = $request->GrandTotal;
                             $changeReturn = $originalAmount - $request->GrandTotal;
                         }
@@ -468,7 +482,7 @@ class PosController extends BaseController
                     }
                 }
 
-                $totalPaidAdjusted = min($totalPaid, $request->GrandTotal);
+                $totalPaidAdjusted = min($totalPaid + $storeCreditApplied, $request->GrandTotal);
                 $due = $order->GrandTotal - $totalPaidAdjusted;
 
                 // 🪙 Points logic
@@ -502,6 +516,7 @@ class PosController extends BaseController
                     'used_points' => $order_used_points,
                     'earned_points' => $order_earned_points,
                     'discount_from_points' => $order_discount_from_points,
+                    'store_credit_amount' => $storeCreditApplied,
                     'paid_amount' => $totalPaidAdjusted,
                     'payment_statut' => $due <= 0 ? 'paid' : ($due < $order->GrandTotal ? 'partial' : 'unpaid'),
                 ]);
@@ -693,6 +708,92 @@ class PosController extends BaseController
         }
 
         return response()->json($response, 200);
+    }
+
+    private function redeemStoreCreditVouchers(Request $request, Sale $sale): float
+    {
+        $requested = collect($request->input('store_credit_vouchers', []))
+            ->filter(fn ($row) => ! empty($row['code']))
+            ->values();
+
+        if ($requested->isEmpty()) {
+            return 0.0;
+        }
+
+        $remainingDue = (float) $sale->GrandTotal;
+        $appliedTotal = 0.0;
+
+        foreach ($requested as $row) {
+            if ($remainingDue <= 0) {
+                break;
+            }
+
+            $code = strtoupper(trim((string) $row['code']));
+            $requestedAmount = round((float) ($row['amount'] ?? $remainingDue), 2);
+            if ($requestedAmount <= 0) {
+                continue;
+            }
+
+            $voucher = StoreCreditVoucher::where('code', $code)
+                ->whereNull('deleted_at')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $voucher) {
+                throw new \Exception('Vale no encontrado: '.$code);
+            }
+
+            $this->assertStoreCreditVoucherUsable($voucher, (int) $request->client_id);
+
+            $balanceBefore = round((float) $voucher->remaining_balance, 2);
+            $amount = min($requestedAmount, $balanceBefore, $remainingDue);
+            if ($amount <= 0) {
+                throw new \Exception('El vale no tiene saldo disponible.');
+            }
+
+            $balanceAfter = round($balanceBefore - $amount, 2);
+            $voucher->remaining_balance = $balanceAfter;
+            $voucher->status = $balanceAfter <= 0 ? 'redeemed' : 'partially_redeemed';
+            $voucher->save();
+
+            StoreCreditVoucherTransaction::create([
+                'voucher_id' => $voucher->id,
+                'sale_id' => $sale->id,
+                'user_id' => Auth::id(),
+                'warehouse_id' => $sale->warehouse_id,
+                'type' => 'redeem',
+                'amount' => $amount,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'notes' => 'Redimido en venta '.$sale->Ref,
+            ]);
+
+            $appliedTotal = round($appliedTotal + $amount, 2);
+            $remainingDue = round($remainingDue - $amount, 2);
+        }
+
+        return $appliedTotal;
+    }
+
+    private function assertStoreCreditVoucherUsable(StoreCreditVoucher $voucher, int $clientId): void
+    {
+        if (in_array($voucher->status, ['cancelled', 'expired', 'redeemed'], true)) {
+            throw new \Exception('El vale no está disponible para uso.');
+        }
+
+        if ($voucher->expires_at && Carbon::parse($voucher->expires_at)->isPast()) {
+            $voucher->status = 'expired';
+            $voucher->save();
+            throw new \Exception('El vale está vencido.');
+        }
+
+        if ((float) $voucher->remaining_balance <= 0) {
+            throw new \Exception('El vale no tiene saldo disponible.');
+        }
+
+        if ($voucher->client_id && (int) $voucher->client_id !== $clientId) {
+            throw new \Exception('El vale pertenece a otro cliente.');
+        }
     }
 
     public function Send_Email($id)

@@ -105,6 +105,79 @@
 </div>
 @endif
 
+<div class="content-card tenant-health-card">
+    <div class="tenant-health-header">
+        <div>
+            <h2>Estado de tenants</h2>
+            <p>Inspección de conectividad y esquema tenant sin ejecutar migraciones.</p>
+        </div>
+        <div class="tenant-health-summary">
+            <span class="tenant-health-pill tenant-health-pill-healthy">{{ $tenantHealthStats['healthy'] ?? 0 }} actualizados</span>
+            <span class="tenant-health-pill tenant-health-pill-warning">{{ $tenantHealthStats['warning'] ?? 0 }} requieren actualización</span>
+            <span class="tenant-health-pill tenant-health-pill-error">{{ $tenantHealthStats['error'] ?? 0 }} con error</span>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="logs-table tenant-health-table">
+            <thead>
+                <tr>
+                    <th>Tenant</th>
+                    <th>Dominio</th>
+                    <th>Base de datos</th>
+                    <th>Conectividad</th>
+                    <th>Estado de esquema</th>
+                    <th>Faltantes / último error</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($tenantSchemaHealth as $tenantHealth)
+                    <tr class="tenant-health-row tenant-health-row-{{ $tenantHealth['status'] }}">
+                        <td>
+                            <a href="{{ route('super.logs-health.tenant', $tenantHealth['tenant_id']) }}" class="tenant-link">
+                                {{ $tenantHealth['tenant_name'] }}
+                            </a>
+                            <span class="log-source">{{ $tenantHealth['tenant_id'] }}</span>
+                        </td>
+                        <td>{{ $tenantHealth['domain'] ?: '—' }}</td>
+                        <td><code>{{ $tenantHealth['database'] ?: '—' }}</code></td>
+                        <td>
+                            <span class="schema-status schema-status-{{ $tenantHealth['connectivity'] }}">
+                                {{ $tenantHealth['connectivity'] === 'ok' ? 'OK' : 'Error' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="schema-status schema-status-{{ $tenantHealth['status'] }}">
+                                {{ $tenantHealth['status_label'] }}
+                            </span>
+                        </td>
+                        <td class="tenant-health-missing">
+                            @if(! empty($tenantHealth['missing']))
+                                <ul>
+                                    @foreach(array_slice($tenantHealth['missing'], 0, 6) as $missing)
+                                        <li>{{ $missing }}</li>
+                                    @endforeach
+                                </ul>
+                                @if(count($tenantHealth['missing']) > 6)
+                                    <span class="text-muted small">+{{ count($tenantHealth['missing']) - 6 }} más</span>
+                                @endif
+                            @elseif($tenantHealth['last_error'])
+                                <span class="text-danger">{{ \Illuminate\Support\Str::limit($tenantHealth['last_error'], 180) }}</span>
+                            @else
+                                <span class="text-muted small">Sin faltantes detectados</span>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No hay tenants registrados.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <div class="content-card">
     <div class="filter-bar">
         <form method="GET" action="{{ route('super.logs-health.index') }}" class="d-flex align-items-center gap-2 flex-wrap w-100" id="filterForm">

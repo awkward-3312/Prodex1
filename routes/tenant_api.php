@@ -490,6 +490,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
 
     Route::middleware('tenant.feature:pos')->group(function () {
         Route::post('pos/create_pos', 'PosController@CreatePOS');
+        Route::post('store-credit-vouchers/validate', 'StoreCreditVoucherController@validateForPos');
         Route::get('pos/get_products_pos', 'PosController@GetProductsByParametre');
         Route::get('pos/get_products_pos_changes', 'PosController@GetProductsChanges');
         Route::get('pos/data_create_pos', 'PosController@GetELementPos');

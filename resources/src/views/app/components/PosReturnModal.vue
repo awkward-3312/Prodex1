@@ -464,12 +464,15 @@ export default {
           GrandTotal: this.GrandTotal,
           details: details,
         })
-        .then(() => {
+        .then((response) => {
           NProgress.done();
           this.SubmitProcessing = false;
+          const voucher = response && response.data ? response.data.store_credit_voucher : null;
           this.makeToast("success", this.$t("Successfully_Created") || "Successfully created", this.$t("Success") || "Success");
-          this.$emit("return-success");
           this.$refs.returnModal.hide();
+          setTimeout(() => {
+            this.$emit("return-success", voucher);
+          }, 220);
         })
         .catch(() => {
           NProgress.done();

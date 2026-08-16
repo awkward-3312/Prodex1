@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Central\Super;
 
 use App\Http\Controllers\Controller;
 use App\Models\Central\SystemLog;
+use App\Services\TenantSchemaHealthService;
 use App\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ use Throwable;
 
 class LogsHealthController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, TenantSchemaHealthService $schemaHealth)
     {
         $filters = [
             'search' => trim((string) $request->input('search', '')),
@@ -70,14 +71,22 @@ class LogsHealthController extends Controller
                 ->toArray(),
         ];
 
-        $healthStatus = $this->computeHealthStatus($stats);
+        $tenantOptions = Tenant::with('domains')->orderBy('created_at', 'desc')->limit(500)->get();
+        $tenantSchemaHealth = $tenantOptions->map(fn (Tenant $tenant) => $schemaHealth->checkTenant($tenant))->values();
+        $tenantHealthStats = [
+            'healthy' => $tenantSchemaHealth->where('status', 'healthy')->count(),
+            'warning' => $tenantSchemaHealth->where('status', 'warning')->count(),
+            'error' => $tenantSchemaHealth->where('status', 'error')->count(),
+        ];
 
-        $tenantOptions = Tenant::orderBy('created_at', 'desc')->limit(500)->get();
+        $healthStatus = $this->computeHealthStatus($stats, $tenantHealthStats);
 
         return view('central.super.logs-health.index', [
             'logs'          => $logs,
             'filters'       => $filters,
             'stats'         => $stats,
+            'tenantHealthStats' => $tenantHealthStats,
+            'tenantSchemaHealth' => $tenantSchemaHealth,
             'healthStatus'  => $healthStatus,
             'tenantOptions' => $tenantOptions,
             'types'         => SystemLog::types(),
@@ -271,12 +280,12 @@ class LogsHealthController extends Controller
         }
     }
 
-    private function computeHealthStatus(array $stats): array
+    private function computeHealthStatus(array $stats, array $tenantHealthStats = []): array
     {
-        if ($stats['critical'] > 0) {
+        if ($stats['critical'] > 0 || ($tenantHealthStats['error'] ?? 0) > 0) {
             return ['level' => 'critical', 'label' => 'Critical'];
         }
-        if ($stats['unresolved'] > 0) {
+        if ($stats['unresolved'] > 0 || ($tenantHealthStats['warning'] ?? 0) > 0) {
             return ['level' => 'warning', 'label' => 'Warning'];
         }
         return ['level' => 'healthy', 'label' => 'Healthy'];

@@ -1,6 +1,8 @@
 # Tenant migrations
 
-These migrations run **only on tenant databases** when a new tenant is created (via `php artisan tenants:migrate` or the TenantCreated event pipeline).
+These migrations run **only on tenant databases** when a new tenant is created by the TenantCreated event pipeline or by tenant-scoped upgrade commands.
+
+For controlled production upgrades, prefer `php artisan prodex:tenant-upgrade`. This project version does not rely on a `tenants:migrate` namespace for health checks or safe incremental upgrades.
 
 They contain the full Stocky business schema: users, products, sales, purchases, warehouses, settings, etc.
 

@@ -12,6 +12,7 @@ class Sale extends Model
         'date', 'Ref', 'is_pos', 'client_id', 'GrandTotal', 'qte_retturn', 'TaxNet', 'tax_rate', 'notes',
         'total_retturn', 'warehouse_id', 'user_id', 'statut', 'discount', 'discount_Method', 'shipping', 'time', 'used_points', 'earned_points', 'discount_from_points',
         'promotion_discount', 'promotion_code',
+        'store_credit_amount',
         'paid_amount', 'payment_statut', 'created_at', 'updated_at', 'deleted_at', 'shipping_status', 'subscription_id', 'sales_agent_id',
         // Idempotency key for POS sales; nullable for legacy rows and non-POS flows
         'sale_uuid',
@@ -36,6 +37,7 @@ class Sale extends Model
         'subscription_id' => 'integer',
         'discount' => 'double',
         'promotion_discount' => 'double',
+        'store_credit_amount' => 'double',
         'shipping' => 'double',
         'TaxNet' => 'double',
         'tax_rate' => 'double',
@@ -75,6 +77,11 @@ class Sale extends Model
     public function facture()
     {
         return $this->hasMany('App\Models\PaymentSale');
+    }
+
+    public function storeCreditTransactions()
+    {
+        return $this->hasMany(StoreCreditVoucherTransaction::class, 'sale_id');
     }
 
     public function warehouse()

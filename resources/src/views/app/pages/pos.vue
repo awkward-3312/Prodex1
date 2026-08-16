@@ -584,6 +584,10 @@
               <span style="color: #54546a;">{{ $t('Promotions') || 'Promotions' }}<span v-if="appliedPromotions.length" style="color: #8d8da0; font-weight: 400;"> ({{ appliedPromotions.map(p => p.name).join(', ') }})</span></span>
               <span style="color: #d64545; font-family: 'JetBrains Mono', monospace; font-weight: 500;">−{{ formatPriceWithCurrentCurrency(promotionDiscount, 2) }}</span>
             </div>
+            <div v-if="storeCreditApplied > 0" style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
+              <span style="color: #54546a;">{{ $t('Store_Credit') || 'Vale aplicado' }} <span style="color:#8d8da0;">({{ appliedStoreCredit.code }})</span></span>
+              <span style="color: #d64545; font-family: 'JetBrains Mono', monospace; font-weight: 500;">−{{ formatPriceWithCurrentCurrency(storeCreditApplied, 2) }}</span>
+            </div>
             <div v-if="Number(sale.shipping) > 0" style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
               <span style="color: #8d8da0;">{{ $t('pos.Shipping') }}</span>
               <span style="color: #54546a; font-family: 'JetBrains Mono', monospace; font-weight: 500;">{{ formatPriceWithCurrentCurrency(sale.shipping, 2) }}</span>
@@ -618,6 +622,34 @@
             </div>
           </div>
 
+          <div style="margin-top: 6px;">
+            <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: #8d8da0; margin-bottom: 4px;">{{ $t('Store_Credit') || 'Aplicar Vale / Crédito de Tienda' }}</div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <input
+                v-model="storeCreditCode"
+                type="text"
+                :placeholder="$t('EnterCode') || 'VAL-HN-20260816-X7K92P'"
+                @keyup.enter="Validate_Store_Credit"
+                style="flex: 1; height: 28px; min-width:0; padding: 0 8px; border: 1px solid #e6e6ec; border-radius: 6px; background: #ffffff; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; outline: none;"
+              />
+              <button
+                type="button"
+                @click="Validate_Store_Credit"
+                :disabled="storeCreditLoading"
+                style="height: 28px; padding: 0 10px; background: #1f7a5a; color: #fff; border: 0; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;"
+              >{{ storeCreditLoading ? ($t('Loading') || '...') : ($t('Apply') || 'Aplicar') }}</button>
+              <button
+                v-if="appliedStoreCredit"
+                type="button"
+                @click="Clear_Store_Credit"
+                style="height: 28px; padding: 0 8px; background: transparent; color: #8d8da0; border: 1px solid #e6e6ec; border-radius: 6px; font-size: 11px; cursor: pointer;"
+              >×</button>
+            </div>
+            <div v-if="storeCreditMessage" :style="{ marginTop: '4px', fontSize: '10px', color: storeCreditStatus === 'ok' ? '#1e7a44' : '#d64545' }">
+              {{ storeCreditMessage }}
+            </div>
+          </div>
+
           <!-- Mobile-only Pay Now (matches mockup; desktop has its own pay bar at the bottom of the page) -->
           <button
             class="pos-shell-mobile-pay-btn"
@@ -628,7 +660,7 @@
               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
             </svg>
             <span class="pos-shell-mobile-pay-btn-label">{{ paymentProcessing ? $t('pos.Processing') : $t('pos.Pay_Now') }}</span>
-            <span class="pos-shell-mobile-pay-btn-amount">{{ formatPriceWithCurrentCurrency(GrandTotal, 2) }}</span>
+            <span class="pos-shell-mobile-pay-btn-amount">{{ formatPriceWithCurrentCurrency(amountDueAfterStoreCredit, 2) }}</span>
           </button>
         </div>
       </aside>
@@ -1025,6 +1057,7 @@
     :client-net-balance="selectedClientNetBalance"
     :is-online="isOnline"
     :promotion-context="promotionContextForCheckout"
+    :store-credit-vouchers="storeCreditCheckoutPayload"
     @payment-success="onModernPaymentSuccess"
   />
 
@@ -1035,6 +1068,96 @@
     :currency="currentUser.currency"
     @return-success="onReturnSuccess"
   />
+
+  <b-modal
+    hide-footer
+    centered
+    size="md"
+    id="store-credit-voucher-generated"
+    :title="$t('Store_Credit') || 'Vale de devolución generado'"
+  >
+    <div v-if="generatedReturnVoucher" class="voucher-generated-modal">
+      <div class="voucher-generated-head">
+        <div>
+          <div class="voucher-generated-kicker">Vale generado</div>
+          <div class="voucher-generated-code">{{ generatedReturnVoucher.code }}</div>
+        </div>
+        <span class="voucher-generated-status">{{ voucherStatusLabel(generatedReturnVoucher.status) }}</span>
+      </div>
+
+      <div class="voucher-generated-grid">
+        <div><span>Código</span><strong>{{ generatedReturnVoucher.code }}</strong></div>
+        <div><span>Monto</span><strong>{{ formatPriceWithCurrentCurrency(generatedReturnVoucher.original_amount, 2) }}</strong></div>
+        <div><span>Saldo disponible</span><strong>{{ formatPriceWithCurrentCurrency(generatedReturnVoucher.remaining_balance, 2) }}</strong></div>
+        <div><span>Cliente</span><strong>{{ generatedReturnVoucher.client && generatedReturnVoucher.client.name ? generatedReturnVoucher.client.name : '---' }}</strong></div>
+        <div><span>Factura</span><strong>{{ generatedReturnVoucher.original_sale_ref || generatedReturnVoucher.original_sale_id || '---' }}</strong></div>
+        <div><span>Devolución</span><strong>{{ generatedReturnVoucher.sale_return_ref || generatedReturnVoucher.sale_return_id || '---' }}</strong></div>
+        <div><span>Fecha/hora</span><strong>{{ formatVoucherDate(generatedReturnVoucher.issued_at) }}</strong></div>
+      </div>
+
+      <div class="voucher-generated-actions">
+        <button type="button" class="btn btn-primary" @click="printGeneratedVoucher">
+          <i class="i-Billing"></i> Imprimir vale
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @click="$bvModal.hide('store-credit-voucher-generated')">
+          {{ $t('Close') || 'Cerrar' }}
+        </button>
+      </div>
+
+      <div id="store-credit-voucher-print" class="voucher-print-ticket">
+        <div class="voucher-print-center">
+          <img
+            v-if="generatedVoucherCompanyLogo"
+            :src="$imgUrl('settings', generatedVoucherCompanyLogo)"
+            alt="logo"
+            style="width:60px;height:60px;object-fit:contain;margin-bottom:6px;"
+          />
+          <div class="voucher-print-company">{{ generatedVoucherCompanyName }}</div>
+          <div v-if="generatedVoucherCompanyTax">RTN: {{ generatedVoucherCompanyTax }}</div>
+          <div v-if="generatedVoucherCompanyAddress">{{ generatedVoucherCompanyAddress }}</div>
+          <div v-if="generatedVoucherCompanyPhone">Tel: {{ generatedVoucherCompanyPhone }}</div>
+          <div class="voucher-print-title">VALE DE CRÉDITO / VALE POR DEVOLUCIÓN</div>
+          <div class="voucher-print-code">{{ generatedReturnVoucher.code }}</div>
+          <barcode
+            v-if="generatedReturnVoucher.code"
+            :value="generatedReturnVoucher.code"
+            :format="barcodeFormat"
+            :width="1.2"
+            :height="42"
+            :displayValue="false"
+          />
+        </div>
+
+        <div class="voucher-print-line"><span>Cliente</span><strong>{{ generatedReturnVoucher.client && generatedReturnVoucher.client.name ? generatedReturnVoucher.client.name : '---' }}</strong></div>
+        <div class="voucher-print-line" v-if="generatedReturnVoucher.client && generatedReturnVoucher.client.tax_number"><span>RTN cliente</span><strong>{{ generatedReturnVoucher.client.tax_number }}</strong></div>
+        <div class="voucher-print-line"><span>Factura original</span><strong>{{ generatedReturnVoucher.original_sale_ref || generatedReturnVoucher.original_sale_id || '---' }}</strong></div>
+        <div class="voucher-print-line"><span>Devolución</span><strong>{{ generatedReturnVoucher.sale_return_ref || generatedReturnVoucher.sale_return_id || '---' }}</strong></div>
+        <div class="voucher-print-line"><span>Fecha/hora</span><strong>{{ formatVoucherDate(generatedReturnVoucher.issued_at) }}</strong></div>
+        <div class="voucher-print-line"><span>Cajero</span><strong>{{ generatedReturnVoucher.cashier || '---' }}</strong></div>
+        <div class="voucher-print-line"><span>Almacén</span><strong>{{ generatedReturnVoucher.warehouse && generatedReturnVoucher.warehouse.name ? generatedReturnVoucher.warehouse.name : '---' }}</strong></div>
+
+        <div class="voucher-print-section-title">Productos devueltos</div>
+        <table class="voucher-print-items">
+          <thead>
+            <tr><th>Producto</th><th>Cant.</th><th>Importe</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, idx) in generatedVoucherItems" :key="'voucher-item-' + idx">
+              <td>{{ item.name }}<br><small>{{ item.code }}</small></td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ formatPriceWithCurrentCurrency(item.amount, 2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="voucher-print-total"><span>Monto original</span><strong>{{ formatPriceWithCurrentCurrency(generatedReturnVoucher.original_amount, 2) }}</strong></div>
+        <div class="voucher-print-total"><span>Saldo disponible</span><strong>{{ formatPriceWithCurrentCurrency(generatedReturnVoucher.remaining_balance, 2) }}</strong></div>
+        <div class="voucher-print-policy">
+          Este vale puede utilizarse como crédito en una compra futura según la política del negocio.
+        </div>
+      </div>
+    </div>
+  </b-modal>
 
   <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Invoice_POS')" @shown="onInvoiceModalShown">
         <div id="invoice-POS">
@@ -1136,6 +1259,13 @@
                     <td colspan="3" class="total">{{$t('Total')}}</td>
                     <td style="text-align:right;" class="total">
                       {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.GrandTotal ,2) }}
+                    </td>
+                  </tr>
+
+                  <tr v-show="Number(invoice_pos.sale.store_credit_amount || 0) > 0">
+                    <td colspan="3" class="total">{{ $t('Store_Credit') || 'Vale aplicado' }}</td>
+                    <td style="text-align:right;" class="total">
+                      −{{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.store_credit_amount || 0, 2) }}
                     </td>
                   </tr>
 
@@ -1342,6 +1472,12 @@
                       {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.GrandTotal ,2) }}
                     </td>
                   </tr>
+                  <tr v-show="Number(invoice_pos.sale.store_credit_amount || 0) > 0">
+                    <td class="total">{{ $t('Store_Credit') || 'Vale aplicado' }}</td>
+                    <td style="text-align:right" class="total">
+                      −{{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.store_credit_amount || 0, 2) }}
+                    </td>
+                  </tr>
                   <tr v-show="pos_settings.show_paid !== 0">
                     <td class="total">{{$t('Paid')}}</td>
                     <td style="text-align:right" class="total">
@@ -1522,6 +1658,12 @@
                     <td class="total">{{$t('Total')}}</td>
                     <td style="text-align:right;" class="total">
                       {{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.GrandTotal ,2) }}
+                    </td>
+                  </tr>
+                  <tr v-show="Number(invoice_pos.sale.store_credit_amount || 0) > 0">
+                    <td class="total">{{ $t('Store_Credit') || 'Vale aplicado' }}</td>
+                    <td style="text-align:right;" class="total">
+                      −{{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.store_credit_amount || 0, 2) }}
                     </td>
                   </tr>
                   <tr v-show="pos_settings.show_paid !== 0">
@@ -1886,6 +2028,10 @@
                   <tr class="minimal-grand">
                     <td>{{$t('Total')}}</td>
                     <td>{{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.GrandTotal, 2) }}</td>
+                  </tr>
+                  <tr v-show="Number(invoice_pos.sale.store_credit_amount || 0) > 0">
+                    <td>{{ $t('Store_Credit') || 'Vale aplicado' }}</td>
+                    <td>−{{ formatPriceWithSymbol(invoice_pos.symbol, invoice_pos.sale.store_credit_amount || 0, 2) }}</td>
                   </tr>
                   <tr v-show="pos_settings.show_paid !== 0">
                     <td>{{$t('Paid')}}</td>
@@ -2718,63 +2864,166 @@
     </b-modal>
 
     <!-- Close Register Modal -->
-    <b-modal id="CloseRegisterModal" :title="$t('Close Register')" hide-footer>
-      <div class="form-group">
-        <label>Cash Denominations</label>
-
-        <div
-          v-for="(quantity, denomination) in closeForm.denominations"
-          :key="denomination"
-          class="d-flex align-items-center mb-2"
-        >
-          <label class="mb-0 mr-2" style="width: 70px;">
-            {{ denomination }}
-          </label>
-
-          <input
-            type="number"
-            min="0"
-            step="1"
-            class="form-control"
-            v-model.number="closeForm.denominations[denomination]"
-          />
+    <b-modal id="CloseRegisterModal" :title="$t('Close Register')" hide-footer size="xl" modal-class="cr-close-modal" @show="prepareCloseRegister">
+      <div class="cr-close">
+        <div class="cr-summary-grid">
+          <div class="cr-summary-item">
+            <span>Cajero</span>
+            <strong>{{ closeSummary.cashier || '---' }}</strong>
+          </div>
+          <div class="cr-summary-item">
+            <span>Caja/Register</span>
+            <strong>{{ closeSummary.warehouse || (currentRegister && currentRegister.warehouse ? currentRegister.warehouse.name : '---') }}</strong>
+          </div>
+          <div class="cr-summary-item">
+            <span>Apertura</span>
+            <strong>{{ closeSummary.opened_at || (currentRegister && currentRegister.opened_at) || '---' }}</strong>
+          </div>
+          <div class="cr-summary-item">
+            <span>Ahora</span>
+            <strong>{{ closeSummary.current_time || '---' }}</strong>
+          </div>
+          <div class="cr-summary-item">
+            <span>Fondo inicial</span>
+            <strong>{{ formatRegisterMoney(closeSummary.opening_balance || 0) }}</strong>
+          </div>
+          <div class="cr-summary-item">
+            <span>Transacciones</span>
+            <strong>{{ closeSummary.transaction_count || 0 }}</strong>
+          </div>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label>{{$t('Counted_Cash')}}</label>
-        <input
-          type="text"
-          class="form-control"
-          :value="countedDenominationsTotal.toFixed(2)"
-          readonly
-        />
-      </div>
+        <div class="cr-section">
+          <div class="cr-section-title">
+            <lucide-icon name="receipt" />
+            <span>Resumen general de ventas</span>
+          </div>
+          <div class="cr-method-list">
+            <div class="cr-line" v-for="method in closeSummary.sales_by_payment_method || []" :key="'close-method-' + method.id + '-' + method.name">
+              <span>{{ method.name }}</span>
+              <strong>{{ formatRegisterMoney(method.total || 0) }}</strong>
+            </div>
+          </div>
+          <div class="cr-total-line">
+            <span>Total ventas</span>
+            <strong>{{ formatRegisterMoney(closeSummary.total_sales || 0) }}</strong>
+          </div>
+        </div>
 
-      <div class="form-group">
-        <label>{{$t('Closing_Notes')}}</label>
-        <textarea
-          class="form-control"
-          v-model="closeForm.notes"
-        ></textarea>
-      </div>
+        <div class="cr-two-col">
+          <div class="cr-section">
+            <div class="cr-section-title">
+              <lucide-icon name="wallet" />
+              <span>Control de efectivo</span>
+            </div>
+            <div class="cr-line"><span>Fondo inicial</span><strong>{{ formatRegisterMoney(closeSummary.opening_balance || 0) }}</strong></div>
+            <div class="cr-line"><span>Ventas efectivo</span><strong>{{ formatRegisterMoney(closeSummary.cash_sales || 0) }}</strong></div>
+            <div class="cr-line"><span>Entradas</span><strong>{{ formatRegisterMoney(closeSummary.cash_additions || 0) }}</strong></div>
+            <div class="cr-line"><span>Retiros/salidas</span><strong>{{ formatRegisterMoney(closeSummary.cash_withdrawals || 0) }}</strong></div>
+            <div class="cr-line"><span>Devoluciones en efectivo</span><strong>{{ formatRegisterMoney(closeSummary.cash_refunds || 0) }}</strong></div>
+            <div class="cr-total-line"><span>Efectivo esperado</span><strong>{{ formatRegisterMoney(closeSummary.expected_cash || 0) }}</strong></div>
+          </div>
 
-      <div class="text-right">
-        <b-button
-          variant="secondary"
-          class="mr-2"
-          @click="$bvModal.hide('CloseRegisterModal')"
-        >
-          {{$t('Cancel')}}
-        </b-button>
+          <div class="cr-section">
+            <div class="cr-section-title">
+              <lucide-icon name="scale" />
+              <span>Comparación automática</span>
+            </div>
+            <div class="cr-line"><span>Efectivo esperado</span><strong>{{ formatRegisterMoney(closeSummary.expected_cash || 0) }}</strong></div>
+            <div class="cr-line"><span>Efectivo contado</span><strong>{{ formatRegisterMoney(countedDenominationsTotal) }}</strong></div>
+            <div class="cr-line"><span>Diferencia</span><strong>{{ formatRegisterMoney(cashCloseDifference) }}</strong></div>
+            <div :class="['cr-status', cashCloseStatus.variant]">{{ cashCloseStatus.label }}</div>
+          </div>
+        </div>
 
-        <b-button
-          variant="danger"
-          @click="submitCloseRegister"
-          :disabled="registerBusy"
-        >
-          {{$t('Close Register')}}
-        </b-button>
+        <div class="cr-section">
+          <div class="cr-section-title">
+            <lucide-icon name="coins" />
+            <span>Arqueo físico por denominación</span>
+          </div>
+          <div class="cr-denom-wrap">
+            <div class="cr-denom-group" v-for="group in closeDenominationGroups" :key="group.key">
+              <div class="cr-denom-heading">{{ group.label }}</div>
+              <div class="cr-denom-row cr-denom-head">
+                <span class="cr-denom-value">Denominación</span>
+                <span class="cr-denom-qty">Cantidad</span>
+                <span class="cr-denom-subtotal">Subtotal</span>
+              </div>
+              <div class="cr-denom-row" v-for="denomination in group.values" :key="group.key + '-' + denomination">
+                <span class="cr-denom-value">{{ closeCurrencySymbol }} {{ formatNumber(denomination, denomination < 1 ? 2 : 0) }}</span>
+                <input type="number" min="0" step="1" class="form-control cr-denom-qty" v-model.number="closeForm.denominations[denomination]" />
+                <strong class="cr-denom-subtotal">{{ formatRegisterMoney(denominationSubtotal(denomination)) }}</strong>
+              </div>
+            </div>
+          </div>
+          <div class="cr-counted-total">
+            <span>Total efectivo contado</span>
+            <strong>{{ formatRegisterMoney(countedDenominationsTotal) }}</strong>
+          </div>
+        </div>
+
+        <div class="cr-two-col">
+          <div class="cr-section">
+            <div class="cr-section-title">
+              <lucide-icon name="credit-card" />
+              <span>Conciliación de tarjeta</span>
+            </div>
+            <div class="cr-line"><span>Tarjetas según Prodex</span><strong>{{ formatRegisterMoney(closeSummary.card_system_total || 0) }}</strong></div>
+            <label class="cr-field-label">Total según cierre del POS físico / lote bancario</label>
+            <input type="number" min="0" step="0.01" class="form-control" v-model.number="closeForm.card_terminal_total" />
+            <div class="cr-line mt-2"><span>Diferencia tarjeta</span><strong>{{ cardTerminalDifference === null ? '---' : formatRegisterMoney(cardTerminalDifference) }}</strong></div>
+            <div v-if="cardTerminalDifference !== null" :class="['cr-status', cardCloseStatus.variant]">{{ cardCloseStatus.label }}</div>
+            <div class="cr-mini-grid mt-3">
+              <input type="text" class="form-control" placeholder="Número de lote/cierre" v-model="closeForm.card_batch_number" />
+              <input type="text" class="form-control" placeholder="Referencia" v-model="closeForm.card_reference" />
+            </div>
+            <textarea class="form-control mt-2" rows="2" placeholder="Notas de tarjeta" v-model="closeForm.card_notes"></textarea>
+          </div>
+
+          <div class="cr-section">
+            <div class="cr-section-title">
+              <lucide-icon name="landmark" />
+              <span>Transferencias</span>
+            </div>
+            <div class="cr-line"><span>Transferencias según Prodex</span><strong>{{ formatRegisterMoney(closeSummary.transfer_total || 0) }}</strong></div>
+            <label class="cr-check">
+              <input type="checkbox" v-model="closeForm.transfers_verified" />
+              <span>Transferencias verificadas</span>
+            </label>
+            <textarea class="form-control mt-2" rows="3" placeholder="Observaciones de transferencias" v-model="closeForm.transfer_notes"></textarea>
+          </div>
+        </div>
+
+        <div class="cr-section">
+          <div class="cr-section-title">
+            <lucide-icon name="archive" />
+            <span>Fondo para siguiente apertura</span>
+          </div>
+          <div class="cr-mini-grid">
+            <div>
+              <label class="cr-field-label">Efectivo retirado al cierre</label>
+              <input type="number" min="0" step="0.01" class="form-control" v-model.number="closeForm.cash_withdrawn_at_close" />
+            </div>
+            <div>
+              <label class="cr-field-label">Fondo que quedará en caja</label>
+              <input type="number" min="0" step="0.01" class="form-control" v-model.number="closeForm.next_opening_float" />
+            </div>
+          </div>
+          <textarea class="form-control mt-3" rows="2" :placeholder="$t('Closing_Notes')" v-model="closeForm.notes"></textarea>
+        </div>
+
+        <div class="cr-footer">
+          <div>
+            <div class="cr-footer-label">Resumen final</div>
+            <div class="cr-footer-value">
+              Esperado {{ formatRegisterMoney(closeSummary.expected_cash || 0) }} · Contado {{ formatRegisterMoney(countedDenominationsTotal) }} · {{ cashCloseStatus.label }}
+            </div>
+          </div>
+          <div class="text-right">
+            <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('CloseRegisterModal')">{{$t('Cancel')}}</b-button>
+            <b-button variant="danger" @click="submitCloseRegister" :disabled="registerBusy">Cerrar caja</b-button>
+          </div>
+        </div>
       </div>
     </b-modal>
 
@@ -3366,6 +3615,7 @@ export default {
       unitsByProductId: {},
       warehouses: [],
       payments: [],
+      generatedReturnVoucher: null,
       products: [],
       products_pos: [],
       details: [],
@@ -3382,6 +3632,11 @@ export default {
       promotionCodeStatus: null, // 'ok' | 'error' | null
       promotionCodeMessage: "",
       _promotionRefreshTimer: null,
+      storeCreditCode: "",
+      appliedStoreCredit: null,
+      storeCreditStatus: null,
+      storeCreditMessage: "",
+      storeCreditLoading: false,
       pos_settings:{
         quick_add_customer: false,
         barcode_scanning_sound: true,
@@ -3449,7 +3704,9 @@ export default {
           paid_amount: "",
           promotion_discount: "0.00",
           promotion_code: null,
-          promotions: []
+          promotions: [],
+          store_credit_amount: "0.00",
+          store_credit_vouchers: []
         },
         details: [],
         setting: {
@@ -3558,25 +3815,42 @@ export default {
       currentRegister: null,
       registerBusy: false,
       registerForm: { warehouse_id: '', opening_balance: 0, notes: '' },
+      closeSummary: {
+        cashier: '',
+        warehouse: '',
+        opened_at: '',
+        current_time: '',
+        opening_balance: 0,
+        total_sales: 0,
+        transaction_count: 0,
+        sales_by_payment_method: [],
+        cash_sales: 0,
+        cash_additions: 0,
+        cash_withdrawals: 0,
+        cash_refunds: 0,
+        expected_cash: 0,
+        card_system_total: 0,
+        transfer_total: 0,
+        denominations: {
+          currency_code: 'HNL',
+          currency_symbol: 'L.',
+          bills: [500, 200, 100, 50, 20, 10, 5, 2, 1],
+          coins: [0.5, 0.2, 0.1, 0.05]
+        }
+      },
       closeForm: {
-      counted_cash: 0,
-      notes: '',
-      denominations: {
-        500: 0,
-        200: 0,
-        100: 0,
-        50: 0,
-        20: 0,
-        10: 0,
-        5: 0,
-        2: 0,
-        1: 0,
-        0.5: 0,
-        0.2: 0,
-        0.1: 0,
-        0.05: 0
-      }
-    },
+        counted_cash: 0,
+        notes: '',
+        denominations: {},
+        card_terminal_total: null,
+        card_batch_number: '',
+        card_reference: '',
+        card_notes: '',
+        transfers_verified: false,
+        transfer_notes: '',
+        cash_withdrawn_at_close: null,
+        next_opening_float: null
+      },
       cashMove: { type: 'in', amount: 0, notes: '' },
       warehouseOptions: [],
       selectedClientId: "",
@@ -3632,6 +3906,40 @@ export default {
         const quantity = Number(denominations[value]) || 0;
         return total + (Number(value) * quantity);
       }, 0);
+    },
+
+    closeCurrencySymbol() {
+      return (this.closeSummary.denominations && this.closeSummary.denominations.currency_symbol)
+        || (this.currentUser && this.currentUser.currency)
+        || 'L.';
+    },
+
+    closeDenominationGroups() {
+      const denominations = this.closeSummary.denominations || {};
+      return [
+        { key: 'bills', label: 'Billetes', values: denominations.bills || [] },
+        { key: 'coins', label: 'Monedas', values: denominations.coins || [] }
+      ].filter(group => group.values.length);
+    },
+
+    cashCloseDifference() {
+      return Number((this.countedDenominationsTotal - (Number(this.closeSummary.expected_cash) || 0)).toFixed(2));
+    },
+
+    cashCloseStatus() {
+      return this.registerDifferenceStatus(this.cashCloseDifference);
+    },
+
+    cardTerminalDifference() {
+      if (this.closeForm.card_terminal_total === null || this.closeForm.card_terminal_total === '') {
+        return null;
+      }
+
+      return Number((Number(this.closeForm.card_terminal_total || 0) - Number(this.closeSummary.card_system_total || 0)).toFixed(2));
+    },
+
+    cardCloseStatus() {
+      return this.registerDifferenceStatus(this.cardTerminalDifference || 0);
     },
 
     // Overselling Control: when ON, all POS stock checks are bypassed and
@@ -3700,6 +4008,55 @@ export default {
         promotion_product_ids: (this.details || []).map(d => Number(d.product_id)).filter(Boolean),
         promotion_product_subtotals: this.buildPromotionProductSubtotals(),
       };
+    },
+
+    storeCreditApplied() {
+      if (!this.appliedStoreCredit) return 0;
+      const balance = Number(this.appliedStoreCredit.remaining_balance || 0);
+      const total = Number(this.GrandTotal || 0);
+      return parseFloat(Math.min(balance, total).toFixed(this.priceDecimals));
+    },
+
+    amountDueAfterStoreCredit() {
+      return parseFloat(Math.max(0, Number(this.GrandTotal || 0) - this.storeCreditApplied).toFixed(this.priceDecimals));
+    },
+
+    storeCreditCheckoutPayload() {
+      if (!this.appliedStoreCredit || this.storeCreditApplied <= 0) return [];
+      return [{
+        code: this.appliedStoreCredit.code,
+        amount: this.storeCreditApplied,
+      }];
+    },
+
+    generatedVoucherItems() {
+      return this.generatedReturnVoucher && Array.isArray(this.generatedReturnVoucher.items)
+        ? this.generatedReturnVoucher.items
+        : [];
+    },
+
+    generatedVoucherCompany() {
+      return (this.generatedReturnVoucher && this.generatedReturnVoucher.company) || {};
+    },
+
+    generatedVoucherCompanyName() {
+      return this.generatedVoucherCompany.CompanyName || this.generatedVoucherCompany.company_name || (this.invoice_pos && this.invoice_pos.setting && this.invoice_pos.setting.CompanyName) || '';
+    },
+
+    generatedVoucherCompanyLogo() {
+      return this.generatedVoucherCompany.logo || (this.invoice_pos && this.invoice_pos.setting && this.invoice_pos.setting.logo) || '';
+    },
+
+    generatedVoucherCompanyTax() {
+      return this.generatedVoucherCompany.tax_number || this.generatedVoucherCompany.company_tax_number || '';
+    },
+
+    generatedVoucherCompanyAddress() {
+      return this.generatedVoucherCompany.adresse || this.generatedVoucherCompany.address || '';
+    },
+
+    generatedVoucherCompanyPhone() {
+      return this.generatedVoucherCompany.phone || this.generatedVoucherCompany.CompanyPhone || '';
     },
 
     // Signed public URL for barcode so scanning opens the invoice (no login required)
@@ -3933,12 +4290,12 @@ export default {
     },
     // What's still due (never negative)
     balance() {
-      const b = this.GrandTotal - this.totalPaid;
+      const b = this.amountDueAfterStoreCredit - this.totalPaid;
       return (b > 0 ? b : 0).toFixed(this.priceDecimals);
     },
     // How much to return if over-paid
     changeReturn() {
-      const c = this.totalPaid - this.GrandTotal;
+      const c = this.totalPaid - this.amountDueAfterStoreCredit;
       return (c > 0 ? c : 0).toFixed(this.priceDecimals);
     },
 
@@ -4153,9 +4510,69 @@ export default {
         if (this.sale && this.sale.warehouse_id) params.warehouse_id = this.sale.warehouse_id;
         const { data } = await axios.get(`cash-registers/current/${this.currentUser.id}`, { params });
         this.currentRegister = data.register || null;
+        if (data.closing_summary) {
+          this.closeSummary = { ...this.closeSummary, ...data.closing_summary };
+          this.initializeCloseDenominations();
+        }
       } catch (e) {
         this.currentRegister = null;
       }
+    },
+    async prepareCloseRegister() {
+      this.resetCloseForm();
+      await this.refreshCurrentRegister();
+      this.initializeCloseDenominations();
+    },
+    resetCloseForm(resetDenominations = true) {
+      this.closeForm.counted_cash = 0;
+      this.closeForm.notes = '';
+      this.closeForm.card_terminal_total = null;
+      this.closeForm.card_batch_number = '';
+      this.closeForm.card_reference = '';
+      this.closeForm.card_notes = '';
+      this.closeForm.transfers_verified = false;
+      this.closeForm.transfer_notes = '';
+      this.closeForm.cash_withdrawn_at_close = null;
+      this.closeForm.next_opening_float = null;
+      if (resetDenominations) {
+        this.closeForm.denominations = {};
+      }
+    },
+    initializeCloseDenominations() {
+      const next = {};
+      const groups = this.closeDenominationGroups.length
+        ? this.closeDenominationGroups
+        : [
+            { values: [500, 200, 100, 50, 20, 10, 5, 2, 1] },
+            { values: [0.5, 0.2, 0.1, 0.05] }
+          ];
+
+      groups.forEach(group => {
+        (group.values || []).forEach(value => {
+          next[value] = this.closeForm.denominations && this.closeForm.denominations[value]
+            ? this.closeForm.denominations[value]
+            : 0;
+        });
+      });
+
+      this.closeForm.denominations = next;
+    },
+    denominationSubtotal(denomination) {
+      return (Number(denomination) || 0) * (Number(this.closeForm.denominations[denomination]) || 0);
+    },
+    registerDifferenceStatus(value) {
+      const difference = Number(value) || 0;
+      if (Math.abs(difference) < 0.005) {
+        return { label: 'Caja cuadrada', variant: 'is-balanced' };
+      }
+      if (difference > 0) {
+        return { label: 'Sobrante', variant: 'is-over' };
+      }
+      return { label: 'Faltante', variant: 'is-short' };
+    },
+    formatRegisterMoney(value) {
+      const amount = Number(value) || 0;
+      return `${this.closeCurrencySymbol} ${this.formatNumber(amount, 2)}`;
     },
     // ---------- Customer Display helpers ----------
     _cd_emit(payload, completed = false) {
@@ -4237,13 +4654,23 @@ export default {
       this.registerBusy = true;
       try {
         await axios.post('cash-registers/close', {
-        register_id: this.currentRegister.id,
-        counted_cash: this.closeForm.counted_cash || 0,
-        counted_denominations: this.closeForm.denominations || {},
-        notes: this.closeForm.notes || ''
-      });
+          register_id: this.currentRegister.id,
+          counted_cash: this.countedDenominationsTotal || 0,
+          closing_balance: this.countedDenominationsTotal || 0,
+          counted_denominations: this.closeForm.denominations || {},
+          cash_withdrawn_at_close: this.closeForm.cash_withdrawn_at_close,
+          next_opening_float: this.closeForm.next_opening_float,
+          card_terminal_total: this.closeForm.card_terminal_total,
+          card_batch_number: this.closeForm.card_batch_number || '',
+          card_reference: this.closeForm.card_reference || '',
+          card_notes: this.closeForm.card_notes || '',
+          transfers_verified: !!this.closeForm.transfers_verified,
+          transfer_notes: this.closeForm.transfer_notes || '',
+          notes: this.closeForm.notes || ''
+        });
         this.$bvModal.hide('CloseRegisterModal');
         this.makeToast('success', this.$t('RegisterClosed'), this.$t('Success'));
+        this.resetCloseForm();
         this.refreshCurrentRegister();
       } catch (e) {
         const msg = e.response?.data?.message || this.$t('OperationFailed');
@@ -4637,7 +5064,7 @@ export default {
       NProgress.set(0.1);
 
       const total    = parseFloat(this.totalPaid);
-      const due      = parseFloat(this.GrandTotal.toFixed(this.priceDecimals));
+      const due      = parseFloat(this.amountDueAfterStoreCredit.toFixed(this.priceDecimals));
       const multi    = this.paymentLines.length > 1;
 
       if (multi && total > due) {
@@ -4656,7 +5083,7 @@ export default {
     CreatePOS() {
       NProgress.start();
       NProgress.set(0.1);
-      if (this.paymentLines.length > 1 && this.totalPaid > this.GrandTotal) {
+      if (this.paymentLines.length > 1 && this.totalPaid > this.amountDueAfterStoreCredit) {
         this.makeToast(
           "warning",
           this.$t("TotalPaidExceedsGrandTotalForMultiPayment"),
@@ -4670,7 +5097,7 @@ export default {
       // Only applies when this sale is adding new credit (paid amount < sale total)
       if (this.selectedClientId && this.selectedClientCreditLimit > 0) {
         const total = parseFloat(this.totalPaid);
-        const due = parseFloat(this.GrandTotal.toFixed(this.priceDecimals));
+        const due = parseFloat(this.amountDueAfterStoreCredit.toFixed(this.priceDecimals));
 
         if (total < due) {
           // Calculate the new due amount after this sale
@@ -4723,6 +5150,7 @@ export default {
             notes: this.sale.notes,
             details: this.buildSubmitDetails(),
             GrandTotal: this.GrandTotal,
+            store_credit_vouchers: this.storeCreditCheckoutPayload,
             payments: this.paymentLines,
             send_email: this.sendEmail,
             send_sms: this.sendSMS,
@@ -4813,6 +5241,7 @@ export default {
             shipping: this.sale.shipping ? this.sale.shipping : 0,
             details: this.buildSubmitDetails(),
             GrandTotal: this.GrandTotal,
+            store_credit_vouchers: this.storeCreditCheckoutPayload,
             notes: this.sale.notes,
             payments: paymentsWithMethod,
             send_email: this.sendEmail,
@@ -5114,6 +5543,62 @@ export default {
       this.promotionCodeStatus = null;
       this.promotionCodeMessage = "";
       this.Refresh_Promotions();
+    },
+
+    Validate_Store_Credit() {
+      const code = (this.storeCreditCode || "").trim().toUpperCase();
+      if (!code) {
+        this.Clear_Store_Credit();
+        return;
+      }
+      if (!this.selectedClientId) {
+        this.storeCreditStatus = "error";
+        this.storeCreditMessage = this.$t("Select_Customer") || "Seleccione un cliente.";
+        return;
+      }
+      this.storeCreditLoading = true;
+      axios
+        .post("store-credit-vouchers/validate", {
+          code,
+          client_id: this.selectedClientId,
+        })
+        .then(response => {
+          const data = response && response.data ? response.data : {};
+          if (data.success && data.voucher) {
+            this.appliedStoreCredit = {
+              code: data.voucher.code,
+              client_id: data.voucher.client_id,
+              client_name: data.voucher.client_name,
+              remaining_balance: Number(data.voucher.remaining_balance || 0),
+              issued_at: data.voucher.issued_at,
+            };
+            this.storeCreditCode = data.voucher.code;
+            this.storeCreditStatus = "ok";
+            this.storeCreditMessage = `${data.voucher.code} · ${data.voucher.client_name || ''} · Saldo ${this.formatPriceWithCurrentCurrency(data.voucher.remaining_balance, 2)}`;
+          } else {
+            this.appliedStoreCredit = null;
+            this.storeCreditStatus = "error";
+            this.storeCreditMessage = data.message || "Vale inválido.";
+          }
+        })
+        .catch(error => {
+          const message = error && error.response && error.response.data && error.response.data.message
+            ? error.response.data.message
+            : "Vale inválido.";
+          this.appliedStoreCredit = null;
+          this.storeCreditStatus = "error";
+          this.storeCreditMessage = message;
+        })
+        .finally(() => {
+          this.storeCreditLoading = false;
+        });
+    },
+
+    Clear_Store_Credit() {
+      this.storeCreditCode = "";
+      this.appliedStoreCredit = null;
+      this.storeCreditStatus = null;
+      this.storeCreditMessage = "";
     },
 
     keyup_OrderTax() {
@@ -5976,6 +6461,7 @@ export default {
       this.promotionCode = "";
       this.promotionCodeStatus = null;
       this.promotionCodeMessage = "";
+      this.Clear_Store_Credit();
       this.total = 0;
       this.category_id = "";
       this.brand_id = "";
@@ -7871,6 +8357,7 @@ export default {
     },
     selectCustomer(id) {
       this.selectedClientId = (id != null) ? id : '';
+      this.Clear_Store_Credit();
       this.custDrawerOpen = false;
       this.custDrawerSearch = '';
       this.onClientSelected(this.selectedClientId);
@@ -9207,10 +9694,78 @@ export default {
       this.calc.waiting = true;
     },
     // After a return is created: refresh stock so the products grid reflects restocked qty.
-    onReturnSuccess() {
+    onReturnSuccess(voucher) {
       if (typeof this.getProducts === "function") {
         this.getProducts();
       }
+      if (voucher && voucher.code) {
+        this.generatedReturnVoucher = voucher;
+        this.$nextTick(() => {
+          if (this.$bvModal && typeof this.$bvModal.show === 'function') {
+            this.$bvModal.show('store-credit-voucher-generated');
+          }
+        });
+      }
+    },
+    voucherStatusLabel(status) {
+      if (status === 'active') return 'Activo';
+      if (status === 'partially_redeemed') return 'Parcial';
+      if (status === 'redeemed') return 'Redimido';
+      if (status === 'expired') return 'Vencido';
+      if (status === 'cancelled') return 'Cancelado';
+      return status || '---';
+    },
+    formatVoucherDate(value) {
+      if (!value) return '---';
+      try {
+        return moment(value).format('DD/MM/YYYY hh:mm A');
+      } catch (e) {
+        return value;
+      }
+    },
+    printGeneratedVoucher() {
+      const el = document.getElementById('store-credit-voucher-print');
+      if (!el) return;
+      const popup = window.open('', '_blank', 'width=380,height=640');
+      if (!popup) {
+        this.makeToast && this.makeToast('warning', this.$t('Popups_Blocked') || 'El navegador bloqueó la ventana de impresión.', this.$t('Warning') || 'Warning');
+        return;
+      }
+      popup.document.write(`
+        <html>
+          <head>
+            <title>${this.generatedReturnVoucher ? this.generatedReturnVoucher.code : 'Vale'}</title>
+            <style>
+              @page { size: 80mm auto; margin: 4mm; }
+              body { margin: 0; font-family: Arial, sans-serif; color: #111; }
+              .voucher-print-ticket { display: block !important; width: 72mm; font-size: 11px; }
+              .voucher-print-center { text-align: center; }
+              .voucher-print-company { font-size: 14px; font-weight: 700; }
+              .voucher-print-title { margin: 8px 0 5px; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+              .voucher-print-code { font-size: 17px; font-weight: 800; letter-spacing: 0.04em; margin-bottom: 4px; }
+              .voucher-print-line, .voucher-print-total { display: flex; justify-content: space-between; gap: 8px; border-top: 1px dashed #999; padding: 5px 0; }
+              .voucher-print-line span, .voucher-print-total span { color: #555; }
+              .voucher-print-line strong, .voucher-print-total strong { text-align: right; }
+              .voucher-print-section-title { border-top: 1px dashed #999; padding-top: 6px; margin-top: 4px; font-weight: 800; text-transform: uppercase; }
+              .voucher-print-items { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 10px; }
+              .voucher-print-items th, .voucher-print-items td { border-top: 1px dashed #bbb; padding: 4px 0; vertical-align: top; }
+              .voucher-print-items th:nth-child(2), .voucher-print-items td:nth-child(2) { text-align: center; }
+              .voucher-print-items th:nth-child(3), .voucher-print-items td:nth-child(3) { text-align: right; }
+              .voucher-print-total { font-size: 12px; font-weight: 800; }
+              .voucher-print-policy { border-top: 1px dashed #999; margin-top: 6px; padding-top: 6px; text-align: center; font-size: 10px; }
+              svg { max-width: 100%; }
+              img { max-width: 60px; max-height: 60px; }
+            </style>
+          </head>
+          <body>${el.innerHTML}</body>
+        </html>
+      `);
+      popup.document.close();
+      popup.focus();
+      setTimeout(() => {
+        popup.print();
+        popup.close();
+      }, 300);
     },
     openModernPaymentModal() {
       // Guard: client and warehouse must be selected
@@ -9245,7 +9800,7 @@ export default {
       }
       // Open modern payment modal with current sale data
       this.$refs.modernPaymentModal.openModal({
-        amountDue: this.GrandTotal,
+        amountDue: this.amountDueAfterStoreCredit,
         reference: this.sale.Ref || "POS-" + new Date().getTime(),
         notes: this.selectedClientId ? `Payment for Customer #${this.selectedClientId}` : 'POS Payment'
       });
@@ -11514,6 +12069,229 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   svg { width: 24px; height: 24px; }
 }
 .ts-empty-text { font-size: 13px; font-weight: 500; }
+
+/* ---- Cash register close ---- */
+.cr-close {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: $color-text-primary;
+}
+.cr-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.cr-summary-item,
+.cr-section {
+  border: 1px solid $color-border-light;
+  background: #fff;
+  border-radius: 8px;
+}
+.cr-summary-item {
+  padding: 12px;
+  min-width: 0;
+}
+.cr-summary-item span,
+.cr-field-label,
+.cr-footer-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: $color-text-tertiary;
+}
+.cr-summary-item strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.cr-section {
+  padding: 14px;
+}
+.cr-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: $color-text-primary;
+}
+.cr-section-title svg {
+  width: 16px;
+  height: 16px;
+  color: #5b65d8;
+}
+.cr-two-col,
+.cr-mini-grid,
+.cr-denom-wrap {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.cr-denom-wrap {
+  gap: 18px;
+  align-items: start;
+}
+.cr-denom-group {
+  min-width: 0;
+  overflow: hidden;
+}
+.cr-line,
+.cr-total-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid #f0f2f6;
+}
+.cr-line span,
+.cr-total-line span {
+  color: $color-text-secondary;
+}
+.cr-line strong,
+.cr-total-line strong,
+.cr-method-list strong {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cr-total-line {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-bottom: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+.cr-method-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+.cr-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 10px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.cr-status.is-balanced {
+  color: #146c43;
+  background: #e8f6ef;
+}
+.cr-status.is-over {
+  color: #8a5a00;
+  background: #fff4d6;
+}
+.cr-status.is-short {
+  color: #a83232;
+  background: #fdecec;
+}
+.cr-denom-heading {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.cr-denom-row {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.8fr) minmax(56px, 78px) minmax(88px, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f2f6;
+  min-width: 0;
+}
+.cr-denom-row input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding-left: 8px;
+  padding-right: 8px;
+  text-align: center;
+}
+.cr-denom-head {
+  font-size: 12px;
+  font-weight: 700;
+  color: $color-text-tertiary;
+}
+.cr-denom-value,
+.cr-denom-qty,
+.cr-denom-subtotal {
+  min-width: 0;
+}
+.cr-denom-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cr-denom-subtotal {
+  justify-self: end;
+  text-align: right;
+  white-space: nowrap;
+}
+.cr-counted-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f7f8fb;
+  font-weight: 800;
+}
+.cr-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-weight: 600;
+}
+.cr-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  bottom: -16px;
+  margin: 2px -16px -16px;
+  padding: 12px 16px;
+  border-top: 1px solid $color-border-light;
+  background: #fff;
+}
+.cr-footer-value {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+@media (max-width: 992px) {
+  .cr-summary-grid,
+  .cr-two-col,
+  .cr-mini-grid,
+  .cr-denom-wrap,
+  .cr-method-list {
+    grid-template-columns: 1fr;
+  }
+  .cr-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cr-footer .text-right {
+    text-align: left !important;
+  }
+}
+
+@media (max-width: 540px) {
+  .cr-denom-row {
+    grid-template-columns: minmax(72px, 0.8fr) minmax(52px, 70px) minmax(84px, 1fr);
+    gap: 6px;
+  }
+}
 
 /* ---- Responsive ---- */
 @media (max-width: 540px) {
@@ -17553,6 +18331,16 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
   background: #f7f7fb;
 }
 
+/* Cash register close modal — wrapper overrides */
+.cr-close-modal .modal-dialog {
+  max-width: 1180px;
+}
+@media (max-width: 1220px) {
+  .cr-close-modal .modal-dialog {
+    max-width: calc(100vw - 32px);
+  }
+}
+
 /* ============================================
    POS Settings modal — wrapper overrides
    ============================================ */
@@ -17669,5 +18457,82 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
 .pos-confirm-btn-danger:hover {
   background: #b83838;
   border-color: #b83838;
+}
+.voucher-generated-modal {
+  color: #1f1f2c;
+}
+.voucher-generated-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #e6e6ec;
+  border-radius: 8px;
+  background: #f7f7fb;
+}
+.voucher-generated-kicker {
+  font-size: 11px;
+  color: #8d8da0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.voucher-generated-code {
+  margin-top: 3px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 18px;
+  font-weight: 800;
+}
+.voucher-generated-status {
+  color: #1e7a44;
+  background: #e8f6ee;
+  border-radius: 99px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.voucher-generated-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.voucher-generated-grid div {
+  min-width: 0;
+  border: 1px solid #e6e6ec;
+  border-radius: 8px;
+  padding: 10px;
+}
+.voucher-generated-grid span {
+  display: block;
+  color: #8d8da0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.voucher-generated-grid strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.voucher-generated-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.voucher-print-ticket {
+  display: none;
+}
+@media (max-width: 575px) {
+  .voucher-generated-grid {
+    grid-template-columns: 1fr;
+  }
+  .voucher-generated-actions {
+    flex-direction: column;
+  }
 }
 </style>
