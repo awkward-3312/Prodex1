@@ -54,7 +54,6 @@ class CashRegisterController extends BaseController
         $query = CashRegister::with('user', 'warehouse')
             ->where('user_id', $userId)
             ->where('status', 'open');
-        // If a specific warehouse is selected, filter; otherwise return the latest open register across warehouses
         if ($warehouseId) {
             $query->where('warehouse_id', $warehouseId);
         }
@@ -98,7 +97,22 @@ class CashRegisterController extends BaseController
 
         $data = $request->validate([
             'register_id' => 'required|integer|exists:cash_registers,id',
-            'counted_cash' => 'required|numeric',
+            // Kept for backwards compatibility with the existing POS close flow.
+            'counted_cash' => 'nullable|numeric|min:0',
+            'denominations' => 'nullable|array',
+            'denominations.500' => 'nullable|integer|min:0',
+            'denominations.200' => 'nullable|integer|min:0',
+            'denominations.100' => 'nullable|integer|min:0',
+            'denominations.50' => 'nullable|integer|min:0',
+            'denominations.20' => 'nullable|integer|min:0',
+            'denominations.10' => 'nullable|integer|min:0',
+            'denominations.5' => 'nullable|integer|min:0',
+            'denominations.2' => 'nullable|integer|min:0',
+            'denominations.1' => 'nullable|integer|min:0',
+            'denominations.0.50' => 'nullable|integer|min:0',
+            'denominations.0.20' => 'nullable|integer|min:0',
+            'denominations.0.10' => 'nullable|integer|min:0',
+            'denominations.0.05' => 'nullable|integer|min:0',
             'closing_balance' => 'nullable|numeric',
             'notes' => 'nullable|string',
         ]);
@@ -121,15 +135,50 @@ class CashRegisterController extends BaseController
 
         $register->total_sales = $totalSales;
 
-        $expectedCash = ($register->opening_balance ?? 0) + ($register->cash_in ?? 0) - ($register->cash_out ?? 0) + ($register->total_sales ?? 0);
-        $counted = (float) $data['counted_cash'];
+        $expectedCash = ($register->opening_balance ?? 0)
+            + ($register->cash_in ?? 0)
+            - ($register->cash_out ?? 0)
+            + ($register->total_sales ?? 0);
+
+        $denominationValues = [
+            '500' => 500.00,
+            '200' => 200.00,
+            '100' => 100.00,
+            '50' => 50.00,
+            '20' => 20.00,
+            '10' => 10.00,
+            '5' => 5.00,
+            '2' => 2.00,
+            '1' => 1.00,
+            '0.50' => 0.50,
+            '0.20' => 0.20,
+            '0.10' => 0.10,
+            '0.05' => 0.05,
+        ];
+
+        $denominations = $data['denominations'] ?? null;
+        if (is_array($denominations)) {
+            $cleanDenominations = [];
+            $counted = 0.0;
+
+            foreach ($denominationValues as $key => $value) {
+                $count = max(0, (int) ($denominations[$key] ?? 0));
+                $cleanDenominations[$key] = $count;
+                $counted += $value * $count;
+            }
+
+            $register->counted_denominations = $cleanDenominations;
+        } else {
+            $counted = (float) ($data['counted_cash'] ?? 0);
+        }
+
         $difference = $counted - $expectedCash;
 
         $register->closing_balance = $data['closing_balance'] ?? $counted;
         $register->difference = $difference;
         $register->status = 'closed';
         $register->closed_at = $now;
-        
+
         if (! empty($data['notes'])) {
             $register->notes = trim(($register->notes ?? '')."\n".$data['notes']);
         }
@@ -142,6 +191,7 @@ class CashRegisterController extends BaseController
                 'expected_cash' => $expectedCash,
                 'counted_cash' => $counted,
                 'difference' => $difference,
+                'denominations' => $register->counted_denominations,
             ],
         ]);
     }
@@ -150,7 +200,6 @@ class CashRegisterController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'cash_register_report', Sale::class);
 
-        // Normalize date filter to Y-m-d (avoid timezone/invalid input issues)
         $today = Carbon::today();
         $from = $request->filled('from')
             ? Carbon::parse($request->from)->toDateString()
@@ -162,7 +211,6 @@ class CashRegisterController extends BaseController
             $from = $to;
         }
 
-        // Pagination + Sorting (align with Report_Sales)
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
         $offSet = ($pageStart * $perPage) - $perPage;
@@ -175,11 +223,8 @@ class CashRegisterController extends BaseController
         }
 
         $user = Auth::user();
-        // New way: Check user's record_view field (user-level boolean)
-        // Backward compatibility: If record_view is null, fall back to role permission check
         $view_records = $user->hasRecordView();
         $is_all_warehouses = $user->is_all_warehouses;
-        // If the user is restricted, fetch their assigned warehouse IDs once and reuse below.
         if (! $is_all_warehouses) {
             $warehouse_ids = UserWarehouse::where('user_id', $user->id)
                 ->pluck('warehouse_id')
@@ -258,10 +303,10 @@ class CashRegisterController extends BaseController
             $item['total_sales'] = number_format((float) $r->total_sales, 2, '.', '');
             $item['closing_balance'] = is_null($r->closing_balance) ? null : number_format((float) $r->closing_balance, 2, '.', '');
             $item['difference'] = is_null($r->difference) ? null : number_format((float) $r->difference, 2, '.', '');
+            $item['counted_denominations'] = $r->counted_denominations;
             $data[] = $item;
         }
 
-        // Users & Warehouses for filters (mirror sales report)
         $users = User::where('deleted_at', '=', null)->get(['id', 'username', 'firstname', 'lastname']);
 
         $user_auth = auth()->user();
