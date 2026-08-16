@@ -18,6 +18,7 @@ class CashRegister extends Model
         'cash_in',
         'cash_out',
         'difference',
+        'counted_denominations',
         'status',
         'opened_at',
         'closed_at',
@@ -33,6 +34,7 @@ class CashRegister extends Model
         'cash_in' => 'double',
         'cash_out' => 'double',
         'difference' => 'double',
+        'counted_denominations' => 'array',
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
     ];

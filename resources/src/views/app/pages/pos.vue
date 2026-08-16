@@ -2720,16 +2720,61 @@
     <!-- Close Register Modal -->
     <b-modal id="CloseRegisterModal" :title="$t('Close Register')" hide-footer>
       <div class="form-group">
-        <label>{{$t('Counted_Cash')}}</label>
-        <input type="text" min="0" step="0.01" class="form-control" v-model.number="closeForm.counted_cash" />
+        <label>Cash Denominations</label>
+
+        <div
+          v-for="(quantity, denomination) in closeForm.denominations"
+          :key="denomination"
+          class="d-flex align-items-center mb-2"
+        >
+          <label class="mb-0 mr-2" style="width: 70px;">
+            {{ denomination }}
+          </label>
+
+          <input
+            type="number"
+            min="0"
+            step="1"
+            class="form-control"
+            v-model.number="closeForm.denominations[denomination]"
+          />
+        </div>
       </div>
+
+      <div class="form-group">
+        <label>{{$t('Counted_Cash')}}</label>
+        <input
+          type="text"
+          class="form-control"
+          :value="countedDenominationsTotal.toFixed(2)"
+          readonly
+        />
+      </div>
+
       <div class="form-group">
         <label>{{$t('Closing_Notes')}}</label>
-        <textarea class="form-control" v-model="closeForm.notes"></textarea>
+        <textarea
+          class="form-control"
+          v-model="closeForm.notes"
+        ></textarea>
       </div>
+
       <div class="text-right">
-        <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('CloseRegisterModal')">{{$t('Cancel')}}</b-button>
-        <b-button variant="danger" @click="submitCloseRegister" :disabled="registerBusy">{{$t('Close Register')}}</b-button>
+        <b-button
+          variant="secondary"
+          class="mr-2"
+          @click="$bvModal.hide('CloseRegisterModal')"
+        >
+          {{$t('Cancel')}}
+        </b-button>
+
+        <b-button
+          variant="danger"
+          @click="submitCloseRegister"
+          :disabled="registerBusy"
+        >
+          {{$t('Close Register')}}
+        </b-button>
       </div>
     </b-modal>
 
@@ -3511,7 +3556,25 @@ export default {
       currentRegister: null,
       registerBusy: false,
       registerForm: { warehouse_id: '', opening_balance: 0, notes: '' },
-      closeForm: { counted_cash: 0, notes: '' },
+      closeForm: {
+      counted_cash: 0,
+      notes: '',
+      denominations: {
+        500: 0,
+        200: 0,
+        100: 0,
+        50: 0,
+        20: 0,
+        10: 0,
+        5: 0,
+        2: 0,
+        1: 0,
+        0.5: 0,
+        0.2: 0,
+        0.1: 0,
+        0.05: 0
+      }
+    },
       cashMove: { type: 'in', amount: 0, notes: '' },
       warehouseOptions: [],
       selectedClientId: "",
@@ -3558,6 +3621,15 @@ export default {
     // Static list of POS keyboard shortcuts used by the help modal.
     posShortcutsList() {
       return POS_SHORTCUTS;
+    },
+
+    countedDenominationsTotal() {
+      const denominations = this.closeForm.denominations || {};
+
+      return Object.keys(denominations).reduce((total, value) => {
+        const quantity = Number(denominations[value]) || 0;
+        return total + (Number(value) * quantity);
+      }, 0);
     },
 
     // Overselling Control: when ON, all POS stock checks are bypassed and
@@ -4024,6 +4096,7 @@ export default {
       }
     } catch (e) {}
   },
+
   methods: {
     goToMobileTab(tab) {
       if (tab === 'home') {
@@ -4162,10 +4235,11 @@ export default {
       this.registerBusy = true;
       try {
         await axios.post('cash-registers/close', {
-          register_id: this.currentRegister.id,
-          counted_cash: this.closeForm.counted_cash || 0,
-          notes: this.closeForm.notes || ''
-        });
+        register_id: this.currentRegister.id,
+        counted_cash: this.closeForm.counted_cash || 0,
+        counted_denominations: this.closeForm.denominations || {},
+        notes: this.closeForm.notes || ''
+      });
         this.$bvModal.hide('CloseRegisterModal');
         this.makeToast('success', this.$t('RegisterClosed'), this.$t('Success'));
         this.refreshCurrentRegister();

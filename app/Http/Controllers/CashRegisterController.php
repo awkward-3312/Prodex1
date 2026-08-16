@@ -100,6 +100,7 @@ class CashRegisterController extends BaseController
             'register_id' => 'required|integer|exists:cash_registers,id',
             'counted_cash' => 'required|numeric',
             'closing_balance' => 'nullable|numeric',
+            'counted_denominations' => 'nullable|array',
             'notes' => 'nullable|string',
         ]);
 
@@ -127,6 +128,7 @@ class CashRegisterController extends BaseController
 
         $register->closing_balance = $data['closing_balance'] ?? $counted;
         $register->difference = $difference;
+        $register->counted_denominations = $data['counted_denominations'] ?? null;
         $register->status = 'closed';
         $register->closed_at = $now;
         
