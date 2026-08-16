@@ -73,8 +73,19 @@
                 <span class="nav-indicator" id="navIndicator"></span>
             </div>
 
-            <div class="navbar-actions">
+                        <div class="navbar-actions">
                 @if(isset($languages) && $languages->count() > 1)
+                    <!-- selector de idioma -->
+                @endif
+
+                <a class="nav-btn nav-btn-ghost" href="{{ route('central.login') }}">
+                    Already a member? Log In
+                </a>
+
+                <a class="nav-btn nav-btn-primary" href="{{ route('central.register') }}">
+                    {{ __('landing.sign_up_free') }} <i class="bi bi-arrow-right"></i>
+                </a>
+
                 <div class="lang-switcher" id="langSwitcher">
                     <button type="button" class="lang-btn" id="langSwitcherBtn">
                         <i class="bi bi-globe2"></i>
@@ -95,11 +106,6 @@
                         @endforeach
                     </div>
                 </div>
-                @endif
-                @if($footer->show_admin_login ?? false)
-                    <a class="nav-btn nav-btn-ghost" href="{{ route('central.login') }}">{{ __('landing.admin_login') }}</a>
-                @endif
-                <a class="nav-btn nav-btn-primary" href="{{ route('central.register') }}">{{ __('landing.sign_up_free') }} <i class="bi bi-arrow-right"></i></a>
             </div>
 
             <button class="navbar-toggler" type="button" aria-expanded="false" aria-label="Toggle navigation">
@@ -150,10 +156,13 @@
                         </div>
                     </div>
                     @endif
-                    @if($footer->show_admin_login ?? false)
-                        <a class="btn-cta btn-cta-outline" href="{{ route('central.login') }}">{{ __('landing.admin_login') }}</a>
-                    @endif
-                    <a class="btn-cta btn-cta-accent" href="{{ route('central.register') }}">{{ __('landing.sign_up_free') }} <i class="bi bi-arrow-right"></i></a>
+                    <a class="btn-cta btn-cta-outline" href="{{ route('central.login') }}">
+                        Already a member? Log In
+                    </a>
+
+                    <a class="btn-cta btn-cta-accent" href="{{ route('central.register') }}">
+                        {{ __('landing.sign_up_free') }} <i class="bi bi-arrow-right"></i>
+                    </a>
                 </div>
             </div>
         </div>

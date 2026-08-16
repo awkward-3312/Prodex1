@@ -99,9 +99,9 @@
                     </div>
                 </div>
                 @endif
-                @if($footer->show_admin_login ?? false)
-                    <a class="nav-btn nav-btn-ghost" href="{{ route('central.login') }}">{{ __('landing.admin_login') }}</a>
-                @endif
+                <a class="nav-btn nav-btn-ghost" href="{{ route('central.login') }}">
+                    Already a member? Log In
+                </a>
                 <a class="nav-btn nav-btn-primary" href="{{ route('central.register') }}">{{ __('landing.sign_up_free') }} <i class="bi bi-arrow-right"></i></a>
             </div>
 
