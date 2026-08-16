@@ -496,6 +496,24 @@
                         </b-form-group>
                   </b-col>
 
+                  <!-- Country -->
+                  <b-col lg="6" md="6" sm="12" class="mb-3">
+                    <b-form-group label="Country">
+                      <v-select
+                        v-model="setting.country_code"
+                        :reduce="label => label.value"
+                        :placeholder="'Choose Country'"
+                        :options="[
+                          { label: 'Honduras', value: 'HN' },
+                          { label: 'México', value: 'MX' },
+                          { label: 'Guatemala', value: 'GT' },
+                          { label: 'El Salvador', value: 'SV' }
+                        ]"
+                        :clearable="false"
+                      />
+                    </b-form-group>
+                  </b-col>
+
                    <!-- Default Language -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                     <b-form-group :label="$t('DefaultLanguage')">
@@ -504,6 +522,55 @@
                         :reduce="label => label.value"
                         :placeholder="$t('DefaultLanguage')"
                         :options="languages.map(languages => ({label: languages.name, value: languages.locale}))"
+                      />
+                    </b-form-group>
+                  </b-col>
+
+                  <!-- Tax Regime -->
+                  <b-col lg="6" md="6" sm="12" class="mb-3">
+                    <b-form-group label="Tax Regime">
+                      <v-select
+                        v-model="setting.tax_regime_code"
+                        :reduce="label => label.value"
+                        :placeholder="'Choose Tax Regime'"
+                        :options="[
+                          { label: 'SAR', value: 'SAR' },
+                          { label: 'IVA', value: 'IVA' },
+                          { label: 'ITBMS', value: 'ITBMS' },
+                          { label: 'None', value: 'NONE' }
+                        ]"
+                        :clearable="false"
+                      />
+                    </b-form-group>
+                  </b-col>
+
+                  <!-- Tax Rate -->
+                  <b-col lg="6" md="6" sm="12" class="mb-3">
+                    <b-form-group label="Tax Rate (%)">
+                      <b-form-input
+                        v-model.number="setting.tax_rate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="15.00"
+                      />
+                    </b-form-group>
+                  </b-col>
+
+                  <!-- Locale -->
+                  <b-col lg="6" md="6" sm="12" class="mb-3">
+                    <b-form-group label="Locale">
+                      <v-select
+                        v-model="setting.locale"
+                        :reduce="label => label.value"
+                        :placeholder="'Choose Locale'"
+                        :options="[
+                          { label: 'Español (Honduras)', value: 'es-HN' },
+                          { label: 'Español (México)', value: 'es-MX' },
+                          { label: 'Español (Guatemala)', value: 'es-GT' },
+                          { label: 'English (US)', value: 'en-US' }
+                        ]"
+                        :clearable="false"
                       />
                     </b-form-group>
                   </b-col>
@@ -3857,6 +3924,14 @@ export default {
         footer:"",
         developed_by:"",
         default_language:"",
+        country_code: 'HN',
+        tax_regime_code: 'SAR',
+        tax_rate: 15,
+        locale: 'es-HN',
+        legal_document_label: 'RTN',
+        require_rtn: true,
+        require_rfc: false,
+        require_nit: false,
         date_format: 'YYYY-MM-DD',
         // Optional price format for frontend display
         price_format: "",
@@ -4718,6 +4793,14 @@ export default {
       self.data.append("footer", self.setting.footer);
       self.data.append("developed_by", self.setting.developed_by);
       self.data.append("default_language", self.setting.default_language);
+      self.data.append("country_code", self.setting.country_code || 'HN');
+      self.data.append("tax_regime_code", self.setting.tax_regime_code || 'SAR');
+      self.data.append("tax_rate", self.setting.tax_rate !== null && self.setting.tax_rate !== undefined && self.setting.tax_rate !== '' ? self.setting.tax_rate : 15);
+      self.data.append("locale", self.setting.locale || 'es-HN');
+      self.data.append("legal_document_label", self.setting.legal_document_label || 'RTN');
+      self.data.append("require_rtn", self.setting.require_rtn ? 1 : 0);
+      self.data.append("require_rfc", self.setting.require_rfc ? 1 : 0);
+      self.data.append("require_nit", self.setting.require_nit ? 1 : 0);
       self.data.append("sms_gateway", self.setting.sms_gateway);
       self.data.append("is_invoice_footer", self.setting.is_invoice_footer);
       self.data.append("invoice_footer", self.setting.invoice_footer);

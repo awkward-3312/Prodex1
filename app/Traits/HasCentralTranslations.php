@@ -34,7 +34,7 @@ trait HasCentralTranslations
     public function trans(string $field, ?string $locale = null): mixed
     {
         $locale = $locale ?: App::getLocale();
-        $defaultLocale = config('app.fallback_locale', 'en');
+        $defaultLocale = config('app.fallback_locale', 'es');
 
         // If requesting the default locale, return base column
         if ($locale === $defaultLocale) {

@@ -36,53 +36,202 @@ class Plan extends Model
     ];
 
     /**
-     * All configurable usage limits with their metadata.
-     * Each key maps to a tenant-side Eloquent model for counting.
+     * Todos los límites de uso configurables y sus metadatos.
      *
-     * `limits` vs `features` — the contract:
-     *  - `limits` is a map of numeric quotas: ['max_products' => 500, ...].
-     *    -1 (or a missing key) means unlimited. Anything countable or
-     *    meterable belongs here (see getLimit()/hasReachedLimit()).
-     *  - `features` is a flat list of enabled boolean flags: ['pos', 'hrm'].
-     *    On/off capabilities belong there (see hasFeature()).
-     *  WhatsApp is deliberately a quota (max_whatsapp_messages), not a
-     *  feature flag: every plan may send, the plan only caps volume.
+     * `limits` y `features` tienen funciones diferentes:
+     *
+     * - `limits` es un mapa de cantidades numéricas:
+     *   ['max_products' => 500, ...].
+     *   -1 (o una clave inexistente) significa ilimitado.
+     *
+     * - `features` es una lista de funciones activadas:
+     *   ['pos', 'hrm'].
+     *   Las funciones que se pueden activar o desactivar pertenecen aquí.
+     *
+     * WhatsApp se maneja como un límite mensual y no como una función:
+     * todos los planes pueden enviar mensajes, pero cada plan tiene un
+     * límite mensual diferente.
      */
     public const AVAILABLE_LIMITS = [
-        'max_products'    => ['label' => 'Products',       'icon' => 'bi-box-seam',        'model' => \App\Models\Product::class],
-        'max_users'       => ['label' => 'Users',          'icon' => 'bi-people',          'model' => \App\Models\User::class],
-        'max_warehouses'  => ['label' => 'Warehouses',     'icon' => 'bi-building',        'model' => \App\Models\Warehouse::class],
-        'max_customers'   => ['label' => 'Customers',      'icon' => 'bi-person-lines-fill', 'model' => \App\Models\Client::class],
-        'max_suppliers'   => ['label' => 'Suppliers',      'icon' => 'bi-truck',           'model' => \App\Models\Provider::class],
-        // Monthly-reset counter (not an all-time row count) — usage is tracked
-        // via whatsapp_usages, so 'monthly' => true and no backing 'model'.
-        'max_whatsapp_messages' => ['label' => 'WhatsApp Messages / month', 'icon' => 'bi-whatsapp', 'model' => null, 'monthly' => true],
+        'max_products' => [
+            'label' => 'Productos',
+            'icon' => 'bi-box-seam',
+            'model' => \App\Models\Product::class,
+        ],
+
+        'max_users' => [
+            'label' => 'Usuarios',
+            'icon' => 'bi-people',
+            'model' => \App\Models\User::class,
+        ],
+
+        'max_warehouses' => [
+            'label' => 'Almacenes',
+            'icon' => 'bi-building',
+            'model' => \App\Models\Warehouse::class,
+        ],
+
+        'max_customers' => [
+            'label' => 'Clientes',
+            'icon' => 'bi-person-lines-fill',
+            'model' => \App\Models\Client::class,
+        ],
+
+        'max_suppliers' => [
+            'label' => 'Proveedores',
+            'icon' => 'bi-truck',
+            'model' => \App\Models\Provider::class,
+        ],
+
+        // Contador que se reinicia cada mes.
+        // El uso se registra mediante whatsapp_usages.
+        'max_whatsapp_messages' => [
+            'label' => 'Mensajes de WhatsApp al mes',
+            'icon' => 'bi-whatsapp',
+            'model' => null,
+            'monthly' => true,
+        ],
     ];
 
     public const AVAILABLE_FEATURES = [
-        'pos'                => ['label' => 'Point of Sale',          'icon' => 'bi-shop-window',      'description' => 'In-store POS terminal'],
-        'online_orders'      => ['label' => 'Online Orders',          'icon' => 'bi-cart3',            'description' => 'E-commerce order management'],
-        'hrm'                => ['label' => 'HR Management',          'icon' => 'bi-person-badge',     'description' => 'Employees, attendance, payroll'],
-        'accounting'         => ['label' => 'Accounting',             'icon' => 'bi-calculator',       'description' => 'Financial accounting & bookkeeping'],
-        'woocommerce'        => ['label' => 'WooCommerce',            'icon' => 'bi-bag-check',        'description' => 'WooCommerce store integration'],
-        'shopify'            => ['label' => 'Shopify',                'icon' => 'bi-bag',              'description' => 'Shopify store integration'],
-        'transfers'          => ['label' => 'Transfers',              'icon' => 'bi-arrow-left-right', 'description' => 'Stock transfers between warehouses'],
-        'service_maintenance'=> ['label' => 'Service & Maintenance',  'icon' => 'bi-wrench',           'description' => 'Service & maintenance management'],
-        'ai_reports'         => ['label' => 'AI Reports',             'icon' => 'bi-robot',            'description' => 'AI-powered analytics & reports'],
-        'promotions'         => ['label' => 'Promotions',             'icon' => 'bi-tag',              'description' => 'Discounts, promo codes & offers'],
-        'contracts'          => ['label' => 'Contracts',              'icon' => 'bi-file-earmark-text','description' => 'Contracts, templates & renewals'],
-        'projects'           => ['label' => 'Projects & Tasks',       'icon' => 'bi-kanban',           'description' => 'Projects, tasks & kanban boards'],
-        'bookings'           => ['label' => 'Bookings',               'icon' => 'bi-calendar-check',   'description' => 'Appointments & booking calendar'],
-        'assets'             => ['label' => 'Assets',                 'icon' => 'bi-pc-display',       'description' => 'Company assets tracking & maintenance'],
-        'quotations'         => ['label' => 'Quotations',             'icon' => 'bi-file-earmark-ruled','description' => 'Customer quotations & estimates'],
-        'commissions'        => ['label' => 'Commissions',            'icon' => 'bi-percent',          'description' => 'Sales agents & commission programs'],
-        'recruitment'        => ['label' => 'Recruitment',            'icon' => 'bi-person-plus',      'description' => 'Jobs, candidates & interviews'],
-        'meetings'           => ['label' => 'Meetings',               'icon' => 'bi-camera-video',     'description' => 'Meetings, calendar & attendance'],
-        'marketing'          => ['label' => 'Marketing',              'icon' => 'bi-megaphone',        'description' => 'Campaigns, segments & activity'],
-        'knowledge_base'     => ['label' => 'Knowledge Base',         'icon' => 'bi-journal-text',     'description' => 'Help articles & documentation'],
-        'quickbooks'         => ['label' => 'QuickBooks',             'icon' => 'bi-cloud-arrow-up',   'description' => 'QuickBooks accounting sync'],
-        'zatca'              => ['label' => 'ZATCA E-Invoicing',      'icon' => 'bi-qr-code',          'description' => 'ZATCA Phase 2 (Fatoora) e-invoicing'],
-        'webhooks'           => ['label' => 'Webhooks',               'icon' => 'bi-broadcast',        'description' => 'Outgoing webhooks & integrations'],
+
+        'pos' => [
+            'label' => 'Punto de venta',
+            'icon' => 'bi-shop-window',
+            'description' => 'Terminal para ventas en el establecimiento',
+        ],
+
+        'online_orders' => [
+            'label' => 'Pedidos en línea',
+            'icon' => 'bi-cart3',
+            'description' => 'Gestión de pedidos de la tienda en línea',
+        ],
+
+        'hrm' => [
+            'label' => 'Gestión de personal',
+            'icon' => 'bi-person-badge',
+            'description' => 'Empleados, asistencia y nómina',
+        ],
+
+        'accounting' => [
+            'label' => 'Contabilidad',
+            'icon' => 'bi-calculator',
+            'description' => 'Contabilidad financiera y registro contable',
+        ],
+
+        'woocommerce' => [
+            'label' => 'WooCommerce',
+            'icon' => 'bi-bag-check',
+            'description' => 'Integración con tiendas WooCommerce',
+        ],
+
+        'shopify' => [
+            'label' => 'Shopify',
+            'icon' => 'bi-bag',
+            'description' => 'Integración con tiendas Shopify',
+        ],
+
+        'transfers' => [
+            'label' => 'Traslados de inventario',
+            'icon' => 'bi-arrow-left-right',
+            'description' => 'Traslado de existencias entre almacenes',
+        ],
+
+        'service_maintenance' => [
+            'label' => 'Servicios y mantenimiento',
+            'icon' => 'bi-wrench',
+            'description' => 'Gestión de servicios y mantenimiento',
+        ],
+
+        'ai_reports' => [
+            'label' => 'Reportes con IA',
+            'icon' => 'bi-robot',
+            'description' => 'Análisis y reportes generados con inteligencia artificial',
+        ],
+
+        'promotions' => [
+            'label' => 'Promociones',
+            'icon' => 'bi-tag',
+            'description' => 'Descuentos, códigos promocionales y ofertas',
+        ],
+
+        'contracts' => [
+            'label' => 'Contratos',
+            'icon' => 'bi-file-earmark-text',
+            'description' => 'Contratos, plantillas y renovaciones',
+        ],
+
+        'projects' => [
+            'label' => 'Proyectos y tareas',
+            'icon' => 'bi-kanban',
+            'description' => 'Gestión de proyectos, tareas y tableros Kanban',
+        ],
+
+        'bookings' => [
+            'label' => 'Reservas',
+            'icon' => 'bi-calendar-check',
+            'description' => 'Citas y calendario de reservas',
+        ],
+
+        'assets' => [
+            'label' => 'Activos',
+            'icon' => 'bi-pc-display',
+            'description' => 'Control y mantenimiento de los activos de la empresa',
+        ],
+
+        'quotations' => [
+            'label' => 'Cotizaciones',
+            'icon' => 'bi-file-earmark-ruled',
+            'description' => 'Cotizaciones y presupuestos para clientes',
+        ],
+
+        'commissions' => [
+            'label' => 'Comisiones',
+            'icon' => 'bi-percent',
+            'description' => 'Agentes de ventas y programas de comisiones',
+        ],
+
+        'recruitment' => [
+            'label' => 'Reclutamiento',
+            'icon' => 'bi-person-plus',
+            'description' => 'Vacantes, candidatos y entrevistas',
+        ],
+
+        'meetings' => [
+            'label' => 'Reuniones',
+            'icon' => 'bi-camera-video',
+            'description' => 'Reuniones, calendario y asistencia',
+        ],
+
+        'marketing' => [
+            'label' => 'Marketing',
+            'icon' => 'bi-megaphone',
+            'description' => 'Campañas, segmentos y actividades de marketing',
+        ],
+
+        'knowledge_base' => [
+            'label' => 'Base de conocimientos',
+            'icon' => 'bi-journal-text',
+            'description' => 'Artículos de ayuda y documentación',
+        ],
+
+        'quickbooks' => [
+            'label' => 'QuickBooks',
+            'icon' => 'bi-cloud-arrow-up',
+            'description' => 'Sincronización contable con QuickBooks',
+        ],
+
+        'zatca' => [
+            'label' => 'Facturación electrónica ZATCA',
+            'icon' => 'bi-qr-code',
+            'description' => 'Facturación electrónica ZATCA Fase 2 (Fatoora)',
+        ],
+
+        'webhooks' => [
+            'label' => 'Webhooks',
+            'icon' => 'bi-broadcast',
+            'description' => 'Webhooks salientes e integraciones',
+        ],
     ];
 
     public function tenantSubscriptions()
@@ -91,15 +240,18 @@ class Plan extends Model
     }
 
     /**
-     * Scope: only plans visible to the public (active + not private).
+     * Solo planes visibles públicamente:
+     * activos y no privados.
      */
     public function scopePublic($query)
     {
-        return $query->where('is_active', true)->where('is_private', false);
+        return $query
+            ->where('is_active', true)
+            ->where('is_private', false);
     }
 
     /**
-     * A plan is "free" when both monthly and yearly prices are zero.
+     * Un plan es gratuito cuando el precio mensual y anual son cero.
      */
     public function isFree(): bool
     {
@@ -108,16 +260,18 @@ class Plan extends Model
     }
 
     /**
-     * Whether this plan offers a free trial period.
+     * Indica si el plan ofrece un período de prueba gratuito.
      */
     public function hasTrial(): bool
     {
-        return ! $this->isFree() && $this->is_trial && $this->getTrialDays() > 0;
+        return ! $this->isFree()
+            && $this->is_trial
+            && $this->getTrialDays() > 0;
     }
 
     /**
-     * Get the number of trial days for this plan.
-     * Falls back to global config if per-plan value is not set.
+     * Obtiene la cantidad de días de prueba.
+     * Si el plan no tiene un valor propio, utiliza la configuración global.
      */
     public function getTrialDays(): int
     {
@@ -129,7 +283,7 @@ class Plan extends Model
     }
 
     /**
-     * Whether this plan requires payment before provisioning.
+     * Indica si el plan requiere pago antes de crear la cuenta.
      */
     public function requiresPayment(): bool
     {
@@ -137,14 +291,18 @@ class Plan extends Model
     }
 
     /**
-     * Get a specific limit value, or the default if not set.
-     * Returns -1 for "unlimited".
+     * Obtiene el valor de un límite específico.
+     * Devuelve -1 cuando el límite es ilimitado.
      */
     public function getLimit(string $key, int $default = -1): int
     {
         $limits = $this->limits ?? [];
 
-        if (!isset($limits[$key]) || $limits[$key] === '' || $limits[$key] === null) {
+        if (
+            ! isset($limits[$key])
+            || $limits[$key] === ''
+            || $limits[$key] === null
+        ) {
             return $default;
         }
 
@@ -152,13 +310,16 @@ class Plan extends Model
     }
 
     /**
-     * Check if a boolean feature flag is enabled on this plan.
+     * Comprueba si una función está habilitada en este plan.
      *
-     * Canonical storage is a flat list of enabled keys (['pos', 'hrm']),
-     * which is what the seeder and the super-admin plan form produce. The
-     * map form (['pos' => true]) is tolerated so a manually edited or
-     * imported row degrades gracefully instead of silently disabling
-     * every feature. Numeric quotas do NOT belong here — use getLimit().
+     * El formato principal es una lista de claves habilitadas:
+     * ['pos', 'hrm'].
+     *
+     * También se admite el formato:
+     * ['pos' => true].
+     *
+     * Los límites numéricos no pertenecen aquí; deben gestionarse mediante
+     * getLimit().
      */
     public function hasFeature(string $key): bool
     {
@@ -173,7 +334,7 @@ class Plan extends Model
     }
 
     /**
-     * Check if a specific limit is set (not unlimited).
+     * Comprueba si un límite específico está establecido.
      */
     public function hasLimit(string $key): bool
     {
@@ -181,7 +342,7 @@ class Plan extends Model
     }
 
     /**
-     * Get all configured limits as a formatted array.
+     * Obtiene todos los límites configurados en formato listo para mostrar.
      */
     public function getFormattedLimits(): array
     {
@@ -189,11 +350,14 @@ class Plan extends Model
 
         foreach (self::AVAILABLE_LIMITS as $key => $meta) {
             $value = $this->getLimit($key);
+
             $result[$key] = [
                 'label' => $meta['label'],
                 'icon' => $meta['icon'],
                 'value' => $value,
-                'display' => $value < 0 ? 'Unlimited' : number_format($value),
+                'display' => $value < 0
+                    ? 'Ilimitado'
+                    : number_format($value),
             ];
         }
 
@@ -201,7 +365,7 @@ class Plan extends Model
     }
 
     /**
-     * Get active feature keys.
+     * Obtiene las funciones activas del plan.
      */
     public function getActiveFeatures(): array
     {
@@ -217,7 +381,7 @@ class Plan extends Model
     }
 
     /**
-     * Count how many limits are configured (not unlimited).
+     * Cuenta cuántos límites están configurados.
      */
     public function getConfiguredLimitsCount(): int
     {
@@ -233,8 +397,8 @@ class Plan extends Model
     }
 
     /**
-     * Get the price for a given billing cycle.
-     * Falls back to monthly * 12 if yearly_price is not set.
+     * Obtiene el precio según el ciclo de facturación.
+     * Si no existe un precio anual, calcula el equivalente a 12 meses.
      */
     public function getPriceForCycle(string $cycle = 'monthly'): float
     {
@@ -246,7 +410,7 @@ class Plan extends Model
     }
 
     /**
-     * Monthly savings percentage when paying yearly.
+     * Calcula el porcentaje de ahorro al pagar anualmente.
      */
     public function getYearlySavingsPercent(): int
     {
@@ -257,6 +421,8 @@ class Plan extends Model
             return 0;
         }
 
-        return (int) round((($monthly12 - $yearly) / $monthly12) * 100);
+        return (int) round(
+            (($monthly12 - $yearly) / $monthly12) * 100
+        );
     }
 }

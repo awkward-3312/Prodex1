@@ -32,6 +32,7 @@ use App\Models\Warehouse;
 use App\Services\BatchService;
 use App\Services\PromotionEngine;
 use App\Services\SerialNumberService;
+use App\Services\TenantTaxConfigResolver;
 use App\utils\helpers;
 use Carbon\Carbon;
 use DB;
@@ -52,6 +53,26 @@ use Twilio\Rest\Client as Client_Twilio;
 
 class PosController extends BaseController
 {
+    /**
+     * Get the effective tax rate for the current tenant.
+     * Falls back to tenant configuration or defaults to Honduras SAR (15%).
+     */
+    private function getTenantTaxRate(): float
+    {
+        try {
+            $setting = Setting::first();
+            if ($setting) {
+                $tenantCountry = function_exists('tenant') && tenant() ? (tenant()->country_code ?? null) : null;
+                $config = TenantTaxConfigResolver::resolve($setting, $tenantCountry);
+                return (float) $config['tax_rate'];
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('TenantTaxConfigResolver error: '.$e->getMessage());
+        }
+        // Fallback: Honduras SAR default
+        return 15.0;
+    }
+
     // ------------ Create New  POS --------------\\
 
     /**
@@ -151,7 +172,7 @@ class PosController extends BaseController
                 $order->Ref = app('App\Http\Controllers\SalesController')->getNumberOrder();
                 $order->client_id = $request->client_id;
                 $order->warehouse_id = $request->warehouse_id;
-                $order->tax_rate = $request->tax_rate;
+                $order->tax_rate = $this->getTenantTaxRate();
                 $order->TaxNet = $request->TaxNet;
                 $order->discount = $request->discount;
                 $order->promotion_discount = $promotionDiscount;
@@ -941,7 +962,7 @@ class PosController extends BaseController
                 $order->Ref = $this->getNumberOrderDraft();
                 $order->client_id = $request->client_id;
                 $order->warehouse_id = $request->warehouse_id;
-                $order->tax_rate = $request->tax_rate;
+                $order->tax_rate = $this->getTenantTaxRate();
                 $order->TaxNet = $request->TaxNet;
                 $order->discount = $request->discount;
                 // Ensure discount_Method is saved correctly: '1' for percentage, '2' for fixed
@@ -1038,7 +1059,7 @@ class PosController extends BaseController
                 $order->Ref = app('App\Http\Controllers\SalesController')->getNumberOrder();
                 $order->client_id = $request->client_id;
                 $order->warehouse_id = $request->warehouse_id;
-                $order->tax_rate = $request->tax_rate;
+                $order->tax_rate = $this->getTenantTaxRate();
                 $order->TaxNet = $request->TaxNet;
                 $order->discount = $request->discount;
                 // Ensure discount_Method is saved correctly: '1' for percentage, '2' for fixed
@@ -2076,7 +2097,8 @@ class PosController extends BaseController
             'default_client_points' => $default_client_points,
             'default_client_eligible' => $default_client_eligible,
             'point_to_amount_rate' => $settings->point_to_amount_rate,
-            'default_tax' => $settings->default_tax ?? 0,
+            'country_code' => strtoupper((string) ($settings->country_code ?? 'HN')),
+            'default_tax' => $settings ? (float) TenantTaxConfigResolver::resolve($settings)['tax_rate'] : 0,
             'default_account_id' => $settings->default_account_id ?? null,
             'default_payment_method_id' => $settings->default_payment_method_id ?? null,
             'pos_settings' => $pos_setting,

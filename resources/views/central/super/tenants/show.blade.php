@@ -114,6 +114,12 @@
                         </span>
                     </li>
                     @endif
+                    @if($tenant->country_code)
+                    <li>
+                        <span class="info-label">{{ __('central.Country') }}</span>
+                        <span class="info-value">{{ strtoupper($tenant->country_code) }}</span>
+                    </li>
+                    @endif
                     @if($tenant->locale)
                     <li>
                         <span class="info-label">{{ __('central.EmailLanguage') }}</span>

@@ -35,23 +35,29 @@ return [
 
     'connections' => [
 
-        /* Central DB: SaaS management (tenants, domains, plans, subscriptions). Same as mysql for Step 1. */
-        'central' => [
-            'driver' => 'mysql',
-            'url' => env('DATABASE_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'forge'),
-            'username' => env('DB_USERNAME', 'forge'),
-            'password' => env('DB_PASSWORD', ''),
-            'charset' => 'utf8mb4',
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
-            'strict' => false,
-            'engine' => 'InnoDB',
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                \Pdo\Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
-        ],
+        /* Central DB: SaaS management (tenants, domains, plans, subscriptions). */
+        'central' => env('APP_ENV') === 'testing'
+            ? [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+            ]
+            : [
+                'driver' => 'mysql',
+                'url' => env('DATABASE_URL'),
+                'host' => env('DB_HOST', '127.0.0.1'),
+                'port' => env('DB_PORT', '3306'),
+                'database' => env('DB_DATABASE', 'forge'),
+                'username' => env('DB_USERNAME', 'forge'),
+                'password' => env('DB_PASSWORD', ''),
+                'charset' => 'utf8mb4',
+                'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+                'strict' => false,
+                'engine' => 'InnoDB',
+                'options' => extension_loaded('pdo_mysql') ? array_filter([
+                    \Pdo\Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                ]) : [],
+            ],
 
         'sqlite' => [
             'driver' => 'sqlite',

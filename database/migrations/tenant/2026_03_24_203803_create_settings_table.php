@@ -35,6 +35,14 @@ return new class extends Migration
             $table->unsignedBigInteger('default_account_id')->nullable();
             $table->unsignedBigInteger('default_payment_method_id')->nullable();
             $table->string('default_language', 192)->default('en');
+            $table->string('country_code', 3)->nullable()->default('HN');
+            $table->string('tax_regime_code', 20)->nullable()->default('SAR');
+            $table->decimal('tax_rate', 10, 2)->nullable()->default(15.00);
+            $table->string('locale', 20)->nullable()->default('es-HN');
+            $table->string('legal_document_label', 50)->nullable()->default('RTN');
+            $table->boolean('require_rtn')->default(true);
+            $table->boolean('require_rfc')->default(false);
+            $table->boolean('require_nit')->default(false);
             $table->float('point_to_amount_rate')->default(1);
             $table->decimal('default_tax', 10)->default(0);
             $table->string('default_dashboard_date_range', 20)->default('week');

@@ -80,6 +80,7 @@ class TenantController extends Controller
                     }
                 },
             ],
+            'country_code'   => ['nullable', 'string', 'size:2', 'in:HN,MX,GT,SV'],
             'company_name'   => ['required', 'string', 'min:2', 'max:255'],
             'admin_email'    => [
                 'required', 'email', 'max:255',
@@ -125,6 +126,10 @@ class TenantController extends Controller
                 'owner_phone'              => $validated['owner_phone'] ?? null,
                 'status'                   => Tenant::STATUS_PENDING,
             ];
+
+            if (! empty($validated['country_code'])) {
+                $tenantData['country_code'] = strtoupper($validated['country_code']);
+            }
 
             if (! empty($validated['locale'])) {
                 $tenantData['locale'] = $validated['locale'];
@@ -290,6 +295,7 @@ class TenantController extends Controller
     {
         $validated = $request->validate([
             'status' => ['required', 'in:pending,provisioning,active,suspended,cancelled,failed,rejected'],
+            'country_code' => ['nullable', 'string', 'size:2', 'in:HN,MX,GT,SV'],
             'locale' => ['nullable', 'string', 'max:10'],
             'owner_phone' => ['nullable', 'string', 'max:30', 'regex:/^[+0-9][0-9\s().-]{4,29}$/'],
         ]);
@@ -311,6 +317,10 @@ class TenantController extends Controller
         // Only update status if it actually changed.
         if ($validated['status'] !== $tenant->status) {
             $updateData['status'] = $validated['status'];
+        }
+
+        if (array_key_exists('country_code', $validated)) {
+            $updateData['country_code'] = $validated['country_code'] ? strtoupper($validated['country_code']) : null;
         }
 
         if (array_key_exists('locale', $validated)) {

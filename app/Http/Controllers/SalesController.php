@@ -6,6 +6,7 @@ use App\Mail\CustomEmail;
 use App\Services\BatchService;
 use App\Services\PromotionEngine;
 use App\Services\SerialNumberService;
+use App\Services\TenantTaxConfigResolver;
 use App\Models\Account;
 use App\Models\Client;
 use App\Models\EmailMessage;
@@ -54,6 +55,26 @@ use Twilio\Rest\Client as Client_Twilio;
 
 class SalesController extends BaseController
 {
+    /**
+     * Get the effective tax rate for the current tenant.
+     * Falls back to tenant configuration or defaults to Honduras SAR (15%).
+     */
+    private function getTenantTaxRate(): float
+    {
+        try {
+            $setting = Setting::first();
+            if ($setting) {
+                $tenantCountry = function_exists('tenant') && tenant() ? (tenant()->country_code ?? null) : null;
+                $config = TenantTaxConfigResolver::resolve($setting, $tenantCountry);
+                return (float) $config['tax_rate'];
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('TenantTaxConfigResolver error: '.$e->getMessage());
+        }
+        // Fallback: Honduras SAR default
+        return 15.0;
+    }
+
     // ------------- GET ALL SALES -----------\\
 
     public function index(request $request)
@@ -251,7 +272,7 @@ class SalesController extends BaseController
             $order->client_id = $request->client_id;
             $order->GrandTotal = $request->GrandTotal;
             $order->warehouse_id = $request->warehouse_id;
-            $order->tax_rate = $request->tax_rate;
+            $order->tax_rate = $this->getTenantTaxRate();
             $order->TaxNet = $request->TaxNet;
             $order->discount = $request->discount;
             $order->promotion_discount = $promotionDiscount;
@@ -947,7 +968,8 @@ class SalesController extends BaseController
                     'notes' => $request['notes'],
                     'statut' => $request['statut'],
                     'sales_agent_id' => $request->filled('sales_agent_id') ? $request->sales_agent_id : $current_Sale->sales_agent_id,
-                    'tax_rate' => $request['tax_rate'],
+                    // Use provided tax_rate or fall back to tenant configuration
+                    'tax_rate' => $this->getTenantTaxRate(),
                     'TaxNet' => $request['TaxNet'],
                     'discount' => $request['discount'],
                     // Ensure order-level discount method stays in sync when editing
@@ -1971,7 +1993,7 @@ class SalesController extends BaseController
             $order->client_id = $request->client_id;
             $order->GrandTotal = 0;
             $order->warehouse_id = $request->warehouse_id;
-            $order->tax_rate = $request->tax_rate ?? 0;
+            $order->tax_rate = $this->getTenantTaxRate();
             $order->TaxNet = 0;
             $order->discount = $request->discount ?? 0;
             $order->discount_Method = '2';

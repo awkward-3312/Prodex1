@@ -70,6 +70,16 @@
                         <p class="form-hint">{{ __('super.tenants.status_warning') }}</p>
                     </div>
 
+                    <div class="form-group">
+                        <label class="form-label">{{ __('central.Country') }}</label>
+                        <select name="country_code" class="form-control">
+                            <option value="">{{ __('central.SelectCountry') }}</option>
+                            <option value="HN" {{ old('country_code', $tenant->country_code ?? 'HN') === 'HN' ? 'selected' : '' }}>Honduras (HN)</option>
+                            <option value="MX" {{ old('country_code', $tenant->country_code ?? '') === 'MX' ? 'selected' : '' }}>México (MX)</option>
+                            <option value="GT" {{ old('country_code', $tenant->country_code ?? '') === 'GT' ? 'selected' : '' }}>Guatemala (GT)</option>
+                            <option value="SV" {{ old('country_code', $tenant->country_code ?? '') === 'SV' ? 'selected' : '' }}>El Salvador (SV)</option>
+                        </select>
+                    </div>
                     @if($languages->count() > 1)
                     <div class="form-group">
                         <label class="form-label">{{ __('central.EmailLanguage') }}</label>

@@ -508,9 +508,9 @@
           <!-- Charges row — matches POS.html FieldNum (no uppercase, prefix/suffix inside box without borders) -->
           <div class="pos-shell-charges-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
             <label style="display: block;">
-              <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: #8d8da0; margin-bottom: 4px;">{{ $t('pos.Tax') }} %</div>
-              <div style="display: flex; align-items: center; height: 28px; border: 1px solid #e6e6ec; border-radius: 6px; background: #ffffff;">
-                <input v-model.number="sale.tax_rate" type="text" placeholder="0" @keyup="keyup_OrderTax" style="width: 100%; border: 0; padding: 0 8px; background: transparent; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; outline: none; min-width: 0;" />
+              <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: #8d8da0; margin-bottom: 4px;">{{ isTaxLocked ? 'ISV' : $t('pos.Tax') }} %</div>
+              <div style="display: flex; align-items: center; height: 28px; border: 1px solid #e6e6ec; border-radius: 6px; background: #ffffff; opacity: isTaxLocked ? 0.8 : 1;">
+                <input v-model.number="sale.tax_rate" type="text" placeholder="0" :disabled="isTaxLocked" :readonly="isTaxLocked" @keyup="keyup_OrderTax" style="width: 100%; border: 0; padding: 0 8px; background: transparent; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; outline: none; min-width: 0;" />
                 <span style="padding-right: 8px; color: #8d8da0; font-size: 12px; font-family: 'JetBrains Mono', monospace;">%</span>
               </div>
             </label>
@@ -3508,6 +3508,8 @@ export default {
       category_id: "",
       brand_id: "",
       default_tax: 0,
+      isTaxLocked: false,
+      taxPolicyCountryCode: 'HN',
       languages_available:[],
       product: {
         id: "",
@@ -5115,6 +5117,10 @@ export default {
     },
 
     keyup_OrderTax() {
+      if (this.isTaxLocked) {
+        this.sale.tax_rate = this.default_tax || 15;
+        return;
+      }
       if (isNaN(this.sale.tax_rate)) {
         this.sale.tax_rate = 0;
       } else if(this.sale.tax_rate == ''){
@@ -8383,6 +8389,8 @@ export default {
           this.payment_methods = response.data.payment_methods;
           this.default_account_id = response.data.default_account_id ?? null;
           this.default_payment_method_id = response.data.default_payment_method_id ?? null;
+          this.taxPolicyCountryCode = (response.data.country_code || 'HN').toUpperCase();
+          this.isTaxLocked = this.taxPolicyCountryCode === 'HN';
           this.sale.warehouse_id = response.data.defaultWarehouse;
           this.selectedClientId = response.data.defaultClient;
           this.client_name = response.data.default_client_name;
@@ -8492,6 +8500,8 @@ export default {
               this.payment_methods = cached.payment_methods || [];
               this.default_account_id = cached.default_account_id ?? null;
               this.default_payment_method_id = cached.default_payment_method_id ?? null;
+              this.taxPolicyCountryCode = (cached.country_code || 'HN').toUpperCase();
+              this.isTaxLocked = this.taxPolicyCountryCode === 'HN';
 
               if (!this.sale.warehouse_id && cached.defaultWarehouse) {
                 this.sale.warehouse_id = cached.defaultWarehouse;

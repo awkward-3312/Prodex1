@@ -132,13 +132,29 @@
                         </div>
                     </div>
 
-                    @if($languages->count() > 1)
                     <div class="divider"></div>
 
                     <h3 class="fw-700 mb-1 section-heading">{{ __('central.LanguagePreference') }}</h3>
                     <p class="text-muted mb-3 section-desc">{{ __('central.LanguagePreferenceDesc') }}</p>
 
                     <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label">{{ __('central.Country') }}</label>
+                                <select name="country_code" class="form-control @error('country_code') is-invalid @enderror">
+                                    <option value="">{{ __('central.SelectCountry') }}</option>
+                                    <option value="HN" {{ old('country_code', 'HN') === 'HN' ? 'selected' : '' }}>Honduras (HN)</option>
+                                    <option value="MX" {{ old('country_code') === 'MX' ? 'selected' : '' }}>México (MX)</option>
+                                    <option value="GT" {{ old('country_code') === 'GT' ? 'selected' : '' }}>Guatemala (GT)</option>
+                                    <option value="SV" {{ old('country_code') === 'SV' ? 'selected' : '' }}>El Salvador (SV)</option>
+                                </select>
+                                @error('country_code')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        @if($languages->count() > 1)
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="form-label">{{ __('central.Language') }}</label>
@@ -154,8 +170,8 @@
                                 @enderror
                             </div>
                         </div>
+                        @endif
                     </div>
-                    @endif
 
                     <div class="divider"></div>
 
