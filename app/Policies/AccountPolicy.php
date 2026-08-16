@@ -28,9 +28,7 @@ class AccountPolicy
      */
     public function view(User $user)
     {
-        $permission = Permission::where('name', 'account')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('account');
     }
 
     /**
@@ -40,9 +38,7 @@ class AccountPolicy
      */
     public function create(User $user)
     {
-        $permission = Permission::where('name', 'account')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('account');
     }
 
     /**
@@ -53,9 +49,7 @@ class AccountPolicy
      */
     public function update(User $user)
     {
-        $permission = Permission::where('name', 'account')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('account');
     }
 
     /**
@@ -66,58 +60,42 @@ class AccountPolicy
      */
     public function delete(User $user)
     {
-        $permission = Permission::where('name', 'account')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('account');
     }
 
     public function accounting_dashboard(User $user)
     {
-        $permission = Permission::where('name', 'accounting_dashboard')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('accounting_dashboard');
     }
 
     public function chart_of_accounts(User $user)
     {
-        $permission = Permission::where('name', 'chart_of_accounts')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('chart_of_accounts');
     }
 
     public function journal_entries(User $user)
     {
-        $permission = Permission::where('name', 'journal_entries')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('journal_entries');
     }
 
     public function trial_balance(User $user)
     {
-        $permission = Permission::where('name', 'trial_balance')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('trial_balance');
     }
 
     public function accounting_profit_loss(User $user)
     {
-        $permission = Permission::where('name', 'accounting_profit_loss')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('accounting_profit_loss');
     }
 
     public function balance_sheet(User $user)
     {
-        $permission = Permission::where('name', 'balance_sheet')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('balance_sheet');
     }
 
     public function accounting_tax_report(User $user)
     {
-        $permission = Permission::where('name', 'accounting_tax_report')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('accounting_tax_report');
     }
 
     public function check_record(User $user, $expenseCategory)

@@ -12,6 +12,7 @@ class CashRegister extends Model
     protected $fillable = [
         'user_id',
         'warehouse_id',
+        'cash_drawer_id',
         'opening_balance',
         'closing_balance',
         'total_sales',
@@ -41,6 +42,8 @@ class CashRegister extends Model
         'closed_by_user_name_snapshot',
         'warehouse_id_snapshot',
         'warehouse_name_snapshot',
+        'cash_drawer_name_snapshot',
+        'cash_drawer_code_snapshot',
         'tenant_id_snapshot',
         'opened_date_snapshot',
         'opened_time_snapshot',
@@ -58,6 +61,7 @@ class CashRegister extends Model
     protected $casts = [
         'user_id' => 'integer',
         'warehouse_id' => 'integer',
+        'cash_drawer_id' => 'integer',
         'opening_balance' => 'double',
         'closing_balance' => 'double',
         'total_sales' => 'double',
@@ -93,5 +97,10 @@ class CashRegister extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function cashDrawer()
+    {
+        return $this->belongsTo(CashDrawer::class);
     }
 }

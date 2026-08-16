@@ -212,6 +212,33 @@
               </b-card>
             </b-col>
 
+            <b-col md="6" sm="12" class="mb-3">
+              <b-card class="h-100">
+                <b-card-header class="pb-2">
+                  <h6 class="mb-0">{{ $t('Operational_Assignment') || 'Asignación operativa' }}</h6>
+                </b-card-header>
+                <b-card-body class="pt-3">
+                  <b-form-group :label="$t('Default_Warehouse') || 'Almacén habitual'">
+                    <v-select
+                      v-model="user.default_warehouse_id"
+                      :reduce="label => label.value"
+                      :placeholder="$t('PleaseSelect')"
+                      :options="operationalWarehouseOptions()"
+                      @input="onDefaultWarehouseChange"
+                    />
+                  </b-form-group>
+                  <b-form-group :label="$t('Default_Cash_Drawer') || 'Caja física habitual'" class="mb-0">
+                    <v-select
+                      v-model="user.default_cash_drawer_id"
+                      :reduce="label => label.value"
+                      :placeholder="$t('PleaseSelect')"
+                      :options="cashDrawerOptions(user.default_warehouse_id)"
+                    />
+                  </b-form-group>
+                </b-card-body>
+              </b-card>
+            </b-col>
+
             <b-col md="12" class="mt-3">
                 <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
                 <b-button variant="secondary" class="ml-2" @click="$router.push({ name: 'Users' })">{{$t('Cancel')}}</b-button>
@@ -241,6 +268,7 @@ export default {
       email_exist: "",
       roles: [],
       warehouses: [],
+      cash_drawers: [],
       data: new FormData(),
       user: {
         firstname: "",
@@ -252,6 +280,8 @@ export default {
         role_id: "",
         avatar: "",
         is_all_warehouses: 1,
+        default_warehouse_id: "",
+        default_cash_drawer_id: "",
       },
       assigned_warehouses: [],
     };
@@ -287,6 +317,8 @@ export default {
       self.data.append("role", self.user.role_id);
       self.data.append("is_all_warehouses", self.user.is_all_warehouses);
       self.data.append("record_view", self.user.record_view ? 1 : 0);
+      self.data.append("default_warehouse_id", self.user.default_warehouse_id || "");
+      self.data.append("default_cash_drawer_id", self.user.default_cash_drawer_id || "");
       self.data.append("avatar", self.user.avatar);
 
       // append array assigned_warehouses
@@ -322,6 +354,33 @@ export default {
     Selected_Warehouse(value) {
       if (!value.length) {
         this.assigned_warehouses = [];
+      }
+      if (!this.user.is_all_warehouses && this.user.default_warehouse_id && !this.assigned_warehouses.includes(this.user.default_warehouse_id)) {
+        this.user.default_warehouse_id = "";
+        this.user.default_cash_drawer_id = "";
+      }
+    },
+
+    operationalWarehouseOptions() {
+      const ids = this.user.is_all_warehouses ? null : this.assigned_warehouses.map(id => String(id));
+      return (this.warehouses || [])
+        .filter(warehouse => !ids || ids.includes(String(warehouse.id)))
+        .map(warehouse => ({ label: warehouse.name, value: warehouse.id }));
+    },
+
+    cashDrawerOptions(warehouseId) {
+      return (this.cash_drawers || [])
+        .filter(drawer => !warehouseId || String(drawer.warehouse_id) === String(warehouseId))
+        .map(drawer => ({
+          label: drawer.code ? `${drawer.name} (${drawer.code})` : drawer.name,
+          value: drawer.id,
+        }));
+    },
+
+    onDefaultWarehouseChange() {
+      const drawers = this.cashDrawerOptions(this.user.default_warehouse_id);
+      if (!drawers.some(drawer => String(drawer.value) === String(this.user.default_cash_drawer_id))) {
+        this.user.default_cash_drawer_id = drawers.length === 1 ? drawers[0].value : "";
       }
     },
 
@@ -366,6 +425,7 @@ export default {
         .then(response => {
           this.roles = response.data.roles;
           this.warehouses = response.data.warehouses;
+          this.cash_drawers = response.data.cash_drawers || [];
           NProgress.done();
           this.isLoading = false;
         })

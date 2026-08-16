@@ -9,6 +9,8 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserWarehouse;
 use App\Models\Warehouse;
+use App\Models\CashDrawer;
+use App\Services\UserOperationalAssignmentService;
 use App\utils\helpers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -72,11 +74,13 @@ class UserController extends BaseController
 
         $roles = Role::where('deleted_at', null)->get(['id', 'name']);
         $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+        $cash_drawers = CashDrawer::where('deleted_at', null)->where('is_active', true)->get(['id', 'warehouse_id', 'name', 'code']);
 
         return response()->json([
             'users' => $users,
             'roles' => $roles,
             'warehouses' => $warehouses,
+            'cash_drawers' => $cash_drawers,
             'totalRows' => $totalRows,
         ]);
     }
@@ -149,9 +153,12 @@ class UserController extends BaseController
 
     // ------------- STORE NEW USER ---------\\
 
-    public function store(Request $request)
+    public function store(Request $request, UserOperationalAssignmentService $assignmentService)
     {
         $this->authorizeForUser($request->user('api'), 'create', User::class);
+        if (($request->filled('default_warehouse_id') || $request->filled('default_cash_drawer_id')) && ! $request->user('api')->hasPermissionName('user_operational_assignment')) {
+            abort(403);
+        }
         $this->validate($request, [
             'email' => 'required|unique:users',
         ], [
@@ -187,6 +194,8 @@ class UserController extends BaseController
             $User->avatar = $filename;
             $User->role_id = $request['role'];
             $User->is_all_warehouses = $is_all_warehouses;
+            $User->default_warehouse_id = $request->input('default_warehouse_id') ?: null;
+            $User->default_cash_drawer_id = $request->input('default_cash_drawer_id') ?: null;
             
             // Set record_view from request (default to false if not provided)
             if (isset($request['record_view'])) {
@@ -205,6 +214,12 @@ class UserController extends BaseController
             if (! $User->is_all_warehouses) {
                 $User->assignedWarehouses()->sync($request['assigned_to']);
             }
+
+            app(UserOperationalAssignmentService::class)->validateUserDefaults(
+                $User->fresh(),
+                $User->default_warehouse_id ? (int) $User->default_warehouse_id : null,
+                $User->default_cash_drawer_id ? (int) $User->default_cash_drawer_id : null
+            );
 
         }, 10);
 
@@ -228,20 +243,25 @@ class UserController extends BaseController
         $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $assigned_warehouses)->pluck('id')->toArray();
         $roles = Role::where('deleted_at', null)->get(['id', 'name']);
         $all_warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+        $cash_drawers = CashDrawer::where('deleted_at', null)->where('is_active', true)->get(['id', 'warehouse_id', 'name', 'code']);
 
         return response()->json([
             'user' => $user,
             'assigned_warehouses' => $warehouses,
             'roles' => $roles,
             'warehouses' => $all_warehouses,
+            'cash_drawers' => $cash_drawers,
         ]);
     }
 
     // ------------- UPDATE  USER ---------\\
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, UserOperationalAssignmentService $assignmentService)
     {
         $this->authorizeForUser($request->user('api'), 'update', User::class);
+        if (($request->filled('default_warehouse_id') || $request->filled('default_cash_drawer_id')) && ! $request->user('api')->hasPermissionName('user_operational_assignment')) {
+            abort(403);
+        }
 
         $this->validate($request, [
             'email' => 'required|email|unique:users',
@@ -309,6 +329,8 @@ class UserController extends BaseController
                 'avatar' => $filename,
                 'statut' => $request['statut'],
                 'is_all_warehouses' => $is_all_warehouses,
+                'default_warehouse_id' => $request->input('default_warehouse_id') ?: null,
+                'default_cash_drawer_id' => $request->input('default_cash_drawer_id') ?: null,
                 'role_id' => $request['role'],
 
             ]);
@@ -320,6 +342,11 @@ class UserController extends BaseController
 
             $user_saved = User::where('deleted_at', '=', null)->findOrFail($id);
             $user_saved->assignedWarehouses()->sync($request['assigned_to']);
+            app(UserOperationalAssignmentService::class)->validateUserDefaults(
+                $user_saved->fresh(),
+                $request->input('default_warehouse_id') ? (int) $request->input('default_warehouse_id') : null,
+                $request->input('default_cash_drawer_id') ? (int) $request->input('default_cash_drawer_id') : null
+            );
 
         }, 10);
 

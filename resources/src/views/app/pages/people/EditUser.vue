@@ -216,6 +216,77 @@
               </b-card>
             </b-col>
 
+            <b-col md="6" sm="12" class="mb-3">
+              <b-card class="h-100">
+                <b-card-header class="pb-2">
+                  <h6 class="mb-0">{{ $t('Operational_Assignment') || 'Asignación operativa' }}</h6>
+                </b-card-header>
+                <b-card-body class="pt-3">
+                  <b-form-group :label="$t('Default_Warehouse') || 'Almacén habitual'">
+                    <v-select
+                      v-model="user.default_warehouse_id"
+                      :reduce="label => label.value"
+                      :placeholder="$t('PleaseSelect')"
+                      :options="operationalWarehouseOptions()"
+                      @input="onDefaultWarehouseChange"
+                    />
+                  </b-form-group>
+                  <b-form-group :label="$t('Default_Cash_Drawer') || 'Caja física habitual'" class="mb-0">
+                    <v-select
+                      v-model="user.default_cash_drawer_id"
+                      :reduce="label => label.value"
+                      :placeholder="$t('PleaseSelect')"
+                      :options="cashDrawerOptions(user.default_warehouse_id)"
+                    />
+                  </b-form-group>
+                </b-card-body>
+              </b-card>
+            </b-col>
+
+            <b-col md="6" sm="12" class="mb-3">
+              <b-card class="h-100">
+                <b-card-header class="pb-2 d-flex align-items-center justify-content-between">
+                  <h6 class="mb-0">{{ $t('Temporary_Assignment') || 'Asignación temporal' }}</h6>
+                  <b-badge v-if="activeTemporaryAssignment" variant="warning">{{ $t('Active') || 'Activa' }}</b-badge>
+                </b-card-header>
+                <b-card-body class="pt-3">
+                  <div v-if="activeTemporaryAssignment" class="mb-3">
+                    <div class="text-muted small">{{ $t('Current_Assignment') || 'Asignación actual' }}</div>
+                    <div>{{ activeTemporaryAssignment.temporary_warehouse_name || '-' }} / {{ activeTemporaryAssignment.temporary_cash_drawer_name || '-' }}</div>
+                    <b-button size="sm" variant="outline-danger" class="mt-2" @click="End_Temporary_Assignment">
+                      {{ $t('End') || 'Finalizar' }}
+                    </b-button>
+                  </div>
+                  <b-form-group :label="$t('Warehouse') || 'Almacén'">
+                    <v-select
+                      v-model="temporaryAssignment.temporary_warehouse_id"
+                      :reduce="label => label.value"
+                      :placeholder="$t('PleaseSelect')"
+                      :options="operationalWarehouseOptions()"
+                      @input="onTemporaryWarehouseChange"
+                    />
+                  </b-form-group>
+                  <b-form-group :label="$t('Cash_Drawer') || 'Caja física'">
+                    <v-select
+                      v-model="temporaryAssignment.temporary_cash_drawer_id"
+                      :reduce="label => label.value"
+                      :placeholder="$t('PleaseSelect')"
+                      :options="cashDrawerOptions(temporaryAssignment.temporary_warehouse_id)"
+                    />
+                  </b-form-group>
+                  <b-form-group :label="$t('Ends_At') || 'Termina en'">
+                    <b-form-input type="datetime-local" v-model="temporaryAssignment.ends_at"></b-form-input>
+                  </b-form-group>
+                  <b-form-group :label="$t('Reason') || 'Motivo'">
+                    <b-form-textarea rows="2" v-model="temporaryAssignment.reason"></b-form-textarea>
+                  </b-form-group>
+                  <b-button size="sm" variant="primary" :disabled="temporaryBusy" @click="Save_Temporary_Assignment">
+                    {{ $t('Assign') || 'Asignar temporalmente' }}
+                  </b-button>
+                </b-card-body>
+              </b-card>
+            </b-col>
+
             <b-col md="12" class="mt-3">
                 <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
                 <b-button variant="secondary" class="ml-2" @click="$router.push({ name: 'Users' })">{{$t('Cancel')}}</b-button>
@@ -245,6 +316,15 @@ export default {
       email_exist: "",
       roles: [],
       warehouses: [],
+      cash_drawers: [],
+      activeTemporaryAssignment: null,
+      temporaryBusy: false,
+      temporaryAssignment: {
+        temporary_warehouse_id: "",
+        temporary_cash_drawer_id: "",
+        ends_at: "",
+        reason: "",
+      },
       data: new FormData(),
       user: {
         id: "",
@@ -259,6 +339,8 @@ export default {
         avatar: "",
         is_all_warehouses: 1,
         record_view: false,
+        default_warehouse_id: "",
+        default_cash_drawer_id: "",
       },
       assigned_warehouses: [],
     };
@@ -295,6 +377,8 @@ export default {
       self.data.append("statut", self.user.statut);
       self.data.append("is_all_warehouses", self.user.is_all_warehouses);
       self.data.append("record_view", self.user.record_view ? 1 : 0);
+      self.data.append("default_warehouse_id", self.user.default_warehouse_id || "");
+      self.data.append("default_cash_drawer_id", self.user.default_cash_drawer_id || "");
       self.data.append("avatar", self.user.avatar);
 
       // append array assigned_warehouses
@@ -339,8 +423,10 @@ export default {
           this.user = response.data.user;
           this.roles = response.data.roles;
           this.warehouses = response.data.warehouses;
+          this.cash_drawers = response.data.cash_drawers || [];
           this.assigned_warehouses = response.data.assigned_warehouses || [];
           this.user.NewPassword = null;
+          this.Get_Operational_Assignment();
           NProgress.done();
           this.isLoading = false;
         })
@@ -358,6 +444,85 @@ export default {
       if (!value.length) {
         this.assigned_warehouses = [];
       }
+      if (!this.user.is_all_warehouses && this.user.default_warehouse_id && !this.assigned_warehouses.includes(this.user.default_warehouse_id)) {
+        this.user.default_warehouse_id = "";
+        this.user.default_cash_drawer_id = "";
+      }
+    },
+
+    operationalWarehouseOptions() {
+      const ids = this.user.is_all_warehouses ? null : this.assigned_warehouses.map(id => String(id));
+      return (this.warehouses || [])
+        .filter(warehouse => !ids || ids.includes(String(warehouse.id)))
+        .map(warehouse => ({ label: warehouse.name, value: warehouse.id }));
+    },
+
+    cashDrawerOptions(warehouseId) {
+      return (this.cash_drawers || [])
+        .filter(drawer => !warehouseId || String(drawer.warehouse_id) === String(warehouseId))
+        .map(drawer => ({
+          label: drawer.code ? `${drawer.name} (${drawer.code})` : drawer.name,
+          value: drawer.id,
+        }));
+    },
+
+    onDefaultWarehouseChange() {
+      const drawers = this.cashDrawerOptions(this.user.default_warehouse_id);
+      if (!drawers.some(drawer => String(drawer.value) === String(this.user.default_cash_drawer_id))) {
+        this.user.default_cash_drawer_id = drawers.length === 1 ? drawers[0].value : "";
+      }
+    },
+
+    onTemporaryWarehouseChange() {
+      const drawers = this.cashDrawerOptions(this.temporaryAssignment.temporary_warehouse_id);
+      if (!drawers.some(drawer => String(drawer.value) === String(this.temporaryAssignment.temporary_cash_drawer_id))) {
+        this.temporaryAssignment.temporary_cash_drawer_id = drawers.length === 1 ? drawers[0].value : "";
+      }
+    },
+
+    Get_Operational_Assignment() {
+      if (!this.user.id) return;
+      axios.get(`users/${this.user.id}/operational-assignment`)
+        .then(response => {
+          this.activeTemporaryAssignment = response.data.active_temporary_assignment || null;
+        })
+        .catch(() => {});
+    },
+
+    Save_Temporary_Assignment() {
+      if (!this.temporaryAssignment.temporary_warehouse_id || !this.temporaryAssignment.temporary_cash_drawer_id) {
+        this.makeToast("warning", this.$t("PleaseSelect"), this.$t("Warning"));
+        return;
+      }
+      this.temporaryBusy = true;
+      axios.post(`users/${this.user.id}/temporary-assignment`, this.temporaryAssignment)
+        .then(() => {
+          this.makeToast("success", this.$t("Successfully_Updated"), this.$t("Success"));
+          this.temporaryAssignment = { temporary_warehouse_id: "", temporary_cash_drawer_id: "", ends_at: "", reason: "" };
+          this.Get_Operational_Assignment();
+        })
+        .catch(() => {
+          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+        })
+        .finally(() => {
+          this.temporaryBusy = false;
+        });
+    },
+
+    End_Temporary_Assignment() {
+      if (!this.activeTemporaryAssignment) return;
+      this.temporaryBusy = true;
+      axios.post(`user-operational-assignments/${this.activeTemporaryAssignment.id}/end`)
+        .then(() => {
+          this.makeToast("success", this.$t("Successfully_Updated"), this.$t("Success"));
+          this.Get_Operational_Assignment();
+        })
+        .catch(() => {
+          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+        })
+        .finally(() => {
+          this.temporaryBusy = false;
+        });
     },
 
     //------------------------------ Event Upload Avatar -------------------------------\\

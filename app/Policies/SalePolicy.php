@@ -28,9 +28,7 @@ class SalePolicy
      */
     public function view(User $user)
     {
-        $permission = Permission::where('name', 'Sales_view')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('Sales_view');
     }
 
     /**
@@ -40,9 +38,7 @@ class SalePolicy
      */
     public function create(User $user)
     {
-        $permission = Permission::where('name', 'Sales_add')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('Sales_add');
     }
 
     /**
@@ -53,9 +49,7 @@ class SalePolicy
      */
     public function update(User $user)
     {
-        $permission = Permission::where('name', 'Sales_edit')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('Sales_edit');
     }
 
     /**
@@ -66,107 +60,77 @@ class SalePolicy
      */
     public function delete(User $user)
     {
-        $permission = Permission::where('name', 'Sales_delete')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('Sales_delete');
     }
 
     public function Reports_sales(User $user)
     {
-        $permission = Permission::where('name', 'Reports_sales')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('Reports_sales');
     }
 
     public function Sales_pos(User $user)
     {
-        $permission = Permission::where('name', 'Pos_view')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('Pos_view');
     }
 
     public function product_sales_report(User $user)
     {
-        $permission = Permission::where('name', 'product_sales_report')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('product_sales_report');
     }
 
     public function report_sales_by_category(User $user)
     {
-        $permission = Permission::where('name', 'report_sales_by_category')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('report_sales_by_category');
     }
 
     public function report_sales_by_brand(User $user)
     {
-        $permission = Permission::where('name', 'report_sales_by_brand')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('report_sales_by_brand');
     }
 
     public function draft_invoices_report(User $user)
     {
-        $permission = Permission::where('name', 'draft_invoices_report')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('draft_invoices_report');
     }
 
     public function discount_summary_report(User $user)
     {
-        $permission = Permission::where('name', 'discount_summary_report')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('discount_summary_report');
     }
 
     public function tax_summary_report(User $user)
     {
-        $permission = Permission::where('name', 'tax_summary_report')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('tax_summary_report');
     }
 
     public function cash_register_report(User $user)
     {
-        $permission = Permission::where('name', 'cash_register_report')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('cash_register_report');
     }
 
     public function customer_display_screen_setup(User $user)
     {
-        $permission = Permission::where('name', 'customer_display_screen_setup')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('customer_display_screen_setup');
     }
 
     public function quickbooks_settings(User $user)
     {
-        $permission = Permission::where('name', 'quickbooks_settings')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('quickbooks_settings');
     }
 
     public function zatca_settings(User $user)
     {
-        $permission = Permission::where('name', 'zatca_settings')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('zatca_settings');
     }
 
     public function customer_loyalty_points_report(User $user)
     {
-        $permission = Permission::where('name', 'customer_loyalty_points_report')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('customer_loyalty_points_report');
     }
 
     public function report_warranty(User $user)
     {
-        $permission = Permission::where('name', 'report_warranty')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('report_warranty');
     }
 
     public function check_record(User $user, $sale)

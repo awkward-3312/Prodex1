@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashRegister;
+use App\Models\CashDrawer;
 use App\Models\PaymentMethod;
 use App\Models\PaymentSale;
 use App\Models\PaymentSaleReturns;
@@ -13,6 +14,7 @@ use App\Models\StoreCreditVoucherTransaction;
 use App\Models\User;
 use App\Models\UserWarehouse;
 use App\Models\Warehouse;
+use App\Services\UserOperationalAssignmentService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,20 +24,28 @@ use Illuminate\Support\Facades\Schema;
 
 class CashRegisterController extends BaseController
 {
-    public function openRegister(Request $request)
+    public function openRegister(Request $request, UserOperationalAssignmentService $assignmentService)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
 
         $data = $request->validate([
-            'warehouse_id' => 'required|integer|exists:warehouses,id',
+            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
+            'cash_drawer_id' => 'nullable|integer|exists:cash_drawers,id',
             'opening_balance' => 'required|numeric',
             'notes' => 'nullable|string',
         ]);
 
-        $user_id = Auth::user()->id;
+        $user = Auth::user();
+        $effective = $assignmentService->effectiveAssignment($user);
+        $warehouseId = $data['warehouse_id'] ?? $effective['warehouse_id'];
+        $cashDrawerId = $data['cash_drawer_id'] ?? $effective['cash_drawer_id'];
+        $assignmentService->validateRequestedAssignment($user, $warehouseId ? (int) $warehouseId : null, $cashDrawerId ? (int) $cashDrawerId : null);
+
+        $user_id = $user->id;
 
         $existing = CashRegister::where('user_id', $user_id)
-            ->where('warehouse_id', $data['warehouse_id'])
+            ->where('warehouse_id', $warehouseId)
+            ->where('cash_drawer_id', $cashDrawerId)
             ->where('status', 'open')
             ->first();
         if ($existing) {
@@ -44,27 +54,35 @@ class CashRegisterController extends BaseController
 
         $register = CashRegister::create([
             'user_id' => $user_id,
-            'warehouse_id' => $data['warehouse_id'],
+            'warehouse_id' => $warehouseId,
+            'cash_drawer_id' => $cashDrawerId,
             'opening_balance' => $data['opening_balance'],
             'status' => 'open',
             'opened_at' => Carbon::now(),
             'notes' => $data['notes'] ?? null,
         ]);
 
-        return response()->json(['success' => true, 'register' => $register]);
+        return response()->json(['success' => true, 'register' => $register->load('warehouse', 'cashDrawer')]);
     }
 
     public function getCurrentRegister(Request $request, $userId)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        if (! Auth::user()->hasPermissionName('cash_register_override_assignment') && (int) $userId !== (int) Auth::id()) {
+            abort(403);
+        }
 
         $warehouseId = $request->query('warehouse_id');
-        $query = CashRegister::with('user', 'warehouse')
+        $cashDrawerId = $request->query('cash_drawer_id');
+        $query = CashRegister::with('user', 'warehouse', 'cashDrawer')
             ->where('user_id', $userId)
             ->where('status', 'open');
         // If a specific warehouse is selected, filter; otherwise return the latest open register across warehouses
         if ($warehouseId) {
             $query->where('warehouse_id', $warehouseId);
+        }
+        if ($cashDrawerId) {
+            $query->where('cash_drawer_id', $cashDrawerId);
         }
         $register = $query->orderByDesc('id')->first();
 
@@ -75,7 +93,7 @@ class CashRegisterController extends BaseController
         ]);
     }
 
-    public function cashInOut(Request $request)
+    public function cashInOut(Request $request, UserOperationalAssignmentService $assignmentService)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
 
@@ -87,6 +105,9 @@ class CashRegisterController extends BaseController
         ]);
 
         $register = CashRegister::findOrFail($data['register_id']);
+        if (! Auth::user()->hasPermissionName('cash_register_override_assignment') && (int) $register->user_id !== (int) Auth::id()) {
+            abort(403);
+        }
         if ($register->status !== 'open') {
             return response()->json(['success' => false, 'message' => 'Register is closed'], 409);
         }
@@ -104,7 +125,7 @@ class CashRegisterController extends BaseController
         return response()->json(['success' => true, 'register' => $register]);
     }
 
-    public function closeRegister(Request $request)
+    public function closeRegister(Request $request, UserOperationalAssignmentService $assignmentService)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
 
@@ -125,6 +146,9 @@ class CashRegisterController extends BaseController
         ]);
 
         $register = CashRegister::findOrFail($data['register_id']);
+        if (! Auth::user()->hasPermissionName('cash_register_override_assignment') && (int) $register->user_id !== (int) Auth::id()) {
+            abort(403);
+        }
         if ($register->status !== 'open') {
             return response()->json(['success' => false, 'message' => 'Register already closed'], 409);
         }
@@ -168,6 +192,8 @@ class CashRegisterController extends BaseController
         $register->closed_by_user_name_snapshot = $identity['closed_by_user_name'];
         $register->warehouse_id_snapshot = $identity['warehouse_id'];
         $register->warehouse_name_snapshot = $identity['warehouse_name'];
+        $register->cash_drawer_name_snapshot = $identity['cash_drawer_name'];
+        $register->cash_drawer_code_snapshot = $identity['cash_drawer_code'];
         $register->tenant_id_snapshot = $identity['tenant_id'];
         $register->opened_date_snapshot = $identity['opened_date'];
         $register->opened_time_snapshot = $identity['opened_time'];
@@ -235,7 +261,7 @@ class CashRegisterController extends BaseController
             ->select(
                 'payment_sales.payment_method_id',
                 DB::raw("COALESCE(payment_methods.name, 'Unknown') as name"),
-                DB::raw('SUM(payment_sales.montant - COALESCE(payment_sales.change, 0)) as total')
+                DB::raw('SUM(payment_sales.montant) as total')
             )
             ->get();
 
@@ -282,7 +308,7 @@ class CashRegisterController extends BaseController
                 ->where('sale_returns.warehouse_id', $register->warehouse_id)
                 ->whereIn('payment_sale_returns.payment_method_id', $cashMethodIds)
                 ->whereBetween('sale_returns.created_at', [$from, $to])
-                ->sum(DB::raw('payment_sale_returns.montant - COALESCE(payment_sale_returns.change, 0)'));
+                ->sum('payment_sale_returns.montant');
         }
 
         $totalSales = Sale::whereNull('deleted_at')
@@ -397,6 +423,7 @@ class CashRegisterController extends BaseController
         $openedByName = $this->userDisplayName($register->user);
         $closedByName = $this->userDisplayName($closedByUser);
         $warehouseName = optional($register->warehouse)->name;
+        $cashDrawer = $register->cashDrawer ?: ($register->cash_drawer_id ? CashDrawer::whereNull('deleted_at')->find($register->cash_drawer_id) : null);
         $durationSeconds = $openedAt ? $openedAt->diffInSeconds($closedAt) : null;
 
         return [
@@ -409,6 +436,9 @@ class CashRegisterController extends BaseController
             'cashier_name' => $openedByName,
             'warehouse_id' => $register->warehouse_id,
             'warehouse_name' => $warehouseName,
+            'cash_drawer_id' => $register->cash_drawer_id,
+            'cash_drawer_name' => $cashDrawer?->name,
+            'cash_drawer_code' => $cashDrawer?->code,
             'tenant_id' => function_exists('tenant') && tenant() ? (string) tenant()->id : null,
             'opened_at' => $openedAt ? $openedAt->format('Y-m-d H:i:s') : null,
             'opened_date' => $openedAt ? $openedAt->toDateString() : null,
@@ -511,7 +541,7 @@ class CashRegisterController extends BaseController
                 ->toArray();
         }
 
-        $query = CashRegister::with(['user:id,firstname,lastname,username', 'warehouse:id,name'])
+        $query = CashRegister::with(['user:id,firstname,lastname,username', 'warehouse:id,name', 'cashDrawer:id,name,code'])
             ->where(function ($q) use ($view_records) {
                 if (! $view_records) {
                     return $q->where('user_id', Auth::user()->id);
@@ -586,6 +616,10 @@ class CashRegisterController extends BaseController
             $item['user_id'] = $r->user_id;
             $item['warehouse_id'] = $r->warehouse_id;
             $item['register_number'] = $r->register_number_snapshot ?: 'Register #'.$r->id;
+            $item['session_number'] = 'Sesión #'.$r->id;
+            $item['cash_drawer_id'] = $r->cash_drawer_id;
+            $item['cash_drawer_name'] = $r->cash_drawer_name_snapshot ?: optional($r->cashDrawer)->name;
+            $item['cash_drawer_code'] = $r->cash_drawer_code_snapshot ?: optional($r->cashDrawer)->code;
             $item['cashier_firstname'] = null;
             $item['cashier_lastname'] = null;
             $item['cashier_username'] = null;

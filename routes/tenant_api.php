@@ -507,6 +507,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
         Route::post('cash-registers/close', 'CashRegisterController@closeRegister');
         Route::get('cash-registers/current/{user_id}', 'CashRegisterController@getCurrentRegister');
         Route::post('cash-registers/cash-move', 'CashRegisterController@cashInOut');
+        Route::resource('cash-drawers', 'CashDrawerController')->except(['create', 'edit', 'show']);
         Route::get('report/cash_registers', 'CashRegisterController@report');
     });
     Route::get('report/warranty_guarantee', 'ReportController@warrantyGuaranteeReport');
@@ -900,6 +901,9 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::get('get_user_auth', 'UserController@GetUserAuth');
     Route::get('users_list_for_select', 'UserController@listForSelect');
     Route::resource('users', 'UserController')->middleware('tenant.limit:max_users');
+    Route::get('users/{user}/operational-assignment', 'UserOperationalAssignmentController@show');
+    Route::post('users/{user}/temporary-assignment', 'UserOperationalAssignmentController@storeTemporary');
+    Route::post('user-operational-assignments/{assignment}/end', 'UserOperationalAssignmentController@end');
     Route::put('users_switch_activated/{id}', 'UserController@IsActivated');
     Route::get('Get_user_profile', 'UserController@GetInfoProfile');
     Route::put('update_user_profile/{id}', 'UserController@updateProfile');

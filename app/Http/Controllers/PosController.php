@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\CustomEmail;
 use App\Models\Account;
 use App\Models\Brand;
+use App\Models\CashDrawer;
 use App\Models\Category;
 use App\Models\Client;
 use App\Models\DraftSale;
@@ -35,6 +36,7 @@ use App\Services\BatchService;
 use App\Services\PromotionEngine;
 use App\Services\SerialNumberService;
 use App\Services\TenantTaxConfigResolver;
+use App\Services\UserOperationalAssignmentService;
 use App\utils\helpers;
 use Carbon\Carbon;
 use DB;
@@ -98,13 +100,14 @@ class PosController extends BaseController
         return $value['imei_number'] ?? null;
     }
 
-    public function CreatePOS(Request $request)
+    public function CreatePOS(Request $request, UserOperationalAssignmentService $assignmentService)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
 
         request()->validate([
             'client_id' => 'required',
             'warehouse_id' => 'required',
+            'cash_drawer_id' => 'nullable|integer|exists:cash_drawers,id',
             'payments' => 'required|array',
             'payments.*.amount' => 'required|numeric',
             'payments.*.payment_method_id' => 'required',
@@ -112,6 +115,12 @@ class PosController extends BaseController
             'store_credit_vouchers.*.code' => 'required_with:store_credit_vouchers|string',
             'store_credit_vouchers.*.amount' => 'nullable|numeric|min:0',
         ]);
+
+        $assignmentService->validateRequestedAssignment(
+            $request->user('api'),
+            (int) $request->warehouse_id,
+            $request->input('cash_drawer_id') ? (int) $request->input('cash_drawer_id') : null
+        );
 
         // Multi-Pack Selling: a pack line consumes pack_multiplier base units per
         // pack — reject if that would oversell (unless overselling is allowed).
@@ -122,10 +131,10 @@ class PosController extends BaseController
         $requestedStoreCredit = collect($request->input('store_credit_vouchers', []))->sum(function ($voucher) {
             return (float) ($voucher['amount'] ?? 0);
         });
-        if (count($request->payments) > 1 && ($totalPaid + $requestedStoreCredit) > $request->GrandTotal) {
+        if ($requestedStoreCredit <= 0 && count($request->payments) > 1 && $totalPaid > $request->GrandTotal) {
             return response()->json([
                 'message' => 'Total Paid Exceeds Grand Total',
-                'change_return' => ($totalPaid + $requestedStoreCredit) - $request->GrandTotal,
+                'change_return' => $totalPaid - $request->GrandTotal,
             ], 422);
         }
 
@@ -351,24 +360,16 @@ class PosController extends BaseController
                 $storeCreditApplied = $this->redeemStoreCreditVouchers($request, $order);
                 $remainingAfterStoreCredit = max(0, (float) $order->GrandTotal - $storeCreditApplied);
 
-                if ($storeCreditApplied > 0 && $totalPaid > $remainingAfterStoreCredit + 0.005) {
-                    throw new \Exception('El pago real excede el total pendiente después de aplicar el vale.');
-                }
+                $normalizedPayments = $this->normalizePosPayments((array) $request->payments, $remainingAfterStoreCredit);
+                $totalRegularApplied = collect($normalizedPayments)->sum('applied_amount');
 
-                foreach ($request->payments as $index => $payment) {
-                    if (isset($payment['amount']) && $payment['amount'] > 0) {
+                foreach ($normalizedPayments as $index => $payment) {
+                    if ($payment['applied_amount'] > 0) {
                         // Prefer per-line account selection; no global account fallback
                         $accountId = $payment['account_id'] ?? null;
 
-                        $originalAmount = $payment['amount'];
-                        $paymentAmount = $originalAmount;
-                        $changeReturn = 0;
-
-                        // Adjust if overpaid in single-payment mode
-                        if (count($request->payments) === 1 && $storeCreditApplied <= 0 && $originalAmount > $request->GrandTotal) {
-                            $paymentAmount = $request->GrandTotal;
-                            $changeReturn = $originalAmount - $request->GrandTotal;
-                        }
+                        $paymentAmount = $payment['applied_amount'];
+                        $changeReturn = $payment['change'];
 
                         if ($payment['payment_method_id'] == 1 || $payment['payment_method_id'] == '1') {
 
@@ -482,7 +483,7 @@ class PosController extends BaseController
                     }
                 }
 
-                $totalPaidAdjusted = min($totalPaid + $storeCreditApplied, $request->GrandTotal);
+                $totalPaidAdjusted = min($totalRegularApplied + $storeCreditApplied, $request->GrandTotal);
                 $due = $order->GrandTotal - $totalPaidAdjusted;
 
                 // 🪙 Points logic
@@ -773,6 +774,57 @@ class PosController extends BaseController
         }
 
         return $appliedTotal;
+    }
+
+    private function normalizePosPayments(array $payments, float $remainingDue): array
+    {
+        $remaining = round(max(0, $remainingDue), 2);
+        $normalized = [];
+
+        foreach ($payments as $payment) {
+            $tendered = round((float) ($payment['amount'] ?? 0), 2);
+            if ($tendered <= 0) {
+                $normalized[] = array_merge($payment, [
+                    'tendered_amount' => 0.0,
+                    'applied_amount' => 0.0,
+                    'change' => 0.0,
+                ]);
+                continue;
+            }
+
+            $isCash = $this->isCashPaymentMethod($payment['payment_method_id'] ?? null);
+            $applied = round(min($tendered, $remaining), 2);
+            $change = 0.0;
+
+            if ($tendered > $remaining + 0.005) {
+                if (! $isCash) {
+                    throw new \Exception('El pago no efectivo excede el saldo pendiente.');
+                }
+                $change = round($tendered - $remaining, 2);
+            }
+
+            $normalized[] = array_merge($payment, [
+                'tendered_amount' => $tendered,
+                'applied_amount' => $applied,
+                'change' => $change,
+            ]);
+
+            $remaining = round(max(0, $remaining - $applied), 2);
+        }
+
+        return $normalized;
+    }
+
+    private function isCashPaymentMethod($paymentMethodId): bool
+    {
+        if ($paymentMethodId === null || $paymentMethodId === '') {
+            return false;
+        }
+
+        $method = PaymentMethod::whereNull('deleted_at')->find($paymentMethodId);
+        $name = strtolower(trim((string) optional($method)->name));
+
+        return str_contains($name, 'cash') || str_contains($name, 'efectivo');
     }
 
     private function assertStoreCreditVoucherUsable(StoreCreditVoucher $voucher, int $clientId): void
@@ -1131,15 +1183,22 @@ class PosController extends BaseController
 
     // ------------ submit_sale_from_draft --------------\\
 
-    public function submit_sale_from_draft(Request $request)
+    public function submit_sale_from_draft(Request $request, UserOperationalAssignmentService $assignmentService)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
 
         request()->validate([
             'client_id' => 'required',
             'warehouse_id' => 'required',
+            'cash_drawer_id' => 'required|integer|exists:cash_drawers,id',
             'payment.amount' => 'required',
         ]);
+
+        $assignmentService->validateRequestedAssignment(
+            $request->user('api'),
+            (int) $request->warehouse_id,
+            (int) $request->cash_drawer_id
+        );
 
         // Multi-Pack Selling: reject pack lines that would oversell base stock.
         $this->assertPackStockSufficient($request);
@@ -2097,7 +2156,7 @@ class PosController extends BaseController
 
     // --------------------- Get Element POS ------------------------\\
 
-    public function GetELementPos(Request $request)
+    public function GetELementPos(Request $request, UserOperationalAssignmentService $assignmentService)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         $clients = Client::where('deleted_at', '=', null)->get(['id', 'name', 'phone']);
@@ -2106,6 +2165,7 @@ class PosController extends BaseController
 
         // get warehouses assigned to user
         $user_auth = auth()->user();
+        $effectiveAssignment = $assignmentService->effectiveAssignment($user_auth);
         if ($user_auth->is_all_warehouses) {
             $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
 
@@ -2164,6 +2224,13 @@ class PosController extends BaseController
         $products_per_page = $pos_setting ? $pos_setting->products_per_page : 12;
         $payment_methods = PaymentMethod::where('deleted_at', '=', null)->get(['id', 'name']);
         $languages_available = Language::where('is_active', true)->get(['name', 'locale', 'flag']);
+        $warehouseIds = $warehouses->pluck('id')->all();
+        $cash_drawers = CashDrawer::whereNull('deleted_at')
+            ->where('is_active', true)
+            ->whereIn('warehouse_id', $warehouseIds)
+            ->orderBy('warehouse_id')
+            ->orderBy('name')
+            ->get(['id', 'warehouse_id', 'name', 'code']);
 
         return response()->json([
             // Company / receipt header info (used for POS receipt + offline printing fallback)
@@ -2185,7 +2252,18 @@ class PosController extends BaseController
             ],
             'stripe_key' => $stripe_key,
             'brands' => $brands,
-            'defaultWarehouse' => $defaultWarehouse,
+            'defaultWarehouse' => $effectiveAssignment['warehouse_id'] ?: $defaultWarehouse,
+            'defaultCashDrawer' => $effectiveAssignment['cash_drawer_id'],
+            'cash_drawers' => $cash_drawers,
+            'effective_assignment' => [
+                'source' => $effectiveAssignment['source'],
+                'warehouse_id' => $effectiveAssignment['warehouse_id'],
+                'cash_drawer_id' => $effectiveAssignment['cash_drawer_id'],
+                'can_override' => $effectiveAssignment['can_override'],
+                'warehouse_name' => optional($effectiveAssignment['warehouse'])->name,
+                'cash_drawer_name' => optional($effectiveAssignment['cash_drawer'])->name,
+                'cash_drawer_code' => optional($effectiveAssignment['cash_drawer'])->code,
+            ],
             'defaultClient' => $defaultClient,
             'default_client_name' => $default_client_name,
             'clients' => $clients,

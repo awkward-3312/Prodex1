@@ -28,9 +28,7 @@ class UserPolicy
      */
     public function view(User $user)
     {
-        $permission = Permission::where('name', 'users_view')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('users_view');
     }
 
     /**
@@ -40,9 +38,7 @@ class UserPolicy
      */
     public function create(User $user)
     {
-        $permission = Permission::where('name', 'users_add')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('users_add');
     }
 
     /**
@@ -53,9 +49,7 @@ class UserPolicy
      */
     public function update(User $user)
     {
-        $permission = Permission::where('name', 'users_edit')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('users_edit');
     }
 
     /**
@@ -66,9 +60,7 @@ class UserPolicy
      */
     public function delete(User $user)
     {
-        $permission = Permission::where('name', 'users_delete')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('users_delete');
     }
 
     public function backup(User $user)
@@ -96,16 +88,12 @@ class UserPolicy
 
     public function users_report(User $user)
     {
-        $permission = Permission::where('name', 'users_report')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('users_report');
     }
 
     public function seller_report(User $user)
     {
-        $permission = Permission::where('name', 'seller_report')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('seller_report');
     }
 
     /**

@@ -16,6 +16,11 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_16_140000_create_store_credit_vouchers_table.php',
         'database/migrations/tenant/2026_08_16_140100_create_store_credit_voucher_transactions_table.php',
         'database/migrations/tenant/2026_08_16_140200_add_store_credit_columns_to_sales_and_returns.php',
+        'database/migrations/tenant/2026_08_16_150000_create_cash_drawers_table.php',
+        'database/migrations/tenant/2026_08_16_150100_add_operational_defaults_to_users_table.php',
+        'database/migrations/tenant/2026_08_16_150200_create_user_operational_assignments_table.php',
+        'database/migrations/tenant/2026_08_16_150300_add_cash_drawer_snapshot_to_cash_registers_table.php',
+        'database/migrations/tenant/2026_08_16_150400_seed_operational_assignment_permissions.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -94,6 +99,15 @@ class TenantSchemaHealthService
             'closed_time_snapshot',
             'session_duration_seconds',
             'closing_status',
+            'cash_drawer_id',
+            'cash_drawer_name_snapshot',
+            'cash_drawer_code_snapshot',
+        ]);
+        $this->requireTable($schema, $missing, 'cash_drawers');
+        $this->requireTable($schema, $missing, 'user_operational_assignments');
+        $this->requireColumns($schema, $missing, 'users', [
+            'default_warehouse_id',
+            'default_cash_drawer_id',
         ]);
 
         $this->requireTable($schema, $missing, 'store_credit_vouchers');

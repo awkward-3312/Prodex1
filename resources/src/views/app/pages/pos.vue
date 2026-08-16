@@ -293,10 +293,20 @@
     <!-- ============================================================
          MAIN GRID  (cart left | products right)
          ============================================================ -->
-    <div v-if="productsReady" class="pos-shell-main" style="flex: 1 1 auto; display: flex; flex-direction: row; align-items: stretch; min-height: 0; overflow: hidden;">
+    <div
+      v-if="productsReady"
+      ref="posShellMain"
+      class="pos-shell-main"
+      :class="{ 'is-resizing': activePosResizer }"
+      style="flex: 1 1 auto; display: flex; flex-direction: row; align-items: stretch; min-height: 0; overflow: hidden;"
+    >
 
       <!-- ============ CART (LEFT) ============ -->
-      <aside class="pos-shell-cart-aside" style="display: grid; grid-template-rows: 1fr auto; border-right: 1px solid #e6e6ec; background: #ffffff; min-height: 0; overflow: hidden;">
+      <aside
+        ref="posCartAside"
+        class="pos-shell-cart-aside"
+        :style="cartAsideStyle"
+      >
 
         <!-- Mobile-only cart header (visual label, matches mockup) -->
         <div class="pos-shell-mobile-cart-header">
@@ -502,8 +512,18 @@
           </div>
         </div>
 
+        <div
+          class="pos-shell-resizer pos-shell-resizer-horizontal"
+          :class="{ 'is-active': activePosResizer === 'horizontal' }"
+          @mousedown.prevent="startPosHorizontalResize"
+          :title="$t('Resize') || 'Ajustar'"
+          aria-hidden="true"
+        >
+          <span></span>
+        </div>
+
         <!-- Totals / charges -->
-        <div class="pos-shell-totals" style="border-top: 1px solid #e6e6ec; padding: 8px 12px; background: #f7f7fb;">
+        <div class="pos-shell-totals" style="padding: 8px 12px; background: #f7f7fb;">
 
           <!-- Charges row — matches POS.html FieldNum (no uppercase, prefix/suffix inside box without borders) -->
           <div class="pos-shell-charges-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
@@ -664,6 +684,16 @@
           </button>
         </div>
       </aside>
+
+      <div
+        class="pos-shell-resizer pos-shell-resizer-vertical"
+        :class="{ 'is-active': activePosResizer === 'vertical' }"
+        @mousedown.prevent="startPosVerticalResize"
+        :title="$t('Resize') || 'Ajustar'"
+        aria-hidden="true"
+      >
+        <span></span>
+      </div>
 
       <!-- ============ PRODUCTS (RIGHT) ============ -->
       <section class="pos-shell-section" style="flex: 1 1 auto; min-width: 0; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; background: #ffffff; overflow: hidden;">
@@ -1046,6 +1076,7 @@
     :currency="currentUser.currency"
     :client-id="selectedClientId"
     :warehouse-id="sale.warehouse_id"
+    :cash-drawer-id="sale.cash_drawer_id"
     :sale="sale"
     :details="details"
     :grand-total="GrandTotal"
@@ -2847,7 +2878,20 @@
     <b-modal id="OpenRegisterModal" :title="$t('Open Register')" hide-footer>
       <div class="form-group">
         <label>{{$t('warehouse')}}</label>
-        <b-form-select v-model="registerForm.warehouse_id" :options="warehouseOptions"></b-form-select>
+        <b-form-select
+          v-model="registerForm.warehouse_id"
+          :options="warehouseOptions"
+          :disabled="!assignmentOverrideAllowed"
+          @change="onRegisterWarehouseChange"
+        ></b-form-select>
+      </div>
+      <div class="form-group">
+        <label>{{ $t('Cash_Drawer') || 'Caja física' }}</label>
+        <b-form-select
+          v-model="registerForm.cash_drawer_id"
+          :options="registerCashDrawerOptions"
+          :disabled="!assignmentOverrideAllowed"
+        ></b-form-select>
       </div>
       <div class="form-group">
         <label>{{$t('Opening_Balance')}}</label>
@@ -3538,6 +3582,10 @@ export default {
     return {
       // ===== Mobile UI state (drives the phone layout) =====
       mobileActiveTab: 'home', // home | cart | hold | recent | more
+      posSplitVertical: 50,
+      posSplitHorizontal: 58,
+      activePosResizer: null,
+      posResizerFrame: null,
 
       // Calculator widget state
       calc: {
@@ -3614,6 +3662,9 @@ export default {
       units: [],
       unitsByProductId: {},
       warehouses: [],
+      cash_drawers: [],
+      effectiveAssignment: null,
+      assignmentOverrideAllowed: false,
       payments: [],
       generatedReturnVoucher: null,
       products: [],
@@ -3741,6 +3792,7 @@ export default {
       public_invoice_url: '',
       sale: {
         warehouse_id: "",
+        cash_drawer_id: "",
         client_id: "",
         tax_rate: 0,
         shipping: 0,
@@ -3814,7 +3866,7 @@ export default {
       registerEnabled: true,
       currentRegister: null,
       registerBusy: false,
-      registerForm: { warehouse_id: '', opening_balance: 0, notes: '' },
+      registerForm: { warehouse_id: '', cash_drawer_id: '', opening_balance: 0, notes: '' },
       closeSummary: {
         cashier: '',
         warehouse: '',
@@ -3892,6 +3944,19 @@ export default {
     // Reads from the Vuex store, falling back to the localStorage cache for offline POS.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
+    },
+    cartAsideStyle() {
+      return {
+        display: 'grid',
+        gridTemplateRows: `${this.posSplitHorizontal}% 8px minmax(0, 1fr)`,
+        flex: `0 0 ${this.posSplitVertical}%`,
+        width: `${this.posSplitVertical}%`,
+        borderRight: '0',
+        background: '#ffffff',
+        minHeight: 0,
+        minWidth: 0,
+        overflow: 'hidden',
+      };
     },
 
     // Static list of POS keyboard shortcuts used by the help modal.
@@ -4171,6 +4236,20 @@ export default {
       if (!q) return list;
       return list.filter(wh => (wh.name || '').toLowerCase().includes(q));
     },
+    cashDrawersForSaleWarehouse() {
+      return (this.cash_drawers || []).filter(drawer => String(drawer.warehouse_id) === String(this.sale.warehouse_id));
+    },
+    registerCashDrawerOptions() {
+      const options = [{ value: '', text: this.$t('Choose_Cash_Drawer') || 'Seleccione caja física' }];
+      return options.concat(
+        (this.cash_drawers || [])
+          .filter(drawer => !this.registerForm.warehouse_id || String(drawer.warehouse_id) === String(this.registerForm.warehouse_id))
+          .map(drawer => ({
+            value: drawer.id,
+            text: drawer.code ? `${drawer.name} (${drawer.code})` : drawer.name,
+          }))
+      );
+    },
 
     // Label shown on the customer trigger button
     selectedCustomerLabel() {
@@ -4442,6 +4521,14 @@ export default {
   },
   mounted() {
     this.changeSidebarProperties();
+    this.loadPosSplitPreferences();
+    try {
+      this.$watch(() => this.currentUser && this.currentUser.id, (id, oldId) => {
+        if (id && id !== oldId) {
+          this.loadPosSplitPreferences();
+        }
+      });
+    } catch (e) {}
     this.paginate_products(this.product_perPage, 0);
     // Marker class so the global :fullscreen rules at the bottom of this
     // file only fire while POS is the active page. Without it, clicking
@@ -4457,6 +4544,123 @@ export default {
   },
 
   methods: {
+    posSplitStorageKey(axis) {
+      const userId = this.currentUser && this.currentUser.id ? this.currentUser.id : 'global';
+      return `pos_split_${axis}_${userId}`;
+    },
+    readStoredPosSplit(axis, fallback, min, max) {
+      try {
+        if (typeof localStorage === 'undefined') return fallback;
+        const scoped = localStorage.getItem(this.posSplitStorageKey(axis));
+        const legacy = localStorage.getItem(`pos_split_${axis}`);
+        const raw = scoped !== null ? scoped : legacy;
+        const value = Number(raw);
+        if (!Number.isFinite(value)) return fallback;
+        return this.clampPosSplit(value, min, max);
+      } catch (e) {
+        return fallback;
+      }
+    },
+    persistPosSplit(axis, value) {
+      try {
+        if (typeof localStorage === 'undefined') return;
+        localStorage.setItem(this.posSplitStorageKey(axis), String(value));
+      } catch (e) {}
+    },
+    loadPosSplitPreferences() {
+      this.posSplitVertical = this.readStoredPosSplit('vertical', 50, 40, 74);
+      this.posSplitHorizontal = this.readStoredPosSplit('horizontal', 58, 38, 78);
+    },
+    clampPosSplit(value, min, max) {
+      return Math.min(max, Math.max(min, Number(value) || 0));
+    },
+    isDesktopPosLayout() {
+      return typeof window !== 'undefined' && window.innerWidth > 1024;
+    },
+    startPosVerticalResize(event) {
+      if (!this.isDesktopPosLayout()) return;
+      this.activePosResizer = 'vertical';
+      this.bindPosResizeListeners();
+      this.applyPosResizeBodyState(true);
+      this.onPosVerticalResize(event);
+    },
+    startPosHorizontalResize(event) {
+      if (!this.isDesktopPosLayout()) return;
+      this.activePosResizer = 'horizontal';
+      this.bindPosResizeListeners();
+      this.applyPosResizeBodyState(true);
+      this.onPosHorizontalResize(event);
+    },
+    bindPosResizeListeners() {
+      if (typeof window === 'undefined') return;
+      window.addEventListener('mousemove', this.onPosResizeMove);
+      window.addEventListener('mouseup', this.stopPosResize);
+    },
+    unbindPosResizeListeners() {
+      if (typeof window === 'undefined') return;
+      window.removeEventListener('mousemove', this.onPosResizeMove);
+      window.removeEventListener('mouseup', this.stopPosResize);
+    },
+    onPosResizeMove(event) {
+      if (!this.activePosResizer) return;
+      if (this.posResizerFrame) {
+        cancelAnimationFrame(this.posResizerFrame);
+      }
+      this.posResizerFrame = requestAnimationFrame(() => {
+        this.posResizerFrame = null;
+        if (this.activePosResizer === 'vertical') {
+          this.onPosVerticalResize(event);
+        } else if (this.activePosResizer === 'horizontal') {
+          this.onPosHorizontalResize(event);
+        }
+      });
+    },
+    onPosVerticalResize(event) {
+      const container = this.$refs.posShellMain;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      if (!rect.width) return;
+      const pct = ((event.clientX - rect.left) / rect.width) * 100;
+      this.posSplitVertical = Math.round(this.clampPosSplit(pct, 40, 74) * 10) / 10;
+    },
+    onPosHorizontalResize(event) {
+      const container = this.$refs.posCartAside;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      if (!rect.height) return;
+
+      const minCartPx = 170;
+      const minTotalsPx = 210;
+      const minPct = Math.max(38, (minCartPx / rect.height) * 100);
+      const maxPct = Math.min(78, ((rect.height - minTotalsPx) / rect.height) * 100);
+      const pct = ((event.clientY - rect.top) / rect.height) * 100;
+      this.posSplitHorizontal = Math.round(this.clampPosSplit(pct, minPct, Math.max(minPct, maxPct)) * 10) / 10;
+    },
+    stopPosResize() {
+      if (this.activePosResizer === 'vertical') {
+        this.persistPosSplit('vertical', this.posSplitVertical);
+      } else if (this.activePosResizer === 'horizontal') {
+        this.persistPosSplit('horizontal', this.posSplitHorizontal);
+      }
+      this.activePosResizer = null;
+      if (this.posResizerFrame) {
+        cancelAnimationFrame(this.posResizerFrame);
+        this.posResizerFrame = null;
+      }
+      this.unbindPosResizeListeners();
+      this.applyPosResizeBodyState(false);
+    },
+    applyPosResizeBodyState(active) {
+      try {
+        if (typeof document === 'undefined' || !document.body) return;
+        document.body.classList.toggle('pos-resizing', !!active);
+        document.body.style.userSelect = active ? 'none' : '';
+        document.body.style.webkitUserSelect = active ? 'none' : '';
+        document.body.style.cursor = active
+          ? (this.activePosResizer === 'horizontal' ? 'row-resize' : 'col-resize')
+          : '';
+      } catch (e) {}
+    },
     goToMobileTab(tab) {
       if (tab === 'home') {
         if (this.$route && this.$route.path !== '/') {
@@ -4503,11 +4707,46 @@ export default {
       return name.includes(searchLower) || phone.includes(searchLower);
     },
 
+    ensureCashDrawerAssigned() {
+      if (this.sale && this.sale.cash_drawer_id) {
+        return true;
+      }
+
+      const msg = "No tienes una caja física asignada. Contacta a tu supervisor.";
+      this.makeToast("danger", msg, this.$t("Failed"));
+      return false;
+    },
+
+    applyEffectiveOperationalAssignment() {
+      if (!this.effectiveAssignment) {
+        return;
+      }
+
+      const effectiveWarehouseId = this.effectiveAssignment.warehouse_id || this.sale.warehouse_id;
+      const effectiveCashDrawerId = this.effectiveAssignment.cash_drawer_id || '';
+
+      if (!this.assignmentOverrideAllowed) {
+        this.sale.warehouse_id = effectiveWarehouseId || '';
+        this.sale.cash_drawer_id = effectiveCashDrawerId || '';
+        this.registerForm.warehouse_id = this.sale.warehouse_id || '';
+        this.registerForm.cash_drawer_id = this.sale.cash_drawer_id || '';
+        return;
+      }
+
+      if (!this.sale.cash_drawer_id && effectiveCashDrawerId) {
+        this.sale.cash_drawer_id = effectiveCashDrawerId;
+      }
+      if (!this.registerForm.cash_drawer_id && this.sale.cash_drawer_id) {
+        this.registerForm.cash_drawer_id = this.sale.cash_drawer_id;
+      }
+    },
+
     async refreshCurrentRegister() {
       try {
         if (!this.currentUser) return;
         const params = {};
         if (this.sale && this.sale.warehouse_id) params.warehouse_id = this.sale.warehouse_id;
+        if (this.sale && this.sale.cash_drawer_id) params.cash_drawer_id = this.sale.cash_drawer_id;
         const { data } = await axios.get(`cash-registers/current/${this.currentUser.id}`, { params });
         this.currentRegister = data.register || null;
         if (data.closing_summary) {
@@ -4628,11 +4867,16 @@ export default {
         this.makeToast('warning', this.$t('Please_select_warehouse'), this.$t('Warning'));
         return;
       }
+      if (!this.registerForm.cash_drawer_id) {
+        this.makeToast('warning', this.$t('Choose_Cash_Drawer') || 'Seleccione caja física', this.$t('Warning'));
+        return;
+      }
       this.registerBusy = true;
       try {
         const { data } = await axios.post('cash-registers/open', {
           user_id: this.currentUser.id,
           warehouse_id: this.registerForm.warehouse_id,
+          cash_drawer_id: this.registerForm.cash_drawer_id,
           opening_balance: this.registerForm.opening_balance || 0,
           notes: this.registerForm.notes || ''
         });
@@ -5003,6 +5247,17 @@ export default {
           this.$t("Failed")
         );
         return false;
+      } else if (
+        this.sale.cash_drawer_id == "" ||
+        this.sale.cash_drawer_id === null ||
+        typeof this.sale.cash_drawer_id === "undefined"
+      ) {
+        this.makeToast(
+          "danger",
+          "No tienes una caja física asignada. Contacta a tu supervisor.",
+          this.$t("Failed")
+        );
+        return false;
       } else if (this.details.length === 0) {
         this.makeToast(
           "danger",
@@ -5030,6 +5285,7 @@ export default {
           draft_sale_id: this.draft_sale_id || undefined,
           client_id: this.selectedClientId,
           warehouse_id: this.sale.warehouse_id,
+          cash_drawer_id: this.sale.cash_drawer_id,
           tax_rate: this.sale.tax_rate?this.sale.tax_rate:0,
           TaxNet: this.sale.TaxNet?this.sale.TaxNet:0,
           discount: this.sale.discount?this.sale.discount:0,
@@ -5062,6 +5318,10 @@ export default {
     Submit_Payment() {
       NProgress.start();
       NProgress.set(0.1);
+      if (!this.ensureCashDrawerAssigned()) {
+        NProgress.done();
+        return;
+      }
 
       const total    = parseFloat(this.totalPaid);
       const due      = parseFloat(this.amountDueAfterStoreCredit.toFixed(this.priceDecimals));
@@ -5083,6 +5343,10 @@ export default {
     CreatePOS() {
       NProgress.start();
       NProgress.set(0.1);
+      if (!this.ensureCashDrawerAssigned()) {
+        NProgress.done();
+        return;
+      }
       if (this.paymentLines.length > 1 && this.totalPaid > this.amountDueAfterStoreCredit) {
         this.makeToast(
           "warning",
@@ -5142,6 +5406,7 @@ export default {
           .post("pos/create_pos", {
             client_id: this.selectedClientId,
             warehouse_id: this.sale.warehouse_id,
+            cash_drawer_id: this.sale.cash_drawer_id,
             tax_rate: this.sale.tax_rate?this.sale.tax_rate:0,
             TaxNet: this.sale.TaxNet?this.sale.TaxNet:0,
             discount: this.sale.discount?this.sale.discount:0,
@@ -5205,6 +5470,11 @@ export default {
     },
 
     async processPayment() {
+      if (!this.ensureCashDrawerAssigned()) {
+        this.paymentProcessing = false;
+        NProgress.done();
+        return;
+      }
       this.paymentProcessing = true;
 
       const { paymentMethod, error } = await this.stripe.createPaymentMethod({
@@ -5235,6 +5505,7 @@ export default {
           .post("pos/create_pos", {
             client_id: this.selectedClientId,
             warehouse_id: this.sale.warehouse_id,
+            cash_drawer_id: this.sale.cash_drawer_id,
             tax_rate: this.sale.tax_rate ? this.sale.tax_rate : 0,
             TaxNet: this.sale.TaxNet ? this.sale.TaxNet : 0,
             discount: this.sale.discount ? this.sale.discount : 0,
@@ -6745,6 +7016,7 @@ export default {
           this.sale.warehouse_id = (data.warehouse_id !== undefined && data.warehouse_id !== null)
             ? data.warehouse_id
             : (saleData.warehouse_id || this.sale.warehouse_id);
+          this.applyEffectiveOperationalAssignment();
           this.sale.tax_rate = saleData.tax_rate || 0;
           this.sale.TaxNet = saleData.TaxNet || 0;
           this.sale.discount = saleData.discount || 0;
@@ -8350,10 +8622,25 @@ export default {
       this.getProducts();
     },
     selectWarehouse(id) {
+      if (!this.assignmentOverrideAllowed && this.sale.warehouse_id && String(id) !== String(this.sale.warehouse_id)) {
+        this.whDrawerOpen = false;
+        this.whDrawerSearch = '';
+        return;
+      }
       this.sale.warehouse_id = (id != null) ? id : null;
+      const drawers = this.cashDrawersForSaleWarehouse;
+      if (!drawers.some(drawer => String(drawer.id) === String(this.sale.cash_drawer_id))) {
+        this.sale.cash_drawer_id = drawers.length === 1 ? drawers[0].id : '';
+      }
       this.whDrawerOpen = false;
       this.whDrawerSearch = '';
       this.Selected_Warehouse(this.sale.warehouse_id);
+    },
+    onRegisterWarehouseChange() {
+      const drawers = (this.cash_drawers || []).filter(drawer => String(drawer.warehouse_id) === String(this.registerForm.warehouse_id));
+      if (!drawers.some(drawer => String(drawer.id) === String(this.registerForm.cash_drawer_id))) {
+        this.registerForm.cash_drawer_id = drawers.length === 1 ? drawers[0].id : '';
+      }
     },
     selectCustomer(id) {
       this.selectedClientId = (id != null) ? id : '';
@@ -8871,6 +9158,9 @@ export default {
           this.clients = response.data.clients;
           this.accounts = response.data.accounts;
           this.warehouses = response.data.warehouses;
+          this.cash_drawers = response.data.cash_drawers || [];
+          this.effectiveAssignment = response.data.effective_assignment || null;
+          this.assignmentOverrideAllowed = !!(this.effectiveAssignment && this.effectiveAssignment.can_override);
           this.categories = response.data.categories;
           this.brands = response.data.brands;
           this.payment_methods = response.data.payment_methods;
@@ -8879,6 +9169,10 @@ export default {
           this.taxPolicyCountryCode = (response.data.country_code || 'HN').toUpperCase();
           this.isTaxLocked = this.taxPolicyCountryCode === 'HN';
           this.sale.warehouse_id = response.data.defaultWarehouse;
+          this.sale.cash_drawer_id = response.data.defaultCashDrawer || '';
+          this.registerForm.warehouse_id = this.sale.warehouse_id || '';
+          this.registerForm.cash_drawer_id = this.sale.cash_drawer_id || '';
+          this.applyEffectiveOperationalAssignment();
           this.selectedClientId = response.data.defaultClient;
           this.client_name = response.data.default_client_name;
           this.clientIsEligible = response.data.default_client_eligible === true || response.data.default_client_eligible === 1;
@@ -9917,12 +10211,20 @@ export default {
       if (!this.registerForm.warehouse_id && this.sale && this.sale.warehouse_id) {
         this.registerForm.warehouse_id = this.sale.warehouse_id;
       }
+      if (!this.registerForm.cash_drawer_id && this.sale && this.sale.cash_drawer_id) {
+        this.registerForm.cash_drawer_id = this.sale.cash_drawer_id;
+      }
       // Always check current register after initial data load
       this.refreshCurrentRegister();
     });
     // refresh register when warehouse changes
     this.$watch(() => this.sale.warehouse_id, () => {
       this.registerForm.warehouse_id = this.sale.warehouse_id || '';
+      this.onRegisterWarehouseChange();
+      this.refreshCurrentRegister();
+    });
+    this.$watch(() => this.sale.cash_drawer_id, () => {
+      this.registerForm.cash_drawer_id = this.sale.cash_drawer_id || '';
       this.refreshCurrentRegister();
     });
     // Reset POS after successful payment from ModernPaymentModal
@@ -9944,7 +10246,7 @@ export default {
           return;
         }
         this.paymentLines = [{
-          amount:          parseFloat(this.GrandTotal.toFixed(this.priceDecimals)),
+          amount:          parseFloat(this.amountDueAfterStoreCredit.toFixed(this.priceDecimals)),
           payment_method_id:       2,
         }];
         this.globalPaymentNote = '';
@@ -10003,6 +10305,7 @@ export default {
 
   },
   beforeDestroy() {
+    this.stopPosResize();
     try {
       if (typeof document !== 'undefined' && document.documentElement) {
         document.documentElement.classList.remove('pos-active');
@@ -10069,6 +10372,88 @@ export default {
   --success-soft: #eaf7ef;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.pos-codecanyon .pos-shell-main.is-resizing,
+.pos-codecanyon .pos-shell-main.is-resizing * {
+  user-select: none;
+}
+
+.pos-codecanyon .pos-shell-resizer {
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.pos-codecanyon .pos-shell-resizer::before {
+  content: "";
+  position: absolute;
+  background: #e6e6ec;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.pos-codecanyon .pos-shell-resizer > span {
+  position: relative;
+  display: block;
+  border-radius: 99px;
+  background: #cfcfda;
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.pos-codecanyon .pos-shell-resizer:hover,
+.pos-codecanyon .pos-shell-resizer.is-active {
+  background: #f7f7fb;
+}
+
+.pos-codecanyon .pos-shell-resizer:hover::before,
+.pos-codecanyon .pos-shell-resizer.is-active::before {
+  background: #bdb6e8;
+}
+
+.pos-codecanyon .pos-shell-resizer:hover > span,
+.pos-codecanyon .pos-shell-resizer.is-active > span {
+  opacity: 1;
+  background: #6f53d9;
+}
+
+.pos-codecanyon .pos-shell-resizer-vertical {
+  width: 8px;
+  cursor: col-resize;
+}
+
+.pos-codecanyon .pos-shell-resizer-vertical::before {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.pos-codecanyon .pos-shell-resizer-vertical > span {
+  width: 3px;
+  height: 34px;
+}
+
+.pos-codecanyon .pos-shell-resizer-horizontal {
+  height: 8px;
+  cursor: row-resize;
+  border-top: 1px solid #e6e6ec;
+  border-bottom: 1px solid #e6e6ec;
+}
+
+.pos-codecanyon .pos-shell-resizer-horizontal::before {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.pos-codecanyon .pos-shell-resizer-horizontal > span {
+  width: 34px;
+  height: 3px;
 }
 
 // Color Palette & Typography
@@ -17069,6 +17454,12 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 0;
 }
 
+.pos-codecanyon .pos-shell-totals {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 /* ============================================================
    Defensive base — fixed widths/heights moved off inline styles
    → into classes so media queries don't have to !important-fight
@@ -17545,6 +17936,9 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     flex: 0 0 auto !important;
     overflow: visible !important;
     min-height: 0;
+  }
+  .pos-codecanyon .pos-shell-resizer {
+    display: none !important;
   }
   .pos-codecanyon .pos-shell-section,
   .pos-codecanyon .pos-shell-main > section {

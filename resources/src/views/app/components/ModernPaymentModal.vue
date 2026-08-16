@@ -326,6 +326,7 @@ export default {
     // Data required to submit payment like in old POS logic
     clientId: { type: [Number, String], default: null },
     warehouseId: { type: [Number, String], default: null },
+    cashDrawerId: { type: [Number, String], default: null },
     sale: { type: Object, default: () => ({}) },
     details: { type: Array, default: () => [] },
     grandTotal: { type: Number, default: 0 },
@@ -680,6 +681,23 @@ export default {
       await this.CreatePOS();
     },
 
+    resolvedCashDrawerId() {
+      return this.cashDrawerId || (this.sale && this.sale.cash_drawer_id) || null;
+    },
+
+    ensureCashDrawerAssigned() {
+      if (this.resolvedCashDrawerId()) {
+        return true;
+      }
+
+      const msg = 'No tienes una caja física asignada. Contacta a tu supervisor.';
+      if (typeof NProgress !== 'undefined') NProgress.done();
+      this.paymentProcessing = false;
+      this.isSubmitting = false;
+      this.makeToast && this.makeToast('danger', msg, this.$t ? this.$t('Failed') : 'Failed');
+      return false;
+    },
+
     //-------------------------------- Invoice POS (mirror old) ------------------------------\\
     async Invoice_POS(id) {
       try {
@@ -893,6 +911,7 @@ export default {
         const payload = {
           client_id: this.clientId,
           warehouse_id: this.warehouseId,
+          cash_drawer_id: this.resolvedCashDrawerId(),
           tax_rate: this.sale && this.sale.tax_rate ? this.sale.tax_rate : 0,
           TaxNet: this.sale && this.sale.TaxNet ? this.sale.TaxNet : 0,
           discount: this.sale && this.sale.discount ? this.sale.discount : 0,
@@ -963,6 +982,9 @@ export default {
         NProgress.start();
         NProgress.set(0.1);
       }
+      if (!this.ensureCashDrawerAssigned()) {
+        return;
+      }
 
       const saleUuid = this.ensureSaleUuid();
 
@@ -1025,6 +1047,7 @@ export default {
         return {
           client_id: this.clientId,
           warehouse_id: this.warehouseId,
+          cash_drawer_id: this.resolvedCashDrawerId(),
           tax_rate: this.sale && this.sale.tax_rate ? this.sale.tax_rate : 0,
           TaxNet: this.sale && this.sale.TaxNet ? this.sale.TaxNet : 0,
           discount: this.sale && this.sale.discount ? this.sale.discount : 0,

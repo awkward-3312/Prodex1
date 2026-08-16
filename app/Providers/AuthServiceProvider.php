@@ -23,6 +23,7 @@ class AuthServiceProvider extends ServiceProvider
         'App\Models\Message' => 'App\Policies\MessagePolicy',
 
         'App\Models\PaymentMethod' => 'App\Policies\PaymentMethodPolicy',
+        'App\Models\CashDrawer' => 'App\Policies\CashDrawerPolicy',
         'App\Models\ErrorLog' => 'App\Policies\ErrorLogPolicy',
         'App\Models\WhatsappSetting' => 'App\Policies\WhatsappSettingPolicy',
         'App\Models\WhatsappTemplate' => 'App\Policies\WhatsappTemplatePolicy',

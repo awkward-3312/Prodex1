@@ -18,7 +18,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id', 'is_all_warehouses', 'record_view',
+        'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id', 'is_all_warehouses', 'default_warehouse_id', 'default_cash_drawer_id', 'record_view',
     ];
 
     /**
@@ -40,6 +40,8 @@ class User extends Authenticatable
         'role_id' => 'integer',
         'statut' => 'integer',
         'is_all_warehouses' => 'integer',
+        'default_warehouse_id' => 'integer',
+        'default_cash_drawer_id' => 'integer',
         'record_view' => 'boolean',
     ];
 
@@ -70,6 +72,30 @@ class User extends Authenticatable
     public function assignedWarehouses()
     {
         return $this->belongsToMany('App\Models\Warehouse');
+    }
+
+    public function defaultWarehouse()
+    {
+        return $this->belongsTo(Warehouse::class, 'default_warehouse_id');
+    }
+
+    public function defaultCashDrawer()
+    {
+        return $this->belongsTo(CashDrawer::class, 'default_cash_drawer_id');
+    }
+
+    public function operationalAssignments()
+    {
+        return $this->hasMany(UserOperationalAssignment::class);
+    }
+
+    public function hasPermissionName(string $permissionName): bool
+    {
+        return $this->roles()
+            ->whereHas('permissions', function ($query) use ($permissionName) {
+                $query->where('name', $permissionName);
+            })
+            ->exists();
     }
 
     /**

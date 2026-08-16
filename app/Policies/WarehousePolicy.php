@@ -28,9 +28,7 @@ class WarehousePolicy
      */
     public function view(User $user)
     {
-        $permission = Permission::where('name', 'warehouse')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('warehouse');
     }
 
     /**
@@ -40,9 +38,7 @@ class WarehousePolicy
      */
     public function create(User $user)
     {
-        $permission = Permission::where('name', 'warehouse')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('warehouse');
     }
 
     /**
@@ -53,9 +49,7 @@ class WarehousePolicy
      */
     public function update(User $user)
     {
-        $permission = Permission::where('name', 'warehouse')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('warehouse');
     }
 
     /**
@@ -66,9 +60,7 @@ class WarehousePolicy
      */
     public function delete(User $user)
     {
-        $permission = Permission::where('name', 'warehouse')->first();
-
-        return $user->hasRole($permission->roles);
+        return $user->hasPermissionName('warehouse');
     }
 
     /**
