@@ -79,6 +79,51 @@ abstract class TestCase extends BaseTestCase
             $table->timestamps();
         });
 
+        Schema::connection('central')->create('general_settings', function ($table) {
+            $table->id();
+            $table->string('app_name')->default('Prodex');
+            $table->string('company_name')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('email')->nullable();
+            $table->string('address')->nullable();
+            $table->string('website')->nullable();
+            $table->string('logo_path')->nullable();
+            $table->string('favicon_path')->nullable();
+            $table->string('landing_template', 32)->default('landing-two');
+            $table->string('landing_font', 100)->nullable();
+            $table->string('landing_heading_font', 100)->nullable();
+            $table->text('dashboard_footer_text')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::connection('central')->create('plans', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->decimal('price', 12, 2)->default(0);
+            $table->decimal('yearly_price', 12, 2)->nullable();
+            $table->string('billing_interval')->default('monthly');
+            $table->json('limits')->nullable();
+            $table->json('features')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_private')->default(false);
+            $table->boolean('is_trial')->default(false);
+            $table->unsignedInteger('trial_days')->default(0);
+            $table->timestamps();
+        });
+
+        Schema::connection('central')->create('central_languages', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('locale', 10)->unique();
+            $table->string('flag', 50)->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_default')->default(false);
+            $table->boolean('is_rtl')->default(false);
+            $table->unsignedSmallInteger('sort_order')->default(0);
+            $table->timestamps();
+        });
+
         // Record that we've run this "migration" so it doesn't try to run again
         DB::table('migrations')->insert([
             'migration' => 'test_settings_table',

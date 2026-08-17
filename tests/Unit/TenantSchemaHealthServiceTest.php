@@ -71,6 +71,9 @@ class TenantSchemaHealthServiceTest extends TestCase
             $table->string('closed_by_user_name_snapshot')->nullable();
             $table->unsignedInteger('warehouse_id_snapshot')->nullable();
             $table->string('warehouse_name_snapshot')->nullable();
+            $table->unsignedInteger('cash_drawer_id')->nullable();
+            $table->string('cash_drawer_name_snapshot')->nullable();
+            $table->string('cash_drawer_code_snapshot', 64)->nullable();
             $table->string('tenant_id_snapshot')->nullable();
             $table->date('opened_date_snapshot')->nullable();
             $table->time('opened_time_snapshot')->nullable();
@@ -78,6 +81,20 @@ class TenantSchemaHealthServiceTest extends TestCase
             $table->time('closed_time_snapshot')->nullable();
             $table->unsignedInteger('session_duration_seconds')->nullable();
             $table->string('closing_status', 20)->nullable();
+        });
+
+        Schema::connection('tenant')->create('cash_drawers', function (Blueprint $table) {
+            $table->increments('id');
+        });
+
+        Schema::connection('tenant')->create('user_operational_assignments', function (Blueprint $table) {
+            $table->increments('id');
+        });
+
+        Schema::connection('tenant')->create('users', function (Blueprint $table) {
+            $table->increments('id');
+            $table->unsignedInteger('default_warehouse_id')->nullable();
+            $table->unsignedInteger('default_cash_drawer_id')->nullable();
         });
 
         Schema::connection('tenant')->create('store_credit_vouchers', function (Blueprint $table) {

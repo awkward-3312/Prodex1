@@ -4034,8 +4034,10 @@ class ProductsController extends BaseController
         return response()->json(['status' => true]);
     }
 
-    public function cleanNames()
+    public function cleanNames(Request $request)
     {
+        $this->authorizeForUser($request->user('api'), 'update', Product::class);
+
         $count = 0;
 
         \App\Models\Product::where('name', 'REGEXP', '<|>')

@@ -6528,8 +6528,6 @@ export default {
           this.detail.imei_number = detail.imei_number;
           this.detailLoading = false;
         });
-        console.log(detail);
-
     },
 
 

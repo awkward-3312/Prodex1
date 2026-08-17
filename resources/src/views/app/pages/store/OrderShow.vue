@@ -248,7 +248,6 @@ export default {
         this.$bvToast.toast(msg, { title, variant, autoHideDelay: 3000, solid: true })
       } else {
         if (variant === 'danger') alert((title || 'Error') + ': ' + msg)
-        else console.log(title + ': ' + msg)
       }
     }
   }

@@ -48,8 +48,6 @@ Route::group([
     Route::post('reset', 'PasswordResetController@reset');
 });
 
-Route::get('/products_clean_names', 'ProductsController@cleanNames');
-
 Route::post('getAccessToken', 'AuthController@getAccessToken');
 
 Route::get('/get-logo-setting', function () {
@@ -610,6 +608,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     // ------------------------------------------------------------------\\
 
     Route::resource('products', 'ProductsController')->middleware('tenant.limit:max_products');
+    Route::get('/products_clean_names', 'ProductsController@cleanNames');
     Route::post('products/{id}/duplicate', 'ProductsController@duplicate')->middleware('tenant.limit:max_products');
     Route::post('products/warehouse_locations', 'ProductsController@storeWarehouseLocation');
     Route::post('products/import/single', 'ProductsController@import_single_products')->middleware('auth:api');

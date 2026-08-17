@@ -4137,8 +4137,6 @@ export default {
           this.detail.imei_number = detail.imei_number;
           this.detailLoading = false;
         });
-        console.log(detail);
-
     },
 
 
@@ -10684,4 +10682,3 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 </style>
-
