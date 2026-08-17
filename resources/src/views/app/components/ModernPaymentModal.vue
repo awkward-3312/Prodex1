@@ -179,7 +179,7 @@
                         </div>
                       </div>
                       <!-- Per-line Credit Card Section -->
-                      <div class="form-group" v-if="isLineCreditCard(p) && stripeKey">
+                      <div class="form-group" v-if="isLineCreditCard(p) && usesStripeCardProcessor && stripeKey">
                         <div class="credit-card-section">
                           <div class="cc-header">
                             <span class="field-label">{{$t('Credit_Card')}}</span>
@@ -189,6 +189,34 @@
                           <div class="new-card-form">
                             <div :id="'card-element-' + idx" class="stripe-card-element"></div>
                             <small class="text-muted">{{$t('Card_Info_Secure_Stripe')}}</small>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="form-group" v-if="isLineCreditCard(p) && usesExternalCardProcessor">
+                        <div class="external-card-section">
+                          <div class="external-card-message">
+                            <lucide-icon name="credit-card" />
+                            <span>Terminal bancaria</span>
+                          </div>
+                          <div class="external-card-grid">
+                            <div class="input-field">
+                              <label class="field-label">Referencia</label>
+                              <input
+                                v-model.trim="p.cardReference"
+                                type="text"
+                                class="form-input"
+                                placeholder="Referencia del voucher"
+                              />
+                            </div>
+                            <div class="input-field">
+                              <label class="field-label">Autorización</label>
+                              <input
+                                v-model.trim="p.authorizationCode"
+                                type="text"
+                                class="form-input"
+                                placeholder="Código de autorización"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -339,6 +367,7 @@ export default {
     createPosUrl: { type: String, default: 'pos/create_pos' },
     // Optional Stripe publishable key (to mirror old POS behavior)
     stripeKey: { type: String, default: '' },
+    cardProcessingMode: { type: String, default: 'external_terminal' },
     // Optional: when paying from a loaded draft sale
     draftSaleId: { type: [Number, String], default: null },
     // POS online/offline state (controls some UI like email/SMS options)
@@ -432,6 +461,15 @@ export default {
         const pm = this.resolvedPaymentMethods.find(m => String(m.id) === String(line.paymentMethodId));
         return this.isCreditCardMethod(pm);
       });
+    },
+    usesStripeCardProcessor() {
+      return this.cardProcessingMode === 'stripe';
+    },
+    usesExternalCardProcessor() {
+      return this.cardProcessingMode !== 'stripe';
+    },
+    anyStripeCreditCardUsed() {
+      return this.usesStripeCardProcessor && this.anyCreditCardUsed;
     }
     ,
     quickAmountOptions() {
@@ -474,11 +512,18 @@ export default {
     },
     hasAnyNewCardToTokenize() {
       // Saved cards are disabled; any credit card line requires a fresh token.
-      return (this.paymentLines || []).some((line) => this.isLineCreditCard(line));
+      return this.usesStripeCardProcessor && (this.paymentLines || []).some((line) => this.isLineCreditCard(line));
     },
     isCreditCardMethod(method) {
       if (!method || !method.name) return false;
-      return method.name.trim().toLowerCase() === 'credit card';
+      const name = method.name.trim().toLowerCase();
+      return String(method.id) === '1'
+        || name === 'credit card'
+        || name.includes('tarjeta')
+        || name.includes('card')
+        || name.includes('credit')
+        || name.includes('debit')
+        || name.includes('tpe');
     },
     isLineCreditCard(line) {
       if (!line) return false;
@@ -486,8 +531,8 @@ export default {
       return this.isCreditCardMethod(pm);
     },
     changePaymentMethod(line, method) {
-      // If attempting to select credit card without Stripe config, block and notify
-      if (this.isCreditCardMethod(method) && !this.stripeKey) {
+      // Stripe mode requires tenant Stripe credentials; external terminal does not.
+      if (this.isCreditCardMethod(method) && this.usesStripeCardProcessor && !this.stripeKey) {
         this.makeToast('warning', this.$t ? this.$t('credit_card_account_not_available') : 'Credit card account not available', this.$t ? this.$t('Warning') : 'Warning');
         // keep existing selection; if none, fallback to cash
         if (!line.paymentMethodId) {
@@ -500,9 +545,12 @@ export default {
       const idx = (this.paymentLines || []).indexOf(line);
 
       if (this.isCreditCardMethod(method)) {
-        // When a credit card method is selected, mount a Stripe Elements card input
-        this.activeCardLineIndex = idx >= 0 ? idx : 0;
-        this.$nextTick(() => this.loadStripePayment(this.activeCardLineIndex));
+        if (this.usesStripeCardProcessor) {
+          this.activeCardLineIndex = idx >= 0 ? idx : 0;
+          this.$nextTick(() => this.loadStripePayment(this.activeCardLineIndex));
+        } else if (idx >= 0) {
+          this.destroyCardElementForLine(idx);
+        }
       } else if (idx >= 0) {
         // Clean up any existing card element if switching away from credit card
         this.destroyCardElementForLine(idx);
@@ -578,7 +626,28 @@ export default {
       }
       const defaultMethodId = this.getDefaultPaymentMethodId();
       const defaultAccountId = this.getDefaultAccountId();
-      this.paymentLines.push({ amount: 0, paymentMethodId: defaultMethodId, accountId: defaultAccountId || this.paymentForm.accountId || '' });
+      this.paymentLines.push(this.makePaymentLine(0, defaultMethodId, defaultAccountId || this.paymentForm.accountId || ''));
+    },
+    makePaymentLine(amount, paymentMethodId, accountId) {
+      return {
+        amount,
+        paymentMethodId,
+        accountId,
+        cardReference: '',
+        authorizationCode: '',
+        cardLast4: ''
+      };
+    },
+    cardPayloadForLine(line) {
+      if (!this.isLineCreditCard(line)) {
+        return {};
+      }
+      return {
+        card_processor: this.usesStripeCardProcessor ? 'stripe' : 'external_terminal',
+        card_reference: line.cardReference || null,
+        authorization_code: line.authorizationCode || null,
+        card_last4: line.cardLast4 || null
+      };
     },
     removePaymentLine(index) {
       // Never allow removing the last remaining line – there must always be at least one payment method
@@ -927,7 +996,8 @@ export default {
           payments: (this.paymentLines || []).map((l) => ({
             amount: Number(l.amount) || 0,
             payment_method_id: l.paymentMethodId,
-            account_id: l.accountId || this.paymentForm.accountId || null
+            account_id: l.accountId || this.paymentForm.accountId || null,
+            ...this.cardPayloadForLine(l)
           })),
           send_email: this.sendEmail,
           send_sms: this.sendSMS,
@@ -1064,7 +1134,8 @@ export default {
           payments: (this.paymentLines || []).map((l) => ({
             amount: Number(l.amount) || 0,
             payment_method_id: l.paymentMethodId,
-            account_id: l.accountId || null
+            account_id: l.accountId || null,
+            ...this.cardPayloadForLine(l)
           })),
           send_email: this.sendEmail,
           send_sms: this.sendSMS,
@@ -1087,10 +1158,10 @@ export default {
         : ((typeof window === 'undefined' || !window.navigator)
             ? true
             : window.navigator.onLine !== false);
-      const usingCard = this.anyCreditCardUsed;
+      const usingStripeCard = this.anyStripeCreditCardUsed;
 
       // If we are offline and no credit card is involved, queue sale locally instead of calling API
-      if (!isOnline && !usingCard) {
+      if (!isOnline && !usingStripeCard) {
         const payload = buildPayload();
         if (typeof NProgress !== 'undefined') NProgress.done();
         this.paymentProcessing = false;
@@ -1100,7 +1171,7 @@ export default {
       }
 
       // If offline but card is involved, block and warn
-      if (!isOnline && usingCard) {
+      if (!isOnline && usingStripeCard) {
         if (typeof NProgress !== 'undefined') NProgress.done();
         this.paymentProcessing = false;
         this.isSubmitting = false;
@@ -1266,7 +1337,7 @@ export default {
       const defaultMethodId = this.getDefaultPaymentMethodId();
       const defaultAccountId = this.getDefaultAccountId();
       this.paymentForm.accountId = defaultAccountId;
-      this.paymentLines.push({ amount: Number(this.paymentForm.amountDue || 0), paymentMethodId: defaultMethodId, accountId: defaultAccountId });
+      this.paymentLines.push(this.makePaymentLine(Number(this.paymentForm.amountDue || 0), defaultMethodId, defaultAccountId));
       this.paymentNote = '';
       this.saleNote = '';
       this.kitchenAction = 'none';
@@ -1349,6 +1420,40 @@ export default {
 
   .modal-body {
     padding: 0 !important;
+  }
+}
+
+.external-card-section {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.external-card-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #344054;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.external-card-message svg {
+  width: 18px;
+  height: 18px;
+}
+
+.external-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .external-card-grid {
+    grid-template-columns: 1fr;
   }
 }
 

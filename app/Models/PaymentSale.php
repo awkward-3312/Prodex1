@@ -13,6 +13,7 @@ class PaymentSale extends Model
 
     protected $fillable = [
         'sale_id', 'date', 'montant', 'Ref', 'change', 'payment_method_id', 'user_id', 'notes', 'account_id',
+        'card_processor', 'card_reference', 'authorization_code', 'card_last4',
     ];
 
     protected $casts = [

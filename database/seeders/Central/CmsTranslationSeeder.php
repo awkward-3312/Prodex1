@@ -477,6 +477,12 @@ class CmsTranslationSeeder extends Seeder
         if (!$record) return;
 
         $translations = [
+            'en' => [
+                'title'             => 'One tool to manage your entire business',
+                'subtitle'          => 'Start today with 7 days free. No credit card required.',
+                'button_text'       => 'Try Free for 7 Days',
+                'sales_button_text' => 'Talk to Sales',
+            ],
             'fr' => [
                 'title'       => 'Prêt à prendre le contrôle de votre inventaire ?',
                 'subtitle'    => 'Rejoignez des milliers d\'entreprises qui utilisent déjà Stocky. Commencez votre essai gratuit aujourd\'hui.',
@@ -488,9 +494,10 @@ class CmsTranslationSeeder extends Seeder
                 'button_text' => 'ابدأ مجانًا',
             ],
             'es' => [
-                'title'       => '¿Listo para tomar el control de tu inventario?',
-                'subtitle'    => 'Únete a miles de empresas que ya usan Stocky. Comienza tu prueba gratuita hoy.',
-                'button_text' => 'Comenzar gratis',
+                'title'             => 'Una sola herramienta para manejar todo tu negocio',
+                'subtitle'          => 'Comienza hoy con 7 días gratis. Sin tarjeta de crédito requerida.',
+                'button_text'       => 'Prueba Gratis 7 Días',
+                'sales_button_text' => 'Hablar con Ventas',
             ],
             'hi' => [
                 'title'       => 'अपनी इन्वेंट्री पर नियंत्रण के लिए तैयार हैं?',
@@ -528,6 +535,11 @@ class CmsTranslationSeeder extends Seeder
         if (!$record) return;
 
         $translations = [
+            'en' => [
+                'footer_about'           => 'Prodex is a modern platform to manage sales, inventory, cash register, customers, and operations from one place.',
+                'copyright_text'         => '© ' . date('Y') . ' ' . config('app.name', 'Prodex') . '. All rights reserved.',
+                'sales_whatsapp_message' => 'Hello, I would like to learn more about Prodex and its plans.',
+            ],
             'fr' => [
                 'footer_about'   => 'Stocky est une plateforme moderne de gestion d\'inventaire et de stock conçue pour les entreprises de toutes tailles.',
                 'copyright_text' => '© ' . date('Y') . ' ' . config('app.name', 'Stocky') . '. Tous droits réservés.',
@@ -537,8 +549,9 @@ class CmsTranslationSeeder extends Seeder
                 'copyright_text' => '© ' . date('Y') . ' ' . config('app.name', 'Stocky') . '. جميع الحقوق محفوظة.',
             ],
             'es' => [
-                'footer_about'   => 'Stocky es una plataforma moderna de gestión de inventario y stock diseñada para empresas de todos los tamaños.',
-                'copyright_text' => '© ' . date('Y') . ' ' . config('app.name', 'Stocky') . '. Todos los derechos reservados.',
+                'footer_about'           => 'Prodex es una plataforma moderna para administrar ventas, inventario, caja, clientes y operaciones desde un solo lugar.',
+                'copyright_text'         => '© ' . date('Y') . ' ' . config('app.name', 'Prodex') . '. Todos los derechos reservados.',
+                'sales_whatsapp_message' => 'Hola, me interesa conocer más sobre Prodex y sus planes.',
             ],
             'hi' => [
                 'footer_about'   => 'Stocky हर आकार के व्यवसायों के लिए बनाया गया एक आधुनिक इन्वेंट्री और स्टॉक प्रबंधन प्लेटफ़ॉर्म है।',

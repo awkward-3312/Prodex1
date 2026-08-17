@@ -46,6 +46,18 @@
                         </div>
                     </div>
 
+                    <div class="form-row mb-4">
+                        <div class="form-group">
+                            <label class="form-label">{{ __('super.cta.sales_btn_text') }}</label>
+                            <input type="text" name="sales_button_text" class="form-control" value="{{ old('sales_button_text', $cta->sales_button_text) }}" placeholder="Hablar con Ventas">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">{{ __('super.cta.sales_btn_url') }}</label>
+                            <input type="text" name="sales_button_url" class="form-control" value="{{ old('sales_button_url', $cta->sales_button_url) }}" placeholder="#contact-sales">
+                            <p class="form-hint mt-1">{{ __('super.cta.sales_btn_url_hint') }}</p>
+                        </div>
+                    </div>
+
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.cta.bg_image') }}</label>
                         <input type="file" name="background_image" class="form-control" accept="image/*">
@@ -58,6 +70,13 @@
                         <label class="form-switch-label">
                             <input type="checkbox" name="is_active" value="1" class="form-check-input" {{ old('is_active', $cta->is_active) ? 'checked' : '' }}>
                             <span>{{ __('super.cta.show_section') }}</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label class="form-switch-label">
+                            <input type="checkbox" name="show_commercial_cta" value="1" class="form-check-input" {{ old('show_commercial_cta', $cta->show_commercial_cta ?? true) ? 'checked' : '' }}>
+                            <span>{{ __('super.cta.show_commercial_cta') }}</span>
                         </label>
                     </div>
 

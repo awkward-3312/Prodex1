@@ -6,7 +6,22 @@
     $logoUrl = $generalSettings->getLogoUrl();
 
     $l3HeroVisible = $hero && ($hero->is_active ?? true);
-    $l3CtaVisible = $cta && ($cta->is_active ?? true);
+    $l3CtaVisible = $cta && ($cta->is_active ?? true) && ($cta->show_commercial_cta ?? true);
+
+    $l3SalesEmail = $footer->sales_email ?? $footer->contact_email ?? null;
+    $l3SalesWhatsappRaw = $footer->sales_whatsapp_number ?? $footer->contact_phone ?? null;
+    $l3SalesWhatsappNumber = $l3SalesWhatsappRaw ? preg_replace('/\D+/', '', $l3SalesWhatsappRaw) : null;
+    $l3SalesWhatsappMessage = ($footer->sales_whatsapp_message ?? null)
+        ?: 'Hola, me interesa conocer más sobre Prodex y sus planes.';
+    $l3SalesWhatsappHref = $l3SalesWhatsappNumber
+        ? 'https://wa.me/' . $l3SalesWhatsappNumber . '?text=' . rawurlencode($l3SalesWhatsappMessage)
+        : null;
+    $l3SalesEmailHref = $l3SalesEmail
+        ? 'mailto:' . $l3SalesEmail . '?subject=' . rawurlencode('Consulta comercial Prodex')
+        : null;
+    $l3SalesContactHref = $cta->sales_button_url ?? null;
+    $l3SalesContactHref = $l3SalesContactHref ?: ($l3SalesWhatsappHref ?: ($l3SalesEmailHref ?: '#contact-sales'));
+    $l3SalesContactExternal = $l3SalesWhatsappHref && $l3SalesContactHref === $l3SalesWhatsappHref;
 
     $l3Faqs = isset($faqs)
         ? $faqs->filter(fn ($f) => ($f->is_active ?? true))
@@ -1739,31 +1754,26 @@
 
                     <div class="flex flex-col sm:flex-row justify-center gap-3 mt-9">
 
-                        @if($cta->button_text)
+                        <a
+                            href="{{ $cta->button_url ?? route('central.register') }}"
+                            class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-white text-slate-950 font-semibold hover:bg-slate-100 transition">
 
-                            <a
-                                href="{{ $cta->button_url ?? route('central.register') }}"
-                                class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-white text-slate-950 font-semibold hover:bg-slate-100 transition">
+                            {{ $cta->button_text ?: 'Prueba gratis' }}
 
-                                {{ $cta->button_text }}
+                            <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
 
-                                <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
+                        </a>
 
-                            </a>
+                        <a
+                            href="{{ $l3SalesContactHref }}"
+                            @if($l3SalesContactExternal) target="_blank" rel="noopener noreferrer" @endif
+                            class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full border border-white/20 bg-white/10 text-white font-semibold hover:bg-white/15 transition">
 
-                        @else
+                            {{ $cta->sales_button_text ?: 'Hablar con Ventas' }}
 
-                            <a
-                                href="{{ route('central.register') }}"
-                                class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-white text-slate-950 font-semibold hover:bg-slate-100 transition">
+                            <iconify-icon icon="solar:chat-round-call-linear"></iconify-icon>
 
-                                Comenzar gratis
-
-                                <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
-
-                            </a>
-
-                        @endif
+                        </a>
 
                     </div>
 
@@ -1783,9 +1793,9 @@
 
         <div class="max-w-7xl mx-auto px-6 pt-16 pb-10">
 
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-10">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
 
-                <div class="col-span-2">
+                <div class="sm:col-span-2">
 
                     <a
                         href="{{ route('central.welcome') }}"
@@ -1862,46 +1872,87 @@
                 </div>
 
 
-                {{-- ENLACES --}}
+                {{-- CONTACTO --}}
                 <div>
 
                     <h4 class="font-semibold text-sm text-slate-950 mb-5">
-                        Enlaces
+                        Contáctanos
+                    </h4>
+
+                    <ul id="contact-sales" class="space-y-3 text-sm text-slate-500">
+
+                        @if($l3SalesEmail)
+
+                            <li>
+                                <a
+                                    href="{{ $l3SalesEmailHref }}"
+                                    class="hover:text-slate-950 transition break-all">
+                                    {{ $l3SalesEmail }}
+                                </a>
+                            </li>
+
+                        @endif
+
+                        @if($l3SalesWhatsappHref)
+
+                            <li>
+                                <a
+                                    href="{{ $l3SalesWhatsappHref }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-2 hover:text-slate-950 transition">
+                                    <i class="bi bi-whatsapp"></i>
+                                    WhatsApp ventas
+                                </a>
+                            </li>
+
+                        @endif
+
+                        @if($footer && $footer->contact_phone)
+
+                            <li>
+                                <a
+                                    href="tel:{{ preg_replace('/[^0-9+]/', '', $footer->contact_phone) }}"
+                                    class="hover:text-slate-950 transition">
+                                    {{ $footer->contact_phone }}
+                                </a>
+                            </li>
+
+                        @endif
+
+                        @if($footer && $footer->address)
+
+                            <li class="leading-6">
+                                {{ $footer->address }}
+                            </li>
+
+                        @endif
+
+                        @if(! $l3SalesEmail && ! $l3SalesWhatsappHref && ! optional($footer)->contact_phone && ! optional($footer)->address)
+
+                            <li>{{ $appName }}</li>
+
+                        @endif
+
+                    </ul>
+
+                </div>
+
+
+                {{-- ENLACES UTILES --}}
+                <div>
+
+                    <h4 class="font-semibold text-sm text-slate-950 mb-5">
+                        Enlaces útiles
                     </h4>
 
                     <ul class="space-y-3 text-sm text-slate-500">
-
-                        <li>
-                            <a href="{{ route('central.welcome') }}" class="hover:text-slate-950 transition">
-                                Inicio
-                            </a>
-                        </li>
 
                         @if(!empty($features['is_active']))
 
                             <li>
                                 <a href="#features" class="hover:text-slate-950 transition">
-                                    Características
-                                </a>
-                            </li>
-
-                        @endif
-
-                        @if($l3PlatformVisible)
-
-                            <li>
-                                <a href="#platform" class="hover:text-slate-950 transition">
-                                    Plataforma
-                                </a>
-                            </li>
-
-                        @endif
-
-                        @if(!empty($pricing['is_active']))
-
-                            <li>
-                                <a href="#pricing" class="hover:text-slate-950 transition">
-                                    Precios
+                                    Funciones
                                 </a>
                             </li>
 
@@ -1937,27 +1988,50 @@
 
                         @endif
 
+                        @if(!empty($pricing['is_active']))
+
+                            <li>
+                                <a href="#pricing" class="hover:text-slate-950 transition">
+                                    Planes
+                                </a>
+                            </li>
+
+                        @endif
+
                     </ul>
 
                 </div>
 
 
-                {{-- CUENTA --}}
+                {{-- SOPORTE --}}
                 <div>
 
                     <h4 class="font-semibold text-sm text-slate-950 mb-5">
-                        Cuenta
+                        Soporte
                     </h4>
 
                     <ul class="space-y-3 text-sm text-slate-500">
 
                         <li>
                             <a
-                                href="{{ route('central.register') }}"
+                                href="{{ $l3SalesContactHref }}"
+                                @if($l3SalesContactExternal) target="_blank" rel="noopener noreferrer" @endif
                                 class="hover:text-slate-950 transition">
-                                Registrarse
+                                Ventas
                             </a>
                         </li>
+
+                        @if($footer && $footer->contact_email)
+
+                            <li>
+                                <a
+                                    href="mailto:{{ $footer->contact_email }}"
+                                    class="hover:text-slate-950 transition break-all">
+                                    Ayuda
+                                </a>
+                            </li>
+
+                        @endif
 
                         @if($footer && ($footer->show_admin_login ?? false))
 
@@ -1973,22 +2047,6 @@
 
                         <li>
                             <a
-                                href="{{ route('central.privacy-policy') }}"
-                                class="hover:text-slate-950 transition">
-                                Política de privacidad
-                            </a>
-                        </li>
-
-                        <li>
-                            <a
-                                href="{{ route('central.terms-conditions') }}"
-                                class="hover:text-slate-950 transition">
-                                Términos y condiciones
-                            </a>
-                        </li>
-
-                        <li>
-                            <a
                                 href="#"
                                 id="cookiePreferencesLink"
                                 class="hover:text-slate-950 transition">
@@ -2001,58 +2059,47 @@
                 </div>
 
 
-                {{-- CONTACTO --}}
+                {{-- COMPANIA --}}
                 <div>
 
                     <h4 class="font-semibold text-sm text-slate-950 mb-5">
-                        Contacto
+                        Compañía
                     </h4>
 
-                    @if($footer && ($footer->contact_email || $footer->contact_phone || $footer->address))
+                    <ul class="space-y-3 text-sm text-slate-500">
 
-                        <ul class="space-y-3 text-sm text-slate-500">
+                        <li>
+                            <a href="{{ route('central.welcome') }}" class="hover:text-slate-950 transition">
+                                Inicio
+                            </a>
+                        </li>
 
-                            @if($footer->contact_email)
+                        <li>
+                            <a
+                                href="{{ route('central.register') }}"
+                                class="hover:text-slate-950 transition">
+                                Registrarse
+                            </a>
+                        </li>
 
-                                <li>
-                                    <a
-                                        href="mailto:{{ $footer->contact_email }}"
-                                        class="hover:text-slate-950 transition break-all">
-                                        {{ $footer->contact_email }}
-                                    </a>
-                                </li>
+                        <li>
+                            <a
+                                href="{{ route('central.privacy-policy') }}"
+                                class="hover:text-slate-950 transition">
+                                Privacidad
+                            </a>
+                        </li>
 
-                            @endif
+                        <li>
+                            <a
+                                href="{{ route('central.terms-conditions') }}"
+                                class="hover:text-slate-950 transition">
+                                Términos
+                            </a>
+                        </li>
 
-                            @if($footer->contact_phone)
+                    </ul>
 
-                                <li>
-                                    <a
-                                        href="tel:{{ preg_replace('/[^0-9+]/', '', $footer->contact_phone) }}"
-                                        class="hover:text-slate-950 transition">
-                                        {{ $footer->contact_phone }}
-                                    </a>
-                                </li>
-
-                            @endif
-
-                            @if($footer->address)
-
-                                <li class="leading-6">
-                                    {{ $footer->address }}
-                                </li>
-
-                            @endif
-
-                        </ul>
-
-                    @else
-
-                        <p class="text-sm text-slate-500">
-                            {{ $appName }}
-                        </p>
-
-                    @endif
 
                 </div>
 
@@ -2076,6 +2123,23 @@
         </div>
 
     </footer>
+
+
+    @if($footer && ($footer->show_sales_floating_button ?? false) && $l3SalesWhatsappHref)
+
+        <a
+            href="{{ $l3SalesWhatsappHref }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="l3-sales-float fixed right-4 bottom-4 md:right-6 md:bottom-6 z-[80] inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-900/20 transition hover:bg-indigo-600"
+            aria-label="Habla con Ventas">
+
+            <i class="bi bi-whatsapp text-base"></i>
+            <span>Habla con Ventas</span>
+
+        </a>
+
+    @endif
 
 
     {{-- =========================================================

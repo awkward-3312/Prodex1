@@ -33,6 +33,21 @@
                       </b-form-group>
                   </b-col>
 
+                  <b-col lg="6" md="6" sm="12">
+                    <b-form-group label="Modo de cobro con tarjeta">
+                      <b-form-select
+                        v-model="gateway.card_processing_mode"
+                        :options="[
+                          { value: 'external_terminal', text: 'Terminal bancaria externa' },
+                          { value: 'stripe', text: 'Stripe' }
+                        ]"
+                      ></b-form-select>
+                      <small class="text-muted d-block mt-1">
+                        Terminal externa permite registrar pagos con tarjeta sin llaves Stripe.
+                      </small>
+                    </b-form-group>
+                  </b-col>
+
                    <!-- Remove Stripe Key & Secret-->
                     <b-col md="6" class="mt-3 mb-3">
                        <label class="switch switch-primary mr-3">
@@ -72,6 +87,7 @@ export default {
       gateway:{
         stripe_key:"",
         stripe_secret:"",
+        card_processing_mode:"external_terminal",
         deleted:false,
       },
     
@@ -118,6 +134,7 @@ export default {
         .post("payment_gateway",{
           stripe_key: this.gateway.stripe_key,
           stripe_secret: this.gateway.stripe_secret,
+          card_processing_mode: this.gateway.card_processing_mode || "external_terminal",
           deleted: this.gateway.deleted,
         })
         .then(response => {

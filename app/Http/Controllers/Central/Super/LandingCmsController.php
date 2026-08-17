@@ -497,11 +497,13 @@ class LandingCmsController extends Controller
     public function cta(): View
     {
         $cta = LandingCta::firstOrCreate([], [
-            'title' => 'Ready to get started?',
-            'subtitle' => 'Create your workspace in under a minute. No credit card required.',
-            'button_text' => 'Create your workspace',
+            'title' => 'Una sola herramienta para manejar todo tu negocio',
+            'subtitle' => 'Comienza hoy con 7 días gratis. Sin tarjeta de crédito requerida.',
+            'button_text' => 'Prueba Gratis 7 Días',
             'button_url' => route('central.register'),
+            'sales_button_text' => 'Hablar con Ventas',
             'is_active' => true,
+            'show_commercial_cta' => true,
         ]);
 
         return view('central.super.cms.cta', compact('cta'));
@@ -514,8 +516,11 @@ class LandingCmsController extends Controller
             'subtitle' => ['nullable', 'string'],
             'button_text' => ['nullable', 'string', 'max:100'],
             'button_url' => ['nullable', 'string', 'max:500'],
+            'sales_button_text' => ['nullable', 'string', 'max:100'],
+            'sales_button_url' => ['nullable', 'string', 'max:500'],
             'background_image' => ['nullable', 'image', 'max:2048'],
             'is_active' => ['boolean'],
+            'show_commercial_cta' => ['boolean'],
         ]);
         $cta = LandingCta::firstOrCreate([]);
         if ($request->hasFile('background_image')) {
@@ -523,6 +528,7 @@ class LandingCmsController extends Controller
             $validated['background_image'] = $this->storeImage($request, 'background_image');
         }
         $validated['is_active'] = $request->boolean('is_active');
+        $validated['show_commercial_cta'] = $request->boolean('show_commercial_cta');
 
         $cta->update($validated);
         $this->clearLandingCache();
@@ -534,8 +540,10 @@ class LandingCmsController extends Controller
     public function footer(): View
     {
         $footer = LandingFooter::firstOrCreate([], [
-            'footer_about' => 'Inventory, POS & more for modern businesses.',
-            'copyright_text' => '© ' . date('Y') . ' Stocky. All rights reserved.',
+            'footer_about' => 'Prodex es una plataforma moderna para administrar ventas, inventario, caja, clientes y operaciones desde un solo lugar.',
+            'copyright_text' => '© ' . date('Y') . ' Prodex. Todos los derechos reservados.',
+            'sales_whatsapp_message' => 'Hola, me interesa conocer más sobre Prodex y sus planes.',
+            'show_sales_floating_button' => true,
         ]);
 
         return view('central.super.cms.footer', compact('footer'));
@@ -548,13 +556,18 @@ class LandingCmsController extends Controller
             'copyright_text' => ['nullable', 'string', 'max:500'],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'contact_phone' => ['nullable', 'string', 'max:50'],
+            'sales_email' => ['nullable', 'email', 'max:255'],
+            'sales_whatsapp_number' => ['nullable', 'string', 'max:50'],
+            'sales_whatsapp_message' => ['nullable', 'string', 'max:500'],
             'address' => ['nullable', 'string'],
             'facebook' => ['nullable', 'string', 'max:500'],
             'twitter' => ['nullable', 'string', 'max:500'],
             'linkedin' => ['nullable', 'string', 'max:500'],
             'instagram' => ['nullable', 'string', 'max:500'],
             'youtube' => ['nullable', 'string', 'max:500'],
+            'show_sales_floating_button' => ['boolean'],
         ]);
+        $validated['show_sales_floating_button'] = $request->boolean('show_sales_floating_button');
 
         LandingFooter::firstOrCreate([])->update($validated);
         $this->clearLandingCache();

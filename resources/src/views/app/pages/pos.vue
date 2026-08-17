@@ -1081,6 +1081,7 @@
     :details="details"
     :grand-total="GrandTotal"
     :stripe-key="stripe_key"
+    :card-processing-mode="card_processing_mode"
     :discount-from-points="discount_from_points"
     :used-points="used_points"
     :draft-sale-id="draft_sale_id"
@@ -2396,35 +2397,37 @@
     <b-modal hide-footer size="lg" id="Quick_Add_Customer" :title="$t('Quick_Add_Customer')">
       <b-form @submit.prevent="Submit_Quick_Add_Customer" class="quick-add-customer-form">
         <b-row>
-          <!-- Customer Name -->
+          <!-- Honduras fiscal flow: RTN first, Cliente Final by default -->
+          <b-col v-if="isHondurasTenant" md="6" sm="12">
+            <b-form-group :label="quickAddTaxLabel">
+              <b-form-input
+                label="RTN"
+                v-model="client.tax_number"
+                :placeholder="quickAddTaxPlaceholder"
+                maxlength="14"
+                inputmode="numeric"
+                @input="onQuickAddTaxNumberInput"
+              ></b-form-input>
+            </b-form-group>
+          </b-col>
+
           <b-col md="6" sm="12">
             <validation-provider
               name="Name Customer"
-              :rules="{ required: true}"
+              :rules="quickAddNameRules"
               v-slot="validationContext"
             >
-              <b-form-group :label="$t('CustomerName') + ' ' + '*'">
+              <b-form-group :label="quickAddNameLabel">
                 <b-form-input
                   :state="getValidationState(validationContext)"
                   aria-describedby="name-feedback"
                   label="name"
-                  :placeholder="$t('CustomerName')"
+                  :placeholder="quickAddNamePlaceholder"
                   v-model="client.name"
                 ></b-form-input>
                 <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
               </b-form-group>
             </validation-provider>
-          </b-col>
-          
-          <!-- Customer Email -->
-          <b-col md="6" sm="12">
-            <b-form-group :label="$t('Email')">
-              <b-form-input
-                label="email"
-                v-model="client.email"
-                :placeholder="$t('Email')"
-              ></b-form-input>
-            </b-form-group>
           </b-col>
 
           <!-- Customer Phone -->
@@ -2438,14 +2441,38 @@
             </b-form-group>
           </b-col>
 
-          <!-- Customer Country -->
+          <!-- Customer Email -->
           <b-col md="6" sm="12">
+            <b-form-group :label="$t('Email')">
+              <b-form-input
+                label="email"
+                v-model="client.email"
+                :placeholder="$t('Email')"
+              ></b-form-input>
+            </b-form-group>
+          </b-col>
+
+          <!-- Customer Country -->
+          <b-col v-if="!isHondurasTenant" md="6" sm="12">
             <b-form-group :label="$t('Country')">
               <b-form-input
                 label="Country"
                 v-model="client.country"
                 :placeholder="$t('Country')"
               ></b-form-input>
+            </b-form-group>
+          </b-col>
+
+          <!-- Customer Address -->
+          <b-col md="12" sm="12">
+            <b-form-group :label="$t('Adress')">
+              <textarea
+                label="Adress"
+                class="form-control"
+                rows="4"
+                v-model="client.adresse"
+                :placeholder="$t('Adress')"
+              ></textarea>
             </b-form-group>
           </b-col>
 
@@ -2461,26 +2488,13 @@
           </b-col>
 
           <!-- Customer Tax Number -->
-          <b-col md="6" sm="12">
-            <b-form-group :label="$t('Tax_Number')">
+          <b-col v-if="!isHondurasTenant" md="6" sm="12">
+            <b-form-group :label="quickAddTaxLabel">
               <b-form-input
                 label="Tax Number"
                 v-model="client.tax_number"
-                :placeholder="$t('Tax_Number')"
+                :placeholder="quickAddTaxPlaceholder"
               ></b-form-input>
-            </b-form-group>
-          </b-col>
-
-          <!-- Customer Address -->
-          <b-col md="12" sm="12">
-            <b-form-group :label="$t('Adress')">
-              <textarea
-                label="Adress"
-                class="form-control"
-                rows="4"
-                v-model="client.adresse"
-                :placeholder="$t('Adress')"
-              ></textarea>
             </b-form-group>
           </b-col>
 
@@ -3528,9 +3542,13 @@
               </span>
               <span class="cust-drawer-card-body">
                 <span class="cust-drawer-card-name">{{ c.name || c.label }}</span>
-                <span class="cust-drawer-card-meta" v-if="c.phone">
-                  <lucide-icon name="phone" />
-                  <span>{{ c.phone }}</span>
+                <span class="cust-drawer-card-meta" v-if="c.phone || c.tax_number">
+                  <lucide-icon :name="c.phone ? 'phone' : 'tag'" />
+                  <span>
+                    <template v-if="c.phone">{{ c.phone }}</template>
+                    <template v-if="c.phone && c.tax_number"> · </template>
+                    <template v-if="c.tax_number">{{ quickAddTaxLabel }}: {{ c.tax_number }}</template>
+                  </span>
                 </span>
               </span>
               <span v-if="selectedClientId === c.value" class="cust-drawer-card-check">
@@ -3600,6 +3618,7 @@ export default {
       sendSMS: false,
       stripe: {},
       stripe_key: "",
+      card_processing_mode: "external_terminal",
       cardElement: {},
       paymentProcessing: false,
       DraftProcessing: false,
@@ -3819,6 +3838,8 @@ export default {
       default_tax: 0,
       isTaxLocked: false,
       taxPolicyCountryCode: 'HN',
+      customerTaxIdLabel: 'Tax Number',
+      taxConfig: null,
       languages_available:[],
       product: {
         id: "",
@@ -3944,6 +3965,35 @@ export default {
     // Reads from the Vuex store, falling back to the localStorage cache for offline POS.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
+    },
+    isHondurasTenant() {
+      return String(this.taxPolicyCountryCode || '').toUpperCase() === 'HN';
+    },
+    quickAddTaxLabel() {
+      return this.isHondurasTenant
+        ? 'RTN'
+        : (this.customerTaxIdLabel || this.$t('Tax_Number') || 'Tax Number');
+    },
+    quickAddTaxPlaceholder() {
+      return this.isHondurasTenant ? 'RTN del cliente' : (this.customerTaxIdLabel || this.$t('Tax_Number') || 'Tax Number');
+    },
+    quickAddHasTaxNumber() {
+      return !!String((this.client && this.client.tax_number) || '').replace(/\D+/g, '');
+    },
+    quickAddNameLabel() {
+      if (this.isHondurasTenant && this.quickAddHasTaxNumber) {
+        return 'Nombre o razón social *';
+      }
+      return this.isHondurasTenant ? 'Nombre del cliente' : `${this.$t('CustomerName')} *`;
+    },
+    quickAddNamePlaceholder() {
+      if (this.isHondurasTenant && this.quickAddHasTaxNumber) {
+        return 'Comercial La Esperanza, Juan Pérez, Servicios ABC S. de R.L.';
+      }
+      return this.isHondurasTenant ? 'Cliente Final' : this.$t('CustomerName');
+    },
+    quickAddNameRules() {
+      return { required: !this.isHondurasTenant || this.quickAddHasTaxNumber };
     },
     cartAsideStyle() {
       return {
@@ -4170,7 +4220,8 @@ export default {
         label: client.name,
         value: client.id,
         phone: client.phone || '',
-        name: client.name || ''
+        name: client.name || '',
+        tax_number: client.tax_number || ''
       }));
     },
 
@@ -4258,7 +4309,7 @@ export default {
       return c ? c.name : (this.$t('Select_Customer') || 'Select customer');
     },
 
-    // Customers filtered by the drawer's search box (matches name OR phone)
+    // Customers filtered by the drawer's search box (matches name, phone, or tax id)
     filteredCustomers() {
       const q = (this.custDrawerSearch || '').trim().toLowerCase();
       const list = this.customerOptions || [];
@@ -4266,7 +4317,8 @@ export default {
       return list.filter(c => {
         const name = (c.name || c.label || '').toLowerCase();
         const phone = (c.phone || '').toLowerCase();
-        return name.includes(q) || phone.includes(q);
+        const taxNumber = (c.tax_number || '').toLowerCase();
+        return name.includes(q) || phone.includes(q) || taxNumber.includes(q);
       });
     },
 
@@ -5088,7 +5140,23 @@ export default {
       this.card_id = card.card_id;
     },
 
+    preparePaymentLineForSubmit(payment) {
+      const line = { ...(payment || {}) };
+      const method = (this.payment_methods || []).find(m => String(m.id) === String(line.payment_method_id));
+      const methodName = method && method.name ? method.name : '';
+      const isCard = String(line.payment_method_id) === '1' || /card|tarjeta|credit|debit|tpe/i.test(methodName);
+
+      if (isCard) {
+        line.card_processor = this.card_processing_mode === 'stripe' ? 'stripe' : 'external_terminal';
+      }
+
+      return line;
+    },
+
     async loadStripe_payment() {
+      if (this.card_processing_mode !== 'stripe' || !this.stripe_key) {
+        return;
+      }
       this.stripe = await loadStripe(`${this.stripe_key}`);
       const elements = this.stripe.elements();
       this.cardElement = elements.create("card", {
@@ -5385,7 +5453,7 @@ export default {
         }
       }
 
-      const anyNewCard = this.paymentLines.some(
+      const anyNewCard = this.card_processing_mode === 'stripe' && this.paymentLines.some(
         p => (p.payment_method_id === '1' || p.payment_method_id === 1) && this.is_new_credit_card
       );
 
@@ -5416,7 +5484,7 @@ export default {
             details: this.buildSubmitDetails(),
             GrandTotal: this.GrandTotal,
             store_credit_vouchers: this.storeCreditCheckoutPayload,
-            payments: this.paymentLines,
+            payments: this.paymentLines.map(p => this.preparePaymentLineForSubmit(p)),
             send_email: this.sendEmail,
             send_sms: this.sendSMS,
             account_id: this.selectedAccount,
@@ -5470,6 +5538,9 @@ export default {
     },
 
     async processPayment() {
+      if (this.card_processing_mode !== 'stripe') {
+        return this.CreatePOS();
+      }
       if (!this.ensureCashDrawerAssigned()) {
         this.paymentProcessing = false;
         NProgress.done();
@@ -5496,9 +5567,10 @@ export default {
             return {
               ...p,
               payment_method_id_stripe: paymentMethod.id,
+              card_processor: 'stripe',
             };
           }
-          return p;
+          return this.preparePaymentLineForSubmit(p);
         });
 
         axios
@@ -8439,6 +8511,39 @@ export default {
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
     },
+    onQuickAddTaxNumberInput(value) {
+      if (!this.isHondurasTenant) return;
+
+      const normalized = String(value || '').replace(/\D+/g, '').slice(0, 14);
+      if (this.client.tax_number !== normalized) {
+        this.client.tax_number = normalized;
+      }
+      if (normalized && String(this.client.name || '').trim().toLowerCase() === 'cliente final') {
+        this.client.name = '';
+      }
+      if (!normalized && !String(this.client.name || '').trim()) {
+        this.client.name = 'Cliente Final';
+      }
+    },
+    prepareQuickAddCustomerPayload() {
+      const taxNumber = this.isHondurasTenant
+        ? String(this.client.tax_number || '').replace(/\D+/g, '')
+        : (this.client.tax_number || '');
+      const name = this.isHondurasTenant && !taxNumber && !String(this.client.name || '').trim()
+        ? 'Cliente Final'
+        : this.client.name;
+
+      return {
+        name,
+        email: this.client.email || '',
+        phone: this.client.phone || '',
+        tax_number: taxNumber,
+        country: this.isHondurasTenant ? 'Honduras' : (this.client.country || ''),
+        city: this.client.city || '',
+        adresse: this.client.adresse || '',
+        is_royalty_eligible: this.client.is_royalty_eligible || false
+      };
+    },
     Submit_Customer() {
       NProgress.start();
       NProgress.set(0.1);
@@ -8476,6 +8581,8 @@ export default {
           this.clients.push({
             id: newClient.id,
             name: newClient.name,
+            phone: newClient.phone || '',
+            tax_number: newClient.tax_number || '',
           });
           this.selectedClientId = newClient.id;
           this.client_name = newClient.name;
@@ -8509,16 +8616,7 @@ export default {
           return;
         }
         axios
-          .post("clients", {
-            name: this.client.name,
-            email: this.client.email || '',
-            phone: this.client.phone || '',
-            tax_number: this.client.tax_number || '',
-            country: this.client.country || '',
-            city: this.client.city || '',
-            adresse: this.client.adresse || '',
-            is_royalty_eligible: this.client.is_royalty_eligible || false
-          })
+          .post("clients", this.prepareQuickAddCustomerPayload())
           .then(response => {
             const newClient = response.data;
 
@@ -8533,6 +8631,7 @@ export default {
                 id: newClient.id,
                 name: newClient.name,
                 phone: newClient.phone || '',
+                tax_number: newClient.tax_number || '',
               });
               this.selectedClientId = newClient.id;
               this.client_name = newClient.name;
@@ -8558,10 +8657,13 @@ export default {
               afterCustoms();
             }
           })
-          .catch(() => {
+          .catch(error => {
             NProgress.done();
             this.SubmitProcessing = false;
-            this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+            const errors = error && error.response && error.response.data && error.response.data.errors;
+            const firstError = errors ? Object.values(errors).flat()[0] : null;
+            const message = firstError || (error && error.response && error.response.data && error.response.data.message) || this.$t("InvalidData");
+            this.makeToast("danger", message, this.$t("Failed"));
           });
       });
     },
@@ -8576,10 +8678,10 @@ export default {
     reset_Form_client() {
       this.client = {
         id: "",
-        name: "",
+        name: this.isHondurasTenant ? "Cliente Final" : "",
         email: "",
         phone: "",
-        country: "",
+        country: this.isHondurasTenant ? "Honduras" : "",
         city: "",
         tax_number: "",
         adresse: "",
@@ -9167,6 +9269,8 @@ export default {
           this.default_account_id = response.data.default_account_id ?? null;
           this.default_payment_method_id = response.data.default_payment_method_id ?? null;
           this.taxPolicyCountryCode = (response.data.country_code || 'HN').toUpperCase();
+          this.customerTaxIdLabel = response.data.customer_tax_id_label || this.customerTaxIdLabel;
+          this.taxConfig = response.data.tax_config || null;
           this.isTaxLocked = this.taxPolicyCountryCode === 'HN';
           this.sale.warehouse_id = response.data.defaultWarehouse;
           this.sale.cash_drawer_id = response.data.defaultCashDrawer || '';
@@ -9257,6 +9361,7 @@ export default {
           this.paginate_Brands(this.brand_perPage, 0);
           this.paginate_Category(this.category_perPage, 0);
           this.stripe_key = response.data.stripe_key;
+          this.card_processing_mode = response.data.card_processing_mode || 'external_terminal';
           // Cache bootstrap payload for offline usage
           try {
             if (Util && Util.offlinePos && Util.offlinePos.cacheBootstrap) {
@@ -9282,6 +9387,8 @@ export default {
               this.default_account_id = cached.default_account_id ?? null;
               this.default_payment_method_id = cached.default_payment_method_id ?? null;
               this.taxPolicyCountryCode = (cached.country_code || 'HN').toUpperCase();
+              this.customerTaxIdLabel = cached.customer_tax_id_label || this.customerTaxIdLabel;
+              this.taxConfig = cached.tax_config || null;
               this.isTaxLocked = this.taxPolicyCountryCode === 'HN';
 
               if (!this.sale.warehouse_id && cached.defaultWarehouse) {
@@ -9315,6 +9422,7 @@ export default {
               if (cached.stripe_key) {
                 this.stripe_key = cached.stripe_key;
               }
+              this.card_processing_mode = cached.card_processing_mode || 'external_terminal';
 
               // Hydrate cached company/receipt header info for offline receipts
               try {

@@ -49,6 +49,25 @@
                         <label class="form-label">{{ __('super.footer.phone') }}</label>
                         <input type="text" name="contact_phone" class="form-control" value="{{ old('contact_phone', $footer->contact_phone) }}" placeholder="+1 (555) 123-4567">
                     </div>
+                    <div class="form-group mb-4">
+                        <label class="form-label">{{ __('super.footer.sales_email') }}</label>
+                        <input type="email" name="sales_email" class="form-control" value="{{ old('sales_email', $footer->sales_email) }}" placeholder="ventas@company.com">
+                    </div>
+                    <div class="form-group mb-4">
+                        <label class="form-label">{{ __('super.footer.sales_whatsapp') }}</label>
+                        <input type="text" name="sales_whatsapp_number" class="form-control" value="{{ old('sales_whatsapp_number', $footer->sales_whatsapp_number) }}" placeholder="+504 9999-9999">
+                    </div>
+                    <div class="form-group mb-4">
+                        <label class="form-label">{{ __('super.footer.sales_whatsapp_message') }}</label>
+                        <input type="text" name="sales_whatsapp_message" class="form-control" value="{{ old('sales_whatsapp_message', $footer->sales_whatsapp_message) }}" placeholder="Hola, me interesa conocer más sobre Prodex y sus planes.">
+                    </div>
+                    <div class="form-group mb-4">
+                        <label class="form-switch-label">
+                            <input type="checkbox" name="show_sales_floating_button" value="1" class="form-check-input" {{ old('show_sales_floating_button', $footer->show_sales_floating_button ?? true) ? 'checked' : '' }}>
+                            <span>{{ __('super.footer.show_sales_floating_button') }}</span>
+                        </label>
+                        <p class="form-hint mt-1">{{ __('super.footer.show_sales_floating_button_hint') }}</p>
+                    </div>
                     <div class="form-group">
                         <label class="form-label">{{ __('super.footer.address') }}</label>
                         <textarea name="address" class="form-control" rows="2" placeholder="123 Main St, City, Country">{{ old('address', $footer->address) }}</textarea>

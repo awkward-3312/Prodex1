@@ -65,6 +65,15 @@ return [
     'home'           => 'Inicio',
     'sign_up'        => 'Registrarse',
     'contact'        => 'Contacto',
+    'prodex'         => 'Prodex',
+    'contact_us'     => 'Contáctanos',
+    'useful_links'   => 'Enlaces útiles',
+    'support'        => 'Soporte',
+    'company'        => 'Compañía',
+    'sales'          => 'Ventas',
+    'whatsapp'       => 'WhatsApp',
+    'talk_to_sales'  => 'Habla con Ventas',
+    'help'           => 'Ayuda',
     'all_rights'     => 'Todos los derechos reservados.',
 
     // ── Registration page ───────────────────────────────

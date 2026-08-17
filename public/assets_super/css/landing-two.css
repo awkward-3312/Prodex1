@@ -416,6 +416,23 @@
     transform: translateY(-2px);
 }
 
+.landing-v2 .cta-section__btn--sales {
+    background: rgba(255, 255, 255, .08);
+    color: #f8fafc !important;
+    border-color: rgba(45, 212, 191, .28);
+}
+
+.landing-v2 .cta-section__btn--sales:hover {
+    background: rgba(13, 148, 136, .2);
+    color: #fff !important;
+}
+
+.landing-v2 .sales-floating-button {
+    border-radius: 12px;
+    background: rgba(15, 20, 25, .94);
+    border-color: rgba(45, 212, 191, .26);
+}
+
 /* Footer */
 .landing-v2 .landing-footer {
     background: linear-gradient(180deg, #0f1419 0%, #0a0e12 100%);

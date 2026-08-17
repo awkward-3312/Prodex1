@@ -13,6 +13,7 @@ use App\Models\Quotation;
 use App\Models\Sale;
 use App\Models\SaleReturn;
 use App\Models\Setting;
+use App\Services\TenantTaxConfigResolver;
 use App\utils\helpers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -164,6 +165,10 @@ class ClientController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'create', Client::class);
 
+        $taxConfig = $this->resolveTenantTaxConfig();
+        $this->normalizeClientFiscalInput($request, $taxConfig);
+        $this->validateClientFiscalInput($request, $taxConfig);
+
         $this->validate($request, [
             'name' => 'required',
             'firstname' => ['nullable', 'string', 'max:255'],
@@ -204,6 +209,77 @@ class ClientController extends BaseController
         return response()->json($client);
     }
 
+    protected function resolveTenantTaxConfig(): array
+    {
+        $setting = Setting::where('deleted_at', '=', null)->first();
+        $tenantCountry = null;
+
+        try {
+            $tenantCountry = function_exists('tenant') && tenant() ? (tenant()->country_code ?? null) : null;
+        } catch (\Throwable $e) {
+            $tenantCountry = null;
+        }
+
+        return TenantTaxConfigResolver::resolve($setting, $tenantCountry);
+    }
+
+    protected function normalizeClientFiscalInput(Request $request, array $taxConfig): void
+    {
+        $countryCode = strtoupper((string) ($taxConfig['country_code'] ?? ''));
+
+        if ($countryCode !== 'HN') {
+            return;
+        }
+
+        $taxNumber = preg_replace('/\D+/', '', (string) $request->input('tax_number', ''));
+        $name = trim((string) $request->input('name', ''));
+
+        $request->merge([
+            'tax_number' => $taxNumber,
+            'name' => $taxNumber === '' && $name === '' ? 'Cliente Final' : $name,
+            'country' => $request->filled('country') ? $request->input('country') : 'Honduras',
+        ]);
+    }
+
+    protected function validateClientFiscalInput(Request $request, array $taxConfig): void
+    {
+        $countryCode = strtoupper((string) ($taxConfig['country_code'] ?? ''));
+
+        if ($countryCode !== 'HN') {
+            return;
+        }
+
+        $taxNumber = (string) $request->input('tax_number', '');
+        if ($taxNumber === '') {
+            return;
+        }
+
+        Validator::make($request->all(), [
+            'tax_number' => [
+                'required',
+                'digits:14',
+                function ($attribute, $value, $fail) {
+                    if (preg_match('/^(\d)\1{13}$/', (string) $value)) {
+                        $fail('El RTN no es válido.');
+                    }
+                },
+            ],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    if (mb_strtolower(trim((string) $value), 'UTF-8') === 'cliente final') {
+                        $fail('Ingrese el nombre o razón social asociado al RTN.');
+                    }
+                },
+            ],
+        ], [
+            'tax_number.digits' => 'El RTN debe contener 14 dígitos.',
+            'name.required' => 'Ingrese el nombre o razón social asociado al RTN.',
+        ])->validate();
+    }
+
     // ------------ function show -----------\\
 
     public function show($id)
@@ -225,6 +301,10 @@ class ClientController extends BaseController
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Client::class);
+
+        $taxConfig = $this->resolveTenantTaxConfig();
+        $this->normalizeClientFiscalInput($request, $taxConfig);
+        $this->validateClientFiscalInput($request, $taxConfig);
 
         // Get existing ecommerce_client id if it exists (for ignoring in validation)
         $existingEcommerceClient = EcommerceClient::where('client_id', $id)
@@ -402,7 +482,7 @@ class ClientController extends BaseController
 
     public function Get_Clients_Without_Paginate()
     {
-        $clients = Client::where('deleted_at', '=', null)->get(['id', 'name', 'phone']);
+        $clients = Client::where('deleted_at', '=', null)->get(['id', 'name', 'phone', 'tax_number']);
 
         return response()->json($clients);
     }

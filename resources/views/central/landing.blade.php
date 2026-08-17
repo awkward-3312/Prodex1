@@ -4,6 +4,16 @@
     $generalSettings = \App\Models\Central\GeneralSetting::instance();
     $appName = $generalSettings->app_name ?: 'Stocky';
     $logoUrl = $generalSettings->getLogoUrl();
+    $salesWhatsappRaw = $footer->sales_whatsapp_number ?? $footer->contact_phone ?? null;
+    $salesWhatsappDigits = $salesWhatsappRaw ? preg_replace('/\D+/', '', $salesWhatsappRaw) : null;
+    $salesWhatsappMessage = ($footer->sales_whatsapp_message ?? null) ?: 'Hola, me interesa conocer más sobre Prodex y sus planes.';
+    $salesWhatsappHref = $salesWhatsappDigits ? ('https://wa.me/' . $salesWhatsappDigits . '?text=' . rawurlencode($salesWhatsappMessage)) : null;
+    $salesEmail = $footer->sales_email ?? $footer->contact_email ?? null;
+    $salesMailHref = $salesEmail ? ('mailto:' . $salesEmail . '?subject=' . rawurlencode('Consulta comercial Prodex')) : null;
+    $salesContactHref = $cta->sales_button_url ?? null;
+    if (! $salesContactHref) {
+        $salesContactHref = $salesWhatsappHref ?: ($salesMailHref ?: '#contact-sales');
+    }
 @endphp
 <html lang="{{ app()->getLocale() }}" @if($isRtl) dir="rtl" @endif>
 <head>
@@ -533,7 +543,7 @@
         @endif
 
         {{-- ── CTA ─────────────────────────────────────────────────── --}}
-        @if($cta)
+        @if($cta && ($cta->show_commercial_cta ?? true))
         <section class="cta-section @if($cta->background_image) cta-section--photo bg-cover-center @endif" @if($cta->background_image) style="background-image: url('{{ asset($cta->background_image) }}')" @endif>
             <div class="cta-section__scrim" aria-hidden="true"></div>
             <div class="cta-section__glow" aria-hidden="true"></div>
@@ -543,12 +553,20 @@
                     @if($cta->subtitle)
                         <p class="cta-section__lead fade-up">{{ $cta->subtitle }}</p>
                     @endif
-                    @if($cta->button_text)
-                        <a href="{{ $cta->button_url ?? route('central.register') }}" class="cta-section__btn fade-up">
-                            {{ $cta->button_text }}
-                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                        </a>
-                    @endif
+                    <div class="cta-section__actions fade-up">
+                        @if($cta->button_text)
+                            <a href="{{ $cta->button_url ?? route('central.register') }}" class="cta-section__btn cta-section__btn--primary">
+                                {{ $cta->button_text }}
+                                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                            </a>
+                        @endif
+                        @if($cta->sales_button_text)
+                            <a href="{{ $salesContactHref }}" class="cta-section__btn cta-section__btn--sales" @if($salesWhatsappHref && $salesContactHref === $salesWhatsappHref) target="_blank" rel="noopener noreferrer" @endif>
+                                <i class="bi bi-chat-dots" aria-hidden="true"></i>
+                                {{ $cta->sales_button_text }}
+                            </a>
+                        @endif
+                    </div>
                 </div>
             </div>
         </section>
@@ -559,8 +577,8 @@
     <footer class="landing-footer">
         <div class="landing-footer__accent" aria-hidden="true"></div>
         <div class="container position-relative">
-            <div class="row landing-footer__grid g-4 g-lg-5">
-                <div class="col-lg-4 mb-2 mb-lg-0">
+            <div class="landing-footer__grid">
+                <div>
                     @if($generalSettings->show_site_name ?? true)
                         <a class="landing-footer__brand" href="{{ route('central.welcome') }}">{{ $appName }}</a>
                     @endif
@@ -585,45 +603,68 @@
                     </div>
                     @endif
                 </div>
-                <div class="col-lg-4 col-md-6">
-                    <p class="landing-footer__heading">{{ __('landing.quick_links') }}</p>
-                    <nav class="landing-footer__nav" aria-label="{{ __('landing.quick_links') }}">
-                        <a href="{{ route('central.welcome') }}">{{ __('landing.home') }}</a>
-                        <a href="#features">{{ __('landing.features') }}</a>
-                        <a href="#pricing">{{ __('landing.pricing') }}</a>
-                        <a href="{{ route('central.register') }}">{{ __('landing.sign_up') }}</a>
-                        @if($footer->show_admin_login ?? false)
-                        <a href="{{ route('central.login') }}">{{ __('landing.admin_login') }}</a>
-                        @endif
-                        <a href="{{ route('central.privacy-policy') }}">{{ __('landing.privacy_policy') }}</a>
-                        <a href="{{ route('central.terms-conditions') }}">{{ __('landing.terms_and_conditions') }}</a>
-                        <a href="#" id="cookiePreferencesLink">{{ __('landing.cookie_preferences_link') }}</a>
-                    </nav>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    @if($footer && ($footer->contact_email || $footer->contact_phone || $footer->address))
-                    <p class="landing-footer__heading">{{ __('landing.contact') }}</p>
+
+                <div id="contact-sales">
+                    <p class="landing-footer__heading">{{ __('landing.contact_us') }}</p>
                     <div class="landing-footer__contact">
-                        @if($footer->contact_email)
-                            <a class="landing-footer__contact-item" href="mailto:{{ $footer->contact_email }}">
+                        @if($salesEmail)
+                            <a class="landing-footer__contact-item" href="mailto:{{ $salesEmail }}">
                                 <i class="bi bi-envelope" aria-hidden="true"></i>
-                                <span>{{ $footer->contact_email }}</span>
+                                <span>{{ $salesEmail }}</span>
                             </a>
                         @endif
-                        @if($footer->contact_phone)
+                        @if($salesWhatsappHref)
+                            <a class="landing-footer__contact-item" href="{{ $salesWhatsappHref }}" target="_blank" rel="noopener noreferrer">
+                                <i class="bi bi-whatsapp" aria-hidden="true"></i>
+                                <span>{{ $salesWhatsappRaw }}</span>
+                            </a>
+                        @elseif($footer && $footer->contact_phone)
                             <a class="landing-footer__contact-item" href="tel:{{ preg_replace('/[^0-9+]/', '', $footer->contact_phone) }}">
                                 <i class="bi bi-telephone" aria-hidden="true"></i>
                                 <span>{{ $footer->contact_phone }}</span>
                             </a>
                         @endif
-                        @if($footer->address)
+                        @if($footer && $footer->address)
                             <p class="landing-footer__contact-item landing-footer__contact-item--static">
                                 <i class="bi bi-geo-alt" aria-hidden="true"></i>
                                 <span>{{ $footer->address }}</span>
                             </p>
                         @endif
                     </div>
-                    @endif
+                </div>
+
+                <div>
+                    <p class="landing-footer__heading">{{ __('landing.useful_links') }}</p>
+                    <nav class="landing-footer__nav" aria-label="{{ __('landing.useful_links') }}">
+                        <a href="#features">{{ __('landing.features') }}</a>
+                        <a href="#pricing">{{ __('landing.pricing') }}</a>
+                        <a href="#how-it-works">{{ __('landing.how_it_works') }}</a>
+                        <a href="#faq">{{ __('landing.faq') }}</a>
+                    </nav>
+                </div>
+
+                <div>
+                    <p class="landing-footer__heading">{{ __('landing.support') }}</p>
+                    <nav class="landing-footer__nav" aria-label="{{ __('landing.support') }}">
+                        <a href="{{ $salesContactHref }}">{{ __('landing.contact') }}</a>
+                        @if($salesEmail)
+                            <a href="mailto:{{ $salesEmail }}">{{ __('landing.sales') }}</a>
+                        @endif
+                        @if($footer->show_admin_login ?? false)
+                            <a href="{{ route('central.login') }}">{{ __('landing.admin_login') }}</a>
+                        @endif
+                    </nav>
+                </div>
+
+                <div>
+                    <p class="landing-footer__heading">{{ __('landing.company') }}</p>
+                    <nav class="landing-footer__nav" aria-label="{{ __('landing.company') }}">
+                        <a href="{{ route('central.welcome') }}">{{ __('landing.home') }}</a>
+                        <a href="{{ route('central.register') }}">{{ __('landing.sign_up') }}</a>
+                        <a href="{{ route('central.privacy-policy') }}">{{ __('landing.privacy_policy') }}</a>
+                        <a href="{{ route('central.terms-conditions') }}">{{ __('landing.terms_and_conditions') }}</a>
+                        <a href="#" id="cookiePreferencesLink">{{ __('landing.cookie_preferences_link') }}</a>
+                    </nav>
                 </div>
             </div>
             <div class="landing-footer__bottom">
@@ -631,6 +672,13 @@
             </div>
         </div>
     </footer>
+
+    @if($footer && ($footer->show_sales_floating_button ?? true) && $salesWhatsappHref)
+        <a class="sales-floating-button" href="{{ $salesWhatsappHref }}" target="_blank" rel="noopener noreferrer" aria-label="{{ __('landing.talk_to_sales') }}">
+            <i class="bi bi-whatsapp" aria-hidden="true"></i>
+            <span>{{ __('landing.talk_to_sales') }}</span>
+        </a>
+    @endif
 
     <script src="{{ asset('assets_super/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('assets_super/js/landing-two.js') }}"></script>

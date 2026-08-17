@@ -53,3 +53,26 @@ details > summary::-webkit-details-marker {
 #l3DrawerPanel {
     transition: transform 0.3s ease-out;
 }
+
+.l3-sales-float {
+    max-width: calc(100vw - 2rem);
+}
+
+.l3-sales-float:hover {
+    transform: translateY(-1px);
+}
+
+@media (max-width: 420px) {
+    .l3-sales-float {
+        right: 0.75rem;
+        bottom: 0.75rem;
+        padding-inline: 0.875rem;
+    }
+
+    .l3-sales-float span {
+        max-width: 8rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}

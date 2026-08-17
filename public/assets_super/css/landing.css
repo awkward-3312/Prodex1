@@ -1663,6 +1663,13 @@ section { padding: 5rem 0; }
     line-height: 1.55;
     color: rgba(255, 255, 255, .66);
 }
+.cta-section__actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
 .cta-section__btn {
     display: inline-flex;
     align-items: center;
@@ -1680,12 +1687,21 @@ section { padding: 5rem 0; }
     box-shadow: 0 1px 0 rgba(255, 255, 255, .25) inset, 0 8px 24px -8px rgba(0, 0, 0, .35);
     transition: background .2s ease-out, color .2s ease-out, box-shadow .2s ease-out, transform .2s ease-out;
 }
+.cta-section__btn--sales {
+    color: #f5f5f7 !important;
+    background: rgba(255, 255, 255, .08);
+    border-color: rgba(255, 255, 255, .18);
+}
 @media (hover: hover) and (pointer: fine) {
     .cta-section__btn:hover {
         background: #fff;
         color: #1d1d1f !important;
         box-shadow: 0 1px 0 rgba(255, 255, 255, .35) inset, 0 12px 32px -10px rgba(0, 0, 0, .4);
         transform: translateY(-1px);
+    }
+    .cta-section__btn--sales:hover {
+        background: rgba(255, 255, 255, .14);
+        color: #fff !important;
     }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1720,7 +1736,10 @@ section { padding: 5rem 0; }
     z-index: 1;
 }
 .landing-footer__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) repeat(4, minmax(0, 1fr));
     align-items: flex-start;
+    gap: clamp(1.75rem, 4vw, 3rem);
 }
 .landing-footer__brand {
     display: inline-block;
@@ -1858,6 +1877,42 @@ a.landing-footer__contact-item:focus-visible {
     font-size: .8125rem;
     line-height: 1.5;
     color: rgba(255, 255, 255, .38);
+}
+.sales-floating-button {
+    position: fixed;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 1040;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 44px;
+    padding: .75rem 1rem;
+    border-radius: 999px;
+    color: #f5f5f7 !important;
+    background: rgba(29, 29, 31, .92);
+    border: 1px solid rgba(255, 255, 255, .16);
+    box-shadow: 0 16px 36px -18px rgba(0, 0, 0, .55);
+    text-decoration: none;
+    font-size: .875rem;
+    font-weight: 600;
+    backdrop-filter: blur(14px);
+}
+.sales-floating-button .bi {
+    font-size: 1rem;
+}
+@media (hover: hover) and (pointer: fine) {
+    .sales-floating-button:hover {
+        color: #fff !important;
+        background: rgba(29, 29, 31, .98);
+        transform: translateY(-1px);
+    }
+}
+@media (prefers-reduced-motion: no-preference) {
+    .sales-floating-button {
+        transition: background .18s ease-out, color .18s ease-out, transform .18s ease-out, box-shadow .18s ease-out;
+    }
 }
 
 /* Privacy policy footer */
@@ -2007,6 +2062,9 @@ a.landing-footer__contact-item:focus-visible {
     .hero-visual { margin-top: .5rem; }
     section { padding: 3.5rem 0; }
     .pricing-tier--featured:hover { transform: none; }
+    .landing-footer__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 @media (max-width: 575px) {
     .hero-actions { width: 100%; }
@@ -2047,12 +2105,33 @@ a.landing-footer__contact-item:focus-visible {
     .cta-section { padding: 3.25rem 0; }
     .cta-section__title { margin-bottom: .85rem; }
     .cta-section__lead { margin-bottom: 1.5rem; }
+    .cta-section__actions {
+        display: flex;
+        width: 100%;
+        flex-direction: column;
+        align-items: center;
+    }
     .cta-section__btn {
         display: flex;
         width: 100%;
         max-width: 280px;
         margin-left: auto;
         margin-right: auto;
+    }
+    .landing-footer__grid {
+        grid-template-columns: 1fr;
+        gap: 1.75rem;
+    }
+    .sales-floating-button {
+        right: .875rem;
+        bottom: .875rem;
+        padding: .72rem .9rem;
+    }
+    .sales-floating-button span {
+        max-width: 8rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 }
 

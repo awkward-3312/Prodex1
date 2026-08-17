@@ -144,24 +144,30 @@ class LandingPageSeeder extends Seeder
         // Call to action
         if (! $central->table('landing_cta')->exists()) {
             $central->table('landing_cta')->insert([
-                'title'       => 'Ready to Take Control of Your Inventory?',
-                'subtitle'    => 'Join thousands of businesses already using Stocky. Start your free trial today.',
-                'button_text' => 'Get Started Free',
-                'button_url'  => '/register',
-                'is_active'   => true,
-                'created_at'  => $now,
-                'updated_at'  => $now,
+                'title'              => 'Una sola herramienta para manejar todo tu negocio',
+                'subtitle'           => 'Comienza hoy con 7 días gratis. Sin tarjeta de crédito requerida.',
+                'button_text'        => 'Prueba Gratis 7 Días',
+                'button_url'         => '/register',
+                'sales_button_text'  => 'Hablar con Ventas',
+                'sales_button_url'   => null,
+                'is_active'          => true,
+                'show_commercial_cta'=> true,
+                'created_at'         => $now,
+                'updated_at'         => $now,
             ]);
         }
 
         // Footer
         if (! $central->table('landing_footer')->exists()) {
             $central->table('landing_footer')->insert([
-                'footer_about'   => 'Stocky is a modern inventory and stock management platform built for businesses of every size.',
-                'copyright_text' => '© ' . date('Y') . ' Stocky. All rights reserved.',
-                'contact_email'  => 'support@stocky.local',
-                'created_at'     => $now,
-                'updated_at'     => $now,
+                'footer_about'               => 'Prodex es una plataforma moderna para administrar ventas, inventario, caja, clientes y operaciones desde un solo lugar.',
+                'copyright_text'             => '© ' . date('Y') . ' Prodex. Todos los derechos reservados.',
+                'contact_email'              => 'support@prodex.local',
+                'sales_email'                => 'ventas@prodex.local',
+                'sales_whatsapp_message'     => 'Hola, me interesa conocer más sobre Prodex y sus planes.',
+                'show_sales_floating_button' => true,
+                'created_at'                 => $now,
+                'updated_at'                 => $now,
             ]);
         }
 

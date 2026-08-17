@@ -14,6 +14,7 @@ use App\Models\EmailMessage;
 use App\Models\Language;
 use App\Models\PaymentMethod;
 use App\Models\PaymentSale;
+use App\Models\PaymentSetting;
 use App\Models\PaymentWithCreditCard;
 use App\Models\PosSetting;
 use App\Models\Product;
@@ -354,9 +355,10 @@ class PosController extends BaseController
                     $this->authorizeForUser($request->user('api'), 'check_record', $sale);
                 }
 
-                // Optional Stripe per-line metadata coming from modern payment modal / legacy POS
-                // NOTE: Saved-card usage has been disabled; we only accept per-transaction tokens.
+                // Optional Stripe per-line metadata coming from modern payment modal / legacy POS.
+                // Saved-card usage has been disabled; we only accept per-transaction tokens.
                 $cardTokensByLine = $request->card_tokens_by_line ?? [];
+                $cardProcessingMode = $this->resolveCardProcessingMode();
                 $storeCreditApplied = $this->redeemStoreCreditVouchers($request, $order);
                 $remainingAfterStoreCredit = max(0, (float) $order->GrandTotal - $storeCreditApplied);
 
@@ -371,13 +373,22 @@ class PosController extends BaseController
                         $paymentAmount = $payment['applied_amount'];
                         $changeReturn = $payment['change'];
 
-                        if ($payment['payment_method_id'] == 1 || $payment['payment_method_id'] == '1') {
+                        $isCardPayment = $this->isCardPaymentMethod($payment['payment_method_id'] ?? null);
+                        $cardProcessor = $isCardPayment ? $cardProcessingMode : null;
+                        $cardReference = $isCardPayment ? $this->cleanNullableCardText($payment['card_reference'] ?? null) : null;
+                        $authorizationCode = $isCardPayment ? $this->cleanNullableCardText($payment['authorization_code'] ?? null) : null;
+                        $cardLast4 = $isCardPayment ? $this->cleanCardLast4($payment['card_last4'] ?? null) : null;
+                        $stripeChargeId = null;
+                        $customerStripeId = null;
+
+                        if ($isCardPayment && $cardProcessor === PaymentSetting::CARD_MODE_STRIPE) {
 
                             $helpers  = new helpers();
                             $currency = strtolower($helpers->Get_Currency_Code() ?? 'usd');
 
                             $client = Client::findOrFail($request->client_id);
-                            \Stripe\Stripe::setApiKey(\App\Models\PaymentSetting::current()->stripe_secret);
+                            $paymentSettings = $this->stripePaymentSettings();
+                            \Stripe\Stripe::setApiKey($paymentSettings->stripe_secret);
 
                             $existing = PaymentWithCreditCard::where('customer_id', $request->client_id)->first();
 
@@ -461,11 +472,15 @@ class PosController extends BaseController
                             'change' => $changeReturn,
                             'notes' => $request['payment_note'] ?? null,
                             'user_id' => Auth::user()->id,
+                            'card_processor' => $cardProcessor,
+                            'card_reference' => $cardReference,
+                            'authorization_code' => $authorizationCode,
+                            'card_last4' => $cardLast4,
                         ]);
 
 
 
-                        if ($payment['payment_method_id'] == 1 || $payment['payment_method_id'] == '1') {
+                        if ($isCardPayment && $cardProcessor === PaymentSetting::CARD_MODE_STRIPE) {
                             PaymentWithCreditCard::create([
                                 'customer_id' => $request->client_id,
                                 'payment_id' => $paymentSale->id,
@@ -825,6 +840,58 @@ class PosController extends BaseController
         $name = strtolower(trim((string) optional($method)->name));
 
         return str_contains($name, 'cash') || str_contains($name, 'efectivo');
+    }
+
+    protected function isCardPaymentMethod($paymentMethodId): bool
+    {
+        if ($paymentMethodId === null || $paymentMethodId === '') {
+            return false;
+        }
+
+        $method = PaymentMethod::whereNull('deleted_at')->find($paymentMethodId);
+        $name = strtolower(trim((string) optional($method)->name));
+
+        return (string) $paymentMethodId === '1'
+            || str_contains($name, 'card')
+            || str_contains($name, 'tarjeta')
+            || str_contains($name, 'credit')
+            || str_contains($name, 'debit')
+            || str_contains($name, 'tpe');
+    }
+
+    protected function resolveCardProcessingMode(): string
+    {
+        return PaymentSetting::current()->effectiveCardProcessingMode();
+    }
+
+    protected function stripePaymentSettings(): PaymentSetting
+    {
+        $paymentSettings = PaymentSetting::current();
+        if (! $paymentSettings->hasStripeCredentials()) {
+            throw new \Exception('Stripe card payment is not configured for this tenant.');
+        }
+
+        return $paymentSettings;
+    }
+
+    private function cleanNullableCardText($value): ?string
+    {
+        $clean = trim((string) $value);
+        if ($clean === '') {
+            return null;
+        }
+
+        return Str::limit($clean, 190, '');
+    }
+
+    private function cleanCardLast4($value): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+        if ($digits === '') {
+            return null;
+        }
+
+        return substr($digits, -4);
     }
 
     private function assertStoreCreditVoucherUsable(StoreCreditVoucher $voucher, int $clientId): void
@@ -1332,10 +1399,15 @@ class PosController extends BaseController
                     }
 
                     if ($request['amount'] > 0) {
-                        if ($request->payment['payment_method_id'] == 1 || $request->payment['payment_method_id'] == '1') {
+                        $singlePaymentMethodId = $request->payment['payment_method_id'] ?? null;
+                        $isCardPayment = $this->isCardPaymentMethod($singlePaymentMethodId);
+                        $cardProcessingMode = $isCardPayment ? $this->resolveCardProcessingMode() : null;
+
+                        if ($isCardPayment && $cardProcessingMode === PaymentSetting::CARD_MODE_STRIPE) {
 
                             $Client = Client::whereId($request->client_id)->first();
-                            Stripe\Stripe::setApiKey(\App\Models\PaymentSetting::current()->stripe_secret);
+                            $paymentSettings = $this->stripePaymentSettings();
+                            Stripe\Stripe::setApiKey($paymentSettings->stripe_secret);
 
                             // Always require a fresh card token for each transaction.
                             if (! $request->token) {
@@ -1392,6 +1464,10 @@ class PosController extends BaseController
                             $PaymentSale->notes = $request->payment['notes'];
                             $PaymentSale->user_id = Auth::user()->id;
                             $PaymentSale->account_id = $request->payment['account_id'] ? $request->payment['account_id'] : null;
+                            $PaymentSale->card_processor = $cardProcessingMode;
+                            $PaymentSale->card_reference = $this->cleanNullableCardText($request->payment['card_reference'] ?? null);
+                            $PaymentSale->authorization_code = $this->cleanNullableCardText($request->payment['authorization_code'] ?? null);
+                            $PaymentSale->card_last4 = $this->cleanCardLast4($request->payment['card_last4'] ?? null);
 
                             $PaymentSale->save();
 
@@ -1417,8 +1493,17 @@ class PosController extends BaseController
 
                             // Paying Method Cash
                         } else {
+                            $cardFields = [];
+                            if ($isCardPayment) {
+                                $cardFields = [
+                                    'card_processor' => $cardProcessingMode,
+                                    'card_reference' => $this->cleanNullableCardText($request->payment['card_reference'] ?? null),
+                                    'authorization_code' => $this->cleanNullableCardText($request->payment['authorization_code'] ?? null),
+                                    'card_last4' => $this->cleanCardLast4($request->payment['card_last4'] ?? null),
+                                ];
+                            }
 
-                            PaymentSale::create([
+                            PaymentSale::create(array_merge([
                                 'sale_id' => $order->id,
                                 'account_id' => $request->payment['account_id'] ? $request->payment['account_id'] : null,
                                 'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
@@ -1428,7 +1513,7 @@ class PosController extends BaseController
                                 'change' => $request['change'],
                                 'notes' => $request->payment['notes'],
                                 'user_id' => Auth::user()->id,
-                            ]);
+                            ], $cardFields));
 
                             $account = Account::where('id', $request->payment['account_id'])->exists();
 
@@ -1557,7 +1642,7 @@ class PosController extends BaseController
     public function data_draft_convert_sale(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
-        $clients = Client::where('deleted_at', '=', null)->get(['id', 'name', 'phone']);
+        $clients = Client::where('deleted_at', '=', null)->get(['id', 'name', 'phone', 'tax_number']);
         $settings = Setting::where('deleted_at', '=', null)->with('Client')->first();
         $accounts = Account::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'account_name']);
 
@@ -1758,11 +1843,13 @@ class PosController extends BaseController
 
         $categories = Category::where('deleted_at', '=', null)->get(['id', 'name']);
         $brands = Brand::where('deleted_at', '=', null)->get();
-        $stripe_key = \App\Models\PaymentSetting::current()->stripe_key;
+        $paymentSettings = PaymentSetting::current();
+        $stripe_key = $paymentSettings->stripe_key;
         $payment_methods = PaymentMethod::where('deleted_at', '=', null)->get(['id', 'name']);
 
         return response()->json([
             'stripe_key' => $stripe_key,
+            'card_processing_mode' => $paymentSettings->effectiveCardProcessingMode(),
             'brands' => $brands,
             'warehouse_id' => $sale['warehouse_id'],
             'client_id' => $sale['client_id'],
@@ -2159,7 +2246,7 @@ class PosController extends BaseController
     public function GetELementPos(Request $request, UserOperationalAssignmentService $assignmentService)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
-        $clients = Client::where('deleted_at', '=', null)->get(['id', 'name', 'phone']);
+        $clients = Client::where('deleted_at', '=', null)->get(['id', 'name', 'phone', 'tax_number']);
         $settings = Setting::where('deleted_at', '=', null)->with('Client')->first();
         $accounts = Account::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'account_name']);
 
@@ -2219,11 +2306,21 @@ class PosController extends BaseController
 
         $categories = Category::where('deleted_at', '=', null)->get(['id', 'name']);
         $brands = Brand::where('deleted_at', '=', null)->get();
-        $stripe_key = \App\Models\PaymentSetting::current()->stripe_key;
+        $paymentSettings = PaymentSetting::current();
+        $stripe_key = $paymentSettings->stripe_key;
         $pos_setting = PosSetting::where('deleted_at', '=', null)->first();
         $products_per_page = $pos_setting ? $pos_setting->products_per_page : 12;
         $payment_methods = PaymentMethod::where('deleted_at', '=', null)->get(['id', 'name']);
         $languages_available = Language::where('is_active', true)->get(['name', 'locale', 'flag']);
+        $tenantCountry = null;
+        try {
+            $tenantCountry = function_exists('tenant') && tenant() ? (tenant()->country_code ?? null) : null;
+        } catch (\Throwable $e) {
+            $tenantCountry = null;
+        }
+        $taxConfig = $settings
+            ? TenantTaxConfigResolver::resolve($settings, $tenantCountry)
+            : TenantTaxConfigResolver::defaultForCountry($tenantCountry ?: 'HN');
         $warehouseIds = $warehouses->pluck('id')->all();
         $cash_drawers = CashDrawer::whereNull('deleted_at')
             ->where('is_active', true)
@@ -2251,6 +2348,7 @@ class PosController extends BaseController
                 'offline_sync_enabled' => $settings ? (bool) ($settings->offline_sync_enabled ?? true) : true,
             ],
             'stripe_key' => $stripe_key,
+            'card_processing_mode' => $paymentSettings->effectiveCardProcessingMode(),
             'brands' => $brands,
             'defaultWarehouse' => $effectiveAssignment['warehouse_id'] ?: $defaultWarehouse,
             'defaultCashDrawer' => $effectiveAssignment['cash_drawer_id'],
@@ -2276,8 +2374,10 @@ class PosController extends BaseController
             'default_client_points' => $default_client_points,
             'default_client_eligible' => $default_client_eligible,
             'point_to_amount_rate' => $settings->point_to_amount_rate,
-            'country_code' => strtoupper((string) ($settings->country_code ?? 'HN')),
-            'default_tax' => $settings ? (float) TenantTaxConfigResolver::resolve($settings)['tax_rate'] : 0,
+            'country_code' => strtoupper((string) ($taxConfig['country_code'] ?? 'HN')),
+            'customer_tax_id_label' => $taxConfig['customer_tax_id_label'] ?? 'Tax Number',
+            'tax_config' => $taxConfig,
+            'default_tax' => (float) ($taxConfig['tax_rate'] ?? 0),
             'default_account_id' => $settings->default_account_id ?? null,
             'default_payment_method_id' => $settings->default_payment_method_id ?? null,
             'pos_settings' => $pos_setting,

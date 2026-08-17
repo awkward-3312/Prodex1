@@ -16,6 +16,7 @@ class Payment_gateway_SettingsController extends Controller
 
         $item['stripe_key'] = PaymentSetting::current()->stripe_key;
         $item['stripe_secret'] = '';
+        $item['card_processing_mode'] = PaymentSetting::current()->effectiveCardProcessingMode();
         $item['deleted'] = false;
 
         return response()->json(['gateway' => $item], 200);
@@ -27,6 +28,7 @@ class Payment_gateway_SettingsController extends Controller
 
         $item['stripe_key'] = PaymentSetting::current()->stripe_key;
         $item['stripe_secret'] = '';
+        $item['card_processing_mode'] = PaymentSetting::current()->effectiveCardProcessingMode();
         $item['deleted'] = false;
 
         return response()->json(['gateway' => $item], 200);
@@ -38,17 +40,24 @@ class Payment_gateway_SettingsController extends Controller
     {
         $this->authorizeForUser($request->user('api'), 'payment_gateway', Setting::class);
 
+        $request->validate([
+            'card_processing_mode' => 'nullable|in:external_terminal,stripe',
+        ]);
+
         $payment_settings = PaymentSetting::current();
+        $cardProcessingMode = $request->input('card_processing_mode') ?: PaymentSetting::CARD_MODE_EXTERNAL_TERMINAL;
 
         if ($request['deleted'] == 'true') {
             $payment_settings->update([
                 'stripe_key' => null,
                 'stripe_secret' => null,
+                'card_processing_mode' => $cardProcessingMode,
             ]);
         } else {
             $payment_settings->update([
                 'stripe_key' => $request['stripe_key'] !== null ? $request['stripe_key'] : null,
                 'stripe_secret' => $request['stripe_secret'] !== null ? $request['stripe_secret'] : $payment_settings->stripe_secret,
+                'card_processing_mode' => $cardProcessingMode,
             ]);
         }
 
