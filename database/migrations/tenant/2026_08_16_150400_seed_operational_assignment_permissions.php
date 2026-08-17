@@ -19,7 +19,14 @@ return new class extends Migration
 
     public function up(): void
     {
-        if (! Schema::hasTable('permissions')) {
+        if (! Schema::hasTable('permissions') || ! Schema::hasTable('roles')) {
+            return;
+        }
+
+        // Fresh tenant databases are migrated before their base seeders run.
+        // Defer these records until OperationalAssignmentPermissionsSeeder so
+        // they cannot consume the fixed IDs 1-244 used by PermissionsSeeder.
+        if (! DB::table('permissions')->exists() || ! DB::table('roles')->exists()) {
             return;
         }
 
@@ -36,27 +43,19 @@ return new class extends Migration
                 ]);
             }
 
-            if (Schema::hasTable('roles') && Schema::hasTable('permission_role')) {
-                $ownerRoleIds = DB::table('roles')
-                    ->whereNull('deleted_at')
-                    ->where(function ($q) {
-                        $q->where('id', 1)
-                            ->orWhereIn('name', ['Owner', 'Admin', 'Administrador']);
-                    })
-                    ->pluck('id');
+            $ownerRoleIds = DB::table('roles')
+                ->whereNull('deleted_at')
+                ->where(function ($q) {
+                    $q->where('id', 1)
+                        ->orWhereIn('name', ['Owner', 'Admin', 'Administrador']);
+                })
+                ->pluck('id');
 
-                foreach ($ownerRoleIds as $roleId) {
-                    $exists = DB::table('permission_role')
-                        ->where('permission_id', $permissionId)
-                        ->where('role_id', $roleId)
-                        ->exists();
-                    if (! $exists) {
-                        DB::table('permission_role')->insert([
-                            'permission_id' => $permissionId,
-                            'role_id' => $roleId,
-                        ]);
-                    }
-                }
+            foreach ($ownerRoleIds as $roleId) {
+                DB::table('permission_role')->updateOrInsert([
+                    'permission_id' => $permissionId,
+                    'role_id' => $roleId,
+                ]);
             }
         }
     }
