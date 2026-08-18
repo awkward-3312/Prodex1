@@ -157,8 +157,8 @@ class SettingsController extends Controller
             'require_rfc' => isset($request['require_rfc']) ? (($request['require_rfc'] == '1' || $request['require_rfc'] == 'true' || $request['require_rfc'] === 1 || $request['require_rfc'] === true) ? 1 : 0) : (int) ($setting->require_rfc ?? 0),
             'require_nit' => isset($request['require_nit']) ? (($request['require_nit'] == '1' || $request['require_nit'] == 'true' || $request['require_nit'] === 1 || $request['require_nit'] === true) ? 1 : 0) : (int) ($setting->require_nit ?? 0),
             'zatca_enabled' => ($request['zatca_enabled'] == '1' || $request['zatca_enabled'] == 'true' || $request['zatca_enabled'] === 1 || $request['zatca_enabled'] === true) ? 1 : 0,
-            'footer' => $request['footer'],
-            'developed_by' => $request['developed_by'],
+            'footer' => 'PRODEX',
+            'developed_by' => 'PRODEX',
             'is_invoice_footer' => $is_invoice_footer,
             'invoice_format' => $invoice_format,
             'invoice_logo_width' => $invoice_logo_width,
@@ -1112,8 +1112,8 @@ class SettingsController extends Controller
 
         // Update settings
         $setting->update([
-            'footer' => $request->input('footer'),
-            'developed_by' => $request->input('developed_by'),
+            'footer' => 'PRODEX',
+            'developed_by' => 'PRODEX',
             'app_name' => $request->input('app_name'),
             'page_title_suffix' => $request->input('page_title_suffix'),
             'customize_button_visible' => filter_var($request->input('customize_button_visible'), FILTER_VALIDATE_BOOLEAN),
