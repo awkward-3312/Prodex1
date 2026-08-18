@@ -54,7 +54,7 @@ return new class extends Migration
 
         Schema::create('sar_fiscal_documents', function (Blueprint $table) {
             $table->id();
-            $table->unsignedInteger('sale_id');
+            $table->integer('sale_id');
             $table->unsignedBigInteger('authorization_id');
             $table->unsignedBigInteger('sequence');
             $table->string('fiscal_number', 19);
