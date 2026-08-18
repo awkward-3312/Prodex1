@@ -40,9 +40,7 @@ export const POS_SHORTCUTS = [
     descriptionFallback: "Focus product search",
     match: (e) => e.key === "F2",
     action: (vm) => {
-      const el =
-        document.querySelector(".pos-shell-search-input") ||
-        document.querySelector(".search-input");
+      const el = document.querySelector(".pos-shell-search-input") || document.querySelector(".search-input");
       if (el && typeof el.focus === "function") {
         el.focus();
         if (typeof el.select === "function") el.select();
@@ -56,9 +54,7 @@ export const POS_SHORTCUTS = [
     descriptionFallback: "Open payment modal",
     match: (e) => e.key === "F4",
     action: (vm) => {
-      if (typeof vm.openModernPaymentModal === "function" && vm.details && vm.details.length) {
-        vm.openModernPaymentModal();
-      }
+      if (typeof vm.openModernPaymentModal === "function" && vm.details && vm.details.length) vm.openModernPaymentModal();
     },
   },
   {
@@ -98,11 +94,8 @@ export const POS_SHORTCUTS = [
     descriptionFallback: "Print last receipt",
     match: (e) => e.key === "F9",
     action: (vm) => {
-      if (typeof vm.print_last_receipt === "function") {
-        vm.print_last_receipt();
-      } else if (typeof vm.print_pos === "function") {
-        vm.print_pos();
-      }
+      if (typeof vm.print_last_receipt === "function") vm.print_last_receipt();
+      else if (typeof vm.print_pos === "function") vm.print_pos();
     },
   },
   {
@@ -113,11 +106,8 @@ export const POS_SHORTCUTS = [
     match: (e) => e.key === "Escape",
     action: (vm) => {
       if (!vm.details || !vm.details.length) return;
-      if (typeof vm.confirmClearCart === "function") {
-        vm.confirmClearCart();
-      } else if (typeof vm.Reset_Pos === "function") {
-        vm.Reset_Pos();
-      }
+      if (typeof vm.confirmClearCart === "function") vm.confirmClearCart();
+      else if (typeof vm.Reset_Pos === "function") vm.Reset_Pos();
     },
   },
   {
@@ -153,9 +143,7 @@ export const POS_SHORTCUTS = [
     action: (vm) => {
       if (!vm.details || !vm.details.length) return;
       const last = vm.details[vm.details.length - 1];
-      if (last && typeof vm.delete_Product_Detail === "function") {
-        vm.delete_Product_Detail(last.detail_id);
-      }
+      if (last && typeof vm.delete_Product_Detail === "function") vm.delete_Product_Detail(last.detail_id);
     },
   },
   {
@@ -165,9 +153,7 @@ export const POS_SHORTCUTS = [
     descriptionFallback: "Show this shortcuts help",
     match: (e) => e.shiftKey && (e.key === "?" || e.key === "/"),
     action: (vm) => {
-      if (vm.$bvModal && typeof vm.$bvModal.show === "function") {
-        vm.$bvModal.show("pos-keyboard-shortcuts-help");
-      }
+      if (vm.$bvModal && typeof vm.$bvModal.show === "function") vm.$bvModal.show("pos-keyboard-shortcuts-help");
     },
   },
 ];
@@ -202,11 +188,18 @@ export default {
         const root = document.getElementById("invoice-POS");
         if (!root) return;
 
-        const old = root.querySelector(".sar-fiscal-pos-block");
-        if (old && old.parentNode) old.parentNode.removeChild(old);
-
         const fiscal = this.invoice_pos && this.invoice_pos.sar_fiscal;
-        if (!fiscal || !fiscal.fiscal_number) return;
+        const old = root.querySelector(".sar-fiscal-pos-block");
+
+        if (!fiscal || !fiscal.fiscal_number) {
+          if (old && old.parentNode) old.parentNode.removeChild(old);
+          return;
+        }
+
+        // Avoid re-rendering the same fiscal block. This is deliberately
+        // idempotent so receipt rendering can never create a DOM mutation loop.
+        if (old && old.getAttribute("data-fiscal-number") === String(fiscal.fiscal_number)) return;
+        if (old && old.parentNode) old.parentNode.removeChild(old);
 
         const issuer = fiscal.issuer || {};
         const customer = fiscal.customer || {};
@@ -218,6 +211,7 @@ export default {
 
         const block = document.createElement("div");
         block.className = "sar-fiscal-pos-block";
+        block.setAttribute("data-fiscal-number", String(fiscal.fiscal_number));
         block.style.cssText = "text-align:center;font-size:10px;line-height:1.35;margin:0 0 10px;padding:0 4px 9px;border-bottom:1px dashed #333;word-break:break-word;";
         block.innerHTML =
           (legalName ? `<div style="font-size:12px;font-weight:700;">${escapeHtml(legalName)}</div>` : "") +
@@ -249,13 +243,7 @@ export default {
     const handler = (e) => {
       if (!posShortcutsEnabled()) return;
       try {
-        if (
-          typeof document !== "undefined" &&
-          document.body &&
-          document.body.classList.contains("modal-open")
-        ) {
-          return;
-        }
+        if (typeof document !== "undefined" && document.body && document.body.classList.contains("modal-open")) return;
       } catch (e2) { /* ignore */ }
 
       const fromInput = isTypingTarget(e.target);
@@ -283,10 +271,10 @@ export default {
       /* ignore */
     }
 
-    // POS thermal receipt bridge: `Print_Invoice_POS` already returns the
-    // complete SAR payload. Capture it before pos.vue consumes the response so
-    // the normal receipt can use the immutable issuer snapshot rather than
-    // generic tenant placeholders such as 00000000 / admin@example.com.
+    // `Print_Invoice_POS` already returns the complete SAR payload. Capture it
+    // before pos.vue consumes the response, then render once after the existing
+    // 500ms receipt-modal delay. No DOM observer is used: observing and then
+    // mutating the same receipt caused Firefox to enter a self-triggering loop.
     try {
       if (typeof axios !== "undefined" && axios.interceptors && axios.interceptors.response) {
         this._sarReceiptInterceptor = axios.interceptors.response.use((response) => {
@@ -298,17 +286,19 @@ export default {
               const issuer = fiscal.issuer || {};
               data.setting = data.setting || {};
 
-              // Fiscal invoices must display the issuer snapshot captured at
-              // issuance time. Do not mutate persisted tenant settings.
+              // Fiscal invoices display the issuer snapshot captured at issuance
+              // time without changing the tenant's persisted general settings.
               data.setting.CompanyName = issuer.trade_name || issuer.legal_name || data.setting.CompanyName;
               data.setting.CompanyAdress = issuer.point_of_issue_address || issuer.head_office_address || data.setting.CompanyAdress;
               data.setting.CompanyPhone = issuer.phone || data.setting.CompanyPhone;
               data.setting.email = issuer.email || data.setting.email;
 
-              if (this.invoice_pos) {
-                this.$set(this.invoice_pos, "sar_fiscal", fiscal);
-              }
+              if (this.invoice_pos) this.$set(this.invoice_pos, "sar_fiscal", fiscal);
+
+              // First attempt for already-mounted receipts; the delayed attempt
+              // covers BootstrapVue's receipt modal, which opens after 500ms.
               this.$nextTick(() => this.renderSarFiscalReceipt());
+              setTimeout(() => this.renderSarFiscalReceipt(), 650);
             } else if (url.indexOf("sales_print_invoice/") !== -1 && this.invoice_pos) {
               this.$set(this.invoice_pos, "sar_fiscal", null);
             }
@@ -321,22 +311,6 @@ export default {
     } catch (e) {
       this._sarReceiptInterceptor = null;
     }
-
-    // BootstrapVue inserts the modal asynchronously. Observe DOM changes so the
-    // fiscal block is present before either preview or auto-print snapshots it.
-    try {
-      if (typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
-        this._sarReceiptObserver = new MutationObserver(() => {
-          const fiscal = this.invoice_pos && this.invoice_pos.sar_fiscal;
-          if (fiscal && document.getElementById("invoice-POS")) {
-            this.renderSarFiscalReceipt();
-          }
-        });
-        this._sarReceiptObserver.observe(document.body, { childList: true, subtree: true });
-      }
-    } catch (e) {
-      this._sarReceiptObserver = null;
-    }
   },
 
   beforeDestroy() {
@@ -348,12 +322,6 @@ export default {
     } catch (e) {
       /* ignore */
     }
-    try {
-      if (this._sarReceiptObserver) {
-        this._sarReceiptObserver.disconnect();
-        this._sarReceiptObserver = null;
-      }
-    } catch (e) {}
     try {
       if (this._sarReceiptInterceptor !== null && this._sarReceiptInterceptor !== undefined && typeof axios !== "undefined") {
         axios.interceptors.response.eject(this._sarReceiptInterceptor);
