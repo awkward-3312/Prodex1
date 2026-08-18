@@ -1353,6 +1353,7 @@
               currentUserPermissions.includes('payment_gateway') ||
               currentUserPermissions.includes('mail_settings') ||
               currentUserPermissions.includes('warehouse') ||
+              currentUserPermissions.includes('cash_drawers_view') ||
               currentUserPermissions.includes('warehouse_locations') ||
               currentUserPermissions.includes('backup') ||
               currentUserPermissions.includes('payment_methods') ||
@@ -1458,6 +1459,13 @@
                 <router-link to="/app/settings/Warehouses" class="submenu-link">
                   <lucide-icon class="submenu-icon" name="store" />
                   <span>{{ $t('Warehouses') }}</span>
+                </router-link>
+              </li>
+
+              <li class="submenu-item" v-if="currentUserPermissions && currentUserPermissions.includes('cash_drawers_view')">
+                <router-link to="/app/settings/Cash_Drawers" class="submenu-link">
+                  <lucide-icon class="submenu-icon" name="wallet-cards" />
+                  <span>Cajas físicas</span>
                 </router-link>
               </li>
 
