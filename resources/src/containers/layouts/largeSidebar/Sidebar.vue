@@ -947,6 +947,16 @@
           data-parent="accounting"
           :class="{ 'd-block': selectedParentMenu == 'accounting' }"
         >
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')"
+          >
+            <router-link tag="a" class to="/app/settings/sar_fiscal">
+              <lucide-icon class="nav-icon" name="file-text" />
+              <span class="item-name">Facturación SAR</span>
+            </router-link>
+          </li>
+
           <!-- NEW FEATURE - SAFE ADDITION: Advanced Accounting under Accounting -->
           <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('accounting_dashboard')">
             <router-link tag="a" class to="/app/accounting-v2/dashboard">
@@ -1859,18 +1869,7 @@
               <span class="item-name">{{$t('SystemSettings')}}</span>
             </router-link>
           </li>
-
-          <li
-            class="nav-item"
-            v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')"
-          >
-            <router-link tag="a" class to="/app/settings/sar_fiscal">
-              <lucide-icon class="nav-icon" name="file-check-2" />
-              <span class="item-name">Facturación SAR</span>
-            </router-link>
-          </li>
-
-          <li
+<li
             class="nav-item"
             v-if="planFeature('zatca') && currentUserPermissions && currentUserPermissions.includes('zatca_settings')"
           >
@@ -2010,7 +2009,7 @@
             v-if="currentUserPermissions && currentUserPermissions.includes('cash_drawers_view')"
           >
             <router-link tag="a" class to="/app/settings/Cash_Drawers">
-              <lucide-icon class="nav-icon" name="wallet-cards" />
+              <lucide-icon class="nav-icon" name="wallet" />
               <span class="item-name">Cajas físicas</span>
             </router-link>
           </li>
