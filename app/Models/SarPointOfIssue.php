@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class SarPointOfIssue extends Model
 {
+    protected $table = 'sar_points_of_issue';
+
     protected $fillable = [
         'establishment_code', 'point_code', 'name', 'address',
         'warehouse_id', 'cash_drawer_id', 'active',
