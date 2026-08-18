@@ -282,6 +282,15 @@
         </tbody>
     </table>
 
+    @if(!empty($sar_fiscal))
+    <div style="border: 1px solid #d1d5db; padding: 6px 8px; margin-bottom: 10px; font-size: 8pt;">
+        <strong>Total en letras:</strong> {{ $sar_fiscal['total_in_words'] }}
+        @if(($sar_fiscal['status'] ?? '') === 'voided')
+            <br><strong style="color: #b91c1c;">Motivo de anulación:</strong> {{ $sar_fiscal['void_reason'] }}
+        @endif
+    </div>
+    @endif
+
     <!-- Summary Section: in RTL, summary box appears on the left (start) side -->
     <table style="width: 100%; margin-bottom: 10px;" cellpadding="0" cellspacing="0" {{ $isRtl ? 'dir="rtl"' : '' }}>
         <tr>
