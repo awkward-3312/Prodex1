@@ -555,6 +555,7 @@
                         || currentUserPermissions.includes('payment_gateway')
                         || currentUserPermissions.includes('mail_settings')
                         || currentUserPermissions.includes('warehouse')
+                        || currentUserPermissions.includes('cash_drawers_view')
                         || currentUserPermissions.includes('warehouse_locations')
                         || currentUserPermissions.includes('backup')
                         || currentUserPermissions.includes('payment_methods')
@@ -1991,6 +1992,16 @@
             <router-link tag="a" class to="/app/settings/Warehouses">
               <lucide-icon class="nav-icon" name="store" />
               <span class="item-name">{{$t('Warehouses')}}</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('cash_drawers_view')"
+          >
+            <router-link tag="a" class to="/app/settings/Cash_Drawers">
+              <lucide-icon class="nav-icon" name="wallet-cards" />
+              <span class="item-name">Cajas físicas</span>
             </router-link>
           </li>
 
