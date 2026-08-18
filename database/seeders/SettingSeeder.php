@@ -17,9 +17,9 @@ class SettingSeeder extends Seeder
     public function run()
     {
         // Pull central (Super Admin) tenant defaults so each new tenant
-        // inherits the platform-wide branding instead of the hardcoded
-        // "Stocky" placeholders. Each value has a fallback so installs
-        // without configured defaults still get a working settings row.
+        // inherits the platform-wide branding instead of hardcoded placeholders.
+        // Each value has a fallback so installs without configured defaults
+        // still get a working settings row.
         $defaults = $this->tenantDefaults();
 
         // Resolve the seeded language locale to one that actually exists
@@ -49,11 +49,11 @@ class SettingSeeder extends Seeder
                 'is_invoice_footer' => 0,
                 'invoice_footer' => null,
                 'warehouse_id' => null,
-                'CompanyName' => 'PRODEX',
-                'CompanyPhone' => '00000000',
-                'CompanyAdress' => '',
-                'footer' => 'PRODEX',
-                'developed_by' => 'PRODEX',
+                'CompanyName' => $defaults['company_name'],
+                'CompanyPhone' => $defaults['phone'],
+                'CompanyAdress' => $defaults['address'],
+                'footer' => $defaults['footer_text'],
+                'developed_by' => $defaults['developed_by'],
                 'logo' => $logo,
                 'app_name' => $defaults['app_name'],
                 'page_title_suffix' => $defaults['page_title_suffix'],
