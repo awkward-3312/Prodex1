@@ -2300,6 +2300,16 @@ const baseRoutes = [
                             )
                     },
 
+                    // Cash Drawers
+                    {
+                        name: "Cash_Drawers",
+                        path: "Cash_Drawers",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Cash_Drawers" */ "./views/app/pages/settings/cash_drawers"
+                            )
+                    },
+
                     // Warehouse Locations (Rack/Location)
                     {
                         name: "Warehouse_Locations",
