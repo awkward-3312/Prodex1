@@ -179,7 +179,7 @@
 
                 <b-dropdown-item
                   title="Delete"
-                  v-if="currentUserPermissions.includes('Sales_delete')"
+                  v-if="currentUserPermissions.includes('Sales_delete') && !props.row.fiscal_number"
                   @click="Remove_Sale(props.row.id , props.row.sale_has_return)"
                 >
                   <lucide-icon class="nav-icon font-weight-bold mr-2" name="x" />
