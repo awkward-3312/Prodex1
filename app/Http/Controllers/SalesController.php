@@ -1067,6 +1067,12 @@ class SalesController extends BaseController
             $view_records = $user->hasRecordView();
             $current = \App\Models\Sale::with(['details.product'])->findOrFail($id);
 
+            if ($current->sarFiscalDocument()->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'sale' => ['Las ventas con factura fiscal SAR no pueden eliminarse. Debes anular el documento fiscal.'],
+                ]);
+            }
+
             /**
              * Warehouses restriction
              * Allow if:
