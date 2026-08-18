@@ -946,6 +946,12 @@
               <lucide-icon class="submenu-arrow" name="chevron-down" v-if="!isCollapsed" />
             </a>
             <ul class="submenu" v-if="openMenus.includes('accounting') && !isCollapsed">
+              <li class="submenu-item" v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">
+                <router-link to="/app/settings/sar_fiscal" class="submenu-link">
+                  <lucide-icon class="submenu-icon" name="file-text" />
+                  <span>Facturación SAR</span>
+                </router-link>
+              </li>
               <!-- NEW FEATURE - SAFE ADDITION: Advanced Accounting under Accounting -->
               <li class="submenu-item" v-if="currentUserPermissions && currentUserPermissions.includes('accounting_dashboard')">
                 <router-link to="/app/accounting-v2/dashboard" class="submenu-link">
@@ -1376,15 +1382,7 @@
                   <span>{{ $t('SystemSettings') }}</span>
                 </router-link>
               </li>
-
-              <li class="submenu-item" v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">
-                <router-link to="/app/settings/sar_fiscal" class="submenu-link">
-                  <lucide-icon class="submenu-icon" name="file-check-2" />
-                  <span>Facturación SAR</span>
-                </router-link>
-              </li>
-
-              <li class="submenu-item" v-if="planFeature('zatca') && currentUserPermissions && currentUserPermissions.includes('zatca_settings')">
+<li class="submenu-item" v-if="planFeature('zatca') && currentUserPermissions && currentUserPermissions.includes('zatca_settings')">
                 <router-link to="/app/settings/zatca_settings" class="submenu-link">
                   <lucide-icon class="submenu-icon" name="qr-code" />
                   <span>ZATCA E-Invoicing</span>
@@ -1471,7 +1469,7 @@
 
               <li class="submenu-item" v-if="currentUserPermissions && currentUserPermissions.includes('cash_drawers_view')">
                 <router-link to="/app/settings/Cash_Drawers" class="submenu-link">
-                  <lucide-icon class="submenu-icon" name="wallet-cards" />
+                  <lucide-icon class="submenu-icon" name="wallet" />
                   <span>Cajas físicas</span>
                 </router-link>
               </li>
