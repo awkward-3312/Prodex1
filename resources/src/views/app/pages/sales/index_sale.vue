@@ -679,6 +679,23 @@
       <div id="invoice-POS">
         <div style="max-width:400px;margin:0px auto">
 
+          <div v-if="invoice_pos.sar_fiscal" class="sar-fiscal-receipt">
+            <div class="sar-fiscal-title">FACTURA</div>
+            <div v-if="invoice_pos.sar_fiscal.status === 'voided'" class="sar-fiscal-voided">ANULADA</div>
+            <div><strong>{{ invoice_pos.sar_fiscal.fiscal_number }}</strong></div>
+            <div><strong>CAI:</strong> {{ invoice_pos.sar_fiscal.cai }}</div>
+            <div>
+              <strong>Rango:</strong>
+              {{ String(invoice_pos.sar_fiscal.range_start).padStart(8, '0') }} –
+              {{ String(invoice_pos.sar_fiscal.range_end).padStart(8, '0') }}
+            </div>
+            <div><strong>Fecha límite:</strong> {{ invoice_pos.sar_fiscal.deadline }}</div>
+            <div><strong>RTN emisor:</strong> {{ invoice_pos.sar_fiscal.issuer.rtn }}</div>
+            <div><strong>Cliente:</strong> {{ invoice_pos.sar_fiscal.customer.name || 'Consumidor final' }}</div>
+            <div v-if="invoice_pos.sar_fiscal.customer.rtn"><strong>RTN cliente:</strong> {{ invoice_pos.sar_fiscal.customer.rtn }}</div>
+            <div class="sar-fiscal-words">{{ invoice_pos.sar_fiscal.total_in_words }}</div>
+          </div>
+
           <!-- Layout 1 - Standard -->
           <div v-if="currentReceiptLayout === 1">
             <div class="info">
@@ -3573,6 +3590,19 @@ export default {
      the narrow size="sm" modal; QRs are 100px so 2 × 100 + 10 gap = 210px
      comfortably fits a ~280px content column.
      ============================================ */
+  #invoice-POS .sar-fiscal-receipt {
+    border: 2px solid #111;
+    padding: 7px;
+    margin-bottom: 10px;
+    text-align: center;
+    font-size: 10px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  #invoice-POS .sar-fiscal-title { font-size: 15px; font-weight: 800; }
+  #invoice-POS .sar-fiscal-voided { color: #b91c1c; font-size: 14px; font-weight: 800; }
+  #invoice-POS .sar-fiscal-words { margin-top: 5px; font-weight: 700; }
+
   #invoice-POS .receipt-qr-row {
     display: flex !important;
     flex-direction: row !important;
