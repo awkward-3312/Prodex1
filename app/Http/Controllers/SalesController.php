@@ -123,7 +123,7 @@ class SalesController extends BaseController
         $data = [];
 
         // Check If User Has Permission View  All Records
-        $Sales = Sale::with('facture', 'client', 'warehouse', 'user')
+        $Sales = Sale::with('facture', 'client', 'warehouse', 'user', 'sarFiscalDocument')
             ->where('deleted_at', '=', null)
             ->where(function ($query) use ($view_records) {
                 if (! $view_records) {
@@ -187,6 +187,8 @@ class SalesController extends BaseController
             $item['paid_amount'] = number_format($Sale['paid_amount'], helpers::price_decimals(), '.', '');
             $item['due'] = number_format($item['GrandTotal'] - $item['paid_amount'], helpers::price_decimals(), '.', '');
             $item['payment_status'] = $Sale['payment_statut'];
+            $item['fiscal_number'] = optional($Sale->sarFiscalDocument)->fiscal_number;
+            $item['fiscal_status'] = optional($Sale->sarFiscalDocument)->status;
 
             if (SaleReturn::where('sale_id', $Sale['id'])->where('deleted_at', '=', null)->exists()) {
                 $sellReturn = SaleReturn::where('sale_id', $Sale['id'])->where('deleted_at', '=', null)->first();
@@ -1919,6 +1921,33 @@ class SalesController extends BaseController
 
         return response()->json(['payments' => $payments, 'due' => $due]);
 
+    }
+
+    public function voidSarFiscalDocument(Request $request, $id)
+    {
+        $this->authorizeForUser($request->user('api'), 'delete', Sale::class);
+
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:5', 'max:500'],
+        ]);
+
+        $sale = Sale::whereNull('deleted_at')->findOrFail($id);
+        $document = $sale->sarFiscalDocument;
+        if (! $document) {
+            return response()->json(['message' => 'Esta venta no tiene una factura fiscal SAR.'], 404);
+        }
+
+        $document = app(\App\Services\SarFiscalNumberService::class)->void(
+            $document,
+            $data['reason'],
+            optional($request->user('api'))->id
+        );
+
+        return response()->json([
+            'success' => true,
+            'fiscal_number' => $document->fiscal_number,
+            'status' => $document->status,
+        ]);
     }
 
     // ------------- Reference Number Order SALE -----------\\
