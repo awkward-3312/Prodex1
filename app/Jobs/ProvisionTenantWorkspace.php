@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Passport\ClientRepository;
 
 class ProvisionTenantWorkspace implements ShouldQueue
@@ -264,27 +265,33 @@ class ProvisionTenantWorkspace implements ShouldQueue
     {
         $tenant->run(function () {
             try {
-                // Run Passport migrations if not in tenant migrations
-                Artisan::call('migrate', [
-                    '--path'  => 'vendor/laravel/passport/database/migrations',
-                    '--force' => true,
-                ]);
+                // Some tenant migrations already create Passport's tables.
+                // Only run the vendor migrations when the tables are absent.
+                if (! Schema::hasTable('oauth_clients')) {
+                    Artisan::call('migrate', [
+                        '--path'  => 'vendor/laravel/passport/database/migrations',
+                        '--force' => true,
+                    ]);
+                }
 
-                // Create OAuth clients in the tenant database
                 $clientRepository = app(ClientRepository::class);
                 $appUrl = config('app.url') ?: 'http://localhost';
 
-                $clientRepository->createPersonalAccessClient(
-                    null,
-                    'Laravel Personal Access Client',
-                    $appUrl
-                );
+                if (! DB::table('oauth_clients')->where('personal_access_client', 1)->exists()) {
+                    $clientRepository->createPersonalAccessClient(
+                        null,
+                        'Prodex Personal Access Client',
+                        $appUrl
+                    );
+                }
 
-                $clientRepository->createPasswordGrantClient(
-                    null,
-                    'Laravel Password Grant Client',
-                    $appUrl
-                );
+                if (! DB::table('oauth_clients')->where('password_client', 1)->exists()) {
+                    $clientRepository->createPasswordGrantClient(
+                        null,
+                        'Prodex Password Grant Client',
+                        $appUrl
+                    );
+                }
 
             } catch (\Throwable $e) {
                 Log::warning("ProvisionTenantWorkspace: Passport install failed: {$e->getMessage()}");
