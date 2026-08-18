@@ -922,6 +922,14 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout'])-
     Route::resource('roles/check/create_page', 'PermissionsController@Check_Create_Page');
     Route::post('roles/delete/by_selection', 'PermissionsController@delete_by_selection');
 
+    // ------------------------------- SAR Honduras fiscal invoicing ------------------------\\
+    Route::get('sar-fiscal/settings', 'SarFiscalSettingsController@index');
+    Route::put('sar-fiscal/profile', 'SarFiscalSettingsController@saveProfile');
+    Route::post('sar-fiscal/points', 'SarFiscalSettingsController@storePoint');
+    Route::put('sar-fiscal/points/{point}', 'SarFiscalSettingsController@updatePoint');
+    Route::post('sar-fiscal/authorizations', 'SarFiscalSettingsController@storeAuthorization');
+    Route::post('sar-fiscal/authorizations/{authorization}/activate', 'SarFiscalSettingsController@activateAuthorization');
+
     // ------------------------------- Settings ------------------------\\
     // ------------------------------------------------------------------\\
     Route::get('settings/dark-mode', 'SettingsController@getDarkMode');
