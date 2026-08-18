@@ -159,6 +159,7 @@
                           :state="getValidationState(validationContext)"
                               aria-describedby="footer-feedback"
                               v-model="setting.footer"
+                              disabled
                         ></b-form-input>
                             <b-form-invalid-feedback id="footer-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
@@ -177,6 +178,7 @@
                           :state="getValidationState(validationContext)"
                               aria-describedby="developed_by-feedback"
                               v-model="setting.developed_by"
+                              disabled
                         ></b-form-input>
                             <b-form-invalid-feedback id="developed_by-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
@@ -287,6 +289,7 @@
                           :state="getValidationState(validationContext)"
                                 aria-describedby="appearance-developed_by-feedback"
                                 v-model="appearance_settings.developed_by"
+                              disabled
                         ></b-form-input>
                               <b-form-invalid-feedback id="appearance-developed_by-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
@@ -305,6 +308,7 @@
                           :state="getValidationState(validationContext)"
                                 aria-describedby="appearance-footer-feedback"
                                 v-model="appearance_settings.footer"
+                              disabled
                         ></b-form-input>
                               <b-form-invalid-feedback id="appearance-footer-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
