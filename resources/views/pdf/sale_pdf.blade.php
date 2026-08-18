@@ -55,6 +55,41 @@
     </style>
 </head>
 <body class="{{ $isRtl ? 'rtl' : '' }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
+    @if(!empty($sar_fiscal))
+    <div style="border: 2px solid #111827; padding: 8px 10px; margin-bottom: 10px; text-align: center;">
+        <div style="font-size: 14pt; font-weight: bold;">FACTURA</div>
+        @if(($sar_fiscal['status'] ?? '') === 'voided')
+            <div style="font-size: 13pt; font-weight: bold; color: #b91c1c;">ANULADA</div>
+        @endif
+        <div style="font-size: 10pt; font-weight: bold;">{{ $sar_fiscal['fiscal_number'] }}</div>
+        <div style="font-size: 8pt; margin-top: 3px;"><strong>CAI:</strong> {{ $sar_fiscal['cai'] }}</div>
+        <div style="font-size: 8pt;">
+            <strong>Rango autorizado:</strong>
+            {{ str_pad((string)$sar_fiscal['range_start'], 8, '0', STR_PAD_LEFT) }}
+            al
+            {{ str_pad((string)$sar_fiscal['range_end'], 8, '0', STR_PAD_LEFT) }}
+        </div>
+        <div style="font-size: 8pt;"><strong>Fecha límite de emisión:</strong> {{ $sar_fiscal['deadline'] }}</div>
+    </div>
+
+    <table style="width: 100%; margin-bottom: 10px; border-collapse: collapse; font-size: 8pt;" cellpadding="3">
+        <tr>
+            <td style="width: 50%; border: 1px solid #d1d5db; vertical-align: top;">
+                <strong>{{ $sar_fiscal['issuer']['legal_name'] ?? '' }}</strong><br>
+                @if(!empty($sar_fiscal['issuer']['trade_name'])){{ $sar_fiscal['issuer']['trade_name'] }}<br>@endif
+                <strong>RTN:</strong> {{ $sar_fiscal['issuer']['rtn'] ?? '' }}<br>
+                <strong>Casa matriz:</strong> {{ $sar_fiscal['issuer']['head_office_address'] ?? '' }}<br>
+                <strong>Punto de emisión:</strong> {{ $sar_fiscal['issuer']['point_of_issue_address'] ?? '' }}
+            </td>
+            <td style="width: 50%; border: 1px solid #d1d5db; vertical-align: top;">
+                <strong>Cliente:</strong> {{ $sar_fiscal['customer']['name'] ?? 'Consumidor final' }}<br>
+                <strong>RTN:</strong> {{ $sar_fiscal['customer']['rtn'] ?? '' }}<br>
+                <strong>Dirección:</strong> {{ $sar_fiscal['customer']['address'] ?? '' }}<br>
+                <strong>Fecha de emisión:</strong> {{ $sar_fiscal['issued_at'] ?? '' }}
+            </td>
+        </tr>
+    </table>
+    @endif
     <!-- Header Section: in RTL, logo column appears on the right -->
     <table style="width: 100%; margin-bottom: 12px;" cellpadding="0" cellspacing="0" {{ $isRtl ? 'dir="rtl"' : '' }}>
         <tr>
