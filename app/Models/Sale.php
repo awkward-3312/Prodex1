@@ -104,6 +104,11 @@ class Sale extends Model
         return $this->hasMany('App\Models\SaleDocument', 'sale_id');
     }
 
+    public function sarFiscalDocument()
+    {
+        return $this->hasOne(SarFiscalDocument::class, 'sale_id');
+    }
+
     protected static function booted()
     {
         static::updating(function ($sale) {
