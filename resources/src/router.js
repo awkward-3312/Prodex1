@@ -2330,6 +2330,16 @@ const baseRoutes = [
                             )
                     },
 
+                    // Honduras SAR fiscal invoicing
+                    {
+                        name: "sar_fiscal",
+                        path: "sar_fiscal",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "sar_fiscal" */ "./views/app/pages/settings/sar_fiscal"
+                            )
+                    },
+
                     // ZATCA E-Invoicing Phase 2 (Fatoora)
                     {
                         name: "zatca_settings",
