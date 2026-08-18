@@ -16,7 +16,7 @@
           <img v-else class="logo" :src="$imgUrl('settings', 'logo-default.png')" alt width="60" height="60">
           <div>
             <div>
-              <p class="m-0">&copy; {{ new Date().getFullYear() }} {{$t('developed_by')}} {{currentUser.developed_by || 'Stocky'}}</p>
+              <p class="m-0">&copy; {{ new Date().getFullYear() }} {{$t('developed_by')}} {{currentUser.developed_by || 'PRODEX'}}</p>
               <p class="m-0">All rights reserved - v1.3</p>
             </div>
           </div>
