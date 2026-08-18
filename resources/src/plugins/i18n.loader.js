@@ -2,6 +2,7 @@ import Vue from 'vue';
 import VueI18n from 'vue-i18n';
 import axios from 'axios';
 import { supportMessages } from './support.i18n';
+import { bundledUiMessages, readableMissingTranslation } from './ui.fallback.i18n';
 
 Vue.use(VueI18n);
 
@@ -24,7 +25,12 @@ export const loadI18n = async () => {
   // Merge bundled feature strings (Support, etc.) under the DB translations so
   // the UI is always readable; DB values win when a key exists in both.
   const messages = {
-    [userLang]: Object.assign({}, supportMessages(userLang), dbMessages || {})
+    [userLang]: Object.assign(
+      {},
+      supportMessages(userLang),
+      bundledUiMessages(userLang),
+      dbMessages || {}
+    )
   };
 
   const i18n = new VueI18n({
@@ -32,6 +38,7 @@ export const loadI18n = async () => {
     fallbackLocale: 'en',
     messages,
     silentTranslationWarn: true,
+    missing: (locale, key) => readableMissingTranslation(locale, key),
   });
 
   return i18n;
