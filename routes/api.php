@@ -736,6 +736,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout'])-
     // ------------------------------------------------------------------\\
 
     Route::resource('sales', 'SalesController');
+    Route::post('sales/{id}/sar-void', 'SalesController@voidSarFiscalDocument');
     Route::get('get_import_sales', 'SalesController@get_import_sales');
     Route::post('store_import_sales', 'SalesController@store_import_sales');
     Route::post('preview_import_sales', 'SalesController@preview_import_sales');
