@@ -1862,6 +1862,16 @@
 
           <li
             class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')"
+          >
+            <router-link tag="a" class to="/app/settings/sar_fiscal">
+              <lucide-icon class="nav-icon" name="file-check-2" />
+              <span class="item-name">Facturación SAR</span>
+            </router-link>
+          </li>
+
+          <li
+            class="nav-item"
             v-if="planFeature('zatca') && currentUserPermissions && currentUserPermissions.includes('zatca_settings')"
           >
             <router-link tag="a" class to="/app/settings/zatca_settings">
