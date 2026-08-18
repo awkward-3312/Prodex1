@@ -3,28 +3,19 @@
  * --------------------------------------------------------------------
  * Adds optional keyboard shortcuts to the POS screen WITHOUT modifying
  * any existing logic. The mixin only invokes methods that already exist
- * on the host component (pos.vue). It is fully opt-in: the listener does
- * nothing unless the user enables shortcuts in POS Settings.
+ * on the host component (pos.vue).
  *
- * Persistence: per-device localStorage key `pos_keyboard_shortcuts_enabled`
- * (no backend / database changes). Default = OFF, so existing installs
- * see no behavior change after upgrade.
- *
- * Safety guarantees:
- *   - Listener is attached on mounted() and removed on beforeDestroy().
- *   - Events are ignored when focus is inside an input/textarea/select
- *     or a contenteditable element, so existing @keyup handlers on the
- *     tax / discount / shipping / search inputs keep working unchanged.
- *   - Only calls host methods that exist; missing methods are skipped.
+ * It also contains the POS receipt bridge for Honduras SAR invoices. The
+ * thermal receipt endpoint already returns `sar_fiscal`; the bridge keeps
+ * that payload attached to the POS invoice, replaces generic tenant contact
+ * placeholders with the immutable fiscal issuer snapshot, and renders the
+ * SAR authorization block before the normal receipt layout.
  */
 
 export const POS_SHORTCUTS_STORAGE_KEY = "pos_keyboard_shortcuts_enabled";
 
 export function posShortcutsEnabled() {
   try {
-    // Tri-state: missing key → default ON (so new devices get shortcuts
-    // without a settings detour). "1" / "0" still respect an explicit
-    // user choice from the POS Settings toggle.
     const v = localStorage.getItem(POS_SHORTCUTS_STORAGE_KEY);
     if (v === null) return true;
     return v === "1";
@@ -41,8 +32,6 @@ export function setPosShortcutsEnabled(value) {
   }
 }
 
-// Shortcut definitions used both by the listener and the help modal.
-// Each entry: { id, keys (display), match(event), action(vm) }
 export const POS_SHORTCUTS = [
   {
     id: "search",
@@ -51,10 +40,6 @@ export const POS_SHORTCUTS = [
     descriptionFallback: "Focus product search",
     match: (e) => e.key === "F2",
     action: (vm) => {
-      // The live class on the modern POS shell input is
-      // `.pos-shell-search-input`; the previous `.search-input` selector
-      // never matched, so F2 silently did nothing. Keep `.search-input`
-      // as a fallback for any older skin.
       const el =
         document.querySelector(".pos-shell-search-input") ||
         document.querySelector(".search-input");
@@ -113,11 +98,6 @@ export const POS_SHORTCUTS = [
     descriptionFallback: "Print last receipt",
     match: (e) => e.key === "F9",
     action: (vm) => {
-      // Prefer the host's "print last receipt" helper which re-opens the
-      // receipt modal for the most recent sale id. `print_pos()` alone
-      // requires the receipt modal's #invoice-POS element to already be
-      // in the DOM and silently returns otherwise — so it appeared
-      // broken once the modal was dismissed.
       if (typeof vm.print_last_receipt === "function") {
         vm.print_last_receipt();
       } else if (typeof vm.print_pos === "function") {
@@ -133,8 +113,6 @@ export const POS_SHORTCUTS = [
     match: (e) => e.key === "Escape",
     action: (vm) => {
       if (!vm.details || !vm.details.length) return;
-      // Prefer the confirmation flow; only fall back to direct reset for
-      // hosts that haven't wired up the modal.
       if (typeof vm.confirmClearCart === "function") {
         vm.confirmClearCart();
       } else if (typeof vm.Reset_Pos === "function") {
@@ -202,22 +180,74 @@ function isTypingTarget(target) {
   return false;
 }
 
+function escapeHtml(value) {
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function fiscalRangeNumber(value) {
+  if (value === null || value === undefined || value === "") return "";
+  return String(value).padStart(8, "0");
+}
+
 export default {
+  methods: {
+    renderSarFiscalReceipt() {
+      try {
+        if (typeof document === "undefined") return;
+        const root = document.getElementById("invoice-POS");
+        if (!root) return;
+
+        const old = root.querySelector(".sar-fiscal-pos-block");
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+
+        const fiscal = this.invoice_pos && this.invoice_pos.sar_fiscal;
+        if (!fiscal || !fiscal.fiscal_number) return;
+
+        const issuer = fiscal.issuer || {};
+        const customer = fiscal.customer || {};
+        const legalName = issuer.trade_name || issuer.legal_name || "";
+        const issuerAddress = issuer.point_of_issue_address || issuer.head_office_address || "";
+        const rangeStart = fiscalRangeNumber(fiscal.range_start);
+        const rangeEnd = fiscalRangeNumber(fiscal.range_end);
+        const isVoided = String(fiscal.status || "").toLowerCase() === "voided";
+
+        const block = document.createElement("div");
+        block.className = "sar-fiscal-pos-block";
+        block.style.cssText = "text-align:center;font-size:10px;line-height:1.35;margin:0 0 10px;padding:0 4px 9px;border-bottom:1px dashed #333;word-break:break-word;";
+        block.innerHTML =
+          (legalName ? `<div style="font-size:12px;font-weight:700;">${escapeHtml(legalName)}</div>` : "") +
+          (issuer.rtn ? `<div><strong>RTN:</strong> ${escapeHtml(issuer.rtn)}</div>` : "") +
+          (issuerAddress ? `<div>${escapeHtml(issuerAddress)}</div>` : "") +
+          (issuer.phone ? `<div>Tel: ${escapeHtml(issuer.phone)}</div>` : "") +
+          (issuer.email ? `<div>${escapeHtml(issuer.email)}</div>` : "") +
+          `<div style="font-size:13px;font-weight:800;margin-top:7px;">FACTURA</div>` +
+          (isVoided ? `<div style="font-size:14px;font-weight:800;border:2px solid #000;padding:2px 6px;margin:3px auto;display:inline-block;">ANULADA</div>` : "") +
+          `<div style="font-size:12px;font-weight:800;">${escapeHtml(fiscal.fiscal_number)}</div>` +
+          (fiscal.cai ? `<div style="margin-top:4px;"><strong>CAI:</strong> ${escapeHtml(fiscal.cai)}</div>` : "") +
+          ((rangeStart || rangeEnd) ? `<div><strong>Rango autorizado:</strong><br>${escapeHtml(rangeStart)} - ${escapeHtml(rangeEnd)}</div>` : "") +
+          (fiscal.deadline ? `<div><strong>Fecha límite de emisión:</strong> ${escapeHtml(fiscal.deadline)}</div>` : "") +
+          `<div style="margin-top:5px;"><strong>Cliente:</strong> ${escapeHtml(customer.name || "Consumidor final")}</div>` +
+          (customer.rtn ? `<div><strong>RTN cliente:</strong> ${escapeHtml(customer.rtn)}</div>` : "") +
+          (fiscal.total_in_words ? `<div style="margin-top:5px;font-weight:600;">${escapeHtml(fiscal.total_in_words)}</div>` : "") +
+          (isVoided && fiscal.void_reason ? `<div style="margin-top:4px;"><strong>Motivo:</strong> ${escapeHtml(fiscal.void_reason)}</div>` : "");
+
+        const container = root.firstElementChild || root;
+        container.insertBefore(block, container.firstChild);
+      } catch (e) {
+        // Fiscal rendering must never prevent the cashier from printing.
+      }
+    },
+  },
+
   mounted() {
-    // Stored directly on the instance (not in data) to avoid Vue 2's
-    // reactivity warning for keys prefixed with "_".
     this._posShortcutsHandler = null;
     const handler = (e) => {
-      // Opt-in: do nothing unless the cashier explicitly enabled shortcuts.
       if (!posShortcutsEnabled()) return;
-
-      // When any Bootstrap modal is open (payment modal, confirmation
-      // modals, etc.) let the modal own the keyboard. We attach with
-      // `capture: true`, so calling preventDefault here would block the
-      // modal's own Esc-to-close behaviour AND still fire the cart-clear
-      // shortcut — exactly the bug where pressing Esc from inside the
-      // open payment modal was wiping the cart. Returning early defers
-      // to the modal naturally.
       try {
         if (
           typeof document !== "undefined" &&
@@ -228,10 +258,6 @@ export default {
         }
       } catch (e2) { /* ignore */ }
 
-      // Never hijack typing in form fields — preserves existing
-      // @keyup handlers on tax / discount / shipping / search inputs.
-      // Exception: Escape and F-keys are still handled even from inputs
-      // because cashiers expect them to work globally.
       const fromInput = isTypingTarget(e.target);
       const isFunctionKey = /^F[0-9]{1,2}$/.test(e.key) || e.key === "Escape";
       if (fromInput && !isFunctionKey) return;
@@ -243,7 +269,6 @@ export default {
           try {
             shortcut.action(this);
           } catch (err) {
-            // Never let a shortcut error break the POS page.
             // eslint-disable-next-line no-console
             console.warn("[POS shortcut] action failed:", shortcut.id, err);
           }
@@ -257,7 +282,63 @@ export default {
     } catch (e) {
       /* ignore */
     }
+
+    // POS thermal receipt bridge: `Print_Invoice_POS` already returns the
+    // complete SAR payload. Capture it before pos.vue consumes the response so
+    // the normal receipt can use the immutable issuer snapshot rather than
+    // generic tenant placeholders such as 00000000 / admin@example.com.
+    try {
+      if (typeof axios !== "undefined" && axios.interceptors && axios.interceptors.response) {
+        this._sarReceiptInterceptor = axios.interceptors.response.use((response) => {
+          try {
+            const url = response && response.config ? String(response.config.url || "") : "";
+            const data = response && response.data ? response.data : null;
+            if (url.indexOf("sales_print_invoice/") !== -1 && data && data.sar_fiscal) {
+              const fiscal = data.sar_fiscal;
+              const issuer = fiscal.issuer || {};
+              data.setting = data.setting || {};
+
+              // Fiscal invoices must display the issuer snapshot captured at
+              // issuance time. Do not mutate persisted tenant settings.
+              data.setting.CompanyName = issuer.trade_name || issuer.legal_name || data.setting.CompanyName;
+              data.setting.CompanyAdress = issuer.point_of_issue_address || issuer.head_office_address || data.setting.CompanyAdress;
+              data.setting.CompanyPhone = issuer.phone || data.setting.CompanyPhone;
+              data.setting.email = issuer.email || data.setting.email;
+
+              if (this.invoice_pos) {
+                this.$set(this.invoice_pos, "sar_fiscal", fiscal);
+              }
+              this.$nextTick(() => this.renderSarFiscalReceipt());
+            } else if (url.indexOf("sales_print_invoice/") !== -1 && this.invoice_pos) {
+              this.$set(this.invoice_pos, "sar_fiscal", null);
+            }
+          } catch (e) {
+            /* never block the receipt response */
+          }
+          return response;
+        }, (error) => Promise.reject(error));
+      }
+    } catch (e) {
+      this._sarReceiptInterceptor = null;
+    }
+
+    // BootstrapVue inserts the modal asynchronously. Observe DOM changes so the
+    // fiscal block is present before either preview or auto-print snapshots it.
+    try {
+      if (typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
+        this._sarReceiptObserver = new MutationObserver(() => {
+          const fiscal = this.invoice_pos && this.invoice_pos.sar_fiscal;
+          if (fiscal && document.getElementById("invoice-POS")) {
+            this.renderSarFiscalReceipt();
+          }
+        });
+        this._sarReceiptObserver.observe(document.body, { childList: true, subtree: true });
+      }
+    } catch (e) {
+      this._sarReceiptObserver = null;
+    }
   },
+
   beforeDestroy() {
     try {
       if (this._posShortcutsHandler) {
@@ -267,5 +348,17 @@ export default {
     } catch (e) {
       /* ignore */
     }
+    try {
+      if (this._sarReceiptObserver) {
+        this._sarReceiptObserver.disconnect();
+        this._sarReceiptObserver = null;
+      }
+    } catch (e) {}
+    try {
+      if (this._sarReceiptInterceptor !== null && this._sarReceiptInterceptor !== undefined && typeof axios !== "undefined") {
+        axios.interceptors.response.eject(this._sarReceiptInterceptor);
+        this._sarReceiptInterceptor = null;
+      }
+    } catch (e) {}
   },
 };
