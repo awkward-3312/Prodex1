@@ -62,6 +62,78 @@ document.addEventListener('DOMContentLoaded', function() {
         activateTab(initial, { updateHash: false });
     }
 
+    // ── Honduras bank transfer guidance ───────────────
+    // Keep the underlying bank_details structure untouched. These notes make
+    // clear which data is normally used for local Honduran transfers and which
+    // fields are primarily relevant to international transfers.
+    var paymentsPanel = document.getElementById('panel-payments');
+    if (paymentsPanel && !paymentsPanel.querySelector('.hn-bank-transfer-guide')) {
+        var bankGuide = document.createElement('div');
+        bankGuide.className = 'settings-callout mb-4 hn-bank-transfer-guide';
+        bankGuide.innerHTML =
+            '<div class="settings-callout-icon"><i class="bi bi-bank"></i></div>' +
+            '<div class="settings-callout-body">' +
+                '<h3 class="settings-callout-title">Transferencias bancarias en Honduras</h3>' +
+                '<p class="settings-callout-text mb-2">Para recibir una transferencia local normalmente debes proporcionar <strong>nombre del banco, titular de la cuenta y número de cuenta</strong>. También conviene indicar en las instrucciones de pago el <strong>tipo de cuenta (Ahorros o Cheques)</strong> y la <strong>moneda de la cuenta (HNL o USD)</strong>.</p>' +
+                '<p class="settings-callout-text mb-0"><strong>IBAN y SWIFT/BIC se utilizan principalmente para transferencias internacionales.</strong> Si tu banco no te los ha proporcionado y solo recibirás transferencias dentro de Honduras, puedes dejarlos vacíos.</p>' +
+            '</div>';
+
+        var firstBankRow = paymentsPanel.querySelector('.row');
+        if (firstBankRow) paymentsPanel.insertBefore(bankGuide, firstBankRow);
+        else paymentsPanel.insertBefore(bankGuide, paymentsPanel.firstChild);
+
+        function bankField(name) {
+            return paymentsPanel.querySelector('[name="' + name + '"]');
+        }
+
+        function setBankLabel(input, text) {
+            if (!input) return;
+            var group = input.closest('.form-group');
+            var label = group ? group.querySelector('.form-label') : null;
+            if (label) label.textContent = text;
+        }
+
+        function addBankHint(input, text) {
+            if (!input) return;
+            var group = input.closest('.form-group');
+            if (!group || group.querySelector('.hn-bank-hint')) return;
+            var hint = document.createElement('p');
+            hint.className = 'form-hint mt-1 hn-bank-hint';
+            hint.textContent = text;
+            group.appendChild(hint);
+        }
+
+        var bankNameInput = bankField('bank_details[bank_name]');
+        var holderInput = bankField('bank_details[account_holder]');
+        var accountInput = bankField('bank_details[account_number]');
+        var ibanInput = bankField('bank_details[iban]');
+        var swiftInput = bankField('bank_details[swift]');
+        var branchInput = bankField('bank_details[branch]');
+        var instructionsInput = bankField('bank_details[instructions]');
+
+        addBankHint(bankNameInput, 'Indica el banco donde está la cuenta que recibirá los pagos de PRODEX.');
+        addBankHint(holderInput, 'Escribe el nombre exacto de la persona o empresa registrada como titular de la cuenta.');
+        addBankHint(accountInput, 'Para transferencias nacionales en Honduras, este suele ser el dato principal junto con el banco y el titular.');
+
+        setBankLabel(ibanInput, 'IBAN (opcional / transferencias internacionales)');
+        addBankHint(ibanInput, 'Identificador Bancario Internacional. No se usa normalmente para transferencias locales en Honduras. Déjalo vacío si tu banco no te lo ha proporcionado.');
+
+        setBankLabel(swiftInput, 'Código SWIFT / BIC (opcional / transferencias internacionales)');
+        addBankHint(swiftInput, 'Código que identifica internacionalmente al banco para recibir transferencias desde el extranjero. Para pagos locales en Honduras normalmente no es necesario.');
+
+        addBankHint(branchInput, 'Opcional. Indica la sucursal solo si tu banco o tus clientes la necesitan para identificar correctamente la cuenta.');
+
+        if (instructionsInput) {
+            var instructionsGroup = instructionsInput.closest('.form-group');
+            var existingHint = instructionsGroup ? instructionsGroup.querySelector('.form-hint') : null;
+            if (existingHint) {
+                existingHint.textContent = 'Estas instrucciones se mostrarán al cliente en la página de pago. Para Honduras, incluye aquí el tipo de cuenta (Ahorros o Cheques), moneda (HNL o USD), referencia que debe colocar el cliente y el tiempo estimado de verificación del comprobante.';
+            } else {
+                addBankHint(instructionsInput, 'Estas instrucciones se mostrarán al cliente en la página de pago. Para Honduras, incluye aquí el tipo de cuenta (Ahorros o Cheques), moneda (HNL o USD), referencia que debe colocar el cliente y el tiempo estimado de verificación del comprobante.');
+            }
+        }
+    }
+
     // ── Logo upload ───────────────────────────────────
     var logoInput = document.getElementById('logoInput');
     var logoPreview = document.getElementById('logoPreview');
