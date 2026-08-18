@@ -169,6 +169,15 @@
                 </b-dropdown-item>
 
                 <b-dropdown-item
+                  v-if="currentUserPermissions.includes('Sales_delete') && props.row.fiscal_status === 'issued'"
+                  title="Anular factura SAR"
+                  @click="Void_Sar_Invoice(props.row)"
+                >
+                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="file-x-2" />
+                  Anular factura SAR
+                </b-dropdown-item>
+
+                <b-dropdown-item
                   title="Delete"
                   v-if="currentUserPermissions.includes('Sales_delete')"
                   @click="Remove_Sale(props.row.id , props.row.sale_has_return)"
@@ -2471,6 +2480,35 @@ export default {
       pdf.save('Sales_List.pdf');
     },
 
+
+    async Void_Sar_Invoice(sale) {
+      const result = await this.$swal({
+        title: "Anular factura SAR",
+        text: "El número fiscal se conservará y no podrá volver a utilizarse.",
+        input: "textarea",
+        inputPlaceholder: "Escribe el motivo de la anulación",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Anular factura",
+        cancelButtonText: "Cancelar",
+        inputValidator: value => {
+          if (!value || value.trim().length < 5) {
+            return "Debes escribir un motivo de al menos 5 caracteres.";
+          }
+          return null;
+        }
+      });
+      if (!result.value) return;
+
+      try {
+        await axios.post("sales/" + sale.id + "/sar-void", { reason: result.value.trim() });
+        this.makeToast("success", "Factura fiscal anulada correctamente.", "Éxito");
+        await this.Get_Sales(this.serverParams.page);
+      } catch (error) {
+        const data = error.response && error.response.data;
+        this.makeToast("danger", (data && data.message) || "No se pudo anular la factura fiscal.", "Error");
+      }
+    },
 
     //-------------------------------- Invoice POS ------------------------------\\
     Invoice_POS(id) {
