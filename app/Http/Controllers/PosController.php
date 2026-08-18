@@ -550,6 +550,16 @@ class PosController extends BaseController
                     }
                 }
 
+                // Allocate the SAR fiscal number inside the same database transaction.
+                // When fiscal invoicing is disabled this returns null and preserves legacy POS behavior.
+                $fiscalDocument = app(\App\Services\SarFiscalSaleService::class)->issueIfEnabled(
+                    $order->fresh(),
+                    $request->input('cash_drawer_id') ? (int) $request->input('cash_drawer_id') : null
+                );
+                if ($fiscalDocument) {
+                    $order->setRelation('sarFiscalDocument', $fiscalDocument);
+                }
+
                 return $order;
 
             }, 10);
@@ -713,6 +723,8 @@ class PosController extends BaseController
             'qbo_sync' => $qboSync,
             'updated_stock' => $updatedStock,
             'server_time' => now()->toIso8601String(),
+            'fiscal_number' => optional($sale->sarFiscalDocument)->fiscal_number,
+            'fiscal_status' => optional($sale->sarFiscalDocument)->status,
         ];
 
         if ($emailError) {
