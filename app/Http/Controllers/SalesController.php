@@ -1694,8 +1694,40 @@ class SalesController extends BaseController
             'zatca_qr' => $zatcaQr,
             'zatca_status' => $zatcaDocument->status ?? null,
             'public_invoice_url' => $publicInvoiceUrl,
+            'sar_fiscal' => $this->sarFiscalPayload($sale),
         ]);
 
+    }
+
+    private function sarFiscalPayload(Sale $sale): ?array
+    {
+        $document = $sale->sarFiscalDocument;
+        if (! $document) {
+            return null;
+        }
+
+        $document->loadMissing('authorization.pointOfIssue');
+        $authorization = $document->authorization;
+        $issuer = (array) $document->issuer_snapshot;
+        $customer = (array) $document->customer_snapshot;
+        $saleSnapshot = (array) $document->sale_snapshot;
+        $total = (float) ($saleSnapshot['grand_total'] ?? $sale->GrandTotal);
+
+        return [
+            'fiscal_number' => $document->fiscal_number,
+            'cai' => $document->cai,
+            'deadline' => optional($document->deadline)->format('Y-m-d'),
+            'status' => $document->status,
+            'issued_at' => optional($document->issued_at)->format('Y-m-d H:i:s'),
+            'voided_at' => optional($document->voided_at)->format('Y-m-d H:i:s'),
+            'void_reason' => $document->void_reason,
+            'range_start' => $authorization ? $authorization->range_start : null,
+            'range_end' => $authorization ? $authorization->range_end : null,
+            'issuer' => $issuer,
+            'customer' => $customer,
+            'sale' => $saleSnapshot,
+            'total_in_words' => app(\App\Services\SpanishMoneyWords::class)->lempiras($total),
+        ];
     }
 
     // ------------- DIRECT NETWORK PRINT (RAW / port 9100) -----------\\
@@ -2577,6 +2609,7 @@ class SalesController extends BaseController
             'setting' => $settings,
             'sale' => $sale,
             'details' => $details,
+            'sar_fiscal' => $this->sarFiscalPayload($sale_data),
         ])->render();
 
         $arabic = new Arabic;
@@ -2722,6 +2755,7 @@ class SalesController extends BaseController
             'setting' => $settings,
             'sale' => $sale,
             'details' => $details,
+            'sar_fiscal' => $this->sarFiscalPayload($sale_data),
         ])->render();
 
         $arabic = new Arabic;
