@@ -4,58 +4,58 @@
       <template #header>
         <div class="d-flex align-items-center">
           <lucide-icon class="mr-2 text-info" name="book" />
-          <h5 class="mb-0 font-weight-bold">Shopify Sync Guide</h5>
+          <h5 class="mb-0 font-weight-bold">Guía de sincronización con Shopify</h5>
         </div>
       </template>
       <b-card-text>
         <div class="guide-section mb-4">
           <h6 class="guide-title">
             <lucide-icon class="mr-2 text-info" name="key" />
-            1. Create a custom app &amp; get credentials
+            1. Crea una aplicación personalizada y obtén las credenciales
           </h6>
           <ul class="guide-list">
-            <li><lucide-icon class="mr-2 text-primary" name="mouse-pointer" />In Shopify admin: Settings → Apps and sales channels → Develop apps → Create an app.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="shield" />Configure Admin API scopes: <code>read_products, write_products, read_inventory, write_inventory, read_customers, write_customers, read_orders, write_orders, read_locations</code>.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="key" />Install the app, then copy the <strong>Admin API access token</strong> (<code>shpat_...</code>) — shown only once.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="lock" />Copy the <strong>API secret key</strong> too — Stocky needs it to verify webhook signatures.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="globe" />Shop domain: your <code>*.myshopify.com</code> domain (e.g. <code>my-store.myshopify.com</code>).</li>
+            <li><lucide-icon class="mr-2 text-primary" name="mouse-pointer" />En el administrador de Shopify: Configuración → Aplicaciones y canales de venta → Desarrollar aplicaciones → Crear una aplicación.</li>
+            <li><lucide-icon class="mr-2 text-primary" name="shield" />Configura los permisos de Admin API: <code>read_products, write_products, read_inventory, write_inventory, read_customers, write_customers, read_orders, write_orders, read_locations</code>.</li>
+            <li><lucide-icon class="mr-2 text-primary" name="key" />Instala la aplicación y copia el <strong>token de acceso de Admin API</strong> (<code>shpat_...</code>); Shopify lo muestra una sola vez.</li>
+            <li><lucide-icon class="mr-2 text-primary" name="lock" />Copia también la <strong>clave secreta de la API</strong>; PRODEX la utiliza para verificar las firmas de los webhooks.</li>
+            <li><lucide-icon class="mr-2 text-primary" name="globe" />Dominio de la tienda: usa tu dominio <code>*.myshopify.com</code> (por ejemplo, <code>mi-tienda.myshopify.com</code>).</li>
           </ul>
         </div>
 
         <div class="guide-section mb-4">
           <h6 class="guide-title">
             <lucide-icon class="mr-2 text-info" name="settings" />
-            2. Connect the store
+            2. Conecta la tienda
           </h6>
           <ul class="guide-list">
-            <li><lucide-icon class="mr-2 text-success" name="plus" />In the Stores tab, add the store with its domain, access token and API secret, then Test Connection.</li>
-            <li><lucide-icon class="mr-2 text-success" name="map-pin" />Edit the store to pick the Shopify Location and the Stocky warehouse used for inventory and imported orders. You can add several stores — every sync is scoped to the store selected in the header.</li>
-            <li><lucide-icon class="mr-2 text-success" name="webhook" />Click Register Webhooks so new orders, customer changes and product updates flow into Stocky automatically. Your site must be reachable over HTTPS from the internet.</li>
+            <li><lucide-icon class="mr-2 text-success" name="plus" />En la pestaña Tiendas, agrega la tienda con su dominio, token de acceso y clave secreta de API; después usa Probar conexión.</li>
+            <li><lucide-icon class="mr-2 text-success" name="map-pin" />Edita la tienda para seleccionar la ubicación de Shopify y el almacén de PRODEX que se usará para inventario y pedidos importados. Puedes agregar varias tiendas; cada sincronización se limita a la tienda seleccionada en el encabezado.</li>
+            <li><lucide-icon class="mr-2 text-success" name="webhook" />Presiona Registrar webhooks para que los pedidos nuevos, cambios de clientes y actualizaciones de productos lleguen automáticamente a PRODEX. El sitio debe ser accesible públicamente mediante HTTPS.</li>
           </ul>
         </div>
 
         <div class="guide-section mb-4">
           <h6 class="guide-title">
             <lucide-icon class="mr-2 text-primary" name="arrow-right-left" />
-            3. First sync — recommended order
+            3. Primera sincronización — orden recomendado
           </h6>
           <ul class="guide-list">
-            <li><lucide-icon class="mr-2 text-primary" name="download" />If the Shopify store already has products, run <strong>Pull products</strong> first: it links existing items by SKU instead of creating duplicates.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="upload" />Then <strong>Push products</strong> (only unsynced) to publish the rest of your catalog.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="package" />Run <strong>Inventory sync</strong> to publish stock levels to the mapped location.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="user" />Sync customers in either direction, then <strong>Import orders</strong> — each Shopify order becomes a Stocky sale and decrements stock.</li>
+            <li><lucide-icon class="mr-2 text-primary" name="download" />Si la tienda de Shopify ya tiene productos, ejecuta primero <strong>Importar productos</strong>: PRODEX enlaza los artículos existentes por SKU en lugar de crear duplicados.</li>
+            <li><lucide-icon class="mr-2 text-primary" name="upload" />Luego ejecuta <strong>Enviar productos</strong> para publicar los productos que todavía no estén sincronizados.</li>
+            <li><lucide-icon class="mr-2 text-primary" name="package" />Ejecuta <strong>Sincronizar inventario</strong> para publicar las existencias en la ubicación vinculada.</li>
+            <li><lucide-icon class="mr-2 text-primary" name="user" />Sincroniza los clientes en la dirección que necesites y luego <strong>Importa pedidos</strong>; cada pedido de Shopify se convierte en una venta de PRODEX y descuenta inventario.</li>
           </ul>
         </div>
 
         <div class="guide-section">
           <h6 class="guide-title">
             <lucide-icon class="mr-2 text-info" name="info" />
-            Notes
+            Notas
           </h6>
           <ul class="guide-list mb-0">
-            <li><lucide-icon class="mr-2 text-warning" name="alert-circle" />Keep SKUs consistent between Stocky and Shopify — SKU is the fallback used to link products and order line items.</li>
-            <li><lucide-icon class="mr-2 text-warning" name="alert-circle" />Changing a store's domain resets all its mappings; items will sync again to the new shop.</li>
-            <li><lucide-icon class="mr-2 text-warning" name="alert-circle" />Imported orders record totals and payment status from Shopify; refunds and edits made later in Shopify update the sale's statuses via the orders/updated webhook.</li>
+            <li><lucide-icon class="mr-2 text-warning" name="alert-circle" />Mantén los SKU iguales entre PRODEX y Shopify; el SKU se utiliza como respaldo para vincular productos y líneas de los pedidos.</li>
+            <li><lucide-icon class="mr-2 text-warning" name="alert-circle" />Cambiar el dominio de una tienda restablece sus vinculaciones; los artículos deberán sincronizarse nuevamente con la nueva tienda.</li>
+            <li><lucide-icon class="mr-2 text-warning" name="alert-circle" />Los pedidos importados conservan los totales y el estado de pago de Shopify. Los reembolsos y cambios posteriores realizados en Shopify actualizan los estados de la venta mediante el webhook <code>orders/updated</code>.</li>
           </ul>
         </div>
       </b-card-text>
