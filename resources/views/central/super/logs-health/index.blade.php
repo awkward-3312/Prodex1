@@ -16,6 +16,13 @@
         <button class="btn btn-outline btn-sm" id="btnRefreshPage">
             <i class="bi bi-arrow-clockwise"></i> {{ __('super.common.refresh') }}
         </button>
+        @if(($stats['unresolved'] ?? 0) > 0)
+            <button class="btn btn-primary btn-sm" id="btnResolveAll"
+                    data-url="{{ route('super.logs-health.resolve', ['log' => 'all']) }}"
+                    data-count="{{ $stats['unresolved'] }}">
+                <i class="bi bi-check2-all"></i> Resolver todos
+            </button>
+        @endif
         @if(($stats['resolved'] ?? 0) > 0)
             <button class="btn btn-outline-danger btn-sm" id="btnClearResolved" data-url="{{ route('super.logs-health.clear-resolved') }}">
                 <i class="bi bi-trash"></i> {{ __('super.logs_health.clear_resolved') }}
