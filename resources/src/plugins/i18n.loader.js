@@ -7,7 +7,7 @@ import { bundledUiMessages, readableMissingTranslation } from './ui.fallback.i18
 Vue.use(VueI18n);
 
 export const loadI18n = async () => {
-  const userLang = localStorage.getItem('language') || 'en';
+  const userLang = localStorage.getItem('language') || 'es';
 
   let dbMessages = {};
   try {
@@ -19,7 +19,7 @@ export const loadI18n = async () => {
     const response = await axios.get(endpoint);
     dbMessages = response.data;
   } catch (error) {
-    console.warn("⚠️ Failed to load DB translations. No fallback used.");
+    console.warn("No se pudieron cargar las traducciones desde la base de datos.");
   }
 
   // Merge bundled feature strings (Support, etc.) under the DB translations so
@@ -35,7 +35,7 @@ export const loadI18n = async () => {
 
   const i18n = new VueI18n({
     locale: userLang,
-    fallbackLocale: 'en',
+    fallbackLocale: 'es',
     messages,
     silentTranslationWarn: true,
     missing: (locale, key) => readableMissingTranslation(locale, key),
