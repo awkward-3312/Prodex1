@@ -144,7 +144,9 @@ export default {
           this.$router.push('/app/whatsapp/templates');
         })
         .catch(err => {
-          const msg = err.response?.data?.message || 'No se pudo actualizar.';
+          const msg = (err.response && err.response.data && err.response.data.message)
+            ? err.response.data.message
+            : 'No se pudo actualizar.';
           this.makeToast('danger', msg, 'Error');
         })
         .finally(() => {
