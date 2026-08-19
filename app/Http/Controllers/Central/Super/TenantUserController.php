@@ -43,7 +43,7 @@ class TenantUserController extends Controller
                 $users = $query->orderBy('id')->get();
             });
         } catch (\Throwable $e) {
-            $error = 'Could not connect to tenant database. The workspace may not be provisioned yet.';
+            $error = 'No se pudo conectar con la base de datos del tenant. Es posible que el espacio de trabajo todavía no haya sido aprovisionado.';
         }
 
         return view('central.super.tenants.users', compact('tenant', 'users', 'error'));
@@ -62,7 +62,7 @@ class TenantUserController extends Controller
             $userName = trim($user->firstname . ' ' . $user->lastname);
         });
 
-        return back()->with('success', "User \"{$userName}\" has been blocked.");
+        return back()->with('success', "El usuario \"{$userName}\" ha sido bloqueado.");
     }
 
     /**
@@ -78,7 +78,7 @@ class TenantUserController extends Controller
             $userName = trim($user->firstname . ' ' . $user->lastname);
         });
 
-        return back()->with('success', "User \"{$userName}\" has been unblocked.");
+        return back()->with('success', "El usuario \"{$userName}\" ha sido desbloqueado.");
     }
 
     /**
