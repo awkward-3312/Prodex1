@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Services\TenantLimitsService;
 use App\Tenant;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
@@ -36,6 +37,11 @@ class AppServiceProvider extends ServiceProvider
     {
 
         Schema::defaultStringLength(191);
+
+        // Spanish is PRODEX's platform baseline. These lines intentionally
+        // override residual legacy English/mixed labels that still live in the
+        // large historical SuperAdmin language file.
+        Lang::addLines(config('prodex_spanish_ui.super_translations', []), 'es');
 
         /* ADD THIS LINES */
         $this->commands([
