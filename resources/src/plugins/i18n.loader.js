@@ -5,12 +5,14 @@ import { supportMessages } from './support.i18n';
 import { bundledUiMessages, readableMissingTranslation } from './ui.fallback.i18n';
 import { installSpanishUiGuard } from '../utils/spanishUiGuard';
 import { installSpanishSettingsUiGuard } from '../utils/spanishSettingsUiGuard';
+import { installSpanishDocumentTitleGuard } from '../utils/spanishDocumentTitleGuard';
 
 Vue.use(VueI18n);
 
 export const loadI18n = async () => {
   installSpanishUiGuard();
   installSpanishSettingsUiGuard();
+  installSpanishDocumentTitleGuard();
   const userLang = localStorage.getItem('language') || 'es';
 
   let dbMessages = {};
