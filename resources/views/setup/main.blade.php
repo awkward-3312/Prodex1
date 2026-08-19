@@ -1,10 +1,10 @@
 <!doctype html>
-<html>
+<html lang="es">
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Stocky | Setup</title>
+    <title>PRODEX | Configuración</title>
 
     <link rel="stylesheet" href="/assets_setup/css/bootstrap.css">
     <link href="{{ asset('assets_super/css/quicksand.css') }}" rel="stylesheet">
@@ -20,7 +20,7 @@
     <div class="container-progress container">
         <div class="row text-center section-setup">
             <div class="col-12">
-                <h1>Stocky Setup</h1>
+                <h1>Configuración de PRODEX</h1>
             </div>
         </div>
         @yield('content')
