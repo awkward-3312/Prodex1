@@ -1,20 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Customer Display</title>
+    <title>Pantalla del cliente | PRODEX</title>
     <link rel="icon" href="{{ global_asset(upload_path('settings') . '/' . (($app_settings->favicon ?? null) ?: 'favicon.ico')) }}">
-
-    {{-- PWA --}}
     <link rel="manifest" href="/pwa/customer-display.webmanifest">
     <meta name="theme-color" content="#0b0c10">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Customer Display">
+    <meta name="apple-mobile-web-app-title" content="Pantalla del cliente">
     <link rel="apple-touch-icon" href="{{ pwa_icon_url(192) }}">
-
     <link rel="stylesheet" href="/css/master.css">
     <style>
       html, body { margin:0; padding:0; height:100%; background:#0b0c10; color:#fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif; }
@@ -37,31 +34,20 @@
     </style>
 </head>
 <body>
-  <div id="customer-display" class="cd-root">
-    <!-- Vue app mounts here -->
-  </div>
+  <div id="customer-display" class="cd-root"></div>
   <script>
     window.__APP_LOGO__ = '{{ global_asset(upload_path('settings') . '/' . (($app_settings->logo ?? null) ?: 'logo-default.png')) }}';
   </script>
   <script src="/js/customer-display.min.js"></script>
-
-  {{-- PWA: register service worker --}}
   <script>
     (function () {
       try {
         if (!('serviceWorker' in navigator)) return;
-        var isSecure = window.isSecureContext === true
-          || location.protocol === 'https:'
-          || location.hostname === 'localhost'
-          || location.hostname === '127.0.0.1';
+        var isSecure = window.isSecureContext === true || location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         if (!isSecure) return;
-        window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
-        });
+        window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); });
       } catch (e) {}
     })();
   </script>
 </body>
 </html>
-
-
