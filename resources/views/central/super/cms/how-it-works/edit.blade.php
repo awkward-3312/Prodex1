@@ -32,19 +32,19 @@
             <div class="form-row mb-4">
                 <div class="form-group">
                     <label class="form-label">{{ __('super.how_it_works.field_icon') }}</label>
-                    <input type="text" name="icon" class="form-control" value="{{ old('icon', $step->icon) }}" placeholder="e.g. bi bi-arrow-repeat">
+                    <input type="text" name="icon" class="form-control" value="{{ old('icon', $step->icon) }}" placeholder="Ej.: bi bi-arrow-repeat">
                     <p class="form-hint">{{ __('super.how_it_works.icon_hint') }}</p>
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ __('super.how_it_works.field_color') }}</label>
                     <select name="icon_color" class="form-control">
                         @php $color = old('icon_color', $step->icon_color); @endphp
-                        <option value="green" {{ $color === 'green' ? 'selected' : '' }}>Green</option>
-                        <option value="blue" {{ $color === 'blue' ? 'selected' : '' }}>Blue</option>
-                        <option value="amber" {{ $color === 'amber' ? 'selected' : '' }}>Amber</option>
-                        <option value="purple" {{ $color === 'purple' ? 'selected' : '' }}>Purple</option>
-                        <option value="teal" {{ $color === 'teal' ? 'selected' : '' }}>Teal</option>
-                        <option value="red" {{ $color === 'red' ? 'selected' : '' }}>Red</option>
+                        <option value="green" {{ $color === 'green' ? 'selected' : '' }}>Verde</option>
+                        <option value="blue" {{ $color === 'blue' ? 'selected' : '' }}>Azul</option>
+                        <option value="amber" {{ $color === 'amber' ? 'selected' : '' }}>Ámbar</option>
+                        <option value="purple" {{ $color === 'purple' ? 'selected' : '' }}>Morado</option>
+                        <option value="teal" {{ $color === 'teal' ? 'selected' : '' }}>Turquesa</option>
+                        <option value="red" {{ $color === 'red' ? 'selected' : '' }}>Rojo</option>
                     </select>
                 </div>
             </div>
