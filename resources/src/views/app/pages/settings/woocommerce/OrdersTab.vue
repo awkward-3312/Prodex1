@@ -4,7 +4,7 @@
       <div class="d-flex align-items-start">
         <lucide-icon class="mr-3 mt-1" name="info" />
         <div>
-          Orders are synced from WooCommerce to Stocky (Woo → Stocky).
+          Los pedidos se sincronizan desde WooCommerce hacia PRODEX (WooCommerce → PRODEX).
         </div>
       </div>
     </b-alert>
@@ -19,11 +19,11 @@
         >
           <template v-if="!syncing">
             <lucide-icon class="mr-2" name="chevron-down" />
-            Sync WooCommerce Orders to Stocky
+            Sincronizar pedidos de WooCommerce con PRODEX
           </template>
           <template v-else>
             <span class="mini-spinner mr-2"></span>
-            Syncing...
+            Sincronizando...
           </template>
         </b-button>
       </div>
@@ -31,18 +31,18 @@
 
     <b-alert v-if="lastResult" :variant="lastResult.ok ? 'success' : 'danger'" show>
       <div v-if="lastResult.ok">
-        Imported: <strong>{{ lastResult.created }}</strong>
-        · Skipped: <strong>{{ lastResult.skipped }}</strong>
-        · Errors: <strong>{{ lastResult.errors }}</strong>
+        Importados: <strong>{{ lastResult.created }}</strong>
+        · Omitidos: <strong>{{ lastResult.skipped }}</strong>
+        · Errores: <strong>{{ lastResult.errors }}</strong>
       </div>
       <div v-else>
-        {{ lastResult.error || 'Order sync failed' }}
+        {{ lastResult.error || 'Falló la sincronización de pedidos' }}
       </div>
     </b-alert>
 
     <div class="d-flex align-items-center mb-3">
       <lucide-icon class="mr-2" name="shopping-bag" />
-      <strong>WooCommerce Orders</strong>
+      <strong>Pedidos de WooCommerce</strong>
       <span v-if="loadingWooTab" class="mini-spinner ml-2"></span>
     </div>
 
@@ -55,7 +55,7 @@
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ wooTotalRows }}</div>
-            <div class="stat-label">Total Orders</div>
+            <div class="stat-label">Total de pedidos</div>
           </div>
           <div class="stat-decoration"></div>
         </div>
@@ -66,7 +66,7 @@
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ importedStats.total_imported != null ? importedStats.total_imported : '—' }}</div>
-            <div class="stat-label">Imported in Stocky</div>
+            <div class="stat-label">Importados en PRODEX</div>
           </div>
           <div class="stat-decoration"></div>
         </div>
@@ -77,7 +77,7 @@
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ notImportedCount }}</div>
-            <div class="stat-label">Not Imported</div>
+            <div class="stat-label">No importados</div>
           </div>
           <div class="stat-decoration"></div>
         </div>
@@ -100,18 +100,18 @@
           :pagination-options="{
             enabled: true,
             mode: 'records',
-            nextLabel: 'next',
-            prevLabel: 'prev',
+            nextLabel: 'Siguiente',
+            prevLabel: 'Anterior',
           }"
           styleClass="tableOne table-hover vgt-table"
         >
           <template slot="table-row" slot-scope="props">
             <span v-if="props.column.field === 'sync_status'">
               <b-badge v-if="props.row.sync_status === 'synced'" variant="success">
-                <lucide-icon class="mr-1" name="check-check" /> Synced
+                <lucide-icon class="mr-1" name="check-check" /> Sincronizado
               </b-badge>
               <b-badge v-else variant="warning">
-                <lucide-icon class="mr-1" name="pause" /> Not Synced
+                <lucide-icon class="mr-1" name="pause" /> No sincronizado
               </b-badge>
             </span>
             <span v-else-if="props.column.field === 'actions'">
@@ -122,10 +122,10 @@
                 :disabled="syncingOrderId === props.row.id || props.row.sync_status === 'synced'"
               >
                 <template v-if="syncingOrderId !== props.row.id">
-                  <lucide-icon class="mr-1" name="chevron-down" /> Sync
+                  <lucide-icon class="mr-1" name="chevron-down" /> Sincronizar
                 </template>
                 <template v-else>
-                  <span class="mini-spinner mr-2"></span> Syncing...
+                  <span class="mini-spinner mr-2"></span> Sincronizando...
                 </template>
               </b-button>
             </span>
@@ -144,14 +144,10 @@ export default {
       syncingOrderId: null,
       lastResult: null,
       loadingWooTab: true,
-
-      // Woo orders
       wooOrders: [],
       wooTotalRows: 0,
       wooServerParams: { sort: { field: 'id', type: 'desc' }, page: 1, perPage: 10 },
       wooSearch: '',
-
-      // Stats
       importedStats: { total_imported: null, imported_today: null },
     };
   },
@@ -159,15 +155,15 @@ export default {
     wooColumns() {
       return [
         { label: 'ID', field: 'id', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Number', field: 'number', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Status', field: 'status', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Date', field: 'date_created', tdClass: 'text-left', thClass: 'text-left' },
+        { label: 'Número', field: 'number', tdClass: 'text-left', thClass: 'text-left' },
+        { label: 'Estado', field: 'status', tdClass: 'text-left', thClass: 'text-left' },
+        { label: 'Fecha', field: 'date_created', tdClass: 'text-left', thClass: 'text-left' },
         { label: 'Total', field: 'total', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Customer', field: 'customer_display', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Email', field: 'billing_email', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Items', field: 'items_count', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Sync Status', field: 'sync_status', tdClass: 'text-center', thClass: 'text-center', sortable: false },
-        { label: 'Actions', field: 'actions', tdClass: 'text-center', thClass: 'text-center', sortable: false },
+        { label: 'Cliente', field: 'customer_display', tdClass: 'text-left', thClass: 'text-left' },
+        { label: 'Correo', field: 'billing_email', tdClass: 'text-left', thClass: 'text-left' },
+        { label: 'Artículos', field: 'items_count', tdClass: 'text-left', thClass: 'text-left' },
+        { label: 'Estado de sincronización', field: 'sync_status', tdClass: 'text-center', thClass: 'text-center', sortable: false },
+        { label: 'Acciones', field: 'actions', tdClass: 'text-center', thClass: 'text-center', sortable: false },
       ];
     },
     notImportedCount() {
@@ -181,16 +177,11 @@ export default {
       this.$root.$bvToast.toast(msg, { title: this.$t('WooCommerce'), variant, solid: true });
     },
     load() {
-      // Clear before loading to avoid stale UI
       this.loadingWooTab = true;
       this.wooOrders = [];
       this.wooTotalRows = 0;
       this.importedStats = { total_imported: null, imported_today: null };
-
-      return Promise.all([
-        this.loadImportedStats(),
-        this.loadWooOrders(),
-      ]).finally(() => {
+      return Promise.all([this.loadImportedStats(), this.loadWooOrders()]).finally(() => {
         this.loadingWooTab = false;
       });
     },
@@ -229,20 +220,18 @@ export default {
     },
     syncWooOrder(order) {
       const orderId = parseInt(order.id, 10) || 0;
-      if (orderId <= 0) return;
-      if (this.syncingOrderId) return;
-
+      if (orderId <= 0 || this.syncingOrderId) return;
       this.syncingOrderId = orderId;
       axios.post('woocommerce/sync/orders', {}, { params: { order_id: orderId } })
         .then(({ data }) => {
           if (data && data.ok) {
-            this.toast('success', 'Order synced');
+            this.toast('success', 'Pedido sincronizado');
           } else {
-            this.toast('danger', `Order sync failed: ${data.error || 'Unknown error'}`);
+            this.toast('danger', `Falló la sincronización del pedido: ${data.error || 'Error desconocido'}`);
           }
         })
         .catch((error) => {
-          this.toast('danger', `Order sync failed: ${error.message || 'Network error'}`);
+          this.toast('danger', `Falló la sincronización del pedido: ${error.message || 'Error de red'}`);
         })
         .finally(() => {
           this.syncingOrderId = null;
@@ -261,14 +250,14 @@ export default {
         .then(({ data }) => {
           this.lastResult = data;
           if (data && data.ok) {
-            this.toast('success', 'Orders sync completed');
+            this.toast('success', 'Sincronización de pedidos completada');
           } else {
-            this.toast('danger', `Orders sync failed: ${data.error || 'Unknown error'}`);
+            this.toast('danger', `Falló la sincronización de pedidos: ${data.error || 'Error desconocido'}`);
           }
         })
         .catch((error) => {
-          this.lastResult = { ok: false, error: error.message || 'Network error' };
-          this.toast('danger', `Orders sync failed: ${error.message || 'Network error'}`);
+          this.lastResult = { ok: false, error: error.message || 'Error de red' };
+          this.toast('danger', `Falló la sincronización de pedidos: ${error.message || 'Error de red'}`);
         })
         .finally(() => {
           this.syncing = false;
@@ -290,21 +279,18 @@ export default {
   background: linear-gradient(135deg, #e0f7fa 0%, #ffffff 100%);
   padding: 1.25rem;
 }
-
 .action-card {
   border-radius: 12px;
   border: none;
   padding: 1.5rem;
   background: #f8f9fa;
 }
-
 .stats-dashboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
-
 .stat-card {
   position: relative;
   background: white;
@@ -316,7 +302,6 @@ export default {
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
-
 .stat-decoration {
   position: absolute;
   width: 120px;
@@ -326,7 +311,6 @@ export default {
   top: -30px;
   right: -30px;
 }
-
 .stat-icon-wrapper {
   width: 64px;
   height: 64px;
@@ -338,29 +322,10 @@ export default {
   z-index: 1;
   flex-shrink: 0;
 }
-
-.stat-icon {
-  font-size: 28px;
-  color: white;
-}
-
+.stat-icon { font-size: 28px; color: white; }
 .stat-content { flex: 1; z-index: 1; }
-
-.stat-value {
-  font-size: 2.25rem;
-  font-weight: 800;
-  line-height: 1;
-  margin-bottom: 0.5rem;
-}
-
-.stat-label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
+.stat-value { font-size: 2.25rem; font-weight: 800; line-height: 1; margin-bottom: 0.5rem; }
+.stat-label { font-size: 0.9rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
 .stat-card.total-customers .stat-icon-wrapper { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 .stat-card.total-customers .stat-decoration { background: #667eea; }
 .stat-card.synced-customers .stat-icon-wrapper { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
