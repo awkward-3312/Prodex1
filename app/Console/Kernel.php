@@ -51,8 +51,9 @@ class Kernel extends ConsoleKernel
          * onto fixed queues (woocommerce-sync / woocommerce-stock); without them the sync
          * gets stuck at "queued_next_batch" when no Supervisor/systemd worker is running.
          *
-         * For higher throughput, run a persistent worker via Supervisor instead (see
-         * deploy/supervisor/stocky-queue-worker.conf). Both can coexist safely.
+         * For higher throughput on the PRODEX VPS, use the persistent Supervisor worker
+         * in deploy/supervisor/prodex-queue-worker.conf. Before enabling it, inspect cron,
+         * Supervisor, systemd and running artisan processes to avoid unnecessary workers.
          */
         $schedule->command('queue:work database --stop-when-empty --max-time=50 --queue=woocommerce-sync,woocommerce-stock,default --sleep=1 --tries=1 --timeout='.((int) env('QUEUE_WORKER_TIMEOUT', 1200)))
             ->everyMinute()
