@@ -28,49 +28,18 @@ $strUnknown = '<i class="fa fa-question"></i>';
 
 $requirements = array();
 
-    
-// Version PHP
 $requirements['php_version'] = version_compare(PHP_VERSION, $reqList[$laravelVersion]['php'], ">=");
-
-// OpenSSL PHP Extension
 $requirements['openssl_enabled'] = extension_loaded("openssl");
-
-// PDO PHP Extension
 $requirements['pdo_enabled'] = defined('PDO::ATTR_DRIVER_NAME');
-
-// Mbstring PHP Extension
 $requirements['mbstring_enabled'] = extension_loaded("mbstring");
-
-// Curl PHP Extension
 $requirements['curl_enabled'] = extension_loaded("curl");
-
-// Tokenizer PHP Extension
 $requirements['tokenizer_enabled'] = extension_loaded("tokenizer");
-
-// XML PHP Extension
 $requirements['xml_enabled'] = extension_loaded("xml");
-
-// CTYPE PHP Extension
 $requirements['ctype_enabled'] = extension_loaded("ctype");
-
-// File PHP Extension
 $requirements['fileinfo_enabled'] = extension_loaded("fileinfo");
-
-// gd PHP Extension
 $requirements['gd_enabled'] = extension_loaded("gd");
-
-// JSON PHP Extension
 $requirements['json_enabled'] = extension_loaded("json");
-
-// BCMath
 $requirements['bcmath_enabled'] = extension_loaded("bcmath");
-
-// mod_rewrite
-// $requirements['mod_rewrite_enabled'] = null;
-
-// if (function_exists('apache_get_modules')) {
-//     $requirements['mod_rewrite_enabled'] = in_array('mod_rewrite', apache_get_modules());
-// }
 
 $allValuesAreTrue = (count(array_unique($requirements)) === 1);
 
@@ -82,22 +51,21 @@ $allValuesAreTrue = (count(array_unique($requirements)) === 1);
 <div class="row">
     <div class="col-12 text-center mt-3">
         <ul class="progressbar"> 
-            <li class="active"><a href="/setup">Server Requirements</a></li>
-            <li>Settings</li>
-            <li>Database</li>
-            <li>Summary</li>
+            <li class="active"><a href="/setup">Requisitos del servidor</a></li>
+            <li>Configuración</li>
+            <li>Base de datos</li>
+            <li>Resumen</li>
         </ul>
     </div>
 </div>
 
-
-<div class="row mt-3 p-5" >
+<div class="row mt-3 p-5">
     <div class="col-12">
     @if (session('error'))
         <p class="alert alert-danger">{{ session('error') }}</p>
     @endif
     @if (! $allValuesAreTrue)
-     <p class="alert alert-danger">Your server doesn't meet the following requirements</p> 
+     <p class="alert alert-danger">El servidor no cumple con los siguientes requisitos</p> 
     @endif
         <ul class="list-group">
             <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -117,77 +85,77 @@ $allValuesAreTrue = (count(array_unique($requirements)) === 1);
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if ($reqList[$laravelVersion]['openssl']) : ?>
-                    <p>OpenSSL PHP Extension</p>
+                    <p>Extensión PHP OpenSSL</p>
                 <?php endif; ?>
                 <span><?php echo $requirements['openssl_enabled'] ? $strOk : $strFail; ?></span>
             </li>
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if ($reqList[$laravelVersion]['gd']) : ?>
-                    <p>Gd PHP Extension</p>
+                    <p>Extensión PHP GD</p>
                 <?php endif; ?>
                 <span><?php echo $requirements['gd_enabled'] ? $strOk : $strFail; ?></span>
             </li>
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if ($reqList[$laravelVersion]['fileinfo']) : ?>
-                    <p>fileinfo PHP Extension</p>
+                    <p>Extensión PHP fileinfo</p>
                 <?php endif; ?>
                 <span><?php echo $requirements['fileinfo_enabled'] ? $strOk : $strFail; ?></span>
             </li>
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if ($reqList[$laravelVersion]['pdo']) : ?>
-                    <p>Pdo PHP Extension</p>
+                    <p>Extensión PHP PDO</p>
                 <?php endif; ?>
                 <span><?php echo $requirements['pdo_enabled'] ? $strOk : $strFail; ?></span>
             </li>
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if ($reqList[$laravelVersion]['mbstring']) : ?>
-                <p>Mbstring PHP Extension</p>
+                <p>Extensión PHP Mbstring</p>
                 <?php endif ?>
                 <span><?php echo $requirements['mbstring_enabled'] ? $strOk : $strFail; ?></span>
             </li>
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if ($reqList[$laravelVersion]['curl']) : ?>
-                <p>Curl PHP Extension</p>
+                <p>Extensión PHP Curl</p>
                 <?php endif ?>
                 <span><?php echo $requirements['curl_enabled'] ? $strOk : $strFail; ?></span>
             </li>
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if ($reqList[$laravelVersion]['tokenizer']) : ?>
-                <p>Tokenizer PHP Extension</p>
+                <p>Extensión PHP Tokenizer</p>
                 <?php endif ?>
                 <span><?php echo $requirements['tokenizer_enabled'] ? $strOk : $strFail; ?></span>
             </li>
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if ($reqList[$laravelVersion]['xml']) : ?>
-                <p>XML PHP Extension</p>
+                <p>Extensión PHP XML</p>
                 <?php endif ?>
                 <span><?php echo $requirements['xml_enabled'] ? $strOk : $strFail; ?></span>
             </li>
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if ($reqList[$laravelVersion]['ctype']) : ?>
-                <p>CTYPE PHP Extension</p>
+                <p>Extensión PHP CTYPE</p>
                 <?php endif ?>
                 <span><?php echo $requirements['ctype_enabled'] ? $strOk : $strFail; ?></span>
             </li>
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if ($reqList[$laravelVersion]['json']) : ?>
-                <p>JSON PHP Extension</p>
+                <p>Extensión PHP JSON</p>
                 <?php endif ?>
                 <span><?php echo $requirements['json_enabled'] ? $strOk : $strFail; ?></span>
             </li>
 
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <?php if (isset($reqList[$laravelVersion]['bcmath']) && $reqList[$laravelVersion]['bcmath']) : ?>
-                <p>BCmath PHP Extension</p>
+                <p>Extensión PHP BCMath</p>
                 <?php endif ?>
                 <span><?php echo $requirements['bcmath_enabled'] ? $strOk : $strFail; ?></span>
             </li>
@@ -197,7 +165,7 @@ $allValuesAreTrue = (count(array_unique($requirements)) === 1);
 
     @if ($allValuesAreTrue)
         <div class="offset-6 col-6 col-md-6">
-            <a href="/setup/step-1" id="next"  class="btn btn-outline-danger mt-3 float-md-right" > Next Step <i class="fa fa-angle-right"></i></a>
+            <a href="/setup/step-1" id="next" class="btn btn-outline-danger mt-3 float-md-right">Siguiente paso <i class="fa fa-angle-right"></i></a>
         </div>
     @endif
 </div>
