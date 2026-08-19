@@ -152,6 +152,7 @@ class SetupController extends Controller
                 'Database\\Seeders\\Central\\LandingPageSeeder',
                 'Database\\Seeders\\Central\\CmsTranslationSeeder',
                 'Database\\Seeders\\Central\\EmailTemplatesSeeder',
+                'Database\\Seeders\\Central\\ProdexSpanishEmailTemplatesSeeder',
                 'Database\\Seeders\\Central\\CentralLanguagesSeeder',
             ] as $seeder) {
                 Artisan::call('db:seed', ['--class' => $seeder, '--force' => true]);
