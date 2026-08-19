@@ -111,11 +111,6 @@ class RouteServiceProvider extends ServiceProvider
             ->namespace($this->namespace)
             ->group(base_path('routes/tenant_api.php'));
 
-        Route::prefix('api')
-            ->middleware(array_merge(['api'], $tenancy))
-            ->namespace($this->namespace)
-            ->group(base_path('routes/tenant_prodex_manual.php'));
-
         Route::middleware(array_merge(['web'], $tenancy))
             ->namespace($this->namespace)
             ->group(base_path('routes/portal.php'));
