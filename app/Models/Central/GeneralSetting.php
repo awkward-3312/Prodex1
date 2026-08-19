@@ -105,19 +105,16 @@ class GeneralSetting extends Model
         'Source Serif 4'    => 'Source Serif 4',
     ];
 
-    /** Font family options for the settings dropdown (family => label). */
     public static function landingFontOptions(): array
     {
         return self::LANDING_FONTS;
     }
 
-    /** Allowed font family keys (used for validation). */
     public static function landingFontKeys(): array
     {
         return array_keys(self::LANDING_FONTS);
     }
 
-    /** Whether a usable custom uploaded font is configured. */
     public function hasCustomLandingFont(): bool
     {
         return ! empty($this->landing_custom_font_name)
@@ -125,7 +122,6 @@ class GeneralSetting extends Model
             && $this->customLandingFontFormat() !== null;
     }
 
-    /** CSS @font-face `format()` value derived from the uploaded file extension. */
     public function customLandingFontFormat(): ?string
     {
         if (empty($this->landing_custom_font_path)) {
@@ -141,33 +137,17 @@ class GeneralSetting extends Model
         };
     }
 
-    /** WhatsApp providers the platform can route through (Meta only for now). */
     public const WHATSAPP_PROVIDERS = ['meta_cloud'];
-
-    /** Default days-before-expiry the reminder command fires on. */
     public const DEFAULT_REMINDER_OFFSETS = [7, 3, 1];
-
-    /** Default days-before-trial-end the reminder command fires on. */
     public const DEFAULT_TRIAL_REMINDER_OFFSETS = [3, 1];
-
-    /** Channels reminders can be delivered through. */
     public const REMINDER_CHANNELS = ['email', 'sms', 'banner'];
-
     public const DEFAULT_REMINDER_CHANNELS = ['email'];
-
-    /** SMS gateway titles the platform can send reminders through. */
     public const SMS_GATEWAYS = ['twilio', 'infobip', 'termii', 'custom'];
 
     /** Default SMS bodies. Placeholders: {company} {plan} {date} {days} {app} */
-    public const DEFAULT_REMINDER_SMS = '{company}, your {plan} subscription on {app} expires on {date} ({days} days). Renew to avoid interruption.';
+    public const DEFAULT_REMINDER_SMS = '{company}, tu suscripción al plan {plan} en {app} vence el {date} ({days} días). Renueva para evitar interrupciones.';
+    public const DEFAULT_TRIAL_SMS = '{company}, tu período de prueba de {app} termina el {date} ({days} días). Suscríbete para mantener activo tu espacio de trabajo.';
 
-    public const DEFAULT_TRIAL_SMS = '{company}, your {app} free trial ends on {date} ({days} days). Subscribe to keep your workspace active.';
-
-    /**
-     * Subdomains that are always blocked regardless of admin configuration.
-     * Covers common platform / infrastructure hostnames so they can never
-     * be claimed by a tenant.
-     */
     public const SYSTEM_RESERVED_SUBDOMAINS = [
         'www', 'admin', 'api', 'app', 'mail', 'webmail', 'smtp', 'imap', 'pop', 'pop3',
         'ftp', 'sftp', 'ssh', 'ns', 'ns1', 'ns2', 'dns', 'mx', 'server', 'cpanel',
@@ -188,10 +168,6 @@ class GeneralSetting extends Model
         return $this->hosting_mode !== 'shared';
     }
 
-    /**
-     * Whether expiry reminders should be sent at all. Defaults to true so
-     * installs predating this feature keep the original behaviour.
-     */
     public function remindersEnabled(): bool
     {
         return $this->subscription_reminders_enabled ?? true;
@@ -202,12 +178,6 @@ class GeneralSetting extends Model
         return $this->trial_reminders_enabled ?? true;
     }
 
-    /**
-     * Sorted, deduplicated, positive days-before-expiry offsets. Falls back to
-     * the configured warning window / built-in defaults when none are set.
-     *
-     * @return int[]
-     */
     public function reminderOffsets(): array
     {
         return $this->normalizeOffsets(
@@ -216,9 +186,6 @@ class GeneralSetting extends Model
         );
     }
 
-    /**
-     * @return int[]
-     */
     public function trialReminderOffsets(): array
     {
         return $this->normalizeOffsets(
@@ -227,11 +194,6 @@ class GeneralSetting extends Model
         );
     }
 
-    /**
-     * Enabled delivery channels (subset of REMINDER_CHANNELS).
-     *
-     * @return string[]
-     */
     public function reminderChannels(): array
     {
         $channels = $this->subscription_reminder_channels;
@@ -257,9 +219,6 @@ class GeneralSetting extends Model
         return $value > 0 ? $value : 7;
     }
 
-    /**
-     * SMS body template for expiry reminders (falls back to the default).
-     */
     public function reminderSmsTemplate(): string
     {
         $template = trim((string) ($this->subscription_reminder_sms ?? ''));
@@ -267,9 +226,6 @@ class GeneralSetting extends Model
         return $template !== '' ? $template : self::DEFAULT_REMINDER_SMS;
     }
 
-    /**
-     * SMS body template for trial-ending reminders (falls back to the default).
-     */
     public function trialSmsTemplate(): string
     {
         $template = trim((string) ($this->trial_reminder_sms ?? ''));
@@ -277,11 +233,6 @@ class GeneralSetting extends Model
         return $template !== '' ? $template : self::DEFAULT_TRIAL_SMS;
     }
 
-    /**
-     * @param  mixed  $offsets
-     * @param  int[]  $default
-     * @return int[]
-     */
     protected function normalizeOffsets($offsets, array $default): array
     {
         if (! is_array($offsets)) {
@@ -306,57 +257,52 @@ class GeneralSetting extends Model
         return $clean;
     }
 
-    /**
-     * Get the single settings row (create with defaults if missing).
-     */
     public static function instance(): self
     {
         $setting = static::first();
 
         if (! $setting) {
             $setting = static::create([
-                'app_name'             => config('app.name', 'Stocky'),
-                'landing_template'     => LandingPageTemplate::DEFAULT,
-                'dashboard_footer_text' => '© 2026 Stocky Inc. — All rights reserved.',
+                'app_name'              => config('app.name', 'PRODEX'),
+                'company_name'          => 'PRODEX',
+                'currency_code'         => 'HNL',
+                'currency_symbol'       => 'L',
+                'landing_template'      => LandingPageTemplate::DEFAULT,
+                'dashboard_footer_text' => '© '.date('Y').' PRODEX — Todos los derechos reservados.',
+                'tenant_app_name'       => 'PRODEX',
+                'tenant_company_name'   => 'PRODEX',
+                'tenant_currency_code'  => 'HNL',
+                'tenant_currency_symbol'=> 'L',
+                'tenant_default_language' => 'es',
+                'tenant_footer_text'    => 'PRODEX',
+                'tenant_page_title_suffix' => 'Gestión empresarial',
+                'tenant_developed_by'   => 'PRODEX',
             ]);
         }
 
         return $setting;
     }
 
-    /**
-     * Get the configured currency code (cached for the request).
-     */
     public static function currencyCode(): string
     {
-        return static::instance()->currency_code ?? 'USD';
+        return static::instance()->currency_code ?? 'HNL';
     }
 
     public static function currencySymbol(): string
     {
-        return static::instance()->currency_symbol ?? '$';
+        return static::instance()->currency_symbol ?? 'L';
     }
 
-    /**
-     * Whether newly provisioned tenants should be seeded with demo data
-     * (sample catalog, customers, suppliers and transactions).
-     */
     public static function demoDataEnabled(): bool
     {
         return (bool) (static::instance()->demo_data_enabled ?? false);
     }
 
-    /**
-     * Whether the WhatsApp integration is globally enabled by the super admin.
-     */
     public static function whatsappEnabled(): bool
     {
         return (bool) (static::instance()->whatsapp_enabled ?? false);
     }
 
-    /**
-     * Landing layout key stored in general_settings (always a valid template key).
-     */
     public static function resolvedLandingTemplateKey(): string
     {
         return LandingPageTemplate::canonicalKey(static::instance()->landing_template);
@@ -367,10 +313,6 @@ class GeneralSetting extends Model
         return $this->bank_details ?? [];
     }
 
-    /**
-     * Preserve the multiple-account collection when the legacy General
-     * Settings form submits only the original single-account fields.
-     */
     public function setBankDetailsAttribute($value): void
     {
         $incoming = is_array($value) ? $value : [];
@@ -427,36 +369,25 @@ class GeneralSetting extends Model
         return $this->tenant_favicon_path ? asset($this->tenant_favicon_path) : null;
     }
 
-    /**
-     * Default values used to seed new tenants. Each key has a sensible
-     * fallback so existing installs keep working when no super-admin
-     * customization is set.
-     */
     public function getTenantDefaults(): array
     {
         return [
-            'app_name'          => $this->tenant_app_name ?: ($this->app_name ?: 'Stocky | Ultimate Inventory With POS'),
-            'company_name'      => $this->tenant_company_name ?: ($this->company_name ?: 'Stocky'),
-            'email'             => $this->tenant_email ?: ($this->email ?: 'admin@example.com'),
+            'app_name'          => $this->tenant_app_name ?: ($this->app_name ?: 'PRODEX'),
+            'company_name'      => $this->tenant_company_name ?: ($this->company_name ?: 'PRODEX'),
+            'email'             => $this->tenant_email ?: ($this->email ?: 'admin@prodexhub.cloud'),
             'phone'             => $this->tenant_phone ?: ($this->phone ?: ''),
             'address'           => $this->tenant_address ?: ($this->address ?: ''),
-            'currency_code'     => strtoupper($this->tenant_currency_code ?: ($this->currency_code ?: 'USD')),
-            'currency_symbol'   => $this->tenant_currency_symbol ?: ($this->currency_symbol ?: '$'),
-            'default_language'  => $this->tenant_default_language ?: null,
-            'footer_text'       => $this->tenant_footer_text ?: 'Stocky - Ultimate Inventory With POS',
-            'page_title_suffix' => $this->tenant_page_title_suffix ?: 'Ultimate Inventory With POS',
-            'developed_by'      => $this->tenant_developed_by ?: 'Stocky',
+            'currency_code'     => strtoupper($this->tenant_currency_code ?: ($this->currency_code ?: 'HNL')),
+            'currency_symbol'   => $this->tenant_currency_symbol ?: ($this->currency_symbol ?: 'L'),
+            'default_language'  => $this->tenant_default_language ?: 'es',
+            'footer_text'       => $this->tenant_footer_text ?: 'PRODEX',
+            'page_title_suffix' => $this->tenant_page_title_suffix ?: 'Gestión empresarial',
+            'developed_by'      => $this->tenant_developed_by ?: 'PRODEX',
             'logo_path'         => $this->tenant_logo_path,
             'favicon_path'      => $this->tenant_favicon_path,
         ];
     }
 
-    /**
-     * Subdomains tenants are not allowed to register, combining the
-     * built-in system list with the super admin's custom entries.
-     *
-     * @return string[]
-     */
     public function getReservedSubdomains(): array
     {
         $custom = $this->reserved_subdomains ?? [];
