@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import App from './portal/App.vue';
 import router from './portal/router';
+import { installSpanishUiGuard } from './utils/spanishUiGuard';
 
 window.axios = require('axios');
 window.axios.defaults.baseURL = '/api/';
@@ -20,7 +21,7 @@ axios.interceptors.response.use(
     var url = err.config && err.config.url;
     var isPortal = url && url.indexOf('/portal/') !== -1;
     var isGuestPage = window.location.pathname.indexOf('/portal/login') !== -1 || window.location.pathname.indexOf('/portal/set-password') !== -1;
-    // 401 = not logged in to portal; 403 = e.g. admin not allowed -> send to portal login (do not call logout API)
+    // 401 = sesión no iniciada; 403 = acceso no permitido.
     if (isPortal && (status === 401 || status === 403) && !isGuestPage) {
       window.location.replace('/portal/login');
     }
@@ -29,6 +30,7 @@ axios.interceptors.response.use(
 );
 
 Vue.config.productionTip = false;
+installSpanishUiGuard();
 
 new Vue({
   router,
