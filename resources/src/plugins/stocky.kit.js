@@ -31,6 +31,15 @@ const legacyAttributeTranslations = {
   'Language': 'Idioma',
 };
 
+const tableUiTranslations = {
+  'next': 'Siguiente',
+  'prev': 'Anterior',
+  'Next': 'Siguiente',
+  'Previous': 'Anterior',
+  'Previous page': 'Página anterior',
+  'Next page': 'Página siguiente',
+};
+
 const moduleSettingsTranslations = {
   'Module Settings': 'Configuración de módulos',
   'Install, manage and configure modules to extend your Stocky application.': 'Instala, administra y configura módulos para ampliar las funciones de PRODEX.',
@@ -74,7 +83,6 @@ function translateExactText(el, dictionary) {
 function translateLegacyUi(root = document) {
   if (!root || !root.querySelectorAll) return;
 
-  // Attribute-only replacements are safe because they never touch business data.
   root.querySelectorAll('[title], [aria-label]').forEach(el => {
     ['title', 'aria-label'].forEach(attr => {
       const value = el.getAttribute(attr);
@@ -84,8 +92,11 @@ function translateLegacyUi(root = document) {
     });
   });
 
-  // Module Settings is an old component with hard-coded English. Restrict replacements
-  // to its own UI classes so product/customer/user content elsewhere is never modified.
+  // vue-good-table appears across legacy screens. Restrict translation to its footer only.
+  root.querySelectorAll('.vgt-wrap__footer *').forEach(el => {
+    translateExactText(el, tableUiTranslations);
+  });
+
   const moduleRoot = root.querySelector('.module-header-card')
     ? root
     : (root.closest && root.closest('.main-content')) || null;
