@@ -27,7 +27,7 @@
           >
           <div>
             <p class="m-0">&copy; {{ new Date().getFullYear() }} Desarrollado por PRODEX</p>
-            <p class="m-0">All rights reserved - v1.3</p>
+            <p class="m-0">All rights reserved<span v-if="installedVersion"> - v{{ installedVersion }}</span></p>
           </div>
         </div>
       </div>
@@ -39,8 +39,30 @@
 import { mapGetters } from "vuex";
 
 export default {
+  data() {
+    return {
+      installedVersion: "",
+    };
+  },
   computed: {
     ...mapGetters(["currentUser"]),
+  },
+  mounted() {
+    this.loadInstalledVersion();
+  },
+  methods: {
+    async loadInstalledVersion() {
+      try {
+        const response = await axios.get("/system/version", {
+          meta: { skipErrorRedirect: true },
+        });
+        this.installedVersion = response.data && response.data.version
+          ? String(response.data.version).trim()
+          : "";
+      } catch (error) {
+        this.installedVersion = "";
+      }
+    },
   },
 };
 </script>
