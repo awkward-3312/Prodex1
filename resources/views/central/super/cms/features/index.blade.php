@@ -29,11 +29,11 @@
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">{{ __('super.features.section_title') }}</label>
-                    <input type="text" name="section_title" class="form-control" value="{{ old('section_title', $section->section_title) }}" placeholder="e.g. Everything you need to grow">
+                    <input type="text" name="section_title" class="form-control" value="{{ old('section_title', $section->section_title) }}" placeholder="Ej.: Todo lo que necesitas para crecer">
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ __('super.features.section_subtitle') }}</label>
-                    <input type="text" name="section_subtitle" class="form-control" value="{{ old('section_subtitle', $section->section_subtitle) }}" placeholder="e.g. One platform for inventory, sales, and insights">
+                    <input type="text" name="section_subtitle" class="form-control" value="{{ old('section_subtitle', $section->section_subtitle) }}" placeholder="Ej.: Una plataforma para inventario, ventas e información">
                 </div>
             </div>
             <div class="form-group">
