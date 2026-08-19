@@ -15,15 +15,25 @@ import { installSpanishPermissionsUiGuard } from '../utils/spanishPermissionsUiG
 Vue.use(VueI18n);
 
 export const loadI18n = async () => {
-  installSpanishUiGuard();
-  installSpanishSettingsUiGuard();
-  installSpanishDocumentTitleGuard();
-  installSpanishLegacyDocumentGuard();
-  installSpanishApiFeedbackGuard();
-  installSpanishSettingsRequestGuard();
-  installSpanishCommerceIntegrationGuard();
-  installSpanishPermissionsUiGuard();
   const userLang = localStorage.getItem('language') || 'es';
+  const useSpanishUiGuards = String(userLang).toLowerCase().startsWith('es');
+
+  // The request guard is language-safe: it only replaces an invalid/empty
+  // default_language value with "es" and preserves any explicit selection.
+  installSpanishSettingsRequestGuard();
+
+  // DOM/API guards are compatibility fallbacks for legacy English UI strings.
+  // They must only run for Spanish so an explicitly selected language is never
+  // overwritten by the Spanish compatibility layer.
+  if (useSpanishUiGuards) {
+    installSpanishUiGuard();
+    installSpanishSettingsUiGuard();
+    installSpanishDocumentTitleGuard();
+    installSpanishLegacyDocumentGuard();
+    installSpanishApiFeedbackGuard();
+    installSpanishCommerceIntegrationGuard();
+    installSpanishPermissionsUiGuard();
+  }
 
   let dbMessages = {};
   try {
