@@ -9,6 +9,8 @@ const SETTINGS_TEXT = {
   'Select provider': 'Seleccionar proveedor',
   'S3-compatible (AWS/MinIO/etc.)': 'Compatible con S3 (AWS/MinIO/etc.)',
   'Cloud upload runs after the backup is generated locally.': 'La carga a la nube se ejecuta después de generar la copia local.',
+  'Cloud: backups will be uploaded to the selected provider after they are generated locally.': 'Nube: las copias se subirán al proveedor seleccionado después de generarse localmente.',
+  'Note: the list below shows local backups.': 'Nota: la lista siguiente muestra las copias locales.',
   'Bucket': 'Bucket / contenedor',
   'Bucket name': 'Nombre del bucket',
   'Region': 'Región',
@@ -42,6 +44,15 @@ const SETTINGS_TEXT = {
   'Or use forward slashes:': 'También puedes usar barras inclinadas:',
   'After updating .env, run:': 'Después de actualizar .env, ejecuta:',
   'Backup': 'Copia de seguridad',
+  'Login Device Management': 'Administración de dispositivos y sesiones',
+  'Active login sessions for your user (per device / browser).': 'Sesiones activas de tu usuario, separadas por dispositivo o navegador.',
+  'Refresh': 'Actualizar',
+  'Logout All Other Devices': 'Cerrar sesión en los demás dispositivos',
+  'No active sessions found.': 'No se encontraron sesiones activas.',
+  'Current': 'Actual',
+  'Logout': 'Cerrar sesión',
+  'Pharmacy mode columns not found on the settings table. Run the pharmacy migration to enable these options.': 'No se encontraron las columnas del modo farmacia en la tabla de configuración. Ejecuta la migración de farmacia para habilitar estas opciones.',
+  'Batches expiring within this number of days are flagged as near-expiry.': 'Los lotes que vencen dentro de esta cantidad de días se marcarán como próximos a vencer.',
   'Show the floating Customize button': 'Mostrar el botón flotante Personalizar',
   'When enabled, a Customize button appears at the bottom-right of every page so users can quickly change theme, layout, primary color and language.': 'Cuando está activado, aparece un botón Personalizar en la esquina inferior derecha para cambiar rápidamente el tema, el diseño, el color principal y el idioma.',
   'Customize Button': 'Botón Personalizar',
@@ -99,7 +110,7 @@ const PLACEHOLDERS = {
 
 const UI_SELECTOR = [
   'button','label','legend','th','caption','option','summary',
-  'h1','h2','h3','h4','h5','h6',
+  'h1','h2','h3','h4','h5','h6','small','strong',
   '.btn','.badge','.alert','.modal-title','.card-title','.card-header',
   '.form-text','.invalid-feedback','.text-muted',
   '.customize-toggle-title','.customize-toggle-hint','.settings-content-header'
