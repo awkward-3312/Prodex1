@@ -61,7 +61,7 @@ class CommissionProgramController extends BaseController
             'valid_to' => $request->valid_to,
         ]);
 
-        return $this->sendResponse($program, __('Created successfully'));
+        return $this->sendResponse($program, 'Programa de comisiones creado correctamente.');
     }
 
     public function show(Request $request, $id)
@@ -91,7 +91,7 @@ class CommissionProgramController extends BaseController
             'valid_to' => $request->valid_to,
         ]);
 
-        return $this->sendResponse($program->fresh(), __('Updated successfully'));
+        return $this->sendResponse($program->fresh(), 'Programa de comisiones actualizado correctamente.');
     }
 
     public function destroy(Request $request, $id)
@@ -99,6 +99,6 @@ class CommissionProgramController extends BaseController
         $this->authorizeForUser($request->user('api'), 'delete', CommissionProgram::class);
         $program = CommissionProgram::findOrFail($id);
         $program->delete();
-        return $this->sendResponse(null, __('Deleted successfully'));
+        return $this->sendResponse(null, 'Programa de comisiones eliminado correctamente.');
     }
 }
