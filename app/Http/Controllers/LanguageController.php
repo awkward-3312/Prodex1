@@ -154,16 +154,19 @@ class LanguageController extends Controller
         $page = (int) $request->get('page', 1);
         $search = $request->get('search');
 
-        $enKeysQuery = Translate::where('locale', 'en');
+        // Español es el catálogo de referencia de PRODEX. Las claves internas
+        // permanecen intactas; solo evitamos usar textos ingleses como fuente
+        // visible del editor de traducciones.
+        $sourceKeysQuery = Translate::where('locale', 'es');
         if ($search) {
-            $enKeysQuery->where(function ($q) use ($search) {
+            $sourceKeysQuery->where(function ($q) use ($search) {
                 $q->where('key', 'like', "%$search%")
                     ->orWhere('value', 'like', "%$search%");
             });
         }
 
-        $enKeys = $enKeysQuery->orderBy('id', 'desc')->get();
-        $enKeyList = $enKeys->pluck('key')->toArray();
+        $sourceKeys = $sourceKeysQuery->orderBy('id', 'desc')->get();
+        $sourceKeyList = $sourceKeys->pluck('key')->toArray();
 
         $localeExtraKeys = Translate::where('locale', $locale)
             ->when($search, function ($q) use ($search) {
@@ -172,7 +175,7 @@ class LanguageController extends Controller
                         ->orWhere('value', 'like', "%$search%");
                 });
             })
-            ->whereNotIn('key', $enKeyList)
+            ->whereNotIn('key', $sourceKeyList)
             ->orderBy('id', 'desc')
             ->get()
             ->map(function ($item) {
@@ -184,16 +187,17 @@ class LanguageController extends Controller
             });
 
         $localeTranslations = Translate::where('locale', $locale)->pluck('value', 'key');
-        $mergedFromEN = $enKeys->map(function ($item) use ($locale, $localeTranslations) {
+        $mergedFromSource = $sourceKeys->map(function ($item) use ($locale, $localeTranslations) {
             return [
                 'id' => $item->id,
                 'key' => $item->key,
+                'source_value' => $item->value,
                 'value' => $localeTranslations[$item->key] ?? '',
                 'locale' => $locale,
             ];
         });
 
-        $combined = $mergedFromEN->merge($localeExtraKeys)->sortByDesc('id')->values();
+        $combined = $mergedFromSource->merge($localeExtraKeys)->sortByDesc('id')->values();
         $total = $combined->count();
         $offset = ($page - 1) * $perPage;
         $paginated = $combined->slice($offset, $perPage)->values();
