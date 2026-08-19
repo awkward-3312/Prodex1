@@ -27,18 +27,18 @@
 
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.cta.field_title') }} <span class="text-danger">*</span></label>
-                        <input type="text" name="title" class="form-control" value="{{ old('title', $cta->title) }}" placeholder="e.g. Ready to get started?" required>
+                        <input type="text" name="title" class="form-control" value="{{ old('title', $cta->title) }}" placeholder="Ej.: ¿Listo para comenzar?" required>
                     </div>
 
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.cta.field_subtitle') }}</label>
-                        <textarea name="subtitle" class="form-control" rows="2" placeholder="e.g. Create your workspace in under a minute.">{{ old('subtitle', $cta->subtitle) }}</textarea>
+                        <textarea name="subtitle" class="form-control" rows="2" placeholder="Ej.: Crea tu espacio de trabajo en menos de un minuto.">{{ old('subtitle', $cta->subtitle) }}</textarea>
                     </div>
 
                     <div class="form-row mb-4">
                         <div class="form-group">
                             <label class="form-label">{{ __('super.cta.btn_text') }}</label>
-                            <input type="text" name="button_text" class="form-control" value="{{ old('button_text', $cta->button_text) }}" placeholder="e.g. Create your workspace">
+                            <input type="text" name="button_text" class="form-control" value="{{ old('button_text', $cta->button_text) }}" placeholder="Ej.: Crear mi espacio de trabajo">
                         </div>
                         <div class="form-group">
                             <label class="form-label">{{ __('super.cta.btn_url') }}</label>
