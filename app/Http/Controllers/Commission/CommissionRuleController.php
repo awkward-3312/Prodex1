@@ -74,7 +74,7 @@ class CommissionRuleController extends BaseController
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        return $this->sendResponse($rule->load(['commissionProgram', 'salesAgent']), __('Created successfully'));
+        return $this->sendResponse($rule->load(['commissionProgram', 'salesAgent']), 'Creado correctamente');
     }
 
     public function show(Request $request, $id)
@@ -116,7 +116,7 @@ class CommissionRuleController extends BaseController
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        return $this->sendResponse($rule->fresh()->load(['commissionProgram', 'salesAgent']), __('Updated successfully'));
+        return $this->sendResponse($rule->fresh()->load(['commissionProgram', 'salesAgent']), 'Actualizado correctamente');
     }
 
     public function destroy(Request $request, $id)
@@ -124,6 +124,6 @@ class CommissionRuleController extends BaseController
         $this->authorizeForUser($request->user('api'), 'delete', CommissionProgram::class);
         $rule = CommissionRule::findOrFail($id);
         $rule->delete();
-        return $this->sendResponse(null, __('Deleted successfully'));
+        return $this->sendResponse(null, 'Eliminado correctamente');
     }
 }
