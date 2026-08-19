@@ -48,9 +48,12 @@
 
 <script>
 import moment from "moment";
+import "moment/locale/es";
+
+moment.locale("es");
 
 export default {
-  metaInfo: { title: "Meeting Calendar" },
+  metaInfo: { title: "Calendario de reuniones" },
   data() {
     return {
       isLoading: true,
@@ -60,10 +63,11 @@ export default {
   },
   computed: {
     monthLabel() {
-      return this.cursor.format("MMMM YYYY");
+      const value = this.cursor.clone().locale("es").format("MMMM YYYY");
+      return value.charAt(0).toUpperCase() + value.slice(1);
     },
     weekdays() {
-      return moment.weekdaysShort();
+      return moment.localeData("es").weekdaysShort();
     },
     cells() {
       const start = this.cursor.clone().startOf("month").startOf("week");
