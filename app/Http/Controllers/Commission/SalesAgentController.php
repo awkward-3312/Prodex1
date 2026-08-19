@@ -69,7 +69,7 @@ class SalesAgentController extends BaseController
             'notes' => $request->notes,
         ]);
 
-        return $this->sendResponse($agent, __('Created successfully'));
+        return $this->sendResponse($agent, 'Agente creado correctamente.');
     }
 
     public function show(Request $request, $id)
@@ -103,7 +103,7 @@ class SalesAgentController extends BaseController
             'notes' => $request->notes,
         ]);
 
-        return $this->sendResponse($agent->fresh(), __('Updated successfully'));
+        return $this->sendResponse($agent->fresh(), 'Agente actualizado correctamente.');
     }
 
     public function destroy(Request $request, $id)
@@ -111,7 +111,7 @@ class SalesAgentController extends BaseController
         $this->authorizeForUser($request->user('api'), 'delete', CommissionProgram::class);
         $agent = SalesAgent::findOrFail($id);
         $agent->delete();
-        return $this->sendResponse(null, __('Deleted successfully'));
+        return $this->sendResponse(null, 'Agente eliminado correctamente.');
     }
 
     /** List agents for dropdowns (id, name, code). */
