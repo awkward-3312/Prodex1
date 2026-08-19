@@ -30,4 +30,34 @@ class StoreSetting extends Model
         'homepage_lineup' => 'array',
         'social_links' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (StoreSetting $setting): void {
+            // The legacy Settings API still constructs this exact StoreX demo
+            // payload when a tenant opens Online Store settings for the first
+            // time. Normalize only that known legacy payload so custom store
+            // creations and explicit language choices remain untouched.
+            $isLegacyStoreX = ($setting->store_name === 'StoreX')
+                && ($setting->hero_title === 'Sell online & in-store')
+                && ($setting->hero_subtitle === 'Beautiful storefront. Synced inventory.');
+
+            if (! $isLegacyStoreX) {
+                return;
+            }
+
+            $setting->store_name = 'PRODEX Tienda';
+            $setting->language = 'es';
+            $setting->contact_email = 'info@prodexhub.cloud';
+            $setting->contact_phone = '';
+            $setting->contact_address = '';
+            $setting->hero_title = 'Vende en línea y en tu negocio';
+            $setting->hero_subtitle = 'Una tienda moderna conectada con tu inventario y punto de venta.';
+            $setting->seo_meta_title = 'Tienda en línea';
+            $setting->seo_meta_description = 'Tienda en línea conectada con PRODEX para mantener productos, ventas e inventario sincronizados.';
+            $setting->topbar_text_left = 'Envíos y promociones según las condiciones de tu negocio';
+            $setting->topbar_text_right = 'Compra fácil y segura';
+            $setting->footer_text = 'Tienda en línea integrada con PRODEX.';
+        });
+    }
 }
