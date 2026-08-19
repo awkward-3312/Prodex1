@@ -18,7 +18,7 @@ use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 |
 */
 
-Route::prefix('api')
+Route::prefix('api/prodex-manual')
     ->middleware([
         'api',
         PreventAccessFromCentralDomains::class,
@@ -31,7 +31,6 @@ Route::prefix('api')
         'tenant.subscribed',
         'tenant.activity',
     ])
-    ->prefix('api/prodex-manual')
     ->group(function () {
         Route::get('/categories', [ProdexManualController::class, 'categories']);
         Route::get('/articles', [ProdexManualController::class, 'articles']);
