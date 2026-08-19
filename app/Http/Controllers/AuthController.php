@@ -22,14 +22,14 @@ class AuthController extends BaseController
             $userStatus = Auth::User()->statut;
             if ($userStatus === 0) {
                 return response()->json([
-                    'message' => 'This user not active',
+                    'message' => 'Este usuario no está activo',
                     'status' => 'NotActive',
                 ]);
             }
 
         } else {
             return response()->json([
-                'message' => 'Incorrect Login',
+                'message' => 'Correo electrónico o contraseña incorrectos',
                 'status' => false,
             ]);
         }
