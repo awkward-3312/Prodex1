@@ -3,10 +3,12 @@ import VueI18n from 'vue-i18n';
 import axios from 'axios';
 import { supportMessages } from './support.i18n';
 import { bundledUiMessages, readableMissingTranslation } from './ui.fallback.i18n';
+import { installSpanishUiGuard } from '../utils/spanishUiGuard';
 
 Vue.use(VueI18n);
 
 export const loadI18n = async () => {
+  installSpanishUiGuard();
   const userLang = localStorage.getItem('language') || 'es';
 
   let dbMessages = {};
