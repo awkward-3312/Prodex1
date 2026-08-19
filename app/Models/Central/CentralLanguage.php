@@ -33,6 +33,6 @@ class CentralLanguage extends Model
     /** Default language locale. */
     public static function defaultLocale(): string
     {
-        return static::where('is_default', true)->value('locale') ?? config('app.locale', 'en');
+        return static::where('is_default', true)->value('locale') ?? config('app.locale', 'es');
     }
 }
