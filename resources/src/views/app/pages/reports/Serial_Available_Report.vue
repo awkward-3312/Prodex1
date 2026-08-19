@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <breadcumb :page="$t('Available_Serial_Numbers') || 'Available Serial Numbers'" :folder="$t('Reports')" />
+    <breadcumb page="Números de serie disponibles" :folder="$t('Reports')" />
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
@@ -12,17 +12,15 @@
         @on-per-page-change="onPerPageChange"
         @on-sort-change="onSortChange"
         @on-search="onSearch"
-        :search-options="{ placeholder: $t('Search_this_table'), enabled: true }"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
+        :search-options="{ placeholder: 'Buscar en esta tabla', enabled: true }"
+        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'Siguiente', prevLabel: 'Anterior' }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
         <div slot="table-actions" class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-          <b-form-group :label="$t('warehouse')" style="min-width:200px;">
-            <v-select @input="loadItems(1)" v-model="warehouse_id" :reduce="l => l.value"
-              :placeholder="$t('Choose_Warehouse')" :options="warehouses.map(w => ({label:w.name, value:w.id}))" />
+          <b-form-group label="Almacén" style="min-width:200px;">
+            <v-select @input="loadItems(1)" v-model="warehouse_id" :reduce="l => l.value" placeholder="Selecciona un almacén" :options="warehouses.map(w => ({label:w.name, value:w.id}))" />
           </b-form-group>
-          <vue-excel-xlsx class="btn btn-sm btn-outline-danger ripple m-1" :data="reports" :columns="columns"
-            :file-name="'available_serials'" :file-type="'xlsx'" :sheet-name="'available_serials'">
+          <vue-excel-xlsx class="btn btn-sm btn-outline-danger ripple m-1" :data="reports" :columns="columns" :file-name="'seriales_disponibles'" :file-type="'xlsx'" :sheet-name="'seriales_disponibles'">
             <lucide-icon name="file-spreadsheet" /> EXCEL
           </vue-excel-xlsx>
         </div>
@@ -34,23 +32,17 @@
 <script>
 import NProgress from "nprogress";
 export default {
-  metaInfo: { title: "Available Serials Report" },
-  data() {
-    return {
-      isLoading: true,
-      serverParams: { sort: { field: "id", type: "desc" }, page: 1, perPage: 10 },
-      limit: "10", search: "", totalRows: "", reports: [], warehouses: [], warehouse_id: ""
-    };
-  },
+  metaInfo: { title: "Informe de números de serie disponibles" },
+  data() { return { isLoading: true, serverParams: { sort: { field: "id", type: "desc" }, page: 1, perPage: 10 }, limit: "10", search: "", totalRows: "", reports: [], warehouses: [], warehouse_id: "" }; },
   computed: {
     columns() {
       return [
-        { label: this.$t("Serial_Number"), field: "serial_number", thClass: "text-left", tdClass: "text-left" },
-        { label: this.$t("Name_product"), field: "product_name", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: this.$t("ProductCode"), field: "product_code", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: this.$t("warehouse"), field: "warehouse_name", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: this.$t("Supplier"), field: "provider_name", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: this.$t("Registered_Date") || "Registered", field: "created_at", thClass: "text-left", tdClass: "text-left" }
+        { label: "Número de serie", field: "serial_number", thClass: "text-left", tdClass: "text-left" },
+        { label: "Producto", field: "product_name", thClass: "text-left", tdClass: "text-left", sortable: false },
+        { label: "Código del producto", field: "product_code", thClass: "text-left", tdClass: "text-left", sortable: false },
+        { label: "Almacén", field: "warehouse_name", thClass: "text-left", tdClass: "text-left", sortable: false },
+        { label: "Proveedor", field: "provider_name", thClass: "text-left", tdClass: "text-left", sortable: false },
+        { label: "Fecha de registro", field: "created_at", thClass: "text-left", tdClass: "text-left" }
       ];
     }
   },
@@ -62,13 +54,8 @@ export default {
     onSearch(v) { this.search = v.searchTerm; this.loadItems(this.serverParams.page); },
     loadItems(page) {
       NProgress.start(); NProgress.set(0.1);
-      axios.get("report/serials/available", { params: {
-        page, SortField: this.serverParams.sort.field, SortType: this.serverParams.sort.type,
-        search: this.search, warehouse_id: this.warehouse_id || "", limit: this.limit
-      }}).then(r => {
-        this.reports = r.data.report; this.totalRows = r.data.totalRows;
-        if (r.data.warehouses) this.warehouses = r.data.warehouses;
-        NProgress.done(); this.isLoading = false;
+      axios.get("report/serials/available", { params: { page, SortField: this.serverParams.sort.field, SortType: this.serverParams.sort.type, search: this.search, warehouse_id: this.warehouse_id || "", limit: this.limit }}).then(r => {
+        this.reports = r.data.report; this.totalRows = r.data.totalRows; if (r.data.warehouses) this.warehouses = r.data.warehouses; NProgress.done(); this.isLoading = false;
       }).catch(() => { NProgress.done(); setTimeout(() => { this.isLoading = false; }, 500); });
     }
   },
