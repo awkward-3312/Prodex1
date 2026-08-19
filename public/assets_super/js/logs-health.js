@@ -52,6 +52,57 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ── Resolve all unresolved logs ──────────────────
+    var btnResolveAll = document.getElementById('btnResolveAll');
+    if (btnResolveAll) {
+        btnResolveAll.addEventListener('click', function () {
+            var url = btnResolveAll.getAttribute('data-url');
+            var count = parseInt(btnResolveAll.getAttribute('data-count') || '0', 10);
+            var promptText = 'Se marcarán como resueltos ' + count + ' registros que actualmente están sin resolver.';
+
+            var confirmation;
+            if (typeof Swal !== 'undefined') {
+                confirmation = Swal.fire({
+                    title: '¿Resolver todos?',
+                    text: promptText,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#018A00',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Resolver todos',
+                    cancelButtonText: 'Cancelar',
+                    reverseButtons: true,
+                });
+            } else {
+                confirmation = Promise.resolve({ isConfirmed: confirm(promptText) });
+            }
+
+            confirmation.then(function (res) {
+                if (!res.isConfirmed) return;
+
+                btnResolveAll.disabled = true;
+                var originalHtml = btnResolveAll.innerHTML;
+                btnResolveAll.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Resolviendo…';
+
+                postJson(url).then(function (resp) {
+                    if (resp.ok && resp.data.success) {
+                        toast(resp.data.message || 'Registros marcados como resueltos.', 'success');
+                        setTimeout(function () { window.location.reload(); }, 700);
+                        return;
+                    }
+
+                    btnResolveAll.disabled = false;
+                    btnResolveAll.innerHTML = originalHtml;
+                    toast((resp.data && resp.data.message) || 'No se pudieron resolver los registros.', 'error');
+                }).catch(function () {
+                    btnResolveAll.disabled = false;
+                    btnResolveAll.innerHTML = originalHtml;
+                    toast('No se pudieron resolver los registros.', 'error');
+                });
+            });
+        });
+    }
+
     // ── Clear resolved ────────────────────────────────
     var btnClear = document.getElementById('btnClearResolved');
     if (btnClear) {
