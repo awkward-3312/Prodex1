@@ -1,13 +1,13 @@
 <template>
   <div class="main-content">
-    <breadcumb :page="$t('Login_Device_Management')"  :folder="$t('Settings')" />
+    <breadcumb :page="$t('Login_Device_Management')" :folder="$t('Settings')" />
 
     <b-card>
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
-          <h5 class="mb-1">Login Device Management</h5>
+          <h5 class="mb-1">Gestión de dispositivos de inicio de sesión</h5>
           <p class="text-muted mb-0">
-            Active login sessions across all users (per device / browser).
+            Sesiones de inicio de sesión activas de todos los usuarios, por dispositivo o navegador.
           </p>
         </div>
         <div class="d-flex">
@@ -17,14 +17,14 @@
             @click="LoadSecuritySessions()"
             :disabled="securitySessionsLoading || securitySessionsActionLoading"
           >
-            Refresh
+            Actualizar
           </b-button>
           <b-button
             variant="danger"
             @click="LogoutAllOtherDevices()"
             :disabled="securitySessionsLoading || securitySessionsActionLoading || !hasOtherSessions"
           >
-            Logout All Other Devices
+            Cerrar sesión en los demás dispositivos
           </b-button>
         </div>
       </div>
@@ -41,7 +41,7 @@
         small
         class="mt-3"
         show-empty
-        empty-text="No active sessions found."
+        empty-text="No se encontraron sesiones activas."
       >
         <template #cell(user_name)="row">
           <span>{{ row.item.user_name || '-' }}</span>
@@ -50,7 +50,7 @@
         <template #cell(device)="row">
           <div class="d-flex align-items-center">
             <span>{{ row.item.device }}</span>
-            <b-badge v-if="row.item.is_current" variant="success" class="ms-2">Current</b-badge>
+            <b-badge v-if="row.item.is_current" variant="success" class="ms-2">Actual</b-badge>
           </div>
         </template>
 
@@ -73,7 +73,7 @@
             @click="LogoutSession(row.item.token_id)"
             :disabled="securitySessionsLoading || securitySessionsActionLoading || row.item.is_current"
           >
-            Logout
+            Cerrar sesión
           </b-button>
         </template>
       </b-table>
@@ -86,7 +86,7 @@ import { mapGetters } from "vuex";
 
 export default {
   metaInfo: {
-    title: "Login Device Management"
+    title: "Gestión de dispositivos de inicio de sesión"
   },
   data() {
     return {
@@ -102,17 +102,16 @@ export default {
     },
     securitySessionFields() {
       return [
-        { key: "user_name", label: "User", tdClass: "text-left", thClass: "text-left" },
-        { key: "device", label: "Device / Browser", tdClass: "text-left", thClass: "text-left" },
-        { key: "ip_address", label: "IP Address", tdClass: "text-left", thClass: "text-left" },
-        { key: "login_at", label: "Login date & time", tdClass: "text-left", thClass: "text-left" },
-        { key: "last_activity_at", label: "Last activity", tdClass: "text-left", thClass: "text-left" },
-        { key: "actions", label: "Action", tdClass: "text-right", thClass: "text-right" }
+        { key: "user_name", label: "Usuario", tdClass: "text-left", thClass: "text-left" },
+        { key: "device", label: "Dispositivo / navegador", tdClass: "text-left", thClass: "text-left" },
+        { key: "ip_address", label: "Dirección IP", tdClass: "text-left", thClass: "text-left" },
+        { key: "login_at", label: "Fecha y hora de inicio", tdClass: "text-left", thClass: "text-left" },
+        { key: "last_activity_at", label: "Última actividad", tdClass: "text-left", thClass: "text-left" },
+        { key: "actions", label: "Acción", tdClass: "text-right", thClass: "text-right" }
       ];
     }
   },
   created() {
-    // Permission gate (UI). Backend also enforces.
     const perms = this.currentUserPermissions || [];
     const allowed = perms.includes("login_device_management") || perms.includes("setting_system");
     if (!allowed) {
@@ -158,13 +157,12 @@ export default {
         });
     },
     LogoutSession(tokenId) {
-      if (!tokenId) return;
-      if (this.securitySessionsActionLoading) return;
+      if (!tokenId || this.securitySessionsActionLoading) return;
       this.securitySessionsActionLoading = true;
       axios
         .delete(`security/sessions/${encodeURIComponent(tokenId)}`)
         .then(() => {
-          this.makeToast("success", "Session logged out successfully.", this.$t("Success"));
+          this.makeToast("success", "Sesión cerrada correctamente.", this.$t("Success"));
           this.LoadSecuritySessions();
         })
         .catch(error => {
@@ -184,7 +182,7 @@ export default {
         .post("security/sessions/logout-other")
         .then(response => {
           const revoked = response && response.data && typeof response.data.revoked !== "undefined" ? response.data.revoked : null;
-          const msg = revoked === null ? "Logged out other devices." : `Logged out ${revoked} other device(s).`;
+          const msg = revoked === null ? "Se cerraron las sesiones de los demás dispositivos." : `Se cerró la sesión en ${revoked} dispositivo(s) adicional(es).`;
           this.makeToast("success", msg, this.$t("Success"));
           this.LoadSecuritySessions();
         })
@@ -201,61 +199,3 @@ export default {
   }
 };
 </script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
