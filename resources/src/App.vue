@@ -14,10 +14,10 @@
       <div class="global-sync-card">
         <div class="global-sync-spinner"></div>
         <h3 class="global-sync-title">
-          {{ $t ? ($t('pos.Syncing_offline_sales') || 'Syncing offline sales') : 'Syncing offline sales' }}
+          {{ translatedOrFallback('pos.Syncing_offline_sales', 'Sincronizando ventas sin conexión') }}
         </h3>
         <p class="global-sync-subtitle">
-          {{ $t ? ($t('pos.Syncing_offline_sales_help') || 'Please wait while your offline sales are being synchronized.') : 'Please wait while your offline sales are being synchronized.' }}
+          {{ translatedOrFallback('pos.Syncing_offline_sales_help', 'Espera mientras se sincronizan las ventas realizadas sin conexión.') }}
         </p>
       </div>
     </div>
@@ -30,20 +30,19 @@
         <div class="limit-reached-icon">
           <svg width="32" height="32" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M5.07 19h13.86c1.5 0 2.47-1.6 1.73-2.88L13.73 4.24c-.74-1.28-2.72-1.28-3.46 0L3.34 16.12C2.6 17.4 3.57 19 5.07 19z"/></svg>
         </div>
-        <h3 class="limit-reached-title">Plan Limit Reached</h3>
+        <h3 class="limit-reached-title">Límite del plan alcanzado</h3>
         <p class="limit-reached-message">{{ limitReachedMessage }}</p>
         <div class="limit-reached-actions">
           <button class="limit-reached-btn-upgrade" @click="goToUpgrade">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 19V5m-7 7 7-7 7 7"/></svg>
-            Upgrade Plan
+            Mejorar plan
           </button>
-          <button class="limit-reached-btn-dismiss" @click="limitReachedVisible = false">Dismiss</button>
+          <button class="limit-reached-btn-dismiss" @click="limitReachedVisible = false">Cerrar</button>
         </div>
       </div>
     </div>
   </div>
 </template>
-
 
 <script>
 import { mapActions, mapGetters } from "vuex";
@@ -58,7 +57,6 @@ export default {
     };
   },
   computed: {
-    
     ...mapGetters("config", ["getThemeMode", "getCustomizeButtonVisible"]),
     ...mapGetters(["isAuthenticated","show_language","currentUser"]),
     themeName() {
@@ -67,34 +65,30 @@ export default {
     rtl() {
       return this.getThemeMode.rtl ? "rtl" : " ";
     },
-
     isPosPage() {
       const p = String(this.$route.path || '');
       return p === '/app/pos' || p.startsWith('/app/pos_') || p.startsWith('/app/pos/');
     },
     titleTemplate() {
-      return `%s | ${this.currentUser?.page_title_suffix || window.__pageTitleSuffix || "Ultimate Inventory With POS"}`;
+      return `%s | ${this.currentUser?.page_title_suffix || window.__pageTitleSuffix || "Gestión empresarial"}`;
     }
   },
 
   metaInfo() {
     return {
-      // if no subcomponents specify a metaInfo.title, this title will be used
-      title: window.__appName || "Stocky",
+      title: window.__appName || "PRODEX",
       titleTemplate: this.titleTemplate,
-
       bodyAttrs: {
         class: [this.themeName, "text-left"]
       },
       htmlAttrs: {
-        dir: this.rtl
+        dir: this.rtl,
+        lang: 'es'
       },
-      
     };
   },
 
   beforeDestroy() {
-    // Clean up listeners
     try {
       if (typeof window !== 'undefined' && window.Fire && window.Fire.$off) {
         window.Fire.$off('offline-sync:start', this.onGlobalSyncStart);
@@ -105,20 +99,24 @@ export default {
     } catch (e) {}
   },
   methods:{
-    ...mapActions([
-      "refreshUserPermissions",
-    ]),
+    ...mapActions(["refreshUserPermissions"]),
     ...mapActions("config", ["initPrimaryColor"]),
+    translatedOrFallback(key, fallback) {
+      try {
+        if (!this.$t) return fallback;
+        const translated = this.$t(key);
+        return translated && translated !== key ? translated : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    },
     async initializeApp() {
       try {
         this.initPrimaryColor();
-        // Ensure initial permissions and user info are fetched
         await this.refreshUserPermissions(this.$i18n);
       } catch (e) {
-        // ignore; guards/interceptors will handle routing on auth errors
       } finally {
         this.Loading = true;
-        // Signal that the app rendered initial route and is allowed to hide loader when no pending requests
         if (window) {
           window.__appReadyToHideLoader = true;
           if (typeof window.__hideInitialLoaderIfDone === 'function') {
@@ -128,7 +126,7 @@ export default {
       }
     },
     showLimitReached(message) {
-      this.limitReachedMessage = message;
+      this.limitReachedMessage = message || 'Has alcanzado el límite permitido por tu plan.';
       this.limitReachedVisible = true;
     },
     goToUpgrade() {
@@ -145,11 +143,6 @@ export default {
       try {
         const syncedCount = Number(payload && payload.syncedCount || 0);
         const lastError = payload && payload.lastError;
-        // If at least one offline sale was synced successfully and there is no error,
-        // reload the current page to reflect updated data everywhere – except when
-        // the user is on the POS screen with a potentially active cart. In that
-        // case, POS itself will decide if/when to reload via its own confirmation
-        // flow to avoid disrupting an in‑progress checkout.
         if (syncedCount > 0 && !lastError) {
           const isPosRoute = this.$route &&
             (this.$route.name === 'pos' ||
@@ -165,12 +158,9 @@ export default {
   },
 
   beforeMount() {
-    // Replace timeout with awaited initialization
     this.initializeApp();
   },
-  
   mounted() {
-    // Listen for global offline sync start/end/result events
     try {
       if (typeof window !== 'undefined' && window.Fire && window.Fire.$on) {
         window.Fire.$on('offline-sync:start', this.onGlobalSyncStart);
@@ -276,15 +266,10 @@ export default {
 }
 
 @keyframes global-sync-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* Limit-reached modal */
 .limit-reached-overlay {
   position: fixed;
   inset: 0;
