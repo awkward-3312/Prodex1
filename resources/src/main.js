@@ -23,12 +23,10 @@ localize({
   },
 });
 localize('es');
-// Install VeeValidate rules and localization
 Object.keys(rules).forEach(rule => {
   extend(rule, rules[rule]);
 });
 
-// "url" is not a built-in rule in vee-validate 3
 extend('url', {
   validate(value) {
     if (!value) return false;
@@ -42,40 +40,25 @@ extend('url', {
   message: 'Este campo debe contener una URL válida (http:// o https://)'
 });
 
-// Register it globally
 Vue.component("ValidationObserver", ValidationObserver);
 Vue.component('ValidationProvider', ValidationProvider);
 
-
 Vue.component('qrcode-scanner', {
   props: {
-    qrbox: {
-      type: Number,
-      default: 250
-    },
-    fps: {
-      type: Number,
-      default: 10
-    },
+    qrbox: { type: Number, default: 250 },
+    fps: { type: Number, default: 10 },
   },
   data() {
-    return {
-      isFirstScan: true,
-      html5QrcodeScanner: null,
-    };
+    return { isFirstScan: true, html5QrcodeScanner: null };
   },
-  template: `<div id="reader"></div>`, // Use ref instead of id for dynamic rendering
-
+  template: `<div id="reader"></div>`,
   mounted () {
     this.initializeScanner();
   },
   methods: {
     initializeScanner() {
-      const config = {
-        fps: this.fps,
-        qrbox: this.qrbox,
-      };
-      this.html5QrcodeScanner = new Html5QrcodeScanner('reader', config); // Use id for dynamic rendering
+      const config = { fps: this.fps, qrbox: this.qrbox };
+      this.html5QrcodeScanner = new Html5QrcodeScanner('reader', config);
       this.html5QrcodeScanner.render(this.onScanSuccess);
     },
     onScanSuccess (decodedText, decodedResult) {
@@ -86,15 +69,10 @@ Vue.component('qrcode-scanner', {
         this.html5QrcodeScanner.stop();
       }
     },
-
   },
-
   beforeDestroy() {
-    if (this.html5QrcodeScanner) {
-      this.html5QrcodeScanner.clear();
-    }
+    if (this.html5QrcodeScanner) this.html5QrcodeScanner.clear();
   }
-
 });
 
 import StockyKit from "./plugins/stocky.kit";
@@ -105,30 +83,23 @@ Vue.use(VueCookies);
 var VueCookie = require('vue-cookie');
 Vue.use(VueCookie);
 
-// Register Excel Export Component globally
 import ExcelExport from "./components/ExcelExport.vue";
 Vue.component('vue-excel-xlsx', ExcelExport);
 
-// Lucide icon wrapper (replaces Iconsmind i-* font icons)
 import LucideIcon from "./components/LucideIcon.vue";
 Vue.component('lucide-icon', LucideIcon);
 
-// Serial / IMEI tracking field (entry on purchase, selection on sale)
 import SerialNumbersField from "./components/SerialNumbersField.vue";
 Vue.component('serial-numbers-field', SerialNumbersField);
 
 window.axios = require('axios');
-
 window.axios.defaults.baseURL = '/api/';
 window.axios.defaults.withCredentials = true;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
-// ==============================
-// Initial load loader control
-// ==============================
 window.__axiosPendingCount = 0;
-window.__initialLoaderActive = true;     // Only during first SPA boot
-window.__appReadyToHideLoader = false;   // Set true by App.vue
+window.__initialLoaderActive = true;
+window.__appReadyToHideLoader = false;
 
 window.__hideInitialLoaderIfDone = function () {
   if (!window.__initialLoaderActive) return;
@@ -141,71 +112,110 @@ window.__hideInitialLoaderIfDone = function () {
 };
 
 function incrementPending(config) {
-  if (
-    window.__initialLoaderActive &&
-    !(config && config.meta && config.meta.skipInitialLoader)
-  ) {
+  if (window.__initialLoaderActive && !(config && config.meta && config.meta.skipInitialLoader)) {
     window.__axiosPendingCount++;
   }
 }
 
 function decrementPending(config) {
-  if (
-    window.__initialLoaderActive &&
-    !(config && config.meta && config.meta.skipInitialLoader)
-  ) {
+  if (window.__initialLoaderActive && !(config && config.meta && config.meta.skipInitialLoader)) {
     window.__axiosPendingCount = Math.max(0, window.__axiosPendingCount - 1);
     window.__hideInitialLoaderIfDone();
   }
 }
 
-// ==============================
-// Redirect guards (IMPORTANT)
-// ==============================
+// Traduce exclusivamente mensajes de interfaz recibidos desde APIs heredadas.
+// Nunca procesa campos de datos de negocio (productos, clientes, referencias, etc.).
+const legacyApiMessageRules = [
+  [/^Payment Create successfully$/i, 'Pago creado correctamente'],
+  [/^Payment Update successfully$/i, 'Pago actualizado correctamente'],
+  [/^Payment Delete successfully$/i, 'Pago eliminado correctamente'],
+  [/^Created successfully$/i, 'Creado correctamente'],
+  [/^Updated successfully$/i, 'Actualizado correctamente'],
+  [/^Deleted successfully$/i, 'Eliminado correctamente'],
+  [/^Successfully Created$/i, 'Creado correctamente'],
+  [/^Successfully Updated$/i, 'Actualizado correctamente'],
+  [/^Successfully Deleted$/i, 'Eliminado correctamente'],
+  [/^Success$/i, 'Éxito'],
+  [/^Failed$/i, 'Error'],
+  [/^Not found$/i, 'No encontrado'],
+  [/^Unauthorized$/i, 'No autorizado'],
+  [/^Forbidden$/i, 'Acceso denegado'],
+  [/^Invalid data$/i, 'Datos no válidos'],
+  [/^Something went wrong\.?$/i, 'Ocurrió un error.'],
+  [/^An error occurred\.?$/i, 'Ocurrió un error.'],
+  [/^Return exist for the Transaction$/i, 'Ya existe una devolución para esta transacción'],
+  [/^You are not allowed to access this sale \(warehouse restriction\)\.?$/i, 'No tienes permiso para acceder a esta venta por la restricción de almacén.'],
+  [/^Insufficient stock for (.+)$/i, 'Inventario insuficiente para $1'],
+  [/^Product not found\.?$/i, 'Producto no encontrado.'],
+  [/^Customer not found\.?$/i, 'Cliente no encontrado.'],
+  [/^Supplier not found\.?$/i, 'Proveedor no encontrado.'],
+  [/^Warehouse not found\.?$/i, 'Almacén no encontrado.'],
+  [/^Sale not found\.?$/i, 'Venta no encontrada.'],
+  [/^Purchase not found\.?$/i, 'Compra no encontrada.'],
+  [/^Payment not found\.?$/i, 'Pago no encontrado.'],
+  [/^The given data was invalid\.?$/i, 'Los datos proporcionados no son válidos.'],
+  [/^Unauthenticated\.?$/i, 'No autenticado. Inicia sesión nuevamente.'],
+];
+
+function translateLegacyApiMessage(value) {
+  if (typeof value !== 'string' || !value.trim()) return value;
+  let translated = value.trim();
+  legacyApiMessageRules.some(([pattern, replacement]) => {
+    if (pattern.test(translated)) {
+      translated = translated.replace(pattern, replacement);
+      return true;
+    }
+    return false;
+  });
+  return translated;
+}
+
+function translateApiFeedback(data) {
+  if (!data || typeof data !== 'object') return data;
+
+  if (typeof data.message === 'string') data.message = translateLegacyApiMessage(data.message);
+  if (typeof data.error === 'string') data.error = translateLegacyApiMessage(data.error);
+
+  // Laravel validation errors: procesa únicamente los textos del contenedor errors.
+  if (data.errors && typeof data.errors === 'object') {
+    Object.keys(data.errors).forEach(key => {
+      const value = data.errors[key];
+      if (Array.isArray(value)) {
+        data.errors[key] = value.map(item => translateLegacyApiMessage(item));
+      } else if (typeof value === 'string') {
+        data.errors[key] = translateLegacyApiMessage(value);
+      }
+    });
+  }
+
+  return data;
+}
+
 let isRedirectingToLogin = false;
 
-// Hard logout (web session) then go to /login.
-// This prevents the classic infinite loop where:
-// - API auth is gone (401) => we navigate to /login
-// - but the web session is still alive => /login redirects back to /
 async function hardLogoutToLogin() {
   if (isRedirectingToLogin) return;
   isRedirectingToLogin = true;
-
   try {
-    // Use a non-API baseURL, and bypass the auth-redirect logic for this call.
-    await axios.post(
-      "/logout",
-      {},
-      {
-        baseURL: "",
-        meta: { skipAuthRedirect: true, skipInitialLoader: true },
-      }
-    );
-  } catch (e) {
-    // ignore: we still want to navigate to /login
-  }
-
-  window.location.replace("/login");
+    await axios.post('/logout', {}, {
+      baseURL: '',
+      meta: { skipAuthRedirect: true, skipInitialLoader: true },
+    });
+  } catch (e) {}
+  window.location.replace('/login');
 }
 
-// ==============================
-// Request interceptor
-// ==============================
 axios.interceptors.request.use(
   (config) => {
     incrementPending(config);
-    // Tell the backend which locale to render server-side output (Blade PDFs) in,
-    // so downloaded/printed PDFs match the language selected in the UI.
-    // Read straight from localStorage (same key vue-localstorage writes in the
-    // language store module) to avoid a store dependency inside the interceptor.
     try {
       const uiLocale = window.localStorage.getItem('language');
       if (uiLocale) {
         config.headers = config.headers || {};
         config.headers['X-Pdf-Locale'] = uiLocale;
       }
-    } catch (e) { /* localStorage unavailable — ignore */ }
+    } catch (e) {}
     return config;
   },
   (error) => {
@@ -214,68 +224,47 @@ axios.interceptors.request.use(
   }
 );
 
-// ==============================
-// Response interceptor
-// ==============================
 axios.interceptors.response.use(
   (response) => {
     decrementPending(response && response.config);
+    if (response && response.data && typeof response.data === 'object') {
+      translateApiFeedback(response.data);
+    }
     return response;
   },
   (error) => {
     decrementPending(error && error.config);
 
     if (!error.response) {
-      return Promise.reject(error.message);
+      return Promise.reject(translateLegacyApiMessage(error.message));
     }
 
-    // Allow specific requests to opt out of the global auth redirect logic
+    if (error.response.data && typeof error.response.data === 'object') {
+      translateApiFeedback(error.response.data);
+    }
+
     if (error.config && error.config.meta && error.config.meta.skipAuthRedirect) {
-      return Promise.reject(error.response.data || error.message);
+      return Promise.reject(error.response.data || translateLegacyApiMessage(error.message));
     }
 
-    // 🔥 SESSION REVOKED (Security tab logout)
     if (
       error.response &&
       error.response.status === 409 &&
-      error.response.headers["x-session-revoked"] === "1"
+      error.response.headers['x-session-revoked'] === '1'
     ) {
-      // Ensure the web session is also cleared to avoid /login <-> / loops
       hardLogoutToLogin();
       return Promise.reject(error);
     }
 
     const { status, data } = error.response;
-    const currentPath = window.location.pathname;
 
-    // ==========================
-    // 401 – Unauthenticated
-    // ==========================
     if (status === 401) {
-      // Ensure the web session is also cleared to avoid /login <-> / loops
       hardLogoutToLogin();
-      return Promise.reject(data || error.message);
+      return Promise.reject(data || translateLegacyApiMessage(error.message));
     }
 
-
-    // ==========================
-    // 404 / 403
-    // ==========================
-    // Only a failed page-resource LOAD (a GET) is allowed to navigate the whole
-    // app to NotFound / not_authorize — e.g. opening a detail page for a record
-    // that no longer exists. Everything else rejects quietly so the calling
-    // component can surface the error inline:
-    //   - mutations (POST/PUT/PATCH/DELETE): a 404/403 means "action failed",
-    //     not "page missing" — these should show a toast, never blank the app.
-    //   - background / fire-and-forget calls (e.g. locale sync, polling): opt
-    //     out explicitly via meta.skipErrorRedirect.
-    const skipErrorRedirect =
-      error.config && error.config.meta && error.config.meta.skipErrorRedirect;
-
-    const method = (
-      (error.config && error.config.method) || 'get'
-    ).toString().toLowerCase();
-
+    const skipErrorRedirect = error.config && error.config.meta && error.config.meta.skipErrorRedirect;
+    const method = ((error.config && error.config.method) || 'get').toString().toLowerCase();
     const isNavigationalLoad = method === 'get' && !skipErrorRedirect;
 
     if (status === 404 && isNavigationalLoad) {
@@ -284,7 +273,6 @@ axios.interceptors.response.use(
 
     if (status === 403) {
       if (data && data.status === 'limit_reached') {
-        // Stay on the current page — show an upgrade modal instead of redirecting
         Vue.prototype.$limitReachedMessage = data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.';
         window.Fire.$emit('show-limit-reached', data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.');
       } else if (isNavigationalLoad) {
@@ -292,10 +280,9 @@ axios.interceptors.response.use(
       }
     }
 
-    return Promise.reject(data || error.message);
+    return Promise.reject(data || translateLegacyApiMessage(error.message));
   }
 );
-
 
 import vSelect from 'vue-select'
 Vue.component('v-select', vSelect)
@@ -305,7 +292,6 @@ import '@trevoreyre/autocomplete-vue/dist/style.css';
 
 window.Fire = new Vue();
 
-// Global helper for tenant-aware image paths
 Vue.prototype.$uploadPath = window.__uploadPath || 'images';
 Vue.prototype.$imgUrl = function(subfolder, filename) {
   return '/' + this.$uploadPath + '/' + subfolder + '/' + filename;
@@ -314,8 +300,6 @@ Vue.prototype.$imgUrl = function(subfolder, filename) {
 import Breadcumb from "./components/breadcumb";
 import VueI18n from 'vue-i18n';
 Vue.use(VueI18n);
-
-
 Vue.component("breadcumb", Breadcumb);
 
 Vue.config.productionTip = true;
@@ -326,10 +310,9 @@ import { loadI18n } from './plugins/i18n.loader';
 import { setupGlobalOfflineSync } from './utils/globalOfflineSync';
 
 loadI18n().then(i18n => {
- store.commit('SetDefaultLanguage', { i18n, Language: i18n.locale });
-  setupRouterGuards(i18n); // ✅ inject into router
+  store.commit('SetDefaultLanguage', { i18n, Language: i18n.locale });
+  setupRouterGuards(i18n);
 
-  // Initialize global offline sales sync (works from any page)
   try {
     setupGlobalOfflineSync();
   } catch (e) {}
@@ -338,9 +321,7 @@ loadI18n().then(i18n => {
     store,
     router,
     VueCookie,
-    i18n, // vue-i18n will inject $i18n to all components
+    i18n,
     render: h => h(App),
-  }).$mount("#app");
+  }).$mount('#app');
 });
-
-  
