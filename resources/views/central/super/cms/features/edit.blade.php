@@ -32,7 +32,7 @@
             <div class="form-row mb-4">
                 <div class="form-group">
                     <label class="form-label">{{ __('super.features.icon_class') }}</label>
-                    <input type="text" name="icon" class="form-control" value="{{ old('icon', $feature->icon) }}" placeholder="e.g. bi-box-seam">
+                    <input type="text" name="icon" class="form-control" value="{{ old('icon', $feature->icon) }}" placeholder="Ej.: bi-box-seam">
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ __('super.features.or_upload') }}</label>
