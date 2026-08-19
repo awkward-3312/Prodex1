@@ -23,12 +23,108 @@ const options = {
 
 const legacyAttributeTranslations = {
   'View': 'Ver',
+  'Show': 'Ver',
   'Edit': 'Editar',
   'Delete': 'Eliminar',
   'Download': 'Descargar',
+  'Print': 'Imprimir',
+  'Close': 'Cerrar',
+  'Save': 'Guardar',
+  'Search': 'Buscar',
+  'Filter': 'Filtrar',
   'Document actions': 'Acciones del documento',
   'Toggle sidebar': 'Mostrar u ocultar barra lateral',
   'Language': 'Idioma',
+  'Search this table': 'Buscar en esta tabla',
+  'Search...': 'Buscar...',
+  'Select...': 'Seleccionar...',
+};
+
+const commonLegacyUiTranslations = {
+  'View': 'Ver',
+  'Show': 'Ver',
+  'Edit': 'Editar',
+  'Delete': 'Eliminar',
+  'Download': 'Descargar',
+  'Print': 'Imprimir',
+  'Save': 'Guardar',
+  'Close': 'Cerrar',
+  'Cancel': 'Cancelar',
+  'Confirm': 'Confirmar',
+  'Submit': 'Guardar',
+  'Add': 'Agregar',
+  'Create': 'Crear',
+  'Update': 'Actualizar',
+  'Search': 'Buscar',
+  'Filter': 'Filtrar',
+  'Reset': 'Restablecer',
+  'Refresh': 'Actualizar',
+  'Actions': 'Acciones',
+  'Action': 'Acción',
+  'Status': 'Estado',
+  'Date': 'Fecha',
+  'Reference': 'Referencia',
+  'Name': 'Nombre',
+  'Description': 'Descripción',
+  'Email': 'Correo electrónico',
+  'Phone': 'Teléfono',
+  'Address': 'Dirección',
+  'Amount': 'Monto',
+  'Total': 'Total',
+  'Paid': 'Pagado',
+  'Unpaid': 'Sin pagar',
+  'Partial': 'Parcial',
+  'Pending': 'Pendiente',
+  'Completed': 'Completado',
+  'Cancelled': 'Cancelado',
+  'Canceled': 'Cancelado',
+  'Received': 'Recibido',
+  'Draft': 'Borrador',
+  'Active': 'Activo',
+  'Inactive': 'Inactivo',
+  'Enabled': 'Habilitado',
+  'Disabled': 'Deshabilitado',
+  'Yes': 'Sí',
+  'No': 'No',
+  'All': 'Todos',
+  'None': 'Ninguno',
+  'Customer': 'Cliente',
+  'Customers': 'Clientes',
+  'Supplier': 'Proveedor',
+  'Suppliers': 'Proveedores',
+  'Product': 'Producto',
+  'Products': 'Productos',
+  'Warehouse': 'Almacén',
+  'Warehouses': 'Almacenes',
+  'Sale': 'Venta',
+  'Sales': 'Ventas',
+  'Purchase': 'Compra',
+  'Purchases': 'Compras',
+  'Payment': 'Pago',
+  'Payments': 'Pagos',
+  'Return': 'Devolución',
+  'Returns': 'Devoluciones',
+  'Quantity': 'Cantidad',
+  'Price': 'Precio',
+  'Discount': 'Descuento',
+  'Tax': 'Impuesto',
+  'Notes': 'Notas',
+  'Details': 'Detalles',
+  'Settings': 'Configuración',
+  'Users': 'Usuarios',
+  'Roles': 'Roles',
+  'Permissions': 'Permisos',
+  'Dashboard': 'Panel',
+  'Reports': 'Reportes',
+  'Loading...': 'Cargando...',
+  'Processing...': 'Procesando...',
+  'Saving...': 'Guardando...',
+  'No data': 'Sin datos',
+  'No data available': 'No hay datos disponibles',
+  'No results found': 'No se encontraron resultados',
+  'Select': 'Seleccionar',
+  'Select All': 'Seleccionar todo',
+  'Clear': 'Limpiar',
 };
 
 const tableUiTranslations = {
@@ -38,6 +134,8 @@ const tableUiTranslations = {
   'Previous': 'Anterior',
   'Previous page': 'Página anterior',
   'Next page': 'Página siguiente',
+  'Rows per page': 'Filas por página',
+  'of': 'de',
 };
 
 const moduleSettingsTranslations = {
@@ -75,16 +173,14 @@ const moduleDescriptions = {
 function translateExactText(el, dictionary) {
   if (!el || !el.textContent) return;
   const current = el.textContent.trim();
-  if (dictionary[current]) {
-    el.textContent = dictionary[current];
-  }
+  if (dictionary[current]) el.textContent = dictionary[current];
 }
 
 function translateLegacyUi(root = document) {
   if (!root || !root.querySelectorAll) return;
 
-  root.querySelectorAll('[title], [aria-label]').forEach(el => {
-    ['title', 'aria-label'].forEach(attr => {
+  root.querySelectorAll('[title], [aria-label], [placeholder]').forEach(el => {
+    ['title', 'aria-label', 'placeholder'].forEach(attr => {
       const value = el.getAttribute(attr);
       if (value && legacyAttributeTranslations[value]) {
         el.setAttribute(attr, legacyAttributeTranslations[value]);
@@ -92,7 +188,13 @@ function translateLegacyUi(root = document) {
     });
   });
 
-  // vue-good-table appears across legacy screens. Restrict translation to its footer only.
+  // Solo elementos de interfaz; nunca celdas normales ni contenido de negocio.
+  root.querySelectorAll(
+    'button, .btn, .dropdown-item, .nav-link, label, th, .modal-title, .card-title, .badge, .alert-heading, .vgt-global-search__input'
+  ).forEach(el => {
+    translateExactText(el, commonLegacyUiTranslations);
+  });
+
   root.querySelectorAll('.vgt-wrap__footer *').forEach(el => {
     translateExactText(el, tableUiTranslations);
   });
@@ -127,7 +229,7 @@ function installSpanishLegacyUiGuard() {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['title', 'aria-label'],
+      attributeFilter: ['title', 'aria-label', 'placeholder'],
     });
   }
 }
