@@ -110,7 +110,7 @@
 
 <script>
 export default {
-  metaInfo: { title: "Recruit Reports" },
+  metaInfo: { title: "Informes de reclutamiento" },
   data() {
     return {
       isLoading: true,
@@ -138,7 +138,23 @@ export default {
   },
   methods: {
     format_label(v) {
-      return v ? String(v).replace(/_/g, " ") : "-";
+      const labels = {
+        applied: 'Postulado',
+        screening: 'En revisión',
+        shortlisted: 'Preseleccionado',
+        interview: 'Entrevista',
+        offered: 'Oferta realizada',
+        hired: 'Contratado',
+        rejected: 'Rechazado',
+        referral: 'Referido',
+        website: 'Sitio web',
+        linkedin: 'LinkedIn',
+        indeed: 'Indeed',
+        other: 'Otro'
+      };
+      if (!v) return '-';
+      const key = String(v).toLowerCase();
+      return labels[key] || String(v).replace(/_/g, ' ');
     },
     Get_Reports() {
       this.isLoading = true;
