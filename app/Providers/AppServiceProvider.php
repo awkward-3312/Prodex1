@@ -38,16 +38,11 @@ class AppServiceProvider extends ServiceProvider
 
         Schema::defaultStringLength(191);
 
-        // This project keeps its application translation files in the legacy
-        // resources/lang directory. Explicitly register that path with Laravel's
-        // FileLoader so grouped translations such as super.sidebar.* resolve
-        // correctly on the central Super Admin interface.
-        Lang::addPath(resource_path('lang'));
-
-        // A translation group may have been resolved before the extra path was
-        // registered. Clear only the translator's in-memory loaded-group cache so
-        // Laravel reloads grouped files from all registered paths on first use.
-        Lang::setLoaded([]);
+        // Load the complete Spanish SuperAdmin translation group before applying
+        // PRODEX-specific overrides. Laravel's Translator::addLines() marks the
+        // target group as loaded, so calling it first would prevent super.php
+        // from being loaded and unresolved keys would be rendered literally.
+        Lang::load('*', 'super', 'es');
 
         // Spanish is PRODEX's platform baseline. These lines intentionally
         // override residual legacy English/mixed labels that still live in the
