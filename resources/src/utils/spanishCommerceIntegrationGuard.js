@@ -80,6 +80,8 @@ const EXACT = {
   'Manual Link': 'Vincular manualmente',
   'Retry Sync': 'Reintentar sincronización',
   'City': 'Ciudad',
+  'My Shopify store': 'Mi tienda Shopify',
+  'shpss_... (required for webhooks)': 'shpss_... (obligatorio para webhooks)',
   'Connected': 'Conectado',
   'Disconnected': 'Desconectado',
   'Unknown': 'Desconocido',
