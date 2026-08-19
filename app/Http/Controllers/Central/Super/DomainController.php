@@ -18,19 +18,18 @@ class DomainController extends Controller
 
         $domain = strtolower(trim($validated['domain']));
 
-        // Check across ALL tenants, not just this one
         $existsGlobally = \Stancl\Tenancy\Database\Models\Domain::where('domain', $domain)->exists();
         if ($existsGlobally) {
-            return back()->withErrors(['domain' => 'This subdomain is already in use by another tenant.']);
+            return back()->withErrors(['domain' => 'Este subdominio ya está siendo utilizado por otro tenant.']);
         }
 
         try {
             $tenant->createDomain($domain);
         } catch (\Throwable $e) {
-            return back()->withErrors(['domain' => 'Could not add subdomain: ' . $e->getMessage()]);
+            return back()->withErrors(['domain' => 'No se pudo agregar el subdominio: ' . $e->getMessage()]);
         }
 
-        return back()->with('success', 'Subdomain added successfully.');
+        return back()->with('success', 'Subdominio agregado correctamente.');
     }
 
     public function destroy(Tenant $tenant, int $domainId): RedirectResponse
@@ -38,11 +37,11 @@ class DomainController extends Controller
         $domain = $tenant->domains()->findOrFail($domainId);
 
         if ($tenant->domains()->count() <= 1) {
-            return back()->withErrors(['domain' => 'Cannot remove the last domain.']);
+            return back()->withErrors(['domain' => 'No se puede eliminar el último dominio del tenant.']);
         }
 
         $domain->delete();
 
-        return back()->with('success', 'Domain removed.');
+        return back()->with('success', 'Dominio eliminado correctamente.');
     }
 }
