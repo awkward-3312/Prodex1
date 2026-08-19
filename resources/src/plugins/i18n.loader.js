@@ -8,6 +8,7 @@ import { installSpanishSettingsUiGuard } from '../utils/spanishSettingsUiGuard';
 import { installSpanishDocumentTitleGuard } from '../utils/spanishDocumentTitleGuard';
 import { installSpanishLegacyDocumentGuard } from '../utils/spanishLegacyDocumentGuard';
 import { installSpanishApiFeedbackGuard } from '../utils/spanishApiFeedbackGuard';
+import { installSpanishSettingsRequestGuard } from '../utils/spanishSettingsRequestGuard';
 
 Vue.use(VueI18n);
 
@@ -17,6 +18,7 @@ export const loadI18n = async () => {
   installSpanishDocumentTitleGuard();
   installSpanishLegacyDocumentGuard();
   installSpanishApiFeedbackGuard();
+  installSpanishSettingsRequestGuard();
   const userLang = localStorage.getItem('language') || 'es';
 
   let dbMessages = {};
