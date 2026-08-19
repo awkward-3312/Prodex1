@@ -48,18 +48,18 @@
 <script>
 export default {
   metaInfo: {
-    title: "Store Banners"
+    title: "Banners de la tienda"
   },
   data(){ return {
     isLoading:true,
     rows:[], totalRows:0,
     columns:[
-      {label:this.$t('Preview'), field:'preview'},
-      {label:this.$t('Title'), field:'title', sortable:true},
-      {label:this.$t('Position'), field:'position', sortable:true},
-      {label:this.$t('Active'), field:'active', sortable:true},
-      {label:this.$t('Updated'), field:'updated_at', sortable:true},
-      {label:this.$t('Actions'), field:'actions'}
+      {label:'Vista previa', field:'preview'},
+      {label:'Título', field:'title', sortable:true},
+      {label:'Posición', field:'position', sortable:true},
+      {label:'Activo', field:'active', sortable:true},
+      {label:'Actualizado', field:'updated_at', sortable:true},
+      {label:'Acciones', field:'actions'}
     ],
     serverParams:{ page:1, perPage:10, sort:[{field:'updated_at', type:'desc'}] }
   }},
@@ -92,31 +92,26 @@ export default {
       self.$swal({
         title: self.$t('Delete_Title'),
         text: self.$t('Delete_Text'),
-        type: 'warning', // for newer SweetAlert2 you can use icon: 'warning'
+        type: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
         cancelButtonText: self.$t('Delete_cancelButtonText'),
         confirmButtonText: self.$t('Delete_confirmButtonText')
       }).then(function (result) {
-        // support both old (result.value) and new (result.isConfirmed)
         var confirmed = !!(result && (result.value === true || result.isConfirmed === true));
         if (!confirmed) return;
 
         axios.delete('/store/banners/' + id)
           .then(function () {
-
             self.$swal(
               self.$t('Delete_Deleted'),
               self.$t('Deleted_in_successfully'),
               'success'
             );
-
-           
             self.fetch();
           })
           .catch(function (e) {
-
             var msg = (e && e.response && e.response.data && (e.response.data.message || e.response.data.error))
               || self.$t('Delete_Therewassomethingwronge');
 
