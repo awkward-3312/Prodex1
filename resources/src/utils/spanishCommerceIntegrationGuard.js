@@ -23,6 +23,7 @@ const EXACT = {
   'View Unmapped Items': 'Ver artículos no vinculados',
   'Loading...': 'Cargando...',
   'Unmapped Items Report': 'Informe de artículos no vinculados',
+  'Items below are why orders may fail with "Order contains unmapped products". Use Auto-Link Products by SKU first to fix the easy ones, then sync products from WooCommerce to import what\'s still missing.': 'Los artículos siguientes explican por qué algunos pedidos pueden fallar por productos no vinculados. Primero usa la vinculación automática por SKU y luego sincroniza los productos desde WooCommerce para importar lo que aún falte.',
   'Failed order line items': 'Líneas de pedidos con error',
   'No recent failures.': 'No hay errores recientes.',
   'Stocky products without WooCommerce link': 'Productos de PRODEX sin vínculo con WooCommerce',
@@ -41,6 +42,7 @@ const EXACT = {
   'Syncing...': 'Sincronizando...',
   'Order synced': 'Pedido sincronizado',
   'Order sync failed': 'No se pudo sincronizar el pedido',
+  'Orders sync completed': 'Sincronización de pedidos completada',
   'Imported:': 'Importados:',
   'Skipped:': 'Omitidos:',
   'Errors:': 'Errores:',
@@ -57,6 +59,7 @@ const EXACT = {
   'Sync Logs': 'Registros de sincronización',
   'Direction': 'Dirección',
   'Message': 'Mensaje',
+  'entries': 'registros',
   'Two-way customer sync:': 'Sincronización bidireccional de clientes:',
   'Sync customers between Stocky and WooCommerce.': 'Sincroniza clientes entre PRODEX y WooCommerce.',
   'Email is required': 'El correo electrónico es obligatorio',
@@ -80,6 +83,23 @@ const EXACT = {
   'Manual Link': 'Vincular manualmente',
   'Retry Sync': 'Reintentar sincronización',
   'City': 'Ciudad',
+  'Woo ID': 'ID de WooCommerce',
+  'Issue': 'Incidencia',
+  'Source': 'Origen',
+  'At': 'Fecha',
+  'Missing email': 'Correo faltante',
+  'Ambiguous email': 'Correo ambiguo',
+  'Email conflict': 'Conflicto de correo',
+  'ID/email mismatch': 'El ID y el correo no coinciden',
+  'Woo customer not found': 'Cliente de WooCommerce no encontrado',
+  'Woo request failed': 'Falló la solicitud a WooCommerce',
+  'Issue resolved': 'Incidencia resuelta',
+  'Customer linked': 'Cliente vinculado',
+  'Invalid WooCommerce ID': 'ID de WooCommerce no válido',
+  'Retry sync completed': 'Reintento de sincronización completado',
+  'Customer must have an email to sync': 'El cliente debe tener un correo electrónico para sincronizarse',
+  'Unknown error': 'Error desconocido',
+  'Network error': 'Error de red',
   'My Shopify store': 'Mi tienda Shopify',
   'shpss_... (required for webhooks)': 'shpss_... (obligatorio para webhooks)',
   'Connected': 'Conectado',
@@ -118,12 +138,22 @@ function translateText(value) {
   translated = translated.replace(/^(\d+)\s+entries$/i, '$1 registros');
   translated = translated.replace(/^Showing latest (\d+) of (\d+)\.?$/i, 'Mostrando los últimos $1 de $2.');
   translated = translated.replace(/^Imported to Stocky$/i, 'Importados a PRODEX');
+  translated = translated.replace(/^Order sync failed:\s*(.+)$/i, 'Falló la sincronización del pedido: $1');
+  translated = translated.replace(/^Orders sync failed:\s*(.+)$/i, 'Falló la sincronización de pedidos: $1');
+  translated = translated.replace(/^Sync failed:\s*(.+)$/i, 'Falló la sincronización: $1');
+  translated = translated.replace(/^Resolve failed:\s*(.+)$/i, 'No se pudo resolver: $1');
+  translated = translated.replace(/^Link failed:\s*(.+)$/i, 'No se pudo vincular: $1');
+  translated = translated.replace(/^Retry failed:\s*(.+)$/i, 'Falló el reintento: $1');
+  translated = translated.replace(/^Customer "(.+)" synced successfully \(created\)$/i, 'Cliente "$1" sincronizado correctamente (creado)');
+  translated = translated.replace(/^Customer "(.+)" synced successfully \(updated\)$/i, 'Cliente "$1" sincronizado correctamente (actualizado)');
+  translated = translated.replace(/^Stocky → WooCommerce: Created (\d+), Updated (\d+)$/i, 'PRODEX → WooCommerce: creados $1, actualizados $2');
+  translated = translated.replace(/^WooCommerce → Stocky: Created (\d+), Updated (\d+)$/i, 'WooCommerce → PRODEX: creados $1, actualizados $2');
   translated = translated.replace(/Stocky/g, 'PRODEX');
   return translated === clean ? value : value.replace(clean, translated);
 }
 
 const SELECTOR = [
-  'button','th','label','legend','option','small','strong','h1','h2','h3','h4','h5','h6',
+  'button','th','label','legend','option','small','strong','p','h1','h2','h3','h4','h5','h6',
   '.modal-title','.badge','.alert','.toast','.text-muted',
   '[class*="stat-"]','[class*="progress-"]','[class*="sync-"]','[class*="guide-"]',
   '[class*="action-"]','[class*="connection-"]','[class*="counter-"]','[class*="logs-"]'
@@ -164,8 +194,23 @@ function scan(root) {
   root.querySelectorAll(SELECTOR).forEach(apply);
 }
 
+function installPromptGuard() {
+  if (window.__prodexSpanishCommercePromptGuard) return;
+  const originalPrompt = window.prompt;
+  if (typeof originalPrompt !== 'function') return;
+  window.prompt = function(message, defaultValue) {
+    let translated = message;
+    if (message === 'Enter WooCommerce customer ID to link:') {
+      translated = 'Ingresa el ID del cliente de WooCommerce que deseas vincular:';
+    }
+    return originalPrompt.call(window, translated, defaultValue);
+  };
+  window.__prodexSpanishCommercePromptGuard = true;
+}
+
 export function installSpanishCommerceIntegrationGuard() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  installPromptGuard();
   if (window.__prodexSpanishCommerceIntegrationObserver) return;
 
   const start = () => {
