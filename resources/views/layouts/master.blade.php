@@ -39,6 +39,14 @@
 
     @php
         $__planSummary = app(\App\Services\TenantLimitsService::class)->getPlanSummary();
+
+        // Manual PRODEX is official help/documentation, not a paid module.
+        // Keep the existing sidebar entry available independently of the
+        // tenant's commercial plan while leaving actual plan entitlements
+        // unchanged in the central database.
+        if (isset($__planSummary['features']['knowledge_base'])) {
+            $__planSummary['features']['knowledge_base']['enabled'] = true;
+        }
     @endphp
     <script>
         window.__planSummary = @json($__planSummary);
