@@ -81,6 +81,34 @@
             closeMobileSidebar();
         }
     });
+
+    // Bank account manager belongs to the Settings section. Add it directly
+    // after General Settings whenever that permission-protected link exists.
+    // This keeps the new screen discoverable without duplicating permission
+    // logic in the browser: users without Settings permission never receive
+    // the General Settings link, so this entry is not injected for them.
+    if (sidebarNav && !sidebarNav.querySelector('a[href="/super/settings/bank-accounts"]')) {
+        var generalSettingsLink = sidebarNav.querySelector('a[href="/super/settings"]');
+        if (!generalSettingsLink) {
+            generalSettingsLink = sidebarNav.querySelector('a[href$="/super/settings"]');
+        }
+
+        if (generalSettingsLink) {
+            var currentPath = window.location.pathname.replace(/\/$/, '');
+            var bankItem = document.createElement('div');
+            bankItem.className = 'nav-item';
+            bankItem.innerHTML =
+                '<a class="nav-link' + (currentPath === '/super/settings/bank-accounts' ? ' active' : '') + '" href="/super/settings/bank-accounts" data-title="Cuentas bancarias">' +
+                    '<i class="bi bi-bank"></i>' +
+                    '<span>Cuentas bancarias</span>' +
+                '</a>';
+
+            var generalItem = generalSettingsLink.closest('.nav-item');
+            if (generalItem) {
+                generalItem.insertAdjacentElement('afterend', bankItem);
+            }
+        }
+    }
 })();
 
 function swalConfirm(e, opts) {
