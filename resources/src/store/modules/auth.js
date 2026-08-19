@@ -10,7 +10,7 @@ const state = {
     loading: false,
     error: null,
     notifs: 0,
-    Default_Language: 'en',
+    Default_Language: 'es',
     show_language: 1,
     availableLanguages: [],
     date_format: 'YYYY-MM-DD', // Default date format from database
@@ -103,7 +103,7 @@ const actions = {
             commit('setUser', user);
             commit('Notifs_alert', notifs);
             commit('show_language', user.show_language);
-            commit('SetDefaultLanguage', { i18n, Language: user.default_language || 'en' });
+            commit('SetDefaultLanguage', { i18n, Language: user.default_language || 'es' });
             // Set date format from database
             commit('setDateFormat', user.date_format || 'YYYY-MM-DD');
             // Set price format from database
@@ -133,7 +133,7 @@ const actions = {
             commit('setUser', null);
             commit('Notifs_alert', null);
             commit('show_language', null);
-            commit('SetDefaultLanguage', { i18n, Language: 'en' });
+            commit('SetDefaultLanguage', { i18n, Language: 'es' });
             commit('setDateFormat', 'YYYY-MM-DD');
             commit('setPriceFormat', null);
             commit('setPriceDecimals', 2);
@@ -148,7 +148,7 @@ const actions = {
             const response = await axios.get("/languages"); // must return: [{ name, locale, flag }]
             commit('setAvailableLanguages', response.data);
         } catch (error) {
-            console.warn("⚠️ Failed to load languages:", error);
+            console.warn("No se pudo cargar la lista de idiomas:", error);
         }
     },
 
