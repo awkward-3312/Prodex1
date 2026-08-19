@@ -27,7 +27,7 @@ class TranslationSeeder extends Seeder
                     'locale' => $locale,
                     'key' => $key,
                     'value' => $value,
-                    'is_default' => $locale === 'en' ? 1 : 0,
+                    'is_default' => $locale === 'es' ? 1 : 0,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
