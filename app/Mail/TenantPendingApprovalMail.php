@@ -33,8 +33,8 @@ class TenantPendingApprovalMail extends Mailable
             ->first();
 
         if (! $template) {
-            return $this->subject('New Tenant Pending Approval')
-                ->html('<p>A new tenant "' . e($this->companyName) . '" (' . e($this->subdomain) . ') is pending approval.</p>');
+            return $this->subject('Nuevo tenant pendiente de aprobación')
+                ->html('<p>El nuevo tenant "' . e($this->companyName) . '" (' . e($this->subdomain) . ') está pendiente de aprobación.</p>');
         }
 
         $variables = [
@@ -42,8 +42,8 @@ class TenantPendingApprovalMail extends Mailable
             '{{user_email}}'    => $this->adminEmail,
             '{{subdomain}}'     => $this->subdomain,
             '{{registered_at}}' => $this->registeredAt,
-            '{{app_name}}'      => config('app.name', 'Stocky'),
-            '{{app_url}}'       => config('app.url', 'http://localhost'),
+            '{{app_name}}'      => config('app.name', 'PRODEX'),
+            '{{app_url}}'       => config('app.url', 'https://prodexhub.cloud'),
         ];
 
         return $this->subject($template->renderSubject($variables, $this->locale))
