@@ -5,26 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 
-/**
- * Serves per-tenant PWA manifests for each app surface (POS, online store,
- * customer display, client portal).
- *
- * These replace the static public/manifest-*.webmanifest files: the manifest
- * "name" comes from the tenant's own settings and the icons resolve to the
- * tenant's generated PWA icons (images/tenants/{id}/pwa/), falling back to the
- * shared defaults via pwa_icon_url(). Routes live under /pwa/*.webmanifest so
- * the web server doesn't shadow them with the old static files.
- */
 class PwaManifestController extends Controller
 {
-    /**
-     * Per-surface manifest metadata, mirrored from the original static
-     * manifests so each installed surface keeps its own scope/theme/display.
-     */
     protected array $surfaces = [
         'app' => [
-            'short_name'       => 'Stocky',
-            'description'      => 'Ultimate Inventory with POS',
+            'short_name'       => 'PRODEX',
+            'description'      => 'Gestión empresarial con punto de venta',
             'start_url'        => '/',
             'scope'            => '/',
             'display'          => 'standalone',
@@ -33,8 +19,8 @@ class PwaManifestController extends Controller
             'theme_color'      => '#2f3640',
         ],
         'store' => [
-            'short_name'       => 'Store',
-            'description'      => 'Online Store',
+            'short_name'       => 'Tienda',
+            'description'      => 'Tienda en línea',
             'start_url'        => '/online_store',
             'scope'            => '/online_store',
             'display'          => 'standalone',
@@ -43,8 +29,8 @@ class PwaManifestController extends Controller
             'theme_color'      => '#6c5ce7',
         ],
         'customer-display' => [
-            'short_name'       => 'Display',
-            'description'      => 'Customer-facing POS display',
+            'short_name'       => 'Pantalla',
+            'description'      => 'Pantalla del punto de venta para el cliente',
             'start_url'        => '/customer-display',
             'scope'            => '/customer-display',
             'display'          => 'fullscreen',
@@ -54,7 +40,7 @@ class PwaManifestController extends Controller
         ],
         'portal' => [
             'short_name'       => 'Portal',
-            'description'      => 'Client Portal',
+            'description'      => 'Portal del cliente',
             'start_url'        => '/portal',
             'scope'            => '/portal',
             'display'          => 'standalone',
@@ -78,7 +64,7 @@ class PwaManifestController extends Controller
             'orientation'      => $surface['orientation'],
             'background_color' => $surface['background_color'],
             'theme_color'      => $surface['theme_color'],
-            'lang'             => 'en',
+            'lang'             => 'es-HN',
             'dir'              => 'ltr',
             'icons'            => $this->icons(),
         ];
@@ -88,10 +74,6 @@ class PwaManifestController extends Controller
             ->header('Content-Type', 'application/manifest+json');
     }
 
-    /**
-     * The tenant's configured application name, falling back to the company
-     * name and finally the default product name.
-     */
     protected function appName(string $shortName): string
     {
         try {
@@ -101,10 +83,9 @@ class PwaManifestController extends Controller
                 return $name;
             }
         } catch (\Throwable) {
-            // Settings table may be unavailable; fall through to the default.
         }
 
-        return 'Stocky ' . $shortName;
+        return $shortName === 'PRODEX' ? 'PRODEX' : 'PRODEX ' . $shortName;
     }
 
     protected function icons(): array
