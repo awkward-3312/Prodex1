@@ -27,16 +27,16 @@
             @csrf
             <div class="form-group mb-3">
                 <label class="form-label">{{ __('super.how_it_works.section_label') }}</label>
-                <input type="text" name="section_label" class="form-control" value="{{ old('section_label', $section->section_label) }}" placeholder="e.g. How It Works">
+                <input type="text" name="section_label" class="form-control" value="{{ old('section_label', $section->section_label) }}" placeholder="Ej.: Cómo funciona">
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">{{ __('super.how_it_works.section_title_field') }}</label>
-                    <input type="text" name="section_title" class="form-control" value="{{ old('section_title', $section->section_title) }}" placeholder="e.g. Transparent & fair for every customer">
+                    <input type="text" name="section_title" class="form-control" value="{{ old('section_title', $section->section_title) }}" placeholder="Ej.: Transparente y justo para cada cliente">
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ __('super.how_it_works.section_subtitle_field') }}</label>
-                    <input type="text" name="section_subtitle" class="form-control" value="{{ old('section_subtitle', $section->section_subtitle) }}" placeholder="e.g. Here is how plans, pricing, and your data are handled">
+                    <input type="text" name="section_subtitle" class="form-control" value="{{ old('section_subtitle', $section->section_subtitle) }}" placeholder="Ej.: Así gestionamos los planes, precios y tus datos">
                 </div>
             </div>
             <div class="form-group">
