@@ -111,7 +111,7 @@ class TenantSubscriptionController extends Controller
     public function activate(Request $request, TenantSubscription $subscription): RedirectResponse
     {
         if (! $subscription->canTransitionTo(TenantSubscription::STATUS_ACTIVE)) {
-            return back()->with('error', "Cannot activate subscription from \"{$subscription->status}\" status.");
+            return back()->with('error', "No se puede activar la suscripción desde el estado \"{$subscription->status}\".");
         }
 
         // Pending subscriptions require at least one paid payment before activation.
@@ -128,38 +128,38 @@ class TenantSubscriptionController extends Controller
 
                 if ($pendingPayment) {
                     return redirect()->route('super.payments.show', $pendingPayment)
-                        ->with('error', 'Payment must be approved before activating this subscription. Please review and approve the payment first.');
+                        ->with('error', 'El pago debe aprobarse antes de activar esta suscripción. Revisa y aprueba primero el pago pendiente.');
                 }
 
-                return back()->with('error', 'Cannot activate: no confirmed payment found for this subscription.');
+                return back()->with('error', 'No se puede activar la suscripción porque no se encontró un pago confirmado.');
             }
         }
 
         $subscription->activate();
 
-        return back()->with('success', 'Subscription activated successfully.');
+        return back()->with('success', 'Suscripción activada correctamente.');
     }
 
     public function suspend(Request $request, TenantSubscription $subscription): RedirectResponse
     {
         if (! $subscription->canTransitionTo(TenantSubscription::STATUS_SUSPENDED)) {
-            return back()->with('error', "Cannot suspend subscription from \"{$subscription->status}\" status.");
+            return back()->with('error', "No se puede suspender la suscripción desde el estado \"{$subscription->status}\".");
         }
 
         $subscription->transitionTo(TenantSubscription::STATUS_SUSPENDED);
 
-        return back()->with('success', 'Subscription suspended.');
+        return back()->with('success', 'Suscripción suspendida.');
     }
 
     public function cancel(Request $request, TenantSubscription $subscription): RedirectResponse
     {
         if (! $subscription->canTransitionTo(TenantSubscription::STATUS_CANCELLED)) {
-            return back()->with('error', "Cannot cancel subscription from \"{$subscription->status}\" status.");
+            return back()->with('error', "No se puede cancelar la suscripción desde el estado \"{$subscription->status}\".");
         }
 
         $subscription->cancel();
 
-        return back()->with('success', 'Subscription cancelled.');
+        return back()->with('success', 'Suscripción cancelada.');
     }
 
     public function edit(TenantSubscription $subscription): View
@@ -200,7 +200,7 @@ class TenantSubscriptionController extends Controller
             if (! $subscription->canTransitionTo($newStatus)) {
                 return back()
                     ->withInput()
-                    ->with('error', "Cannot transition subscription from \"{$subscription->status}\" to \"{$newStatus}\".");
+                    ->with('error', "No se puede cambiar la suscripción del estado \"{$subscription->status}\" a \"{$newStatus}\".");
             }
 
             $extra = collect($validated)->except('status')->toArray();
@@ -208,13 +208,13 @@ class TenantSubscriptionController extends Controller
             if (! $subscription->transitionTo($newStatus, $extra)) {
                 return back()
                     ->withInput()
-                    ->with('error', "Transition to \"{$newStatus}\" failed — check that the subscription meets the required conditions.");
+                    ->with('error', "No se pudo cambiar la suscripción al estado \"{$newStatus}\". Verifica que cumpla las condiciones requeridas.");
             }
         } else {
             // Status unchanged — just update the other fields.
             $subscription->update(collect($validated)->except('status')->toArray());
         }
 
-        return redirect()->route('super.subscriptions.index')->with('success', 'Subscription updated.');
+        return redirect()->route('super.subscriptions.index')->with('success', 'Suscripción actualizada.');
     }
 }
