@@ -1,49 +1,43 @@
- <template>
+<template>
   <div class="footer_wrap">
-    <!-- Footer Start -->
     <div class="flex-grow-1"></div>
     <div class="app-footer" v-if="currentUser">
-      <div class="row">
-        <div class="col-12 col-md-9">
-          <p><strong>{{currentUser.footer || ''}}</strong></p>
-        </div>
-      </div>
-      <div
-        class="footer-bottom border-top pt-3 d-flex flex-column flex-sm-row align-items-center w-100"
-      >
+      <div class="footer-bottom border-top pt-3 d-flex flex-column flex-sm-row align-items-center w-100">
         <div class="d-flex align-items-center">
-          <img v-if="currentUser.logo" class="logo" :src="$imgUrl('settings', currentUser.logo)" alt width="60" height="60">
-          <img v-else class="logo" :src="$imgUrl('settings', 'logo-default.png')" alt width="60" height="60">
+          <img
+            v-if="currentUser.logo"
+            class="logo"
+            :src="$imgUrl('settings', currentUser.logo)"
+            alt=""
+            width="60"
+            height="60"
+          >
+          <img
+            v-else
+            class="logo"
+            :src="$imgUrl('settings', 'logo-default.png')"
+            alt=""
+            width="60"
+            height="60"
+          >
           <div>
-            <div>
-              <p class="m-0">&copy; {{ new Date().getFullYear() }} {{$t('developed_by')}} {{currentUser.developed_by || 'PRODEX'}}</p>
-              <p class="m-0">All rights reserved - v1.3</p>
-            </div>
+            <p class="m-0"><strong>PRODEX</strong> &copy; {{ new Date().getFullYear() }} Desarrollado por PRODEX</p>
           </div>
-          <span class="flex-grow-1"></span>
         </div>
       </div>
-      <!-- fotter end -->
     </div>
   </div>
-</template> 
+</template>
+
 <script>
-import { mapGetters, mapActions } from "vuex";
+import { mapGetters } from "vuex";
 
 export default {
-  data() {
-    return {};
-  },
   computed: {
-     ...mapGetters([
-       "currentUser",
-    ]),
+    ...mapGetters(["currentUser"]),
   },
-
-  methods: {}
 };
 </script>
 
-
 <style lang="scss" scoped>
-</style> 
+</style>
