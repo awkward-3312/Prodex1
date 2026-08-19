@@ -9,12 +9,6 @@ use Illuminate\Support\Facades\Auth;
 
 class IsActiveToken
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return mixed
-     */
     public function handle($request, Closure $next)
     {
         $user = Auth::user();
@@ -24,6 +18,8 @@ class IsActiveToken
         $arrayKeys = array_keys($userUnserializeArray);
         foreach ($arrayKeys as $value) {
 
+            // Stocky_token is a legacy internal token property. It is kept for
+            // compatibility and is not exposed as product branding in the UI.
             if (strpos($value, 'Stocky_token') !== false) {
 
                 $userAccessTokenArray = (array) $userUnserializeArray[$value];
@@ -41,7 +37,7 @@ class IsActiveToken
                         if (! $checkToken) {
                             return response()->json([
                                 'error' => true,
-                                'msg' => 'Token time has expired. Please log in again.',
+                                'msg' => 'La sesión ha vencido. Inicia sesión nuevamente.',
                             ]);
                         }
                     }
