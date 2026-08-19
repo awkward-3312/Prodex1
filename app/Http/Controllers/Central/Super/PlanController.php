@@ -53,7 +53,7 @@ class PlanController extends Controller
 
         Plan::create($validated);
 
-        return redirect()->route('super.plans.index')->with('success', 'Plan created successfully.');
+        return redirect()->route('super.plans.index')->with('success', 'Plan creado correctamente.');
     }
 
     public function edit(Plan $plan): View
@@ -91,18 +91,18 @@ class PlanController extends Controller
 
         $plan->update($validated);
 
-        return redirect()->route('super.plans.index')->with('success', 'Plan updated successfully.');
+        return redirect()->route('super.plans.index')->with('success', 'Plan actualizado correctamente.');
     }
 
     public function destroy(Plan $plan): RedirectResponse
     {
         if ($plan->tenantSubscriptions()->exists()) {
-            return back()->withErrors(['plan' => 'Cannot delete a plan that has active subscriptions.']);
+            return back()->withErrors(['plan' => 'No se puede eliminar un plan que tiene suscripciones activas.']);
         }
 
         $plan->delete();
 
-        return redirect()->route('super.plans.index')->with('success', 'Plan deleted.');
+        return redirect()->route('super.plans.index')->with('success', 'Plan eliminado correctamente.');
     }
 
     /**
