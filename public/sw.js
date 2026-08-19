@@ -1,5 +1,5 @@
 /*
- * Stocky POS Service Worker
+ * PRODEX POS Service Worker
  *
  * Goals:
  *   - Make the POS installable and bootable offline (app shell).
@@ -18,7 +18,7 @@
  */
 
 // Bump this when deploying changes so old caches are purged.
-const VERSION = 'stocky-pwa-v6';
+const VERSION = 'prodex-pwa-v7';
 const STATIC_CACHE = `${VERSION}-static`;
 const SHELL_CACHE = `${VERSION}-shell`;
 
@@ -215,7 +215,7 @@ async function handleNavigation(request) {
     const offline = await staticCache.match(OFFLINE_URL);
     if (offline) return offline;
     return new Response(
-      '<h1>Offline</h1><p>Application is offline and no cached shell is available yet.</p>',
+      '<h1>Sin conexión</h1><p>PRODEX está sin conexión y todavía no hay una versión almacenada disponible en este dispositivo.</p>',
       { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
     );
   }
