@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Offline | Stocky POS</title>
+  <title>Sin conexión | PRODEX</title>
   <link rel="icon" href="/favicon.ico">
   <style>
     html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background: #f1f5f9; color: #1f2937; }
@@ -23,15 +23,15 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <img src="/pwa_images/pwa-icon-192.png" alt="Stocky" class="logo" onerror="this.style.display='none'">
-      <h1>You're offline</h1>
-      <p>The POS app shell isn't cached on this device yet.</p>
-      <p>Queued sales (if any) are safely stored and will sync automatically once the connection returns.</p>
-      <span id="netStatus" class="status offline">Offline</span>
+      <img src="/pwa_images/pwa-icon-192.png" alt="PRODEX" class="logo" onerror="this.style.display='none'">
+      <h1>Estás sin conexión</h1>
+      <p>La aplicación del POS todavía no está almacenada en este dispositivo.</p>
+      <p>Las ventas pendientes, si existen, están guardadas de forma segura y se sincronizarán automáticamente cuando vuelva la conexión.</p>
+      <span id="netStatus" class="status offline">Sin conexión</span>
       <div>
-        <button onclick="location.reload()">Try again</button>
+        <button onclick="location.reload()">Intentar de nuevo</button>
       </div>
-      <p class="hint">Tip: open the POS at least once online so the app shell is cached for future offline use.</p>
+      <p class="hint">Consejo: abre el POS al menos una vez con conexión para que la aplicación quede disponible para uso sin conexión.</p>
     </div>
   </div>
   <script>
@@ -40,10 +40,10 @@
       function update() {
         if (navigator.onLine) {
           el.className = 'status online';
-          el.textContent = 'Online';
+          el.textContent = 'En línea';
         } else {
           el.className = 'status offline';
-          el.textContent = 'Offline';
+          el.textContent = 'Sin conexión';
         }
       }
       update();
