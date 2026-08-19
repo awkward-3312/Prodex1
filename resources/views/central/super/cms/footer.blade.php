@@ -27,11 +27,11 @@
                 <div class="card-body-custom">
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.footer.about_text') }}</label>
-                        <textarea name="footer_about" class="form-control" rows="3" placeholder="Brief description of your company">{{ old('footer_about', $footer->footer_about) }}</textarea>
+                        <textarea name="footer_about" class="form-control" rows="3" placeholder="Breve descripción de tu empresa">{{ old('footer_about', $footer->footer_about) }}</textarea>
                     </div>
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.footer.copyright') }}</label>
-                        <input type="text" name="copyright_text" class="form-control" value="{{ old('copyright_text', $footer->copyright_text) }}" placeholder="e.g. © 2026 Stocky. All rights reserved.">
+                        <input type="text" name="copyright_text" class="form-control" value="{{ old('copyright_text', $footer->copyright_text) }}" placeholder="Ej.: © 2026 PRODEX. Todos los derechos reservados.">
                     </div>
                 </div>
             </div>
@@ -43,15 +43,15 @@
                 <div class="card-body-custom">
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.footer.email') }}</label>
-                        <input type="email" name="contact_email" class="form-control" value="{{ old('contact_email', $footer->contact_email) }}" placeholder="hello@company.com">
+                        <input type="email" name="contact_email" class="form-control" value="{{ old('contact_email', $footer->contact_email) }}" placeholder="contacto@empresa.com">
                     </div>
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.footer.phone') }}</label>
-                        <input type="text" name="contact_phone" class="form-control" value="{{ old('contact_phone', $footer->contact_phone) }}" placeholder="+1 (555) 123-4567">
+                        <input type="text" name="contact_phone" class="form-control" value="{{ old('contact_phone', $footer->contact_phone) }}" placeholder="+504 9999-9999">
                     </div>
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.footer.sales_email') }}</label>
-                        <input type="email" name="sales_email" class="form-control" value="{{ old('sales_email', $footer->sales_email) }}" placeholder="ventas@company.com">
+                        <input type="email" name="sales_email" class="form-control" value="{{ old('sales_email', $footer->sales_email) }}" placeholder="ventas@empresa.com">
                     </div>
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.footer.sales_whatsapp') }}</label>
@@ -59,7 +59,7 @@
                     </div>
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.footer.sales_whatsapp_message') }}</label>
-                        <input type="text" name="sales_whatsapp_message" class="form-control" value="{{ old('sales_whatsapp_message', $footer->sales_whatsapp_message) }}" placeholder="Hola, me interesa conocer más sobre Prodex y sus planes.">
+                        <input type="text" name="sales_whatsapp_message" class="form-control" value="{{ old('sales_whatsapp_message', $footer->sales_whatsapp_message) }}" placeholder="Hola, me interesa conocer más sobre PRODEX y sus planes.">
                     </div>
                     <div class="form-group mb-4">
                         <label class="form-switch-label">
@@ -70,7 +70,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">{{ __('super.footer.address') }}</label>
-                        <textarea name="address" class="form-control" rows="2" placeholder="123 Main St, City, Country">{{ old('address', $footer->address) }}</textarea>
+                        <textarea name="address" class="form-control" rows="2" placeholder="Ej.: Calle principal, ciudad, país">{{ old('address', $footer->address) }}</textarea>
                     </div>
                 </div>
             </div>
@@ -84,23 +84,23 @@
                 <div class="card-body-custom">
                     <div class="form-group mb-4">
                         <label class="form-label"><i class="bi bi-facebook me-2 text-muted"></i>{{ __('super.footer.facebook') }}</label>
-                        <input type="url" name="facebook" class="form-control" value="{{ old('facebook', $footer->facebook) }}" placeholder="https://facebook.com/yourpage">
+                        <input type="url" name="facebook" class="form-control" value="{{ old('facebook', $footer->facebook) }}" placeholder="https://facebook.com/tuempresa">
                     </div>
                     <div class="form-group mb-4">
                         <label class="form-label"><i class="bi bi-twitter-x me-2 text-muted"></i>{{ __('super.footer.twitter') }}</label>
-                        <input type="url" name="twitter" class="form-control" value="{{ old('twitter', $footer->twitter) }}" placeholder="https://x.com/yourhandle">
+                        <input type="url" name="twitter" class="form-control" value="{{ old('twitter', $footer->twitter) }}" placeholder="https://x.com/tuusuario">
                     </div>
                     <div class="form-group mb-4">
                         <label class="form-label"><i class="bi bi-linkedin me-2 text-muted"></i>{{ __('super.footer.linkedin') }}</label>
-                        <input type="url" name="linkedin" class="form-control" value="{{ old('linkedin', $footer->linkedin) }}" placeholder="https://linkedin.com/company/yours">
+                        <input type="url" name="linkedin" class="form-control" value="{{ old('linkedin', $footer->linkedin) }}" placeholder="https://linkedin.com/company/tuempresa">
                     </div>
                     <div class="form-group mb-4">
                         <label class="form-label"><i class="bi bi-instagram me-2 text-muted"></i>{{ __('super.footer.instagram') }}</label>
-                        <input type="url" name="instagram" class="form-control" value="{{ old('instagram', $footer->instagram) }}" placeholder="https://instagram.com/yourpage">
+                        <input type="url" name="instagram" class="form-control" value="{{ old('instagram', $footer->instagram) }}" placeholder="https://instagram.com/tuempresa">
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="bi bi-youtube me-2 text-muted"></i>{{ __('super.footer.youtube') }}</label>
-                        <input type="url" name="youtube" class="form-control" value="{{ old('youtube', $footer->youtube) }}" placeholder="https://youtube.com/@yourchannel">
+                        <input type="url" name="youtube" class="form-control" value="{{ old('youtube', $footer->youtube) }}" placeholder="https://youtube.com/@tucanal">
                     </div>
                 </div>
             </div>
