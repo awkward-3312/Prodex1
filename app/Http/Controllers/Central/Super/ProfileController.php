@@ -30,7 +30,7 @@ class ProfileController extends Controller
 
         $user->update($validated);
 
-        return back()->with('success', 'Profile updated successfully.');
+        return back()->with('success', 'Perfil actualizado correctamente.');
     }
 
     public function updateAvatar(Request $request): RedirectResponse
@@ -46,7 +46,6 @@ class ProfileController extends Controller
             mkdir($uploadDir, 0755, true);
         }
 
-        // Delete old avatar
         if ($user->avatar && file_exists(public_path($user->avatar))) {
             @unlink(public_path($user->avatar));
         }
@@ -57,7 +56,7 @@ class ProfileController extends Controller
 
         $user->update(['avatar' => upload_path('avatars') . '/' . $filename]);
 
-        return back()->with('success', 'Avatar updated successfully.');
+        return back()->with('success', 'Foto de perfil actualizada correctamente.');
     }
 
     public function updatePassword(Request $request): RedirectResponse
@@ -70,13 +69,13 @@ class ProfileController extends Controller
         $user = Auth::guard('central')->user();
 
         if (!Hash::check($request->current_password, $user->password)) {
-            return back()->withErrors(['current_password' => 'The current password is incorrect.']);
+            return back()->withErrors(['current_password' => 'La contraseña actual es incorrecta.']);
         }
 
         $user->update([
             'password' => Hash::make($request->password),
         ]);
 
-        return back()->with('success', 'Password changed successfully.');
+        return back()->with('success', 'Contraseña cambiada correctamente.');
     }
 }
