@@ -4,22 +4,21 @@ namespace App\Http\Controllers\Central\Super;
 
 use App\Http\Controllers\Controller;
 use App\Models\Central\GeneralSetting;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class BankAccountSettingsController extends Controller
 {
-    public function index(): JsonResponse
+    public function index()
     {
         $setting = GeneralSetting::instance();
 
-        return response()->json([
+        return view('central.super.settings.bank-accounts', [
             'accounts' => $this->normalizeAccounts($setting->bank_details ?? []),
         ]);
     }
 
-    public function update(Request $request): JsonResponse
+    public function update(Request $request)
     {
         $validated = $request->validate([
             'accounts' => ['present', 'array', 'max:10'],
@@ -31,7 +30,7 @@ class BankAccountSettingsController extends Controller
             'accounts.*.branch' => ['nullable', 'string', 'max:255'],
             'accounts.*.iban' => ['nullable', 'string', 'max:255'],
             'accounts.*.swift' => ['nullable', 'string', 'max:50'],
-            'accounts.*.instructions' => ['nullable', 'string', 'max:2000'],
+            'accounts.*.instructions' => ['nullable', 'string', 'max:1000'],
             'accounts.*.active' => ['nullable', 'boolean'],
         ]);
 
@@ -47,18 +46,35 @@ class BankAccountSettingsController extends Controller
                 'iban' => trim((string) ($account['iban'] ?? '')),
                 'swift' => trim((string) ($account['swift'] ?? '')),
                 'instructions' => trim((string) ($account['instructions'] ?? '')),
-                'active' => (bool) ($account['active'] ?? true),
+                'active' => (bool) ($account['active'] ?? false),
                 'sort_order' => $index,
             ];
         }
 
-        $setting = GeneralSetting::instance();
-        $current = is_array($setting->bank_details) ? $setting->bank_details : [];
+        $active = collect($accounts)->where('active', true)->values();
+        $primary = $active->first() ?? ($accounts[0] ?? []);
 
-        // Keep a flattened first account for backwards compatibility with any
-        // older code that still reads bank_details.bank_name/account_number.
-        $primary = collect($accounts)->firstWhere('active', true) ?? ($accounts[0] ?? []);
-        $setting->bank_details = array_merge($current, [
+        // Existing checkout screens still read the flattened legacy keys. Keep
+        // those keys populated from the first active account and put a concise
+        // list of all active accounts in instructions so both public signup and
+        // tenant renewals immediately expose every available bank.
+        $summary = $active->map(function (array $account) {
+            $type = ($account['account_type'] ?? 'savings') === 'checking' ? 'Cheques' : 'Ahorros';
+            $currency = $account['currency'] ?? 'HNL';
+            $text = ($account['bank_name'] ?? '')
+                . ' — ' . $type . ' ' . $currency
+                . ' — Cuenta ' . ($account['account_number'] ?? '')
+                . ' — Titular: ' . ($account['account_holder'] ?? '');
+
+            if (! empty($account['instructions'])) {
+                $text .= ' — ' . $account['instructions'];
+            }
+
+            return $text;
+        })->filter()->implode(' | ');
+
+        $setting = GeneralSetting::instance();
+        $setting->bank_details = [
             'bank_name' => $primary['bank_name'] ?? '',
             'account_holder' => $primary['account_holder'] ?? '',
             'account_number' => $primary['account_number'] ?? '',
@@ -67,16 +83,14 @@ class BankAccountSettingsController extends Controller
             'branch' => $primary['branch'] ?? '',
             'iban' => $primary['iban'] ?? '',
             'swift' => $primary['swift'] ?? '',
-            'instructions' => $primary['instructions'] ?? '',
+            'instructions' => $summary !== '' ? 'Cuentas bancarias disponibles: ' . $summary : '',
             'accounts' => $accounts,
-        ]);
+        ];
         $setting->save();
 
-        return response()->json([
-            'success' => true,
-            'accounts' => $accounts,
-            'message' => 'Cuentas bancarias guardadas correctamente.',
-        ]);
+        return redirect()
+            ->route('super.settings.bank-accounts')
+            ->with('success', 'Cuentas bancarias guardadas correctamente.');
     }
 
     private function normalizeAccounts(array $details): array
@@ -105,8 +119,8 @@ class BankAccountSettingsController extends Controller
                 ->all();
         }
 
-        // Seamlessly migrate the previous single-account structure into the
-        // new manager the first time the screen is opened.
+        // Backwards compatibility: the previous single account becomes the
+        // first account automatically the first time this page is opened.
         if (! empty($details['bank_name']) || ! empty($details['account_number']) || ! empty($details['account_holder'])) {
             return [[
                 'bank_name' => (string) ($details['bank_name'] ?? ''),
