@@ -7,13 +7,18 @@
 |
 | The first thing we will do is create a new Laravel application instance
 | which serves as the "glue" for all the components of Laravel, and is
-| the IoC container for the system binding all of the various parts.
+| the IoC container for the system binding all the parts together.
 |
 */
 
 $app = new Illuminate\Foundation\Application(
     $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
 );
+
+// PRODEX keeps its application translation files under resources/lang.
+// Keep that path explicit so framework upgrades cannot make the translator
+// fall back to a different language directory and expose translation keys.
+$app->useLangPath($app->resourcePath('lang'));
 
 /*
 |--------------------------------------------------------------------------
