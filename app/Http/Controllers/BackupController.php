@@ -10,11 +10,8 @@ use Illuminate\Support\Facades\Artisan;
 
 class BackupController extends Controller
 {
-    // -------------------- Backup Databse -------------\\
-
     public function Get_Backup(Request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'backup', User::class);
 
         $data = [];
@@ -22,73 +19,58 @@ class BackupController extends Controller
         foreach (glob(storage_path().'/app/public/backup/*') as $filename) {
             $item['id'] = $id += 1;
             $item['date'] = basename($filename);
-            $size = $this->formatSizeUnits(filesize($filename));
-            $item['size'] = $size;
-
+            $item['size'] = $this->formatSizeUnits(filesize($filename));
             $data[] = $item;
         }
-        $totalRows = count($data);
 
         return response()->json([
             'backups' => $data,
-            'totalRows' => $totalRows,
+            'totalRows' => count($data),
         ]);
-
     }
-
-    // -------------------- Generate Databse -------------\\
 
     public function Generate_Backup(Request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'backup', User::class);
 
-        // Run backup command
         $exitCode = Artisan::call('database:backup');
         $output = Artisan::output();
-        
-        // Check if backup command failed
+
         if ($exitCode !== 0) {
-            // Extract error details from output
             $errorMsg = trim($output);
-            
-            // Try to extract ERROR_DETAILS if present
+
             if (preg_match('/ERROR_DETAILS:\s*(.+)/s', $output, $matches)) {
                 $errorMsg = trim($matches[1]);
             }
-            
-            // If no specific error, provide helpful message
+
             if (empty($errorMsg) || strlen($errorMsg) < 10) {
-                $errorMsg = 'Database backup command failed. Common issues:'."\n";
-                $errorMsg .= '1. DUMP_PATH in .env is incorrect or mysqldump not found'."\n";
-                $errorMsg .= '2. Database credentials (DB_USERNAME, DB_PASSWORD, DB_HOST) are incorrect'."\n";
-                $errorMsg .= '3. MySQL server is not running'."\n";
-                $errorMsg .= '4. Database user does not have backup permissions'."\n";
-                $errorMsg .= '5. Database name (DB_DATABASE) is incorrect';
+                $errorMsg = 'Falló el comando de copia de seguridad de la base de datos. Causas comunes:'."\n";
+                $errorMsg .= '1. DUMP_PATH en .env es incorrecto o no se encontró mysqldump'."\n";
+                $errorMsg .= '2. Las credenciales de base de datos (DB_USERNAME, DB_PASSWORD, DB_HOST) son incorrectas'."\n";
+                $errorMsg .= '3. El servidor MySQL no está en ejecución'."\n";
+                $errorMsg .= '4. El usuario de la base de datos no tiene permisos para realizar copias de seguridad'."\n";
+                $errorMsg .= '5. El nombre de la base de datos (DB_DATABASE) es incorrecto';
             }
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'Backup generation failed',
+                'message' => 'No se pudo generar la copia de seguridad',
                 'error' => $errorMsg,
                 'cloud' => null,
             ], 500);
         }
 
-        // Wait a moment for file to be fully written (especially on Windows)
-        usleep(500000); // 0.5 seconds
+        usleep(500000);
 
-        // Local backup remains the primary destination; cloud upload is optional and additive.
         $cloud = null;
         try {
             $dir = storage_path().'/app/public/backup';
-            
-            // Ensure directory exists
+
             if (!is_dir($dir)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Backup directory does not exist',
-                    'error' => 'Backup directory not found: '.$dir,
+                    'message' => 'El directorio de copias de seguridad no existe',
+                    'error' => 'No se encontró el directorio de copias de seguridad: '.$dir,
                     'cloud' => null,
                 ], 500);
             }
@@ -96,20 +78,18 @@ class BackupController extends Controller
             $latest = null;
             $latestMtime = 0;
             $files = glob($dir.'/*.sql');
-            
+
             if (empty($files)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No backup file found after generation',
-                    'error' => 'Backup command completed but no .sql file was created. Check database credentials and mysqldump path.',
+                    'message' => 'No se encontró el archivo de copia de seguridad después de generarlo',
+                    'error' => 'El comando terminó, pero no se creó ningún archivo .sql. Revisa las credenciales de la base de datos y la ruta de mysqldump.',
                     'cloud' => null,
                 ], 500);
             }
 
             foreach ($files as $filename) {
-                if (!is_file($filename)) {
-                    continue;
-                }
+                if (!is_file($filename)) continue;
                 $mt = @filemtime($filename) ?: 0;
                 if ($mt >= $latestMtime) {
                     $latestMtime = $mt;
@@ -118,13 +98,11 @@ class BackupController extends Controller
             }
 
             if ($latest && file_exists($latest)) {
-                // Verify file has content
-                $fileSize = filesize($latest);
-                if ($fileSize === 0) {
+                if (filesize($latest) === 0) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Backup file is empty',
-                        'error' => 'Backup file was created but is empty (0 bytes). Check database credentials and mysqldump path.',
+                        'message' => 'El archivo de copia de seguridad está vacío',
+                        'error' => 'El archivo fue creado, pero está vacío (0 bytes). Revisa las credenciales de la base de datos y la ruta de mysqldump.',
                         'cloud' => null,
                     ], 500);
                 }
@@ -132,30 +110,28 @@ class BackupController extends Controller
                 $setting = Setting::whereNull('deleted_at')->first();
                 $uploader = new CloudBackupUploader();
                 $cloud = $uploader->uploadIfConfigured($latest, basename($latest), $setting);
-
-                // Cloud upload is additive; we always keep the local backup file.
             } else {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No backup file found after generation',
-                    'error' => 'Backup command completed but no valid backup file was found.',
+                    'message' => 'No se encontró el archivo de copia de seguridad después de generarlo',
+                    'error' => 'El comando terminó, pero no se encontró un archivo de copia de seguridad válido.',
                     'cloud' => null,
                 ], 500);
             }
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Backup generation error',
+                'message' => 'Ocurrió un error al generar la copia de seguridad',
                 'error' => $e->getMessage(),
                 'cloud' => null,
             ], 500);
         }
 
-        $message = 'Backup generated successfully';
+        $message = 'Copia de seguridad generada correctamente';
         if ($cloud && isset($cloud['success']) && $cloud['success']) {
-            $message .= ' and uploaded to '.ucfirst($cloud['provider']);
+            $message .= ' y subida a '.ucfirst($cloud['provider']);
         } elseif ($cloud && isset($cloud['error'])) {
-            $message .= ' (cloud upload failed: '.$cloud['error'].')';
+            $message .= ' (falló la carga a la nube: '.$cloud['error'].')';
         }
 
         return response()->json([
@@ -165,11 +141,8 @@ class BackupController extends Controller
         ]);
     }
 
-    // -------------------- Delete Databse -------------\\
-
     public function Delete_Backup(Request $request, $name)
     {
-
         $this->authorizeForUser($request->user('api'), 'backup', User::class);
 
         foreach (glob(storage_path().'/app/public/backup/*') as $filename) {
@@ -179,8 +152,6 @@ class BackupController extends Controller
             }
         }
     }
-
-    // -------------------- Fomrmat units -------------\\
 
     public function formatSizeUnits($bytes)
     {
