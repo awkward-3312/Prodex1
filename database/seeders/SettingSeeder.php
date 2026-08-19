@@ -18,8 +18,8 @@ class SettingSeeder extends Seeder
     {
         // Pull central (Super Admin) tenant defaults so each new tenant
         // inherits the platform-wide branding instead of hardcoded placeholders.
-        // Each value has a fallback so installs without configured defaults
-        // still get a working settings row.
+        // Platform attribution in the footer is intentionally NOT inherited:
+        // it is permanently owned by PRODEX and cannot be tenant-customized.
         $defaults = $this->tenantDefaults();
 
         // Resolve the seeded language locale to one that actually exists
@@ -52,8 +52,8 @@ class SettingSeeder extends Seeder
                 'CompanyName' => $defaults['company_name'],
                 'CompanyPhone' => $defaults['phone'],
                 'CompanyAdress' => $defaults['address'],
-                'footer' => $defaults['footer_text'],
-                'developed_by' => $defaults['developed_by'],
+                'footer' => 'PRODEX',
+                'developed_by' => 'PRODEX',
                 'logo' => $logo,
                 'app_name' => $defaults['app_name'],
                 'page_title_suffix' => $defaults['page_title_suffix'],
