@@ -29,14 +29,14 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="form-label">{{ __('super.kb.article_title') }}</label>
-                                <input type="text" name="title" id="articleTitle" class="form-control @error('title') is-invalid @enderror" value="{{ old('title', $article->title ?? '') }}" required placeholder="e.g. How to create a sale">
+                                <input type="text" name="title" id="articleTitle" class="form-control @error('title') is-invalid @enderror" value="{{ old('title', $article->title ?? '') }}" required placeholder="Ej.: Cómo crear una venta">
                                 @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="form-label">{{ __('super.kb.slug') }}</label>
-                                <input type="text" name="slug" id="articleSlug" class="form-control @error('slug') is-invalid @enderror" value="{{ old('slug', $article->slug ?? '') }}" required placeholder="how-to-create-a-sale">
+                                <input type="text" name="slug" id="articleSlug" class="form-control @error('slug') is-invalid @enderror" value="{{ old('slug', $article->slug ?? '') }}" required placeholder="como-crear-una-venta">
                                 @error('slug') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
@@ -106,11 +106,11 @@
                     <div class="d-flex flex-column gap-2 article-meta-list">
                         <div class="d-flex justify-content-between">
                             <span class="text-muted">{{ __('super.kb.created') }}</span>
-                            <span class="fw-600">{{ $article->created_at->format('M d, Y') }}</span>
+                            <span class="fw-600">{{ $article->created_at->locale('es')->translatedFormat('d M Y') }}</span>
                         </div>
                         <div class="d-flex justify-content-between">
                             <span class="text-muted">{{ __('super.kb.updated') }}</span>
-                            <span class="fw-600">{{ $article->updated_at->diffForHumans() }}</span>
+                            <span class="fw-600">{{ $article->updated_at->locale('es')->diffForHumans() }}</span>
                         </div>
                     </div>
                     @endif
