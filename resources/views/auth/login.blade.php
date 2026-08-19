@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -8,16 +8,16 @@
     <link rel="stylesheet" href="/css/master.css">
     <link rel="stylesheet" href="{{ global_asset('css/auth.css') }}">
     <link rel="icon" href="{{ global_asset(upload_path('settings') . '/' . ($app_settings->favicon ?? 'favicon.ico')) }}">
-    <title>{{ $app_settings->app_name ?? 'Stocky | Ultimate Inventory With POS' }}</title>
+    <title>{{ $app_settings->app_name ?? 'PRODEX' }}</title>
   </head>
 
   <body class="auth-login">
     <div class="auth-page">
       <section class="auth-hero">
         <div class="hero-content">
-          <h1 class="hero-title">{{ $app_settings->login_hero_title ?? 'Welcome back!' }}</h1>
+          <h1 class="hero-title">{{ $app_settings->login_hero_title ?? '¡Bienvenido de nuevo!' }}</h1>
           <p class="hero-subtitle">
-            {{ $app_settings->login_hero_subtitle ?? 'Sign in to access your account and keep your operations in sync.' }}
+            {{ $app_settings->login_hero_subtitle ?? 'Inicia sesión para acceder a tu cuenta y mantener tus operaciones sincronizadas.' }}
           </p>
         </div>
       </section>
@@ -25,9 +25,9 @@
       <section class="auth-panel">
         <div class="auth-panel-inner">
           <header>
-            <h2 class="panel-title">{{ $app_settings->login_panel_title ?? 'Sign In' }}</h2>
+            <h2 class="panel-title">{{ $app_settings->login_panel_title ?? 'Iniciar sesión' }}</h2>
             <p class="panel-subtitle">
-              {{ $app_settings->login_panel_subtitle ?? 'Access your dashboard and manage everything from one place.' }}
+              {{ $app_settings->login_panel_subtitle ?? 'Accede a tu panel y administra todo desde un solo lugar.' }}
             </p>
           </header>
 
@@ -48,29 +48,29 @@
           <form id="login_form" method="POST" action="{{ route('login') }}">
             @csrf
             <div class="field">
-              <label for="email">Email</label>
+              <label for="email">Correo electrónico</label>
               <div class="input-shell">
                 <span class="input-addon">@</span>
-                <input id="email" type="email" name="email" value="{{ old('email') }}" placeholder="you@company.com" required />
+                <input id="email" type="email" name="email" value="{{ old('email') }}" placeholder="tu@empresa.com" required />
               </div>
             </div>
 
             <div class="field">
-              <label for="password">Password</label>
+              <label for="password">Contraseña</label>
               <div class="input-shell">
                 <span class="input-addon">••</span>
-                <input id="password" type="password" name="password" placeholder="Enter your password" required />
-                <button type="button" class="toggle-password" data-target="password">Show</button>
+                <input id="password" type="password" name="password" placeholder="Ingresa tu contraseña" required />
+                <button type="button" class="toggle-password" data-target="password">Mostrar</button>
               </div>
             </div>
 
             <div class="form-meta">
-              <a class="auth-link" href="{{ route('password.request') }}">Forgot password?</a>
+              <a class="auth-link" href="{{ route('password.request') }}">¿Olvidaste tu contraseña?</a>
             </div>
 
             <button type="submit" class="auth-btn" id="login_submit_btn">
-              <span class="btn-text">Sign In</span>
-              <span class="btn-loading"><span class="spinner"></span>Verifying</span>
+              <span class="btn-text">Iniciar sesión</span>
+              <span class="btn-loading"><span class="spinner"></span>Verificando</span>
             </button>
           </form>
         </div>
