@@ -9,6 +9,7 @@ import { installSpanishDocumentTitleGuard } from '../utils/spanishDocumentTitleG
 import { installSpanishLegacyDocumentGuard } from '../utils/spanishLegacyDocumentGuard';
 import { installSpanishApiFeedbackGuard } from '../utils/spanishApiFeedbackGuard';
 import { installSpanishSettingsRequestGuard } from '../utils/spanishSettingsRequestGuard';
+import { installSpanishCommerceIntegrationGuard } from '../utils/spanishCommerceIntegrationGuard';
 
 Vue.use(VueI18n);
 
@@ -19,6 +20,7 @@ export const loadI18n = async () => {
   installSpanishLegacyDocumentGuard();
   installSpanishApiFeedbackGuard();
   installSpanishSettingsRequestGuard();
+  installSpanishCommerceIntegrationGuard();
   const userLang = localStorage.getItem('language') || 'es';
 
   let dbMessages = {};
