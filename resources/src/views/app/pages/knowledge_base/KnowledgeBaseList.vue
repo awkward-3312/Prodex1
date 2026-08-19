@@ -1,22 +1,20 @@
 <template>
   <div class="main-content kb-page">
-    <breadcumb :page="$t('Knowledge_Base') || 'Knowledge Base'" :folder="$t('App')" />
+    <breadcumb page="Manual PRODEX" :folder="$t('App')" />
 
-    <!-- Hero header -->
     <div class="kb-hero mb-4">
       <div class="kb-hero-inner">
         <div class="kb-hero-icon">
-          <lucide-icon name="book" />
+          <lucide-icon name="book-open" />
         </div>
-        <h1 class="kb-hero-title">{{ $t('Knowledge_Base') || 'Knowledge Base' }}</h1>
-        <p class="kb-hero-subtitle">{{ $t('Search_articles') || 'Search articles and find answers' }}</p>
+        <h1 class="kb-hero-title">Manual PRODEX</h1>
+        <p class="kb-hero-subtitle">Encuentra guías oficiales para aprender a utilizar las funciones de PRODEX.</p>
       </div>
     </div>
 
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
     <b-card v-else class="kb-card shadow-sm">
-      <!-- Search & filters -->
       <div class="kb-toolbar">
         <div class="kb-search-row">
           <b-input-group class="kb-search-input">
@@ -25,36 +23,33 @@
             </b-input-group-prepend>
             <b-form-input
               v-model.trim="searchQ"
-              :placeholder="$t('Search_articles_placeholder') || 'Search by title or content…'"
-              @keyup.enter="fetchArticles"
+              placeholder="Buscar por título o contenido..."
+              @keyup.enter="search"
             />
           </b-input-group>
+
           <b-form-select
-            v-model="filterGroupId"
-            :options="groupOptions"
+            v-model="filterCategoryId"
+            :options="categoryOptions"
             value-field="id"
             text-field="name"
             class="kb-group-select"
           >
             <template #first>
-              <b-form-select-option :value="null">{{ $t('All_Groups') || 'All groups' }}</b-form-select-option>
+              <b-form-select-option :value="null">Todas las categorías</b-form-select-option>
             </template>
           </b-form-select>
-          <b-button variant="primary" class="kb-search-btn" @click="fetchArticles" :disabled="loading">
-            <lucide-icon name="search" /> {{ $t('Search') }}
+
+          <b-button variant="primary" class="kb-search-btn" @click="search" :disabled="loading">
+            <lucide-icon name="search" /> Buscar
           </b-button>
         </div>
-        <div class="kb-actions">
-          <router-link :to="{ name: 'KnowledgeBaseGroups' }" class="btn btn-outline-secondary btn-sm">
-            <lucide-icon name="folder" /> {{ $t('Article_Groups') || 'Groups' }}
-          </router-link>
-          <router-link :to="{ name: 'KnowledgeBaseArticleCreate' }" class="btn btn-primary btn-sm">
-            <lucide-icon name="plus" /> {{ $t('New_Article') || 'New article' }}
-          </router-link>
-        </div>
+
+        <p class="text-muted small mb-0">
+          Los manuales publicados aquí son documentación oficial administrada por PRODEX.
+        </p>
       </div>
 
-      <!-- Articles list -->
       <div class="kb-articles-list" v-if="articles.length">
         <div
           v-for="article in articles"
@@ -62,53 +57,46 @@
           class="kb-article-item"
         >
           <div class="kb-article-item-body">
-            <router-link :to="{ name: 'KnowledgeBaseArticleView', params: { id: article.id } }" class="kb-article-title">
+            <router-link
+              :to="{ name: 'KnowledgeBaseArticleView', params: { id: article.id } }"
+              class="kb-article-title"
+            >
               {{ article.title }}
             </router-link>
             <div class="kb-article-meta">
-              <span class="kb-article-group">{{ article.group ? article.group.name : '—' }}</span>
-              <b-badge v-if="article.is_internal" variant="warning" class="kb-badge-internal">{{ $t('Internal') }}</b-badge>
+              <span class="kb-article-group">{{ article.category ? article.category.name : 'General' }}</span>
+              <span v-if="article.updated_at" class="text-muted small">
+                Actualizado {{ formatDate(article.updated_at) }}
+              </span>
             </div>
           </div>
-          <div class="kb-article-item-actions">
-            <router-link
-              :to="{ name: 'KnowledgeBaseArticleView', params: { id: article.id } }"
-              class="btn btn-sm btn-outline-primary"
-              title="View"
-            >
-              <lucide-icon name="eye" />
-            </router-link>
-            <router-link
-              v-if="canManage"
-              :to="{ name: 'KnowledgeBaseArticleEdit', params: { id: article.id } }"
-              class="btn btn-sm btn-outline-secondary"
-              title="Edit"
-            >
-              <lucide-icon name="pen" />
-            </router-link>
-          </div>
+
+          <router-link
+            :to="{ name: 'KnowledgeBaseArticleView', params: { id: article.id } }"
+            class="btn btn-sm btn-outline-primary"
+            title="Abrir manual"
+          >
+            <lucide-icon name="chevron-right" />
+          </router-link>
         </div>
       </div>
 
-      <!-- Empty state -->
       <div v-else-if="!loading" class="kb-empty">
-        <div class="kb-empty-icon"><lucide-icon name="files" /></div>
-        <p class="kb-empty-title">{{ $t('No_items') || 'No articles found' }}</p>
-        <p class="kb-empty-text text-muted">{{ $t('Try_different_search') || 'Try a different search or filter.' }}</p>
-        <router-link v-if="canManage" :to="{ name: 'KnowledgeBaseArticleCreate' }" class="btn btn-primary">
-          <lucide-icon name="plus" /> {{ $t('New_Article') || 'Create first article' }}
-        </router-link>
+        <div class="kb-empty-icon"><lucide-icon name="book-open" /></div>
+        <p class="kb-empty-title">No encontramos manuales</p>
+        <p class="kb-empty-text text-muted">
+          Prueba con otra búsqueda o categoría. Si todavía no hay artículos publicados, aparecerán aquí cuando PRODEX los publique.
+        </p>
       </div>
 
-      <!-- Pagination -->
       <div v-if="totalPages > 1" class="kb-pagination">
-        <span class="text-muted small">{{ $t('Page') }} {{ currentPage }} {{ $t('of') }} {{ totalPages }}</span>
+        <span class="text-muted small">Página {{ currentPage }} de {{ totalPages }}</span>
         <div>
           <b-button size="sm" variant="outline-secondary" :disabled="currentPage <= 1" @click="goPage(currentPage - 1)">
-            {{ $t('Previous') }}
+            Anterior
           </b-button>
           <b-button size="sm" variant="outline-secondary" class="ml-2" :disabled="currentPage >= totalPages" @click="goPage(currentPage + 1)">
-            {{ $t('Next') }}
+            Siguiente
           </b-button>
         </div>
       </div>
@@ -119,50 +107,45 @@
 <script>
 export default {
   name: 'KnowledgeBaseList',
-  metaInfo: { title: 'Knowledge Base' },
+  metaInfo: { title: 'Manual PRODEX' },
   data() {
     return {
       isLoading: true,
       loading: false,
       articles: [],
-      groups: [],
+      categories: [],
       searchQ: '',
-      filterGroupId: null,
+      filterCategoryId: null,
       currentPage: 1,
       perPage: 15,
       total: 0
     };
   },
   computed: {
-    canManage() {
-      return this.$store.getters.currentUserPermissions &&
-        this.$store.getters.currentUserPermissions.includes('knowledge_base_view');
-    },
-    groupOptions() {
-      return this.groups;
+    categoryOptions() {
+      return this.categories;
     },
     totalPages() {
       return Math.max(1, Math.ceil(this.total / this.perPage));
     }
   },
   watch: {
-    filterGroupId() {
+    filterCategoryId() {
       this.currentPage = 1;
       this.fetchArticles();
     }
   },
   mounted() {
-    this.fetchGroups();
+    this.fetchCategories();
     this.fetchArticles();
   },
   methods: {
-    async fetchGroups() {
+    async fetchCategories() {
       try {
-        const url = this.canManage ? '/knowledge-base/groups' : '/knowledge-base/groups/for-filter';
-        const res = await axios.get(url);
-        this.groups = Array.isArray(res.data) ? res.data : (res.data.data || []);
+        const res = await axios.get('/prodex-manual/categories');
+        this.categories = Array.isArray(res.data) ? res.data : [];
       } catch (e) {
-        this.groups = [];
+        this.categories = [];
       }
     },
     async fetchArticles() {
@@ -171,27 +154,42 @@ export default {
       try {
         const params = { per_page: this.perPage, page: this.currentPage };
         if (this.searchQ) params.q = this.searchQ;
-        if (this.filterGroupId) params.group_id = this.filterGroupId;
-        const res = await axios.get('/knowledge-base/articles', { params });
-        const data = res.data;
-        this.articles = data.data || data;
-        if (data.total !== undefined) this.total = data.total;
-        else if (Array.isArray(data)) this.total = data.length;
-        else this.total = (data.data || []).length;
+        if (this.filterCategoryId) params.category_id = this.filterCategoryId;
+
+        const res = await axios.get('/prodex-manual/articles', { params });
+        const data = res.data || {};
+        this.articles = data.data || [];
+        this.total = data.total || 0;
       } catch (e) {
         this.articles = [];
         this.total = 0;
         if (this.$root && this.$root.$bvToast) {
-          this.$root.$bvToast.toast(this.$t('Failed_to_load') || 'Failed to load', { variant: 'danger', solid: true });
+          this.$root.$bvToast.toast('No se pudo cargar el Manual PRODEX.', { variant: 'danger', solid: true });
         }
       } finally {
         this.loading = false;
         this.isLoading = false;
       }
     },
-    goPage(p) {
-      this.currentPage = p;
+    search() {
+      this.currentPage = 1;
       this.fetchArticles();
+    },
+    goPage(page) {
+      this.currentPage = page;
+      this.fetchArticles();
+    },
+    formatDate(value) {
+      if (!value) return '';
+      try {
+        return new Intl.DateTimeFormat('es-HN', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        }).format(new Date(value));
+      } catch (e) {
+        return '';
+      }
     }
   }
 };
@@ -199,14 +197,13 @@ export default {
 
 <style scoped>
 .kb-page { padding-bottom: 2rem; }
-
 .kb-hero {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 12px;
   padding: 1.75rem 1.5rem;
   color: #fff;
 }
-.kb-hero-inner { max-width: 600px; }
+.kb-hero-inner { max-width: 720px; }
 .kb-hero-icon {
   width: 56px;
   height: 56px;
@@ -217,10 +214,8 @@ export default {
   justify-content: center;
   margin-bottom: 1rem;
 }
-.kb-hero-icon i { font-size: 1.75rem; }
 .kb-hero-title { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem 0; }
-.kb-hero-subtitle { margin: 0; opacity: 0.9; font-size: 0.95rem; }
-
+.kb-hero-subtitle { margin: 0; opacity: 0.92; font-size: 0.95rem; }
 .kb-card { border-radius: 12px; border: none; }
 .kb-toolbar { margin-bottom: 1.5rem; }
 .kb-search-row {
@@ -230,12 +225,10 @@ export default {
   gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
-.kb-search-input { max-width: 320px; flex: 1 1 200px; }
+.kb-search-input { max-width: 420px; flex: 1 1 240px; }
 .kb-search-input .input-group-text { border-radius: 8px 0 0 8px; background: #f8f9fa; }
-.kb-group-select { max-width: 220px; border-radius: 8px; }
+.kb-group-select { max-width: 260px; border-radius: 8px; }
 .kb-search-btn { border-radius: 8px; }
-.kb-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-
 .kb-articles-list { border-top: 1px solid #eee; }
 .kb-article-item {
   display: flex;
@@ -251,12 +244,12 @@ export default {
   font-weight: 600;
   color: #333;
   display: block;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
   text-decoration: none;
   transition: color 0.2s;
 }
 .kb-article-title:hover { color: #667eea; }
-.kb-article-meta { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.kb-article-meta { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
 .kb-article-group {
   font-size: 0.8rem;
   color: #667eea;
@@ -264,21 +257,10 @@ export default {
   padding: 0.2rem 0.5rem;
   border-radius: 6px;
 }
-.kb-badge-internal { font-size: 0.7rem; }
-.kb-article-item-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
-
-.kb-empty {
-  text-align: center;
-  padding: 3rem 1.5rem;
-}
-.kb-empty-icon {
-  font-size: 3rem;
-  color: #dee2e6;
-  margin-bottom: 1rem;
-}
+.kb-empty { text-align: center; padding: 3rem 1.5rem; }
+.kb-empty-icon { font-size: 3rem; color: #dee2e6; margin-bottom: 1rem; }
 .kb-empty-title { font-weight: 600; margin-bottom: 0.25rem; }
-.kb-empty-text { font-size: 0.9rem; margin-bottom: 1rem; }
-
+.kb-empty-text { font-size: 0.9rem; margin-bottom: 0; }
 .kb-pagination {
   display: flex;
   justify-content: space-between;
