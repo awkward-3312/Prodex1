@@ -17,10 +17,15 @@ class TranslationSeeder extends Seeder
 
         $now = now();
         $allTranslations = [];
+        $spanishOverrides = config('prodex_spanish_ui.tenant_translations', []);
 
         foreach ($files as $file) {
             $locale = pathinfo($file, PATHINFO_FILENAME);
             $translations = require $file;
+
+            if ($locale === 'es') {
+                $translations = array_replace($translations, $spanishOverrides);
+            }
 
             foreach ($translations as $key => $value) {
                 $allTranslations[] = [
