@@ -44,6 +44,11 @@ class AppServiceProvider extends ServiceProvider
         // correctly on the central Super Admin interface.
         Lang::addPath(resource_path('lang'));
 
+        // A translation group may have been resolved before the extra path was
+        // registered. Clear only the translator's in-memory loaded-group cache so
+        // Laravel reloads grouped files from all registered paths on first use.
+        Lang::setLoaded([]);
+
         // Spanish is PRODEX's platform baseline. These lines intentionally
         // override residual legacy English/mixed labels that still live in the
         // large historical SuperAdmin language file.
