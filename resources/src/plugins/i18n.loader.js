@@ -4,19 +4,21 @@ import axios from 'axios';
 import { supportMessages } from './support.i18n';
 import { bundledUiMessages, readableMissingTranslation } from './ui.fallback.i18n';
 import { installSpanishUiGuard } from '../utils/spanishUiGuard';
+import { installSpanishSettingsUiGuard } from '../utils/spanishSettingsUiGuard';
 
 Vue.use(VueI18n);
 
 export const loadI18n = async () => {
   installSpanishUiGuard();
+  installSpanishSettingsUiGuard();
   const userLang = localStorage.getItem('language') || 'es';
 
   let dbMessages = {};
   try {
     const isBaseURLSet = axios.defaults.baseURL && axios.defaults.baseURL !== '/';
     const endpoint = isBaseURLSet
-      ? `translations/${userLang}`      // baseURL will apply
-      : `/api/translations/${userLang}`; // full path for unauthenticated pages
+      ? `translations/${userLang}`
+      : `/api/translations/${userLang}`;
 
     const response = await axios.get(endpoint);
     dbMessages = response.data;
@@ -24,8 +26,6 @@ export const loadI18n = async () => {
     console.warn("No se pudieron cargar las traducciones desde la base de datos.");
   }
 
-  // Merge bundled feature strings (Support, etc.) under the DB translations so
-  // the UI is always readable; DB values win when a key exists in both.
   const messages = {
     [userLang]: Object.assign(
       {},
