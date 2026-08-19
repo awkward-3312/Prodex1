@@ -10,18 +10,19 @@ import { ValidationObserver, ValidationProvider, extend, localize } from 'vee-va
 import * as rules from "vee-validate/dist/rules";
 
 localize({
-  en: {
+  es: {
     messages: {
-      required: 'This field is required',
-      required_if: 'This field is required',
-      regex: 'This field must be a valid',
-      mimes: `This field must have a valid file type.`,
-      size: (_, { size }) => `This field size must be less than ${size}.`,
-      min: 'This field must have no less than {length} characters',
-      max: (_, { length }) => `This field must have no more than ${length} characters`
+      required: 'Este campo es obligatorio',
+      required_if: 'Este campo es obligatorio',
+      regex: 'Este campo debe tener un formato válido',
+      mimes: 'Este archivo debe tener un tipo válido',
+      size: (_, { size }) => `El tamaño del archivo debe ser menor de ${size}`,
+      min: 'Este campo debe tener al menos {length} caracteres',
+      max: (_, { length }) => `Este campo no puede tener más de ${length} caracteres`
     }
   },
 });
+localize('es');
 // Install VeeValidate rules and localization
 Object.keys(rules).forEach(rule => {
   extend(rule, rules[rule]);
@@ -38,7 +39,7 @@ extend('url', {
       return false;
     }
   },
-  message: 'This field must be a valid URL (http:// or https://)'
+  message: 'Este campo debe contener una URL válida (http:// o https://)'
 });
 
 // Register it globally
@@ -284,8 +285,8 @@ axios.interceptors.response.use(
     if (status === 403) {
       if (data && data.status === 'limit_reached') {
         // Stay on the current page — show an upgrade modal instead of redirecting
-        Vue.prototype.$limitReachedMessage = data.message || 'You have reached a plan limit. Please upgrade to continue.';
-        window.Fire.$emit('show-limit-reached', data.message || 'You have reached a plan limit. Please upgrade to continue.');
+        Vue.prototype.$limitReachedMessage = data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.';
+        window.Fire.$emit('show-limit-reached', data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.');
       } else if (isNavigationalLoad) {
         router.push({ name: 'not_authorize' });
       }
