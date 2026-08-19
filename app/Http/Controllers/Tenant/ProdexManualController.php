@@ -30,7 +30,6 @@ class ProdexManualController extends Controller
                 'kb_category_id',
                 'title',
                 'slug',
-                'content',
                 'sort_order',
                 'updated_at',
             ]);
