@@ -7,8 +7,8 @@ one on a fixed queue:
 - stock → `woocommerce-stock`
 
 **Something must process those queues, or syncs hang at `queued_next_batch` after the first
-batch.** This guide describes the three supported ways to do that. Pick **one** (A is
-recommended for real servers). They can coexist safely.
+batch.** This guide describes the three supported ways to do that. Pick **one** persistent strategy
+for production so workers are not duplicated unnecessarily.
 
 | Option | Best for | Runs unattended? | Needs extra software? |
 |--------|----------|:---:|:---:|
@@ -40,7 +40,7 @@ recommended for real servers). They can coexist safely.
 
 ---
 
-## Option A — Supervisor (recommended)
+## Option A — Supervisor (recommended for the PRODEX VPS)
 
 Supervisor is a Linux process manager that keeps the worker running forever: it starts it on
 boot and restarts it automatically if it crashes or exits.
@@ -54,23 +54,44 @@ sudo apt-get update && sudo apt-get install -y supervisor
 sudo yum install -y supervisor && sudo systemctl enable --now supervisord
 ```
 
-### 2. Install the config
-A ready-made template ships at [`deploy/supervisor/stocky-queue-worker.conf`](supervisor/stocky-queue-worker.conf):
+### 2. Check for an existing worker before installing another one
+
+Do **not** install the PRODEX config blindly. First inspect the active process manager configuration:
+
 ```bash
-sudo cp deploy/supervisor/stocky-queue-worker.conf /etc/supervisor/conf.d/
+sudo supervisorctl status
+sudo grep -R "queue:work\|queue:listen" /etc/supervisor /etc/supervisord* 2>/dev/null
+systemctl list-units --type=service --all | grep -Ei 'queue|worker|stocky|prodex'
+ps aux | grep -E '[p]hp .*artisan (queue:work|queue:listen)'
 ```
 
-### 3. Edit it for your server
-Open `/etc/supervisor/conf.d/stocky-queue-worker.conf` and set:
+If an existing worker already consumes `woocommerce-sync,woocommerce-stock,default` for
+`/var/www/prodex`, update/reuse that worker instead of starting a duplicate.
 
-- **`command`** — the absolute path to `php` and to your `artisan` file
-- **`directory`** — your application root
-- **`user`** — the web/app user (often `www-data`, `nginx`, or your cPanel user)
-- **`stdout_logfile`** — a writable log path
+### 3. Install the PRODEX config
 
-The command it runs:
+A ready-made PRODEX template ships at [`deploy/supervisor/prodex-queue-worker.conf`](supervisor/prodex-queue-worker.conf):
+
 ```bash
-php /var/www/stocky/artisan queue:work database \
+sudo cp deploy/supervisor/prodex-queue-worker.conf /etc/supervisor/conf.d/prodex-queue-worker.conf
+```
+
+The repository also keeps `stocky-queue-worker.conf` as a legacy/reference file. Do not install
+that historical config on the PRODEX VPS.
+
+The PRODEX config is prepared for:
+
+- application root: `/var/www/prodex`
+- user: `prodexadmin`
+- queues: `woocommerce-sync,woocommerce-stock,default`
+- log: `/var/www/prodex/storage/logs/queue-worker.log`
+
+Review those values before enabling it on another server.
+
+The command it runs is equivalent to:
+
+```bash
+php /var/www/prodex/artisan queue:work database \
   --queue=woocommerce-sync,woocommerce-stock,default \
   --sleep=1 --tries=1 --timeout=1200 --max-time=3600
 ```
@@ -79,117 +100,108 @@ Key flags explained:
 
 | Flag | Why |
 |------|-----|
-| `--queue=woocommerce-sync,woocommerce-stock,default` | Listen to the sync queues (order = priority) plus the normal `default` queue. **Must include the two woo queues.** |
+| `--queue=woocommerce-sync,woocommerce-stock,default` | Listen to the sync queues (order = priority) plus the normal `default` queue. **Must include the two WooCommerce queues.** |
 | `--tries=1` | Jobs manage their own batching/idempotency; don't auto-retry. |
 | `--timeout=1200` | Max seconds for a single batch. Must exceed your slowest batch (image uploads can be slow). |
 | `--max-time=3600` | Recycle the worker hourly to release memory; Supervisor restarts it instantly. |
 | `--sleep=1` | Wait 1s when the queue is empty before checking again. |
 
-### 4. Start it
+### 4. Start it only after confirming there is no duplicate worker
+
 ```bash
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl start stocky-queue-worker:*
-sudo supervisorctl status            # should show RUNNING
+sudo supervisorctl start prodex-queue-worker:*
+sudo supervisorctl status
 ```
 
 ### 5. After every deploy
+
 New code isn't picked up by a long-running worker until it restarts:
+
 ```bash
-php artisan queue:restart            # graceful: tells workers to finish current job and exit
-# Supervisor then auto-restarts them. Or force it:
-sudo supervisorctl restart stocky-queue-worker:*
+php artisan queue:restart
+```
+
+Supervisor should then restart the process automatically. If a direct restart is needed:
+
+```bash
+sudo supervisorctl restart prodex-queue-worker:*
 ```
 
 ### Scaling
-To process more batches in parallel, raise `numprocs` in the config (e.g. `numprocs=3`), then
-`reread` + `update`. Each process handles one batch at a time.
+
+To process more batches in parallel, raise `numprocs` in the config only after confirming the
+jobs are safe to run concurrently, then run `reread` + `update`.
 
 ### systemd alternative
-If you prefer systemd over Supervisor, create `/etc/systemd/system/stocky-worker.service`:
+
+If you deliberately use systemd instead of Supervisor, create `/etc/systemd/system/prodex-worker.service`:
+
 ```ini
 [Unit]
-Description=Stocky queue worker
+Description=PRODEX queue worker
 After=network.target mysql.service
 
 [Service]
-User=www-data
+User=prodexadmin
 Restart=always
-WorkingDirectory=/var/www/stocky
-ExecStart=/usr/bin/php /var/www/stocky/artisan queue:work database --queue=woocommerce-sync,woocommerce-stock,default --sleep=1 --tries=1 --timeout=1200 --max-time=3600
+WorkingDirectory=/var/www/prodex
+ExecStart=/usr/bin/php /var/www/prodex/artisan queue:work database --queue=woocommerce-sync,woocommerce-stock,default --sleep=1 --tries=1 --timeout=1200 --max-time=3600
 
 [Install]
 WantedBy=multi-user.target
 ```
+
 Then:
+
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now stocky-worker
-sudo systemctl status stocky-worker
+sudo systemctl enable --now prodex-worker
+sudo systemctl status prodex-worker
 ```
+
+Use **either** the intended Supervisor worker or this systemd service unless you intentionally
+want multiple workers.
 
 ---
 
 ## Option B — Cron scheduler (shared hosting)
 
-No root, no Supervisor? Use Laravel's scheduler. The app already schedules a worker that drains
-the sync queues every minute (see `app/Console/Kernel.php`):
+No root or no Supervisor? Use Laravel's scheduler. The app schedules a worker that drains the
+sync queues periodically (see `app/Console/Kernel.php`).
 
-```bash
-queue:work database --stop-when-empty --max-time=50 \
-  --queue=woocommerce-sync,woocommerce-stock,default --sleep=1 --tries=1 --timeout=...
-```
-
-It drains all pending batches (up to ~50s) then exits, resuming the next minute. Slower than a
-persistent worker, but needs only a single cron entry.
-
-### Set up the cron
-Add **one** cron job that runs the Laravel scheduler every minute. In cPanel → *Cron Jobs*, or
-via `crontab -e`:
+Add one cron job that runs Laravel's scheduler every minute:
 
 ```cron
 * * * * * cd /home/USER/path-to-app && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Replace the path with your application root. That single line is all that's required — the
-scheduler triggers the queue draining internally.
+Verify the current scheduler definition in the deployed code with:
 
-### Verify
 ```bash
-php artisan schedule:list      # shows the scheduled queue:work entry
+php artisan schedule:list
 ```
-Then start a sync from the UI and watch it progress (it advances roughly once per minute as the
-cron fires).
 
-### Tuning for shared hosting
-If batches get killed by short PHP limits, lower the batch size so each batch finishes faster:
-```env
-WOO_PRODUCTS_PER_JOB=3
-QUEUE_WORKER_TIMEOUT=600
-```
+Do not run this scheduled queue-draining strategy in parallel with a persistent worker unless
+that concurrency is intentional.
 
 ---
 
 ## Option C — Manual / no-cron fallback
 
-With **no worker and no cron**, the app still works through the **progress-polling endpoints**:
-while the sync page is open, each poll runs one batch inline (guarded by a lock).
+With **no worker and no cron**, the app can still progress through its integration fallback while
+the sync page is active. This is suitable for local development or occasional manual use, not the
+preferred production setup.
 
-- ✅ Zero setup — "Sync now" just works.
-- ⚠️ **Only progresses while the browser tab stays open and keeps polling.** Close the tab and
-  the sync pauses at `queued_next_batch` until you reopen it.
-- Best for small, occasional syncs or local development.
+### One-shot CLI
 
-### One-shot CLI (manual, but completes without the browser)
-You can also run a full sync from the command line; it runs its own inline worker loop until
-finished:
 ```bash
-php artisan woocommerce:sync --scope=all        # products + stock
+php artisan woocommerce:sync --scope=all
 php artisan woocommerce:sync --scope=products
 php artisan woocommerce:sync --scope=stock
 php artisan woocommerce:sync --scope=products --only-unsynced
 ```
-This is handy for a manual catch-up, or to schedule a periodic full sync via cron.
 
 ---
 
@@ -197,17 +209,18 @@ This is handy for a manual catch-up, or to schedule a periodic full sync via cro
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Sync stalls at `queued_next_batch` | No worker on the woo queues | Set up Option A or B; confirm `--queue` includes `woocommerce-sync,woocommerce-stock`. |
-| `stuck: no worker heartbeat for Ns` | Worker not running / watching wrong queues | `supervisorctl status`; check the queue list. |
-| New code/behaviour not taking effect | Long-running worker still on old code | `php artisan queue:restart` (or restart Supervisor). |
-| Batches killed mid-run on shared hosting | PHP time/memory limits | Lower `WOO_PRODUCTS_PER_JOB`; raise `QUEUE_WORKER_TIMEOUT`. |
+| Sync stalls at `queued_next_batch` | No worker on the WooCommerce queues | Confirm a worker watches `woocommerce-sync,woocommerce-stock`. |
+| `stuck: no worker heartbeat for Ns` | Worker not running / watching wrong queues | `sudo supervisorctl status`; inspect the queue list. |
+| New code/behaviour not taking effect | Long-running worker still on old code | `php artisan queue:restart`. |
 | Jobs pile up but never run | Wrong `QUEUE_CONNECTION`, or `jobs` table missing | Ensure `QUEUE_CONNECTION=database` and the table exists. |
+| Duplicate processing / unexpected concurrency | More than one worker strategy is active | Inspect Supervisor, systemd, cron and running `artisan queue:*` processes. |
 
-Inspect what's queued / failed:
+Inspect queued/failed work with the Laravel commands supported by the installed framework version:
+
 ```bash
-php artisan queue:monitor woocommerce-sync,woocommerce-stock,default
 php artisan queue:failed
+php artisan list | grep -E 'queue|woocommerce|prodex:tenant'
 ```
 
 See also: [`app/Services/WooCommerce/README.md`](../app/Services/WooCommerce/README.md) for the
-full integration reference and tuning env vars.
+integration reference and tuning variables.
