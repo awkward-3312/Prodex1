@@ -13,6 +13,9 @@ class ProdexManualController extends Controller
     {
         $categories = KbCategory::query()
             ->whereHas('articles', fn ($query) => $query->where('is_published', true))
+            ->withCount([
+                'articles as published_articles_count' => fn ($query) => $query->where('is_published', true),
+            ])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'description', 'icon', 'sort_order']);
