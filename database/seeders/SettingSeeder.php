@@ -22,12 +22,12 @@ class SettingSeeder extends Seeder
         // it is permanently owned by PRODEX and cannot be tenant-customized.
         $defaults = $this->tenantDefaults();
 
-        // Resolve the seeded language locale to one that actually exists
-        // in the tenant's languages table. CentralLanguage::defaultLocale()
-        // is the cross-tenant baseline; the tenant default overrides it.
+        // Spanish is the platform baseline. A deliberately configured central
+        // tenant default can still override it, but a missing value must never
+        // make a newly provisioned tenant start in English.
         $language = $defaults['default_language']
             ?? $this->centralDefaultLocale()
-            ?? 'en';
+            ?? 'es';
 
         // The logo setting is always stored as a bare filename. The frontend
         // resolves it via $imgUrl('settings', logo), which prepends the
@@ -93,9 +93,9 @@ class SettingSeeder extends Seeder
                 'address'           => '',
                 'currency_code'     => 'USD',
                 'currency_symbol'   => '$',
-                'default_language'  => null,
+                'default_language'  => 'es',
                 'footer_text'       => 'PRODEX',
-                'page_title_suffix' => 'Ultimate Inventory With POS',
+                'page_title_suffix' => 'Gestión empresarial',
                 'developed_by'      => 'PRODEX',
                 'logo_path'         => null,
                 'favicon_path'      => null,
