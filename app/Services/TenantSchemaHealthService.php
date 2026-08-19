@@ -21,6 +21,7 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_16_150200_create_user_operational_assignments_table.php',
         'database/migrations/tenant/2026_08_16_150300_add_cash_drawer_snapshot_to_cash_registers_table.php',
         'database/migrations/tenant/2026_08_16_150400_seed_operational_assignment_permissions.php',
+        'database/migrations/tenant/2026_08_19_070000_normalize_legacy_store_settings_to_spanish.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -49,7 +50,7 @@ class TenantSchemaHealthService
             $result['missing'] = $this->missingRequirements();
             $result['schema_status'] = empty($result['missing']) ? 'updated' : 'outdated';
             $result['status'] = empty($result['missing']) ? 'healthy' : 'warning';
-            $result['status_label'] = empty($result['missing']) ? 'Healthy' : 'Requiere actualización';
+            $result['status_label'] = empty($result['missing']) ? 'Saludable' : 'Requiere actualización';
         } catch (Throwable $e) {
             $result['last_error'] = $e->getMessage();
         } finally {
