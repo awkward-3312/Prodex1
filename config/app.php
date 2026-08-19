@@ -13,7 +13,7 @@ return [
     |
      */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'PRODEX'),
 
     /*
     |--------------------------------------------------------------------------
@@ -46,8 +46,8 @@ return [
     | Application URL
     |--------------------------------------------------------------------------
     |
-    | This URL is used by the console to properly generate URLs when using
-    | the Artisan command line tool. You should set this to the root of
+    | This URL is used by the console to properly generate URLs when using the
+    | Artisan command line tool. You should set this to the root of
     | your application so that it is used when running Artisan tasks.
     |
      */
@@ -146,10 +146,6 @@ return [
      */
 
     'providers' => [
-
-        /*
-         * Laravel Framework Service Providers...
-         */
         Illuminate\Auth\AuthServiceProvider::class,
         Illuminate\Broadcasting\BroadcastServiceProvider::class,
         Illuminate\Bus\BusServiceProvider::class,
@@ -165,7 +161,6 @@ return [
         Illuminate\Notifications\NotificationServiceProvider::class,
         Illuminate\Pagination\PaginationServiceProvider::class,
         Illuminate\Pipeline\PipelineServiceProvider::class,
-        Illuminate\Queue\QueueServiceProvider::class,
         Illuminate\Redis\RedisServiceProvider::class,
         Illuminate\Auth\Passwords\PasswordResetServiceProvider::class,
         Illuminate\Session\SessionServiceProvider::class,
@@ -174,13 +169,6 @@ return [
         Illuminate\View\ViewServiceProvider::class,
         Laravel\Passport\PassportServiceProvider::class,
         Macellan\Zip\ZipServiceProvider::class,
-        /*
-         * Package Service Providers...
-         */
-
-        /*
-         * Application Service Providers...
-         */
         App\Providers\AppServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
         App\Providers\EventServiceProvider::class,
@@ -193,22 +181,9 @@ return [
         App\Providers\AccountingV2ServiceProvider::class,
         Stancl\Tenancy\TenancyServiceProvider::class,
         App\Providers\TenancyServiceProvider::class,
-
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Class Aliases
-    |--------------------------------------------------------------------------
-    |
-    | This array of class aliases will be registered when this application
-    | is started. However, feel free to register as many as you wish as
-    | the aliases are "lazy" loaded so they don't hinder performance.
-    |
-     */
-
     'aliases' => [
-
         'App' => Illuminate\Support\Facades\App::class,
         'Arr' => Illuminate\Support\Arr::class,
         'Artisan' => Illuminate\Support\Facades\Artisan::class,
@@ -252,7 +227,6 @@ return [
         'Image' => Intervention\Image\Facades\Image::class,
         'Module' => Nwidart\Modules\Facades\Module::class,
         'Zip' => Macellan\Zip\ZipFacade::class,
-
     ],
 
 ];
