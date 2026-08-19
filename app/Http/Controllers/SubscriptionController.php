@@ -12,15 +12,11 @@ use Illuminate\Http\Request;
 
 class SubscriptionController extends BaseController
 {
-    // -------------- Get All Subscription ---------------\\
-
     public function index(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Subscription::class);
-        // How many items do you want to display.
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
-        // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = strtolower((string) $request->input('SortType')) === 'asc' ? 'asc' : 'desc';
@@ -32,9 +28,8 @@ class SubscriptionController extends BaseController
         });
 
         $totalRows = $subscription_data->count();
-        if ($perPage == '-1') {
-            $perPage = $totalRows;
-        }
+        if ($perPage == '-1') $perPage = $totalRows;
+
         $subscriptions = $subscription_data->offset($offSet)
             ->limit($perPage)
             ->orderBy($order, $dir)
@@ -42,47 +37,31 @@ class SubscriptionController extends BaseController
 
         $data = [];
         foreach ($subscriptions as $subscription) {
-
             $item['id'] = $subscription->id;
             $item['client_name'] = $subscription['client'] ? $subscription['client']->name : '---';
             $item['product_name'] = $subscription['product'] ? $subscription['product']->name : '---';
             $item['warehouse_name'] = $subscription['warehouse'] ? $subscription['warehouse']->name : '---';
-            $item['billing_cycle'] = $subscription->billing_cycle;
-            $item['total_cycles'] = $subscription->total_cycles.' '.$subscription->cycle_type;
+            $item['billing_cycle'] = $this->cycleLabel($subscription->billing_cycle);
+            $item['total_cycles'] = $subscription->total_cycles.' '.$this->cycleLabel($subscription->cycle_type);
             $item['price'] = $subscription->price;
             $item['remaining_cycles'] = $subscription->remaining_cycles;
             $item['next_billing_date'] = $subscription->next_billing_date;
-            $item['status'] = $subscription->status;
-
+            $item['status'] = $this->statusLabel($subscription->status);
             $data[] = $item;
         }
 
-        return response()->json([
-            'subscriptions' => $data,
-            'totalRows' => $totalRows,
-        ]);
-
+        return response()->json(['subscriptions' => $data, 'totalRows' => $totalRows]);
     }
-
-    // ------------ function create -----------\\
 
     public function create(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Subscription::class);
-
-        $clients = Client::where('deleted_at', '=', null)->get(['id', 'name']);
-        $products = Product::where('deleted_at', '=', null)->get(['id', 'name']);
-        $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-
         return response()->json([
-            'clients' => $clients,
-            'products' => $products,
-            'warehouses' => $warehouses,
+            'clients' => Client::where('deleted_at', '=', null)->get(['id', 'name']),
+            'products' => Product::where('deleted_at', '=', null)->get(['id', 'name']),
+            'warehouses' => Warehouse::where('deleted_at', '=', null)->get(['id', 'name']),
         ]);
-
     }
-
-    // -------------- Store New  ---------------\\
 
     public function store(Request $request)
     {
@@ -100,19 +79,11 @@ class SubscriptionController extends BaseController
             'subscription.quantity' => 'required|integer|min:1',
             'subscription.next_billing_date' => 'required|date',
             'subscription.status' => 'required|in:active,canceled,completed',
-
         ]);
 
         $data = $validatedData['subscription'];
+        $remaining_cycles = $this->calculateRemainingCycles($data['total_cycles'], $data['cycle_type'], $data['billing_cycle']);
 
-        // Calculate remaining cycles
-        $remaining_cycles = $this->calculateRemainingCycles(
-            $data['total_cycles'],
-            $data['cycle_type'],
-            $data['billing_cycle']
-        );
-
-        // Create new subscription
         $subscription = Subscription::create([
             'date' => now(),
             'user_id' => auth()->id(),
@@ -130,45 +101,27 @@ class SubscriptionController extends BaseController
             'status' => $data['status'],
         ]);
 
-        // Check if next billing date is today, generate invoice immediately
         if (Carbon::parse($subscription->next_billing_date)->isToday()) {
             $subscription->generateInvoice();
         }
 
         return response()->json([
-            'message' => 'Subscription created successfully!',
+            'message' => 'La suscripción se creó correctamente.',
             'subscription' => $subscription,
         ], 201);
     }
 
     private function calculateRemainingCycles($total_cycles, $cycle_type, $billing_cycle)
     {
-        // Define durations in days
-        $durations = [
-            'yearly' => 365,
-            'monthly' => 30.4375, // Average month duration
-            'weekly' => 7,
-        ];
-
-        // Get the total duration in days based on the cycle type (how long the subscription lasts)
+        $durations = ['yearly' => 365, 'monthly' => 30.4375, 'weekly' => 7];
         $total_duration = $total_cycles * ($durations[$cycle_type] ?? 1);
-
-        // Get the billing cycle duration in days (how often the customer pays)
         $billing_duration = $durations[$billing_cycle] ?? 1;
-
-        // Calculate how many payments the user needs to make
-        $remaining_cycles = intval($total_duration / $billing_duration);
-
-        return max($remaining_cycles, 1); // Ensure at least 1 cycle
+        return max(intval($total_duration / $billing_duration), 1);
     }
-
-    // ------------ function show -----------\\
 
     public function show(Request $request, $id)
     {
-
         $this->authorizeForUser($request->user('api'), 'view', Subscription::class);
-
         $subscription = Subscription::with(['client', 'product', 'warehouse', 'invoices'])->findOrFail($id);
 
         return response()->json([
@@ -177,10 +130,10 @@ class SubscriptionController extends BaseController
                 'client' => $subscription->client->name,
                 'product' => $subscription->product->name,
                 'warehouse' => $subscription->warehouse->name,
-                'billing_cycle' => $subscription->billing_cycle,
+                'billing_cycle' => $this->cycleLabel($subscription->billing_cycle),
                 'price_per_cycle' => number_format($subscription->price_per_cycle, 2, '.', ','),
                 'next_billing_date' => $subscription->next_billing_date,
-                'status' => $subscription->status,
+                'status' => $this->statusLabel($subscription->status),
             ],
             'invoices' => $subscription->invoices->map(function ($invoice) {
                 return [
@@ -192,46 +145,49 @@ class SubscriptionController extends BaseController
                 ];
             }),
             'invoiceFields' => [
-                ['key' => 'ref', 'label' => 'Invoice Ref'],
-                ['key' => 'date', 'label' => 'Date'],
-                ['key' => 'total', 'label' => 'Total Amount'],
-                ['key' => 'status', 'label' => 'Status'],
+                ['key' => 'ref', 'label' => 'Referencia de factura'],
+                ['key' => 'date', 'label' => 'Fecha'],
+                ['key' => 'total', 'label' => 'Monto total'],
+                ['key' => 'status', 'label' => 'Estado'],
             ],
         ]);
     }
 
-    // -------------- Update ---------------\\
-
     public function update(Request $request, $id)
     {
-        //
-
+        // Pendiente de implementación en el módulo original.
     }
-
-    // -------------- Delete Subscription ---------------\\
 
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Subscription::class);
-
-        Subscription::whereId($id)->update([
-            'deleted_at' => Carbon::now(),
-        ]);
-
+        Subscription::whereId($id)->update(['deleted_at' => Carbon::now()]);
         return response()->json(['success' => true], 200);
     }
 
     public function updateStatus(Request $request, $id)
     {
-        $request->validate([
-            'status' => 'required|in:active,canceled,completed',
-        ]);
-
+        $request->validate(['status' => 'required|in:active,canceled,completed']);
         $subscription = Subscription::findOrFail($id);
-        $subscription->update([
-            'status' => $request->status,
-        ]);
+        $subscription->update(['status' => $request->status]);
+        return response()->json(['message' => 'El estado de la suscripción se actualizó correctamente.']);
+    }
 
-        return response()->json(['message' => 'Subscription status updated successfully!']);
+    private function cycleLabel(?string $value): string
+    {
+        return [
+            'weekly' => 'semanal',
+            'monthly' => 'mensual',
+            'yearly' => 'anual',
+        ][$value] ?? (string) $value;
+    }
+
+    private function statusLabel(?string $value): string
+    {
+        return [
+            'active' => 'Activa',
+            'canceled' => 'Cancelada',
+            'completed' => 'Completada',
+        ][$value] ?? (string) $value;
     }
 }
