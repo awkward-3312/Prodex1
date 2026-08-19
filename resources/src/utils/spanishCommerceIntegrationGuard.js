@@ -10,10 +10,13 @@ const EXACT = {
   'Stage:': 'Etapa:',
   'Total in WooCommerce': 'Total en WooCommerce',
   'Imported to Stocky': 'Importados a PRODEX',
+  'Imported in Stocky': 'Importados en PRODEX',
   'Not Yet Imported': 'Aún no importados',
+  'Not Imported': 'No importados',
   'Sync Products from WooCommerce': 'Sincronizar productos desde WooCommerce',
   'Order import troubleshooting': 'Solución de problemas de importación de pedidos',
   'Sync Orders from WooCommerce': 'Sincronizar pedidos desde WooCommerce',
+  'Sync WooCommerce Orders to Stocky': 'Sincronizar pedidos de WooCommerce con PRODEX',
   'Pulling orders...': 'Importando pedidos...',
   'Auto-Link Products by SKU': 'Vincular productos automáticamente por SKU',
   'Linking...': 'Vinculando...',
@@ -29,6 +32,31 @@ const EXACT = {
   'Syncing Products (Woo → Stocky)': 'Sincronizando productos (WooCommerce → PRODEX)',
   'Connection Settings': 'Configuración de conexión',
   'WooCommerce Sync Guide': 'Guía de sincronización con WooCommerce',
+  'Orders are synced from WooCommerce to Stocky (Woo → Stocky).': 'Los pedidos se sincronizan desde WooCommerce hacia PRODEX (WooCommerce → PRODEX).',
+  'WooCommerce Orders': 'Pedidos de WooCommerce',
+  'Total Orders': 'Total de pedidos',
+  'Synced': 'Sincronizado',
+  'Not Synced': 'No sincronizado',
+  'Sync': 'Sincronizar',
+  'Syncing...': 'Sincronizando...',
+  'Order synced': 'Pedido sincronizado',
+  'Order sync failed': 'No se pudo sincronizar el pedido',
+  'Imported:': 'Importados:',
+  'Skipped:': 'Omitidos:',
+  'Errors:': 'Errores:',
+  'Number': 'Número',
+  'Status': 'Estado',
+  'Date': 'Fecha',
+  'Total': 'Total',
+  'Customer': 'Cliente',
+  'Email': 'Correo electrónico',
+  'Items': 'Artículos',
+  'Sync Status': 'Estado de sincronización',
+  'Actions': 'Acciones',
+  'Filter Logs': 'Filtrar registros',
+  'Sync Logs': 'Registros de sincronización',
+  'Direction': 'Dirección',
+  'Message': 'Mensaje',
   'Connected': 'Conectado',
   'Disconnected': 'Desconectado',
   'Unknown': 'Desconocido',
@@ -49,7 +77,9 @@ const EXACT = {
   'Stopping': 'Deteniendo',
   'Resetting': 'Restableciendo',
   'Syncing': 'Sincronizando',
-  'Sync in progress': 'Sincronización en curso'
+  'Sync in progress': 'Sincronización en curso',
+  'next': 'siguiente',
+  'prev': 'anterior'
 };
 
 function translateText(value) {
@@ -60,6 +90,7 @@ function translateText(value) {
 
   let translated = clean;
   translated = translated.replace(/^(\d+)\s+products$/i, '$1 productos');
+  translated = translated.replace(/^(\d+)\s+entries$/i, '$1 registros');
   translated = translated.replace(/^Showing latest (\d+) of (\d+)\.?$/i, 'Mostrando los últimos $1 de $2.');
   translated = translated.replace(/^Imported to Stocky$/i, 'Importados a PRODEX');
   translated = translated.replace(/Stocky/g, 'PRODEX');
@@ -68,9 +99,9 @@ function translateText(value) {
 
 const SELECTOR = [
   'button','th','label','legend','option','small','strong','h1','h2','h3','h4','h5','h6',
-  '.modal-title','.badge','.alert','.text-muted',
+  '.modal-title','.badge','.alert','.toast','.text-muted',
   '[class*="stat-"]','[class*="progress-"]','[class*="sync-"]','[class*="guide-"]',
-  '[class*="action-"]','[class*="connection-"]','[class*="counter-"]'
+  '[class*="action-"]','[class*="connection-"]','[class*="counter-"]','[class*="logs-"]'
 ].join(',');
 
 function apply(el) {
