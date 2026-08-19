@@ -22,23 +22,23 @@
 
             <div class="form-group mb-4">
                 <label class="form-label">{{ __('super.hero.field_title') }} <span class="text-danger">*</span></label>
-                <input type="text" name="title" class="form-control" value="{{ old('title', $hero->title) }}" placeholder="e.g. Run your business smarter with Stocky" required>
+                <input type="text" name="title" class="form-control" value="{{ old('title', $hero->title) }}" placeholder="Ej.: Gestiona tu negocio de forma más inteligente con PRODEX" required>
             </div>
 
             <div class="form-group mb-4">
                 <label class="form-label">{{ __('super.hero.badge_text') }}</label>
-                <input type="text" name="subtitle" class="form-control" value="{{ old('subtitle', $hero->subtitle) }}" placeholder="e.g. Inventory & POS in one platform">
+                <input type="text" name="subtitle" class="form-control" value="{{ old('subtitle', $hero->subtitle) }}" placeholder="Ej.: Inventario y POS en una sola plataforma">
             </div>
 
             <div class="form-group mb-4">
                 <label class="form-label">{{ __('super.hero.description') }}</label>
-                <textarea name="description" class="form-control" rows="3" placeholder="Short description below the title">{{ old('description', $hero->description) }}</textarea>
+                <textarea name="description" class="form-control" rows="3" placeholder="Descripción breve que aparecerá debajo del título">{{ old('description', $hero->description) }}</textarea>
             </div>
 
             <div class="form-row mb-4">
                 <div class="form-group">
                     <label class="form-label">{{ __('super.hero.primary_btn') }}</label>
-                    <input type="text" name="primary_button_text" class="form-control" value="{{ old('primary_button_text', $hero->primary_button_text) }}" placeholder="e.g. Start Free Trial">
+                    <input type="text" name="primary_button_text" class="form-control" value="{{ old('primary_button_text', $hero->primary_button_text) }}" placeholder="Ej.: Comenzar prueba gratuita">
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ __('super.hero.primary_url') }}</label>
@@ -49,7 +49,7 @@
             <div class="form-row mb-4">
                 <div class="form-group">
                     <label class="form-label">{{ __('super.hero.secondary_btn') }}</label>
-                    <input type="text" name="secondary_button_text" class="form-control" value="{{ old('secondary_button_text', $hero->secondary_button_text) }}" placeholder="e.g. Sign Up">
+                    <input type="text" name="secondary_button_text" class="form-control" value="{{ old('secondary_button_text', $hero->secondary_button_text) }}" placeholder="Ej.: Registrarse">
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ __('super.hero.secondary_url') }}</label>
