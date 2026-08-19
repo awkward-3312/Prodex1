@@ -25,11 +25,11 @@
                     <div class="form-row mb-4">
                         <div class="form-group">
                             <label class="form-label">{{ __('super.testimonials.client_name') }} <span class="text-danger">*</span></label>
-                            <input type="text" name="client_name" class="form-control" value="{{ old('client_name') }}" placeholder="e.g. John Smith" required>
+                            <input type="text" name="client_name" class="form-control" value="{{ old('client_name') }}" placeholder="Ej.: Juan Pérez" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">{{ __('super.testimonials.company_name') }}</label>
-                            <input type="text" name="company_name" class="form-control" value="{{ old('company_name') }}" placeholder="e.g. Acme Corp">
+                            <input type="text" name="company_name" class="form-control" value="{{ old('company_name') }}" placeholder="Ej.: Empresa Ejemplo">
                         </div>
                     </div>
                     <div class="form-group mb-4">
