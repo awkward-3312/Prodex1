@@ -38,6 +38,12 @@ class AppServiceProvider extends ServiceProvider
 
         Schema::defaultStringLength(191);
 
+        // This project keeps its application translation files in the legacy
+        // resources/lang directory. Explicitly register that path with Laravel's
+        // FileLoader so grouped translations such as super.sidebar.* resolve
+        // correctly on the central Super Admin interface.
+        Lang::addPath(resource_path('lang'));
+
         // Spanish is PRODEX's platform baseline. These lines intentionally
         // override residual legacy English/mixed labels that still live in the
         // large historical SuperAdmin language file.
