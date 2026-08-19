@@ -5,9 +5,8 @@ namespace App\Models\Central;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Platform SMS notification templates, managed by the super admin like the
- * email templates. Bodies are plain text with {company} {plan} {date} {days}
- * {app} placeholders (same set the subscription-reminder command substitutes).
+ * Plantillas SMS de notificaciones de la plataforma, administradas por el
+ * SuperAdmin. Los cuerpos son texto plano con variables reemplazables.
  */
 class SmsTemplate extends Model
 {
@@ -24,11 +23,11 @@ class SmsTemplate extends Model
     ];
 
     public const AVAILABLE_VARIABLES = [
-        '{company}' => 'Tenant company name',
-        '{plan}'    => 'Subscription plan name',
-        '{date}'    => 'Expiry / trial end date',
-        '{days}'    => 'Days remaining',
-        '{app}'     => 'Application name',
+        '{company}' => 'Nombre de la empresa del tenant',
+        '{plan}'    => 'Nombre del plan de suscripción',
+        '{date}'    => 'Fecha de vencimiento o fin de prueba',
+        '{days}'    => 'Días restantes',
+        '{app}'     => 'Nombre de la aplicación',
     ];
 
     protected $fillable = [
@@ -47,26 +46,16 @@ class SmsTemplate extends Model
         return $this->hasMany(SmsTemplateTranslation::class, 'sms_template_id');
     }
 
-    /**
-     * Get the translation for a given locale, or null if not found.
-     */
     public function getTranslation(string $locale): ?SmsTemplateTranslation
     {
         return $this->translations->firstWhere('locale', $locale);
     }
 
-    /**
-     * Replace placeholders with actual values and return the rendered message.
-     * Falls back to the default body if no translation exists for the locale.
-     */
     public function render(array $variables, ?string $locale = null): string
     {
         return strtr($this->resolveBody($locale), $variables);
     }
 
-    /**
-     * Get the body for a locale, falling back to the default template.
-     */
     protected function resolveBody(?string $locale): string
     {
         if ($locale) {
@@ -79,11 +68,6 @@ class SmsTemplate extends Model
         return $this->body;
     }
 
-    /**
-     * Resolve the message body for a trigger and locale. Returns $fallback
-     * when the template is missing or deactivated, so legacy behavior (the
-     * General Settings SMS texts) is preserved.
-     */
     public static function bodyFor(string $triggerKey, ?string $locale, string $fallback): string
     {
         $template = static::with('translations')
