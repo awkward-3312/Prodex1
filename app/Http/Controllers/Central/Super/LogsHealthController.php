@@ -132,7 +132,7 @@ class LogsHealthController extends Controller
         ]);
     }
 
-    public function resolve(Request $request, SystemLog $log): JsonResponse
+    public function resolve(Request $request, string $log): JsonResponse
     {
         $request->validate([
             'note' => ['nullable', 'string', 'max:2000'],
@@ -140,7 +140,35 @@ class LogsHealthController extends Controller
 
         $user = Auth::guard('central')->user();
 
-        $log->update([
+        if ($log === 'all') {
+            $query = SystemLog::query()->visible()->unresolved();
+            $count = $query->count();
+
+            if ($count === 0) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'No hay registros sin resolver.',
+                    'count' => 0,
+                ]);
+            }
+
+            $query->update([
+                'status'          => SystemLog::STATUS_RESOLVED,
+                'resolved_at'     => now(),
+                'resolved_by'     => $user?->id,
+                'resolution_note' => $request->input('note') ?: 'Resuelto en lote desde Registros y salud del sistema.',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$count} registros fueron marcados como resueltos.",
+                'count' => $count,
+            ]);
+        }
+
+        $systemLog = SystemLog::findOrFail($log);
+
+        $systemLog->update([
             'status'          => SystemLog::STATUS_RESOLVED,
             'resolved_at'     => now(),
             'resolved_by'     => $user?->id,
