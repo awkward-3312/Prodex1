@@ -2,6 +2,11 @@
   <div class="footer_wrap">
     <div class="flex-grow-1"></div>
     <div class="app-footer" v-if="currentUser">
+      <div class="row">
+        <div class="col-12 col-md-9">
+          <p><strong>PRODEX</strong></p>
+        </div>
+      </div>
       <div class="footer-bottom border-top pt-3 d-flex flex-column flex-sm-row align-items-center w-100">
         <div class="d-flex align-items-center">
           <img
@@ -21,7 +26,8 @@
             height="60"
           >
           <div>
-            <p class="m-0"><strong>PRODEX</strong> &copy; {{ new Date().getFullYear() }} Desarrollado por PRODEX</p>
+            <p class="m-0">&copy; {{ new Date().getFullYear() }} Desarrollado por PRODEX</p>
+            <p class="m-0">All rights reserved - v1.3</p>
           </div>
         </div>
       </div>
