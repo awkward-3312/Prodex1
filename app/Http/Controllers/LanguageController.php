@@ -11,16 +11,12 @@ class LanguageController extends Controller
 {
     public function load_language(Request $request)
     {
-        $languages = Language::where('is_active', true)->get(['name', 'locale', 'flag']);
-
-        return response()->json($languages);
-
+        return response()->json(Language::where('is_active', true)->get(['name', 'locale', 'flag']));
     }
 
     public function index(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
-
         return Language::all();
     }
 
@@ -31,18 +27,14 @@ class LanguageController extends Controller
         $request->validate([
             'name' => 'required|string|max:100',
             'locale' => 'required|string|max:10|unique:languages',
-            // Laravel 12: image rule excludes SVG by default; use file + mimes for SVG support
             'flag' => 'nullable|file|mimes:png,jpg,jpeg,svg|max:2048',
         ]);
 
         if ($request->hasFile('flag')) {
-
             $image = $request->file('flag');
             $filename = rand(11111111, 99999999).$image->getClientOriginalName();
-
             $image_resize = Image::make($image->getRealPath());
             $image_resize->save(public_path('/flags/'.$filename));
-
         } else {
             $filename = 'no-image.png';
         }
@@ -62,18 +54,13 @@ class LanguageController extends Controller
         $request->validate([
             'name' => 'required|string|max:100',
             'locale' => 'required|string|max:10|unique:languages,locale,'.$language->id,
-            // Laravel 12: image rule excludes SVG by default; use file + mimes for SVG support
             'flag' => 'nullable|file|mimes:png,jpg,jpeg,svg|max:2048',
         ]);
 
-        // Handle flag upload
         if ($request->hasFile('flag')) {
-            // Delete old flag if not default
             if ($language->flag && $language->flag !== 'no-image.png') {
                 $oldPath = public_path('/flags/'.$language->flag);
-                if (file_exists($oldPath)) {
-                    @unlink($oldPath);
-                }
+                if (file_exists($oldPath)) @unlink($oldPath);
             }
 
             $image = $request->file('flag');
@@ -82,10 +69,8 @@ class LanguageController extends Controller
             $destination = public_path('/flags/'.$filename);
 
             if ($extension === 'svg') {
-                // Just move the SVG without resizing
                 $image->move(public_path('/flags'), $filename);
             } else {
-                // Resize for raster formats
                 $image_resize = \Image::make($image->getRealPath());
                 $image_resize->save($destination);
             }
@@ -93,7 +78,6 @@ class LanguageController extends Controller
             $filename = $language->flag;
         }
 
-        // Update fields
         $language->update([
             'name' => $request->name,
             'locale' => $request->locale,
@@ -106,41 +90,27 @@ class LanguageController extends Controller
     public function destroy(Request $request, Language $language)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
-
-        // Delete all translations for this language
         Translate::where('locale', $language->locale)->delete();
-
-        // Delete the language itself
         $language->delete();
-
         return response()->json(['success' => true]);
     }
 
     public function setDefault(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
-
-        // Set all languages to not default
         Language::query()->update(['is_default' => false]);
-
-        // Set the selected language as default
         $language = Language::findOrFail($id);
         $language->is_default = true;
         $language->save();
 
-        // Update default_language in settings table
         if ($language->locale) {
             $setting = Setting::first();
-            if ($setting) {
-                $setting->update([
-                    'default_language' => $language->locale,
-                ]);
-            }
+            if ($setting) $setting->update(['default_language' => $language->locale]);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Default language set successfully.',
+            'message' => 'El idioma predeterminado se configuró correctamente.',
             'default_locale' => $language->locale,
         ]);
     }
@@ -148,27 +118,17 @@ class LanguageController extends Controller
     public function setDefaultByLocale(Request $request, $locale)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
-
-        // Set selected language as default
         $language = Language::where('locale', $locale)->firstOrFail();
 
-        // Skip if already default
         if (! $language->is_default) {
-            // Set this one as default
             $language->update(['is_default' => true]);
-
-            // Unset others
-            Language::where('id', '!=', $language->id)
-                ->where('is_default', true)
-                ->update(['is_default' => false]);
-
-            // Update settings
+            Language::where('id', '!=', $language->id)->where('is_default', true)->update(['is_default' => false]);
             Setting::query()->update(['default_language' => $language->locale]);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Default language set successfully.',
+            'message' => 'El idioma predeterminado se configuró correctamente.',
             'default_locale' => $language->locale,
         ]);
     }
@@ -176,18 +136,12 @@ class LanguageController extends Controller
     public function setLocaleActive(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
-
-        // Find language by ID
         $language = Language::where('id', $id)->firstOrFail();
-
-        // Toggle the is_active value
-        $language->update([
-            'is_active' => ! $language->is_active,
-        ]);
+        $language->update(['is_active' => ! $language->is_active]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Updated successfully.',
+            'message' => 'El idioma se actualizó correctamente.',
             'new_status' => $language->is_active,
         ]);
     }
@@ -200,9 +154,7 @@ class LanguageController extends Controller
         $page = (int) $request->get('page', 1);
         $search = $request->get('search');
 
-        // Step 1: Get all EN keys
         $enKeysQuery = Translate::where('locale', 'en');
-
         if ($search) {
             $enKeysQuery->where(function ($q) use ($search) {
                 $q->where('key', 'like', "%$search%")
@@ -213,7 +165,6 @@ class LanguageController extends Controller
         $enKeys = $enKeysQuery->orderBy('id', 'desc')->get();
         $enKeyList = $enKeys->pluck('key')->toArray();
 
-        // Step 2: Get all locale-specific keys (not in EN)
         $localeExtraKeys = Translate::where('locale', $locale)
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($q) use ($search) {
@@ -232,9 +183,7 @@ class LanguageController extends Controller
                 ];
             });
 
-        // Step 3: Merge EN + values from locale
         $localeTranslations = Translate::where('locale', $locale)->pluck('value', 'key');
-
         $mergedFromEN = $enKeys->map(function ($item) use ($locale, $localeTranslations) {
             return [
                 'id' => $item->id,
@@ -244,14 +193,10 @@ class LanguageController extends Controller
             ];
         });
 
-        // Step 4: Combine all
         $combined = $mergedFromEN->merge($localeExtraKeys)->sortByDesc('id')->values();
-
-        // Step 5: Paginate manually
         $total = $combined->count();
         $offset = ($page - 1) * $perPage;
         $paginated = $combined->slice($offset, $perPage)->values();
-
         $language = Language::where('locale', $locale)->first()->name;
 
         return response()->json([
@@ -266,7 +211,6 @@ class LanguageController extends Controller
     public function updateOrInsert(Request $request, $locale)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
-
         $request->validate([
             'key' => 'required|string|max:255',
             'value' => 'nullable|string',
@@ -278,7 +222,7 @@ class LanguageController extends Controller
         );
 
         return response()->json([
-            'message' => 'Translation saved successfully.',
+            'message' => 'La traducción se guardó correctamente.',
             'data' => $translation,
         ]);
     }
@@ -286,30 +230,19 @@ class LanguageController extends Controller
     public function delete_translate(Request $request, $locale, $key)
     {
         $this->authorizeForUser($request->user('api'), 'translations_settings', Setting::class);
-
-        // Try to find the translation entry by locale and key
-        $translation = Translate::where('locale', $locale)
-            ->where('key', $key)
-            ->first();
+        $translation = Translate::where('locale', $locale)->where('key', $key)->first();
 
         if (! $translation) {
-            return response()->json([
-                'message' => 'Translation not found.',
-            ], 404);
+            return response()->json(['message' => 'No se encontró la traducción.'], 404);
         }
 
-        // Prevent deleting default/original keys
         if ($translation->is_default) {
             return response()->json([
-                'message' => 'You cannot delete a default/original translation key.',
+                'message' => 'No puedes eliminar una clave de traducción predeterminada u original.',
             ], 403);
         }
 
-        // Delete the translation
         $translation->delete();
-
-        return response()->json([
-            'message' => 'Translation deleted successfully.',
-        ]);
+        return response()->json(['message' => 'La traducción se eliminó correctamente.']);
     }
 }
