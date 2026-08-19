@@ -33,7 +33,7 @@
 <script>
 export default {
   metaInfo: {
-    title: "Store Subscribers"
+    title: "Suscriptores de la tienda"
   },
   data () {
     return {
@@ -42,7 +42,7 @@ export default {
       totalRows: 0,
       columns: [
         { label: this.$t('Email'), field: 'email', sortable: true },
-        { label: this.$t('Subscribed At'), field: 'created_at', sortable: true },
+        { label: 'Fecha de suscripción', field: 'created_at', sortable: true },
         { label: this.$t('Actions'), field: 'actions' }
       ],
       serverParams: { page: 1, perPage: 10, sort: [{ field: 'created_at', type: 'desc' }] }
