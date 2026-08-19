@@ -18,7 +18,7 @@ class NewsletterController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('Subscribed successfully'),
+            'message' => 'Suscripción realizada correctamente',
             'subscriber' => $sub,
         ]);
     }
