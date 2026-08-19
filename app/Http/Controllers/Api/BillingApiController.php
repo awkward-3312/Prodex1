@@ -17,16 +17,13 @@ use Illuminate\Support\Facades\Log;
 
 class BillingApiController extends Controller
 {
-    /**
-     * Check if the current user has billing access (owner = id 1, or has billing_view permission).
-     */
     private function authorizeBilling(): void
     {
         $user = auth()->user();
         if ($user && ($user->id === 1 || $this->hasBillingPermission($user))) {
             return;
         }
-        abort(403, 'You are not authorized to access billing.');
+        abort(403, 'No estás autorizado para acceder a facturación.');
     }
 
     private function hasBillingPermission($user): bool
@@ -43,15 +40,11 @@ class BillingApiController extends Controller
         return false;
     }
 
-    /**
-     * GET /api/billing/current-plan
-     */
     public function currentPlan(): JsonResponse
     {
         $this->authorizeBilling();
         $tenant = tenant();
 
-        // Prefer the active/trial subscription as the "current" one.
         $activeSub = TenantSubscription::with('plan')
             ->where('tenant_id', $tenant->id)
             ->whereIn('status', [
@@ -62,14 +55,12 @@ class BillingApiController extends Controller
             ->latest()
             ->first();
 
-        // Check for a pending upgrade (a newer pending subscription with a different plan).
         $pendingSub = TenantSubscription::with('plan')
             ->where('tenant_id', $tenant->id)
             ->where('status', TenantSubscription::STATUS_PENDING)
             ->latest()
             ->first();
 
-        // If no active subscription, fall back to the latest subscription of any status.
         $subscription = $activeSub ?? $pendingSub ?? TenantSubscription::with('plan')
             ->where('tenant_id', $tenant->id)
             ->latest()
@@ -86,8 +77,6 @@ class BillingApiController extends Controller
         }
 
         $plan = $subscription->plan;
-
-        // Build pending upgrade info only when there is an active sub AND a separate pending sub.
         $pendingUpgrade = null;
         if ($activeSub && $pendingSub && $pendingSub->id !== $activeSub->id) {
             $pendingPlan = $pendingSub->plan;
@@ -135,9 +124,6 @@ class BillingApiController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/billing/plans
-     */
     public function plans(): JsonResponse
     {
         $this->authorizeBilling();
@@ -148,7 +134,6 @@ class BillingApiController extends Controller
             ->latest()
             ->first();
 
-        // Check for a pending upgrade subscription.
         $pendingSub = TenantSubscription::with('plan')
             ->where('tenant_id', $tenant->id)
             ->where('status', TenantSubscription::STATUS_PENDING)
@@ -157,7 +142,6 @@ class BillingApiController extends Controller
 
         $hasPendingUpgrade = $currentSub && $pendingSub && $pendingSub->id !== $currentSub->id;
 
-        // Show public plans + the tenant's current plan (even if private)
         $plans = Plan::where('is_active', true)
             ->where(function ($q) use ($currentSub) {
                 $q->where('is_private', false);
@@ -202,22 +186,19 @@ class BillingApiController extends Controller
         $this->authorizeBilling();
         $gateways = PaymentGatewayFactory::getAvailableGateways();
 
-        // Add Offline / Bank Transfer option
         $gateways['offline'] = [
             'key'   => 'offline',
-            'label' => 'Bank Transfer',
+            'label' => 'Transferencia bancaria',
             'icon'  => 'bi-bank',
             'color' => '#0d9488',
         ];
 
         $tenant = tenant();
-
         $currentSub = TenantSubscription::where('tenant_id', $tenant->id)
             ->whereIn('status', [TenantSubscription::STATUS_ACTIVE, TenantSubscription::STATUS_TRIAL])
             ->latest()
             ->first();
 
-        // Check for a pending upgrade.
         $pendingSub = TenantSubscription::with('plan')
             ->where('tenant_id', $tenant->id)
             ->where('status', TenantSubscription::STATUS_PENDING)
@@ -225,10 +206,9 @@ class BillingApiController extends Controller
             ->first();
 
         $hasPendingUpgrade = $currentSub && $pendingSub && $pendingSub->id !== $currentSub->id;
-
         $settings       = GeneralSetting::instance();
-        $systemCurrency = $settings->currency_code ?? 'USD';
-        $currencySymbol = $settings->currency_symbol ?? '$';
+        $systemCurrency = $settings->currency_code ?? 'HNL';
+        $currencySymbol = $settings->currency_symbol ?? 'L';
 
         return response()->json([
             'plan' => [
@@ -253,10 +233,6 @@ class BillingApiController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/billing/offline-payment
-     * Submits an offline payment request (pending approval).
-     */
     public function offlinePayment(Request $request): JsonResponse
     {
         $this->authorizeBilling();
@@ -264,11 +240,10 @@ class BillingApiController extends Controller
         $request->validate([
             'plan_id'        => 'required|integer',
             'billing_cycle'  => 'required|in:monthly,yearly',
-            'offline_method' => 'required|string|max:50', // e.g. bank_transfer, cash, check
+            'offline_method' => 'required|string|max:50',
             'payment_proof'  => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
         ]);
 
-        // Store proof of payment
         $proofPath = null;
         if ($request->hasFile('payment_proof')) {
             $uploadDir = upload_public_path('payment-proofs');
@@ -284,31 +259,21 @@ class BillingApiController extends Controller
         $plan = Plan::where('is_active', true)->findOrFail($request->plan_id);
         $tenant = tenant();
         $cycle  = $request->billing_cycle;
-
         $amount = $plan->getPriceForCycle($cycle);
 
-        // Block if there is already a pending upgrade.
-        // Only a genuinely active subscription counts — a row still marked
-        // "active" whose ends_at has already passed is effectively expired and
-        // must be treated as a renewal, not an upgrade, to avoid duplicate rows.
         $activeSub = TenantSubscription::where('tenant_id', $tenant->id)
             ->whereIn('status', [TenantSubscription::STATUS_ACTIVE, TenantSubscription::STATUS_TRIAL])
-            ->latest()
-            ->get()
-            ->first(fn (TenantSubscription $sub) => $sub->isActive());
+            ->latest()->get()->first(fn (TenantSubscription $sub) => $sub->isActive());
         $existingPending = TenantSubscription::where('tenant_id', $tenant->id)
-            ->where('status', TenantSubscription::STATUS_PENDING)
-            ->latest()
-            ->first();
+            ->where('status', TenantSubscription::STATUS_PENDING)->latest()->first();
 
         if ($activeSub && $existingPending && $existingPending->id !== $activeSub->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'You already have a pending upgrade request. Please wait for admin approval or cancel it first.',
+                'message' => 'Ya tienes una solicitud de cambio de plan pendiente. Espera la aprobación del administrador o cancélala primero.',
             ], 422);
         }
 
-        // Reuse existing pending subscription or create a new one.
         if ($existingPending) {
             $existingPending->update([
                 'plan_id'       => $plan->id,
@@ -318,11 +283,8 @@ class BillingApiController extends Controller
                 'starts_at'     => $existingPending->starts_at ?? now(),
             ]);
             $subscription = $existingPending;
-
-            // Supersede any old pending payments on this subscription.
             TenantBillingPayment::where('tenant_subscription_id', $subscription->id)
-                ->where('status', TenantBillingPayment::STATUS_PENDING)
-                ->get()
+                ->where('status', TenantBillingPayment::STATUS_PENDING)->get()
                 ->each(fn (TenantBillingPayment $old) => $old->markSuperseded());
         } else {
             $subscription = TenantSubscription::create([
@@ -355,19 +317,14 @@ class BillingApiController extends Controller
 
         return response()->json([
             'success'    => true,
-            'message'    => 'Offline payment request submitted successfully! It is pending admin approval.',
+            'message'    => 'La solicitud de pago por transferencia se envió correctamente y está pendiente de aprobación.',
             'payment_id' => $payment->id,
         ]);
     }
 
-    /**
-     * POST /api/billing/checkout
-     * Creates subscription + payment, returns gateway redirect URL.
-     */
     public function checkout(Request $request): JsonResponse
     {
         $this->authorizeBilling();
-
         $request->validate([
             'plan_id'       => 'required|integer',
             'gateway'       => 'required|string',
@@ -379,31 +336,21 @@ class BillingApiController extends Controller
         $cycle   = $request->billing_cycle;
         $gateway = $request->gateway;
         $amount  = $plan->getPriceForCycle($cycle);
-
         $systemCurrency = GeneralSetting::currencyCode();
 
-        // Block if there is already a pending upgrade with an active subscription.
-        // Only a genuinely active subscription counts — a row still marked
-        // "active" whose ends_at has already passed is effectively expired and
-        // must be treated as a renewal, not an upgrade, to avoid duplicate rows.
         $activeSub = TenantSubscription::where('tenant_id', $tenant->id)
             ->whereIn('status', [TenantSubscription::STATUS_ACTIVE, TenantSubscription::STATUS_TRIAL])
-            ->latest()
-            ->get()
-            ->first(fn (TenantSubscription $sub) => $sub->isActive());
+            ->latest()->get()->first(fn (TenantSubscription $sub) => $sub->isActive());
         $existingPending = TenantSubscription::where('tenant_id', $tenant->id)
-            ->where('status', TenantSubscription::STATUS_PENDING)
-            ->latest()
-            ->first();
+            ->where('status', TenantSubscription::STATUS_PENDING)->latest()->first();
 
         if ($activeSub && $existingPending && $existingPending->id !== $activeSub->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'You already have a pending upgrade request. Please wait for admin approval or cancel it first.',
+                'message' => 'Ya tienes una solicitud de cambio de plan pendiente. Espera la aprobación del administrador o cancélala primero.',
             ], 422);
         }
 
-        // Resolve currency conversion for the selected gateway
         $currencyConfig = PaymentGatewayFactory::getGatewayCurrencyConfig($gateway);
         $conversion = CurrencyConversionService::resolve(
             $amount,
@@ -412,7 +359,6 @@ class BillingApiController extends Controller
             $currencyConfig['default_currency']
         );
 
-        // Reuse existing pending subscription or create a new one.
         if ($existingPending) {
             $existingPending->update([
                 'plan_id'       => $plan->id,
@@ -422,11 +368,8 @@ class BillingApiController extends Controller
                 'starts_at'     => $existingPending->starts_at ?? now(),
             ]);
             $subscription = $existingPending;
-
-            // Supersede any old pending payments on this subscription.
             TenantBillingPayment::where('tenant_subscription_id', $subscription->id)
-                ->where('status', TenantBillingPayment::STATUS_PENDING)
-                ->get()
+                ->where('status', TenantBillingPayment::STATUS_PENDING)->get()
                 ->each(fn (TenantBillingPayment $old) => $old->markSuperseded());
         } else {
             $subscription = TenantSubscription::create([
@@ -466,19 +409,19 @@ class BillingApiController extends Controller
                 $subscription->update(['status' => TenantSubscription::STATUS_FAILED]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Selected payment gateway is not available.',
+                    'message' => 'La pasarela de pago seleccionada no está disponible.',
                 ], 422);
             }
 
             $successUrl = url('/billing/callback/' . $gateway . '?payment_id=' . $payment->id);
             $cancelUrl  = url('/app/billing/failed?payment_id=' . $payment->id);
+            $cycleLabel = $cycle === 'yearly' ? 'Anual' : 'Mensual';
 
-            // Send gateway_amount + gateway_currency to the payment provider
             $result = $gatewayInstance->createCheckoutUrl(
                 amount:      $conversion['gateway_amount'],
                 currency:    $conversion['gateway_currency'],
-                productName: $plan->name . ' (' . ucfirst($cycle) . ')',
-                description: ucfirst($cycle) . ' subscription',
+                productName: $plan->name . ' (' . $cycleLabel . ')',
+                description: 'Suscripción ' . strtolower($cycleLabel),
                 metadata:    [
                     'payment_id' => $payment->id,
                     'tenant_id'  => $tenant->id,
@@ -508,26 +451,19 @@ class BillingApiController extends Controller
             $payment->update(['status' => TenantBillingPayment::STATUS_FAILED]);
             $subscription->update(['status' => TenantSubscription::STATUS_FAILED]);
 
-            $message = 'Payment initialization failed. Please try again.';
+            $message = 'No se pudo iniciar el pago. Inténtalo nuevamente.';
             if (config('app.debug')) {
-                $message .= ' Debug: ' . $e->getMessage();
+                $message .= ' Depuración: ' . $e->getMessage();
             }
 
-            return response()->json([
-                'success' => false,
-                'message' => $message,
-            ], 422);
+            return response()->json(['success' => false, 'message' => $message], 422);
         }
     }
 
-    /**
-     * GET /api/billing/history
-     */
     public function history(Request $request): JsonResponse
     {
         $this->authorizeBilling();
         $tenant = tenant();
-
         $payments = TenantBillingPayment::with('plan')
             ->where('tenant_id', $tenant->id)
             ->orderByDesc('created_at')
@@ -537,7 +473,7 @@ class BillingApiController extends Controller
             return [
                 'id'             => $p->id,
                 'invoice_number' => $p->invoice_number,
-                'plan_name'      => $p->plan->name ?? 'N/A',
+                'plan_name'      => $p->plan->name ?? 'N/D',
                 'amount'         => (float) $p->amount,
                 'tax'            => (float) $p->tax,
                 'total'          => $p->total,
@@ -561,18 +497,13 @@ class BillingApiController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/billing/payment/{id}
-     */
     public function paymentDetail(int $id): JsonResponse
     {
         $this->authorizeBilling();
-
         $payment = TenantBillingPayment::with('plan', 'subscription')
             ->where('tenant_id', tenant()->id)
             ->findOrFail($id);
 
-        // Verify pending Stripe payments server-side (don't rely solely on webhook)
         if ($payment->status === TenantBillingPayment::STATUS_PENDING
             && $payment->gateway === 'stripe'
             && $payment->gateway_payment_id
@@ -587,12 +518,8 @@ class BillingApiController extends Controller
                             'paid_at'        => now(),
                             'transaction_id' => $verification['transaction_id'] ?? $payment->transaction_id,
                         ]);
-
                         $sub = $payment->subscription;
-                        if ($sub && $sub->status !== TenantSubscription::STATUS_ACTIVE) {
-                            $sub->activate();
-                        }
-
+                        if ($sub && $sub->status !== TenantSubscription::STATUS_ACTIVE) $sub->activate();
                         $payment->refresh()->load(['plan', 'subscription']);
                     }
                 }
@@ -605,7 +532,7 @@ class BillingApiController extends Controller
             'payment' => [
                 'id'                 => $payment->id,
                 'invoice_number'     => $payment->invoice_number,
-                'plan_name'          => $payment->plan->name ?? 'N/A',
+                'plan_name'          => $payment->plan->name ?? 'N/D',
                 'amount'             => (float) $payment->amount,
                 'tax'                => (float) $payment->tax,
                 'total'              => $payment->total,
@@ -629,50 +556,37 @@ class BillingApiController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/billing/retry/{id}
-     */
     public function retryPayment(int $id): JsonResponse
     {
         $this->authorizeBilling();
-
         $payment = TenantBillingPayment::where('tenant_id', tenant()->id)
             ->where('status', TenantBillingPayment::STATUS_FAILED)
             ->findOrFail($id);
-
         return response()->json([
             'plan_id'       => $payment->plan_id,
             'billing_cycle' => $payment->billing_cycle,
         ]);
     }
 
-    /**
-     * POST /api/billing/cancel
-     */
     public function cancelSubscription(): JsonResponse
     {
         $this->authorizeBilling();
         $tenant = tenant();
-
         $subscription = TenantSubscription::where('tenant_id', $tenant->id)
             ->where('status', TenantSubscription::STATUS_ACTIVE)
-            ->latest()
-            ->first();
+            ->latest()->first();
 
         if (! $subscription) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No active subscription found.',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'No se encontró una suscripción activa.'], 422);
         }
 
         $subscription->cancel();
-
         Log::info("Billing: Subscription {$subscription->id} cancelled for tenant {$tenant->id}.");
+        $endDate = $subscription->ends_at?->locale('es')->translatedFormat('d M Y');
 
         return response()->json([
             'success' => true,
-            'message' => 'Subscription cancelled. It will remain active until ' . $subscription->ends_at?->format('M d, Y') . '.',
+            'message' => 'La suscripción fue cancelada. Permanecerá activa hasta ' . ($endDate ?: 'la fecha de finalización') . '.',
             'subscription' => [
                 'id'           => $subscription->id,
                 'status'       => $subscription->status,
@@ -683,85 +597,64 @@ class BillingApiController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/billing/resume
-     */
     public function resumeSubscription(): JsonResponse
     {
         $this->authorizeBilling();
         $tenant = tenant();
-
         $subscription = TenantSubscription::where('tenant_id', $tenant->id)
             ->where('status', TenantSubscription::STATUS_CANCELLED)
-            ->latest()
-            ->first();
+            ->latest()->first();
 
         if (! $subscription || ! $subscription->canResume()) {
             return response()->json([
                 'success' => false,
-                'message' => 'No resumable subscription found. The billing period may have expired.',
+                'message' => 'No se encontró una suscripción que pueda reanudarse. Es posible que el período de facturación ya haya vencido.',
             ], 422);
         }
 
         $subscription->resume();
-
         Log::info("Billing: Subscription {$subscription->id} resumed for tenant {$tenant->id}.");
 
         return response()->json([
             'success' => true,
-            'message' => 'Subscription resumed successfully.',
+            'message' => 'La suscripción se reanudó correctamente.',
             'subscription' => [
-                'id'     => $subscription->id,
-                'status' => $subscription->status,
+                'id'      => $subscription->id,
+                'status'  => $subscription->status,
                 'ends_at' => $subscription->ends_at?->toIso8601String(),
             ],
         ]);
     }
 
-    /**
-     * POST /api/billing/cancel-upgrade
-     */
     public function cancelPendingUpgrade(): JsonResponse
     {
         $this->authorizeBilling();
         $tenant = tenant();
-
         $pendingSub = TenantSubscription::where('tenant_id', $tenant->id)
             ->where('status', TenantSubscription::STATUS_PENDING)
-            ->latest()
-            ->first();
+            ->latest()->first();
 
         if (! $pendingSub) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No pending upgrade found.',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'No se encontró un cambio de plan pendiente.'], 422);
         }
 
-        // Supersede any pending payments linked to this subscription.
         TenantBillingPayment::where('tenant_subscription_id', $pendingSub->id)
-            ->where('status', TenantBillingPayment::STATUS_PENDING)
-            ->get()
+            ->where('status', TenantBillingPayment::STATUS_PENDING)->get()
             ->each(fn (TenantBillingPayment $p) => $p->markFailed());
 
         $pendingSub->update(['status' => TenantSubscription::STATUS_CANCELLED]);
-
         Log::info("Billing: Pending upgrade subscription {$pendingSub->id} cancelled for tenant {$tenant->id}.");
 
         return response()->json([
             'success' => true,
-            'message' => 'Pending upgrade request has been cancelled.',
+            'message' => 'La solicitud de cambio de plan pendiente fue cancelada.',
         ]);
     }
 
-    /**
-     * GET /api/billing/invoices
-     */
     public function invoices(Request $request): JsonResponse
     {
         $this->authorizeBilling();
         $tenant = tenant();
-
         $payments = TenantBillingPayment::with('plan')
             ->where('tenant_id', $tenant->id)
             ->where('status', TenantBillingPayment::STATUS_PAID)
@@ -772,7 +665,7 @@ class BillingApiController extends Controller
             return [
                 'id'             => $p->id,
                 'invoice_number' => $p->invoice_number,
-                'plan_name'      => $p->plan->name ?? 'N/A',
+                'plan_name'      => $p->plan->name ?? 'N/D',
                 'amount'         => (float) $p->amount,
                 'tax'            => (float) $p->tax,
                 'total'          => $p->total,
@@ -795,13 +688,9 @@ class BillingApiController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/billing/invoices/{id}/download
-     */
     public function downloadInvoice(int $id)
     {
         $this->authorizeBilling();
-
         $payment = TenantBillingPayment::with('plan', 'subscription', 'tenant')
             ->where('tenant_id', tenant()->id)
             ->where('status', TenantBillingPayment::STATUS_PAID)
@@ -814,37 +703,21 @@ class BillingApiController extends Controller
             'tenant'       => $payment->tenant,
         ];
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.billing_invoice_pdf', $data)
-            ->setPaper('a4');
-
-        $filename = 'Invoice-' . ($payment->invoice_number ?? $payment->id) . '.pdf';
-
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.billing_invoice_pdf', $data)->setPaper('a4');
+        $filename = 'Factura-' . ($payment->invoice_number ?? $payment->id) . '.pdf';
         return $pdf->download($filename);
     }
 
-    /**
-     * GET /api/billing/plan-usage
-     * Returns the current plan's features and usage limits with current counts.
-     */
     public function planUsage(): JsonResponse
     {
         $this->authorizeBilling();
         $summary = app(\App\Services\TenantLimitsService::class)->getPlanSummary();
-
         return response()->json($summary);
     }
 
-    /**
-     * POST /api/billing/paypal/capture
-     *
-     * Server-side capture for PayPal orders.  Called by the SPA after the
-     * user returns from PayPal.  Guards: tenant ownership, pending status,
-     * PayPal gateway, order age < 3 h.  The webhook remains as backup.
-     */
     public function capturePaypal(Request $request): JsonResponse
     {
         $this->authorizeBilling();
-
         $request->validate([
             'payment_id' => 'required|integer',
             'token'      => 'required|string|max:50',
@@ -855,48 +728,25 @@ class BillingApiController extends Controller
             ->with(['plan', 'subscription'])
             ->find($request->payment_id);
 
-        if (! $payment) {
-            return response()->json(['captured' => false, 'message' => 'Payment not found.'], 404);
-        }
+        if (! $payment) return response()->json(['captured' => false, 'message' => 'No se encontró el pago.'], 404);
+        if ($payment->status === TenantBillingPayment::STATUS_PAID) return response()->json(['captured' => true]);
+        if ($payment->gateway !== 'paypal') return response()->json(['captured' => false, 'message' => 'Este pago no corresponde a PayPal.'], 422);
+        if ($payment->status !== TenantBillingPayment::STATUS_PENDING) return response()->json(['captured' => false, 'message' => 'Este pago no puede ser capturado.'], 422);
+        if ($payment->created_at->lt(now()->subHours(3))) return response()->json(['captured' => false, 'message' => 'La orden venció.'], 422);
 
-        if ($payment->status === TenantBillingPayment::STATUS_PAID) {
-            return response()->json(['captured' => true]);
-        }
-
-        if ($payment->gateway !== 'paypal') {
-            return response()->json(['captured' => false, 'message' => 'Not a PayPal payment.'], 422);
-        }
-
-        if ($payment->status !== TenantBillingPayment::STATUS_PENDING) {
-            return response()->json(['captured' => false, 'message' => 'Payment is not capturable.'], 422);
-        }
-
-        if ($payment->created_at->lt(now()->subHours(3))) {
-            return response()->json(['captured' => false, 'message' => 'Order expired.'], 422);
-        }
-
-        // Verify the token matches the order we created
         $expectedOrderId = $payment->gateway_payment_id;
         if ($expectedOrderId && $expectedOrderId !== $request->token) {
-            return response()->json(['captured' => false, 'message' => 'Token mismatch.'], 422);
+            return response()->json(['captured' => false, 'message' => 'El token no coincide con la orden.'], 422);
         }
 
         try {
-            /** @var PaypalGateway|null $gateway */
             $gateway = PaymentGatewayFactory::resolve('paypal');
-
-            if (! $gateway) {
-                return response()->json(['captured' => false, 'message' => 'Gateway unavailable.'], 503);
-            }
+            if (! $gateway) return response()->json(['captured' => false, 'message' => 'La pasarela de pago no está disponible.'], 503);
 
             $capture = $gateway->captureOrder($request->token);
-
             if (! $capture['success']) {
-                Log::warning('PayPal API capture: not successful', [
-                    'payment_id' => $payment->id,
-                    'capture'    => $capture,
-                ]);
-                return response()->json(['captured' => false, 'message' => 'Capture not completed.']);
+                Log::warning('PayPal API capture: not successful', ['payment_id' => $payment->id, 'capture' => $capture]);
+                return response()->json(['captured' => false, 'message' => 'La captura del pago no se completó.']);
             }
 
             $payment->update([
@@ -907,28 +757,20 @@ class BillingApiController extends Controller
             ]);
 
             $subscription = $payment->fresh()->subscription;
-            if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-                $subscription->activate();
-            }
+            if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) $subscription->activate();
 
             Log::info("PayPal API capture: payment {$payment->id} confirmed for tenant {$tenant->id}.");
-
             EmailNotificationService::paymentSuccess($tenant, [
                 '{{amount}}' => GeneralSetting::currencySymbol() . number_format((float) $payment->amount, 2),
             ], $subscription);
 
             return response()->json(['captured' => true]);
-
         } catch (\Throwable $e) {
-            Log::error('PayPal API capture exception', [
-                'payment_id' => $payment->id,
-                'error'      => $e->getMessage(),
-            ]);
+            Log::error('PayPal API capture exception', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
             return response()->json([
                 'captured' => false,
-                'message'  => 'Capture failed. The webhook will retry automatically.',
+                'message'  => 'No se pudo capturar el pago. El webhook volverá a intentarlo automáticamente.',
             ], 500);
         }
     }
 }
-
