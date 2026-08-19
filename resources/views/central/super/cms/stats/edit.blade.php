@@ -24,18 +24,18 @@
             <div class="form-row mb-4">
                 <div class="form-group">
                     <label class="form-label">{{ __('super.stats.field_value') }} <span class="text-danger">*</span></label>
-                    <input type="text" name="value" class="form-control" value="{{ old('value', $stat->value) }}" placeholder="e.g. 10K+" required>
+                    <input type="text" name="value" class="form-control" value="{{ old('value', $stat->value) }}" placeholder="Ej.: 10 mil+" required>
                     <p class="form-hint">{{ __('super.stats.value_hint') }}</p>
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ __('super.stats.field_label') }} <span class="text-danger">*</span></label>
-                    <input type="text" name="label" class="form-control" value="{{ old('label', $stat->label) }}" placeholder="e.g. Businesses" required>
+                    <input type="text" name="label" class="form-control" value="{{ old('label', $stat->label) }}" placeholder="Ej.: Empresas" required>
                 </div>
             </div>
             <div class="form-row mb-4">
                 <div class="form-group">
                     <label class="form-label">{{ __('super.stats.field_icon') }}</label>
-                    <input type="text" name="icon" class="form-control" value="{{ old('icon', $stat->icon) }}" placeholder="e.g. bi bi-building">
+                    <input type="text" name="icon" class="form-control" value="{{ old('icon', $stat->icon) }}" placeholder="Ej.: bi bi-building">
                     <p class="form-hint">{{ __('super.stats.icon_hint') }}</p>
                 </div>
                 <div class="form-group">
