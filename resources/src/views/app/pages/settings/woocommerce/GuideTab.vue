@@ -4,144 +4,141 @@
       <div class="d-flex align-items-start">
         <lucide-icon class="mr-3 mt-1" name="info" />
         <div>
-          This guide explains how to connect your WooCommerce store and keep your products,
-          stock, customers and orders in sync. Follow the steps in order the first time you set
-          things up.
+          Esta guía explica cómo conectar tu tienda WooCommerce y mantener sincronizados productos,
+          inventario, clientes y pedidos. La primera vez, sigue los pasos en el orden indicado.
         </div>
       </div>
     </b-alert>
 
-    <!-- Quick steps -->
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
         <lucide-icon class="mr-2" name="rocket" />
-        <strong>Quick start (3 steps)</strong>
+        <strong>Inicio rápido (3 pasos)</strong>
       </div>
       <div class="guide-steps">
         <div class="guide-step">
           <div class="guide-step-num">1</div>
           <div>
-            <div class="guide-step-title">Connect your store</div>
+            <div class="guide-step-title">Conecta tu tienda</div>
             <div class="guide-step-text">
-              Open the <strong>Settings</strong> tab, enter your store URL and WooCommerce API
-              keys, then click <strong>Test connection</strong> until the badge at the top shows
-              <b-badge variant="success">Connected</b-badge>.
+              Abre la pestaña <strong>Configuración</strong>, ingresa la URL de la tienda y las claves
+              de la API de WooCommerce. Luego presiona <strong>Probar conexión</strong> hasta que el
+              indicador superior muestre <b-badge variant="success">Conectado</b-badge>.
             </div>
           </div>
         </div>
         <div class="guide-step">
           <div class="guide-step-num">2</div>
           <div>
-            <div class="guide-step-title">Sync categories &amp; brands first</div>
+            <div class="guide-step-title">Sincroniza primero categorías y marcas</div>
             <div class="guide-step-text">
-              In the <strong>Categories</strong> and <strong>Brands</strong> tabs, run the sync so
-              products land in the right place. Do this before syncing products.
+              En las pestañas <strong>Categorías</strong> y <strong>Marcas</strong>, ejecuta la
+              sincronización para que los productos se asignen correctamente. Hazlo antes de
+              sincronizar productos.
             </div>
           </div>
         </div>
         <div class="guide-step">
           <div class="guide-step-num">3</div>
           <div>
-            <div class="guide-step-title">Sync products &amp; stock</div>
+            <div class="guide-step-title">Sincroniza productos e inventario</div>
             <div class="guide-step-text">
-              Use the <strong>Products</strong> tab to push or pull products, then the
-              <strong>Stock</strong> tab to keep quantities up to date.
+              Usa la pestaña <strong>Productos</strong> para enviar o importar productos y después
+              <strong>Inventario</strong> para mantener actualizadas las existencias.
             </div>
           </div>
         </div>
       </div>
     </b-card>
 
-    <!-- What each tab does -->
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
         <lucide-icon class="mr-2" name="layout-grid" />
-        <strong>What each tab does</strong>
+        <strong>Qué hace cada pestaña</strong>
       </div>
       <div class="guide-grid">
         <div class="guide-item">
           <lucide-icon class="guide-item-icon" name="settings" />
           <div>
-            <div class="guide-item-title">Settings</div>
-            <div class="guide-item-text">Connect your store and check the connection status.</div>
+            <div class="guide-item-title">Configuración</div>
+            <div class="guide-item-text">Conecta la tienda y verifica el estado de la conexión.</div>
           </div>
         </div>
         <div class="guide-item">
           <lucide-icon class="guide-item-icon" name="barcode" />
           <div>
-            <div class="guide-item-title">Products</div>
-            <div class="guide-item-text">Push products to WooCommerce or pull them into Stocky.</div>
+            <div class="guide-item-title">Productos</div>
+            <div class="guide-item-text">Envía productos a WooCommerce o impórtalos a PRODEX.</div>
           </div>
         </div>
         <div class="guide-item">
           <lucide-icon class="guide-item-icon" name="package" />
           <div>
-            <div class="guide-item-title">Stock</div>
-            <div class="guide-item-text">Send current stock quantities to WooCommerce.</div>
+            <div class="guide-item-title">Inventario</div>
+            <div class="guide-item-text">Envía las existencias actuales a WooCommerce.</div>
           </div>
         </div>
         <div class="guide-item">
           <lucide-icon class="guide-item-icon" name="folder" />
           <div>
-            <div class="guide-item-title">Categories</div>
-            <div class="guide-item-text">Match Stocky categories with WooCommerce categories.</div>
+            <div class="guide-item-title">Categorías</div>
+            <div class="guide-item-text">Relaciona las categorías de PRODEX con las de WooCommerce.</div>
           </div>
         </div>
         <div class="guide-item">
           <lucide-icon class="guide-item-icon" name="tag" />
           <div>
-            <div class="guide-item-title">Brands</div>
-            <div class="guide-item-text">Match Stocky brands with WooCommerce brands.</div>
+            <div class="guide-item-title">Marcas</div>
+            <div class="guide-item-text">Relaciona las marcas de PRODEX con las de WooCommerce.</div>
           </div>
         </div>
         <div class="guide-item">
           <lucide-icon class="guide-item-icon" name="user" />
           <div>
-            <div class="guide-item-title">Customers</div>
-            <div class="guide-item-text">Sync customers in either direction.</div>
+            <div class="guide-item-title">Clientes</div>
+            <div class="guide-item-text">Sincroniza clientes en cualquiera de las dos direcciones.</div>
           </div>
         </div>
         <div class="guide-item">
           <lucide-icon class="guide-item-icon" name="shopping-bag" />
           <div>
-            <div class="guide-item-title">Orders</div>
-            <div class="guide-item-text">Import WooCommerce orders into Stocky as sales.</div>
+            <div class="guide-item-title">Pedidos</div>
+            <div class="guide-item-text">Importa pedidos de WooCommerce a PRODEX como ventas.</div>
           </div>
         </div>
         <div class="guide-item">
           <lucide-icon class="guide-item-icon" name="clipboard-list" />
           <div>
-            <div class="guide-item-title">View Logs</div>
-            <div class="guide-item-text">See what happened during each sync, including errors.</div>
+            <div class="guide-item-title">Registros</div>
+            <div class="guide-item-text">Consulta qué ocurrió en cada sincronización, incluidos los errores.</div>
           </div>
         </div>
       </div>
     </b-card>
 
-    <!-- Push vs Pull -->
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
         <lucide-icon class="mr-2" name="arrow-left-right" />
-        <strong>Push vs. Pull — what's the difference?</strong>
+        <strong>Enviar e importar: ¿cuál es la diferencia?</strong>
       </div>
       <div class="guide-grid">
         <div class="guide-item">
           <lucide-icon class="guide-item-icon text-success" name="chevron-up" />
           <div>
-            <div class="guide-item-title">Push (Stocky → WooCommerce)</div>
+            <div class="guide-item-title">Enviar (PRODEX → WooCommerce)</div>
             <div class="guide-item-text">
-              Sends your Stocky products/stock up to your online store. Use this when Stocky is
-              your source of truth.
+              Envía productos e inventario de PRODEX hacia la tienda en línea. Úsalo cuando PRODEX
+              sea la fuente principal de información.
             </div>
           </div>
         </div>
         <div class="guide-item">
           <lucide-icon class="guide-item-icon text-primary" name="chevron-down" />
           <div>
-            <div class="guide-item-title">Pull (WooCommerce → Stocky)</div>
+            <div class="guide-item-title">Importar (WooCommerce → PRODEX)</div>
             <div class="guide-item-text">
-              Brings products/customers/orders from your online store into Stocky. Use this to
-              import an existing store.
+              Trae productos, clientes y pedidos de la tienda hacia PRODEX. Úsalo para incorporar
+              una tienda que ya tiene información.
             </div>
           </div>
         </div>
@@ -150,178 +147,125 @@
         <div class="d-flex align-items-start">
           <lucide-icon class="mr-2 mt-1" name="lightbulb" />
           <div>
-            <strong>Tip:</strong> Products are matched by <strong>SKU</strong>. Make sure each
-            product has a unique SKU/code in both systems to avoid duplicates.
+            <strong>Consejo:</strong> los productos se relacionan por <strong>SKU</strong>. Asegúrate
+            de que cada producto tenga un SKU/código único en ambos sistemas para evitar duplicados.
           </div>
         </div>
       </b-alert>
     </b-card>
 
-    <!-- Understanding progress -->
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
         <lucide-icon class="mr-2" name="activity" />
-        <strong>Understanding sync progress</strong>
+        <strong>Cómo funciona el progreso de sincronización</strong>
       </div>
       <ul class="guide-list">
-        <li>
-          Large syncs run in the background in small <strong>batches</strong>, so the progress bar
-          may pause briefly between batches — this is normal.
-        </li>
-        <li>
-          Keep this page open while a sync is running. If you close the tab, the sync may pause
-          until you reopen it (unless your administrator has set up a background worker).
-        </li>
-        <li>
-          You can stop a running sync at any time with the <strong>Stop</strong> button; already
-          synced items are kept.
-        </li>
-        <li>
-          Images can make product syncs slower because each image is uploaded to your store.
-        </li>
+        <li>Las sincronizaciones grandes se procesan en segundo plano por <strong>lotes</strong>; es normal que la barra de progreso haga pausas breves entre lotes.</li>
+        <li>Mantén esta página abierta mientras se ejecuta una sincronización si no hay un worker de colas configurado en el servidor.</li>
+        <li>Puedes detener una sincronización con el botón <strong>Detener</strong>; los artículos que ya fueron sincronizados se conservan.</li>
+        <li>Las imágenes pueden hacer más lenta la sincronización porque cada archivo debe subirse a la tienda.</li>
       </ul>
     </b-card>
 
-    <!-- Admin: keep syncs running automatically -->
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
         <lucide-icon class="mr-2" name="server-cog" />
-        <strong>For administrators: keep syncs running automatically</strong>
+        <strong>Para administradores: mantener las sincronizaciones funcionando automáticamente</strong>
       </div>
 
       <b-alert variant="warning" show class="mb-4">
         <div class="d-flex align-items-start">
           <lucide-icon class="mr-2 mt-1" name="alert-triangle" />
           <div>
-            Large syncs run in the background in batches. A <strong>queue worker</strong> must be
-            running on the server, otherwise a sync imports a few items and then stops at
-            <code>queued_next_batch</code>. Choose <strong>one</strong> of the three options below
-            (they can also run together).
+            Las sincronizaciones grandes se procesan por lotes en segundo plano. Debe existir un
+            <strong>worker de colas</strong> en ejecución; de lo contrario, la sincronización puede
+            detenerse en <code>queued_next_batch</code>. Puedes usar una de las siguientes opciones.
           </div>
         </div>
       </b-alert>
 
-      <!-- Option A -->
       <div class="guide-option">
         <div class="guide-option-head">
-          <b-badge variant="success" class="guide-option-badge">Recommended</b-badge>
-          <span class="guide-option-title">Option A — Persistent worker (Supervisor)</span>
+          <b-badge variant="success" class="guide-option-badge">Recomendado</b-badge>
+          <span class="guide-option-title">Opción A — Worker persistente con Supervisor</span>
         </div>
         <div class="guide-option-text">
-          Best for a VPS / dedicated / self-hosted server. Supervisor keeps the worker running
-          forever and restarts it automatically. A ready config ships at
-          <code>deploy/supervisor/stocky-queue-worker.conf</code>. It runs:
+          Es la mejor opción para un VPS o servidor propio. Supervisor mantiene el worker activo y
+          lo reinicia automáticamente. PRODEX incluye una configuración preparada en
+          <code>deploy/supervisor/prodex-queue-worker.conf</code>.
         </div>
         <pre class="guide-code"><code>php artisan queue:work database \
   --queue=woocommerce-sync,woocommerce-stock,default \
   --sleep=1 --tries=1 --timeout=1200 --max-time=3600</code></pre>
-        <div class="guide-option-text">
-          Install &amp; start:
-        </div>
-        <pre class="guide-code"><code>sudo cp deploy/supervisor/stocky-queue-worker.conf /etc/supervisor/conf.d/
+        <div class="guide-option-text">Instalación y arranque:</div>
+        <pre class="guide-code"><code>sudo cp deploy/supervisor/prodex-queue-worker.conf /etc/supervisor/conf.d/
 sudo supervisorctl reread &amp;&amp; sudo supervisorctl update
-sudo supervisorctl start stocky-queue-worker:*</code></pre>
+sudo supervisorctl start prodex-queue-worker:*</code></pre>
         <div class="guide-option-note">
-          <lucide-icon class="mr-1" name="info" /> After every deploy, run
-          <code>php artisan queue:restart</code> so the worker picks up new code.
+          <lucide-icon class="mr-1" name="info" /> Después de desplegar código nuevo, ejecuta
+          <code>php artisan queue:restart</code> para que el worker cargue los cambios.
         </div>
       </div>
 
-      <!-- Option B -->
       <div class="guide-option">
         <div class="guide-option-head">
-          <b-badge variant="primary" class="guide-option-badge">Shared hosting</b-badge>
-          <span class="guide-option-title">Option B — Cron scheduler</span>
+          <b-badge variant="primary" class="guide-option-badge">Hosting compartido</b-badge>
+          <span class="guide-option-title">Opción B — Programador Cron</span>
         </div>
         <div class="guide-option-text">
-          No root access or Supervisor? Add a <strong>single</strong> cron entry that runs the
-          Laravel scheduler every minute. The app already drains the sync queues from there.
+          Si no tienes acceso root o Supervisor, configura una entrada cron que ejecute el
+          programador de Laravel cada minuto. La aplicación procesa las colas desde allí.
         </div>
-        <pre class="guide-code"><code>* * * * * cd /path-to-app &amp;&amp; php artisan schedule:run >> /dev/null 2>&amp;1</code></pre>
+        <pre class="guide-code"><code>* * * * * cd /ruta-de-la-app &amp;&amp; php artisan schedule:run >> /dev/null 2>&amp;1</code></pre>
         <div class="guide-option-note">
-          <lucide-icon class="mr-1" name="info" /> Slower than Option A (advances about once per
-          minute) but needs no extra software.
+          <lucide-icon class="mr-1" name="info" /> Es más lento que Supervisor, pero no requiere software adicional.
         </div>
       </div>
 
-      <!-- Option C -->
       <div class="guide-option">
         <div class="guide-option-head">
           <b-badge variant="secondary" class="guide-option-badge">Manual</b-badge>
-          <span class="guide-option-title">Option C — Manual / no setup</span>
+          <span class="guide-option-title">Opción C — Sin configuración adicional</span>
         </div>
         <div class="guide-option-text">
-          With no worker and no cron, syncs still progress <strong>while this page stays open</strong>
-          (each refresh runs one batch). Closing the tab pauses the sync. Good for small, occasional
-          syncs. You can also run a full sync from the command line, which finishes on its own:
+          Sin worker ni cron, las sincronizaciones pueden avanzar mientras esta página permanezca
+          abierta. Es útil para sincronizaciones pequeñas y ocasionales. También puedes ejecutar:
         </div>
         <pre class="guide-code"><code>php artisan woocommerce:sync --scope=all
 php artisan woocommerce:sync --scope=products --only-unsynced</code></pre>
       </div>
 
       <div class="guide-option-note mt-2">
-        <lucide-icon class="mr-1" name="book-open" /> Full step-by-step guide (with systemd
-        alternative and troubleshooting): <code>deploy/QUEUE_WORKER_SETUP.md</code>.
+        <lucide-icon class="mr-1" name="book-open" /> La guía técnica completa está en
+        <code>deploy/QUEUE_WORKER_SETUP.md</code>.
       </div>
     </b-card>
 
-    <!-- Troubleshooting -->
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
         <lucide-icon class="mr-2" name="life-buoy" />
-        <strong>Troubleshooting</strong>
+        <strong>Solución de problemas</strong>
       </div>
       <div class="guide-faq">
         <div class="guide-faq-item">
-          <div class="guide-faq-q">
-            <lucide-icon class="mr-2" name="help-circle" />
-            The connection badge shows "Disconnected"
-          </div>
-          <div class="guide-faq-a">
-            Re-check your store URL and API keys in the Settings tab. The consumer key/secret must
-            have <strong>Read/Write</strong> permission, and your store must be reachable over the
-            internet.
-          </div>
+          <div class="guide-faq-q"><lucide-icon class="mr-2" name="help-circle" />El indicador de conexión muestra “Desconectado”</div>
+          <div class="guide-faq-a">Revisa la URL y las claves de API en Configuración. La clave y el secreto deben tener permisos de <strong>Lectura/Escritura</strong> y la tienda debe ser accesible desde internet.</div>
         </div>
         <div class="guide-faq-item">
-          <div class="guide-faq-q">
-            <lucide-icon class="mr-2" name="help-circle" />
-            The sync stopped after only a few products
-          </div>
-          <div class="guide-faq-a">
-            Make sure this page stayed open. For unattended/large syncs, ask your administrator to
-            enable a background queue worker so syncs finish on their own.
-          </div>
+          <div class="guide-faq-q"><lucide-icon class="mr-2" name="help-circle" />La sincronización se detuvo después de pocos productos</div>
+          <div class="guide-faq-a">Para sincronizaciones grandes o desatendidas, verifica que el worker de colas esté activo en el servidor.</div>
         </div>
         <div class="guide-faq-item">
-          <div class="guide-faq-q">
-            <lucide-icon class="mr-2" name="help-circle" />
-            Product images aren't appearing in WooCommerce
-          </div>
-          <div class="guide-faq-a">
-            Image uploads need a WordPress <strong>username</strong> and
-            <strong>application password</strong> in the Settings tab.
-          </div>
+          <div class="guide-faq-q"><lucide-icon class="mr-2" name="help-circle" />Las imágenes no aparecen en WooCommerce</div>
+          <div class="guide-faq-a">La carga de imágenes requiere un <strong>usuario</strong> de WordPress y una <strong>contraseña de aplicación</strong> configurados en la pestaña Configuración.</div>
         </div>
         <div class="guide-faq-item">
-          <div class="guide-faq-q">
-            <lucide-icon class="mr-2" name="help-circle" />
-            I see duplicate products in WooCommerce
-          </div>
-          <div class="guide-faq-a">
-            This usually means SKUs don't match between the two systems. Fix the SKUs, then use
-            <strong>Reset products sync</strong> and run the sync again.
-          </div>
+          <div class="guide-faq-q"><lucide-icon class="mr-2" name="help-circle" />Aparecen productos duplicados en WooCommerce</div>
+          <div class="guide-faq-a">Normalmente ocurre cuando los SKU no coinciden. Corrige los SKU y luego restablece la sincronización de productos antes de ejecutarla otra vez.</div>
         </div>
         <div class="guide-faq-item">
-          <div class="guide-faq-q">
-            <lucide-icon class="mr-2" name="help-circle" />
-            Something looks wrong — where do I look?
-          </div>
-          <div class="guide-faq-a">
-            Open the <strong>View Logs</strong> tab. Each sync records what it did and any errors,
-            which helps you or your administrator find the cause.
-          </div>
+          <div class="guide-faq-q"><lucide-icon class="mr-2" name="help-circle" />Algo salió mal, ¿dónde reviso?</div>
+          <div class="guide-faq-a">Abre la pestaña <strong>Registros</strong>. Cada sincronización guarda lo que realizó y los errores encontrados.</div>
         </div>
       </div>
     </b-card>
@@ -329,10 +273,7 @@ php artisan woocommerce:sync --scope=products --only-unsynced</code></pre>
     <b-alert variant="secondary" show class="mb-0">
       <div class="d-flex align-items-start">
         <lucide-icon class="mr-2 mt-1" name="shield-check" />
-        <div>
-          <strong>Safe to retry:</strong> Running a sync again won't duplicate items that are
-          already linked — it only updates or adds what's missing.
-        </div>
+        <div><strong>Es seguro reintentar:</strong> ejecutar nuevamente una sincronización no duplica los artículos ya vinculados; actualiza lo existente o agrega lo que falta.</div>
       </div>
     </b-alert>
   </div>
@@ -342,7 +283,6 @@ php artisan woocommerce:sync --scope=products --only-unsynced</code></pre>
 export default {
   name: 'GuideTab',
   mounted() {
-    // No data to load; signal the parent so the tab spinner clears.
     this.$emit('ready');
   },
 };
@@ -364,7 +304,7 @@ export default {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #7f54b3; /* WooCommerce purple */
+  background: #7f54b3;
   color: #fff;
   display: flex;
   align-items: center;
