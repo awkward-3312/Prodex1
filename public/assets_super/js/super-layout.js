@@ -82,29 +82,36 @@
         }
     });
 
-    // Bank account manager belongs to the Settings section. Add it directly
-    // after General Settings whenever that permission-protected link exists.
-    // This keeps the new screen discoverable without duplicating permission
-    // logic in the browser: users without Settings permission never receive
-    // the General Settings link, so this entry is not injected for them.
-    if (sidebarNav && !sidebarNav.querySelector('a[href="/super/settings/bank-accounts"]')) {
-        var generalSettingsLink = sidebarNav.querySelector('a[href="/super/settings"]');
-        if (!generalSettingsLink) {
-            generalSettingsLink = sidebarNav.querySelector('a[href$="/super/settings"]');
+    // Keep the multiple-bank-account manager visible in the Settings section.
+    // General Settings can have different route paths across PRODEX versions,
+    // so locate it by its position: it is the first settings nav item after the
+    // CONFIGURACIÓN section label. This avoids depending on a hard-coded URL.
+    if (sidebarNav && !sidebarNav.querySelector('a[href$="/super/settings/bank-accounts"]')) {
+        var labels = sidebarNav.querySelectorAll('.sidebar-section-label');
+        var settingsLabel = null;
+        for (var i = 0; i < labels.length; i++) {
+            var labelText = (labels[i].textContent || '').trim().toLowerCase();
+            if (labelText === 'configuración' || labelText === 'settings') {
+                settingsLabel = labels[i];
+                break;
+            }
         }
 
-        if (generalSettingsLink) {
-            var currentPath = window.location.pathname.replace(/\/$/, '');
-            var bankItem = document.createElement('div');
-            bankItem.className = 'nav-item';
-            bankItem.innerHTML =
-                '<a class="nav-link' + (currentPath === '/super/settings/bank-accounts' ? ' active' : '') + '" href="/super/settings/bank-accounts" data-title="Cuentas bancarias">' +
-                    '<i class="bi bi-bank"></i>' +
-                    '<span>Cuentas bancarias</span>' +
-                '</a>';
+        if (settingsLabel) {
+            var generalItem = settingsLabel.nextElementSibling;
+            while (generalItem && !generalItem.classList.contains('nav-item')) {
+                generalItem = generalItem.nextElementSibling;
+            }
 
-            var generalItem = generalSettingsLink.closest('.nav-item');
             if (generalItem) {
+                var currentPath = window.location.pathname.replace(/\/$/, '');
+                var bankItem = document.createElement('div');
+                bankItem.className = 'nav-item';
+                bankItem.innerHTML =
+                    '<a class="nav-link' + (currentPath === '/super/settings/bank-accounts' ? ' active' : '') + '" href="/super/settings/bank-accounts" data-title="Cuentas bancarias">' +
+                        '<i class="bi bi-bank"></i>' +
+                        '<span>Cuentas bancarias</span>' +
+                    '</a>';
                 generalItem.insertAdjacentElement('afterend', bankItem);
             }
         }
