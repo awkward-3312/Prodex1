@@ -49,10 +49,57 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Multiple-bank selector. The server keeps the first active account in the
-    // legacy fields and stores all active accounts in the instructions summary.
-    // Convert that summary into a clear bank picker instead of showing one long
-    // paragraph to the customer.
+    function copyText(value, button) {
+        if (!value) return;
+        function success() {
+            var original = button.innerHTML;
+            button.innerHTML = '<i class="bi bi-check-lg me-1"></i>Copiado';
+            button.classList.remove('btn-outline-secondary');
+            button.classList.add('btn-outline-success');
+            window.setTimeout(function() {
+                button.innerHTML = original;
+                button.classList.remove('btn-outline-success');
+                button.classList.add('btn-outline-secondary');
+            }, 1600);
+        }
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(value).then(success).catch(function() { fallbackCopy(value, success); });
+        } else {
+            fallbackCopy(value, success);
+        }
+    }
+
+    function fallbackCopy(value, done) {
+        var textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try { document.execCommand('copy'); if (done) done(); } catch (e) {}
+        textarea.remove();
+    }
+
+    function addCopyButton(numberRow) {
+        if (!numberRow || numberRow.querySelector('.checkout-copy-account')) return;
+        var valueEl = numberRow.querySelector('.bank-detail-value');
+        if (!valueEl) return;
+        var wrapper = document.createElement('span');
+        wrapper.className = 'd-inline-flex align-items-center gap-2 flex-wrap justify-content-end';
+        valueEl.parentNode.insertBefore(wrapper, valueEl);
+        wrapper.appendChild(valueEl);
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-sm btn-outline-secondary checkout-copy-account';
+        button.innerHTML = '<i class="bi bi-copy me-1"></i>Copiar';
+        button.setAttribute('aria-label', 'Copiar número de cuenta');
+        button.addEventListener('click', function() {
+            copyText((valueEl.textContent || '').trim(), button);
+        });
+        wrapper.appendChild(button);
+    }
+
     function setupBankSelector() {
         if (!offlineSection) return;
         var instructionsBox = offlineSection.querySelector('.bank-instructions');
@@ -69,13 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var accounts = entries.map(function(entry) {
             var parts = entry.split(/\s+—\s+/);
-            var account = {
-                bank: (parts[0] || '').trim(),
-                typeCurrency: (parts[1] || '').trim(),
-                number: '',
-                holder: '',
-                instructions: ''
-            };
+            var account = { bank: (parts[0] || '').trim(), typeCurrency: (parts[1] || '').trim(), number: '', holder: '', instructions: '' };
             parts.slice(2).forEach(function(part) {
                 var value = part.trim();
                 if (/^Cuenta\s+/i.test(value)) account.number = value.replace(/^Cuenta\s+/i, '').trim();
@@ -86,14 +127,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }).filter(function(account) { return account.bank && account.number; });
 
         if (!accounts.length) return;
-
         var detailsGrid = offlineSection.querySelector('.bank-details-grid');
         if (!detailsGrid) return;
 
         var picker = document.createElement('div');
         picker.className = 'mb-3';
-        picker.innerHTML = '<label class="form-label fw-600 mb-2"><i class="bi bi-bank me-1"></i> Seleccione el banco donde desea realizar la transferencia</label>' +
-            '<select class="form-select" id="checkoutBankSelector" aria-label="Seleccione banco"></select>';
+        picker.innerHTML = '<label class="form-label fw-600 mb-2"><i class="bi bi-bank me-1"></i> Seleccione el banco donde desea realizar la transferencia</label><select class="form-select" id="checkoutBankSelector" aria-label="Seleccione banco"></select>';
         detailsGrid.parentNode.insertBefore(picker, detailsGrid);
 
         var select = picker.querySelector('select');
@@ -117,6 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var bankRow = rowByLabel(['nombre del banco', 'bank name']);
         var holderRow = rowByLabel(['titular', 'account holder']);
         var numberRow = rowByLabel(['número de cuenta', 'numero de cuenta', 'account number']);
+        addCopyButton(numberRow);
 
         function setRow(row, value) {
             if (!row) return;
@@ -129,10 +169,8 @@ document.addEventListener('DOMContentLoaded', function() {
             setRow(bankRow, account.bank);
             setRow(holderRow, account.holder);
             setRow(numberRow, account.number);
-
             instructionsBox.style.display = account.instructions ? '' : 'none';
             instructionsText.textContent = account.instructions || '';
-
             var existingMeta = detailsGrid.querySelector('.checkout-bank-meta');
             if (existingMeta) existingMeta.remove();
             if (account.typeCurrency) {
@@ -168,46 +206,23 @@ document.addEventListener('DOMContentLoaded', function() {
     setupBankSelector();
 
     if (uploadArea) {
-        uploadArea.addEventListener('click', function(e) {
-            if (e.target.closest('#removeFile')) return;
-            paymentProof.click();
-        });
+        uploadArea.addEventListener('click', function(e) { if (e.target.closest('#removeFile')) return; paymentProof.click(); });
         uploadArea.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('drag-over'); });
         uploadArea.addEventListener('dragleave', function() { this.classList.remove('drag-over'); });
-        uploadArea.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.classList.remove('drag-over');
-            if (e.dataTransfer.files.length) {
-                paymentProof.files = e.dataTransfer.files;
-                showFilePreview(e.dataTransfer.files[0]);
-            }
-        });
+        uploadArea.addEventListener('drop', function(e) { e.preventDefault(); this.classList.remove('drag-over'); if (e.dataTransfer.files.length) { paymentProof.files = e.dataTransfer.files; showFilePreview(e.dataTransfer.files[0]); } });
     }
-
     if (paymentProof) paymentProof.addEventListener('change', function() { if (this.files.length) showFilePreview(this.files[0]); });
-
     function showFilePreview(file) {
         var maxSize = 5 * 1024 * 1024;
         if (file.size > maxSize) { alert(trans.fileTooLarge); paymentProof.value = ''; return; }
-        uploadPlaceholder.style.display = 'none';
-        uploadPreview.style.display = 'block';
-        uploadFileName.textContent = file.name;
+        uploadPlaceholder.style.display = 'none'; uploadPreview.style.display = 'block'; uploadFileName.textContent = file.name;
     }
-
-    if (removeFileBtn) {
-        removeFileBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            paymentProof.value = '';
-            uploadPlaceholder.style.display = '';
-            uploadPreview.style.display = 'none';
-        });
-    }
+    if (removeFileBtn) removeFileBtn.addEventListener('click', function(e) { e.stopPropagation(); paymentProof.value = ''; uploadPlaceholder.style.display = ''; uploadPreview.style.display = 'none'; });
 
     document.getElementById('checkoutForm').addEventListener('submit', function(e) {
         var btn = document.getElementById('payBtn');
         if (btn.dataset.submitting === '1') { e.preventDefault(); return; }
-        btn.dataset.submitting = '1';
-        btn.disabled = true;
+        btn.dataset.submitting = '1'; btn.disabled = true;
         var selected = document.querySelector('.gateway-radio:checked');
         var isOffline = selected && selected.value === 'offline';
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> ' + (isOffline ? trans.submitting : trans.redirecting);
