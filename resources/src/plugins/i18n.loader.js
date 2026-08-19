@@ -6,6 +6,7 @@ import { bundledUiMessages, readableMissingTranslation } from './ui.fallback.i18
 import { installSpanishUiGuard } from '../utils/spanishUiGuard';
 import { installSpanishSettingsUiGuard } from '../utils/spanishSettingsUiGuard';
 import { installSpanishDocumentTitleGuard } from '../utils/spanishDocumentTitleGuard';
+import { installSpanishLegacyDocumentGuard } from '../utils/spanishLegacyDocumentGuard';
 
 Vue.use(VueI18n);
 
@@ -13,6 +14,7 @@ export const loadI18n = async () => {
   installSpanishUiGuard();
   installSpanishSettingsUiGuard();
   installSpanishDocumentTitleGuard();
+  installSpanishLegacyDocumentGuard();
   const userLang = localStorage.getItem('language') || 'es';
 
   let dbMessages = {};
