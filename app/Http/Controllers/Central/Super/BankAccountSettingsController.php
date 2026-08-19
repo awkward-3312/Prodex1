@@ -52,12 +52,12 @@ class BankAccountSettingsController extends Controller
         }
 
         $active = collect($accounts)->where('active', true)->values();
-        $primary = $active->first() ?? ($accounts[0] ?? []);
+        $primary = $active->first() ?? [];
 
-        // Existing checkout screens still read the flattened legacy keys. Keep
-        // those keys populated from the first active account and put a concise
-        // list of all active accounts in instructions so both public signup and
-        // tenant renewals immediately expose every available bank.
+        // The existing checkout screens read the flattened legacy keys. Keep
+        // them populated from the first ACTIVE account and place all active
+        // accounts in the instructions block so signup and tenant renewals can
+        // immediately use every available bank without a database migration.
         $summary = $active->map(function (array $account) {
             $type = ($account['account_type'] ?? 'savings') === 'checking' ? 'Cheques' : 'Ahorros';
             $currency = $account['currency'] ?? 'HNL';
@@ -78,8 +78,8 @@ class BankAccountSettingsController extends Controller
             'bank_name' => $primary['bank_name'] ?? '',
             'account_holder' => $primary['account_holder'] ?? '',
             'account_number' => $primary['account_number'] ?? '',
-            'account_type' => $primary['account_type'] ?? 'savings',
-            'currency' => $primary['currency'] ?? 'HNL',
+            'account_type' => $primary['account_type'] ?? '',
+            'currency' => $primary['currency'] ?? '',
             'branch' => $primary['branch'] ?? '',
             'iban' => $primary['iban'] ?? '',
             'swift' => $primary['swift'] ?? '',
@@ -120,7 +120,7 @@ class BankAccountSettingsController extends Controller
         }
 
         // Backwards compatibility: the previous single account becomes the
-        // first account automatically the first time this page is opened.
+        // first active account automatically the first time this page is used.
         if (! empty($details['bank_name']) || ! empty($details['account_number']) || ! empty($details['account_holder'])) {
             return [[
                 'bank_name' => (string) ($details['bank_name'] ?? ''),
