@@ -29,14 +29,14 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="form-label">{{ __('super.kb.name') }}</label>
-                                <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $category->name ?? '') }}" required placeholder="e.g. Getting Started">
+                                <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $category->name ?? '') }}" required placeholder="Ej.: Primeros pasos">
                                 @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="form-label">{{ __('super.kb.slug') }}</label>
-                                <input type="text" name="slug" class="form-control @error('slug') is-invalid @enderror" value="{{ old('slug', $category->slug ?? '') }}" required placeholder="getting-started">
+                                <input type="text" name="slug" class="form-control @error('slug') is-invalid @enderror" value="{{ old('slug', $category->slug ?? '') }}" required placeholder="primeros-pasos">
                                 @error('slug') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
@@ -52,7 +52,7 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="form-label">{{ __('super.kb.icon') }} <span class="text-muted fw-normal">({{ __('super.kb.icon_class') }})</span></label>
-                                <input type="text" name="icon" class="form-control @error('icon') is-invalid @enderror" value="{{ old('icon', $category->icon ?? '') }}" placeholder="e.g. book, gear, cart">
+                                <input type="text" name="icon" class="form-control @error('icon') is-invalid @enderror" value="{{ old('icon', $category->icon ?? '') }}" placeholder="Ej.: book, gear, cart">
                                 <small class="text-muted">{{ __('super.kb.icon_hint') }}</small>
                                 @error('icon') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
