@@ -18,11 +18,10 @@ return new class extends Migration
         }
 
         if ($country === 'HN') {
-            // Before line-level SAR taxation, Honduras POS applied the tenant's
-            // order-level 15% to the whole cart. Backfill existing products to 15%
-            // so moving that tax to each line preserves the amount customers were
-            // already being charged. Tenants can then explicitly mark the genuine
-            // exemptions/exonerations from Contabilidad > Facturación SAR.
+            // Historically the HN POS charged the tenant's 15% order tax on top of
+            // products whose own TaxNet was commonly zero. When moving that tax to
+            // the line we must make those legacy prices EXCLUSIVE, otherwise a row
+            // that happened to have tax_method=2 would suddenly become 15% cheaper.
             DB::table('products')
                 ->whereNull('deleted_at')
                 ->whereNull('fiscal_tax_category')
@@ -34,9 +33,11 @@ return new class extends Migration
                 ->where(function ($query) {
                     $query->whereNull('TaxNet')->orWhere('TaxNet', '<=', 0);
                 })
-                ->update(['TaxNet' => 15]);
+                ->update([
+                    'TaxNet' => 15,
+                    'tax_method' => '1',
+                ]);
         } else {
-            // Outside Honduras, preserve the product's existing rate semantics.
             DB::table('products')
                 ->whereNull('deleted_at')
                 ->whereNull('fiscal_tax_category')
@@ -52,7 +53,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Deliberately no data rollback. After tenants review fiscal classifications,
-        // reverting them automatically could corrupt tax configuration.
+        // Deliberately no data rollback. After a tenant reviews fiscal categories,
+        // reverting them automatically could corrupt the tax configuration.
     }
 };
