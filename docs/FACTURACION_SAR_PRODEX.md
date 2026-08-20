@@ -6,7 +6,7 @@ Este instructivo describe cómo preparar, emitir, reimprimir y anular facturas f
 
 PRODEX separa la **configuración vigente** de la **información histórica de cada factura**.
 
-Los datos que el tenant puede cambiar —razón social, nombre comercial, dirección, teléfono, correo, textos de la factura, clasificación fiscal de productos, datos de clientes, puntos de emisión y autorizaciones— se utilizan para facturas futuras. Cuando una factura SAR se emite, PRODEX guarda una copia o *snapshot* del emisor, cliente, líneas, impuestos, totales y configuración de presentación. Por esa razón, editar la configuración después no reescribe una factura ya emitida.
+Los datos que el tenant puede cambiar —razón social, nombre comercial, dirección, teléfono, correo, textos de la factura, clasificación fiscal de productos, datos de clientes, puntos de emisión y autorizaciones— se utilizan para facturas futuras. Cuando una factura SAR se emite, PRODEX guarda una copia o *snapshot* del emisor, cliente, líneas, impuestos, pagos, totales y configuración de presentación. Por esa razón, editar la configuración después no reescribe una factura ya emitida.
 
 Los datos generados por una factura emitida, como número fiscal, CAI utilizado, rango, correlativo, fecha de emisión, líneas vendidas, importes e impuestos, no deben modificarse manualmente.
 
@@ -14,7 +14,7 @@ Los datos generados por una factura emitida, como número fiscal, CAI utilizado,
 
 La configuración se encuentra en **Contabilidad > Facturación SAR**. El usuario necesita permisos de configuración del sistema para modificarla.
 
-La pantalla reúne cinco áreas: perfil fiscal, contenido de la factura, clasificación fiscal de productos, datos fiscales de clientes, puntos de emisión y autorizaciones/rangos.
+La pantalla reúne: perfil fiscal, contenido de la factura, clasificación fiscal de productos, datos fiscales de clientes, puntos de emisión y autorizaciones/rangos.
 
 ## 3. Perfil fiscal
 
@@ -32,7 +32,7 @@ Los cambios se aplican a nuevas facturas. Las facturas anteriores conservan los 
 
 ## 4. Contenido y presentación de la factura
 
-El tenant puede modificar los siguientes datos para facturas futuras:
+El tenant puede modificar para facturas futuras:
 
 - Título del documento, por ejemplo `FACTURA`.
 - Etiqueta del tipo de venta, por ejemplo `CONTADO`.
@@ -50,24 +50,30 @@ El tenant puede modificar los siguientes datos para facturas futuras:
 - Mostrar u ocultar total en letras.
 - Mostrar u ocultar QR cuando el formato de impresión lo soporte.
 
-Los campos fiscales obligatorios del documento no deben ocultarse mediante estas opciones. El número fiscal, CAI, rango autorizado, fecha límite y resumen tributario se toman del documento fiscal emitido.
+El archivo del logo se administra desde la configuración general de identidad/empresa de PRODEX; en Facturación SAR se decide si se muestra en la factura fiscal.
+
+Los campos fiscales obligatorios del documento no se eliminan con estas opciones. Número fiscal, CAI, rango autorizado, fecha límite y resumen tributario proceden del documento fiscal emitido.
 
 ## 5. Clasificación fiscal de productos
 
-Antes de utilizar facturación SAR, clasifique los productos que se venden en el POS. PRODEX admite las siguientes categorías:
+Antes de utilizar facturación SAR, revise la clasificación de todos los productos que se venden en el POS. PRODEX admite:
 
-- **Gravado**: el producto genera ISV. Seleccione 15% o 18%, según corresponda.
+- **Gravado**: genera ISV. Seleccione 15% o 18%, según corresponda.
 - **Exento**: no genera ISV y se acumula en el importe exento.
 - **Exonerado**: no genera ISV para la operación exonerada y se acumula en el importe exonerado.
 - **Tasa cero**: utiliza tasa 0 y se presenta separadamente cuando existe importe de esta clase.
 
-Para un producto gravado, indique además si el impuesto se maneja como **exclusivo** o **incluido en el precio**, según el esquema de precio que utilice el producto.
+Para un producto gravado indique además si el impuesto es **exclusivo** o **incluido en el precio**, según el esquema de precio del producto.
 
-PRODEX conserva compatibilidad con productos anteriores que aún no se hayan clasificado. Sin embargo, para obtener correctamente el desglose 15%, 18%, exento y exonerado, todos los productos de un tenant con SAR habilitado deben ser revisados y clasificados.
+Durante la migración inicial de tenants de Honduras, los productos antiguos que dependían del 15% general del POS se preparan como gravados 15% para conservar el comportamiento histórico del total. **El tenant debe revisar esta clasificación y cambiar a Exento, Exonerado, 18% o Tasa cero los productos que realmente correspondan.**
+
+Una vez SAR está habilitado, PRODEX no emite silenciosamente una factura con un producto sin clasificación fiscal válida. La venta se detiene e indica cuál producto debe configurarse.
+
+Los productos nuevos también deben tener su clasificación revisada antes de utilizarlos en una factura SAR.
 
 ## 6. Datos fiscales de clientes
 
-En la misma pantalla se pueden mantener datos fiscales que después se copian a la factura cuando corresponda:
+En la misma pantalla se pueden mantener datos fiscales que después se copian a la factura cuando correspondan:
 
 - RTN.
 - Tipo de identificación.
@@ -77,16 +83,18 @@ En la misma pantalla se pueden mantener datos fiscales que después se copian a 
 
 Para operaciones de L 10,000 o más, PRODEX exige que el cliente tenga RTN o un documento de identificación registrado antes de emitir la factura fiscal.
 
-## 7. Datos de exoneración de una venta
+## 7. Datos fiscales propios de una venta
 
-Algunas referencias pertenecen a una operación concreta y no deben asumirse como permanentes del cliente. Cuando la venta lo requiera, deben capturarse para esa operación:
+Algunas referencias pertenecen a una operación concreta y no deben asumirse como permanentes del cliente. En el POS aparece el botón **Datos fiscales** junto al área del cliente para registrar, cuando corresponda:
 
 - Número de orden de compra exenta.
-- Número de registro SAG/SAR usado en la operación.
+- Número de registro SAG/SAR utilizado en la operación.
 - Número de registro exonerado.
-- Número de carnet o documento de exoneración, cuando corresponda.
+- Número de carnet o documento de exoneración.
 
-Estos datos se congelan dentro del documento fiscal emitido.
+Si se guardaron datos, el botón indica **Fiscal configurado**. Se pueden volver a abrir, modificar antes de finalizar la venta o limpiar.
+
+Al emitir, estos valores se guardan en la venta y se congelan dentro del documento fiscal. La siguiente venta comienza sin reutilizarlos automáticamente.
 
 ## 8. Puntos de emisión
 
@@ -107,15 +115,15 @@ Una caja debe corresponder al mismo almacén del punto de emisión. PRODEX utili
 Para cada autorización registre:
 
 - Punto de emisión.
-- Tipo de documento; para factura normalmente se utiliza el código configurado para factura.
+- Tipo de documento.
 - CAI.
 - Inicio del rango.
 - Final del rango.
 - Siguiente correlativo.
-- Fecha de autorización, cuando se tenga disponible.
+- Fecha de autorización, cuando esté disponible.
 - Fecha límite de emisión.
 
-La autorización se crea primero como **Borrador**. Revise los datos y luego actívela. Al activar una autorización para el mismo punto y tipo de documento, PRODEX deshabilita la autorización activa anterior.
+La autorización se crea primero como **Borrador**. Revise los datos y luego actívela. Al activar otra autorización para el mismo punto y tipo de documento, PRODEX deshabilita la autorización activa anterior.
 
 PRODEX impide activar una autorización vencida, con correlativo fuera del rango o asociada a un punto inactivo. También impide registrar rangos superpuestos para el mismo punto y tipo de documento.
 
@@ -132,11 +140,13 @@ Donde:
 - `TT`: tipo de documento.
 - `NNNNNNNN`: correlativo de ocho dígitos.
 
-El correlativo se incrementa dentro de la misma operación de base de datos que crea el documento fiscal. Si el rango se agota, la autorización cambia a estado agotado.
+El correlativo se incrementa dentro de la misma transacción de base de datos que crea el documento fiscal. Si el rango se agota, la autorización cambia a estado agotado. Una reimpresión nunca consume otro correlativo.
 
 ## 11. Cálculo fiscal del POS
 
-Para Honduras, PRODEX permite trabajar con impuestos por línea. Cada producto puede contribuir a una de las siguientes bolsas fiscales:
+Para Honduras, PRODEX utiliza impuestos por línea. El antiguo 15% general de la venta deja de agregarse una segunda vez sobre todo el carrito.
+
+Cada producto contribuye a una de estas bolsas fiscales:
 
 - Importe exonerado.
 - Importe exento.
@@ -145,11 +155,11 @@ Para Honduras, PRODEX permite trabajar con impuestos por línea. Cada producto p
 - ISV 15%.
 - Importe gravado 18%.
 - ISV 18%.
-- Otras tasas, si en el futuro se habilitan para otra jurisdicción.
+- Otras tasas, si una jurisdicción futura las habilita.
 
-Los descuentos manuales, descuentos por puntos y promociones se aplican antes del resumen fiscal y se distribuyen para que el documento pueda reconciliar sus bases, impuestos y total.
+Los descuentos manuales, descuentos por puntos y promociones se aplican antes del resumen fiscal y se distribuyen entre las líneas. El documento también conserva cualquier ajuste mínimo de redondeo necesario para reconciliar exactamente el total cobrado.
 
-El resumen fiscal se calcula una sola vez al emitir y se guarda en el documento. Las plantillas no deben volver a inventar o recalcular impuestos por separado.
+El resumen fiscal se calcula una vez al emitir y se guarda en el documento. Las plantillas A4, térmica, reimpresión e impresión directa leen esos mismos valores; no vuelven a inventar los impuestos.
 
 ## 12. Información de la factura
 
@@ -169,6 +179,7 @@ Una factura fiscal de PRODEX puede contener, según configuración y según corr
 - Fecha y hora.
 - Referencia interna.
 - Almacén/punto de emisión.
+- Cajero.
 - Cliente.
 - RTN o identificación del cliente.
 - Datos de exoneración cuando correspondan.
@@ -177,7 +188,7 @@ Una factura fiscal de PRODEX puede contener, según configuración y según corr
 - Cantidad.
 - Precio unitario.
 - Descuento.
-- Tasa aplicable.
+- Clasificación/tasa aplicable.
 - Importe por línea.
 - Descuentos y rebajas.
 - Subtotal.
@@ -188,23 +199,36 @@ Una factura fiscal de PRODEX puede contener, según configuración y según corr
 - Importe gravado 18%.
 - ISV 15%.
 - ISV 18%.
+- Ajuste de redondeo, únicamente cuando sea necesario.
+- Envío, cuando exista.
 - Total.
+- Forma/resumen de pago y cambio.
 - Total en letras, si está habilitado.
-- Forma/resumen de pago según el formato disponible.
 - Leyenda de original y copia.
 - Mensaje al pie.
 - QR cuando el formato lo soporte y esté habilitado.
 
 ## 13. Formatos de impresión
 
-PRODEX conserva las opciones de impresión existentes:
+PRODEX conserva:
 
 - **Térmica**.
 - **A4/PDF**.
+- **Impresión térmica directa por red (ESC/POS)** cuando está habilitada.
 
-En térmica se conservan los diseños de recibo existentes y los tamaños de papel configurados, incluyendo 58 mm, 80 mm y 88 mm. La información fiscal se agrega desde el mismo snapshot utilizado por A4 para evitar diferencias entre una impresión y otra.
+### Térmica
 
-El A4 utiliza la misma información fiscal congelada y presenta el desglose tributario de forma integrada; no debe aparecer una segunda factura o un bloque fiscal desconectado de la factura principal.
+Los layouts 1–5 siguen disponibles como estilos visuales. Para una factura SAR, todos reciben el mismo contenido fiscal obligatorio y varían principalmente en densidad/espaciado. Se respetan los tamaños configurados de 58 mm, 80 mm y 88 mm.
+
+Cuando la venta es fiscal, PRODEX construye un recibo fiscal completo a partir del snapshot y reemplaza el recibo genérico de la venta. Así se evita el problema anterior de mostrar un bloque SAR y debajo una segunda factura duplicada.
+
+### A4/PDF
+
+El A4 integra la información SAR dentro de una sola factura: emisor, cliente, detalle, impuestos, pagos y totales. No se imprime una segunda factura genérica debajo.
+
+### Impresión directa por red
+
+Para una venta SAR, la salida ESC/POS también se genera desde el mismo snapshot fiscal. Para una venta no SAR, PRODEX conserva el flujo de impresión de red anterior.
 
 ## 14. Emisión desde POS
 
@@ -214,67 +238,99 @@ Flujo recomendado:
 2. Seleccione cliente.
 3. Agregue los productos.
 4. Verifique que la clasificación fiscal y precio de los productos sean correctos.
-5. Si la operación es exenta/exonerada, complete los datos propios de esa venta.
+5. Si la operación requiere referencias fiscales específicas, abra **Datos fiscales** y complételas.
 6. Complete el pago.
 7. Finalice la venta.
-8. PRODEX valida punto de emisión y autorización.
-9. PRODEX crea la venta, sus líneas y pagos.
+8. PRODEX valida producto, cliente, punto de emisión y autorización.
+9. PRODEX crea la venta, sus líneas y pagos dentro del flujo de la operación.
 10. PRODEX genera el documento SAR y toma el siguiente correlativo.
-11. PRODEX congela emisor, cliente, configuración, líneas y resumen fiscal.
+11. PRODEX congela emisor, cliente, configuración, cajero, pagos, líneas y resumen fiscal.
 12. Se imprime o muestra el formato seleccionado.
 
-Si la facturación SAR está habilitada y falta una autorización válida, la venta fiscal no debe continuar silenciosamente.
+Si SAR está habilitado y falta una autorización válida, un producto no está clasificado o una venta de L 10,000 o más carece de identificación requerida, la emisión se detiene con un mensaje en lugar de generar una factura incompleta.
 
 ## 15. Reimpresión
 
-Una reimpresión siempre debe utilizar el documento fiscal ya emitido. No debe generar un nuevo correlativo ni tomar la configuración fiscal actual para sustituir la información histórica.
+Una reimpresión utiliza siempre el `SarFiscalDocument` ya emitido. No genera otro correlativo ni toma la configuración fiscal actual para sustituir información histórica.
 
-Desde la lista de ventas se puede volver a abrir la factura o descargar el PDF. El número fiscal y demás snapshots permanecen iguales.
+Desde la lista de ventas se puede volver a abrir la factura o descargar el PDF. La reimpresión térmica utiliza el mismo renderer fiscal que el POS, y el número fiscal, CAI, rangos, datos del cliente, importes y configuración histórica permanecen iguales.
 
 ## 16. Anulación
 
-Una factura fiscal emitida no se elimina como una venta normal. Debe utilizarse la opción de **Anular factura SAR** y registrar un motivo.
+Una factura fiscal emitida no debe eliminarse como si nunca hubiese existido. Utilice la opción de **Anular factura SAR** y registre el motivo.
 
-PRODEX conserva el documento y cambia su estado a anulado, junto con fecha, motivo y usuario que realizó la acción. Las reimpresiones deben identificar claramente que el documento está anulado.
+PRODEX conserva el documento y cambia su estado a anulado, junto con fecha, motivo y usuario que realizó la acción. Las reimpresiones identifican el documento como **ANULADA** y conservan sus datos originales.
 
 ## 17. Qué puede modificarse y qué no
 
 ### Configurable para facturas futuras
 
-Perfil fiscal, nombre comercial, contactos, dirección vigente, textos de presentación, opciones visuales, clasificación fiscal de productos, datos fiscales de clientes, puntos de emisión y nuevas autorizaciones/rangos según corresponda.
+Perfil fiscal, nombre comercial, contactos, dirección vigente, logo desde configuración general, textos de presentación, opciones visuales, clasificación fiscal de productos, datos fiscales de clientes, puntos de emisión y nuevas autorizaciones/rangos según corresponda.
+
+### Configurable para la venta antes de emitir
+
+Cliente seleccionado, referencias de exoneración/orden exenta de esa operación, productos, cantidades, descuentos, promociones, puntos y forma de pago, dentro de las reglas normales del POS.
 
 ### Congelado al emitir
 
-Número fiscal, CAI usado, rango, correlativo, fecha/hora de emisión, emisor utilizado, cliente utilizado, información de exoneración usada, productos, cantidades, precios, descuentos, bases fiscales, impuestos, total y configuración de presentación que tenía la factura al emitirse.
+Número fiscal, CAI usado, rango, correlativo, fecha/hora de emisión, emisor utilizado, cliente utilizado, información de exoneración usada, cajero, pagos, productos, cantidades, precios, descuentos, bases fiscales, impuestos, total y configuración de presentación que tenía la factura al emitirse.
 
 ## 18. Migraciones y despliegue
 
-Los cambios de esta implementación incluyen estructura nueva en las bases de datos de los tenants. Después de actualizar el código deben ejecutarse las migraciones de tenants usando el procedimiento de despliegue de PRODEX.
+Esta implementación agrega estructura nueva en las bases de datos de los tenants y modifica frontend Vue.
 
-Como también se modificó frontend Vue, debe compilarse el frontend antes de publicar los archivos generados. Luego se recomienda limpiar cachés de Laravel y reiniciar PHP-FPM según el flujo normal del servidor.
+Después de actualizar el código debe:
 
-## 19. Comprobación antes de usar en producción
+1. Ejecutar las **migraciones de tenants**.
+2. Compilar el frontend.
+3. Publicar los archivos compilados según el flujo habitual de PRODEX.
+4. Limpiar cachés de Laravel.
+5. Reiniciar PHP-FPM si corresponde al procedimiento de despliegue.
 
-Antes de habilitar facturación SAR en un tenant real, realice pruebas con al menos estos escenarios:
+No requiere migración central para estas tablas fiscales.
+
+## 19. Revisión inicial obligatoria después de migrar
+
+Antes de habilitar SAR en un tenant real:
+
+1. Abra **Contabilidad > Facturación SAR**.
+2. Revise perfil fiscal.
+3. Revise todos los puntos de emisión y cajas.
+4. Revise CAI, rango, siguiente correlativo y fecha límite.
+5. Revise la **clasificación fiscal de productos**. La migración conserva como 15% gravado el comportamiento histórico de los productos antiguos de Honduras, pero el tenant debe identificar cuáles realmente son exentos, exonerados, 18% o tasa cero.
+6. Revise los clientes que usan RTN o exoneraciones.
+7. Configure los textos y elementos visuales de factura.
+8. Realice ventas de prueba antes de usar numeración real en producción.
+
+## 20. Matriz mínima de pruebas
+
+Antes de habilitar facturación SAR en producción, pruebe:
 
 1. Venta únicamente gravada 15%.
 2. Venta únicamente gravada 18%.
 3. Venta únicamente exenta.
 4. Venta únicamente exonerada.
 5. Venta mixta 15% + 18% + exenta.
-6. Venta con descuento.
-7. Venta con promoción.
-8. Venta con puntos.
-9. Venta mayor o igual a L 10,000 con identificación del cliente.
-10. Venta exonerada con referencias de la operación.
-11. Impresión térmica en el tamaño de papel usado por el tenant.
-12. A4/PDF.
-13. Reimpresión desde Ventas.
-14. Anulación y reimpresión del documento anulado.
-15. Agotamiento y vencimiento de una autorización de prueba.
+6. Venta mixta con exonerado.
+7. Venta con descuento manual.
+8. Venta con promoción.
+9. Venta con puntos.
+10. Venta con múltiples formas de pago.
+11. Venta mayor o igual a L 10,000 con identificación del cliente.
+12. Venta exonerada con referencias de la operación.
+13. Ticket 58 mm.
+14. Ticket 80 mm.
+15. Ticket 88 mm, si el tenant lo utiliza.
+16. Cada layout térmico 1–5 que el tenant vaya a usar.
+17. A4/PDF.
+18. Reimpresión desde Ventas.
+19. Impresión directa por red, si está habilitada.
+20. Anulación y reimpresión del documento anulado.
+21. Agotamiento y vencimiento de una autorización de prueba.
+22. Cambio de nombre comercial/configuración después de emitir y comprobación de que la factura histórica no cambia.
 
-Los importes de la factura deben reconciliar siempre con el total cobrado y con el documento fiscal almacenado.
+Los importes deben reconciliar siempre con el total cobrado y con el documento fiscal almacenado.
 
-## 20. Nota de cumplimiento
+## 21. Nota de cumplimiento
 
 PRODEX proporciona controles y estructura técnica para administrar la facturación configurada por el tenant. El tenant es responsable de cargar datos que correspondan a sus autorizaciones y a su situación fiscal. Ante cambios normativos o dudas sobre el tratamiento de una operación específica, debe confirmarse el criterio aplicable con el SAR o con el profesional fiscal/contable del negocio antes de cambiar la configuración de producción.
