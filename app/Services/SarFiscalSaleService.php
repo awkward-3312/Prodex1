@@ -85,18 +85,21 @@ class SarFiscalSaleService
             $quantity = (float) $detail->quantity;
             $unitPrice = (float) $detail->price;
             $storedLineTotal = max(0.0, (float) $detail->total);
-            $productRate = max(0.0, (float) $detail->TaxNet);
+            $productRate = $detail->fiscal_tax_rate !== null
+                ? max(0.0, (float) $detail->fiscal_tax_rate)
+                : max(0.0, (float) $detail->TaxNet);
 
             $rawCategory = $detail->fiscal_tax_category ?? optional($detail->product)->fiscal_tax_category;
-            $fallbackRate = $globalTaxRate > 0 ? $globalTaxRate : $productRate;
+            $explicitCategory = trim((string) $rawCategory) !== '';
+            $fallbackRate = $explicitCategory ? $productRate : ($globalTaxRate > 0 ? $globalTaxRate : $productRate);
             $category = $this->normalizeCategory($rawCategory, $fallbackRate);
 
-            // Current PRODEX POS applies sale.tax_rate to the whole cart after sale-level
-            // discounts. While that legacy/global tax is active it is the authoritative rate
-            // needed to reproduce the actual completed sale. Once POS moves to line-level tax,
-            // sale.tax_rate can be zero and each SaleDetail.TaxNet becomes authoritative.
+            // Once a product has an explicit fiscal category, line-level taxation is
+            // authoritative. Legacy products without a category continue reproducing the
+            // historical order-level tax behavior until the tenant classifies them.
+            $usesLineTax = $explicitCategory || $detail->fiscal_tax_rate !== null;
             $rate = $category === 'taxed'
-                ? ($globalTaxRate > 0 ? $globalTaxRate : $productRate)
+                ? ($usesLineTax ? $productRate : ($globalTaxRate > 0 ? $globalTaxRate : $productRate))
                 : 0.0;
 
             $allocatedSaleDiscount = $cartSubtotal > 0
@@ -105,16 +108,12 @@ class SarFiscalSaleService
             $discountedStoredTotal = max(0.0, round($storedLineTotal - $allocatedSaleDiscount, 2));
 
             if ($category === 'taxed' && $rate > 0) {
-                if ($globalTaxRate > 0) {
-                    // Global order tax is added after cart discounts, so the discounted cart
-                    // line is already the taxable base.
+                if (! $usesLineTax && $globalTaxRate > 0) {
                     $taxableAmount = $discountedStoredTotal;
                     $taxAmount = round($taxableAmount * ($rate / 100), 2);
                     $lineTotal = round($taxableAmount + $taxAmount, 2);
                 } else {
-                    // Product-level tax is already included in SaleDetail.total by the POS.
-                    // Extract base + tax from the frozen gross line total so the fiscal split
-                    // always reconciles to the historic sale total.
+                    // PRODEX product subtotals are gross after the product's own tax logic.
                     $taxableAmount = round($discountedStoredTotal / (1 + ($rate / 100)), 2);
                     $taxAmount = round($discountedStoredTotal - $taxableAmount, 2);
                     $lineTotal = $discountedStoredTotal;
@@ -128,8 +127,6 @@ class SarFiscalSaleService
             $productDiscount = $this->detailDiscountAmount($detail, $quantity, $unitPrice);
             $totals['product_discount_total'] += $productDiscount;
 
-            // Freeze the fiscal interpretation on the historical sale line inside the same
-            // database transaction as issuance. Later product edits cannot rewrite history.
             if ($detail->fiscal_tax_category === null || $detail->fiscal_tax_rate === null) {
                 $detail->forceFill([
                     'fiscal_tax_category' => $category,
@@ -195,13 +192,11 @@ class SarFiscalSaleService
             'warehouse_id' => $sale->warehouse_id,
             'warehouse_name' => optional($sale->warehouse)->name,
             'cash_drawer_id' => $cashDrawerId,
-            // Legacy summary fields retained for backwards compatibility.
             'tax_rate' => (float) $sale->tax_rate,
             'tax_total' => (float) $sale->TaxNet,
             'discount' => (float) $sale->discount,
             'shipping' => (float) $sale->shipping,
             'grand_total' => (float) $sale->GrandTotal,
-            // Normalized fiscal representation consumed by every invoice renderer.
             'fiscal_totals' => $totals,
             'exemption_data' => $exemptionData,
             'lines' => $lines,
@@ -222,8 +217,6 @@ class SarFiscalSaleService
             return $category;
         }
 
-        // Existing Honduras POS sales use the locked order tax, so a missing category
-        // with a positive effective rate must remain taxable for backwards compatibility.
         return $rate > 0 ? 'taxed' : 'exempt';
     }
 
