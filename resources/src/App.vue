@@ -74,12 +74,17 @@ export default {
       return p === '/app/pos' || p.startsWith('/app/pos_') || p.startsWith('/app/pos/');
     },
     designSystemRouteClass() {
+      if (this.isPosPage) return [];
+
       const routeName = String(this.$route && this.$route.name || '');
+      const classes = ['prodex-ui'];
       const listRoutes = ['Customers', 'Suppliers'];
+
       if (listRoutes.includes(routeName)) {
-        return ['prodex-ui', 'px-list-page'];
+        classes.push('px-list-page');
       }
-      return [];
+
+      return classes;
     },
     titleTemplate() {
       return `%s | ${this.currentUser?.page_title_suffix || window.__pageTitleSuffix || "Gestión empresarial"}`;
