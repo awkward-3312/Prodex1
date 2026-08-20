@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('attendance_devices', function (Blueprint $table) {
             $table->id();
-            $table->unsignedInteger('company_id')->index();
+            $table->integer('company_id')->index();
             $table->string('name');
             $table->string('provider', 80)->default('generic')->index();
             $table->string('model')->nullable();
