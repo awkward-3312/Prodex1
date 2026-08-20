@@ -79,6 +79,12 @@ const moduleDescriptions = {
 // frequent mount/unmount cycles can otherwise monopolize the browser thread.
 const LEGACY_TRANSLATION_EXCLUDE_SELECTOR = '.pos-receipt-demo, [data-prodex-no-legacy-translate]';
 
+function legacyTranslationSuspended() {
+  if (typeof window !== 'undefined' && window.__prodexSuspendLegacyUiTranslations === true) return true;
+  if (typeof document !== 'undefined' && document.querySelector && document.querySelector('.pos-receipt-demo')) return true;
+  return false;
+}
+
 function isLegacyTranslationExcluded(node) {
   if (!node || typeof Node === 'undefined') return false;
   const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
@@ -86,14 +92,14 @@ function isLegacyTranslationExcluded(node) {
 }
 
 function translateExactText(el, dictionary) {
-  if (!el || !el.textContent || isLegacyTranslationExcluded(el)) return;
+  if (legacyTranslationSuspended() || !el || !el.textContent || isLegacyTranslationExcluded(el)) return;
   const current = el.textContent.trim();
   const translated = dictionary[current];
   if (translated && translated !== current) el.textContent = translated;
 }
 
 function translateLegacyUi(root = document) {
-  if (!root || !root.querySelectorAll || isLegacyTranslationExcluded(root)) return;
+  if (legacyTranslationSuspended() || !root || !root.querySelectorAll || isLegacyTranslationExcluded(root)) return;
 
   root.querySelectorAll('[title], [aria-label], [placeholder]').forEach(el => {
     if (isLegacyTranslationExcluded(el)) return;
@@ -136,6 +142,7 @@ function installSpanishLegacyUiGuard() {
     let flushScheduled = false;
 
     const queueRoot = node => {
+      if (legacyTranslationSuspended()) return;
       if (!node || node.nodeType !== Node.ELEMENT_NODE || isLegacyTranslationExcluded(node)) return;
 
       // If an ancestor is already queued, scanning this subtree separately is
@@ -154,6 +161,10 @@ function installSpanishLegacyUiGuard() {
 
       schedule(() => {
         flushScheduled = false;
+        if (legacyTranslationSuspended()) {
+          pendingRoots.clear();
+          return;
+        }
         const roots = Array.from(pendingRoots);
         pendingRoots.clear();
         roots.forEach(root => translateLegacyUi(root));
@@ -161,6 +172,11 @@ function installSpanishLegacyUiGuard() {
     };
 
     const observer = new MutationObserver(mutations => {
+      if (legacyTranslationSuspended()) {
+        pendingRoots.clear();
+        return;
+      }
+
       mutations.forEach(mutation => {
         if (mutation.type === 'childList') {
           mutation.addedNodes.forEach(queueRoot);
@@ -218,6 +234,11 @@ function installReceiptPresentationEnhancer(Vue) {
       if (title !== 'POS Receipt' || !this.pos_settings || this.__receiptPresentationMounted) return;
       this.__receiptPresentationMounted = true;
 
+      // The POS receipt editor mounts/unmounts large Vue subtrees when switching
+      // layouts. The legacy translator is intentionally disabled for the whole
+      // editor lifetime; all text in this screen is owned by Vue/PRODEX itself.
+      window.__prodexSuspendLegacyUiTranslations = true;
+
       Object.keys(defaults).forEach(key => {
         if (this.pos_settings[key] === undefined || this.pos_settings[key] === null || this.pos_settings[key] === '') {
           this.$set(this.pos_settings, key, defaults[key]);
@@ -231,6 +252,7 @@ function installReceiptPresentationEnhancer(Vue) {
 
         const host = document.createElement('div');
         host.className = 'col-md-12 mt-4 mb-2 prodex-receipt-presentation';
+        host.setAttribute('data-prodex-no-legacy-translate', '1');
         host.innerHTML = '<hr class="my-4"><h6 class="mb-2">Diseño de la factura / recibo</h6>' +
           '<p class="text-muted mb-3">Estas opciones cambian únicamente la presentación. Los datos fiscales SAR obligatorios permanecen en la factura.</p><div class="row"></div>';
         const controlsRow = host.querySelector('.row');
@@ -278,6 +300,11 @@ function installReceiptPresentationEnhancer(Vue) {
     },
 
     beforeDestroy() {
+      const title = this.$options && this.$options.metaInfo && this.$options.metaInfo.title;
+      if (title === 'POS Receipt' && this.__receiptPresentationMounted) {
+        window.__prodexSuspendLegacyUiTranslations = false;
+      }
+
       if (this.__receiptPresentationHost && this.__receiptPresentationHost.parentNode) {
         this.__receiptPresentationHost.parentNode.removeChild(this.__receiptPresentationHost);
       }
