@@ -50,7 +50,7 @@ El tenant puede modificar para facturas futuras:
 - Mostrar u ocultar total en letras.
 - Mostrar u ocultar QR cuando el formato de impresión lo soporte.
 
-El archivo del logo se administra desde la configuración general de identidad/empresa de PRODEX; en Facturación SAR se decide si se muestra en la factura fiscal.
+El archivo del logo se administra desde **Ajustes del sistema > Configuración de apariencia > Cambiar logo**. Ese es el mismo logo que PRODEX utiliza en la factura fiscal cuando la opción **Mostrar logo** está habilitada. No es necesario cargar un segundo archivo en Facturación SAR ni en Recibo del POS.
 
 Los campos fiscales obligatorios del documento no se eliminan con estas opciones. Número fiscal, CAI, rango autorizado, fecha límite y resumen tributario proceden del documento fiscal emitido.
 
@@ -334,3 +334,28 @@ Los importes deben reconciliar siempre con el total cobrado y con el documento f
 ## 21. Nota de cumplimiento
 
 PRODEX proporciona controles y estructura técnica para administrar la facturación configurada por el tenant. El tenant es responsable de cargar datos que correspondan a sus autorizaciones y a su situación fiscal. Ante cambios normativos o dudas sobre el tratamiento de una operación específica, debe confirmarse el criterio aplicable con el SAR o con el profesional fiscal/contable del negocio antes de cambiar la configuración de producción.
+
+## 22. Personalización visual del recibo POS
+
+La apariencia de la factura térmica se administra en **Ajustes del sistema > Recibo del POS**. Esta configuración es por tenant y afecta la presentación, no el contenido fiscal que ya fue emitido.
+
+La sección **Diseño de la factura / recibo** permite configurar:
+
+- Ancho de papel: 58 mm, 80 mm u 88 mm.
+- Tamaño del logo.
+- Alineación de cabecera.
+- Alineación de información fiscal.
+- Alineación de datos del cliente.
+- Alineación de productos.
+- Alineación de totales.
+- Alineación del pie de factura.
+- Alineación del código QR.
+- Tamaño de letra.
+- Espaciado compacto, normal o amplio.
+- Tipo de separadores.
+
+La pantalla incluye una **Vista previa fiscal SAR (Honduras)** con datos de demostración. La vista previa solo sirve para comprobar la presentación; no consume numeración fiscal ni utiliza un CAI real.
+
+El logo mostrado en las facturas se carga en **Ajustes del sistema > Configuración de apariencia > Cambiar logo**. En **Recibo del POS** se configura el tamaño y en **Facturación SAR** se controla si debe mostrarse. La factura real reutiliza ese mismo archivo, por lo que no deben mantenerse logos duplicados en distintas secciones.
+
+Los ajustes visuales no pueden ocultar los elementos fiscales obligatorios de una factura SAR. El número fiscal, CAI, rango autorizado, fecha límite, RTN y resumen tributario continúan obteniéndose del documento fiscal almacenado.
