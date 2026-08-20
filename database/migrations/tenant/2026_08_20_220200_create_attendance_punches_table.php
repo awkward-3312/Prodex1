@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('attendance_punches', function (Blueprint $table) {
             $table->id();
-            $table->unsignedInteger('company_id')->index();
-            $table->unsignedInteger('employee_id')->nullable()->index();
+            $table->integer('company_id')->index();
+            $table->integer('employee_id')->nullable()->index();
             $table->unsignedBigInteger('attendance_employee_identifier_id')->nullable()->index();
             $table->unsignedBigInteger('attendance_device_id')->nullable()->index();
             $table->string('provider', 80)->default('generic')->index();
