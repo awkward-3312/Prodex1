@@ -74,19 +74,33 @@ const moduleDescriptions = {
   'Extends your Stocky application with additional functionality.': 'Amplía PRODEX con funciones adicionales.',
 };
 
+// Dynamic Vue previews and other explicitly-managed areas should never be
+// rewritten by the legacy DOM translator. They already own their content and
+// frequent mount/unmount cycles can otherwise monopolize the browser thread.
+const LEGACY_TRANSLATION_EXCLUDE_SELECTOR = '.pos-receipt-demo, [data-prodex-no-legacy-translate]';
+
+function isLegacyTranslationExcluded(node) {
+  if (!node || typeof Node === 'undefined') return false;
+  const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  return !!(element && element.closest && element.closest(LEGACY_TRANSLATION_EXCLUDE_SELECTOR));
+}
+
 function translateExactText(el, dictionary) {
-  if (!el || !el.textContent) return;
+  if (!el || !el.textContent || isLegacyTranslationExcluded(el)) return;
   const current = el.textContent.trim();
-  if (dictionary[current]) el.textContent = dictionary[current];
+  const translated = dictionary[current];
+  if (translated && translated !== current) el.textContent = translated;
 }
 
 function translateLegacyUi(root = document) {
-  if (!root || !root.querySelectorAll) return;
+  if (!root || !root.querySelectorAll || isLegacyTranslationExcluded(root)) return;
 
   root.querySelectorAll('[title], [aria-label], [placeholder]').forEach(el => {
+    if (isLegacyTranslationExcluded(el)) return;
     ['title', 'aria-label', 'placeholder'].forEach(attr => {
       const value = el.getAttribute(attr);
-      if (value && legacyAttributeTranslations[value]) el.setAttribute(attr, legacyAttributeTranslations[value]);
+      const translated = value && legacyAttributeTranslations[value];
+      if (translated && translated !== value) el.setAttribute(attr, translated);
     });
   });
 
@@ -100,7 +114,7 @@ function translateLegacyUi(root = document) {
     ? root
     : (root.closest && root.closest('.main-content')) || null;
 
-  if (moduleRoot && moduleRoot.querySelector('.module-header-card')) {
+  if (moduleRoot && !isLegacyTranslationExcluded(moduleRoot) && moduleRoot.querySelector('.module-header-card')) {
     moduleRoot.querySelectorAll(
       '.module-header-title, .module-header-desc, .stat-label, .upload-card-header, .upload-text, .upload-subtext, .upload-btn, .modules-section-title, .filter-btn, .module-status-badge, .toggle-label, .empty-state-title, .empty-state-desc, .module-description'
     ).forEach(el => {
@@ -118,34 +132,49 @@ function installSpanishLegacyUiGuard() {
   else run();
 
   if (typeof MutationObserver !== 'undefined') {
+    const pendingRoots = new Set();
+    let flushScheduled = false;
+
+    const queueRoot = node => {
+      if (!node || node.nodeType !== Node.ELEMENT_NODE || isLegacyTranslationExcluded(node)) return;
+
+      // If an ancestor is already queued, scanning this subtree separately is
+      // duplicate work. If this node is the ancestor, replace queued children.
+      for (const existing of Array.from(pendingRoots)) {
+        if (existing === node || (existing.contains && existing.contains(node))) return;
+        if (node.contains && node.contains(existing)) pendingRoots.delete(existing);
+      }
+      pendingRoots.add(node);
+
+      if (flushScheduled) return;
+      flushScheduled = true;
+      const schedule = typeof window.requestAnimationFrame === 'function'
+        ? window.requestAnimationFrame.bind(window)
+        : cb => window.setTimeout(cb, 16);
+
+      schedule(() => {
+        flushScheduled = false;
+        const roots = Array.from(pendingRoots);
+        pendingRoots.clear();
+        roots.forEach(root => translateLegacyUi(root));
+      });
+    };
+
     const observer = new MutationObserver(mutations => {
       mutations.forEach(mutation => {
         if (mutation.type === 'childList') {
-          mutation.addedNodes.forEach(node => {
-            if (node.nodeType !== Node.ELEMENT_NODE) return;
-            translateLegacyUi(node);
-            if (node.matches) {
-              if (node.matches('[title], [aria-label], [placeholder]')) {
-                ['title', 'aria-label', 'placeholder'].forEach(attr => {
-                  const value = node.getAttribute(attr);
-                  if (value && legacyAttributeTranslations[value]) node.setAttribute(attr, legacyAttributeTranslations[value]);
-                });
-              }
-              if (node.matches('button, .btn, .dropdown-item, .nav-link, label, th, .modal-title, .card-title, .badge, .alert-heading, .vgt-global-search__input')) {
-                translateExactText(node, commonLegacyUiTranslations);
-              }
-              if (node.matches('.vgt-wrap__footer *')) translateExactText(node, tableUiTranslations);
-            }
-          });
+          mutation.addedNodes.forEach(queueRoot);
           return;
         }
 
         if (mutation.type === 'attributes' && mutation.target && mutation.target.nodeType === Node.ELEMENT_NODE) {
           const el = mutation.target;
+          if (isLegacyTranslationExcluded(el)) return;
           const attr = mutation.attributeName;
           if (attr && ['title', 'aria-label', 'placeholder'].includes(attr)) {
             const value = el.getAttribute(attr);
-            if (value && legacyAttributeTranslations[value]) el.setAttribute(attr, legacyAttributeTranslations[value]);
+            const translated = value && legacyAttributeTranslations[value];
+            if (translated && translated !== value) el.setAttribute(attr, translated);
           }
         }
       });
