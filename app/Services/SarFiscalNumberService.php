@@ -43,6 +43,24 @@ class SarFiscalNumberService
                 $sequence
             );
 
+            $invoiceSettings = array_merge([
+                'document_title' => 'FACTURA',
+                'sale_type_label' => 'CONTADO',
+                'website' => '',
+                'footer_message' => 'Gracias por su compra.',
+                'original_label' => 'Original: Cliente',
+                'copy_label' => 'Copia: Obligado Tributario Emisor',
+                'show_logo' => true,
+                'show_internal_reference' => true,
+                'show_cashier' => true,
+                'show_warehouse' => true,
+                'show_payment_summary' => true,
+                'show_customer_address' => true,
+                'show_item_code' => true,
+                'show_total_in_words' => true,
+                'show_qr' => true,
+            ], is_array($profile->invoice_settings) ? $profile->invoice_settings : []);
+
             $document = SarFiscalDocument::create([
                 'sale_id' => $sale->id,
                 'authorization_id' => $authorization->id,
@@ -58,8 +76,12 @@ class SarFiscalNumberService
                     'trade_name' => $profile->trade_name,
                     'head_office_address' => $profile->head_office_address,
                     'point_of_issue_address' => $authorization->pointOfIssue->address,
+                    'point_of_issue_name' => $authorization->pointOfIssue->name,
+                    'establishment_code' => $authorization->pointOfIssue->establishment_code,
+                    'point_code' => $authorization->pointOfIssue->point_code,
                     'phone' => $profile->phone,
                     'email' => $profile->email,
+                    'invoice_settings' => $invoiceSettings,
                 ],
                 'customer_snapshot' => $customerSnapshot,
                 'sale_snapshot' => $saleSnapshot,
