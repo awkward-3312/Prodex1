@@ -1,0 +1,246 @@
+// PRODEX Design System — compatibility-first foundation
+// Keep selectors intentionally scoped to .prodex-ui so legacy screens remain
+// untouched until they are migrated deliberately.
+
+.prodex-ui {
+  color: var(--px-text);
+
+  .px-page {
+    width: 100%;
+    max-width: var(--px-content-max);
+    margin: 0 auto;
+  }
+
+  .px-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--px-space-6);
+    margin-bottom: var(--px-space-6);
+  }
+
+  .px-page-title {
+    margin: 0;
+    color: var(--px-text);
+    font-size: 1.5rem;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .px-page-description {
+    max-width: 720px;
+    margin: var(--px-space-2) 0 0;
+    color: var(--px-text-muted);
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+
+  .px-page-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--px-space-2);
+  }
+
+  .px-section {
+    background: var(--px-surface);
+    border: 1px solid var(--px-border);
+    border-radius: var(--px-radius-lg);
+    box-shadow: var(--px-shadow-xs);
+    margin-bottom: var(--px-space-6);
+  }
+
+  .px-section-header {
+    padding: var(--px-space-5) var(--px-space-6);
+    border-bottom: 1px solid var(--px-border);
+  }
+
+  .px-section-title {
+    margin: 0;
+    color: var(--px-text);
+    font-size: 1rem;
+    line-height: 1.4;
+    font-weight: 650;
+  }
+
+  .px-section-description {
+    margin: var(--px-space-1) 0 0;
+    color: var(--px-text-muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .px-section-body {
+    padding: var(--px-space-6);
+  }
+
+  .px-action-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--px-space-4);
+    margin: var(--px-space-8) calc(var(--px-space-6) * -1) calc(var(--px-space-6) * -1);
+    padding: var(--px-space-4) var(--px-space-6);
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid var(--px-border);
+    border-radius: 0 0 var(--px-radius-lg) var(--px-radius-lg);
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.05);
+    backdrop-filter: blur(8px);
+  }
+
+  .px-muted { color: var(--px-text-muted); }
+  .px-danger { color: var(--px-danger); }
+  .px-success { color: var(--px-success); }
+
+  // BootstrapVue compatibility. These rules only apply inside migrated screens.
+  .form-group label,
+  legend.col-form-label {
+    color: var(--px-text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-bottom: var(--px-space-2);
+  }
+
+  .form-control,
+  .custom-select {
+    min-height: var(--px-control-height);
+    color: var(--px-text);
+    background-color: var(--px-surface);
+    border-color: var(--px-border-strong);
+    border-radius: var(--px-radius-md);
+    box-shadow: none;
+    transition: border-color var(--px-transition-fast), box-shadow var(--px-transition-fast), background-color var(--px-transition-fast);
+  }
+
+  .form-control::placeholder { color: var(--px-text-disabled); }
+
+  .form-control:hover:not(:disabled):not([readonly]),
+  .custom-select:hover:not(:disabled) {
+    border-color: #94a3b8;
+  }
+
+  .form-control:focus,
+  .custom-select:focus {
+    border-color: var(--px-primary) !important;
+    box-shadow: 0 0 0 3px var(--px-primary-soft) !important;
+  }
+
+  .form-control:disabled,
+  .form-control[readonly],
+  .custom-select:disabled {
+    color: var(--px-text-muted);
+    background: var(--px-surface-muted);
+  }
+
+  .invalid-feedback {
+    margin-top: var(--px-space-1);
+    color: var(--px-danger);
+    font-size: 0.75rem;
+  }
+
+  .vs__dropdown-toggle {
+    min-height: var(--px-control-height);
+    padding: 2px 6px;
+    background: var(--px-surface);
+    border-color: var(--px-border-strong);
+    border-radius: var(--px-radius-md);
+    transition: border-color var(--px-transition-fast), box-shadow var(--px-transition-fast);
+  }
+
+  .v-select:hover .vs__dropdown-toggle { border-color: #94a3b8; }
+  .v-select.vs--open .vs__dropdown-toggle,
+  .vs__dropdown-toggle:focus-within {
+    border-color: var(--px-primary) !important;
+    box-shadow: 0 0 0 3px var(--px-primary-soft) !important;
+  }
+
+  .vs__selected,
+  .vs__search { color: var(--px-text); }
+  .vs__search::placeholder { color: var(--px-text-disabled); }
+
+  .btn {
+    min-height: var(--px-control-height);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--px-space-2);
+    border-radius: var(--px-radius-md);
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: background-color var(--px-transition-fast), border-color var(--px-transition-fast), color var(--px-transition-fast), box-shadow var(--px-transition-fast), transform var(--px-transition-fast);
+  }
+
+  .btn:focus { box-shadow: 0 0 0 3px var(--px-primary-soft) !important; }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+
+  .btn-primary {
+    background: var(--px-primary) !important;
+    border-color: var(--px-primary) !important;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--px-primary-hover) !important;
+    border-color: var(--px-primary-hover) !important;
+  }
+
+  .btn-secondary,
+  .btn-outline-secondary {
+    color: var(--px-text-secondary);
+    background: var(--px-surface);
+    border-color: var(--px-border-strong);
+  }
+
+  .btn-secondary:hover:not(:disabled),
+  .btn-outline-secondary:hover:not(:disabled) {
+    color: var(--px-text);
+    background: var(--px-surface-muted);
+    border-color: #94a3b8;
+  }
+
+  .card {
+    border: 1px solid var(--px-border);
+    border-radius: var(--px-radius-lg);
+    box-shadow: var(--px-shadow-xs);
+  }
+
+  .modal-content {
+    border: 1px solid var(--px-border);
+    border-radius: var(--px-radius-xl);
+    box-shadow: var(--px-shadow-md);
+  }
+
+  .modal-header,
+  .modal-footer { border-color: var(--px-border); }
+}
+
+@media (max-width: 767.98px) {
+  .prodex-ui {
+    .px-page-header { flex-direction: column; gap: var(--px-space-4); }
+    .px-page-actions { width: 100%; justify-content: flex-start; }
+    .px-section-header,
+    .px-section-body { padding-left: var(--px-space-4); padding-right: var(--px-space-4); }
+    .px-action-bar {
+      margin-left: calc(var(--px-space-4) * -1);
+      margin-right: calc(var(--px-space-4) * -1);
+      margin-bottom: calc(var(--px-space-4) * -1);
+      padding-left: var(--px-space-4);
+      padding-right: var(--px-space-4);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prodex-ui *,
+  .prodex-ui *::before,
+  .prodex-ui *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
