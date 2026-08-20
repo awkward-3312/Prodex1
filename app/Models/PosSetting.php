@@ -63,4 +63,55 @@ class PosSetting extends Model
         'direct_network_printing' => 'boolean',
         'network_printer_port' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (PosSetting $setting) {
+            if (! app()->bound('request')) {
+                return;
+            }
+
+            $request = request();
+            $alignments = [
+                'receipt_header_alignment' => 'center',
+                'receipt_fiscal_alignment' => 'center',
+                'receipt_customer_alignment' => 'left',
+                'receipt_items_alignment' => 'left',
+                'receipt_totals_alignment' => 'right',
+                'receipt_footer_alignment' => 'center',
+                'receipt_qr_alignment' => 'center',
+            ];
+
+            foreach ($alignments as $field => $default) {
+                if ($request->has($field)) {
+                    $value = strtolower(trim((string) $request->input($field)));
+                    $setting->{$field} = in_array($value, ['left', 'center', 'right'], true) ? $value : $default;
+                }
+            }
+
+            if ($request->has('receipt_font_size')) {
+                $fontSize = (int) $request->input('receipt_font_size');
+                $setting->receipt_font_size = max(8, min(14, $fontSize ?: 10));
+            }
+
+            if ($request->has('receipt_density')) {
+                $density = strtolower(trim((string) $request->input('receipt_density')));
+                $setting->receipt_density = in_array($density, ['compact', 'normal', 'wide'], true) ? $density : 'normal';
+            }
+
+            if ($request->has('receipt_separator')) {
+                $separator = strtolower(trim((string) $request->input('receipt_separator')));
+                $setting->receipt_separator = in_array($separator, ['none', 'solid', 'dotted', 'dashed'], true) ? $separator : 'dotted';
+            }
+
+            // The legacy controller historically accepted only layouts 1-4.
+            // Keep layout 5 working without duplicating the whole settings endpoint.
+            if ($request->has('receipt_layout')) {
+                $layout = (int) $request->input('receipt_layout');
+                if (in_array($layout, [1, 2, 3, 4, 5], true)) {
+                    $setting->receipt_layout = $layout;
+                }
+            }
+        });
+    }
 }
