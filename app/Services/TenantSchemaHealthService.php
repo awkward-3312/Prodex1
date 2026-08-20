@@ -27,6 +27,10 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_19_214500_add_invoice_settings_to_sar_fiscal_profiles.php',
         'database/migrations/tenant/2026_08_19_220000_backfill_honduras_product_fiscal_tax.php',
         'database/migrations/tenant/2026_08_20_100000_add_receipt_presentation_fields_to_pos_settings.php',
+        'database/migrations/tenant/2026_08_20_220000_create_attendance_devices_table.php',
+        'database/migrations/tenant/2026_08_20_220100_create_attendance_employee_identifiers_table.php',
+        'database/migrations/tenant/2026_08_20_220200_create_attendance_punches_table.php',
+        'database/migrations/tenant/2026_08_20_220300_add_source_to_attendances_table.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -110,6 +114,13 @@ class TenantSchemaHealthService
             'receipt_items_alignment', 'receipt_totals_alignment', 'receipt_footer_alignment', 'receipt_qr_alignment',
             'receipt_font_size', 'receipt_density', 'receipt_separator',
         ]);
+
+        // Attendance integration foundation. These tables keep biometric/device
+        // identities and raw punch events separate from calculated attendance.
+        $this->requireTable($schema, $missing, 'attendance_devices');
+        $this->requireTable($schema, $missing, 'attendance_employee_identifiers');
+        $this->requireTable($schema, $missing, 'attendance_punches');
+        $this->requireColumns($schema, $missing, 'attendances', ['source', 'source_reference']);
 
         return $missing;
     }
