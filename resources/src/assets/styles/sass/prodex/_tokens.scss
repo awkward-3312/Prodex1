@@ -1,0 +1,71 @@
+// PRODEX Design System — semantic tokens
+// This layer intentionally maps to the existing runtime primary-color variables
+// so tenant appearance customization keeps working.
+
+:root {
+  --px-primary: var(--primary-color, #663399);
+  --px-primary-hover: var(--primary-color-darker, #562b82);
+  --px-primary-soft: var(--primary-color-soft, rgba(102, 51, 153, 0.12));
+
+  --px-bg: #f8fafc;
+  --px-surface: #ffffff;
+  --px-surface-subtle: #f8fafc;
+  --px-surface-muted: #f1f5f9;
+  --px-border: #e2e8f0;
+  --px-border-strong: #cbd5e1;
+
+  --px-text: #0f172a;
+  --px-text-secondary: #475569;
+  --px-text-muted: #64748b;
+  --px-text-disabled: #94a3b8;
+
+  --px-success: #16a34a;
+  --px-warning: #d97706;
+  --px-danger: #dc2626;
+  --px-info: #2563eb;
+
+  --px-radius-sm: 6px;
+  --px-radius-md: 8px;
+  --px-radius-lg: 12px;
+  --px-radius-xl: 16px;
+  --px-radius-pill: 999px;
+
+  --px-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --px-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --px-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+
+  --px-space-1: 4px;
+  --px-space-2: 8px;
+  --px-space-3: 12px;
+  --px-space-4: 16px;
+  --px-space-5: 20px;
+  --px-space-6: 24px;
+  --px-space-8: 32px;
+  --px-space-10: 40px;
+
+  --px-control-height-sm: 34px;
+  --px-control-height: 40px;
+  --px-control-height-lg: 46px;
+
+  --px-transition-fast: 140ms ease;
+  --px-transition: 200ms ease;
+
+  --px-content-max: 1600px;
+}
+
+// Preserve compatibility with the theme mode already supported by the app.
+.dark-theme {
+  --px-bg: #111827;
+  --px-surface: #1f2937;
+  --px-surface-subtle: #172033;
+  --px-surface-muted: #273449;
+  --px-border: #374151;
+  --px-border-strong: #4b5563;
+  --px-text: #f8fafc;
+  --px-text-secondary: #d1d5db;
+  --px-text-muted: #9ca3af;
+  --px-text-disabled: #6b7280;
+  --px-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --px-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.22);
+  --px-shadow-md: 0 12px 32px rgba(0, 0, 0, 0.28);
+}

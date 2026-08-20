@@ -1,0 +1,222 @@
+// PRODEX Design System — global interaction states
+// Applies to administrative routes that receive .prodex-ui from App.vue.
+
+.prodex-ui {
+  // Legacy breadcrumbs become quieter and more consistent across admin pages.
+  .breadcrumb {
+    padding: 0;
+    margin-bottom: var(--px-space-6);
+    background: transparent;
+  }
+
+  .breadcrumb h1 {
+    margin: 0;
+    color: var(--px-text);
+    font-size: 1.5rem;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .breadcrumb ul {
+    margin-top: var(--px-space-2);
+    color: var(--px-text-muted);
+    font-size: 0.8125rem;
+  }
+
+  .separator-breadcrumb {
+    margin: 0 0 var(--px-space-6);
+    border-color: var(--px-border) !important;
+  }
+
+  // Alerts: semantic, compact, no heavy legacy shadows.
+  .alert {
+    border-width: 1px;
+    border-radius: var(--px-radius-md);
+    box-shadow: none;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .alert-success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+  .alert-warning { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+  .alert-danger  { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+  .alert-info    { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+
+  // Status badges are intentionally subtle; color communicates meaning without
+  // dominating tables and forms.
+  .badge {
+    padding: 0.32rem 0.55rem;
+    border-radius: var(--px-radius-pill);
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .badge-success { background: #dcfce7; color: #166534; }
+  .badge-warning { background: #fef3c7; color: #92400e; }
+  .badge-danger  { background: #fee2e2; color: #991b1b; }
+  .badge-info    { background: #dbeafe; color: #1e40af; }
+  .badge-secondary { background: var(--px-surface-muted); color: var(--px-text-secondary); }
+
+  // Keep destructive actions visually distinct but less aggressive until hover.
+  .btn-danger,
+  .btn-outline-danger {
+    border-color: #fecaca;
+  }
+
+  .btn-outline-danger {
+    color: var(--px-danger);
+    background: var(--px-surface);
+  }
+
+  .btn-outline-danger:hover:not(:disabled) {
+    color: #fff;
+    background: var(--px-danger);
+    border-color: var(--px-danger);
+  }
+
+  // Consistent small button sizing used heavily throughout legacy modules.
+  .btn-sm {
+    min-height: var(--px-control-height-sm);
+    padding: 0.35rem 0.7rem;
+    border-radius: var(--px-radius-sm);
+    font-size: 0.8125rem;
+  }
+
+  // Existing full-page spinners remain functionally identical, but present as
+  // a centered, lightweight loading state instead of a floating legacy spinner.
+  .loading_page {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    width: 34px !important;
+    height: 34px !important;
+    margin: 56px auto !important;
+  }
+
+  // Generic empty states for vue-good-table and Bootstrap tables.
+  .vgt-no-data,
+  .table-empty,
+  .empty-state {
+    padding: 3rem 1.5rem !important;
+    color: var(--px-text-muted) !important;
+    text-align: center;
+    background: var(--px-surface) !important;
+    font-size: 0.875rem;
+  }
+
+  // Tabs are common in settings and detail pages.
+  .nav-tabs {
+    gap: var(--px-space-1);
+    border-bottom-color: var(--px-border);
+  }
+
+  .nav-tabs .nav-link {
+    color: var(--px-text-muted);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .nav-tabs .nav-link:hover {
+    color: var(--px-text);
+    background: var(--px-surface-muted);
+  }
+
+  .nav-tabs .nav-link.active {
+    color: var(--px-primary) !important;
+    background: transparent !important;
+    border-bottom-color: var(--px-primary) !important;
+  }
+
+  // Dropdowns and contextual menus.
+  .dropdown-menu {
+    padding: var(--px-space-2);
+    border: 1px solid var(--px-border);
+    border-radius: var(--px-radius-lg);
+    box-shadow: var(--px-shadow-md);
+  }
+
+  .dropdown-item {
+    border-radius: var(--px-radius-sm);
+    color: var(--px-text-secondary);
+    font-size: 0.8125rem;
+  }
+
+  .dropdown-item:hover,
+  .dropdown-item:focus {
+    color: var(--px-text);
+    background: var(--px-surface-muted);
+  }
+
+  // Modal hierarchy and spacing.
+  .modal-content {
+    overflow: hidden;
+    background: var(--px-surface);
+  }
+
+  .modal-header {
+    padding: var(--px-space-4) var(--px-space-5);
+    background: var(--px-surface);
+  }
+
+  .modal-title {
+    color: var(--px-text);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .modal-body {
+    padding: var(--px-space-5);
+    color: var(--px-text-secondary);
+  }
+
+  .modal-footer {
+    padding: var(--px-space-4) var(--px-space-5);
+    background: var(--px-surface-subtle);
+  }
+
+  // Sidebar filters/settings panels.
+  .b-sidebar {
+    color: var(--px-text);
+    background: var(--px-surface) !important;
+  }
+
+  .b-sidebar .b-sidebar-header {
+    padding: var(--px-space-5);
+    border-bottom: 1px solid var(--px-border);
+  }
+
+  // Lightweight skeleton primitive available to newly migrated screens.
+  .px-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--px-surface-muted);
+    border-radius: var(--px-radius-sm);
+  }
+
+  .px-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.72), transparent);
+    animation: px-skeleton-shimmer 1.35s ease-in-out infinite;
+  }
+
+  .px-skeleton-line { height: 12px; }
+  .px-skeleton-control { height: var(--px-control-height); }
+  .px-skeleton-card { min-height: 120px; }
+}
+
+@keyframes px-skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prodex-ui .px-skeleton::after { animation: none; }
+}

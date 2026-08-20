@@ -7,7 +7,11 @@
       </div>
     </div>
 
-    <router-view v-if="Loading" class="app-fade-in"></router-view>
+    <router-view
+      v-if="Loading"
+      class="app-fade-in"
+      :class="designSystemRouteClass"
+    ></router-view>
 
     <!-- Global offline sync fullscreen loader -->
     <div v-if="globalSyncActive" class="global-sync-overlay">
@@ -68,6 +72,19 @@ export default {
     isPosPage() {
       const p = String(this.$route.path || '');
       return p === '/app/pos' || p.startsWith('/app/pos_') || p.startsWith('/app/pos/');
+    },
+    designSystemRouteClass() {
+      if (this.isPosPage) return [];
+
+      const routeName = String(this.$route && this.$route.name || '');
+      const classes = ['prodex-ui'];
+      const listRoutes = ['Customers', 'Suppliers'];
+
+      if (listRoutes.includes(routeName)) {
+        classes.push('px-list-page');
+      }
+
+      return classes;
     },
     titleTemplate() {
       return `%s | ${this.currentUser?.page_title_suffix || window.__pageTitleSuffix || "Gestión empresarial"}`;
