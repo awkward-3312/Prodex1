@@ -35,6 +35,22 @@ jobs:
           php -l app/Http/Controllers/SarDirectNetworkPrintController.php
           php -l app/Models/SarFiscalProfile.php
           php -l database/migrations/tenant/2026_08_19_220000_backfill_honduras_product_fiscal_tax.php
+      - name: PHP syntax check for attendance integration files
+        run: |
+          php -l app/Http/Controllers/hrm/AttendancesController.php
+          php -l app/Http/Controllers/hrm/AttendanceIntegrationsController.php
+          php -l app/Models/Attendance.php
+          php -l app/Models/AttendanceDevice.php
+          php -l app/Models/AttendanceEmployeeIdentifier.php
+          php -l app/Models/AttendancePunch.php
+          php -l app/Models/Employee.php
+          php -l app/Providers/RouteServiceProvider.php
+          php -l app/Services/TenantSchemaHealthService.php
+          php -l routes/tenant_attendance_integrations.php
+          php -l database/migrations/tenant/2026_08_20_220000_create_attendance_devices_table.php
+          php -l database/migrations/tenant/2026_08_20_220100_create_attendance_employee_identifiers_table.php
+          php -l database/migrations/tenant/2026_08_20_220200_create_attendance_punches_table.php
+          php -l database/migrations/tenant/2026_08_20_220300_add_source_to_attendances_table.php
 
   frontend-build:
     runs-on: ubuntu-latest

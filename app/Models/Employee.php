@@ -55,6 +55,16 @@ class Employee extends Model
         return $this->hasMany(Attendance::class);
     }
 
+    public function attendanceIdentifiers()
+    {
+        return $this->hasMany(AttendanceEmployeeIdentifier::class);
+    }
+
+    public function attendancePunches()
+    {
+        return $this->hasMany(AttendancePunch::class);
+    }
+
     public function leave()
     {
         return $this->hasMany(Leave::class)

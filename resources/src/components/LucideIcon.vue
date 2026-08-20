@@ -131,6 +131,7 @@ const REGISTRY = {
   'mail': Mail,
   'package': Package,
   'pencil': Pencil,
+  'edit': Pencil,
   'check': Check,
   'check-check': CheckCheck,
   'camera': Camera,

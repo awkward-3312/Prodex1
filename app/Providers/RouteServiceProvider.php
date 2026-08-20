@@ -86,6 +86,14 @@ class RouteServiceProvider extends ServiceProvider
             ->namespace($this->namespace)
             ->group(base_path('routes/tenant_api.php'));
 
+        // Attendance integrations live in a small isolated route file so new
+        // biometric/import APIs do not increase the risk of editing the large
+        // historical tenant_api.php file.
+        Route::prefix('api')
+            ->middleware(array_merge(['api'], $tenancy))
+            ->namespace($this->namespace)
+            ->group(base_path('routes/tenant_attendance_integrations.php'));
+
         // Small, isolated route overrides that must be registered after the legacy
         // tenant API routes. This keeps SAR-specific rendering out of the large
         // historical route/controller files while preserving non-SAR fallbacks.
