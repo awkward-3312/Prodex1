@@ -15,10 +15,10 @@
         @on-search="onSearch"
         :search-options="{
         enabled: true,
-        placeholder: $t('Search_this_table'),  
+        placeholder: $t('Search_this_table'),
       }"
-        :select-options="{ 
-          enabled: true ,
+        :select-options="{
+          enabled: true,
           clearSelectionText: '',
         }"
         @on-selected-rows-change="selectionChanged"
@@ -46,10 +46,10 @@
 
         <template slot="table-row" slot-scope="props">
           <span v-if="props.column.field == 'actions'">
-            <a @click="Edit_Attendance(props.row)" class="cursor-pointer" title="Edit" v-b-tooltip.hover>
+            <a @click="Edit_Attendance(props.row)" class="cursor-pointer" title="Editar" v-b-tooltip.hover>
               <lucide-icon class="text-25 text-success" name="pencil" />
             </a>
-            <a title="Delete" v-b-tooltip.hover class="cursor-pointer" @click="Remove_Attendance(props.row.id)">
+            <a title="Eliminar" v-b-tooltip.hover class="cursor-pointer" @click="Remove_Attendance(props.row.id)">
               <lucide-icon class="text-25 text-danger" name="x" />
             </a>
           </span>
@@ -58,13 +58,31 @@
     </b-card>
 
     <validation-observer ref="Create_Attendance">
-      <b-modal hide-footer size="md" id="Modal_attendance" :title="editmode?$t('Edit'):$t('Add')">
+      <b-modal
+        hide-footer
+        size="md"
+        id="Modal_attendance"
+        modal-class="prodex-form-modal"
+        :title="editmode ? 'Editar asistencia' : 'Registrar asistencia'"
+      >
         <b-form @submit.prevent="Submit_Attendance">
-          <b-row>
-           <!-- Company -->
-                 <b-col md="12">
-                  <validation-provider name="Company" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Company') + ' ' + '*'">
+          <div class="prodex-form-shell">
+            <div class="prodex-form-intro">
+              <div class="prodex-form-intro__icon">
+                <lucide-icon name="clock" />
+              </div>
+              <div>
+                <h6>{{ editmode ? 'Actualizar registro de asistencia' : 'Registro manual de asistencia' }}</h6>
+                <p>{{ editmode ? 'Corrige la jornada registrada para este empleado.' : 'Registra manualmente la entrada y salida de un empleado cuando no provenga de un dispositivo de marcaje.' }}</p>
+              </div>
+            </div>
+
+            <div class="prodex-form-section">
+              <div class="prodex-form-section__title">Empleado</div>
+              <div class="prodex-form-grid">
+                <div>
+                  <validation-provider name="Compañía" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ valid, errors }" label="Compañía *">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -72,19 +90,18 @@
                         class="required"
                         required
                         @input="Selected_Company"
-                        :placeholder="$t('Choose_Company')"
+                        placeholder="Selecciona una compañía"
                         :reduce="label => label.value"
-                        :options="companies.map(companies => ({label: companies.name, value: companies.id}))"
+                        :options="companies.map(company => ({label: company.name, value: company.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
-                </b-col>
+                </div>
 
-                  <!-- Employee -->
-                 <b-col md="12">
-                  <validation-provider name="Employee" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Employee') + ' ' + '*'">
+                <div>
+                  <validation-provider name="Empleado" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ valid, errors }" label="Empleado *">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -92,57 +109,88 @@
                         class="required"
                         required
                         @input="Selected_Employee"
-                        :placeholder="$t('Choose_Employee')"
+                        placeholder="Selecciona un empleado"
                         :reduce="label => label.value"
-                        :options="employees.map(employees => ({label: employees.username, value: employees.id}))"
+                        :options="employees.map(employee => ({label: employee.username, value: employee.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
-                </b-col>
+                </div>
+              </div>
+            </div>
 
-                  <!-- Date  -->
-                 <b-col md="12">
-                   <validation-provider name="Date" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('date') + ' ' + '*'">
-                      <Datepicker  id="date" name="date" :placeholder="$t('Enter_Attendance_date')" v-model="attendance.date" 
-                          input-class="form-control back_important" format="yyyy-MM-dd"  @closed="attendance.date=formatDate(attendance.date)">
-                      </Datepicker>
-                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+            <div class="prodex-form-section">
+              <div class="prodex-form-section__title">Jornada</div>
+              <div class="prodex-form-grid">
+                <div class="prodex-form-field--full">
+                  <validation-provider name="Fecha" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ errors }" label="Fecha *">
+                      <Datepicker
+                        id="date"
+                        name="date"
+                        placeholder="Selecciona la fecha de asistencia"
+                        v-model="attendance.date"
+                        input-class="form-control back_important"
+                        format="yyyy-MM-dd"
+                        @closed="attendance.date=formatDate(attendance.date)"
+                      />
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
-                </b-col>
+                </div>
 
-                 <!-- Time_In  -->
-               <b-col md="12">
-                 <validation-provider name="Time_In" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Time_In') + ' ' + '*'">
-                    <vue-clock-picker v-model="attendance.clock_in" :placeholder="$t('Time_In')" 
-                       name="clock_in" id="clock_in"></vue-clock-picker>
-                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                <div>
+                  <validation-provider name="Hora de entrada" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ errors }" label="Hora de entrada *">
+                      <vue-clock-picker
+                        v-model="attendance.clock_in"
+                        placeholder="Hora de entrada"
+                        name="clock_in"
+                        id="clock_in"
+                      />
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
-                </b-col>
+                </div>
 
-                   <!-- Time_In  -->
-               <b-col md="12">
-                 <validation-provider name="Time_Out" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Time_Out') + ' ' + '*'">
-                    <vue-clock-picker v-model="attendance.clock_out" :placeholder="$t('Time_Out')" 
-                       name="clock_out" id="clock_out"></vue-clock-picker>
-                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                <div>
+                  <validation-provider name="Hora de salida" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ errors }" label="Hora de salida *">
+                      <vue-clock-picker
+                        v-model="attendance.clock_out"
+                        placeholder="Hora de salida"
+                        name="clock_out"
+                        id="clock_out"
+                      />
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
-                </b-col>
+                </div>
+              </div>
+              <span class="prodex-form-source-note">
+                <lucide-icon name="edit" /> Registro manual
+              </span>
+            </div>
 
-            <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
-
-          </b-row>
+            <div class="prodex-form-footer">
+              <div class="prodex-form-footer__hint">La duración de la jornada se calculará a partir de la hora de entrada y salida.</div>
+              <div class="prodex-form-footer__actions">
+                <b-button
+                  type="button"
+                  variant="outline-secondary"
+                  :disabled="SubmitProcessing"
+                  @click="$bvModal.hide('Modal_attendance')"
+                >
+                  Cancelar
+                </b-button>
+                <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
+                  <lucide-icon v-if="!SubmitProcessing" class="mr-1" name="check" />
+                  {{ SubmitProcessing ? 'Guardando...' : (editmode ? 'Guardar cambios' : 'Guardar asistencia') }}
+                </b-button>
+              </div>
+            </div>
+          </div>
         </b-form>
       </b-modal>
     </validation-observer>
