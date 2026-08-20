@@ -17,199 +17,13 @@ const options = {
   windowTitle: window.document.title,
 };
 
-const legacyAttributeTranslations = {
-  'View': 'Ver', 'Show': 'Ver', 'Edit': 'Editar', 'Delete': 'Eliminar', 'Download': 'Descargar',
-  'Print': 'Imprimir', 'Close': 'Cerrar', 'Save': 'Guardar', 'Search': 'Buscar', 'Filter': 'Filtrar',
-  'Document actions': 'Acciones del documento', 'Toggle sidebar': 'Mostrar u ocultar barra lateral',
-  'Language': 'Idioma', 'Search this table': 'Buscar en esta tabla', 'Search...': 'Buscar...', 'Select...': 'Seleccionar...',
-};
-
-const commonLegacyUiTranslations = {
-  'View': 'Ver', 'Show': 'Ver', 'Edit': 'Editar', 'Delete': 'Eliminar', 'Download': 'Descargar',
-  'Print': 'Imprimir', 'Save': 'Guardar', 'Close': 'Cerrar', 'Cancel': 'Cancelar', 'Confirm': 'Confirmar',
-  'Submit': 'Guardar', 'Add': 'Agregar', 'Create': 'Crear', 'Update': 'Actualizar', 'Search': 'Buscar',
-  'Filter': 'Filtrar', 'Reset': 'Restablecer', 'Refresh': 'Actualizar', 'Actions': 'Acciones', 'Action': 'Acción',
-  'Status': 'Estado', 'Date': 'Fecha', 'Reference': 'Referencia', 'Name': 'Nombre', 'Description': 'Descripción',
-  'Email': 'Correo electrónico', 'Phone': 'Teléfono', 'Address': 'Dirección', 'Amount': 'Monto', 'Total': 'Total',
-  'Paid': 'Pagado', 'Unpaid': 'Sin pagar', 'Partial': 'Parcial', 'Pending': 'Pendiente', 'Completed': 'Completado',
-  'Cancelled': 'Cancelado', 'Canceled': 'Cancelado', 'Received': 'Recibido', 'Draft': 'Borrador', 'Active': 'Activo',
-  'Inactive': 'Inactivo', 'Enabled': 'Habilitado', 'Disabled': 'Deshabilitado', 'Yes': 'Sí', 'No': 'No', 'All': 'Todos',
-  'None': 'Ninguno', 'Customer': 'Cliente', 'Customers': 'Clientes', 'Supplier': 'Proveedor', 'Suppliers': 'Proveedores',
-  'Product': 'Producto', 'Products': 'Productos', 'Warehouse': 'Almacén', 'Warehouses': 'Almacenes', 'Sale': 'Venta',
-  'Sales': 'Ventas', 'Purchase': 'Compra', 'Purchases': 'Compras', 'Payment': 'Pago', 'Payments': 'Pagos',
-  'Return': 'Devolución', 'Returns': 'Devoluciones', 'Quantity': 'Cantidad', 'Price': 'Precio', 'Discount': 'Descuento',
-  'Tax': 'Impuesto', 'Notes': 'Notas', 'Details': 'Detalles', 'Settings': 'Configuración', 'Users': 'Usuarios',
-  'Roles': 'Roles', 'Permissions': 'Permisos', 'Dashboard': 'Panel', 'Reports': 'Reportes', 'Loading...': 'Cargando...',
-  'Processing...': 'Procesando...', 'Saving...': 'Guardando...', 'No data': 'Sin datos',
-  'No data available': 'No hay datos disponibles', 'No results found': 'No se encontraron resultados',
-  'Select': 'Seleccionar', 'Select All': 'Seleccionar todo', 'Clear': 'Limpiar',
-};
-
-const tableUiTranslations = {
-  'next': 'Siguiente', 'prev': 'Anterior', 'Next': 'Siguiente', 'Previous': 'Anterior',
-  'Previous page': 'Página anterior', 'Next page': 'Página siguiente', 'Rows per page': 'Filas por página', 'of': 'de',
-};
-
-const moduleSettingsTranslations = {
-  'Module Settings': 'Configuración de módulos',
-  'Install, manage and configure modules to extend your Stocky application.': 'Instala, administra y configura módulos para ampliar las funciones de PRODEX.',
-  'Installed': 'Instalados', 'Active': 'Activos', 'Inactive': 'Inactivos', 'Install New Module': 'Instalar nuevo módulo',
-  'Drag & drop your module .zip file here': 'Arrastra y suelta aquí el archivo .zip del módulo',
-  'or click to browse files': 'o haz clic para buscar el archivo', 'Install Module': 'Instalar módulo',
-  'Installing...': 'Instalando...', 'Installed Modules': 'Módulos instalados', 'All': 'Todos', 'Enabled': 'Habilitado',
-  'Disabled': 'Deshabilitado', 'No Modules Installed': 'No hay módulos instalados',
-  'Upload a module zip file above to get started. Modules add new features and functionality to your Stocky application.': 'Carga un archivo ZIP de módulo para comenzar. Los módulos agregan nuevas funciones a PRODEX.',
-};
-
-const moduleDescriptions = {
-  'Interactive API documentation with code examples and endpoint reference.': 'Documentación interactiva de la API con ejemplos de código y referencia de endpoints.',
-  'Sync products and stock with your WooCommerce store.': 'Sincroniza productos e inventario con tu tienda WooCommerce.',
-  'Full-featured online store with product catalog and checkout.': 'Tienda en línea completa con catálogo de productos y proceso de compra.',
-  'Human resource management with employees, attendance, and payroll.': 'Gestión de recursos humanos con empleados, asistencia y nómina.',
-  'Sales agent commission programs, rules, and tracking.': 'Programas de comisiones para agentes de ventas, reglas y seguimiento.',
-  'Contract management with templates, tasks, and attachments.': 'Gestión de contratos con plantillas, tareas y archivos adjuntos.',
-  'Appointment booking and service job management.': 'Reservación de citas y gestión de trabajos de servicio.',
-  'Advanced reporting and business analytics.': 'Reportes avanzados y análisis del negocio.',
-  'Recruitment management with jobs, candidates, applications, interviews and reports.': 'Gestión de reclutamiento con vacantes, candidatos, postulaciones, entrevistas y reportes.',
-  'Extends your Stocky application with additional functionality.': 'Amplía PRODEX con funciones adicionales.',
-};
-
-// Dynamic Vue previews and other explicitly-managed areas should never be
-// rewritten by the legacy DOM translator. They already own their content and
-// frequent mount/unmount cycles can otherwise monopolize the browser thread.
-const LEGACY_TRANSLATION_EXCLUDE_SELECTOR = '.pos-receipt-demo, [data-prodex-no-legacy-translate]';
-
-function legacyTranslationSuspended() {
-  if (typeof window !== 'undefined' && window.__prodexSuspendLegacyUiTranslations === true) return true;
-  if (typeof document !== 'undefined' && document.querySelector && document.querySelector('.pos-receipt-demo')) return true;
-  return false;
-}
-
-function isLegacyTranslationExcluded(node) {
-  if (!node || typeof Node === 'undefined') return false;
-  const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
-  return !!(element && element.closest && element.closest(LEGACY_TRANSLATION_EXCLUDE_SELECTOR));
-}
-
-function translateExactText(el, dictionary) {
-  if (legacyTranslationSuspended() || !el || !el.textContent || isLegacyTranslationExcluded(el)) return;
-  const current = el.textContent.trim();
-  const translated = dictionary[current];
-  if (translated && translated !== current) el.textContent = translated;
-}
-
-function translateLegacyUi(root = document) {
-  if (legacyTranslationSuspended() || !root || !root.querySelectorAll || isLegacyTranslationExcluded(root)) return;
-
-  root.querySelectorAll('[title], [aria-label], [placeholder]').forEach(el => {
-    if (isLegacyTranslationExcluded(el)) return;
-    ['title', 'aria-label', 'placeholder'].forEach(attr => {
-      const value = el.getAttribute(attr);
-      const translated = value && legacyAttributeTranslations[value];
-      if (translated && translated !== value) el.setAttribute(attr, translated);
-    });
-  });
-
-  root.querySelectorAll(
-    'button, .btn, .dropdown-item, .nav-link, label, th, .modal-title, .card-title, .badge, .alert-heading, .vgt-global-search__input'
-  ).forEach(el => translateExactText(el, commonLegacyUiTranslations));
-
-  root.querySelectorAll('.vgt-wrap__footer *').forEach(el => translateExactText(el, tableUiTranslations));
-
-  const moduleRoot = root.querySelector('.module-header-card')
-    ? root
-    : (root.closest && root.closest('.main-content')) || null;
-
-  if (moduleRoot && !isLegacyTranslationExcluded(moduleRoot) && moduleRoot.querySelector('.module-header-card')) {
-    moduleRoot.querySelectorAll(
-      '.module-header-title, .module-header-desc, .stat-label, .upload-card-header, .upload-text, .upload-subtext, .upload-btn, .modules-section-title, .filter-btn, .module-status-badge, .toggle-label, .empty-state-title, .empty-state-desc, .module-description'
-    ).forEach(el => {
-      translateExactText(el, moduleSettingsTranslations);
-      translateExactText(el, moduleDescriptions);
-    });
-  }
-}
-
-function installSpanishLegacyUiGuard() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-
-  const run = () => translateLegacyUi(document);
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
-  else run();
-
-  if (typeof MutationObserver !== 'undefined') {
-    const pendingRoots = new Set();
-    let flushScheduled = false;
-
-    const queueRoot = node => {
-      if (legacyTranslationSuspended()) return;
-      if (!node || node.nodeType !== Node.ELEMENT_NODE || isLegacyTranslationExcluded(node)) return;
-
-      // If an ancestor is already queued, scanning this subtree separately is
-      // duplicate work. If this node is the ancestor, replace queued children.
-      for (const existing of Array.from(pendingRoots)) {
-        if (existing === node || (existing.contains && existing.contains(node))) return;
-        if (node.contains && node.contains(existing)) pendingRoots.delete(existing);
-      }
-      pendingRoots.add(node);
-
-      if (flushScheduled) return;
-      flushScheduled = true;
-      const schedule = typeof window.requestAnimationFrame === 'function'
-        ? window.requestAnimationFrame.bind(window)
-        : cb => window.setTimeout(cb, 16);
-
-      schedule(() => {
-        flushScheduled = false;
-        if (legacyTranslationSuspended()) {
-          pendingRoots.clear();
-          return;
-        }
-        const roots = Array.from(pendingRoots);
-        pendingRoots.clear();
-        roots.forEach(root => translateLegacyUi(root));
-      });
-    };
-
-    const observer = new MutationObserver(mutations => {
-      if (legacyTranslationSuspended()) {
-        pendingRoots.clear();
-        return;
-      }
-
-      mutations.forEach(mutation => {
-        if (mutation.type === 'childList') {
-          mutation.addedNodes.forEach(queueRoot);
-          return;
-        }
-
-        if (mutation.type === 'attributes' && mutation.target && mutation.target.nodeType === Node.ELEMENT_NODE) {
-          const el = mutation.target;
-          if (isLegacyTranslationExcluded(el)) return;
-          const attr = mutation.attributeName;
-          if (attr && ['title', 'aria-label', 'placeholder'].includes(attr)) {
-            const value = el.getAttribute(attr);
-            const translated = value && legacyAttributeTranslations[value];
-            if (translated && translated !== value) el.setAttribute(attr, translated);
-          }
-        }
-      });
-    });
-
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['title', 'aria-label', 'placeholder'],
-    });
-  }
-}
-
 function installReceiptPresentationEnhancer(Vue) {
-  if (window.__prodexReceiptPresentationEnhancerInstalled) return;
+  if (typeof window === 'undefined' || window.__prodexReceiptPresentationEnhancerInstalled) return;
   window.__prodexReceiptPresentationEnhancerInstalled = true;
 
   const fields = [
+    ['receipt_paper_size', 'Ancho del papel', [[58, '58 mm'], [80, '80 mm'], [88, '88 mm']]],
+    ['logo_size', 'Tamaño del logo', [[40, '40 px'], [50, '50 px'], [60, '60 px'], [70, '70 px'], [80, '80 px'], [100, '100 px'], [120, '120 px']]],
     ['receipt_header_alignment', 'Cabecera', [['left', 'Izquierda'], ['center', 'Centro'], ['right', 'Derecha']]],
     ['receipt_fiscal_alignment', 'Información fiscal', [['left', 'Izquierda'], ['center', 'Centro'], ['right', 'Derecha']]],
     ['receipt_customer_alignment', 'Datos del cliente', [['left', 'Izquierda'], ['center', 'Centro'], ['right', 'Derecha']]],
@@ -223,9 +37,98 @@ function installReceiptPresentationEnhancer(Vue) {
   ];
 
   const defaults = {
-    receipt_header_alignment: 'center', receipt_fiscal_alignment: 'center', receipt_customer_alignment: 'left',
-    receipt_items_alignment: 'left', receipt_totals_alignment: 'right', receipt_footer_alignment: 'center',
-    receipt_qr_alignment: 'center', receipt_font_size: 10, receipt_density: 'normal', receipt_separator: 'dotted',
+    receipt_paper_size: 80,
+    logo_size: 60,
+    receipt_header_alignment: 'center',
+    receipt_fiscal_alignment: 'center',
+    receipt_customer_alignment: 'left',
+    receipt_items_alignment: 'left',
+    receipt_totals_alignment: 'right',
+    receipt_footer_alignment: 'center',
+    receipt_qr_alignment: 'center',
+    receipt_font_size: 10,
+    receipt_density: 'normal',
+    receipt_separator: 'dotted',
+  };
+
+  const alignment = (value, fallback) => ['left', 'center', 'right'].includes(String(value || '')) ? value : fallback;
+  const boolSetting = (value, fallback = true) => value === undefined || value === null ? fallback : (value === true || value === 1 || value === '1');
+
+  const receiptStyle = settings => {
+    const paper = [58, 80, 88].includes(Number(settings.receipt_paper_size)) ? Number(settings.receipt_paper_size) : 80;
+    const density = ['compact', 'normal', 'wide'].includes(String(settings.receipt_density || '')) ? settings.receipt_density : 'normal';
+    const separatorName = ['none', 'solid', 'dotted', 'dashed'].includes(String(settings.receipt_separator || '')) ? settings.receipt_separator : 'dotted';
+    return {
+      paper,
+      font: Math.max(8, Math.min(14, Number(settings.receipt_font_size || 10))),
+      logo: Math.max(20, Math.min(200, Number(settings.logo_size || 60))),
+      gap: density === 'compact' ? 3 : density === 'wide' ? 8 : 5,
+      separator: separatorName === 'none' ? '0' : `1px ${separatorName} #333`,
+      header: alignment(settings.receipt_header_alignment, 'center'),
+      fiscal: alignment(settings.receipt_fiscal_alignment, 'center'),
+      customer: alignment(settings.receipt_customer_alignment, 'left'),
+      items: alignment(settings.receipt_items_alignment, 'left'),
+      totals: alignment(settings.receipt_totals_alignment, 'right'),
+      footer: alignment(settings.receipt_footer_alignment, 'center'),
+      qr: alignment(settings.receipt_qr_alignment, 'center'),
+    };
+  };
+
+  const renderFiscalPreview = vm => {
+    const target = vm.__receiptFiscalPreview;
+    if (!target || !vm.pos_settings) return;
+    const s = receiptStyle(vm.pos_settings);
+    const logo = boolSetting(vm.pos_settings.show_logo, true)
+      ? `<div style="text-align:${s.header};margin-bottom:${s.gap}px"><div style="display:inline-flex;width:${s.logo}px;height:${Math.max(32, Math.round(s.logo * 0.55))}px;border:1px dashed #bbb;align-items:center;justify-content:center;font-size:9px">LOGO</div></div>`
+      : '';
+    const line = `<div style="border-top:${s.separator};margin:${s.gap}px 0"></div>`;
+
+    target.style.maxWidth = s.paper === 58 ? '280px' : s.paper === 88 ? '390px' : '350px';
+    target.style.fontSize = `${s.font}px`;
+    target.innerHTML = `
+      <div style="line-height:1.3;color:#111">
+        ${logo}
+        <div style="text-align:${s.header}">
+          <strong style="font-size:125%">EMPRESA DE DEMOSTRACIÓN</strong><br>
+          RTN: 0801-1999-123456<br>
+          San Pedro Sula, Cortés<br>
+          Tel. +504 2216-1950
+        </div>
+        ${line}
+        <div style="text-align:${s.fiscal}">
+          <strong style="font-size:120%">FACTURA CONTADO</strong><br>
+          <strong>000-001-01-00000001</strong><br>
+          CAI: 434578-9E863C-C754EB-83BE03-0909CE-5B<br>
+          Rango: 000-001-01-00000001 al 000-001-01-00000500<br>
+          Fecha límite: 31/12/2026
+        </div>
+        ${line}
+        <div style="text-align:${s.customer}">
+          <strong>Cliente:</strong> CONSUMIDOR FINAL<br>
+          <strong>RTN:</strong> CF<br>
+          Fecha: 20/08/2026 12:00 &nbsp; Cajero: Usuario POS
+        </div>
+        ${line}
+        <div style="text-align:${s.items}">
+          <div style="display:flex;justify-content:space-between;gap:8px"><strong>Producto de demostración A</strong><strong>L 230.00</strong></div>
+          <div>2 x L 100.00 &nbsp; ISV 15%</div>
+          <div style="display:flex;justify-content:space-between;gap:8px;margin-top:${s.gap}px"><strong>Producto exento</strong><strong>L 50.00</strong></div>
+          <div>1 x L 50.00 &nbsp; EXENTO</div>
+        </div>
+        ${line}
+        <div style="text-align:${s.totals}">
+          <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>L 250.00</span></div>
+          <div style="display:flex;justify-content:space-between"><span>Importe exento</span><span>L 50.00</span></div>
+          <div style="display:flex;justify-content:space-between"><span>Importe gravado 15%</span><span>L 200.00</span></div>
+          <div style="display:flex;justify-content:space-between"><span>ISV 15%</span><span>L 30.00</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:115%;font-weight:900"><span>TOTAL</span><span>L 280.00</span></div>
+          <div style="display:flex;justify-content:space-between"><span>Efectivo</span><span>L 300.00</span></div>
+          <div style="display:flex;justify-content:space-between"><span>Cambio</span><span>L 20.00</span></div>
+        </div>
+        ${line}
+        <div style="text-align:${s.footer}">DOSCIENTOS OCHENTA LEMPIRAS CON 00/100<br>Original: Cliente</div>
+        <div style="text-align:${s.qr};margin-top:${s.gap}px"><span style="display:inline-flex;width:72px;height:72px;border:1px solid #333;align-items:center;justify-content:center;font-size:9px">QR SAR</span></div>
+      </div>`;
   };
 
   Vue.mixin({
@@ -233,11 +136,6 @@ function installReceiptPresentationEnhancer(Vue) {
       const title = this.$options && this.$options.metaInfo && this.$options.metaInfo.title;
       if (title !== 'POS Receipt' || !this.pos_settings || this.__receiptPresentationMounted) return;
       this.__receiptPresentationMounted = true;
-
-      // The POS receipt editor mounts/unmounts large Vue subtrees when switching
-      // layouts. The legacy translator is intentionally disabled for the whole
-      // editor lifetime; all text in this screen is owned by Vue/PRODEX itself.
-      window.__prodexSuspendLegacyUiTranslations = true;
 
       Object.keys(defaults).forEach(key => {
         if (this.pos_settings[key] === undefined || this.pos_settings[key] === null || this.pos_settings[key] === '') {
@@ -253,10 +151,26 @@ function installReceiptPresentationEnhancer(Vue) {
         const host = document.createElement('div');
         host.className = 'col-md-12 mt-4 mb-2 prodex-receipt-presentation';
         host.setAttribute('data-prodex-no-legacy-translate', '1');
-        host.innerHTML = '<hr class="my-4"><h6 class="mb-2">Diseño de la factura / recibo</h6>' +
-          '<p class="text-muted mb-3">Estas opciones cambian únicamente la presentación. Los datos fiscales SAR obligatorios permanecen en la factura.</p><div class="row"></div>';
-        const controlsRow = host.querySelector('.row');
+        host.innerHTML = `
+          <hr class="my-4">
+          <h6 class="mb-2">Diseño de la factura / recibo</h6>
+          <p class="text-muted mb-2">Estas opciones cambian únicamente la presentación. Los datos fiscales SAR obligatorios permanecen en la factura.</p>
+          <div class="alert alert-light border mb-3" role="alert">
+            <strong>Logo de la factura:</strong> se utiliza el logo configurado en <strong>Ajustes del sistema → Configuración de apariencia → Cambiar logo</strong>. No necesitas cargar otro logo aquí.
+          </div>
+          <div class="row prodex-receipt-controls"></div>
+          <div class="card mt-3 mb-3">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Vista previa fiscal SAR (Honduras)</h6>
+                <small class="text-muted">Ejemplo visual</small>
+              </div>
+              <p class="text-muted small mb-3">La factura real toma CAI, RTN, rango, fecha límite, cliente, productos e impuestos del documento fiscal SAR emitido. Esta vista previa sirve únicamente para ajustar la presentación.</p>
+              <div class="prodex-fiscal-preview mx-auto border p-3 bg-white"></div>
+            </div>
+          </div>`;
 
+        const controlsRow = host.querySelector('.prodex-receipt-controls');
         fields.forEach(([key, label, choices]) => {
           const col = document.createElement('div');
           col.className = 'col-md-6 mb-3';
@@ -274,8 +188,9 @@ function installReceiptPresentationEnhancer(Vue) {
           });
           select.value = String(this.pos_settings[key] == null ? defaults[key] : this.pos_settings[key]);
           select.addEventListener('change', () => {
-            this.pos_settings[key] = key === 'receipt_font_size' ? Number(select.value) : select.value;
-            this.$forceUpdate();
+            const numeric = key === 'receipt_font_size' || key === 'receipt_paper_size' || key === 'logo_size';
+            this.pos_settings[key] = numeric ? Number(select.value) : select.value;
+            renderFiscalPreview(this);
           });
           formGroup.appendChild(lab);
           formGroup.appendChild(select);
@@ -285,6 +200,16 @@ function installReceiptPresentationEnhancer(Vue) {
 
         row.insertBefore(host, submitButton.closest('[class*="col-"]'));
         this.__receiptPresentationHost = host;
+        this.__receiptFiscalPreview = host.querySelector('.prodex-fiscal-preview');
+        renderFiscalPreview(this);
+
+        const watchKeys = [
+          'receipt_layout', 'receipt_paper_size', 'logo_size', 'show_logo',
+          'receipt_header_alignment', 'receipt_fiscal_alignment', 'receipt_customer_alignment',
+          'receipt_items_alignment', 'receipt_totals_alignment', 'receipt_footer_alignment',
+          'receipt_qr_alignment', 'receipt_font_size', 'receipt_density', 'receipt_separator'
+        ];
+        this.__receiptPresentationUnwatch = watchKeys.map(key => this.$watch(`pos_settings.${key}`, () => renderFiscalPreview(this)));
       });
 
       const originalUpdate = this.Update_Pos_Settings && this.Update_Pos_Settings.bind(this);
@@ -300,11 +225,9 @@ function installReceiptPresentationEnhancer(Vue) {
     },
 
     beforeDestroy() {
-      const title = this.$options && this.$options.metaInfo && this.$options.metaInfo.title;
-      if (title === 'POS Receipt' && this.__receiptPresentationMounted) {
-        window.__prodexSuspendLegacyUiTranslations = false;
+      if (Array.isArray(this.__receiptPresentationUnwatch)) {
+        this.__receiptPresentationUnwatch.forEach(unwatch => { if (typeof unwatch === 'function') unwatch(); });
       }
-
       if (this.__receiptPresentationHost && this.__receiptPresentationHost.parentNode) {
         this.__receiptPresentationHost.parentNode.removeChild(this.__receiptPresentationHost);
       }
@@ -327,7 +250,6 @@ export default {
     });
     Vue.use(VueGoodTablePlugin);
     Vue.use(VueHtmlToPaper, options);
-    installSpanishLegacyUiGuard();
     installReceiptPresentationEnhancer(Vue);
   }
 };
