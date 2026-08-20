@@ -44,7 +44,15 @@ class SarFiscalSaleService
             throw new SarFiscalException('Para una venta de L 10,000 o más debes registrar el RTN o documento de identificación del cliente.');
         }
 
-        $exemptionData = is_array($sale->fiscal_exemption_data) ? $sale->fiscal_exemption_data : [];
+        $storedExemption = is_array($sale->fiscal_exemption_data) ? $sale->fiscal_exemption_data : [];
+        $requestExemption = request()->input('fiscal_exemption_data', []);
+        $requestExemption = is_array($requestExemption) ? array_filter($requestExemption, fn ($value) => trim((string) $value) !== '') : [];
+        $exemptionData = ! empty($storedExemption) ? $storedExemption : $requestExemption;
+
+        if (! empty($exemptionData) && empty($storedExemption)) {
+            $sale->forceFill(['fiscal_exemption_data' => $exemptionData])->saveQuietly();
+        }
+
         $customerSnapshot = [
             'id' => $customer->id,
             'name' => $customer->name,
@@ -94,9 +102,6 @@ class SarFiscalSaleService
             $fallbackRate = $explicitCategory ? $productRate : ($globalTaxRate > 0 ? $globalTaxRate : $productRate);
             $category = $this->normalizeCategory($rawCategory, $fallbackRate);
 
-            // Once a product has an explicit fiscal category, line-level taxation is
-            // authoritative. Legacy products without a category continue reproducing the
-            // historical order-level tax behavior until the tenant classifies them.
             $usesLineTax = $explicitCategory || $detail->fiscal_tax_rate !== null;
             $rate = $category === 'taxed'
                 ? ($usesLineTax ? $productRate : ($globalTaxRate > 0 ? $globalTaxRate : $productRate))
@@ -113,7 +118,6 @@ class SarFiscalSaleService
                     $taxAmount = round($taxableAmount * ($rate / 100), 2);
                     $lineTotal = round($taxableAmount + $taxAmount, 2);
                 } else {
-                    // PRODEX product subtotals are gross after the product's own tax logic.
                     $taxableAmount = round($discountedStoredTotal / (1 + ($rate / 100)), 2);
                     $taxAmount = round($discountedStoredTotal - $taxableAmount, 2);
                     $lineTotal = $discountedStoredTotal;
