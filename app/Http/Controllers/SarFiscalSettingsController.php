@@ -64,6 +64,16 @@ class SarFiscalSettingsController extends BaseController
     {
         $this->authorizeSettings($request);
 
+        if ($request->input('action') === 'product_fiscal') {
+            $product = Product::whereNull('deleted_at')->findOrFail((int) $request->input('product_id'));
+            return $this->updateProductFiscal($request, $product);
+        }
+
+        if ($request->input('action') === 'client_fiscal') {
+            $client = Client::whereNull('deleted_at')->findOrFail((int) $request->input('client_id'));
+            return $this->updateClientFiscal($request, $client);
+        }
+
         $data = $request->validate([
             'enabled' => ['required', 'boolean'],
             'rtn' => ['required', 'string', 'max:20'],
@@ -108,8 +118,6 @@ class SarFiscalSettingsController extends BaseController
 
     public function updateProductFiscal(Request $request, Product $product)
     {
-        $this->authorizeSettings($request);
-
         $data = $request->validate([
             'fiscal_tax_category' => ['required', Rule::in(['taxed', 'exempt', 'exonerated', 'zero_rate'])],
             'TaxNet' => ['required', 'numeric', Rule::in([0, 15, 18])],
@@ -133,8 +141,6 @@ class SarFiscalSettingsController extends BaseController
 
     public function updateClientFiscal(Request $request, Client $client)
     {
-        $this->authorizeSettings($request);
-
         $data = $request->validate([
             'tax_number' => ['nullable', 'string', 'max:50'],
             'identification_type' => ['nullable', 'string', 'max:30'],
