@@ -9,7 +9,7 @@ class Sale extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'date', 'Ref', 'is_pos', 'client_id', 'GrandTotal', 'qte_retturn', 'TaxNet', 'tax_rate', 'notes',
+        'date', 'Ref', 'is_pos', 'client_id', 'GrandTotal', 'qte_retturn', 'TaxNet', 'tax_rate', 'notes', 'fiscal_exemption_data',
         'total_retturn', 'warehouse_id', 'user_id', 'statut', 'discount', 'discount_Method', 'shipping', 'time', 'used_points', 'earned_points', 'discount_from_points',
         'promotion_discount', 'promotion_code',
         'store_credit_amount',
@@ -45,6 +45,7 @@ class Sale extends Model
         'used_points' => 'double',
         'earned_points' => 'double',
         'discount_from_points' => 'double',
+        'fiscal_exemption_data' => 'array',
         'quickbooks_synced_at' => 'datetime',
         'woocommerce_order_id' => 'integer',
     ];
