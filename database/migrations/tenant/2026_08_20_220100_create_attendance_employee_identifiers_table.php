@@ -24,7 +24,7 @@ return new class extends Migration
             $table->foreign('employee_id')->references('id')->on('employees')->cascadeOnUpdate()->cascadeOnDelete();
             $table->foreign('attendance_device_id')->references('id')->on('attendance_devices')->cascadeOnUpdate()->nullOnDelete();
 
-            $table->unique(['attendance_device_id', 'external_user_id'], 'attendance_identifier_device_user_unique');
+            $table->index(['attendance_device_id', 'external_user_id'], 'attendance_identifier_device_user_lookup');
             $table->index(['company_id', 'provider', 'external_user_id'], 'attendance_identifier_lookup');
         });
     }
