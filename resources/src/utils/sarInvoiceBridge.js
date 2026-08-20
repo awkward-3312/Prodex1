@@ -14,6 +14,11 @@ function setting(settings, key, fallback = true) {
   return settings[key] === true || settings[key] === 1 || settings[key] === '1';
 }
 
+function align(value, fallback) {
+  const candidate = String(value || '').toLowerCase();
+  return ['left', 'center', 'right'].includes(candidate) ? candidate : fallback;
+}
+
 function rangeNumber(value, fiscalNumber) {
   if (value === null || value === undefined || value === '') return '';
   const raw = String(value);
@@ -32,21 +37,46 @@ function taxLabel(line) {
   return '';
 }
 
-function logoUrl(responseData, settings) {
-  if (!setting(settings, 'show_logo', true)) return '';
+function logoUrl(responseData, invoiceSettings, posSettings) {
+  if (!setting(invoiceSettings, 'show_logo', true) || !setting(posSettings, 'show_logo', true)) return '';
   const logo = responseData && responseData.setting ? responseData.setting.logo : '';
   if (!logo) return '';
   const base = String(window.__uploadPath || 'images').replace(/^\/+|\/+$/g, '');
   return '/' + base + '/settings/' + encodeURIComponent(logo);
 }
 
-function layoutStyle(layout) {
-  const l = Number(layout || 1);
-  if (l === 2) return { font: '9px', gap: '3px', separator: '1px dotted #555', itemPad: '2px 0' };
-  if (l === 3) return { font: '10px', gap: '5px', separator: '1px dashed #222', itemPad: '5px 0' };
-  if (l === 4) return { font: '9.5px', gap: '4px', separator: '1px dashed #444', itemPad: '4px 0' };
-  if (l === 5) return { font: '9px', gap: '3px', separator: '1px solid #111', itemPad: '3px 0' };
-  return { font: '10px', gap: '4px', separator: '1px dotted #333', itemPad: '4px 0' };
+function presentation(pos) {
+  const layout = Number(pos.receipt_layout || 1);
+  const density = ['compact', 'normal', 'wide'].includes(String(pos.receipt_density || ''))
+    ? String(pos.receipt_density)
+    : 'normal';
+  const separatorName = ['none', 'solid', 'dotted', 'dashed'].includes(String(pos.receipt_separator || ''))
+    ? String(pos.receipt_separator)
+    : (layout === 3 || layout === 4 ? 'dashed' : layout === 5 ? 'solid' : 'dotted');
+  const separator = separatorName === 'none' ? '0' : '1px ' + separatorName + ' #333';
+  const gap = density === 'compact' ? '3px' : density === 'wide' ? '7px' : '5px';
+  const itemPad = density === 'compact' ? '2px 0' : density === 'wide' ? '6px 0' : '4px 0';
+  const requestedFont = Number(pos.receipt_font_size || 0);
+  const layoutFont = layout === 2 || layout === 5 ? 9 : layout === 4 ? 9.5 : 10;
+  const font = requestedFont >= 8 && requestedFont <= 14 ? requestedFont + 'px' : layoutFont + 'px';
+  const paper = [58, 80, 88].includes(Number(pos.receipt_paper_size)) ? Number(pos.receipt_paper_size) : 80;
+
+  return {
+    layout,
+    paper,
+    font,
+    gap,
+    separator,
+    itemPad,
+    header: align(pos.receipt_header_alignment, 'center'),
+    fiscal: align(pos.receipt_fiscal_alignment, 'center'),
+    customer: align(pos.receipt_customer_alignment, 'left'),
+    items: align(pos.receipt_items_alignment, 'left'),
+    totals: align(pos.receipt_totals_alignment, 'right'),
+    footer: align(pos.receipt_footer_alignment, 'center'),
+    qr: align(pos.receipt_qr_alignment, 'center'),
+    logoSize: Math.min(200, Math.max(20, Number(pos.logo_size || 60))),
+  };
 }
 
 function createQr(container, text) {
@@ -86,8 +116,7 @@ function render(responseData) {
     const totals = sale.fiscal_totals || {};
     const settings = issuer.invoice_settings || {};
     const pos = responseData.pos_settings || {};
-    const layout = Number(pos.receipt_layout || 1);
-    const style = layoutStyle(layout);
+    const style = presentation(pos);
     const details = Array.isArray(responseData.details) ? responseData.details : [];
     const fiscalLines = Array.isArray(sale.lines) ? sale.lines : [];
     const rangeStart = rangeNumber(fiscal.range_start, fiscal.fiscal_number);
@@ -95,7 +124,7 @@ function render(responseData) {
     const title = settings.document_title || 'FACTURA';
     const type = settings.sale_type_label || '';
     const businessName = issuer.trade_name || issuer.legal_name || '';
-    const logo = logoUrl(responseData, settings);
+    const logo = logoUrl(responseData, settings, pos);
     const qrUrl = setting(settings, 'show_qr', true) ? String(responseData.public_invoice_url || '') : '';
 
     const itemsHtml = details.map((detail, index) => {
@@ -107,11 +136,11 @@ function render(responseData) {
       const unitPrice = line.unit_price != null ? line.unit_price : detail.price || 0;
       const lineTotal = line.line_total != null ? line.line_total : detail.total || 0;
       const discount = Number(line.product_discount || 0) + Number(line.allocated_sale_discount || 0);
-      return '<div class="sar-fiscal-item" style="padding:' + style.itemPad + ';border-bottom:' + style.separator + ';">' +
-        '<div style="display:flex;justify-content:space-between;gap:8px;"><strong style="text-align:left;">' + esc(name) + '</strong><strong style="white-space:nowrap;">L ' + money(lineTotal) + '</strong></div>' +
+      return '<div class="sar-fiscal-item" style="padding:' + style.itemPad + ';border-bottom:' + style.separator + ';text-align:' + style.items + ';">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;"><strong>' + esc(name) + '</strong><strong style="white-space:nowrap;">L ' + money(lineTotal) + '</strong></div>' +
         (setting(settings, 'show_item_code', true) && code ? '<div style="font-size:90%;">Código: ' + esc(code) + '</div>' : '') +
         '<div style="display:flex;justify-content:space-between;gap:8px;font-size:92%;"><span>' + esc(qty) + (unit ? ' ' + esc(unit) : '') + ' x L ' + money(unitPrice) + '</span><span>' + esc(taxLabel(line)) + '</span></div>' +
-        (discount > 0 ? '<div style="font-size:90%;">Descuento línea: L ' + money(discount) + '</div>' : '') +
+        (discount > 0 && setting(pos, 'show_product_discount', true) ? '<div style="font-size:90%;">Descuento línea: L ' + money(discount) + '</div>' : '') +
         (detail.imei_number ? '<div style="font-size:90%;">SN/IMEI: ' + esc(detail.imei_number) + '</div>' : '') +
         '</div>';
     }).join('');
@@ -121,7 +150,8 @@ function render(responseData) {
       '<div style="display:flex;justify-content:space-between;gap:8px;' + (strong ? 'font-weight:900;font-size:115%;' : '') + '">' +
       '<span>' + esc(label) + '</span><span style="white-space:nowrap;">L ' + money(value) + '</span></div>'
     );
-    totalRow('Descuentos y rebajas', totals.discount_total || 0);
+
+    if (setting(pos, 'show_discount', true)) totalRow('Descuentos y rebajas', totals.discount_total || 0);
     totalRow('Subtotal', totals.subtotal || 0);
     totalRow('Importe exonerado', totals.exonerated_amount || 0);
     totalRow('Importe exento', totals.exempt_amount || 0);
@@ -133,11 +163,11 @@ function render(responseData) {
     if (Number(totals.other_taxable_amount || 0) > 0) totalRow('Otros importes gravados', totals.other_taxable_amount);
     if (Number(totals.other_tax_amount || 0) > 0) totalRow('Otros impuestos', totals.other_tax_amount);
     if (Math.abs(Number(totals.rounding_adjustment || 0)) >= 0.005) totalRow('Ajuste de redondeo', totals.rounding_adjustment);
-    if (Number(totals.shipping || 0) !== 0) totalRow('Envío', totals.shipping);
+    if (Number(totals.shipping || 0) !== 0 && setting(pos, 'show_shipping', true)) totalRow('Envío', totals.shipping);
     totalRow('TOTAL', totals.grand_total !== undefined ? totals.grand_total : sale.grand_total, true);
 
-    const paymentHtml = setting(settings, 'show_payment_summary', true) && Array.isArray(sale.payments) && sale.payments.length
-      ? '<div style="border-top:' + style.separator + ';margin-top:' + style.gap + ';padding-top:' + style.gap + ';"><strong>Pago</strong>' + sale.payments.map(p =>
+    const paymentHtml = setting(settings, 'show_payment_summary', true) && setting(pos, 'show_payments', true) && Array.isArray(sale.payments) && sale.payments.length
+      ? '<div style="border-top:' + style.separator + ';margin-top:' + style.gap + ';padding-top:' + style.gap + ';text-align:' + style.totals + ';"><strong>Pago</strong>' + sale.payments.map(p =>
           '<div style="display:flex;justify-content:space-between;gap:8px;"><span>' + esc(p.method || p.reference || 'Pago') + '</span><span>L ' + money(p.amount) + '</span></div>' +
           (Number(p.change || 0) !== 0 ? '<div style="display:flex;justify-content:space-between;gap:8px;"><span>Cambio</span><span>L ' + money(p.change) + '</span></div>' : '')
         ).join('') + '</div>'
@@ -148,21 +178,21 @@ function render(responseData) {
       : (customer.identification_number ? '<div><strong>' + esc(customer.identification_type || 'Identificación') + ':</strong> ' + esc(customer.identification_number) + '</div>' : '');
 
     const receipt = document.createElement('div');
-    receipt.className = 'sar-complete-receipt sar-layout-' + layout;
+    receipt.className = 'sar-complete-receipt sar-layout-' + style.layout + ' sar-paper-' + style.paper;
     receipt.setAttribute('data-fiscal-number', String(fiscal.fiscal_number));
     receipt.style.cssText = 'font-size:' + style.font + ';line-height:1.3;color:#111;text-transform:none;word-break:break-word;width:100%;';
     receipt.innerHTML =
-      '<div style="text-align:center;">' +
-        (logo ? '<div style="margin-bottom:4px;"><img src="' + esc(logo) + '" alt="Logo" style="max-width:80px;max-height:80px;object-fit:contain;"></div>' : '') +
+      '<div style="text-align:' + style.header + ';">' +
+        (logo ? '<div style="margin-bottom:4px;"><img src="' + esc(logo) + '" alt="Logo" style="max-width:' + style.logoSize + 'px;max-height:' + style.logoSize + 'px;object-fit:contain;"></div>' : '') +
         (businessName ? '<div style="font-size:125%;font-weight:900;">' + esc(businessName) + '</div>' : '') +
         (issuer.legal_name && issuer.trade_name ? '<div>' + esc(issuer.legal_name) + '</div>' : '') +
         (issuer.rtn ? '<div><strong>RTN:</strong> ' + esc(issuer.rtn) + '</div>' : '') +
-        (issuer.point_of_issue_address || issuer.head_office_address ? '<div>' + esc(issuer.point_of_issue_address || issuer.head_office_address) + '</div>' : '') +
-        (issuer.phone ? '<div>Tel: ' + esc(issuer.phone) + '</div>' : '') +
-        (issuer.email ? '<div>' + esc(issuer.email) + '</div>' : '') +
+        (setting(pos, 'show_address', true) && (issuer.point_of_issue_address || issuer.head_office_address) ? '<div>' + esc(issuer.point_of_issue_address || issuer.head_office_address) + '</div>' : '') +
+        (setting(pos, 'show_phone', true) && issuer.phone ? '<div>Tel: ' + esc(issuer.phone) + '</div>' : '') +
+        (setting(pos, 'show_email', true) && issuer.email ? '<div>' + esc(issuer.email) + '</div>' : '') +
         (settings.website ? '<div>' + esc(settings.website) + '</div>' : '') +
       '</div>' +
-      '<div style="border-top:' + style.separator + ';border-bottom:' + style.separator + ';margin:' + style.gap + ' 0;padding:' + style.gap + ' 0;text-align:center;">' +
+      '<div style="border-top:' + style.separator + ';border-bottom:' + style.separator + ';margin:' + style.gap + ' 0;padding:' + style.gap + ' 0;text-align:' + style.fiscal + ';">' +
         '<div style="font-size:125%;font-weight:900;">' + esc(title) + (type ? ' ' + esc(type) : '') + '</div>' +
         (String(fiscal.status || '').toLowerCase() === 'voided' ? '<div style="font-weight:900;border:2px solid #111;display:inline-block;padding:2px 8px;margin:2px 0;">ANULADA</div>' : '') +
         '<div style="font-size:115%;font-weight:800;">' + esc(fiscal.fiscal_number) + '</div>' +
@@ -170,28 +200,28 @@ function render(responseData) {
         ((rangeStart || rangeEnd) ? '<div><strong>Rango autorizado:</strong><br>' + esc(rangeStart) + '<br>' + esc(rangeEnd) + '</div>' : '') +
         (fiscal.deadline ? '<div><strong>Fecha límite:</strong> ' + esc(fiscal.deadline) + '</div>' : '') +
       '</div>' +
-      '<div style="margin-bottom:' + style.gap + ';">' +
+      '<div style="margin-bottom:' + style.gap + ';text-align:' + style.customer + ';">' +
         '<div><strong>Cliente:</strong> ' + esc(customer.name || 'Consumidor final') + '</div>' + customerId +
         (setting(settings, 'show_customer_address', true) && customer.address ? '<div>' + esc(customer.address) + '</div>' : '') +
         (customer.sar_registry_number ? '<div><strong>Registro SAG/SAR:</strong> ' + esc(customer.sar_registry_number) + '</div>' : '') +
         (customer.exempt_purchase_order_number ? '<div><strong>Orden compra exenta:</strong> ' + esc(customer.exempt_purchase_order_number) + '</div>' : '') +
         (customer.exoneration_registry_number ? '<div><strong>Registro exonerado:</strong> ' + esc(customer.exoneration_registry_number) + '</div>' : '') +
         (customer.exonerated_card_number ? '<div><strong>Carnet exonerado:</strong> ' + esc(customer.exonerated_card_number) + '</div>' : '') +
-        (setting(settings, 'show_internal_reference', true) && sale.internal_reference ? '<div><strong>Referencia:</strong> ' + esc(sale.internal_reference) + '</div>' : '') +
-        (setting(settings, 'show_warehouse', true) && sale.warehouse_name ? '<div><strong>Almacén:</strong> ' + esc(sale.warehouse_name) + '</div>' : '') +
-        (setting(settings, 'show_cashier', true) && sale.seller_name ? '<div><strong>Cajero:</strong> ' + esc(sale.seller_name) + '</div>' : '') +
-        (fiscal.issued_at ? '<div><strong>Fecha:</strong> ' + esc(fiscal.issued_at) + '</div>' : '') +
+        (setting(settings, 'show_internal_reference', true) && setting(pos, 'show_reference', true) && sale.internal_reference ? '<div><strong>Referencia:</strong> ' + esc(sale.internal_reference) + '</div>' : '') +
+        (setting(settings, 'show_warehouse', true) && setting(pos, 'show_Warehouse', true) && sale.warehouse_name ? '<div><strong>Almacén:</strong> ' + esc(sale.warehouse_name) + '</div>' : '') +
+        (setting(settings, 'show_cashier', true) && setting(pos, 'show_seller', true) && sale.seller_name ? '<div><strong>Cajero:</strong> ' + esc(sale.seller_name) + '</div>' : '') +
+        (setting(pos, 'show_date', true) && fiscal.issued_at ? '<div><strong>Fecha:</strong> ' + esc(fiscal.issued_at) + '</div>' : '') +
       '</div>' +
       '<div style="border-top:' + style.separator + ';">' + itemsHtml + '</div>' +
-      '<div style="margin-top:' + style.gap + ';padding-top:' + style.gap + ';">' + totalRows.join('') + '</div>' +
+      '<div style="margin-top:' + style.gap + ';padding-top:' + style.gap + ';text-align:' + style.totals + ';">' + totalRows.join('') + '</div>' +
       paymentHtml +
-      (setting(settings, 'show_total_in_words', true) && fiscal.total_in_words ? '<div style="text-align:center;font-weight:800;margin-top:' + style.gap + ';">' + esc(fiscal.total_in_words) + '</div>' : '') +
-      '<div style="text-align:center;border-top:' + style.separator + ';margin-top:' + style.gap + ';padding-top:' + style.gap + ';">' +
+      (setting(settings, 'show_total_in_words', true) && fiscal.total_in_words ? '<div style="text-align:' + style.footer + ';font-weight:800;margin-top:' + style.gap + ';">' + esc(fiscal.total_in_words) + '</div>' : '') +
+      '<div style="text-align:' + style.footer + ';border-top:' + style.separator + ';margin-top:' + style.gap + ';padding-top:' + style.gap + ';">' +
         esc(settings.original_label || 'Original: Cliente') + '<br>' + esc(settings.copy_label || 'Copia: Obligado Tributario Emisor') +
         (settings.footer_message ? '<div style="margin-top:3px;">' + esc(settings.footer_message) + '</div>' : '') +
         (String(fiscal.status || '').toLowerCase() === 'voided' && fiscal.void_reason ? '<div style="margin-top:3px;"><strong>Motivo:</strong> ' + esc(fiscal.void_reason) + '</div>' : '') +
       '</div>' +
-      (qrUrl ? '<div style="text-align:center;margin-top:6px;"><div style="font-weight:700;margin-bottom:3px;">FACTURA QR</div><div class="prodex-sar-public-qr" style="display:inline-block;width:100px;height:100px;"></div></div>' : '');
+      (qrUrl ? '<div style="text-align:' + style.qr + ';margin-top:6px;"><div style="font-weight:700;margin-bottom:3px;">FACTURA QR</div><div class="prodex-sar-public-qr" style="display:inline-block;width:100px;height:100px;"></div></div>' : '');
 
     const container = root.firstElementChild || root;
     container.innerHTML = '';
