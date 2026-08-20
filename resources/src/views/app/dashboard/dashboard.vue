@@ -169,7 +169,7 @@
                 <h4 class="chart-card-title">{{ $t('Sales') }} &amp; {{ $t('Purchases') }}</h4>
               </div>
               <div class="chart-card-body">
-                <apexchart v-if="!loading && chartRenderStage >= 1" type="bar" :height="chartHeight" :options="chartSalesOptions" :series="chartSalesSeries"></apexchart>
+                <apexchart v-if="!loading" type="bar" :height="chartHeight" :options="chartSalesOptions" :series="chartSalesSeries"></apexchart>
                 <div v-else class="text-center py-5"><div class="spinner spinner-primary"></div></div>
               </div>
             </div>
@@ -184,7 +184,7 @@
                 <h4 class="chart-card-title">{{ $t('Top_Selling_Products') }} ({{ new Date().getFullYear() }})</h4>
               </div>
               <div class="chart-card-body">
-                <apexchart v-if="!loading && chartRenderStage >= 2" type="donut" :height="chartHeight" :options="chartProductOptions" :series="chartProductSeries"></apexchart>
+                <apexchart v-if="!loading" type="donut" :height="chartHeight" :options="chartProductOptions" :series="chartProductSeries"></apexchart>
                 <div v-else class="text-center py-5"><div class="spinner spinner-primary"></div></div>
               </div>
             </div>
@@ -265,7 +265,7 @@
                 <h4 class="chart-card-title">{{ $t('Payment_Sent_Received') }}</h4>
               </div>
               <div class="chart-card-body">
-                <apexchart v-if="!loading && chartRenderStage >= 3" type="area" :height="chartHeight" :options="chartPaymentOptions" :series="chartPaymentSeries"></apexchart>
+                <apexchart v-if="!loading" type="area" :height="chartHeight" :options="chartPaymentOptions" :series="chartPaymentSeries"></apexchart>
                 <div v-else class="text-center py-5"><div class="spinner spinner-primary"></div></div>
               </div>
             </div>
@@ -280,7 +280,7 @@
                 <h4 class="chart-card-title">{{ $t('TopCustomers') }} ({{ CurrentMonth }})</h4>
               </div>
               <div class="chart-card-body">
-                <apexchart v-if="!loading && chartRenderStage >= 4" type="pie" :height="chartHeight" :options="chartCustomerOptions" :series="chartCustomerSeries"></apexchart>
+                <apexchart v-if="!loading" type="pie" :height="chartHeight" :options="chartCustomerOptions" :series="chartCustomerSeries"></apexchart>
                 <div v-else class="text-center py-5"><div class="spinner spinner-primary"></div></div>
               </div>
             </div>
@@ -496,11 +496,7 @@ export default {
       chartSalesOptions: {},
       chartProductOptions: {},
       chartCustomerOptions: {},
-      chartPaymentOptions: {},
-
-      // Render heavy ApexCharts progressively so they do not block
-      // the browser main thread when the dashboard becomes visible.
-      chartRenderStage: 0
+      chartPaymentOptions: {}
     };
   },
   computed: {
@@ -638,14 +634,10 @@ export default {
     },
 
     all_dashboard_data() {
-      // Show full-page loading spinner while fetching dashboard data.
-      // Heavy charts are temporarily unmounted and rendered progressively
-      // after the lightweight dashboard content becomes interactive.
+      // Show full-page loading spinner while fetching dashboard data
       this.loading = true;
-      this.chartRenderStage = 0;
       this.get_data_loaded();
-
-      return axios
+      axios
         .get(`/dashboard_data?warehouse_id=${this.warehouse_id}&to=${this.endDate}&from=${this.startDate}`)
         .then(response => {
           this.today_mode = false;
@@ -995,40 +987,14 @@ export default {
             }
           };
 
-          // Make cards/tables interactive first. ApexCharts are then mounted
-          // one by one on separate browser tasks to avoid a long main-thread block.
+          // Hide loading only after all dashboard data and chart configs are ready
           this.loading = false;
-          this.$nextTick(() => {
-            this.scheduleDashboardCharts();
-          });
         })
         .catch(() => {
           this.today_mode = false;
           // Hide loading even if the request fails
           this.loading = false;
         });
-    },
-
-    scheduleDashboardCharts() {
-      this.chartRenderStage = 0;
-
-      const advance = () => {
-        if (this._isDestroyed || this._isBeingDestroyed) return;
-
-        this.chartRenderStage += 1;
-
-        if (this.chartRenderStage < 4) {
-          window.setTimeout(advance, 100);
-        }
-      };
-
-      if (typeof window !== "undefined" && window.requestAnimationFrame) {
-        window.requestAnimationFrame(() => {
-          window.setTimeout(advance, 0);
-        });
-      } else {
-        setTimeout(advance, 0);
-      }
     },
 
     GetMonth() {
@@ -1053,9 +1019,10 @@ export default {
         // Money formatter: always honour the configured price precision (2 or 3).
         const decimals = this.priceDecimals;
         const n = Number(number || 0);
-        // Keep this formatter pure. It is called repeatedly while Vue renders,
-        // so mutating reactive state here can trigger unnecessary re-renders.
         const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) {
+          this.price_format_key = key;
+        }
         const effectiveKey = key || null;
         return formatPriceDisplayHelper(n, decimals, effectiveKey);
       } catch (e) {
@@ -1108,10 +1075,6 @@ export default {
   async mounted() {
     const range = await this.loadDefaultDateRangeSetting();
     this.defaultDateRange = range;
-
-    // Resolve once instead of mutating this value from a render-time formatter.
-    this.price_format_key = getPriceFormatSetting({ store: this.$store }) || null;
-
     await this.all_dashboard_data();
     this.GetMonth();
   }
