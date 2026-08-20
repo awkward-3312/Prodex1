@@ -1,5 +1,7 @@
 // PRODEX Design System entrypoint.
-// Imported after the legacy global theme so migrated screens can opt in safely.
+// Imported after the legacy global theme so administrative screens can use
+// the shared visual language without changing application logic.
 @import "tokens";
 @import "foundation";
+@import "interactions";
 @import "lists";
