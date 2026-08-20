@@ -1,7 +1,7 @@
 <template>
   <b-card class="attendance-identity-card">
     <div class="attendance-identity-heading">
-      <div class="attendance-identity-icon"><lucide-icon name="fingerprint" /></div>
+      <div class="attendance-identity-icon"><lucide-icon name="id-card" /></div>
       <div>
         <h6>Control de asistencia</h6>
         <p>Vincula los códigos con los que este empleado aparece en relojes biométricos, tarjetas u otros sistemas.</p>
