@@ -95,3 +95,7 @@ $theme-colors: (
 
 @import "../globals/globals.scss";
 @import "dark/dark";
+
+// Compatibility-first PRODEX UI layer. Legacy screens are unaffected until
+// their root explicitly opts in with the .prodex-ui class.
+@import "../prodex/index";
