@@ -43,23 +43,7 @@ class SarFiscalNumberService
                 $sequence
             );
 
-            $invoiceSettings = array_merge([
-                'document_title' => 'FACTURA',
-                'sale_type_label' => 'CONTADO',
-                'website' => '',
-                'footer_message' => 'Gracias por su compra.',
-                'original_label' => 'Original: Cliente',
-                'copy_label' => 'Copia: Obligado Tributario Emisor',
-                'show_logo' => true,
-                'show_internal_reference' => true,
-                'show_cashier' => true,
-                'show_warehouse' => true,
-                'show_payment_summary' => true,
-                'show_customer_address' => true,
-                'show_item_code' => true,
-                'show_total_in_words' => true,
-                'show_qr' => true,
-            ], is_array($profile->invoice_settings) ? $profile->invoice_settings : []);
+            $invoiceSettings = SarInvoiceSettings::merge($profile->invoice_settings);
 
             $document = SarFiscalDocument::create([
                 'sale_id' => $sale->id,
