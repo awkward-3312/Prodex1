@@ -52,7 +52,15 @@ function render(responseData) {
     row('Importe gravado 18%', totals.taxable_18_amount || 0);
     row('ISV 15%', totals.tax_15_amount || 0);
     row('ISV 18%', totals.tax_18_amount || 0);
+    if (Math.abs(Number(totals.rounding_adjustment || 0)) >= 0.005) row('Ajuste de redondeo', totals.rounding_adjustment);
     row('TOTAL', totals.grand_total !== undefined ? totals.grand_total : sale.grand_total, true);
+
+    const paymentHtml = setting(settings, 'show_payment_summary', true) && Array.isArray(sale.payments) && sale.payments.length
+      ? '<div style="border-top:1px dashed #333;margin-top:5px;padding-top:4px;"><strong>Pago:</strong>' + sale.payments.map(p =>
+          '<div style="display:flex;justify-content:space-between;gap:8px;"><span>' + esc(p.method || p.reference || 'Pago') + '</span><span>L ' + money(p.amount) + '</span></div>' +
+          (Number(p.change || 0) !== 0 ? '<div style="display:flex;justify-content:space-between;gap:8px;"><span>Cambio</span><span>L ' + money(p.change) + '</span></div>' : '')
+        ).join('') + '</div>'
+      : '';
 
     const rangeStart = rangeNumber(fiscal.range_start, fiscal.fiscal_number);
     const rangeEnd = rangeNumber(fiscal.range_end, fiscal.fiscal_number);
@@ -89,7 +97,9 @@ function render(responseData) {
       '</div>' +
       (setting(settings, 'show_internal_reference', true) && sale.internal_reference ? '<div><strong>Referencia:</strong> ' + esc(sale.internal_reference) + '</div>' : '') +
       (setting(settings, 'show_warehouse', true) && sale.warehouse_name ? '<div><strong>Almacén:</strong> ' + esc(sale.warehouse_name) + '</div>' : '') +
+      (setting(settings, 'show_cashier', true) && sale.seller_name ? '<div><strong>Cajero:</strong> ' + esc(sale.seller_name) + '</div>' : '') +
       '<div style="border-top:1px dashed #333;margin-top:5px;padding-top:4px;">' + rows.join('') + '</div>' +
+      paymentHtml +
       (setting(settings, 'show_total_in_words', true) && fiscal.total_in_words ? '<div style="text-align:center;margin-top:5px;font-weight:700;">' + esc(fiscal.total_in_words) + '</div>' : '') +
       '<div style="text-align:center;margin-top:5px;">' + esc(settings.original_label || 'Original: Cliente') + '<br>' + esc(settings.copy_label || 'Copia: Obligado Tributario Emisor') + '</div>' +
       (settings.footer_message ? '<div style="text-align:center;margin-top:5px;">' + esc(settings.footer_message) + '</div>' : '');
