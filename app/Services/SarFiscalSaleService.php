@@ -60,8 +60,16 @@ class SarFiscalSaleService
             'exonerated_card_number' => $exemptionData['exonerated_card_number'] ?? null,
         ];
 
+        $cartSubtotal = round((float) $sale->saleDetails->sum(fn ($detail) => max(0.0, (float) $detail->total)), 2);
+        $saleDiscounts = $this->saleLevelDiscounts($sale, $cartSubtotal);
+        $globalTaxRate = max(0.0, (float) $sale->tax_rate);
+
         $totals = [
             'product_discount_total' => 0.0,
+            'manual_discount' => $saleDiscounts['manual'],
+            'points_discount' => $saleDiscounts['points'],
+            'promotion_discount' => $saleDiscounts['promotion'],
+            'sale_level_discount_total' => $saleDiscounts['total'],
             'exempt_amount' => 0.0,
             'exonerated_amount' => 0.0,
             'zero_rate_amount' => 0.0,
@@ -73,32 +81,55 @@ class SarFiscalSaleService
             'other_tax_amount' => 0.0,
         ];
 
-        $lines = $sale->saleDetails->map(function ($detail) use (&$totals) {
+        $lines = $sale->saleDetails->map(function ($detail) use (&$totals, $cartSubtotal, $saleDiscounts, $globalTaxRate) {
             $quantity = (float) $detail->quantity;
             $unitPrice = (float) $detail->price;
-            // Existing PRODEX SaleDetail.total is the line net/subtotal used by the
-            // receipt, while SaleDetail.TaxNet stores the tax percentage.
-            $taxableAmount = max(0.0, (float) $detail->total);
-            $rate = $detail->fiscal_tax_rate !== null
-                ? (float) $detail->fiscal_tax_rate
-                : (float) $detail->TaxNet;
-            $category = $this->normalizeCategory(
-                $detail->fiscal_tax_category ?? optional($detail->product)->fiscal_tax_category,
-                $rate
-            );
-            if ($category !== 'taxed') {
-                $rate = 0.0;
+            $storedLineTotal = max(0.0, (float) $detail->total);
+            $productRate = max(0.0, (float) $detail->TaxNet);
+
+            $rawCategory = $detail->fiscal_tax_category ?? optional($detail->product)->fiscal_tax_category;
+            $fallbackRate = $globalTaxRate > 0 ? $globalTaxRate : $productRate;
+            $category = $this->normalizeCategory($rawCategory, $fallbackRate);
+
+            // Current PRODEX POS applies sale.tax_rate to the whole cart after sale-level
+            // discounts. While that legacy/global tax is active it is the authoritative rate
+            // needed to reproduce the actual completed sale. Once POS moves to line-level tax,
+            // sale.tax_rate can be zero and each SaleDetail.TaxNet becomes authoritative.
+            $rate = $category === 'taxed'
+                ? ($globalTaxRate > 0 ? $globalTaxRate : $productRate)
+                : 0.0;
+
+            $allocatedSaleDiscount = $cartSubtotal > 0
+                ? round($saleDiscounts['total'] * ($storedLineTotal / $cartSubtotal), 2)
+                : 0.0;
+            $discountedStoredTotal = max(0.0, round($storedLineTotal - $allocatedSaleDiscount, 2));
+
+            if ($category === 'taxed' && $rate > 0) {
+                if ($globalTaxRate > 0) {
+                    // Global order tax is added after cart discounts, so the discounted cart
+                    // line is already the taxable base.
+                    $taxableAmount = $discountedStoredTotal;
+                    $taxAmount = round($taxableAmount * ($rate / 100), 2);
+                    $lineTotal = round($taxableAmount + $taxAmount, 2);
+                } else {
+                    // Product-level tax is already included in SaleDetail.total by the POS.
+                    // Extract base + tax from the frozen gross line total so the fiscal split
+                    // always reconciles to the historic sale total.
+                    $taxableAmount = round($discountedStoredTotal / (1 + ($rate / 100)), 2);
+                    $taxAmount = round($discountedStoredTotal - $taxableAmount, 2);
+                    $lineTotal = $discountedStoredTotal;
+                }
+            } else {
+                $taxableAmount = $discountedStoredTotal;
+                $taxAmount = 0.0;
+                $lineTotal = $discountedStoredTotal;
             }
 
-            $taxAmount = $category === 'taxed'
-                ? round($taxableAmount * ($rate / 100), 2)
-                : 0.0;
-            $discountAmount = $this->detailDiscountAmount($detail, $quantity, $unitPrice);
-            $totals['product_discount_total'] += $discountAmount;
+            $productDiscount = $this->detailDiscountAmount($detail, $quantity, $unitPrice);
+            $totals['product_discount_total'] += $productDiscount;
 
-            // Freeze the fiscal interpretation on the historical sale line. This happens
-            // inside the same transaction in which the SAR document is issued, so later
-            // product edits cannot change an already-issued invoice.
+            // Freeze the fiscal interpretation on the historical sale line inside the same
+            // database transaction as issuance. Later product edits cannot rewrite history.
             if ($detail->fiscal_tax_category === null || $detail->fiscal_tax_rate === null) {
                 $detail->forceFill([
                     'fiscal_tax_category' => $category,
@@ -129,18 +160,19 @@ class SarFiscalSaleService
                 'description' => optional($detail->product)->name,
                 'quantity' => $quantity,
                 'unit_price' => round($unitPrice, 2),
-                'discount' => round($discountAmount, 2),
+                'product_discount' => round($productDiscount, 2),
+                'allocated_sale_discount' => round($allocatedSaleDiscount, 2),
                 'tax_category' => $category,
                 'tax_rate' => round($rate, 2),
                 'taxable_amount' => round($taxableAmount, 2),
                 'tax_amount' => round($taxAmount, 2),
                 'tax_method' => $detail->tax_method,
-                'line_total' => round($taxableAmount + $taxAmount, 2),
+                'line_total' => round($lineTotal, 2),
             ];
         })->values()->all();
 
         foreach ($totals as $key => $value) {
-            $totals[$key] = round($value, 2);
+            $totals[$key] = round((float) $value, 2);
         }
         $totals['subtotal'] = round(
             $totals['exempt_amount'] + $totals['exonerated_amount'] + $totals['zero_rate_amount']
@@ -151,8 +183,7 @@ class SarFiscalSaleService
             $totals['tax_15_amount'] + $totals['tax_18_amount'] + $totals['other_tax_amount'],
             2
         );
-        $totals['sale_discount'] = round((float) $sale->discount, 2);
-        $totals['discount_total'] = round($totals['product_discount_total'] + $totals['sale_discount'], 2);
+        $totals['discount_total'] = round($totals['product_discount_total'] + $totals['sale_level_discount_total'], 2);
         $totals['shipping'] = round((float) $sale->shipping, 2);
         $totals['grand_total'] = round((float) $sale->GrandTotal, 2);
 
@@ -170,7 +201,7 @@ class SarFiscalSaleService
             'discount' => (float) $sale->discount,
             'shipping' => (float) $sale->shipping,
             'grand_total' => (float) $sale->GrandTotal,
-            // Normalized fiscal representation consumed by all invoice renderers.
+            // Normalized fiscal representation consumed by every invoice renderer.
             'fiscal_totals' => $totals,
             'exemption_data' => $exemptionData,
             'lines' => $lines,
@@ -191,8 +222,30 @@ class SarFiscalSaleService
             return $category;
         }
 
-        // Backwards-compatible default for products created before fiscal classification existed.
+        // Existing Honduras POS sales use the locked order tax, so a missing category
+        // with a positive effective rate must remain taxable for backwards compatibility.
         return $rate > 0 ? 'taxed' : 'exempt';
+    }
+
+    private function saleLevelDiscounts(Sale $sale, float $cartSubtotal): array
+    {
+        $discountValue = max(0.0, (float) $sale->discount);
+        $discountMethod = strtolower(trim((string) $sale->discount_Method));
+        $manual = ($discountMethod === '1' || $discountMethod === 'percent' || $discountMethod === 'percentage')
+            ? round($cartSubtotal * ($discountValue / 100), 2)
+            : min($discountValue, $cartSubtotal);
+
+        $remaining = max(0.0, $cartSubtotal - $manual);
+        $points = min(max(0.0, (float) $sale->discount_from_points), $remaining);
+        $remaining = max(0.0, $remaining - $points);
+        $promotion = min(max(0.0, (float) $sale->promotion_discount), $remaining);
+
+        return [
+            'manual' => round($manual, 2),
+            'points' => round($points, 2),
+            'promotion' => round($promotion, 2),
+            'total' => round($manual + $points + $promotion, 2),
+        ];
     }
 
     private function detailDiscountAmount($detail, float $quantity, float $unitPrice): float
