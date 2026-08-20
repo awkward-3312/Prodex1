@@ -410,6 +410,63 @@ import VueApexCharts from "vue-apexcharts";
 import DateRangePicker from "vue2-daterange-picker";
 import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
 import moment from "moment";
+
+const MOBILE_MQ = "(max-width: 767px)";
+const DASHBOARD_TABBAR_BODY_CLASS = "dashboard-mobile-tabbar";
+
+const REPORTS_MENU_PERMISSIONS = [
+  "Reports_payments_Sales",
+  "Reports_payments_Purchases",
+  "Reports_payments_Sale_Returns",
+  "Reports_payments_purchase_Return",
+  "Warehouse_report",
+  "Reports_profit",
+  "analytics_report",
+  "Stock_Inventory_Valuation",
+  "inventory_valuation",
+  "expenses_report",
+  "deposits_report",
+  "Reports_purchase",
+  "Reports_quantity_alerts",
+  "Reports_sales",
+  "product_sales_report",
+  "product_purchases_report",
+  "Reports_suppliers",
+  "Top_Suppliers_Report",
+  "Reports_customers",
+  "Top_products",
+  "inactive_customers_report",
+  "Top_customers",
+  "report_device_management",
+  "users_report",
+  "product_report",
+  "zeroSalesProducts",
+  "Dead_Stock_Report",
+  "Stock_Aging_Report",
+  "Stock_Transfer_Report",
+  "discount_summary_report",
+  "Stock_Adjustment_Report",
+  "customer_loyalty_points_report",
+  "tax_summary_report",
+  "draft_invoices_report",
+  "report_transactions",
+  "cash_flow_report",
+  "report_attendance_summary",
+  "seller_report",
+  "report_sales_by_category",
+  "report_sales_by_brand",
+  "report_error_logs",
+  "cash_register_report",
+  "report_warranty",
+  "stock_report",
+  "internal_location_report",
+  "negative_stock_report",
+  "return_ratio_report",
+  "service_jobs",
+  "service_jobs_report",
+  "checklist_completion_report",
+  "customer_maintenance_history_report"
+];
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting,
@@ -461,6 +518,9 @@ export default {
       products: [],
       CurrentMonth: "",
       loading: true,
+      isMobileViewport: false,
+      dashboardMobileMq: null,
+
       // Optional price format key for frontend display (loaded from system settings/Vuex store)
       price_format_key: null,
 
@@ -504,6 +564,109 @@ export default {
     // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
+    },
+
+    chartHeight() {
+      return this.isMobileViewport ? 260 : 350;
+    },
+
+    mobileQuickModules() {
+      const permissions = Array.isArray(this.currentUserPermissions)
+        ? this.currentUserPermissions
+        : [];
+
+      const rows = [];
+
+      const hasPerm = keys =>
+        keys.some(key => permissions.includes(key));
+
+      const push = (keys, to, iconName, toneClass, labelKey, fallback) => {
+        if (!hasPerm(keys)) return;
+
+        rows.push({
+          key: `${to}::${labelKey}`,
+          to,
+          iconName,
+          toneClass,
+          label: this.$t(labelKey) || fallback
+        });
+      };
+
+      push(["Pos_view"], "/app/pos", "calculator", "tone-purple", "POS", "POS");
+      push(["Sales_view"], "/app/sales/list", "shopping-cart", "tone-violet", "Sales", "Sales");
+      push(["Sale_Returns_view"], "/app/sale_return/list", "chevron-right", "tone-amber", "SalesReturn", "Sales return");
+      push(["Purchases_view"], "/app/purchases/list", "shopping-cart", "tone-green", "Purchases", "Purchases");
+      push(["Purchase_Returns_view"], "/app/purchase_return/list", "chevron-left", "tone-orange", "PurchasesReturn", "Purchase returns");
+      push(["products_view"], "/app/products/list", "package", "tone-teal", "productsList", "Products");
+      push(["Quotations_view"], "/app/quotations/list", "shopping-basket", "tone-amber", "Quotations", "Quotations");
+      push(["transfer_view"], "/app/transfers/list", "arrow-left", "tone-slate", "StockTransfers", "Transfers");
+      push(["Customers_view"], "/app/People/Customers", "users", "tone-blue", "Customers", "Customers");
+      push(["Suppliers_view"], "/app/People/Suppliers", "users", "tone-slate", "Suppliers", "Suppliers");
+      push(["adjustment_view"], "/app/adjustments/list", "map-pin", "tone-cyan", "StockAdjustement", "Adjustments");
+      push(["damage_view"], "/app/damages/list", "shopping-bag", "tone-rose", "Damages", "Damages");
+      push(["expense_view"], "/app/expenses/list", "wallet", "tone-teal", "Expenses", "Expenses");
+      push(["deposit_view"], "/app/deposits/list", "wallet", "tone-emerald", "List_Deposit", "Deposits");
+      push(["AI_Reports"], "/app/reports/ai_reports", "lightbulb", "tone-violet", "AI_Reports", "AI Reports");
+      push(REPORTS_MENU_PERMISSIONS, "/app/reports/profit_and_loss", "trending-up", "tone-rose", "Reports", "Reports");
+
+      return rows;
+    },
+
+    mobileTabBarItemsFiltered() {
+      const permissions = Array.isArray(this.currentUserPermissions)
+        ? this.currentUserPermissions
+        : [];
+
+      const hasReports = REPORTS_MENU_PERMISSIONS.some(
+        permission => permissions.includes(permission)
+      );
+
+      const hasSettings = permissions.includes("setting_system");
+
+      return [
+        {
+          key: "tab-dashboard",
+          to: "/app/dashboard",
+          label: this.$t("dashboard") || "Home",
+          iconName: "bar-chart",
+          exact: true,
+          show: true
+        },
+        {
+          key: "tab-sales",
+          to: "/app/sales/list",
+          label: this.$t("Sales") || "Orders",
+          iconName: "shopping-cart",
+          exact: false,
+          show: permissions.includes("Sales_view")
+        },
+        {
+          key: "tab-products",
+          to: "/app/products/list",
+          label: this.$t("Products") || "Stock",
+          iconName: "package",
+          exact: false,
+          show: permissions.includes("products_view")
+        },
+        {
+          key: "tab-reports",
+          to: "/app/reports",
+          label: this.$t("Reports") || "Reports",
+          iconName: "trending-up",
+          exact: false,
+          show: hasReports
+        },
+        {
+          key: "tab-settings",
+          to: hasSettings ? "/app/settings/System_settings" : "/app/profile",
+          label: hasSettings
+            ? (this.$t("Settings") || "Settings")
+            : (this.$t("profil") || "Account"),
+          iconName: "settings",
+          exact: false,
+          show: true
+        }
+      ].filter(item => item.show);
     },
 
     columns_sales() {
@@ -579,6 +742,67 @@ export default {
     }
   },
   methods: {
+    setupDashboardViewport() {
+      if (typeof window === "undefined" || !window.matchMedia) return;
+
+      this.dashboardMobileMq = window.matchMedia(MOBILE_MQ);
+      this.syncDashboardViewport();
+
+      if (typeof this.dashboardMobileMq.addEventListener === "function") {
+        this.dashboardMobileMq.addEventListener(
+          "change",
+          this.syncDashboardViewport
+        );
+      } else if (typeof this.dashboardMobileMq.addListener === "function") {
+        this.dashboardMobileMq.addListener(this.syncDashboardViewport);
+      }
+    },
+
+    syncDashboardViewport() {
+      if (!this.dashboardMobileMq) return;
+
+      this.isMobileViewport = this.dashboardMobileMq.matches;
+      this.syncDashboardTabbarBodyClass();
+    },
+
+    syncDashboardTabbarBodyClass() {
+      if (typeof document === "undefined") return;
+
+      const permissions = Array.isArray(this.currentUserPermissions)
+        ? this.currentUserPermissions
+        : [];
+
+      const show =
+        this.isMobileViewport &&
+        permissions.includes("dashboard");
+
+      document.body.classList.toggle(
+        DASHBOARD_TABBAR_BODY_CLASS,
+        show
+      );
+    },
+
+    cleanupDashboardViewport() {
+      if (this.dashboardMobileMq) {
+        if (typeof this.dashboardMobileMq.removeEventListener === "function") {
+          this.dashboardMobileMq.removeEventListener(
+            "change",
+            this.syncDashboardViewport
+          );
+        } else if (typeof this.dashboardMobileMq.removeListener === "function") {
+          this.dashboardMobileMq.removeListener(
+            this.syncDashboardViewport
+          );
+        }
+      }
+
+      this.dashboardMobileMq = null;
+
+      if (typeof document !== "undefined") {
+        document.body.classList.remove(DASHBOARD_TABBAR_BODY_CLASS);
+      }
+    },
+
     fmt(d) {
       return moment(d).format("YYYY-MM-DD");
     },
@@ -1020,9 +1244,6 @@ export default {
         const decimals = this.priceDecimals;
         const n = Number(number || 0);
         const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
-        if (key) {
-          this.price_format_key = key;
-        }
         const effectiveKey = key || null;
         return formatPriceDisplayHelper(n, decimals, effectiveKey);
       } catch (e) {
@@ -1072,224 +1293,31 @@ export default {
         });
     },
   },
+  watch: {
+    currentUserPermissions() {
+      this.syncDashboardTabbarBodyClass();
+    }
+  },
+
   async mounted() {
+    this.setupDashboardViewport();
+
     const range = await this.loadDefaultDateRangeSetting();
     this.defaultDateRange = range;
+
+    this.price_format_key =
+      getPriceFormatSetting({ store: this.$store }) || null;
+
     await this.all_dashboard_data();
     this.GetMonth();
+  },
+
+  beforeDestroy() {
+    this.cleanupDashboardViewport();
   }
 };
 </script>
 
-<script setup>
-import { ref, computed, onMounted, onBeforeUnmount, getCurrentInstance, watch } from "vue";
-
-const MOBILE_MQ = "(max-width: 767px)";
-const DASHBOARD_TABBAR_BODY_CLASS = "dashboard-mobile-tabbar";
-
-const _inst = getCurrentInstance();
-const vm = _inst && _inst.proxy;
-const store = vm && vm.$store;
-
-const isMobileViewport = ref(false);
-
-const chartHeight = computed(() => (isMobileViewport.value ? 260 : 350));
-
-const currentUserPermissions = computed(() => (store && store.getters.currentUserPermissions) || []);
-
-function syncDashboardTabbarBodyClass() {
-  if (typeof document === "undefined") return;
-  const perms = currentUserPermissions.value;
-  const show =
-    isMobileViewport.value &&
-    Array.isArray(perms) &&
-    perms.includes("dashboard");
-  document.body.classList.toggle(DASHBOARD_TABBAR_BODY_CLASS, show);
-}
-
-watch([isMobileViewport, currentUserPermissions], syncDashboardTabbarBodyClass, {
-  immediate: true
-});
-
-// Matches Sidebar.vue > Reports parent menu visibility (any → show Reports / quick link)
-const REPORTS_MENU_PERMISSIONS = [
-  "Reports_payments_Sales",
-  "Reports_payments_Purchases",
-  "Reports_payments_Sale_Returns",
-  "Reports_payments_purchase_Return",
-  "Warehouse_report",
-  "Reports_profit",
-  "analytics_report",
-  "Stock_Inventory_Valuation",
-  "inventory_valuation",
-  "expenses_report",
-  "deposits_report",
-  "Reports_purchase",
-  "Reports_quantity_alerts",
-  "Reports_sales",
-  "product_sales_report",
-  "product_purchases_report",
-  "Reports_suppliers",
-  "Top_Suppliers_Report",
-  "Reports_customers",
-  "Top_products",
-  "inactive_customers_report",
-  "Top_customers",
-  "report_device_management",
-  "users_report",
-  "product_report",
-  "zeroSalesProducts",
-  "Dead_Stock_Report",
-  "Stock_Aging_Report",
-  "Stock_Transfer_Report",
-  "discount_summary_report",
-  "Stock_Adjustment_Report",
-  "customer_loyalty_points_report",
-  "tax_summary_report",
-  "draft_invoices_report",
-  "report_transactions",
-  "cash_flow_report",
-  "report_attendance_summary",
-  "seller_report",
-  "report_sales_by_category",
-  "report_sales_by_brand",
-  "report_error_logs",
-  "cash_register_report",
-  "report_warranty",
-  "stock_report",
-  "internal_location_report",
-  "negative_stock_report",
-  "return_ratio_report",
-  "service_jobs",
-  "service_jobs_report",
-  "checklist_completion_report",
-  "customer_maintenance_history_report"
-];
-
-function hasPerm(keys) {
-  const perms = currentUserPermissions.value;
-  if (!keys || !keys.length) return false;
-  return keys.some((k) => perms.includes(k));
-}
-
-const mobileQuickModules = computed(() => {
-  if (!vm) return [];
-  const $t = vm.$t.bind(vm);
-  const rows = [];
-  const push = (keys, to, iconName, toneClass, labelKey, fallback) => {
-    if (!hasPerm(keys)) return;
-    const label = $t(labelKey) || fallback;
-    rows.push({
-      key: `${to}::${labelKey}`,
-      to,
-      iconName,
-      toneClass,
-      label
-    });
-  };
-
-  push(["Pos_view"], "/app/pos", "calculator", "tone-purple", "POS", "POS");
-  push(["Sales_view"], "/app/sales/list", "shopping-cart", "tone-violet", "Sales", "Sales");
-  push(["Sale_Returns_view"], "/app/sale_return/list", "chevron-right", "tone-amber", "SalesReturn", "Sales return");
-  push(["Purchases_view"], "/app/purchases/list", "shopping-cart", "tone-green", "Purchases", "Purchases");
-  push(["Purchase_Returns_view"], "/app/purchase_return/list", "chevron-left", "tone-orange", "PurchasesReturn", "Purchase returns");
-  push(["products_view"], "/app/products/list", "package", "tone-teal", "productsList", "Products");
-  push(["Quotations_view"], "/app/quotations/list", "shopping-basket", "tone-amber", "Quotations", "Quotations");
-  push(["transfer_view"], "/app/transfers/list", "arrow-left", "tone-slate", "StockTransfers", "Transfers");
-  push(["Customers_view"], "/app/People/Customers", "users", "tone-blue", "Customers", "Customers");
-  push(["Suppliers_view"], "/app/People/Suppliers", "users", "tone-slate", "Suppliers", "Suppliers");
-  push(["adjustment_view"], "/app/adjustments/list", "map-pin", "tone-cyan", "StockAdjustement", "Adjustments");
-  push(["damage_view"], "/app/damages/list", "shopping-bag", "tone-rose", "Damages", "Damages");
-  push(["expense_view"], "/app/expenses/list", "wallet", "tone-teal", "Expenses", "Expenses");
-  push(["deposit_view"], "/app/deposits/list", "wallet", "tone-emerald", "List_Deposit", "Deposits");
-  push(["AI_Reports"], "/app/reports/ai_reports", "lightbulb", "tone-violet", "AI_Reports", "AI Reports");
-  push(REPORTS_MENU_PERMISSIONS, "/app/reports/profit_and_loss", "trending-up", "tone-rose", "Reports", "Reports");
-
-  return rows;
-});
-
-const mobileTabBarItems = computed(() => {
-  if (!vm) return [];
-  const $t = vm.$t.bind(vm);
-  const perms = currentUserPermissions.value;
-  const hasReports = REPORTS_MENU_PERMISSIONS.some((p) => perms.includes(p));
-  const settingsTo = perms.includes("setting_system") ? "/app/settings/System_settings" : "/app/profile";
-  const settingsLabel = perms.includes("setting_system")
-    ? $t("Settings") || "Settings"
-    : $t("profil") || "Account";
-
-  return [
-    {
-      to: "/app/dashboard",
-      label: $t("dashboard") || "Home",
-      iconName: "bar-chart",
-      exact: true,
-      show: true
-    },
-    {
-      to: "/app/sales/list",
-      label: $t("Sales") || "Orders",
-      iconName: "shopping-cart",
-      exact: false,
-      show: perms.includes("Sales_view")
-    },
-    {
-      to: "/app/products/list",
-      label: $t("Products") || "Stock",
-      iconName: "package",
-      exact: false,
-      show: perms.includes("products_view")
-    },
-    {
-      to: "/app/reports",
-      label: $t("Reports") || "Reports",
-      iconName: "trending-up",
-      exact: false,
-      show: hasReports
-    },
-    {
-      to: settingsTo,
-      label: settingsLabel,
-      iconName: "settings",
-      exact: false,
-      show: true
-    }
-  ];
-});
-
-/** Visible tabs only (no v-show placeholders) so flex width and keys stay stable */
-const mobileTabBarItemsFiltered = computed(() =>
-  mobileTabBarItems.value
-    .filter((t) => t.show)
-    .map((t, i) => ({
-      key: `tab-${t.to}-${i}`,
-      to: t.to,
-      label: t.label,
-      iconName: t.iconName,
-      exact: t.exact
-    }))
-);
-
-let mqCleanup = null;
-
-onMounted(() => {
-  if (typeof window === "undefined" || !window.matchMedia) return;
-  const mq = window.matchMedia(MOBILE_MQ);
-  const apply = () => {
-    isMobileViewport.value = mq.matches;
-  };
-  apply();
-  mq.addEventListener("change", apply);
-  mqCleanup = () => mq.removeEventListener("change", apply);
-});
-
-onBeforeUnmount(() => {
-  if (mqCleanup) mqCleanup();
-  if (typeof document !== "undefined") {
-    document.body.classList.remove(DASHBOARD_TABBAR_BODY_CLASS);
-  }
-});
-</script>
 
 <style scoped>
 /* Dashboard static layout */
