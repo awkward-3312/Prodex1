@@ -31,7 +31,7 @@ class SarFiscalSaleService
             throw new SarFiscalException('No existe una autorización SAR activa para el punto de emisión seleccionado.');
         }
 
-        $sale->loadMissing(['client', 'saleDetails.product', 'warehouse']);
+        $sale->loadMissing(['client', 'saleDetails.product', 'warehouse', 'user', 'facture.payment_method']);
         $customer = $sale->client;
 
         if (! $customer) {
@@ -187,6 +187,19 @@ class SarFiscalSaleService
         $totals['discount_total'] = round($totals['product_discount_total'] + $totals['sale_level_discount_total'], 2);
         $totals['shipping'] = round((float) $sale->shipping, 2);
         $totals['grand_total'] = round((float) $sale->GrandTotal, 2);
+        $totals['rounding_adjustment'] = round(
+            $totals['grand_total'] - ($totals['subtotal'] + $totals['tax_total'] + $totals['shipping']),
+            2
+        );
+
+        $payments = $sale->facture->map(function ($payment) {
+            return [
+                'reference' => $payment->Ref,
+                'method' => optional($payment->payment_method)->name,
+                'amount' => round((float) $payment->montant, 2),
+                'change' => round((float) $payment->change, 2),
+            ];
+        })->values()->all();
 
         $saleSnapshot = [
             'sale_id' => $sale->id,
@@ -196,6 +209,7 @@ class SarFiscalSaleService
             'warehouse_id' => $sale->warehouse_id,
             'warehouse_name' => optional($sale->warehouse)->name,
             'cash_drawer_id' => $cashDrawerId,
+            'seller_name' => optional($sale->user)->username ?? optional($sale->user)->name,
             'tax_rate' => (float) $sale->tax_rate,
             'tax_total' => (float) $sale->TaxNet,
             'discount' => (float) $sale->discount,
@@ -203,6 +217,7 @@ class SarFiscalSaleService
             'grand_total' => (float) $sale->GrandTotal,
             'fiscal_totals' => $totals,
             'exemption_data' => $exemptionData,
+            'payments' => $payments,
             'lines' => $lines,
         ];
 
