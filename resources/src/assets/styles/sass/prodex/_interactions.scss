@@ -213,6 +213,234 @@
   .px-skeleton-card { min-height: 120px; }
 }
 
+// Compact form modal — shared by short administrative forms such as attendance,
+// companies, departments and job titles. The modal may be teleported outside
+// .prodex-ui, so this primitive intentionally lives at the document level.
+.prodex-form-modal .modal-dialog {
+  width: calc(100vw - 32px);
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.prodex-form-modal .modal-content {
+  overflow: hidden;
+  border: 1px solid #e3e8ef;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .18);
+}
+
+.prodex-form-modal .modal-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid #e8edf3;
+  background: #fff;
+}
+
+.prodex-form-modal .modal-title {
+  color: #172033;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.prodex-form-modal .modal-body {
+  padding: 0;
+  background: #fff;
+}
+
+.prodex-form-shell {
+  padding: 22px;
+}
+
+.prodex-form-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border: 1px solid #e5ebf2;
+  border-radius: 11px;
+  background: #f8fbfd;
+}
+
+.prodex-form-intro__icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--primary-color, #38bfd3);
+  background: rgba(56, 191, 211, .12);
+}
+
+.prodex-form-intro__icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.prodex-form-intro h6 {
+  margin: 1px 0 3px;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.prodex-form-intro p {
+  margin: 0;
+  color: #667085;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.prodex-form-section {
+  margin-bottom: 18px;
+}
+
+.prodex-form-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.prodex-form-section__title {
+  margin: 0 0 12px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.prodex-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+
+.prodex-form-grid .form-group {
+  margin-bottom: 14px;
+}
+
+.prodex-form-grid .form-group > label,
+.prodex-form-shell .form-group > label {
+  margin-bottom: 6px;
+  color: #475467;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.prodex-form-grid .form-control,
+.prodex-form-shell .form-control,
+.prodex-form-shell .vs__dropdown-toggle {
+  min-height: 40px;
+  border-color: #d7e0ea;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.prodex-form-grid .form-control:focus,
+.prodex-form-shell .form-control:focus,
+.prodex-form-shell .vs__dropdown-toggle:focus-within {
+  border-color: var(--primary-color, #38bfd3);
+  box-shadow: 0 0 0 3px rgba(56, 191, 211, .11);
+}
+
+.prodex-form-field--full {
+  grid-column: 1 / -1;
+}
+
+.prodex-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 8px -22px -22px;
+  padding: 15px 22px;
+  border-top: 1px solid #e7ecf2;
+  background: #fbfcfd;
+}
+
+.prodex-form-footer__hint {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.prodex-form-footer__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.prodex-form-footer .btn {
+  min-height: 38px;
+  padding-left: 16px;
+  padding-right: 16px;
+  border-radius: 8px;
+  font-weight: 650;
+}
+
+.prodex-form-source-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 1px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: #566176;
+  background: #f1f4f7;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+// Give legacy short HRM modals a cleaner frame even before their templates are
+// migrated to the full compact-shell markup.
+#New_Company___BV_modal_content_,
+#New_Department___BV_modal_content_,
+#New_Designation___BV_modal_content_,
+#New_Modal_Holiday___BV_modal_content_ {
+  overflow: hidden;
+  border: 1px solid #e3e8ef;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .18);
+}
+
+#New_Company___BV_modal_body_,
+#New_Department___BV_modal_body_,
+#New_Designation___BV_modal_body_,
+#New_Modal_Holiday___BV_modal_body_ {
+  padding: 22px;
+}
+
+#New_Company___BV_modal_body_ .form-group,
+#New_Department___BV_modal_body_ .form-group,
+#New_Designation___BV_modal_body_ .form-group,
+#New_Modal_Holiday___BV_modal_body_ .form-group {
+  margin-bottom: 15px;
+}
+
+#New_Company___BV_modal_body_ .form-control,
+#New_Department___BV_modal_body_ .form-control,
+#New_Designation___BV_modal_body_ .form-control,
+#New_Modal_Holiday___BV_modal_body_ .form-control,
+#New_Company___BV_modal_body_ .vs__dropdown-toggle,
+#New_Department___BV_modal_body_ .vs__dropdown-toggle,
+#New_Designation___BV_modal_body_ .vs__dropdown-toggle,
+#New_Modal_Holiday___BV_modal_body_ .vs__dropdown-toggle {
+  min-height: 40px;
+  border-color: #d7e0ea;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+#New_Company___BV_modal_body_ .mt-3,
+#New_Department___BV_modal_body_ .mt-3,
+#New_Designation___BV_modal_body_ .mt-3,
+#New_Modal_Holiday___BV_modal_body_ .mt-3 {
+  padding-top: 14px;
+  border-top: 1px solid #e7ecf2;
+}
+
 // Bootstrap 4 only gives .modal-xl its large width at very wide desktop
 // breakpoints. The office-shift editor needs four meaningful columns on normal
 // laptops/tablets too, so give this specific modal a responsive working width.
@@ -231,6 +459,30 @@
     max-width: none;
     margin-left: 12px;
     margin-right: 12px;
+  }
+
+  .prodex-form-modal .modal-dialog {
+    width: auto;
+    max-width: none;
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+
+  .prodex-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prodex-form-field--full {
+    grid-column: auto;
+  }
+
+  .prodex-form-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .prodex-form-footer__actions {
+    justify-content: flex-end;
   }
 }
 
