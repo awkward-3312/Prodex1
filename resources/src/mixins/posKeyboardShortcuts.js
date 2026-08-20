@@ -61,6 +61,10 @@ function boolSetting(settings,key,fallback=true){
   return settings[key]===true||settings[key]===1||settings[key]==="1";
 }
 
+function formValue(id) {
+  try { const el=document.getElementById(id); return el ? String(el.value||"").trim() : ""; } catch(e){ return ""; }
+}
+
 export default {
   methods: {
     isHondurasLineTaxMode() {
@@ -94,11 +98,92 @@ export default {
       const ratio=gross>0?afterDiscount/gross:0;
 
       if(this.sale){
+        // Honduras line tax is already included in the product totals. Store only the
+        // effective tax amount for reporting; do not add a second order-level 15%.
         this.sale.TaxNet=parseFloat((rawTax*ratio).toFixed(decimals));
       }
       this.GrandTotal=parseFloat((afterDiscount+Number((this.sale&&this.sale.shipping)||0)).toFixed(decimals));
       try{this._cd_queue_broadcast&&this._cd_queue_broadcast();}catch(e){}
       return this.GrandTotal;
+    },
+
+    hasSarSaleData() {
+      const data=this.sarFiscalSaleData||{};
+      return Object.keys(data).some(k=>String(data[k]||"").trim()!=="");
+    },
+
+    updateSarSaleButton() {
+      try {
+        const button=document.getElementById("prodex-sar-sale-data-btn");
+        if(!button)return;
+        const active=this.hasSarSaleData();
+        button.textContent=active?"Fiscal configurado":"Datos fiscales";
+        button.style.borderColor=active?"#16a34a":"#d1d5db";
+        button.style.color=active?"#166534":"#374151";
+        button.style.background=active?"#f0fdf4":"#ffffff";
+      } catch(e) {}
+    },
+
+    ensureSarSaleButton() {
+      try {
+        if(typeof document==="undefined"||!this.isHondurasLineTaxMode())return;
+        if(document.getElementById("prodex-sar-sale-data-btn")){this.updateSarSaleButton();return;}
+        const anchor=document.querySelector(".pos-cust-trigger")||document.querySelector(".pos-shell-register-status")||document.querySelector(".pos-shell-header");
+        if(!anchor||!anchor.parentNode)return;
+        const button=document.createElement("button");
+        button.id="prodex-sar-sale-data-btn";
+        button.type="button";
+        button.textContent="Datos fiscales";
+        button.title="Datos fiscales o de exoneración de esta venta";
+        button.style.cssText="height:32px;padding:0 10px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;";
+        button.addEventListener("click",()=>this.configureSarSaleData());
+        if(anchor.nextSibling)anchor.parentNode.insertBefore(button,anchor.nextSibling);else anchor.parentNode.appendChild(button);
+        this.updateSarSaleButton();
+      } catch(e) {}
+    },
+
+    configureSarSaleData() {
+      const current=Object.assign({
+        exempt_purchase_order_number:"",
+        sar_registry_number:"",
+        exoneration_registry_number:"",
+        exonerated_card_number:""
+      },this.sarFiscalSaleData||{});
+
+      if(!this.$swal)return;
+      this.$swal({
+        title:"Datos fiscales de esta venta",
+        html:
+          '<div style="text-align:left;font-size:12px;">'+
+          '<label style="display:block;margin:8px 0 3px;">No. orden de compra exenta</label><input id="sar-sale-exempt-po" class="swal2-input" style="margin:0;width:100%;" value="'+escapeHtml(current.exempt_purchase_order_number)+'">'+
+          '<label style="display:block;margin:8px 0 3px;">No. registro SAG/SAR</label><input id="sar-sale-registry" class="swal2-input" style="margin:0;width:100%;" value="'+escapeHtml(current.sar_registry_number)+'">'+
+          '<label style="display:block;margin:8px 0 3px;">No. registro exonerado</label><input id="sar-sale-exoneration" class="swal2-input" style="margin:0;width:100%;" value="'+escapeHtml(current.exoneration_registry_number)+'">'+
+          '<label style="display:block;margin:8px 0 3px;">No. carnet/documento exonerado</label><input id="sar-sale-card" class="swal2-input" style="margin:0;width:100%;" value="'+escapeHtml(current.exonerated_card_number)+'">'+
+          '<small style="display:block;margin-top:8px;color:#6b7280;">Déjalos en blanco cuando la operación no sea exenta o exonerada. Estos valores se congelarán en la factura emitida.</small></div>',
+        showCancelButton:true,
+        showDenyButton:this.hasSarSaleData(),
+        confirmButtonText:"Guardar",
+        cancelButtonText:"Cancelar",
+        denyButtonText:"Limpiar",
+        preConfirm:()=>({
+          exempt_purchase_order_number:formValue("sar-sale-exempt-po"),
+          sar_registry_number:formValue("sar-sale-registry"),
+          exoneration_registry_number:formValue("sar-sale-exoneration"),
+          exonerated_card_number:formValue("sar-sale-card")
+        })
+      }).then(result=>{
+        if(result.isDenied){
+          this.$set(this,"sarFiscalSaleData",{});
+          this.updateSarSaleButton();
+          return;
+        }
+        if(result.value){
+          const clean={};
+          Object.keys(result.value).forEach(k=>{if(String(result.value[k]||"").trim()!=="")clean[k]=String(result.value[k]).trim();});
+          this.$set(this,"sarFiscalSaleData",clean);
+          this.updateSarSaleButton();
+        }
+      });
     },
 
     renderSarFiscalReceipt() {
@@ -193,6 +278,8 @@ export default {
 
   mounted() {
     this._posShortcutsHandler=null;
+    if(this.sarFiscalSaleData===undefined)this.$set(this,"sarFiscalSaleData",{});
+
     const handler=e=>{
       if(!posShortcutsEnabled())return;
       try{if(typeof document!=="undefined"&&document.body&&document.body.classList.contains("modal-open"))return;}catch(e2){}
@@ -210,8 +297,6 @@ export default {
     this._posShortcutsHandler=handler;
     try{window.addEventListener("keydown",handler,true);}catch(e){}
 
-    // Replace only the runtime calculation function. The original component method
-    // remains the fallback for non-Honduras tenants.
     try{
       if(typeof this.CalculTotal==="function"){
         this._originalCalculTotal=this.CalculTotal.bind(this);
@@ -223,12 +308,15 @@ export default {
       }
     }catch(e){}
 
+    this._sarUiTimer=setInterval(()=>{try{this.ensureSarSaleButton();}catch(e){}},1000);
+    setTimeout(()=>this.ensureSarSaleButton(),400);
+
     try{
       if(typeof axios!=="undefined"&&axios.interceptors){
         this._sarRequestInterceptor=axios.interceptors.request.use(config=>{
           try{
             const url=String(config&&config.url||"");
-            if(url.indexOf("pos/create_pos")!==-1&&this.sarFiscalSaleData){
+            if(url.indexOf("pos/create_pos")!==-1&&this.hasSarSaleData()){
               const payload=typeof config.data==="string"?JSON.parse(config.data):Object.assign({},config.data||{});
               payload.fiscal_exemption_data=Object.assign({},this.sarFiscalSaleData);
               config.data=payload;
@@ -242,6 +330,10 @@ export default {
           try{
             const url=response&&response.config?String(response.config.url||""):"";
             const data=response&&response.data?response.data:null;
+            if(url.indexOf("pos/create_pos")!==-1&&data&&data.success===true){
+              this.$set(this,"sarFiscalSaleData",{});
+              this.updateSarSaleButton();
+            }
             if(url.indexOf("sales_print_invoice/")!==-1&&data&&data.sar_fiscal){
               const fiscal=data.sar_fiscal;
               const issuer=fiscal.issuer||{};
@@ -265,6 +357,8 @@ export default {
 
   beforeDestroy() {
     try{if(this._posShortcutsHandler){window.removeEventListener("keydown",this._posShortcutsHandler,true);this._posShortcutsHandler=null;}}catch(e){}
+    try{if(this._sarUiTimer){clearInterval(this._sarUiTimer);this._sarUiTimer=null;}}catch(e){}
+    try{const b=document.getElementById("prodex-sar-sale-data-btn");if(b&&b.parentNode)b.parentNode.removeChild(b);}catch(e){}
     try{if(this._sarReceiptInterceptor!==null&&this._sarReceiptInterceptor!==undefined&&typeof axios!=="undefined"){axios.interceptors.response.eject(this._sarReceiptInterceptor);this._sarReceiptInterceptor=null;}}catch(e){}
     try{if(this._sarRequestInterceptor!==null&&this._sarRequestInterceptor!==undefined&&typeof axios!=="undefined"){axios.interceptors.request.eject(this._sarRequestInterceptor);this._sarRequestInterceptor=null;}}catch(e){}
   },
