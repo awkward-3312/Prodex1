@@ -235,6 +235,200 @@ function installReceiptPresentationEnhancer(Vue) {
   });
 }
 
+function installFriendlyNavigation(Vue) {
+  if (typeof window === 'undefined' || window.__prodexFriendlyNavigationInstalled) return;
+  window.__prodexFriendlyNavigationInstalled = true;
+
+  if (!document.getElementById('prodex-friendly-navigation-style')) {
+    const style = document.createElement('style');
+    style.id = 'prodex-friendly-navigation-style';
+    style.textContent = `
+      .prodex-nav-absorbed { display: none !important; }
+      .prodex-nav-section { padding: 9px 18px 5px; font-size: 10px; line-height: 1.2; font-weight: 700; letter-spacing: .055em; text-transform: uppercase; color: #98a2b3; cursor: default; }
+      .sidebar-left-secondary .prodex-nav-section { padding-left: 20px; }
+      .vertical-sidebar .prodex-nav-section { padding-left: 42px; }
+      .prodex-nav-clone a, .prodex-nav-clone .submenu-link { cursor: pointer; }
+      .vertical-sidebar .nav-icon { width: 20px !important; height: 20px !important; min-width: 20px !important; }
+      .vertical-sidebar .submenu-icon { width: 15px !important; height: 15px !important; min-width: 15px !important; }
+      .vertical-sidebar .nav-link { min-height: 46px; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  const setLabel = (node, label, selector) => {
+    if (!node) return;
+    const text = node.querySelector(selector);
+    if (text) text.textContent = label;
+  };
+
+  const routerizeClone = (anchor, vm) => {
+    if (!anchor) return null;
+    const clone = anchor.cloneNode(true);
+    const href = clone.getAttribute('href');
+    if (href && href.startsWith('/app/') && vm.$router) {
+      clone.addEventListener('click', event => {
+        event.preventDefault();
+        vm.$router.push(href).catch(() => {});
+      });
+    }
+    clone.classList.remove('router-link-active', 'router-link-exact-active', 'open');
+    return clone;
+  };
+
+  const addSection = (host, title, anchors, vm, mode) => {
+    if (!host || !anchors || !anchors.length) return;
+    const key = 'prodex-section-' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    if (host.querySelector('.' + key)) return;
+
+    const heading = document.createElement('li');
+    heading.className = `prodex-nav-section ${key}`;
+    heading.textContent = title;
+    host.appendChild(heading);
+
+    anchors.forEach(anchor => {
+      const clone = routerizeClone(anchor, vm);
+      if (!clone) return;
+      const li = document.createElement('li');
+      li.className = mode === 'vertical' ? 'submenu-item prodex-nav-clone' : 'nav-item prodex-nav-clone';
+      if (mode === 'vertical') clone.className = 'submenu-link';
+      else clone.classList.add('nav-item-hold');
+      li.appendChild(clone);
+      host.appendChild(li);
+    });
+  };
+
+  const anchorsFromChildNav = child => child
+    ? Array.from(child.children).map(li => li.querySelector(':scope > a')).filter(Boolean)
+    : [];
+
+  const topLiForAnchor = (anchor, list) => {
+    if (!anchor || !list) return null;
+    let li = anchor.closest('li');
+    while (li && li.parentElement !== list) li = li.parentElement && li.parentElement.closest('li');
+    return li && li.parentElement === list ? li : null;
+  };
+
+  const findVerticalTop = (list, prefix) => {
+    const anchor = Array.from(list.querySelectorAll('a[href]')).find(a => String(a.getAttribute('href') || '').startsWith(prefix));
+    return topLiForAnchor(anchor, list);
+  };
+
+  const directAnchor = li => li && li.querySelector(':scope > a[href]');
+  const submenuAnchors = li => li ? Array.from(li.querySelectorAll(':scope > .submenu > li > a[href]')) : [];
+
+  const organizeClassic = (root, vm) => {
+    const list = root.querySelector('.navigation-left');
+    const secondary = root.querySelector('.sidebar-left-secondary');
+    if (!list || !secondary || root.dataset.prodexFriendlyOrganized === '1') return;
+
+    const inventory = list.querySelector('li[data-item="products"]');
+    const operations = list.querySelector('li[data-item="sales"]');
+    if (!inventory || !operations) return;
+
+    setLabel(inventory, 'Inventario', '.nav-text');
+    setLabel(operations, 'Operaciones', '.nav-text');
+    setLabel(list.querySelector('li[data-item="People"]'), 'Clientes y proveedores', '.nav-text');
+    setLabel(list.querySelector('li[data-item="User_Management"]'), 'Usuarios y acceso', '.nav-text');
+
+    const inventoryChild = secondary.querySelector('.childNav[data-parent="products"]');
+    const operationsChild = secondary.querySelector('.childNav[data-parent="sales"]');
+
+    const adjustmentChild = secondary.querySelector('.childNav[data-parent="adjustments"]');
+    const transferChild = secondary.querySelector('.childNav[data-parent="transfers"]');
+    const damageChild = secondary.querySelector('.childNav[data-parent="damages"]');
+    addSection(inventoryChild, 'Movimientos de inventario', [
+      ...anchorsFromChildNav(adjustmentChild),
+      ...anchorsFromChildNav(transferChild),
+      ...anchorsFromChildNav(damageChild),
+    ], vm, 'classic');
+
+    const purchasesChild = secondary.querySelector('.childNav[data-parent="purchases"]');
+    const quotationsChild = secondary.querySelector('.childNav[data-parent="quotations"]');
+    addSection(operationsChild, 'Compras', anchorsFromChildNav(purchasesChild), vm, 'classic');
+    addSection(operationsChild, 'Cotizaciones', anchorsFromChildNav(quotationsChild), vm, 'classic');
+
+    const directOperations = ['sale_return', 'purchase_return'].map(key => directAnchor(list.querySelector(`li[data-item="${key}"]`))).filter(Boolean);
+    const promo = list.querySelector('a[href="/app/promotions"]');
+    if (promo) directOperations.push(promo);
+    addSection(operationsChild, 'Devoluciones y promociones', directOperations, vm, 'classic');
+
+    ['adjustments', 'purchases', 'sale_return', 'quotations', 'purchase_return', 'transfers', 'damages'].forEach(key => {
+      const li = list.querySelector(`li[data-item="${key}"]`);
+      if (li) li.classList.add('prodex-nav-absorbed');
+    });
+    const promoLi = promo && promo.closest('li.nav-item');
+    if (promoLi) promoLi.classList.add('prodex-nav-absorbed');
+
+    root.dataset.prodexFriendlyOrganized = '1';
+  };
+
+  const organizeVertical = (root, vm) => {
+    const list = root.querySelector('.vertical-nav-menu > .nav-list');
+    if (!list || root.dataset.prodexFriendlyOrganized === '1') return;
+
+    const inventory = findVerticalTop(list, '/app/products/');
+    const operations = findVerticalTop(list, '/app/sales/');
+    if (!inventory || !operations) return;
+
+    setLabel(inventory, 'Inventario', ':scope > .nav-link .nav-text');
+    setLabel(operations, 'Operaciones', ':scope > .nav-link .nav-text');
+
+    const people = findVerticalTop(list, '/app/People/');
+    const users = findVerticalTop(list, '/app/User_Management/');
+    setLabel(people, 'Clientes y proveedores', ':scope > .nav-link .nav-text');
+    setLabel(users, 'Usuarios y acceso', ':scope > .nav-link .nav-text');
+
+    const inventorySub = inventory.querySelector(':scope > .submenu');
+    const operationsSub = operations.querySelector(':scope > .submenu');
+
+    const adjustments = findVerticalTop(list, '/app/adjustments/');
+    const transfers = findVerticalTop(list, '/app/transfers/');
+    const damages = findVerticalTop(list, '/app/damages/');
+    addSection(inventorySub, 'Movimientos de inventario', [
+      ...submenuAnchors(adjustments),
+      ...submenuAnchors(transfers),
+      ...submenuAnchors(damages),
+    ], vm, 'vertical');
+
+    const purchases = findVerticalTop(list, '/app/purchases/');
+    const quotations = findVerticalTop(list, '/app/quotations/');
+    addSection(operationsSub, 'Compras', submenuAnchors(purchases), vm, 'vertical');
+    addSection(operationsSub, 'Cotizaciones', submenuAnchors(quotations), vm, 'vertical');
+
+    const saleReturn = findVerticalTop(list, '/app/sale_return/');
+    const purchaseReturn = findVerticalTop(list, '/app/purchase_return/');
+    const promotions = findVerticalTop(list, '/app/promotions');
+    addSection(operationsSub, 'Devoluciones y promociones', [
+      directAnchor(saleReturn), directAnchor(purchaseReturn), directAnchor(promotions)
+    ].filter(Boolean), vm, 'vertical');
+
+    [adjustments, transfers, damages, purchases, quotations, saleReturn, purchaseReturn, promotions].filter(Boolean).forEach(li => li.classList.add('prodex-nav-absorbed'));
+    root.dataset.prodexFriendlyOrganized = '1';
+  };
+
+  const organize = vm => {
+    const root = vm && vm.$el;
+    if (!root || !root.querySelector) return;
+    if (root.classList && root.classList.contains('side-content-wrap')) organizeClassic(root, vm);
+    if (root.classList && root.classList.contains('vertical-sidebar-wrapper')) organizeVertical(root, vm);
+  };
+
+  Vue.mixin({
+    mounted() {
+      const root = this.$el;
+      if (!root || !root.classList) return;
+      if (!root.classList.contains('side-content-wrap') && !root.classList.contains('vertical-sidebar-wrapper')) return;
+      this.$nextTick(() => organize(this));
+    },
+    updated() {
+      const root = this.$el;
+      if (!root || !root.classList) return;
+      if (!root.classList.contains('side-content-wrap') && !root.classList.contains('vertical-sidebar-wrapper')) return;
+      if (root.dataset.prodexFriendlyOrganized !== '1') this.$nextTick(() => organize(this));
+    }
+  });
+}
+
 export default {
   install(Vue) {
     Vue.use(BootstrapVue);
@@ -251,5 +445,6 @@ export default {
     Vue.use(VueGoodTablePlugin);
     Vue.use(VueHtmlToPaper, options);
     installReceiptPresentationEnhancer(Vue);
+    installFriendlyNavigation(Vue);
   }
 };
