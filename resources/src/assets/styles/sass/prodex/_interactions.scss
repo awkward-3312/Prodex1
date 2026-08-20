@@ -213,6 +213,27 @@
   .px-skeleton-card { min-height: 120px; }
 }
 
+// Bootstrap 4 only gives .modal-xl its large width at very wide desktop
+// breakpoints. The office-shift editor needs four meaningful columns on normal
+// laptops/tablets too, so give this specific modal a responsive working width.
+@media (min-width: 768px) {
+  .office-shift-modal .modal-dialog {
+    width: calc(100vw - 48px);
+    max-width: 1040px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .office-shift-modal .modal-dialog {
+    width: auto;
+    max-width: none;
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+}
+
 @keyframes px-skeleton-shimmer {
   100% { transform: translateX(100%); }
 }
