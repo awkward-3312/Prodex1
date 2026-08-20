@@ -6,236 +6,123 @@
     <validation-observer ref="Edit_Employee" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Employee" enctype="multipart/form-data">
         <b-row>
-          <b-col md="8">
+          <b-col lg="8" md="12">
             <b-card>
               <b-row>
-                <!-- FirstName -->
                 <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <validation-provider
-                    name="FirstName"
-                    :rules="{required:true}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('FirstName') + ' ' + '*'">
-                      <b-form-input
-                        :state="getValidationState(validationContext)"
-                        aria-describedby="FirstName-feedback"
-                        label="FirstName"
-                        :placeholder="$t('Enter_FirstName')"
-                        v-model="employee.firstname"
-                      ></b-form-input>
+                  <validation-provider name="Nombre" :rules="{required:true}" v-slot="validationContext">
+                    <b-form-group label="Primer nombre *">
+                      <b-form-input :state="getValidationState(validationContext)" aria-describedby="FirstName-feedback" placeholder="Primer nombre" v-model="employee.firstname" />
                       <b-form-invalid-feedback id="FirstName-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
                 </b-col>
 
-                 <!-- LastName -->
-               <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <validation-provider
-                    name="LastName"
-                    :rules="{required:true}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('LastName') + ' ' + '*'">
-                      <b-form-input
-                        :state="getValidationState(validationContext)"
-                        aria-describedby="LastName-feedback"
-                        label="LastName"
-                        :placeholder="$t('Enter_LastName')"
-                        v-model="employee.lastname"
-                      ></b-form-input>
+                <b-col lg="6" md="6" sm="12" class="mb-2">
+                  <validation-provider name="Apellido" :rules="{required:true}" v-slot="validationContext">
+                    <b-form-group label="Apellido *">
+                      <b-form-input :state="getValidationState(validationContext)" aria-describedby="LastName-feedback" placeholder="Apellido" v-model="employee.lastname" />
                       <b-form-invalid-feedback id="LastName-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
                 </b-col>
 
-                 <!-- Gender -->
                 <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <validation-provider name="Gender" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Gender') + ' ' + '*'">
+                  <validation-provider name="Género" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ errors }" label="Género *">
                       <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
                         v-model="employee.gender"
                         :reduce="label => label.value"
-                        :placeholder="$t('Choose_Gender')"
-                        :options="
-                           [
-                            {label: 'Male', value: 'male'},
-                            {label: 'Female', value: 'female'}
-                           ]"
-                      ></v-select>
+                        placeholder="Selecciona el género"
+                        :options="[{label: 'Masculino', value: 'male'}, {label: 'Femenino', value: 'female'}]"
+                      />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
                 </b-col>
 
-               <!-- Birth_date  -->
                 <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <b-form-group :label="$t('Birth_date')">
-                      <Datepicker id="birth_date" name="birth_date" :placeholder="$t('Enter_Birth_date')" v-model="employee.birth_date" 
-                          input-class="form-control back_important" format="yyyy-MM-dd"  @closed="employee.birth_date=formatDate(employee.birth_date)">
-                      </Datepicker>
-                    </b-form-group>
+                  <b-form-group label="Fecha de nacimiento">
+                    <Datepicker id="birth_date" name="birth_date" placeholder="Selecciona la fecha" v-model="employee.birth_date" input-class="form-control back_important" format="yyyy-MM-dd" @closed="employee.birth_date=formatDate(employee.birth_date)" />
+                  </b-form-group>
                 </b-col>
 
-              <!-- Email_Address -->
-               <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <b-form-group :label="$t('Email_Address')">
-                    <b-form-input
-                      label="Email_Address"
-                      :placeholder="$t('Enter_email_address')"
-                      v-model="employee.email"
-                    ></b-form-input>
-                    </b-form-group>
+                <b-col lg="6" md="6" sm="12" class="mb-2">
+                  <b-form-group label="Correo electrónico">
+                    <b-form-input placeholder="Correo electrónico" v-model="employee.email" />
+                  </b-form-group>
                 </b-col>
 
-                 <!-- country -->
-               <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <b-form-group :label="$t('Country')">
-                    <b-form-input
-                      label="country"
-                      :placeholder="$t('Enter_Country')"
-                      v-model="employee.country"
-                    ></b-form-input>
-                    </b-form-group>
+                <b-col lg="6" md="6" sm="12" class="mb-2">
+                  <b-form-group label="País">
+                    <b-form-input placeholder="País" v-model="employee.country" />
+                  </b-form-group>
                 </b-col>
 
-                <!-- phone -->
-               <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <b-form-group :label="$t('Phone')">
-                    <b-form-input
-                      label="phone"
-                      :placeholder="$t('Enter_Phone_Number')"
-                      v-model="employee.phone"
-                    ></b-form-input>
-                    </b-form-group>
+                <b-col lg="6" md="6" sm="12" class="mb-2">
+                  <b-form-group label="Teléfono">
+                    <b-form-input placeholder="Teléfono" v-model="employee.phone" />
+                  </b-form-group>
                 </b-col>
 
-                <!-- joining_date  -->
-                 <b-col lg="6" md="6" sm="12" class="mb-2">
-                    <b-form-group :label="$t('joining_date')">
-                        <Datepicker id="joining_date" name="joining_date" :placeholder="$t('Enter_joining_date')" v-model="employee.joining_date" 
-                            input-class="form-control back_important" format="yyyy-MM-dd"  @closed="employee.joining_date=formatDate(employee.joining_date)">
-                        </Datepicker>
-                    </b-form-group>
+                <b-col lg="6" md="6" sm="12" class="mb-2">
+                  <b-form-group label="Fecha de ingreso">
+                    <Datepicker id="joining_date" name="joining_date" placeholder="Selecciona la fecha" v-model="employee.joining_date" input-class="form-control back_important" format="yyyy-MM-dd" @closed="employee.joining_date=formatDate(employee.joining_date)" />
+                  </b-form-group>
                 </b-col>
 
-                  <!-- Leaving_Date  -->
-                 <b-col lg="6" md="6" sm="12" class="mb-2">
-                    <b-form-group :label="$t('Leaving_Date')">
-                        <Datepicker id="leaving_date" name="leaving_date" :placeholder="$t('Enter_Leaving_Date')" v-model="employee.leaving_date" 
-                            input-class="form-control back_important" format="yyyy-MM-dd"  @closed="employee.leaving_date=formatDate(employee.leaving_date)">
-                        </Datepicker>
-                    </b-form-group>
+                <b-col lg="6" md="6" sm="12" class="mb-2">
+                  <b-form-group label="Fecha de salida">
+                    <Datepicker id="leaving_date" name="leaving_date" placeholder="Opcional" v-model="employee.leaving_date" input-class="form-control back_important" format="yyyy-MM-dd" @closed="employee.leaving_date=formatDate(employee.leaving_date)" />
+                  </b-form-group>
                 </b-col>
 
-                <!-- Annual_Leave -->
-               <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <validation-provider
-                    name="total_leave"
-                    :rules="{required:true}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('Annual_Leave') + ' ' + '*'">
-                      <b-form-input
-                        :state="getValidationState(validationContext)"
-                        aria-describedby="total_leave-feedback"
-                        label="total_leave"
-                        :placeholder="$t('Enter_Annual_Leave')"
-                        v-model="employee.total_leave"
-                      ></b-form-input>
+                <b-col lg="6" md="6" sm="12" class="mb-2">
+                  <validation-provider name="Vacaciones anuales" :rules="{required:true}" v-slot="validationContext">
+                    <b-form-group label="Vacaciones anuales *">
+                      <b-form-input :state="getValidationState(validationContext)" aria-describedby="total_leave-feedback" placeholder="Días" v-model="employee.total_leave" />
                       <b-form-invalid-feedback id="total_leave-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
                 </b-col>
 
-                  <!-- Remaining_leave -->
-               <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <b-form-group :label="$t('Remaining_leave')">
-                    <b-form-input
-                      disabled="disabled"
-                      label="remaining_leave"
-                      v-model="employee.remaining_leave"
-                    ></b-form-input>
-                    </b-form-group>
+                <b-col lg="6" md="6" sm="12" class="mb-2">
+                  <b-form-group label="Vacaciones restantes">
+                    <b-form-input disabled v-model="employee.remaining_leave" />
+                  </b-form-group>
                 </b-col>
-             
-                <!-- Company -->
+
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Company" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Company') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="employee.company_id"
-                        class="required"
-                        required
-                        @input="Selected_Company"
-                        :placeholder="$t('Choose_Company')"
-                        :reduce="label => label.value"
-                        :options="companies.map(companies => ({label: companies.name, value: companies.id}))"
-                      />
+                  <validation-provider name="Compañía" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ errors }" label="Compañía *">
+                      <v-select v-model="employee.company_id" class="required" required @input="Selected_Company" placeholder="Selecciona una compañía" :reduce="label => label.value" :options="companies.map(company => ({label: company.name, value: company.id}))" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
                 </b-col>
 
-                <!-- Department -->
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Department" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Department') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="employee.department_id"
-                        class="required"
-                        required
-                        @input="Selected_Department"
-                        :placeholder="$t('Department')"
-                        :reduce="label => label.value"
-                        :options="departments.map(departments => ({label: departments.department, value: departments.id}))"
-                      />
+                  <validation-provider name="Departamento" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ errors }" label="Departamento *">
+                      <v-select v-model="employee.department_id" class="required" required @input="Selected_Department" placeholder="Selecciona un departamento" :reduce="label => label.value" :options="departments.map(item => ({label: item.department, value: item.id}))" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
                 </b-col>
 
-                 <!-- Designation -->
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Designation" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Designation') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="employee.designation_id"
-                        class="required"
-                        required
-                        @input="Selected_Designation"
-                        :placeholder="$t('Choose_Designation')"
-                        :reduce="label => label.value"
-                        :options="designations.map(designations => ({label: designations.designation, value: designations.id}))"
-                      />
+                  <validation-provider name="Cargo" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ errors }" label="Cargo *">
+                      <v-select v-model="employee.designation_id" class="required" required @input="Selected_Designation" placeholder="Selecciona un cargo" :reduce="label => label.value" :options="designations.map(item => ({label: item.designation, value: item.id}))" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
                 </b-col>
 
-                 <!-- Office_Shift -->
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Office_Shift" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Office_Shift') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="employee.office_shift_id"
-                        class="required"
-                        required
-                        @input="Selected_Office_shift"
-                        :placeholder="$t('Choose_Office_Shift')"
-                        :reduce="label => label.value"
-                        :options="office_shifts.map(office_shifts => ({label: office_shifts.name, value: office_shifts.id}))"
-                      />
+                  <validation-provider name="Turno de oficina" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ errors }" label="Turno de oficina *">
+                      <v-select v-model="employee.office_shift_id" class="required" required @input="Selected_Office_shift" placeholder="Selecciona un turno" :reduce="label => label.value" :options="office_shifts.map(item => ({label: item.name, value: item.id}))" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
@@ -243,11 +130,15 @@
               </b-row>
             </b-card>
           </b-col>
+
+          <b-col lg="4" md="12">
+            <AttendanceIdentifiersCard v-if="employee.id" :employee-id="employee.id" />
+          </b-col>
+
           <b-col md="12" class="mt-3">
-             <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-              <div v-once class="typo__p" v-if="SubmitProcessing">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
+            <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
+              <lucide-icon class="mr-1" name="check" /> {{ SubmitProcessing ? 'Guardando...' : 'Guardar cambios' }}
+            </b-button>
           </b-col>
         </b-row>
       </b-form>
@@ -255,77 +146,43 @@
   </div>
 </template>
 
-
 <script>
 import NProgress from "nprogress";
 import Datepicker from 'vuejs-datepicker';
+import AttendanceIdentifiersCard from './AttendanceIdentifiersCard.vue';
 
 export default {
-  metaInfo: {
-    title: "Edit Employee"
-  },
-  components: {
-    Datepicker
-  },
+  metaInfo: { title: "Editar empleado" },
+  components: { Datepicker, AttendanceIdentifiersCard },
   data() {
     return {
-      
       isLoading: true,
-      SubmitProcessing:false,
-      data: new FormData(),
+      SubmitProcessing: false,
       companies: [],
       departments: [],
       designations: [],
       office_shifts: [],
-      roles: {},
-      employee: {}, 
+      employee: {}
     };
   },
-
-
   methods: {
-    //------------- Submit Validation Edit Employee
     Submit_Employee() {
       this.$refs.Edit_Employee.validate().then(success => {
-        if (!success) {
-          this.makeToast(
-            "danger",
-            this.$t("Please_fill_the_form_correctly"),
-            this.$t("Failed")
-          );
-        } else {
-          this.Edit_Employee();
-        }
+        if (!success) return this.makeToast("danger", this.$t("Please_fill_the_form_correctly"), this.$t("Failed"));
+        this.Edit_Employee();
       });
     },
-
-    //------ Toast
-    makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
-        title: title,
-        variant: variant,
-        solid: true
-      });
+    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }); },
+    getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
+    formatDate(d) {
+      if (!d || typeof d.getMonth !== 'function') return d;
+      const m = d.getMonth() + 1;
+      const day = d.getDate();
+      return [d.getFullYear(), m < 10 ? '0' + m : m, day < 10 ? '0' + day : day].join('-');
     },
-
-    //------ Validation State
-    getValidationState({ dirty, validated, valid = null }) {
-      return dirty || validated ? valid : null;
-    },
-
-     formatDate(d){
-      var m1 = d.getMonth()+1;
-      var m2 = m1 < 10 ? '0' + m1 : m1;
-      var d1 = d.getDate();
-      var d2 = d1 < 10 ? '0' + d1 : d1;
-      return [d.getFullYear(), m2, d2].join('-');
-    },
-
-    //-------------- Employee Get Elements
     GetElements() {
-      let id = this.$route.params.id;
-      axios
-        .get(`employees/${id}/edit`)
+      const id = this.$route.params.id;
+      axios.get(`employees/${id}/edit`)
         .then(response => {
           this.employee = response.data.employee;
           this.companies = response.data.companies;
@@ -334,132 +191,78 @@ export default {
           this.office_shifts = response.data.office_shifts;
           this.isLoading = false;
         })
-        .catch(response => {
-          setTimeout(() => {
-            this.isLoading = false;
-          }, 500);
+        .catch(() => {
+          setTimeout(() => { this.isLoading = false; }, 500);
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
         });
     },
-
     Selected_Company(value) {
-            if (value === null) {
-                this.employee.company_id = "";
-                this.employee.department_id = "";
-                this.employee.designation_id = "";
-                this.employee.office_shift_id = "";
-            }
-            this.departments = [];
-            this.designations = [];
-            this.employee.department_id = "";
-            this.employee.designation_id = "";
-            this.employee.office_shift_id = "";
-            this.Get_departments_by_company(value);
-            this.Get_office_shift_by_company(value);
-        },
-
-        Selected_Department(value) {
-            if (value === null) {
-                this.employee.department_id = "";
-                this.employee.designation_id = "";
-            }
-            this.designations = [];
-            this.employee.designation_id = "";
-            this.Get_designations_by_department(value);
-        },
-
-
-        Selected_Designation(value) {
-            if (value === null) {
-                this.employee.designation_id = "";
-            }
-        },
-
-        Selected_Gender(value) {
-            if (value === null) {
-                this.employee.gender = "";
-            }
-        },
-
-        
-        Selected_Office_shift(value) {
-            if (value === null) {
-                this.employee.office_shift_id = "";
-            }
-        },
-
-
-        
-        //---------------------- Get_departments_by_company ------------------------------\\
-        Get_departments_by_company(value) {
-        axios
-            .get("/core/get_departments_by_company?id=" + value)
-            .then(({ data }) => (this.departments = data));
-        },
-
-        //---------------------- Get designations by department ------------------------------\\
-        Get_designations_by_department(value) {
-        axios
-            .get("/core/get_designations_by_department?id=" + value)
-            .then(({ data }) => (this.designations = data));
-        },
-
-         //---------------------- Get_office_shift_by_company ------------------------------\\
-         Get_office_shift_by_company(value) {
-        axios
-            .get("/core/get_office_shift_by_company?id=" + value)
-            .then(({ data }) => (this.office_shifts = data));
-        },
-
-    //------------------------------ Edit Employee ------------------------------\\
+      if (value === null) this.employee.company_id = "";
+      this.departments = [];
+      this.designations = [];
+      this.office_shifts = [];
+      this.employee.department_id = "";
+      this.employee.designation_id = "";
+      this.employee.office_shift_id = "";
+      if (value) {
+        this.Get_departments_by_company(value);
+        this.Get_office_shift_by_company(value);
+      }
+    },
+    Selected_Department(value) {
+      if (value === null) this.employee.department_id = "";
+      this.designations = [];
+      this.employee.designation_id = "";
+      if (value) this.Get_designations_by_department(value);
+    },
+    Selected_Designation(value) { if (value === null) this.employee.designation_id = ""; },
+    Selected_Office_shift(value) { if (value === null) this.employee.office_shift_id = ""; },
+    Get_departments_by_company(value) { axios.get("/core/get_departments_by_company?id=" + value).then(({ data }) => (this.departments = data)); },
+    Get_designations_by_department(value) { axios.get("/core/get_designations_by_department?id=" + value).then(({ data }) => (this.designations = data)); },
+    Get_office_shift_by_company(value) { axios.get("/core/get_office_shift_by_company?id=" + value).then(({ data }) => (this.office_shifts = data)); },
     Edit_Employee() {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
-      var self = this;
-      self.SubmitProcessing = true;
-
-        // Send Data with axios
-        axios.put("employees/" + this.employee.id, {
-          firstname: self.employee.firstname,
-          lastname: self.employee.lastname,
-          country: self.employee.country,
-          email: self.employee.email,
-          gender: self.employee.gender,
-          phone: self.employee.phone,
-          birth_date: self.employee.birth_date,
-          company_id: self.employee.company_id,
-          department_id: self.employee.department_id,
-          designation_id: self.employee.designation_id,
-          office_shift_id: self.employee.office_shift_id,
-          joining_date: self.employee.joining_date,
-          leaving_date: self.employee.leaving_date,
-          total_leave: self.employee.total_leave,
-
-        }).then(response => {
-          // Complete the animation of theprogress bar.
+      this.SubmitProcessing = true;
+      axios.put("employees/" + this.employee.id, {
+        firstname: this.employee.firstname,
+        lastname: this.employee.lastname,
+        country: this.employee.country,
+        email: this.employee.email,
+        gender: this.employee.gender,
+        phone: this.employee.phone,
+        birth_date: this.employee.birth_date,
+        company_id: this.employee.company_id,
+        department_id: this.employee.department_id,
+        designation_id: this.employee.designation_id,
+        office_shift_id: this.employee.office_shift_id,
+        joining_date: this.employee.joining_date,
+        leaving_date: this.employee.leaving_date,
+        total_leave: this.employee.total_leave,
+        remaining_leave: this.employee.remaining_leave,
+        marital_status: this.employee.marital_status,
+        employment_type: this.employee.employment_type,
+        city: this.employee.city,
+        province: this.employee.province,
+        zipcode: this.employee.zipcode,
+        address: this.employee.address,
+        basic_salary: this.employee.basic_salary,
+        hourly_rate: this.employee.hourly_rate,
+        role_users_id: this.employee.role_users_id
+      })
+        .then(() => {
           NProgress.done();
-          self.SubmitProcessing = false;
+          this.SubmitProcessing = false;
           this.$router.push({ name: "employees_list" });
-          this.makeToast(
-            "success",
-            this.$t("Updated_in_successfully"),
-            this.$t("Success")
-          );
+          this.makeToast("success", this.$t("Updated_in_successfully"), this.$t("Success"));
         })
-        .catch(error => {
-          // Complete the animation of theprogress bar.
+        .catch(() => {
           NProgress.done();
+          this.SubmitProcessing = false;
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-          self.SubmitProcessing = false;
         });
     }
-  }, //end Methods
-
-  //-----------------------------Created function-------------------
-
-  created: function() {
-    this.GetElements();
-  }
+  },
+  created() { this.GetElements(); }
 };
 </script>
