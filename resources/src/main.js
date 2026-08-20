@@ -78,6 +78,8 @@ Vue.component('qrcode-scanner', {
 
 import StockyKit from "./plugins/stocky.kit";
 Vue.use(StockyKit);
+import FriendlyNavigation from "./plugins/friendlyNavigation";
+Vue.use(FriendlyNavigation);
 import VueCookies from 'vue-cookies'
 Vue.use(VueCookies);
 
