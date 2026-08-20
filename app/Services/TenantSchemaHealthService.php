@@ -26,6 +26,7 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_19_210500_add_sar_tax_classification_fields.php',
         'database/migrations/tenant/2026_08_19_214500_add_invoice_settings_to_sar_fiscal_profiles.php',
         'database/migrations/tenant/2026_08_19_220000_backfill_honduras_product_fiscal_tax.php',
+        'database/migrations/tenant/2026_08_20_100000_add_receipt_presentation_fields_to_pos_settings.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -73,59 +74,23 @@ class TenantSchemaHealthService
 
         $this->requireTable($schema, $missing, 'cash_registers');
         $this->requireColumns($schema, $missing, 'cash_registers', [
-            'counted_denominations',
-            'sales_by_payment_method',
-            'expected_cash',
-            'counted_cash',
-            'cash_difference',
-            'card_system_total',
-            'card_terminal_total',
-            'card_difference',
-            'card_batch_number',
-            'card_reference',
-            'card_notes',
-            'transfer_total',
-            'transfers_verified',
-            'transfer_notes',
-            'cash_withdrawn_at_close',
-            'next_opening_float',
-            'closing_snapshot',
-            'register_number_snapshot',
-            'opened_by_user_id_snapshot',
-            'opened_by_user_name_snapshot',
-            'closed_by_user_id',
-            'closed_by_user_name_snapshot',
-            'warehouse_id_snapshot',
-            'warehouse_name_snapshot',
-            'tenant_id_snapshot',
-            'opened_date_snapshot',
-            'opened_time_snapshot',
-            'closed_date_snapshot',
-            'closed_time_snapshot',
-            'session_duration_seconds',
-            'closing_status',
-            'cash_drawer_id',
-            'cash_drawer_name_snapshot',
-            'cash_drawer_code_snapshot',
+            'counted_denominations', 'sales_by_payment_method', 'expected_cash', 'counted_cash', 'cash_difference',
+            'card_system_total', 'card_terminal_total', 'card_difference', 'card_batch_number', 'card_reference',
+            'card_notes', 'transfer_total', 'transfers_verified', 'transfer_notes', 'cash_withdrawn_at_close',
+            'next_opening_float', 'closing_snapshot', 'register_number_snapshot', 'opened_by_user_id_snapshot',
+            'opened_by_user_name_snapshot', 'closed_by_user_id', 'closed_by_user_name_snapshot', 'warehouse_id_snapshot',
+            'warehouse_name_snapshot', 'tenant_id_snapshot', 'opened_date_snapshot', 'opened_time_snapshot',
+            'closed_date_snapshot', 'closed_time_snapshot', 'session_duration_seconds', 'closing_status', 'cash_drawer_id',
+            'cash_drawer_name_snapshot', 'cash_drawer_code_snapshot',
         ]);
         $this->requireTable($schema, $missing, 'cash_drawers');
         $this->requireTable($schema, $missing, 'user_operational_assignments');
-        $this->requireColumns($schema, $missing, 'users', [
-            'default_warehouse_id',
-            'default_cash_drawer_id',
-        ]);
+        $this->requireColumns($schema, $missing, 'users', ['default_warehouse_id', 'default_cash_drawer_id']);
 
         $this->requireTable($schema, $missing, 'store_credit_vouchers');
         $this->requireTable($schema, $missing, 'store_credit_voucher_transactions');
-        $this->requireColumns($schema, $missing, 'sales', [
-            'store_credit_amount',
-            'fiscal_exemption_data',
-        ]);
-        $this->requireColumns($schema, $missing, 'sale_returns', [
-            'refund_mode',
-            'store_credit_voucher_id',
-            'store_credit_amount',
-        ]);
+        $this->requireColumns($schema, $missing, 'sales', ['store_credit_amount', 'fiscal_exemption_data']);
+        $this->requireColumns($schema, $missing, 'sale_returns', ['refund_mode', 'store_credit_voucher_id', 'store_credit_amount']);
 
         // Honduras SAR fiscal invoicing requirements.
         $this->requireTable($schema, $missing, 'sar_fiscal_profiles');
@@ -136,10 +101,14 @@ class TenantSchemaHealthService
         $this->requireColumns($schema, $missing, 'products', ['fiscal_tax_category']);
         $this->requireColumns($schema, $missing, 'sale_details', ['fiscal_tax_category', 'fiscal_tax_rate']);
         $this->requireColumns($schema, $missing, 'clients', [
-            'identification_type',
-            'identification_number',
-            'sar_registry_number',
-            'exoneration_registry_number',
+            'identification_type', 'identification_number', 'sar_registry_number', 'exoneration_registry_number',
+        ]);
+
+        // Tenant-controlled presentation for thermal SAR receipts.
+        $this->requireColumns($schema, $missing, 'pos_settings', [
+            'receipt_header_alignment', 'receipt_fiscal_alignment', 'receipt_customer_alignment',
+            'receipt_items_alignment', 'receipt_totals_alignment', 'receipt_footer_alignment', 'receipt_qr_alignment',
+            'receipt_font_size', 'receipt_density', 'receipt_separator',
         ]);
 
         return $missing;
