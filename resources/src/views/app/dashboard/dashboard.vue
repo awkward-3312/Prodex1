@@ -8,7 +8,7 @@
       :class="{ 'dashboard-static--mobile-app': isMobileViewport }"
       :style="dashboardFontStyle"
     >
-      <template v-for="sectionId in visibleDashboardSections">
+      <template v-for="sectionId in orderedDashboardSections">
         <!-- Header + mobile quick modules (modules directly under header) -->
         <template v-if="sectionId === 'header'">
           <div :key="'hdr-' + sectionId" class="dashboard-header mb-3">
@@ -498,11 +498,9 @@ export default {
       chartCustomerOptions: {},
       chartPaymentOptions: {},
 
-      // Render dashboard progressively instead of mounting every heavy
-      // widget/table/chart in the same browser frame.
-      chartRenderStage: 0,
-      dashboardRenderCount: 0,
-      dashboardRenderTimer: null
+      // Render heavy ApexCharts progressively so they do not block
+      // the browser main thread when the dashboard becomes visible.
+      chartRenderStage: 0
     };
   },
   computed: {
@@ -582,11 +580,6 @@ export default {
       if (this.dashboardFontSize) s.fontSize = this.dashboardFontSize + "px";
       if (this.dashboardFontFamily) s.fontFamily = this.dashboardFontFamily;
       return s;
-    },
-
-    visibleDashboardSections() {
-      const sections = this.orderedDashboardSections || [];
-      return sections.slice(0, Math.max(0, this.dashboardRenderCount));
     }
   },
   methods: {
@@ -650,13 +643,6 @@ export default {
       // after the lightweight dashboard content becomes interactive.
       this.loading = true;
       this.chartRenderStage = 0;
-      this.dashboardRenderCount = 0;
-
-      if (this.dashboardRenderTimer) {
-        clearTimeout(this.dashboardRenderTimer);
-        this.dashboardRenderTimer = null;
-      }
-
       this.get_data_loaded();
 
       return axios
@@ -1013,7 +999,7 @@ export default {
           // one by one on separate browser tasks to avoid a long main-thread block.
           this.loading = false;
           this.$nextTick(() => {
-            this.scheduleDashboardSections();
+            this.scheduleDashboardCharts();
           });
         })
         .catch(() => {
@@ -1023,45 +1009,25 @@ export default {
         });
     },
 
-    scheduleDashboardSections() {
-      this.dashboardRenderCount = 0;
+    scheduleDashboardCharts() {
       this.chartRenderStage = 0;
-
-      const total = (this.orderedDashboardSections || []).length;
 
       const advance = () => {
         if (this._isDestroyed || this._isBeingDestroyed) return;
 
-        if (this.dashboardRenderCount < total) {
-          this.dashboardRenderCount += 1;
+        this.chartRenderStage += 1;
 
-          const visible = this.visibleDashboardSections;
-
-          if (visible.includes("chart_sales_purchases")) {
-            this.chartRenderStage = Math.max(this.chartRenderStage, 1);
-          }
-          if (visible.includes("chart_top_selling")) {
-            this.chartRenderStage = Math.max(this.chartRenderStage, 2);
-          }
-          if (visible.includes("chart_payment_sent_received")) {
-            this.chartRenderStage = Math.max(this.chartRenderStage, 3);
-          }
-          if (visible.includes("chart_top_customers")) {
-            this.chartRenderStage = Math.max(this.chartRenderStage, 4);
-          }
-
-          this.dashboardRenderTimer = window.setTimeout(advance, 120);
-        } else {
-          this.dashboardRenderTimer = null;
+        if (this.chartRenderStage < 4) {
+          window.setTimeout(advance, 100);
         }
       };
 
       if (typeof window !== "undefined" && window.requestAnimationFrame) {
         window.requestAnimationFrame(() => {
-          this.dashboardRenderTimer = window.setTimeout(advance, 0);
+          window.setTimeout(advance, 0);
         });
       } else {
-        this.dashboardRenderTimer = setTimeout(advance, 0);
+        setTimeout(advance, 0);
       }
     },
 
@@ -1148,13 +1114,6 @@ export default {
 
     await this.all_dashboard_data();
     this.GetMonth();
-  },
-
-  beforeDestroy() {
-    if (this.dashboardRenderTimer) {
-      clearTimeout(this.dashboardRenderTimer);
-      this.dashboardRenderTimer = null;
-    }
   }
 };
 </script>
