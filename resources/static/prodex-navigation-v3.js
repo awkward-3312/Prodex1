@@ -88,14 +88,25 @@
       '.vertical-sidebar-wrapper .prodex-nav-v3-search-icon{position:absolute;left:25px;top:15px;width:14px;height:14px;color:#94a3b8;pointer-events:none;}',
       '.vertical-sidebar-wrapper .prodex-nav-v3-search-clear{position:absolute;right:21px;top:9px;width:28px;height:28px;border:0;background:transparent;color:#94a3b8;font-size:18px;line-height:28px;cursor:pointer;display:none;}',
       '.vertical-sidebar-wrapper .prodex-nav-v3-search-wrap.has-value .prodex-nav-v3-search-clear{display:block;}',
-      '.vertical-sidebar-wrapper.collapsed .prodex-nav-v3-search-wrap{display:none;}',
       '.vertical-sidebar-wrapper .nav-link{min-height:44px;}',
       '.vertical-sidebar-wrapper .nav-item.active>.nav-link{font-weight:600;}',
       '.vertical-sidebar-wrapper .nav-item.active>.nav-link::after{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--primary-color,#38bfd3);}',
+      '.vertical-sidebar-wrapper.collapsed{width:76px!important;transform:translateX(0)!important;}',
+      '.vertical-sidebar-wrapper.collapsed .vertical-sidebar-header{padding-left:15px;padding-right:15px;}',
+      '.vertical-sidebar-wrapper.collapsed .header-brand{justify-content:center;}',
+      '.vertical-sidebar-wrapper.collapsed .sidebar-logo{width:42px!important;height:42px!important;}',
+      '.vertical-sidebar-wrapper.collapsed .prodex-nav-v3-search-wrap{display:none;}',
+      '.vertical-sidebar-wrapper.collapsed .vertical-nav-menu{padding-top:8px;}',
+      '.vertical-sidebar-wrapper.collapsed .nav-item{margin:4px 9px;}',
+      '.vertical-sidebar-wrapper.collapsed .nav-item.' + FIRST_CLASS + '::before{display:none;}',
+      '.vertical-sidebar-wrapper.collapsed .nav-link{justify-content:center;width:58px;min-height:46px;padding:11px!important;}',
+      '.vertical-sidebar-wrapper.collapsed .nav-icon{margin:0!important;min-width:22px!important;width:22px!important;height:22px!important;}',
+      '.vertical-sidebar-wrapper.collapsed .submenu,.vertical-sidebar-wrapper.collapsed .submenu-arrow{display:none!important;}',
+      '.vertical-layout.vertical-collapsed main.with-vertical-sidebar{margin-left:76px!important;}',
       'body.dark-theme .vertical-sidebar-wrapper .prodex-nav-v3-search{background:#23233a;border-color:#363650;color:#e5e7eb;}',
       'body.dark-theme .vertical-sidebar-wrapper .prodex-nav-v3-search:focus{background:#1f1f34;}',
       'body.dark-theme .vertical-sidebar-wrapper .nav-item.' + FIRST_CLASS + '::before{color:#7f8aa3;}',
-      '@media(max-width:1024px){.vertical-sidebar-wrapper .prodex-nav-v3-search-wrap{padding-top:2px;}}'
+      '@media(max-width:1024px){.vertical-sidebar-wrapper.collapsed{width:260px!important;transform:translateX(-100%)!important;}.vertical-layout.vertical-collapsed main.with-vertical-sidebar{margin-left:0!important;}.vertical-sidebar-wrapper .prodex-nav-v3-search-wrap{padding-top:2px;}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -189,9 +200,7 @@
     return null;
   }
 
-  function setFriendlyLabel(li, moduleKey) {
-    var node = li && li.querySelector(':scope > .nav-link .nav-text');
-    if (!node) return;
+  function friendlyName(moduleKey, fallback) {
     var names = {
       billing: 'Plan y facturación',
       people: 'Clientes y proveedores',
@@ -209,7 +218,14 @@
       reports: 'Reportes',
       ai_reports: 'Reportes con IA'
     };
-    if (names[moduleKey]) node.textContent = names[moduleKey];
+    return names[moduleKey] || fallback || '';
+  }
+
+  function setFriendlyLabel(li, moduleKey) {
+    var node = li && li.querySelector(':scope > .nav-link .nav-text');
+    if (!node) return;
+    var value = friendlyName(moduleKey, node.textContent);
+    if (value) node.textContent = value;
   }
 
   function isActuallyVisible(li) {
@@ -233,6 +249,11 @@
       li.style.setProperty('--prodex-v3-order', String(order));
       li.dataset.prodexV3Section = group ? group.key : 'other';
       setFriendlyLabel(li, moduleKey);
+
+      var link = li.querySelector(':scope > .nav-link');
+      var labelNode = li.querySelector(':scope > .nav-link .nav-text');
+      var tooltip = friendlyName(moduleKey, labelNode ? labelNode.textContent : '');
+      if (link && tooltip) link.setAttribute('title', tooltip);
     });
 
     groups.concat([{ key: 'other', title: 'Más herramientas', order: 65 }]).forEach(function (group) {
