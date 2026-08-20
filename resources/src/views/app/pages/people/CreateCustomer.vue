@@ -1,225 +1,298 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Add')" :folder="$t('Customers')"/>
-    
-    <validation-observer ref="Create_Customer">
-      <b-card>
+  <div class="main-content prodex-ui customer-create-page">
+    <div class="px-page">
+      <div class="px-page-header">
+        <div>
+          <div class="px-page-eyebrow">
+            <lucide-icon name="users" />
+            <span>{{ $t('Customers') }}</span>
+          </div>
+          <h1 class="px-page-title">{{ $t('Add') }} {{ $t('Customers') }}</h1>
+          <p class="px-page-description">
+            Registra la información principal, fiscal y comercial del cliente en un solo lugar.
+          </p>
+        </div>
+        <div class="px-page-actions">
+          <b-button variant="outline-secondary" @click="$router.push({ name: 'Customers' })">
+            <lucide-icon name="arrow-left" />
+            {{ $t('Cancel') }}
+          </b-button>
+        </div>
+      </div>
+
+      <validation-observer ref="Create_Customer">
         <b-form @submit.prevent="Submit_Customer">
-          <b-row>
-            <!-- First name -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="Firstname"
-                :rules="{ required: true }"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Firstname') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="firstname-feedback"
-                    label="Firstname"
-                    :placeholder="$t('Firstname')"
-                    v-model="client.firstname"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="firstname-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Last name -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="lastname"
-                :rules="{ required: true }"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('lastname') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="lastname-feedback"
-                    label="lastname"
-                    :placeholder="$t('lastname')"
-                    v-model="client.lastname"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="lastname-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Username -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="Username"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="'Username' + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="name-feedback"
-                    label="name"
-                    :placeholder="'Username'"
-                    v-model="client.name"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-            
-             <!-- Customer Email -->
-            <b-col md="6" sm="12">
-              <validation-provider
-                name="Email"
-                :rules="{ required: true }"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Email') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="email-feedback"
-                    label="email"
-                    v-model="client.email"
-                    :placeholder="$t('Email')"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="email-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Customer Phone -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Phone')">
-                  <b-form-input
-                    label="Phone"
-                    v-model="client.phone"
-                    :placeholder="$t('Phone')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Customer Country -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Country')">
-                  <b-form-input
-                    label="Country"
-                    v-model="client.country"
-                    :placeholder="$t('Country')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Customer City -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('City')">
-                  <b-form-input
-                    label="City"
-                    v-model="client.city"
-                    :placeholder="$t('City')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Customer State -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('State')">
-                  <b-form-input
-                    label="State"
-                    v-model="client.state"
-                    :placeholder="$t('State')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Customer Zip -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Zip')">
-                  <b-form-input
-                    label="Zip"
-                    v-model="client.zip"
-                    :placeholder="$t('Zip')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-             <!-- Customer Tax Number -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Tax_Number')">
-                  <b-form-input
-                    label="Tax Number"
-                    v-model="client.tax_number"
-                    :placeholder="$t('Tax_Number')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Opening Balance -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Opening_Balance_Previous_Dues')">
-                  <b-form-input
-                    type="number"
-                    step="0.01"
-                    :label="$t('Opening_Balance')"
-                    v-model="client.opening_balance"
-                    placeholder="0.00"
-                  ></b-form-input>
-                  <small class="text-muted">Enter the customer's previous outstanding balance from before system start</small>
-                </b-form-group>
-            </b-col>
-
-            <!-- Credit Limit -->
-            <b-col md="6" sm="12">
-                <b-form-group :label="$t('Credit_Limit')">
-                  <b-form-input
-                    type="number"
-                    step="0.01"
-                    :label="$t('Credit_Limit')"
-                    v-model="client.credit_limit"
-                    placeholder="0.00"
-                  ></b-form-input>
-                  <small class="text-muted">{{ $t('Maximum_credit_amount_allowed_for_this_customer_0_means_No_limit') }}</small>
-                </b-form-group>
-            </b-col>
-
-            <!-- Customer Adress -->
-            <b-col md="12" sm="12">
-                <b-form-group :label="$t('Adress')">
-                  <b-form-input
-                    label="Adress"
-                    v-model="client.adresse"
-                    :placeholder="$t('Adress')"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-             <b-col md="6" sm="12" class="mt-4 mb-4">
-              <div class="psx-form-check">
-                <input type="checkbox" v-model="client.is_royalty_eligible" class="psx-checkbox psx-form-check-input" id="is_royalty_eligible">
-                <label class="psx-form-check-label" for="is_royalty_eligible">
-                  <h5>{{ $t('Is_Royalty_Eligible') }}</h5>
-                </label>
+          <section class="px-section">
+            <div class="px-section-header">
+              <div class="px-section-heading">
+                <span class="px-section-icon"><lucide-icon name="user-round" /></span>
+                <div>
+                  <h2 class="px-section-title">Información principal</h2>
+                  <p class="px-section-description">Datos básicos para identificar y contactar al cliente.</p>
+                </div>
               </div>
-            </b-col>
+            </div>
+            <div class="px-section-body">
+              <b-row>
+                <b-col md="6" sm="12">
+                  <validation-provider
+                    name="Firstname"
+                    :rules="{ required: true }"
+                    v-slot="validationContext"
+                  >
+                    <b-form-group :label="$t('Firstname') + ' ' + '*'">
+                      <b-form-input
+                        :state="getValidationState(validationContext)"
+                        aria-describedby="firstname-feedback"
+                        label="Firstname"
+                        :placeholder="$t('Firstname')"
+                        v-model="client.firstname"
+                      ></b-form-input>
+                      <b-form-invalid-feedback id="firstname-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
 
-            <!-- Custom Fields -->
-            <b-col md="12" sm="12" class="mt-4">
+                <b-col md="6" sm="12">
+                  <validation-provider
+                    name="lastname"
+                    :rules="{ required: true }"
+                    v-slot="validationContext"
+                  >
+                    <b-form-group :label="$t('lastname') + ' ' + '*'">
+                      <b-form-input
+                        :state="getValidationState(validationContext)"
+                        aria-describedby="lastname-feedback"
+                        label="lastname"
+                        :placeholder="$t('lastname')"
+                        v-model="client.lastname"
+                      ></b-form-input>
+                      <b-form-invalid-feedback id="lastname-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+                <b-col md="6" sm="12">
+                  <validation-provider
+                    name="Username"
+                    :rules="{ required: true}"
+                    v-slot="validationContext"
+                  >
+                    <b-form-group :label="'Username' + ' ' + '*'">
+                      <b-form-input
+                        :state="getValidationState(validationContext)"
+                        aria-describedby="name-feedback"
+                        label="name"
+                        :placeholder="'Username'"
+                        v-model="client.name"
+                      ></b-form-input>
+                      <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+                <b-col md="6" sm="12">
+                  <validation-provider
+                    name="Email"
+                    :rules="{ required: true }"
+                    v-slot="validationContext"
+                  >
+                    <b-form-group :label="$t('Email') + ' ' + '*'">
+                      <b-form-input
+                        :state="getValidationState(validationContext)"
+                        aria-describedby="email-feedback"
+                        label="email"
+                        v-model="client.email"
+                        :placeholder="$t('Email')"
+                      ></b-form-input>
+                      <b-form-invalid-feedback id="email-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+                <b-col md="6" sm="12">
+                  <b-form-group :label="$t('Phone')">
+                    <b-form-input
+                      label="Phone"
+                      v-model="client.phone"
+                      :placeholder="$t('Phone')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+              </b-row>
+            </div>
+          </section>
+
+          <section class="px-section">
+            <div class="px-section-header">
+              <div class="px-section-heading">
+                <span class="px-section-icon"><lucide-icon name="map-pin" /></span>
+                <div>
+                  <h2 class="px-section-title">Ubicación y datos fiscales</h2>
+                  <p class="px-section-description">Información de dirección y datos utilizados para documentación fiscal.</p>
+                </div>
+              </div>
+            </div>
+            <div class="px-section-body">
+              <b-row>
+                <b-col md="6" sm="12">
+                  <b-form-group :label="$t('Tax_Number')">
+                    <b-form-input
+                      label="Tax Number"
+                      v-model="client.tax_number"
+                      :placeholder="$t('Tax_Number')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col md="6" sm="12">
+                  <b-form-group :label="$t('Country')">
+                    <b-form-input
+                      label="Country"
+                      v-model="client.country"
+                      :placeholder="$t('Country')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col md="4" sm="12">
+                  <b-form-group :label="$t('State')">
+                    <b-form-input
+                      label="State"
+                      v-model="client.state"
+                      :placeholder="$t('State')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col md="4" sm="12">
+                  <b-form-group :label="$t('City')">
+                    <b-form-input
+                      label="City"
+                      v-model="client.city"
+                      :placeholder="$t('City')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col md="4" sm="12">
+                  <b-form-group :label="$t('Zip')">
+                    <b-form-input
+                      label="Zip"
+                      v-model="client.zip"
+                      :placeholder="$t('Zip')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col md="12" sm="12">
+                  <b-form-group :label="$t('Adress')">
+                    <b-form-input
+                      label="Adress"
+                      v-model="client.adresse"
+                      :placeholder="$t('Adress')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+              </b-row>
+            </div>
+          </section>
+
+          <section class="px-section">
+            <div class="px-section-header">
+              <div class="px-section-heading">
+                <span class="px-section-icon"><lucide-icon name="wallet-cards" /></span>
+                <div>
+                  <h2 class="px-section-title">Crédito y condiciones comerciales</h2>
+                  <p class="px-section-description">Configura saldos anteriores, límites de crédito y preferencias comerciales.</p>
+                </div>
+              </div>
+            </div>
+            <div class="px-section-body">
+              <b-row>
+                <b-col md="6" sm="12">
+                  <b-form-group :label="$t('Opening_Balance_Previous_Dues')">
+                    <b-form-input
+                      type="number"
+                      step="0.01"
+                      :label="$t('Opening_Balance')"
+                      v-model="client.opening_balance"
+                      placeholder="0.00"
+                    ></b-form-input>
+                    <small class="px-field-help">Enter the customer's previous outstanding balance from before system start</small>
+                  </b-form-group>
+                </b-col>
+
+                <b-col md="6" sm="12">
+                  <b-form-group :label="$t('Credit_Limit')">
+                    <b-form-input
+                      type="number"
+                      step="0.01"
+                      :label="$t('Credit_Limit')"
+                      v-model="client.credit_limit"
+                      placeholder="0.00"
+                    ></b-form-input>
+                    <small class="px-field-help">{{ $t('Maximum_credit_amount_allowed_for_this_customer_0_means_No_limit') }}</small>
+                  </b-form-group>
+                </b-col>
+
+                <b-col md="12" sm="12">
+                  <label class="px-choice-card" for="is_royalty_eligible">
+                    <span class="px-choice-control">
+                      <input
+                        type="checkbox"
+                        v-model="client.is_royalty_eligible"
+                        class="psx-checkbox psx-form-check-input"
+                        id="is_royalty_eligible"
+                      >
+                    </span>
+                    <span class="px-choice-content">
+                      <strong>{{ $t('Is_Royalty_Eligible') }}</strong>
+                      <small>Permite incluir este cliente en las funciones de fidelización disponibles.</small>
+                    </span>
+                  </label>
+                </b-col>
+              </b-row>
+            </div>
+          </section>
+
+          <section class="px-section">
+            <div class="px-section-header">
+              <div class="px-section-heading">
+                <span class="px-section-icon"><lucide-icon name="database-zap" /></span>
+                <div>
+                  <h2 class="px-section-title">Información adicional</h2>
+                  <p class="px-section-description">Campos personalizados definidos para los clientes de tu empresa.</p>
+                </div>
+              </div>
+            </div>
+            <div class="px-section-body px-custom-fields-host">
               <CustomFieldsForm
                 entity-type="client"
                 v-model="customFieldValues"
               />
-            </b-col>
+            </div>
+          </section>
 
-            <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{$t('submit')}}</b-button>
-                <b-button variant="secondary" class="ml-2" @click="$router.push({ name: 'Customers' })">{{$t('Cancel')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
-
-          </b-row>
+          <div class="px-form-footer">
+            <div class="px-form-footer-copy">
+              <strong>Nuevo cliente</strong>
+              <span>Los datos se guardarán cuando confirmes esta acción.</span>
+            </div>
+            <div class="px-form-footer-actions">
+              <b-button variant="outline-secondary" @click="$router.push({ name: 'Customers' })">
+                {{ $t('Cancel') }}
+              </b-button>
+              <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
+                <span v-if="SubmitProcessing" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <lucide-icon v-else name="check" />
+                <span>{{ SubmitProcessing ? 'Guardando...' : $t('submit') }}</span>
+              </b-button>
+            </div>
+          </div>
         </b-form>
-      </b-card>
-    </validation-observer>
+      </validation-observer>
+    </div>
   </div>
 </template>
 
