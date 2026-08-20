@@ -61,7 +61,7 @@ class SarFiscalSaleService
         ];
 
         $totals = [
-            'discount_total' => 0.0,
+            'product_discount_total' => 0.0,
             'exempt_amount' => 0.0,
             'exonerated_amount' => 0.0,
             'zero_rate_amount' => 0.0,
@@ -76,19 +76,35 @@ class SarFiscalSaleService
         $lines = $sale->saleDetails->map(function ($detail) use (&$totals) {
             $quantity = (float) $detail->quantity;
             $unitPrice = (float) $detail->price;
-            $lineTotal = (float) $detail->total;
-            $taxAmount = (float) $detail->TaxNet;
-            $discountAmount = (float) $detail->discount;
+            // Existing PRODEX SaleDetail.total is the line net/subtotal used by the
+            // receipt, while SaleDetail.TaxNet stores the tax percentage.
+            $taxableAmount = max(0.0, (float) $detail->total);
             $rate = $detail->fiscal_tax_rate !== null
                 ? (float) $detail->fiscal_tax_rate
-                : $this->inferRate($detail);
+                : (float) $detail->TaxNet;
             $category = $this->normalizeCategory(
                 $detail->fiscal_tax_category ?? optional($detail->product)->fiscal_tax_category,
                 $rate
             );
+            if ($category !== 'taxed') {
+                $rate = 0.0;
+            }
 
-            $taxableAmount = $this->taxableAmount($lineTotal, $taxAmount, $rate, $detail->tax_method, $category);
-            $totals['discount_total'] += $discountAmount;
+            $taxAmount = $category === 'taxed'
+                ? round($taxableAmount * ($rate / 100), 2)
+                : 0.0;
+            $discountAmount = $this->detailDiscountAmount($detail, $quantity, $unitPrice);
+            $totals['product_discount_total'] += $discountAmount;
+
+            // Freeze the fiscal interpretation on the historical sale line. This happens
+            // inside the same transaction in which the SAR document is issued, so later
+            // product edits cannot change an already-issued invoice.
+            if ($detail->fiscal_tax_category === null || $detail->fiscal_tax_rate === null) {
+                $detail->forceFill([
+                    'fiscal_tax_category' => $category,
+                    'fiscal_tax_rate' => round($rate, 2),
+                ])->saveQuietly();
+            }
 
             if ($category === 'exempt') {
                 $totals['exempt_amount'] += $taxableAmount;
@@ -112,14 +128,14 @@ class SarFiscalSaleService
                 'code' => optional($detail->product)->code,
                 'description' => optional($detail->product)->name,
                 'quantity' => $quantity,
-                'unit_price' => $unitPrice,
-                'discount' => $discountAmount,
+                'unit_price' => round($unitPrice, 2),
+                'discount' => round($discountAmount, 2),
                 'tax_category' => $category,
                 'tax_rate' => round($rate, 2),
                 'taxable_amount' => round($taxableAmount, 2),
                 'tax_amount' => round($taxAmount, 2),
                 'tax_method' => $detail->tax_method,
-                'line_total' => round($lineTotal, 2),
+                'line_total' => round($taxableAmount + $taxAmount, 2),
             ];
         })->values()->all();
 
@@ -135,8 +151,9 @@ class SarFiscalSaleService
             $totals['tax_15_amount'] + $totals['tax_18_amount'] + $totals['other_tax_amount'],
             2
         );
-        $totals['shipping'] = round((float) $sale->shipping, 2);
         $totals['sale_discount'] = round((float) $sale->discount, 2);
+        $totals['discount_total'] = round($totals['product_discount_total'] + $totals['sale_discount'], 2);
+        $totals['shipping'] = round((float) $sale->shipping, 2);
         $totals['grand_total'] = round((float) $sale->GrandTotal, 2);
 
         $saleSnapshot = [
@@ -153,7 +170,7 @@ class SarFiscalSaleService
             'discount' => (float) $sale->discount,
             'shipping' => (float) $sale->shipping,
             'grand_total' => (float) $sale->GrandTotal,
-            // New normalized fiscal representation used by every invoice renderer.
+            // Normalized fiscal representation consumed by all invoice renderers.
             'fiscal_totals' => $totals,
             'exemption_data' => $exemptionData,
             'lines' => $lines,
@@ -178,37 +195,15 @@ class SarFiscalSaleService
         return $rate > 0 ? 'taxed' : 'exempt';
     }
 
-    private function inferRate($detail): float
+    private function detailDiscountAmount($detail, float $quantity, float $unitPrice): float
     {
-        $productTax = optional($detail->product)->TaxNet;
-        if ($productTax !== null && is_numeric($productTax)) {
-            return (float) $productTax;
-        }
+        $discount = max(0.0, (float) $detail->discount);
+        $method = strtolower(trim((string) $detail->discount_method));
+        $perUnit = ($method === '1' || $method === 'percent' || $method === 'percentage')
+            ? $unitPrice * ($discount / 100)
+            : $discount;
 
-        $lineTotal = (float) $detail->total;
-        $taxAmount = (float) $detail->TaxNet;
-        if ($taxAmount > 0 && $lineTotal > $taxAmount) {
-            $base = $lineTotal - $taxAmount;
-            return $base > 0 ? round(($taxAmount / $base) * 100, 2) : 0.0;
-        }
-
-        return 0.0;
-    }
-
-    private function taxableAmount(float $lineTotal, float $taxAmount, float $rate, $taxMethod, string $category): float
-    {
-        if ($category !== 'taxed' || $rate <= 0) {
-            return max(0.0, $lineTotal);
-        }
-
-        $inclusive = (string) $taxMethod === '2' || strtolower((string) $taxMethod) === 'inclusive';
-        if ($inclusive) {
-            return max(0.0, $lineTotal - $taxAmount);
-        }
-
-        // Existing sale details normally store total including TaxNet; subtracting the frozen
-        // tax amount keeps the fiscal base tied to the exact historical sale calculation.
-        return max(0.0, $lineTotal - $taxAmount);
+        return round(max(0.0, $perUnit * $quantity), 2);
     }
 
     private function resolvePoint(int $warehouseId, ?int $cashDrawerId): SarPointOfIssue
