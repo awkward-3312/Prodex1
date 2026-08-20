@@ -1,3 +1,5 @@
+@include('central.partials.seo-head')
+
 {{--
     Custom landing font override.
     Applies the super-admin selected font(s) across every landing layout.
