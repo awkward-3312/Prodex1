@@ -31,6 +31,7 @@ mix.js('resources/src/main.js', 'public')
     // source means rsync --delete cannot accidentally remove them after build.
     .copy('resources/static/prodex-sidebar2-organizer.js', 'public/js/prodex-sidebar2-organizer.js')
     .copy('resources/static/prodex-navigation-v3.js', 'public/js/prodex-navigation-v3.js')
+    .copy('resources/static/prodex-sidebar-reopen.js', 'public/js/prodex-sidebar-reopen.js')
     .vue()
 
 mix.webpackConfig({
