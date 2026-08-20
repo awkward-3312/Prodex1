@@ -10,6 +10,7 @@ class SaleDetail extends Model
     protected $fillable = [
         'id', 'date', 'sale_id', 'sale_unit_id', 'quantity', 'product_id', 'total', 'product_variant_id',
         'price', 'TaxNet', 'discount', 'discount_method', 'tax_method', 'price_type',
+        'fiscal_tax_category', 'fiscal_tax_rate',
         'warranty_date', 'guarantee_date',
         'product_pack_id', 'pack_multiplier', 'pack_name',
     ];
@@ -25,6 +26,7 @@ class SaleDetail extends Model
         'price' => 'double',
         'TaxNet' => 'double',
         'discount' => 'double',
+        'fiscal_tax_rate' => 'double',
         'price_type' => 'string',
         'warranty_date' => 'date',
         'guarantee_date' => 'date',
