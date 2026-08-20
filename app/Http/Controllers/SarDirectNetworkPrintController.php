@@ -45,7 +45,9 @@ class SarDirectNetworkPrintController extends BaseController
             'original_label' => 'Original: Cliente',
             'copy_label' => 'Copia: Obligado Tributario Emisor',
             'show_internal_reference' => true,
+            'show_cashier' => true,
             'show_warehouse' => true,
+            'show_payment_summary' => true,
             'show_total_in_words' => true,
         ], (array) ($issuer['invoice_settings'] ?? []));
 
@@ -88,6 +90,7 @@ class SarDirectNetworkPrintController extends BaseController
         if (! empty($customer['exonerated_card_number'])) $lines[] = 'Carnet exonerado: '.$customer['exonerated_card_number'];
         if (! empty($settings['show_internal_reference']) && ! empty($snap['internal_reference'])) $lines[] = 'Ref: '.$snap['internal_reference'];
         if (! empty($settings['show_warehouse']) && ! empty($snap['warehouse_name'])) $lines[] = 'Almacen: '.$snap['warehouse_name'];
+        if (! empty($settings['show_cashier']) && ! empty($snap['seller_name'])) $lines[] = 'Cajero: '.$snap['seller_name'];
         $lines[] = 'Fecha: '.optional($doc->issued_at)->format('Y-m-d H:i:s');
         $lines[] = $sep;
 
@@ -109,9 +112,19 @@ class SarDirectNetworkPrintController extends BaseController
         $lines[] = $pair('Gravado 18%', $money($totals['taxable_18_amount'] ?? 0));
         $lines[] = $pair('ISV 15%', $money($totals['tax_15_amount'] ?? 0));
         $lines[] = $pair('ISV 18%', $money($totals['tax_18_amount'] ?? 0));
+        if (abs((float) ($totals['rounding_adjustment'] ?? 0)) >= 0.005) $lines[] = $pair('Ajuste redondeo', $money($totals['rounding_adjustment']));
         if ((float) ($totals['shipping'] ?? 0) > 0) $lines[] = $pair('Envio', $money($totals['shipping']));
         $lines[] = $sep;
         $lines[] = $pair('TOTAL', $money($totals['grand_total'] ?? $sale->GrandTotal));
+
+        if (! empty($settings['show_payment_summary']) && ! empty($snap['payments'])) {
+            $lines[] = $sep;
+            $lines[] = 'PAGO';
+            foreach ((array) $snap['payments'] as $payment) {
+                $lines[] = $pair($payment['method'] ?? $payment['reference'] ?? 'Pago', $money($payment['amount'] ?? 0));
+                if ((float) ($payment['change'] ?? 0) != 0.0) $lines[] = $pair('Cambio', $money($payment['change']));
+            }
+        }
         $lines[] = $sep;
 
         if (! empty($settings['show_total_in_words'])) {
