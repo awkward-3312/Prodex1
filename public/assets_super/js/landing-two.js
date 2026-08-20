@@ -105,6 +105,47 @@ document.addEventListener('click', function(e) {
     if (swm && !swm.contains(e.target)) swm.classList.remove('open');
 });
 
+// Internal links to commercial solution pages. These reinforce site architecture
+// and give visitors direct paths to the POS, inventory and ERP landing pages.
+(function() {
+    function addSolutionLinks() {
+        var grids = document.querySelectorAll('.landing-footer__grid');
+        if (!grids.length || document.getElementById('prodexSolutionLinks')) return;
+
+        var column = document.createElement('div');
+        column.id = 'prodexSolutionLinks';
+
+        var heading = document.createElement('p');
+        heading.className = 'landing-footer__heading';
+        heading.textContent = 'Soluciones';
+
+        var nav = document.createElement('nav');
+        nav.className = 'landing-footer__nav';
+        nav.setAttribute('aria-label', 'Soluciones PRODEX');
+
+        [
+            ['/sistema-pos-honduras/', 'Sistema POS en Honduras'],
+            ['/software-inventario-honduras/', 'Software de inventario'],
+            ['/erp-honduras/', 'ERP para empresas en Honduras']
+        ].forEach(function(item) {
+            var link = document.createElement('a');
+            link.href = item[0];
+            link.textContent = item[1];
+            nav.appendChild(link);
+        });
+
+        column.appendChild(heading);
+        column.appendChild(nav);
+        grids[0].appendChild(column);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', addSolutionLinks);
+    } else {
+        addSolutionLinks();
+    }
+})();
+
 // Cookie consent
 function initCookieConsent() {
     var banner = document.getElementById('cookieConsent');
