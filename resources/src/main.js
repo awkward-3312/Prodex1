@@ -5,6 +5,7 @@ import router, { setupRouterGuards } from "./router";
 
 import App from "./App.vue";
 import Auth from './auth/index.js';
+import { installSarInvoiceBridge } from './utils/sarInvoiceBridge';
 window.auth = new Auth();
 import { ValidationObserver, ValidationProvider, extend, localize } from 'vee-validate';
 import * as rules from "vee-validate/dist/rules";
@@ -124,8 +125,6 @@ function decrementPending(config) {
   }
 }
 
-// Traduce exclusivamente mensajes de interfaz recibidos desde APIs heredadas.
-// Nunca procesa campos de datos de negocio (productos, clientes, referencias, etc.).
 const legacyApiMessageRules = [
   [/^Payment Create successfully$/i, 'Pago creado correctamente'],
   [/^Payment Update successfully$/i, 'Pago actualizado correctamente'],
@@ -177,7 +176,6 @@ function translateApiFeedback(data) {
   if (typeof data.message === 'string') data.message = translateLegacyApiMessage(data.message);
   if (typeof data.error === 'string') data.error = translateLegacyApiMessage(data.error);
 
-  // Laravel validation errors: procesa únicamente los textos del contenedor errors.
   if (data.errors && typeof data.errors === 'object') {
     Object.keys(data.errors).forEach(key => {
       const value = data.errors[key];
@@ -283,6 +281,10 @@ axios.interceptors.response.use(
     return Promise.reject(data || translateLegacyApiMessage(error.message));
   }
 );
+
+// Every sales receipt/reprint receives the same SAR snapshot block, independent
+// of which Vue page opened #invoice-POS.
+installSarInvoiceBridge(window.axios);
 
 import vSelect from 'vue-select'
 Vue.component('v-select', vSelect)
