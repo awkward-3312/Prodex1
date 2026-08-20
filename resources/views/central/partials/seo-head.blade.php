@@ -8,6 +8,8 @@
 
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <link rel="canonical" href="{{ $seoCanonical }}">
+<meta name="geo.region" content="HN">
+<meta name="geo.placename" content="Honduras">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PRODEX">
@@ -24,19 +26,37 @@
 <script type="application/ld+json">
 {!! json_encode([
     '@context' => 'https://schema.org',
-    '@type' => 'SoftwareApplication',
-    'name' => 'PRODEX',
-    'url' => $seoCanonical,
-    'applicationCategory' => 'BusinessApplication',
-    'operatingSystem' => 'Web',
-    'description' => $seoDescription,
-    'inLanguage' => app()->getLocale(),
-    'image' => $seoImage,
-    'publisher' => [
-        '@type' => 'Organization',
-        'name' => 'PRODEX',
-        'url' => $seoCanonical,
-        'logo' => $logoUrl ?: null,
+    '@graph' => [
+        [
+            '@type' => 'Organization',
+            '@id' => $seoCanonical . '#organization',
+            'name' => 'PRODEX',
+            'alternateName' => 'PRODEX Honduras',
+            'url' => $seoCanonical,
+            'logo' => $logoUrl ?: null,
+            'areaServed' => ['@type' => 'Country', 'name' => 'Honduras'],
+        ],
+        [
+            '@type' => 'WebSite',
+            '@id' => $seoCanonical . '#website',
+            'name' => 'PRODEX',
+            'url' => $seoCanonical,
+            'inLanguage' => app()->getLocale(),
+            'publisher' => ['@id' => $seoCanonical . '#organization'],
+        ],
+        [
+            '@type' => 'SoftwareApplication',
+            '@id' => $seoCanonical . '#software',
+            'name' => 'PRODEX',
+            'url' => $seoCanonical,
+            'applicationCategory' => 'BusinessApplication',
+            'operatingSystem' => 'Web',
+            'description' => $seoDescription,
+            'inLanguage' => app()->getLocale(),
+            'image' => $seoImage,
+            'areaServed' => ['@type' => 'Country', 'name' => 'Honduras'],
+            'publisher' => ['@id' => $seoCanonical . '#organization'],
+        ],
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
 </script>
