@@ -38,6 +38,17 @@ class SarFiscalSaleService
             throw new SarFiscalException('La venta fiscal requiere un cliente válido.');
         }
 
+        $unclassified = $sale->saleDetails->first(function ($detail) {
+            $category = strtolower(trim((string) optional($detail->product)->fiscal_tax_category));
+            return ! in_array($category, self::TAX_CATEGORIES, true);
+        });
+        if ($unclassified) {
+            $name = optional($unclassified->product)->name ?: ('ID '.$unclassified->product_id);
+            throw new SarFiscalException(
+                'El producto "'.$name.'" no tiene clasificación fiscal SAR. Configúralo como gravado, exento, exonerado o tasa cero antes de facturar.'
+            );
+        }
+
         $rtn = trim((string) $customer->tax_number);
         $identificationNumber = trim((string) ($customer->identification_number ?? ''));
         if ((float) $sale->GrandTotal >= 10000 && $rtn === '' && $identificationNumber === '') {
@@ -106,6 +117,10 @@ class SarFiscalSaleService
             $rate = $category === 'taxed'
                 ? ($usesLineTax ? $productRate : ($globalTaxRate > 0 ? $globalTaxRate : $productRate))
                 : 0.0;
+
+            if ($category === 'taxed' && $rate <= 0) {
+                throw new SarFiscalException('Un producto gravado no puede emitirse con ISV 0%.');
+            }
 
             $allocatedSaleDiscount = $cartSubtotal > 0
                 ? round($saleDiscounts['total'] * ($storedLineTotal / $cartSubtotal), 2)
