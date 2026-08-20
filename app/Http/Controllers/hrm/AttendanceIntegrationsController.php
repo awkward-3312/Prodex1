@@ -122,9 +122,10 @@ class AttendanceIntegrationsController extends Controller
             $data['provider'] = $device->provider;
         }
 
+        $externalUserId = trim($data['external_user_id']);
         $duplicate = AttendanceEmployeeIdentifier::where('company_id', $employee->company_id)
             ->where('provider', $data['provider'])
-            ->where('external_user_id', trim($data['external_user_id']))
+            ->where('external_user_id', $externalUserId)
             ->when(
                 ! empty($data['attendance_device_id']),
                 fn ($q) => $q->where('attendance_device_id', $data['attendance_device_id']),
@@ -143,7 +144,7 @@ class AttendanceIntegrationsController extends Controller
             ],
             [
                 'company_id' => $employee->company_id,
-                'external_user_id' => trim($data['external_user_id']),
+                'external_user_id' => $externalUserId,
                 'is_active' => $data['is_active'] ?? true,
             ]
         );
@@ -288,35 +289,40 @@ class AttendanceIntegrationsController extends Controller
 
     private function linkPendingPunches(AttendanceEmployeeIdentifier $identifier): void
     {
-        AttendancePunch::where('company_id', $identifier->company_id)
+        $query = AttendancePunch::where('company_id', $identifier->company_id)
             ->where('provider', $identifier->provider)
             ->where('external_user_id', $identifier->external_user_id)
-            ->whereNull('employee_id')
-            ->when(
-                $identifier->attendance_device_id,
-                fn ($q) => $q->where('attendance_device_id', $identifier->attendance_device_id),
-                fn ($q) => $q->whereNull('attendance_device_id')
-            )
-            ->update([
-                'employee_id' => $identifier->employee_id,
-                'attendance_employee_identifier_id' => $identifier->id,
-                'processing_status' => 'pending',
-                'processing_message' => null,
-            ]);
+            ->whereNull('employee_id');
+
+        // A device-specific identifier only claims punches from that exact device.
+        // A general provider identifier intentionally matches every device of the
+        // provider inside the same company.
+        if ($identifier->attendance_device_id) {
+            $query->where('attendance_device_id', $identifier->attendance_device_id);
+        }
+
+        $query->update([
+            'employee_id' => $identifier->employee_id,
+            'attendance_employee_identifier_id' => $identifier->id,
+            'processing_status' => 'pending',
+            'processing_message' => null,
+        ]);
     }
 
     private function normalizeHeader(string $value): string
     {
+        $value = preg_replace('/^\xEF\xBB\xBF/', '', $value) ?? $value;
         $value = mb_strtolower(trim($value));
         $value = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'u', 'n'], $value);
+
         return preg_replace('/[^a-z0-9]+/', '_', $value) ?: '';
     }
 
     private function detectColumns(array $headers): array
     {
         $synonyms = [
-            'external_user_id' => ['user_id', 'userid', 'employee_id', 'employee_code', 'codigo_empleado', 'codigo', 'pin', 'uid', 'enroll_number', 'enrollnumber', 'person_id'],
-            'datetime' => ['datetime', 'date_time', 'timestamp', 'fecha_hora', 'fecha_y_hora', 'punch_time', 'check_time'],
+            'external_user_id' => ['user_id', 'userid', 'employee_id', 'employee_code', 'codigo_empleado', 'codigo', 'pin', 'uid', 'enroll_number', 'enrollnumber', 'person_id', 'ac_no', 'acno'],
+            'datetime' => ['datetime', 'date_time', 'timestamp', 'fecha_hora', 'fecha_y_hora', 'check_datetime', 'punch_datetime'],
             'date' => ['date', 'fecha', 'punch_date', 'check_date'],
             'time' => ['time', 'hora', 'punch_time', 'check_time'],
             'punch_type' => ['punch_type', 'type', 'tipo', 'status', 'in_out', 'state'],
@@ -361,8 +367,11 @@ class AttendanceIntegrationsController extends Controller
         if ($value === null || $value === '') {
             return null;
         }
+
         if (is_numeric($value) && (float) $value > 1000) {
-            return Carbon::instance(ExcelDate::excelToDateTimeObject((float) $value))->setTimezone($timezone);
+            $dateTime = ExcelDate::excelToDateTimeObject((float) $value, new \DateTimeZone($timezone));
+
+            return Carbon::instance($dateTime);
         }
 
         $formats = ['Y-m-d H:i:s', 'Y-m-d H:i', 'd/m/Y H:i:s', 'd/m/Y H:i', 'm/d/Y H:i:s', 'm/d/Y H:i'];
@@ -385,6 +394,7 @@ class AttendanceIntegrationsController extends Controller
         if ($value === null || $value === '') {
             return null;
         }
+
         if (is_numeric($value) && (float) $value > 1000) {
             return ExcelDate::excelToDateTimeObject((float) $value)->format('Y-m-d');
         }
@@ -395,6 +405,7 @@ class AttendanceIntegrationsController extends Controller
             } catch (\Throwable $e) {
             }
         }
+
         return null;
     }
 
@@ -403,6 +414,7 @@ class AttendanceIntegrationsController extends Controller
         if ($value === null || $value === '') {
             return null;
         }
+
         if (is_numeric($value)) {
             return ExcelDate::excelToDateTimeObject((float) $value)->format('H:i:s');
         }
@@ -413,6 +425,7 @@ class AttendanceIntegrationsController extends Controller
             } catch (\Throwable $e) {
             }
         }
+
         return null;
     }
 
@@ -422,6 +435,7 @@ class AttendanceIntegrationsController extends Controller
         foreach ($headers as $index => $header) {
             $payload[$header !== '' ? $header : 'column_'.$index] = $row[$index] ?? null;
         }
+
         return $payload;
     }
 }
