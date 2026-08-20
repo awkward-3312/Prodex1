@@ -21,7 +21,11 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_16_150200_create_user_operational_assignments_table.php',
         'database/migrations/tenant/2026_08_16_150300_add_cash_drawer_snapshot_to_cash_registers_table.php',
         'database/migrations/tenant/2026_08_16_150400_seed_operational_assignment_permissions.php',
+        'database/migrations/tenant/2026_08_18_020000_create_sar_fiscal_tables.php',
         'database/migrations/tenant/2026_08_19_070000_normalize_legacy_store_settings_to_spanish.php',
+        'database/migrations/tenant/2026_08_19_210500_add_sar_tax_classification_fields.php',
+        'database/migrations/tenant/2026_08_19_214500_add_invoice_settings_to_sar_fiscal_profiles.php',
+        'database/migrations/tenant/2026_08_19_220000_backfill_honduras_product_fiscal_tax.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -113,11 +117,29 @@ class TenantSchemaHealthService
 
         $this->requireTable($schema, $missing, 'store_credit_vouchers');
         $this->requireTable($schema, $missing, 'store_credit_voucher_transactions');
-        $this->requireColumns($schema, $missing, 'sales', ['store_credit_amount']);
+        $this->requireColumns($schema, $missing, 'sales', [
+            'store_credit_amount',
+            'fiscal_exemption_data',
+        ]);
         $this->requireColumns($schema, $missing, 'sale_returns', [
             'refund_mode',
             'store_credit_voucher_id',
             'store_credit_amount',
+        ]);
+
+        // Honduras SAR fiscal invoicing requirements.
+        $this->requireTable($schema, $missing, 'sar_fiscal_profiles');
+        $this->requireTable($schema, $missing, 'sar_points_of_issue');
+        $this->requireTable($schema, $missing, 'sar_authorizations');
+        $this->requireTable($schema, $missing, 'sar_fiscal_documents');
+        $this->requireColumns($schema, $missing, 'sar_fiscal_profiles', ['invoice_settings']);
+        $this->requireColumns($schema, $missing, 'products', ['fiscal_tax_category']);
+        $this->requireColumns($schema, $missing, 'sale_details', ['fiscal_tax_category', 'fiscal_tax_rate']);
+        $this->requireColumns($schema, $missing, 'clients', [
+            'identification_type',
+            'identification_number',
+            'sar_registry_number',
+            'exoneration_registry_number',
         ]);
 
         return $missing;
