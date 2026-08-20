@@ -11,6 +11,7 @@ class Client extends Model
     protected $fillable = [
         'firstname', 'lastname',
         'name', 'code', 'adresse', 'email', 'phone', 'country', 'city', 'state', 'zip', 'tax_number',
+        'identification_type', 'identification_number', 'sar_registry_number', 'exoneration_registry_number',
         'is_royalty_eligible', 'points', 'opening_balance', 'credit_limit',
         'woocommerce_id',
         'sync_issue_type', 'sync_issue_message', 'sync_issue_source', 'sync_issue_at',
