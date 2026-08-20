@@ -224,7 +224,63 @@ function installSpanishLegacyUiGuard() {
   }
 
   if (typeof MutationObserver !== 'undefined') {
-    const observer = new MutationObserver(() => translateLegacyUi(document));
+    const observer = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        // For dynamically inserted Vue components, translate only the
+        // newly-added subtree instead of rescanning the entire document.
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+            translateLegacyUi(node);
+
+            // translateLegacyUi() searches descendants, so also process the
+            // inserted root element itself when it is a translatable control.
+            if (node.matches) {
+              if (node.matches('[title], [aria-label], [placeholder]')) {
+                ['title', 'aria-label', 'placeholder'].forEach(attr => {
+                  const value = node.getAttribute(attr);
+                  if (value && legacyAttributeTranslations[value]) {
+                    node.setAttribute(attr, legacyAttributeTranslations[value]);
+                  }
+                });
+              }
+
+              if (node.matches(
+                'button, .btn, .dropdown-item, .nav-link, label, th, .modal-title, .card-title, .badge, .alert-heading, .vgt-global-search__input'
+              )) {
+                translateExactText(node, commonLegacyUiTranslations);
+              }
+
+              if (node.matches('.vgt-wrap__footer *')) {
+                translateExactText(node, tableUiTranslations);
+              }
+            }
+          });
+
+          return;
+        }
+
+        // Attribute changes only require checking the affected element.
+        if (
+          mutation.type === 'attributes' &&
+          mutation.target &&
+          mutation.target.nodeType === Node.ELEMENT_NODE
+        ) {
+          const el = mutation.target;
+          const attr = mutation.attributeName;
+
+          if (attr && ['title', 'aria-label', 'placeholder'].includes(attr)) {
+            const value = el.getAttribute(attr);
+
+            if (value && legacyAttributeTranslations[value]) {
+              el.setAttribute(attr, legacyAttributeTranslations[value]);
+            }
+          }
+        }
+      });
+    });
+
     observer.observe(document.documentElement, {
       childList: true,
       subtree: true,
