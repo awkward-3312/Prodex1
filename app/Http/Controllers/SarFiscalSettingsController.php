@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashDrawer;
+use App\Models\Client;
+use App\Models\Product;
 use App\Models\SarAuthorization;
 use App\Models\SarFiscalProfile;
 use App\Models\SarPointOfIssue;
@@ -23,8 +25,13 @@ class SarFiscalSettingsController extends BaseController
     {
         $this->authorizeSettings($request, 'view');
 
+        $profile = SarFiscalProfile::first();
+        if ($profile) {
+            $profile->invoice_settings = $this->invoiceSettings($profile->invoice_settings);
+        }
+
         return response()->json([
-            'profile' => SarFiscalProfile::first(),
+            'profile' => $profile,
             'points' => SarPointOfIssue::with([
                 'authorizations' => fn ($query) => $query->orderByDesc('id'),
             ])->orderBy('establishment_code')->orderBy('point_code')->get(),
@@ -33,6 +40,23 @@ class SarFiscalSettingsController extends BaseController
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(['id', 'warehouse_id', 'name', 'code']),
+            'products' => Product::whereNull('deleted_at')
+                ->where('is_active', 1)
+                ->orderBy('name')
+                ->get(['id', 'code', 'name', 'TaxNet', 'tax_method', 'fiscal_tax_category']),
+            'clients' => Client::whereNull('deleted_at')
+                ->orderBy('name')
+                ->get([
+                    'id', 'name', 'tax_number', 'identification_type', 'identification_number',
+                    'sar_registry_number', 'exoneration_registry_number',
+                ]),
+            'tax_categories' => [
+                ['value' => 'taxed', 'label' => 'Gravado'],
+                ['value' => 'exempt', 'label' => 'Exento'],
+                ['value' => 'exonerated', 'label' => 'Exonerado'],
+                ['value' => 'zero_rate', 'label' => 'Tasa cero'],
+            ],
+            'tax_rates' => [0, 15, 18],
         ]);
     }
 
@@ -48,6 +72,22 @@ class SarFiscalSettingsController extends BaseController
             'head_office_address' => ['required', 'string', 'max:1000'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:191'],
+            'invoice_settings' => ['nullable', 'array'],
+            'invoice_settings.document_title' => ['nullable', 'string', 'max:80'],
+            'invoice_settings.sale_type_label' => ['nullable', 'string', 'max:80'],
+            'invoice_settings.website' => ['nullable', 'string', 'max:191'],
+            'invoice_settings.footer_message' => ['nullable', 'string', 'max:500'],
+            'invoice_settings.original_label' => ['nullable', 'string', 'max:120'],
+            'invoice_settings.copy_label' => ['nullable', 'string', 'max:120'],
+            'invoice_settings.show_logo' => ['nullable', 'boolean'],
+            'invoice_settings.show_internal_reference' => ['nullable', 'boolean'],
+            'invoice_settings.show_cashier' => ['nullable', 'boolean'],
+            'invoice_settings.show_warehouse' => ['nullable', 'boolean'],
+            'invoice_settings.show_payment_summary' => ['nullable', 'boolean'],
+            'invoice_settings.show_customer_address' => ['nullable', 'boolean'],
+            'invoice_settings.show_item_code' => ['nullable', 'boolean'],
+            'invoice_settings.show_total_in_words' => ['nullable', 'boolean'],
+            'invoice_settings.show_qr' => ['nullable', 'boolean'],
         ]);
 
         if ($data['enabled'] && ! SarAuthorization::where('status', 'active')->exists()) {
@@ -56,12 +96,56 @@ class SarFiscalSettingsController extends BaseController
             ], 422);
         }
 
+        $data['invoice_settings'] = $this->invoiceSettings($data['invoice_settings'] ?? []);
+
         $profile = SarFiscalProfile::first();
         $profile = $profile
             ? tap($profile)->update($data)
             : SarFiscalProfile::create($data);
 
         return response()->json(['success' => true, 'profile' => $profile->fresh()]);
+    }
+
+    public function updateProductFiscal(Request $request, Product $product)
+    {
+        $this->authorizeSettings($request);
+
+        $data = $request->validate([
+            'fiscal_tax_category' => ['required', Rule::in(['taxed', 'exempt', 'exonerated', 'zero_rate'])],
+            'TaxNet' => ['required', 'numeric', Rule::in([0, 15, 18])],
+            'tax_method' => ['required', Rule::in(['1', '2', 1, 2])],
+        ]);
+
+        if ($data['fiscal_tax_category'] !== 'taxed') {
+            $data['TaxNet'] = 0;
+        } elseif ((float) $data['TaxNet'] <= 0) {
+            return response()->json(['message' => 'Un producto gravado debe tener una tasa de ISV válida.'], 422);
+        }
+
+        $product->update([
+            'fiscal_tax_category' => $data['fiscal_tax_category'],
+            'TaxNet' => (float) $data['TaxNet'],
+            'tax_method' => (string) $data['tax_method'],
+        ]);
+
+        return response()->json(['success' => true, 'product' => $product->fresh()]);
+    }
+
+    public function updateClientFiscal(Request $request, Client $client)
+    {
+        $this->authorizeSettings($request);
+
+        $data = $request->validate([
+            'tax_number' => ['nullable', 'string', 'max:50'],
+            'identification_type' => ['nullable', 'string', 'max:30'],
+            'identification_number' => ['nullable', 'string', 'max:50'],
+            'sar_registry_number' => ['nullable', 'string', 'max:100'],
+            'exoneration_registry_number' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $client->update($data);
+
+        return response()->json(['success' => true, 'client' => $client->fresh()]);
     }
 
     public function storePoint(Request $request)
@@ -182,6 +266,27 @@ class SarFiscalSettingsController extends BaseController
         });
 
         return response()->json(['success' => true, 'authorization' => $authorization->fresh()]);
+    }
+
+    private function invoiceSettings($settings): array
+    {
+        return array_merge([
+            'document_title' => 'FACTURA',
+            'sale_type_label' => 'CONTADO',
+            'website' => '',
+            'footer_message' => 'Gracias por su compra.',
+            'original_label' => 'Original: Cliente',
+            'copy_label' => 'Copia: Obligado Tributario Emisor',
+            'show_logo' => true,
+            'show_internal_reference' => true,
+            'show_cashier' => true,
+            'show_warehouse' => true,
+            'show_payment_summary' => true,
+            'show_customer_address' => true,
+            'show_item_code' => true,
+            'show_total_in_words' => true,
+            'show_qr' => true,
+        ], is_array($settings) ? $settings : []);
     }
 
     private function validateDrawerWarehouse(array $data): void
