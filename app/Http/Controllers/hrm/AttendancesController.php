@@ -231,7 +231,7 @@ class AttendancesController extends Controller
 
     private function duration(Carbon $from, Carbon $to): string
     {
-        $minutes = $from->diffInMinutes($to);
+        $minutes = (int) round($from->diffInMinutes($to));
 
         return sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
     }
