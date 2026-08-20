@@ -1,0 +1,53 @@
+name: Validate PRODEX
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  php-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, sqlite3, pdo_sqlite, gd, zip
+          coverage: none
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare environment
+        run: |
+          cp .env.example .env || true
+          php artisan key:generate --force || true
+      - name: Run focused SAR tests
+        run: vendor/bin/phpunit tests/Unit/SarFiscalNumberServiceTest.php tests/Unit/TenantTaxConfigResolverTest.php tests/Unit/SarInvoiceSettingsTest.php
+      - name: PHP syntax check for SAR files
+        run: |
+          php -l app/Services/SarFiscalNumberService.php
+          php -l app/Services/SarFiscalSaleService.php
+          php -l app/Services/SarInvoiceSettings.php
+          php -l app/Http/Controllers/SarFiscalSettingsController.php
+          php -l app/Http/Controllers/SarDirectNetworkPrintController.php
+          php -l app/Models/SarFiscalProfile.php
+          php -l database/migrations/tenant/2026_08_19_220000_backfill_honduras_product_fiscal_tax.php
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Production build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: npm run production
