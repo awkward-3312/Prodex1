@@ -12,7 +12,9 @@
     $saleTypeLabel = $invoiceSettings['sale_type_label'] ?? '';
     $showLogo = !array_key_exists('show_logo', $invoiceSettings) || (bool)$invoiceSettings['show_logo'];
     $showReference = !array_key_exists('show_internal_reference', $invoiceSettings) || (bool)$invoiceSettings['show_internal_reference'];
+    $showCashier = !array_key_exists('show_cashier', $invoiceSettings) || (bool)$invoiceSettings['show_cashier'];
     $showWarehouse = !array_key_exists('show_warehouse', $invoiceSettings) || (bool)$invoiceSettings['show_warehouse'];
+    $showPaymentSummary = !array_key_exists('show_payment_summary', $invoiceSettings) || (bool)$invoiceSettings['show_payment_summary'];
     $showCustomerAddress = !array_key_exists('show_customer_address', $invoiceSettings) || (bool)$invoiceSettings['show_customer_address'];
     $showItemCode = !array_key_exists('show_item_code', $invoiceSettings) || (bool)$invoiceSettings['show_item_code'];
     $showTotalWords = !array_key_exists('show_total_in_words', $invoiceSettings) || (bool)$invoiceSettings['show_total_in_words'];
@@ -85,7 +87,9 @@
         .totals td { padding:3px 5px; }
         .totals td:last-child { text-align:right; white-space:nowrap; }
         .total-row td { border-top:2px solid #111827; font-size:11pt; font-weight:800; padding-top:6px; }
-        .fiscal-lines { margin-top:10px; }
+        .payment-table { width:52%; margin-left:auto; margin-top:7px; border-top:1px solid #d1d5db; }
+        .payment-table td { padding:3px 5px; }
+        .payment-table td:last-child { text-align:right; }
         .legal { margin-top:10px; font-size:8pt; text-align:center; }
         .voided { display:inline-block; border:2px solid #991b1b; color:#991b1b; padding:3px 12px; font-weight:800; margin:4px 0; }
         .footer-message { text-align:center; margin-top:7px; font-size:8pt; }
@@ -117,6 +121,7 @@
             <div><strong>Fecha:</strong> {{ $sar_fiscal['issued_at'] ?? (($sale['date'] ?? '').' '.($sale['time'] ?? '')) }}</div>
             @if($showReference && !empty($fiscalSale['internal_reference']))<div><strong>Referencia:</strong> {{ $fiscalSale['internal_reference'] }}</div>@endif
             @if($showWarehouse && !empty($fiscalSale['warehouse_name']))<div><strong>Almacén:</strong> {{ $fiscalSale['warehouse_name'] }}</div>@endif
+            @if($showCashier && !empty($fiscalSale['seller_name']))<div><strong>Cajero:</strong> {{ $fiscalSale['seller_name'] }}</div>@endif
             @if(!empty($issuer['establishment_code']) || !empty($issuer['point_code']))<div><strong>Establecimiento/Punto:</strong> {{ $issuer['establishment_code'] ?? '' }}-{{ $issuer['point_code'] ?? '' }}</div>@endif
         </div></td>
         <td><div class="box">
@@ -152,10 +157,10 @@
     <thead><tr>
         <th style="width:34%;">{{ __('pdf.product') }}</th>
         <th class="num" style="width:13%;">{{ __('pdf.price') }}</th>
-        <th class="num" style="width:11%;">{{ __('pdf.quantity') }}</th>
-        <th class="num" style="width:12%;">{{ __('pdf.discount') }}</th>
+        <th class="num" style="width:11%;">{{ __('pdf.qty') }}</th>
+        <th class="num" style="width:12%;">{{ __('pdf.disc') }}</th>
         <th class="num" style="width:12%;">{{ $isFiscal ? 'ISV' : __('pdf.tax') }}</th>
-        <th class="num" style="width:18%;">{{ __('pdf.total_label') }}</th>
+        <th class="num" style="width:18%;">{{ __('pdf.total') }}</th>
     </tr></thead>
     <tbody>
     @foreach($details as $index => $detail)
@@ -184,9 +189,19 @@
     <tr><td>ISV 15%</td><td>{{ $symbol }} {{ prodexInvoiceMoney($fiscalTotals['tax_15_amount'] ?? 0,2,$priceFormat) }}</td></tr>
     <tr><td>ISV 18%</td><td>{{ $symbol }} {{ prodexInvoiceMoney($fiscalTotals['tax_18_amount'] ?? 0,2,$priceFormat) }}</td></tr>
     @if((float)($fiscalTotals['other_tax_amount'] ?? 0)>0)<tr><td>Otros impuestos</td><td>{{ $symbol }} {{ prodexInvoiceMoney($fiscalTotals['other_tax_amount'],2,$priceFormat) }}</td></tr>@endif
+    @if(abs((float)($fiscalTotals['rounding_adjustment'] ?? 0)) >= 0.005)<tr><td>Ajuste de redondeo</td><td>{{ $symbol }} {{ prodexInvoiceMoney($fiscalTotals['rounding_adjustment'],2,$priceFormat) }}</td></tr>@endif
     @if((float)($fiscalTotals['shipping'] ?? 0)>0)<tr><td>{{ __('pdf.shipping') }}</td><td>{{ $symbol }} {{ prodexInvoiceMoney($fiscalTotals['shipping'],2,$priceFormat) }}</td></tr>@endif
     <tr class="total-row"><td>TOTAL</td><td>{{ $symbol }} {{ prodexInvoiceMoney($fiscalTotals['grand_total'] ?? ($sale['GrandTotal'] ?? 0),2,$priceFormat) }}</td></tr>
 </table>
+@if($showPaymentSummary && !empty($fiscalSale['payments']))
+<table class="payment-table">
+    <tr><td colspan="2" class="strong">Resumen de pago</td></tr>
+    @foreach($fiscalSale['payments'] as $payment)
+        <tr><td>{{ $payment['method'] ?? $payment['reference'] ?? 'Pago' }}</td><td>{{ $symbol }} {{ prodexInvoiceMoney($payment['amount'] ?? 0,2,$priceFormat) }}</td></tr>
+        @if((float)($payment['change'] ?? 0) != 0)<tr><td>Cambio</td><td>{{ $symbol }} {{ prodexInvoiceMoney($payment['change'],2,$priceFormat) }}</td></tr>@endif
+    @endforeach
+</table>
+@endif
 @if($showTotalWords && !empty($sar_fiscal['total_in_words']))<div class="center strong" style="margin-top:9px;">{{ $sar_fiscal['total_in_words'] }}</div>@endif
 <div class="legal">{{ $invoiceSettings['original_label'] ?? 'Original: Cliente' }}<br>{{ $invoiceSettings['copy_label'] ?? 'Copia: Obligado Tributario Emisor' }}</div>
 @if(!empty($invoiceSettings['footer_message']))<div class="footer-message">{{ $invoiceSettings['footer_message'] }}</div>@endif
