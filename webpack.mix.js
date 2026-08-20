@@ -7,8 +7,8 @@ const mix = require('laravel-mix');
  |--------------------------------------------------------------------------
  |
  | Mix provides a clean, fluent API for defining some Webpack build steps.
- | In addition to compiled bundles, PRODEX ships a small standalone sidebar
- | organizer that must be restored after CleanWebpackPlugin clears public/js.
+ | Standalone PRODEX navigation enhancers live under resources/static so
+ | CleanWebpackPlugin can safely clear public/js before each production build.
  */
 
 const MomentLocalesPlugin = require('moment-locales-webpack-plugin');
@@ -27,10 +27,10 @@ mix.js('resources/src/main.js', 'public')
         tailwindcss('./tailwind.config.js'),
         autoprefixer(),
     ])
-    // CleanWebpackPlugin removes public/js before every production build.
-    // Keep the friendly vertical-sidebar organizer in a source directory and
-    // copy it back as part of the build so rsync --delete cannot drop it.
+    // These files enhance the already-authorized Vue sidebar. Keeping them in
+    // source means rsync --delete cannot accidentally remove them after build.
     .copy('resources/static/prodex-sidebar2-organizer.js', 'public/js/prodex-sidebar2-organizer.js')
+    .copy('resources/static/prodex-navigation-v3.js', 'public/js/prodex-navigation-v3.js')
     .vue()
 
 mix.webpackConfig({
