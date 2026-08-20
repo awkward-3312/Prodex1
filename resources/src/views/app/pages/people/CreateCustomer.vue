@@ -25,7 +25,7 @@
           <section class="px-section">
             <div class="px-section-header">
               <div class="px-section-heading">
-                <span class="px-section-icon"><lucide-icon name="user-round" /></span>
+                <span class="px-section-icon"><lucide-icon name="user" /></span>
                 <div>
                   <h2 class="px-section-title">Información principal</h2>
                   <p class="px-section-description">Datos básicos para identificar y contactar al cliente.</p>
@@ -201,7 +201,7 @@
           <section class="px-section">
             <div class="px-section-header">
               <div class="px-section-heading">
-                <span class="px-section-icon"><lucide-icon name="wallet-cards" /></span>
+                <span class="px-section-icon"><lucide-icon name="wallet" /></span>
                 <div>
                   <h2 class="px-section-title">Crédito y condiciones comerciales</h2>
                   <p class="px-section-description">Configura saldos anteriores, límites de crédito y preferencias comerciales.</p>
