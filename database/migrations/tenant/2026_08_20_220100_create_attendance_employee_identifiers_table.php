@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('attendance_employee_identifiers', function (Blueprint $table) {
             $table->id();
-            $table->unsignedInteger('company_id')->index();
-            $table->unsignedInteger('employee_id')->index();
+            $table->integer('company_id')->index();
+            $table->integer('employee_id')->index();
             $table->unsignedBigInteger('attendance_device_id')->nullable()->index();
             $table->string('provider', 80)->default('generic')->index();
             $table->string('external_user_id', 191)->index();
