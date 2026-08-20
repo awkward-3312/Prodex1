@@ -55,6 +55,7 @@
 
     <script src="/js/main.min.js?v=1.3&v={{ time() }}"></script>
     <script src="/js/prodex-sidebar2-organizer.js?v={{ time() }}"></script>
+    <script src="/js/prodex-navigation-v3.js?v={{ time() }}"></script>
 
     @include('partials.plan-upgrade-modal')
     @include('partials.subscription-reminder-banner')
