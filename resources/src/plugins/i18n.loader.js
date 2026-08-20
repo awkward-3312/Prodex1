@@ -10,28 +10,56 @@ import { installSpanishSettingsRequestGuard } from '../utils/spanishSettingsRequ
 
 Vue.use(VueI18n);
 
+function permanentlyDisableLegacyDomTranslators() {
+  if (typeof window === 'undefined') return;
+
+  // Some older code still tries to toggle this flag when components mount or
+  // unmount. Make the flag read-only and permanently true so those legacy
+  // observers can never be re-enabled later in the SPA lifecycle.
+  try {
+    Object.defineProperty(window, '__prodexSuspendLegacyUiTranslations', {
+      configurable: false,
+      enumerable: false,
+      get() { return true; },
+      set() {},
+    });
+  } catch (e) {
+    window.__prodexSuspendLegacyUiTranslations = true;
+  }
+
+  // If any legacy observers were installed by an older bundle before this
+  // loader ran, disconnect the known instances defensively. The current build
+  // no longer installs these observers, but this makes navigation/reload races
+  // safe during deployments and cache transitions.
+  [
+    '__prodexSpanishSettingsUiObserver',
+    '__prodexSpanishLegacyDocumentObserver',
+    '__prodexSpanishCommerceIntegrationObserver',
+    '__prodexSpanishPermissionsObserver',
+  ].forEach(key => {
+    const observer = window[key];
+    if (observer && typeof observer.disconnect === 'function') {
+      try { observer.disconnect(); } catch (e) {}
+    }
+    try { window[key] = null; } catch (e) {}
+  });
+}
+
 export const loadI18n = async () => {
   const userLang = localStorage.getItem('language') || 'es';
   const useSpanishUiGuards = String(userLang).toLowerCase().startsWith('es');
 
-  // Never allow legacy whole-document DOM translators to run. Several older
-  // compatibility guards used MutationObserver on document.body/documentElement
-  // and then rewrote text nodes/attributes in response to Vue DOM mutations.
-  // On dynamic screens this can create observer feedback storms and monopolize
-  // the browser main thread. PRODEX translations must come from Vue i18n/source
-  // strings instead of mutating rendered DOM globally.
-  if (typeof window !== 'undefined') {
-    window.__prodexSuspendLegacyUiTranslations = true;
-  }
+  // Global DOM rewriting is permanently disabled. PRODEX translations must be
+  // rendered by Vue i18n/source strings, never by whole-document observers that
+  // mutate text nodes after Vue renders them.
+  permanentlyDisableLegacyDomTranslators();
 
   // The request guard is language-safe: it only replaces an invalid/empty
   // default_language value with "es" and preserves any explicit selection.
   installSpanishSettingsRequestGuard();
 
-  // Keep only non-global compatibility helpers. The former settings, legacy
-  // document, commerce and permissions DOM observers are intentionally not
-  // installed because they observe the entire application and mutate DOM from
-  // inside MutationObserver callbacks.
+  // Keep only compatibility helpers that do not observe and rewrite the whole
+  // application DOM. The document-title observer is isolated to <title> only.
   if (useSpanishUiGuards) {
     installSpanishUiGuard();
     installSpanishDocumentTitleGuard();
