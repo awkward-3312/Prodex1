@@ -1,9 +1,7 @@
 /**
- * POS Keyboard Shortcuts Mixin
- * --------------------------------------------------------------------
- * Adds optional keyboard shortcuts to the POS screen WITHOUT modifying
- * any existing logic. It also bridges the SAR fiscal payload returned by
- * the POS invoice endpoint into the existing thermal receipt.
+ * POS keyboard shortcuts + Honduras fiscal bridge.
+ * Keeps the large POS component stable while centralizing the SAR-specific
+ * receipt augmentation and line-tax behavior needed by Honduras tenants.
  */
 
 export const POS_SHORTCUTS_STORAGE_KEY = "pos_keyboard_shortcuts_enabled";
@@ -44,6 +42,11 @@ function escapeHtml(value) {
   return String(value==null?"":value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
 }
 
+function money(value) {
+  const n=Number(value||0);
+  return (Number.isFinite(n)?n:0).toFixed(2);
+}
+
 function fiscalRangeNumber(value, fiscalNumber) {
   if (value===null||value===undefined||value==="") return "";
   const raw=String(value).trim();
@@ -53,8 +56,51 @@ function fiscalRangeNumber(value, fiscalNumber) {
   return prefix+raw.replace(/\D+/g,"").padStart(8,"0");
 }
 
+function boolSetting(settings,key,fallback=true){
+  if(!settings||settings[key]===undefined||settings[key]===null)return fallback;
+  return settings[key]===true||settings[key]===1||settings[key]==="1";
+}
+
 export default {
   methods: {
+    isHondurasLineTaxMode() {
+      return String(this.taxPolicyCountryCode||"").toUpperCase()==="HN" && !!(this.taxConfig&&this.taxConfig.supports_line_tax);
+    },
+
+    calculateHondurasLineTotals() {
+      const decimals=Number(this.priceDecimals||2);
+      let gross=0;
+      let rawTax=0;
+      (this.details||[]).forEach(d=>{
+        const qty=Number(d.quantity||0);
+        const unitTax=Number(d.taxe||0);
+        const net=Number(d.Net_price||0);
+        d.subtotal=parseFloat((qty*net+qty*unitTax).toFixed(decimals));
+        gross+=Number(d.subtotal||0);
+        rawTax+=qty*unitTax;
+      });
+      gross=parseFloat(gross.toFixed(decimals));
+      this.total=gross;
+
+      const method=String((this.sale&&this.sale.discount_Method)||"2");
+      const value=Number((this.sale&&this.sale.discount)||0);
+      let discount=method==="1"?gross*(value/100):Math.min(value,gross);
+      discount=Math.max(0,discount);
+      const afterManual=Math.max(gross-discount,0);
+      const points=Math.min(Number(this.discount_from_points||0),afterManual);
+      discount+=points;
+      const promo=Math.min(Number(this.promotionDiscount||0),Math.max(gross-discount,0));
+      const afterDiscount=Math.max(gross-discount-promo,0);
+      const ratio=gross>0?afterDiscount/gross:0;
+
+      if(this.sale){
+        this.sale.TaxNet=parseFloat((rawTax*ratio).toFixed(decimals));
+      }
+      this.GrandTotal=parseFloat((afterDiscount+Number((this.sale&&this.sale.shipping)||0)).toFixed(decimals));
+      try{this._cd_queue_broadcast&&this._cd_queue_broadcast();}catch(e){}
+      return this.GrandTotal;
+    },
+
     renderSarFiscalReceipt() {
       try {
         if(typeof document==="undefined")return;
@@ -68,59 +114,75 @@ export default {
 
         const issuer=fiscal.issuer||{};
         const customer=fiscal.customer||{};
+        const snap=fiscal.sale||{};
+        const totals=snap.fiscal_totals||{};
+        const settings=issuer.invoice_settings||{};
         const legalName=issuer.trade_name||issuer.legal_name||"";
         const issuerAddress=issuer.point_of_issue_address||issuer.head_office_address||"";
         const rangeStart=fiscalRangeNumber(fiscal.range_start,fiscal.fiscal_number);
         const rangeEnd=fiscalRangeNumber(fiscal.range_end,fiscal.fiscal_number);
         const isVoided=String(fiscal.status||"").toLowerCase()==="voided";
+        const title=String(settings.document_title||"FACTURA");
+        const saleType=String(settings.sale_type_label||"");
 
         root.classList.add("sar-fiscal-receipt");
-        Array.prototype.forEach.call(root.querySelectorAll("p,span,td,th,small"),el=>{
-          if(!el.style.fontSize)el.style.fontSize="11px";
-          if(!el.style.lineHeight)el.style.lineHeight="1.35";
-        });
-
         const info=root.querySelector(".info");
         if(info){
           const logo=info.querySelector(".invoice_logo");
-          if(logo)logo.style.display="none";
-          const p=info.querySelector("p");
-          if(p){
-            Array.prototype.forEach.call(p.querySelectorAll("span"),span=>{
-              const text=String(span.textContent||"").trim().toLowerCase();
-              const company=String((this.invoice_pos.setting&&this.invoice_pos.setting.CompanyName)||"").trim().toLowerCase();
-              if((company&&text===company)||text.indexOf("address :")===0||text.indexOf("adress :")===0||text.indexOf("email :")===0||text.indexOf("phone :")===0||text.indexOf("dirección :")===0||text.indexOf("direccion :")===0||text.indexOf("correo :")===0||text.indexOf("teléfono :")===0||text.indexOf("telefono :")===0){span.style.display="none";}
-            });
-          }
+          if(logo&&!boolSetting(settings,"show_logo",true))logo.style.display="none";
         }
 
-        Array.prototype.forEach.call(root.querySelectorAll("td.total"),td=>{
-          const text=String(td.textContent||"").trim().toLowerCase();
-          if(text==="impuesto de orden"||text==="order tax"){
-            const rate=this.invoice_pos&&this.invoice_pos.sale?Number(this.invoice_pos.sale.tax_rate||0):0;
-            td.textContent=rate?`ISV ${rate.toFixed(0)}%`:"ISV";
-          }
-        });
+        const fiscalRows=[];
+        const pushRow=(label,val,strong=false)=>{ if(val===undefined||val===null||val==="")return; fiscalRows.push(`<div style="display:flex;justify-content:space-between;gap:8px;${strong?'font-weight:800;':''}"><span>${escapeHtml(label)}</span><span style="white-space:nowrap;">L ${money(val)}</span></div>`); };
+        pushRow("Descuentos y rebajas",totals.discount_total||0);
+        pushRow("Subtotal",totals.subtotal||0);
+        pushRow("Importe exonerado",totals.exonerated_amount||0);
+        pushRow("Importe exento",totals.exempt_amount||0);
+        if(Number(totals.zero_rate_amount||0)>0)pushRow("Importe tasa cero",totals.zero_rate_amount);
+        pushRow("Importe gravado 15%",totals.taxable_15_amount||0);
+        pushRow("Importe gravado 18%",totals.taxable_18_amount||0);
+        pushRow("ISV 15%",totals.tax_15_amount||0);
+        pushRow("ISV 18%",totals.tax_18_amount||0);
+        if(Number(totals.other_taxable_amount||0)>0)pushRow("Otros importes gravados",totals.other_taxable_amount);
+        if(Number(totals.other_tax_amount||0)>0)pushRow("Otros impuestos",totals.other_tax_amount);
+        pushRow("TOTAL",totals.grand_total!==undefined?totals.grand_total:(snap.grand_total||0),true);
+
+        const clientExtra=[];
+        if(customer.rtn)clientExtra.push(`<div><strong>RTN:</strong> ${escapeHtml(customer.rtn)}</div>`);
+        else if(customer.identification_number)clientExtra.push(`<div><strong>${escapeHtml(customer.identification_type||"Identificación")}:</strong> ${escapeHtml(customer.identification_number)}</div>`);
+        if(boolSetting(settings,"show_customer_address",true)&&customer.address)clientExtra.push(`<div>${escapeHtml(customer.address)}</div>`);
+        if(customer.sar_registry_number)clientExtra.push(`<div><strong>Registro SAG/SAR:</strong> ${escapeHtml(customer.sar_registry_number)}</div>`);
+        if(customer.exempt_purchase_order_number)clientExtra.push(`<div><strong>Orden de compra exenta:</strong> ${escapeHtml(customer.exempt_purchase_order_number)}</div>`);
+        if(customer.exoneration_registry_number)clientExtra.push(`<div><strong>Registro exonerado:</strong> ${escapeHtml(customer.exoneration_registry_number)}</div>`);
+        if(customer.exonerated_card_number)clientExtra.push(`<div><strong>Carnet exonerado:</strong> ${escapeHtml(customer.exonerated_card_number)}</div>`);
 
         const block=document.createElement("div");
         block.className="sar-fiscal-pos-block";
         block.setAttribute("data-fiscal-number",String(fiscal.fiscal_number));
-        block.style.cssText="text-align:center;font-size:9.5px;line-height:1.3;margin:0 0 7px;padding:0 3px 7px;border-bottom:1px dashed #333;word-break:break-word;text-transform:none;";
+        block.style.cssText="font-size:9.5px;line-height:1.3;margin:0 0 8px;padding:0 3px 8px;border-bottom:1px dashed #333;word-break:break-word;text-transform:none;color:#111;";
         block.innerHTML=
-          (legalName?`<div style="font-size:11px;font-weight:700;">${escapeHtml(legalName)}</div>`:"")+
+          `<div style="text-align:center;">`+
+          (legalName?`<div style="font-size:12px;font-weight:800;">${escapeHtml(legalName)}</div>`:"")+
+          (issuer.legal_name&&issuer.trade_name?`<div>${escapeHtml(issuer.legal_name)}</div>`:"")+
           (issuer.rtn?`<div><strong>RTN:</strong> ${escapeHtml(issuer.rtn)}</div>`:"")+
           (issuerAddress?`<div>${escapeHtml(issuerAddress)}</div>`:"")+
           (issuer.phone?`<div>Tel: ${escapeHtml(issuer.phone)}</div>`:"")+
-          (issuer.email?`<div>Correo: ${escapeHtml(issuer.email)}</div>`:"")+
-          `<div style="font-size:11.5px;font-weight:800;margin-top:5px;">FACTURA</div>`+
-          (isVoided?`<div style="font-size:12px;font-weight:800;border:2px solid #000;padding:2px 5px;margin:3px auto;display:inline-block;">ANULADA</div>`:"")+
+          (issuer.email?`<div>${escapeHtml(issuer.email)}</div>`:"")+
+          (settings.website?`<div>${escapeHtml(settings.website)}</div>`:"")+
+          `<div style="font-size:12px;font-weight:900;margin-top:5px;">${escapeHtml(title)}${saleType?" "+escapeHtml(saleType):""}</div>`+
+          (isVoided?`<div style="font-size:12px;font-weight:900;border:2px solid #000;padding:2px 5px;margin:3px auto;display:inline-block;">ANULADA</div>`:"")+
           `<div style="font-size:11px;font-weight:800;">${escapeHtml(fiscal.fiscal_number)}</div>`+
           (fiscal.cai?`<div style="margin-top:3px;"><strong>CAI:</strong> ${escapeHtml(fiscal.cai)}</div>`:"")+
-          ((rangeStart||rangeEnd)?`<div><strong>Rango autorizado:</strong><br>${escapeHtml(rangeStart)}<br>al<br>${escapeHtml(rangeEnd)}</div>`:"")+
-          (fiscal.deadline?`<div style="margin-top:2px;"><strong>Fecha de vencimiento del CAI / límite de emisión:</strong> ${escapeHtml(fiscal.deadline)}</div>`:"")+
-          `<div style="margin-top:4px;"><strong>Cliente:</strong> ${escapeHtml(customer.name||"Consumidor final")}</div>`+
-          (customer.rtn?`<div><strong>RTN cliente:</strong> ${escapeHtml(customer.rtn)}</div>`:"")+
-          (fiscal.total_in_words?`<div style="margin-top:4px;font-weight:600;">${escapeHtml(fiscal.total_in_words)}</div>`:"")+
+          ((rangeStart||rangeEnd)?`<div><strong>Rango autorizado:</strong><br>${escapeHtml(rangeStart)} al ${escapeHtml(rangeEnd)}</div>`:"")+
+          (fiscal.deadline?`<div><strong>Fecha límite de emisión:</strong> ${escapeHtml(fiscal.deadline)}</div>`:"")+
+          `</div>`+
+          `<div style="border-top:1px dashed #333;margin-top:5px;padding-top:4px;"><strong>Cliente:</strong> ${escapeHtml(customer.name||"Consumidor final")}${clientExtra.join("")}</div>`+
+          (boolSetting(settings,"show_internal_reference",true)&&snap.internal_reference?`<div><strong>Referencia:</strong> ${escapeHtml(snap.internal_reference)}</div>`:"")+
+          (boolSetting(settings,"show_warehouse",true)&&snap.warehouse_name?`<div><strong>Almacén:</strong> ${escapeHtml(snap.warehouse_name)}</div>`:"")+
+          `<div style="border-top:1px dashed #333;margin-top:5px;padding-top:4px;">${fiscalRows.join("")}</div>`+
+          (boolSetting(settings,"show_total_in_words",true)&&fiscal.total_in_words?`<div style="text-align:center;margin-top:5px;font-weight:700;">${escapeHtml(fiscal.total_in_words)}</div>`:"")+
+          `<div style="text-align:center;margin-top:5px;">${escapeHtml(settings.original_label||"Original: Cliente")}<br>${escapeHtml(settings.copy_label||"Copia: Obligado Tributario Emisor")}</div>`+
+          (settings.footer_message?`<div style="text-align:center;margin-top:5px;">${escapeHtml(settings.footer_message)}</div>`:"")+
           (isVoided&&fiscal.void_reason?`<div style="margin-top:3px;"><strong>Motivo:</strong> ${escapeHtml(fiscal.void_reason)}</div>`:"");
 
         const container=root.firstElementChild||root;
@@ -148,7 +210,33 @@ export default {
     this._posShortcutsHandler=handler;
     try{window.addEventListener("keydown",handler,true);}catch(e){}
 
+    // Replace only the runtime calculation function. The original component method
+    // remains the fallback for non-Honduras tenants.
     try{
+      if(typeof this.CalculTotal==="function"){
+        this._originalCalculTotal=this.CalculTotal.bind(this);
+        this.CalculTotal=(...args)=>{
+          if(this.isHondurasLineTaxMode())return this.calculateHondurasLineTotals();
+          return this._originalCalculTotal(...args);
+        };
+        setTimeout(()=>{try{if(this.details&&this.details.length)this.CalculTotal();}catch(e){}},0);
+      }
+    }catch(e){}
+
+    try{
+      if(typeof axios!=="undefined"&&axios.interceptors){
+        this._sarRequestInterceptor=axios.interceptors.request.use(config=>{
+          try{
+            const url=String(config&&config.url||"");
+            if(url.indexOf("pos/create_pos")!==-1&&this.sarFiscalSaleData){
+              const payload=typeof config.data==="string"?JSON.parse(config.data):Object.assign({},config.data||{});
+              payload.fiscal_exemption_data=Object.assign({},this.sarFiscalSaleData);
+              config.data=payload;
+            }
+          }catch(e){}
+          return config;
+        },error=>Promise.reject(error));
+      }
       if(typeof axios!=="undefined"&&axios.interceptors&&axios.interceptors.response){
         this._sarReceiptInterceptor=axios.interceptors.response.use(response=>{
           try{
@@ -172,11 +260,12 @@ export default {
           return response;
         },error=>Promise.reject(error));
       }
-    }catch(e){this._sarReceiptInterceptor=null;}
+    }catch(e){this._sarReceiptInterceptor=null;this._sarRequestInterceptor=null;}
   },
 
   beforeDestroy() {
     try{if(this._posShortcutsHandler){window.removeEventListener("keydown",this._posShortcutsHandler,true);this._posShortcutsHandler=null;}}catch(e){}
     try{if(this._sarReceiptInterceptor!==null&&this._sarReceiptInterceptor!==undefined&&typeof axios!=="undefined"){axios.interceptors.response.eject(this._sarReceiptInterceptor);this._sarReceiptInterceptor=null;}}catch(e){}
+    try{if(this._sarRequestInterceptor!==null&&this._sarRequestInterceptor!==undefined&&typeof axios!=="undefined"){axios.interceptors.request.eject(this._sarRequestInterceptor);this._sarRequestInterceptor=null;}}catch(e){}
   },
 };
