@@ -4,13 +4,9 @@ import axios from 'axios';
 import { supportMessages } from './support.i18n';
 import { bundledUiMessages, readableMissingTranslation } from './ui.fallback.i18n';
 import { installSpanishUiGuard } from '../utils/spanishUiGuard';
-import { installSpanishSettingsUiGuard } from '../utils/spanishSettingsUiGuard';
 import { installSpanishDocumentTitleGuard } from '../utils/spanishDocumentTitleGuard';
-import { installSpanishLegacyDocumentGuard } from '../utils/spanishLegacyDocumentGuard';
 import { installSpanishApiFeedbackGuard } from '../utils/spanishApiFeedbackGuard';
 import { installSpanishSettingsRequestGuard } from '../utils/spanishSettingsRequestGuard';
-import { installSpanishCommerceIntegrationGuard } from '../utils/spanishCommerceIntegrationGuard';
-import { installSpanishPermissionsUiGuard } from '../utils/spanishPermissionsUiGuard';
 
 Vue.use(VueI18n);
 
@@ -18,21 +14,28 @@ export const loadI18n = async () => {
   const userLang = localStorage.getItem('language') || 'es';
   const useSpanishUiGuards = String(userLang).toLowerCase().startsWith('es');
 
+  // Never allow legacy whole-document DOM translators to run. Several older
+  // compatibility guards used MutationObserver on document.body/documentElement
+  // and then rewrote text nodes/attributes in response to Vue DOM mutations.
+  // On dynamic screens this can create observer feedback storms and monopolize
+  // the browser main thread. PRODEX translations must come from Vue i18n/source
+  // strings instead of mutating rendered DOM globally.
+  if (typeof window !== 'undefined') {
+    window.__prodexSuspendLegacyUiTranslations = true;
+  }
+
   // The request guard is language-safe: it only replaces an invalid/empty
   // default_language value with "es" and preserves any explicit selection.
   installSpanishSettingsRequestGuard();
 
-  // DOM/API guards are compatibility fallbacks for legacy English UI strings.
-  // They must only run for Spanish so an explicitly selected language is never
-  // overwritten by the Spanish compatibility layer.
+  // Keep only non-global compatibility helpers. The former settings, legacy
+  // document, commerce and permissions DOM observers are intentionally not
+  // installed because they observe the entire application and mutate DOM from
+  // inside MutationObserver callbacks.
   if (useSpanishUiGuards) {
     installSpanishUiGuard();
-    installSpanishSettingsUiGuard();
     installSpanishDocumentTitleGuard();
-    installSpanishLegacyDocumentGuard();
     installSpanishApiFeedbackGuard();
-    installSpanishCommerceIntegrationGuard();
-    installSpanishPermissionsUiGuard();
   }
 
   let dbMessages = {};
