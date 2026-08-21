@@ -27,7 +27,7 @@ jobs:
       - name: Run focused SAR tests
         run: vendor/bin/phpunit tests/Unit/SarFiscalNumberServiceTest.php tests/Unit/TenantTaxConfigResolverTest.php tests/Unit/SarInvoiceSettingsTest.php
       - name: Run transfer logistics integrity tests
-        run: vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php
+        run: vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php tests/Unit/TransferLogisticsBatchUnitsTest.php
       - name: PHP syntax check for SAR files
         run: |
           php -l app/Services/SarFiscalNumberService.php
@@ -61,6 +61,7 @@ jobs:
           php -l app/Services/SafeTransferLogisticsService.php
           php -l app/Services/TransferDispatchGuardService.php
           php -l app/Models/Transfer.php
+          php -l app/Models/TransferDetail.php
           php -l app/Models/TransferReceipt.php
           php -l app/Models/TransferReceiptItem.php
           php -l app/Providers/AppServiceProvider.php
@@ -71,6 +72,7 @@ jobs:
           php -l database/migrations/tenant/2026_08_20_220200_add_transfer_discrepancy_resolution_workflow.php
           php -l database/migrations/tenant/2026_08_20_220300_normalize_pending_transfer_logistics.php
           php -l tests/Unit/TransferLogisticsServiceTest.php
+          php -l tests/Unit/TransferLogisticsBatchUnitsTest.php
 
   frontend-build:
     runs-on: ubuntu-latest
