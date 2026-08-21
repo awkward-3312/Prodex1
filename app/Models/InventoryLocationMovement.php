@@ -20,6 +20,7 @@ class InventoryLocationMovement extends Model
         'reference_type',
         'reference_id',
         'idempotency_key',
+        'idempotency_fingerprint',
         'notes',
         'metadata',
     ];
