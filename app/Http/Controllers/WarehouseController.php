@@ -8,6 +8,7 @@ use App\Models\product_warehouse;
 use App\Models\ProductVariant;
 use App\Models\Warehouse;
 use App\Services\InventoryLocationService;
+use App\Services\WarehouseLifecycleService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -67,8 +68,6 @@ class WarehouseController extends Controller
 
         \DB::transaction(function () use ($request) {
             $warehouse = new Warehouse;
-            // Warehouses are now standalone logistic facilities / distribution centers.
-            // branch_id remains in the schema only as a transitional legacy field.
             $warehouse->branch_id = null;
             $warehouse->name = $request['name'];
             $warehouse->mobile = $request['mobile'];
@@ -78,8 +77,6 @@ class WarehouseController extends Controller
             $warehouse->email = $request['email'];
             $warehouse->save();
 
-            // Every real warehouse/CD owns at least one inventory location. Stock is
-            // still initialized in product_warehouse until the controlled cutover.
             $location = app(InventoryLocationService::class)->createForWarehouse($warehouse, [
                 'code' => 'MAIN',
                 'name' => 'Inventario principal',
@@ -139,8 +136,6 @@ class WarehouseController extends Controller
             'email' => ['nullable', 'email', 'max:191'],
         ]);
 
-        // Do not rewrite branch_id here. Existing values are retained only for
-        // backward-compatible scope discovery until every legacy user is migrated.
         Warehouse::whereId($id)->update([
             'name' => $request['name'],
             'mobile' => $request['mobile'],
@@ -153,37 +148,32 @@ class WarehouseController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function destroy(Request $request, $id)
+    public function destroy(Request $request, $id, WarehouseLifecycleService $lifecycle)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Warehouse::class);
+        $lifecycle->assertCanArchive((int) $id);
 
         \DB::transaction(function () use ($id) {
-            Warehouse::whereId($id)->update([
-                'deleted_at' => Carbon::now(),
-            ]);
-
-            product_warehouse::where('warehouse_id', $id)->update([
-                'deleted_at' => Carbon::now(),
-            ]);
+            Warehouse::whereId($id)->update(['deleted_at' => Carbon::now()]);
+            product_warehouse::where('warehouse_id', $id)->update(['deleted_at' => Carbon::now()]);
         }, 10);
 
         return response()->json(['success' => true]);
     }
 
-    public function delete_by_selection(Request $request)
+    public function delete_by_selection(Request $request, WarehouseLifecycleService $lifecycle)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Warehouse::class);
 
-        \DB::transaction(function () use ($request) {
-            $selectedIds = $request->selectedIds;
-            foreach ($selectedIds as $warehouse_id) {
-                Warehouse::whereId($warehouse_id)->update([
-                    'deleted_at' => Carbon::now(),
-                ]);
+        $selectedIds = array_values(array_unique(array_map('intval', (array) $request->selectedIds)));
+        foreach ($selectedIds as $warehouseId) {
+            $lifecycle->assertCanArchive($warehouseId);
+        }
 
-                product_warehouse::where('warehouse_id', $warehouse_id)->update([
-                    'deleted_at' => Carbon::now(),
-                ]);
+        \DB::transaction(function () use ($selectedIds) {
+            foreach ($selectedIds as $warehouseId) {
+                Warehouse::whereId($warehouseId)->update(['deleted_at' => Carbon::now()]);
+                product_warehouse::where('warehouse_id', $warehouseId)->update(['deleted_at' => Carbon::now()]);
             }
         }, 10);
 
