@@ -15,7 +15,8 @@ class Transfer extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'id', 'date', 'user_id', 'from_warehouse_id', 'to_warehouse_id', 'time',
+        'id', 'date', 'user_id', 'from_warehouse_id', 'to_warehouse_id',
+        'from_inventory_location_id', 'to_inventory_location_id', 'time',
         'items', 'statut', 'approval_status', 'receiving_token', 'logistics_status',
         'dispatched_at', 'dispatched_by_user_id', 'received_at', 'received_by_user_id',
         'notes', 'GrandTotal', 'discount', 'shipping', 'TaxNet', 'tax_rate',
@@ -26,6 +27,8 @@ class Transfer extends Model
         'user_id' => 'integer',
         'from_warehouse_id' => 'integer',
         'to_warehouse_id' => 'integer',
+        'from_inventory_location_id' => 'integer',
+        'to_inventory_location_id' => 'integer',
         'items' => 'double',
         'GrandTotal' => 'double',
         'discount' => 'double',
@@ -41,19 +44,15 @@ class Transfer extends Model
     protected static function booted(): void
     {
         static::creating(function (Transfer $transfer) {
-            static::assertDifferentWarehouses($transfer);
+            static::assertDifferentOrigins($transfer);
 
-            // New transfers cannot credit destination stock from the legacy
-            // "completed" selector. Completion now belongs to destination receipt.
             if ($transfer->approval_status === 'pending' && $transfer->statut === 'completed') {
                 $transfer->statut = 'sent';
             }
         });
 
         static::created(function (Transfer $transfer) {
-            if (! Schema::hasTable('transfer_events')) {
-                return;
-            }
+            if (! Schema::hasTable('transfer_events')) return;
 
             app(TransferLogisticsService::class)->recordEvent(
                 $transfer->id,
@@ -62,8 +61,10 @@ class Transfer extends Model
                 $transfer->from_warehouse_id,
                 [
                     'reference' => $transfer->Ref,
-                    'from_warehouse_id' => (int) $transfer->from_warehouse_id,
-                    'to_warehouse_id' => (int) $transfer->to_warehouse_id,
+                    'from_warehouse_id' => $transfer->from_warehouse_id ? (int) $transfer->from_warehouse_id : null,
+                    'to_warehouse_id' => $transfer->to_warehouse_id ? (int) $transfer->to_warehouse_id : null,
+                    'from_inventory_location_id' => $transfer->from_inventory_location_id ? (int) $transfer->from_inventory_location_id : null,
+                    'to_inventory_location_id' => $transfer->to_inventory_location_id ? (int) $transfer->to_inventory_location_id : null,
                     'approval_status' => $transfer->approval_status,
                 ],
                 true
@@ -71,29 +72,25 @@ class Transfer extends Model
         });
 
         static::updating(function (Transfer $transfer) {
-            static::assertDifferentWarehouses($transfer);
+            static::assertDifferentOrigins($transfer);
 
-            if (! Schema::hasColumn('transfers', 'logistics_status')) {
-                return;
-            }
+            if (! Schema::hasColumn('transfers', 'logistics_status')) return;
 
             $originalStatus = (string) $transfer->getOriginal('logistics_status');
             $lockedStatuses = ['in_transit', 'partially_received', 'received', 'received_with_issues'];
 
-            // Legacy transfer forms still expose a "completed" option. Before a
-            // physical destination receipt exists, normalize that intent to "sent"
-            // so approval can only debit the source warehouse.
             if (! in_array($originalStatus, ['received', 'received_with_issues'], true)
                 && $transfer->isDirty('statut')
                 && $transfer->statut === 'completed') {
                 $transfer->statut = 'sent';
             }
 
-            if (! in_array($originalStatus, $lockedStatuses, true)) {
-                return;
-            }
+            if (! in_array($originalStatus, $lockedStatuses, true)) return;
 
-            if ($transfer->isDirty('from_warehouse_id') || $transfer->isDirty('to_warehouse_id')) {
+            if ($transfer->isDirty('from_warehouse_id')
+                || $transfer->isDirty('to_warehouse_id')
+                || $transfer->isDirty('from_inventory_location_id')
+                || $transfer->isDirty('to_inventory_location_id')) {
                 throw ValidationException::withMessages([
                     'transfer' => 'No se puede cambiar el origen o destino después de despachar la transferencia.',
                 ]);
@@ -101,7 +98,7 @@ class Transfer extends Model
 
             if ($transfer->isDirty('statut') && $transfer->statut === 'completed') {
                 throw ValidationException::withMessages([
-                    'transfer' => 'La transferencia solo puede completarse desde la recepción de la bodega destino.',
+                    'transfer' => 'La transferencia solo puede completarse desde la recepción del destino.',
                 ]);
             }
 
@@ -113,9 +110,7 @@ class Transfer extends Model
         });
 
         static::saved(function (Transfer $transfer) {
-            if (! Schema::hasColumn('transfers', 'logistics_status')) {
-                return;
-            }
+            if (! Schema::hasColumn('transfers', 'logistics_status')) return;
 
             $actorId = auth()->id() ?: $transfer->user_id;
 
@@ -137,22 +132,25 @@ class Transfer extends Model
 
             if ($transfer->isApproved() && $transfer->statut === 'sent') {
                 $fresh = $transfer->fresh();
-
-                // The legacy approval controller performs the source movement before
-                // saving approval_status. This integrity gate executes inside the same
-                // database transaction: any insufficient aggregate/batch stock throws
-                // and rolls the entire approval/dispatch back atomically.
                 app(TransferDispatchGuardService::class)->finalizeDispatch($fresh);
-
-                // Logistics metadata is written through the query builder, making this
-                // synchronization idempotent and avoiding model-event recursion.
                 app(TransferLogisticsService::class)->syncDispatchState($fresh, auth()->user());
             }
         });
     }
 
-    protected static function assertDifferentWarehouses(Transfer $transfer): void
+    protected static function assertDifferentOrigins(Transfer $transfer): void
     {
+        // New location-aware transfers may share the same legacy CD anchor. What
+        // matters physically is that their inventory locations are different.
+        if ($transfer->from_inventory_location_id && $transfer->to_inventory_location_id) {
+            if ((int) $transfer->from_inventory_location_id === (int) $transfer->to_inventory_location_id) {
+                throw ValidationException::withMessages([
+                    'transfer' => 'La ubicación de inventario de origen y destino deben ser diferentes.',
+                ]);
+            }
+            return;
+        }
+
         if ($transfer->from_warehouse_id
             && $transfer->to_warehouse_id
             && (int) $transfer->from_warehouse_id === (int) $transfer->to_warehouse_id) {
@@ -162,52 +160,19 @@ class Transfer extends Model
         }
     }
 
-    public function user()
-    {
-        return $this->belongsTo('App\Models\User');
-    }
+    public function user() { return $this->belongsTo('App\Models\User'); }
+    public function details() { return $this->hasMany('App\Models\TransferDetail'); }
+    public function receipts() { return $this->hasMany(TransferReceipt::class); }
+    public function from_warehouse() { return $this->belongsTo('App\Models\Warehouse', 'from_warehouse_id'); }
+    public function to_warehouse() { return $this->belongsTo('App\Models\Warehouse', 'to_warehouse_id'); }
+    public function fromInventoryLocation() { return $this->belongsTo(InventoryLocation::class, 'from_inventory_location_id'); }
+    public function toInventoryLocation() { return $this->belongsTo(InventoryLocation::class, 'to_inventory_location_id'); }
+    public function dispatchedBy() { return $this->belongsTo(User::class, 'dispatched_by_user_id'); }
+    public function receivedBy() { return $this->belongsTo(User::class, 'received_by_user_id'); }
 
-    public function details()
-    {
-        return $this->hasMany('App\Models\TransferDetail');
-    }
-
-    public function receipts()
-    {
-        return $this->hasMany(TransferReceipt::class);
-    }
-
-    public function from_warehouse()
-    {
-        return $this->belongsTo('App\Models\Warehouse', 'from_warehouse_id');
-    }
-
-    public function to_warehouse()
-    {
-        return $this->belongsTo('App\Models\Warehouse', 'to_warehouse_id');
-    }
-
-    public function dispatchedBy()
-    {
-        return $this->belongsTo(User::class, 'dispatched_by_user_id');
-    }
-
-    public function receivedBy()
-    {
-        return $this->belongsTo(User::class, 'received_by_user_id');
-    }
-
-    /**
-     * Accessor to ensure OLD TRANSFERS SAFETY:
-     * any existing row with a NULL approval_status is treated as "approved".
-     */
     public function getApprovalStatusAttribute($value)
     {
-        if ($value === null) {
-            return 'approved';
-        }
-
-        return $value;
+        return $value === null ? 'approved' : $value;
     }
 
     public function isApproved()
