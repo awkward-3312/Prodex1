@@ -49,12 +49,8 @@ class PosLocationCatalogController extends BaseController
             ->whereNull('deleted_at')
             ->where('not_selling', 0);
 
-        if ($request->filled('category_id')) {
-            $productsQuery->where('category_id', (int) $request->category_id);
-        }
-        if ($request->filled('brand_id')) {
-            $productsQuery->where('brand_id', (int) $request->brand_id);
-        }
+        if ($request->filled('category_id')) $productsQuery->where('category_id', (int) $request->category_id);
+        if ($request->filled('brand_id')) $productsQuery->where('brand_id', (int) $request->brand_id);
 
         if ($request->input('product_combo') === '1') {
             $productsQuery->whereIn('type', ['is_combo', 'is_single', 'is_variant', 'is_service']);
@@ -81,14 +77,14 @@ class PosLocationCatalogController extends BaseController
             if ($variants->isNotEmpty()) {
                 foreach ($variants as $variant) {
                     $stock = $stocks->get($this->stockKey((int) $product->id, (int) $variant->id));
-                    $row = $this->formatRow($product, $variant, $stock, []);
+                    $row = $this->formatRow($product, $variant, $stock, [], (int) $location->id);
                     if ($this->includeRow($row, $stockOnly, $allowOverselling)) $rows[] = $row;
                 }
                 continue;
             }
 
             $stock = $stocks->get($this->stockKey((int) $product->id, null));
-            $row = $this->formatRow($product, null, $stock, $packsByProduct[$product->id] ?? []);
+            $row = $this->formatRow($product, null, $stock, $packsByProduct[$product->id] ?? [], (int) $location->id);
             if ($this->includeRow($row, $stockOnly, $allowOverselling)) $rows[] = $row;
         }
 
@@ -105,18 +101,14 @@ class PosLocationCatalogController extends BaseController
     private function activeVariants(Product $product)
     {
         if (! $product->relationLoaded('variants')) return collect();
-
         return $product->variants
-            ->filter(function ($variant) {
-                return ! isset($variant->deleted_at) || $variant->deleted_at === null;
-            })
+            ->filter(fn ($variant) => ! isset($variant->deleted_at) || $variant->deleted_at === null)
             ->values();
     }
 
     private function packsByProduct(array $productIds): array
     {
         if (! $productIds || ! Schema::hasTable('product_packs')) return [];
-
         $setting = Setting::whereNull('deleted_at')->first();
         if (! (bool) ($setting->enable_multi_pack_selling ?? false)) return [];
 
@@ -135,7 +127,6 @@ class PosLocationCatalogController extends BaseController
                 'is_default' => (bool) $pack->is_default,
             ];
         }
-
         return $out;
     }
 
@@ -144,11 +135,10 @@ class PosLocationCatalogController extends BaseController
         if ($row['product_type'] === 'is_service') return true;
         if (! $stockOnly || $allowOverselling) return true;
         if (($row['manage_stock'] ?? true) === false) return true;
-
         return (float) ($row['available_quantity'] ?? 0) > 0;
     }
 
-    private function formatRow(Product $product, ?ProductVariant $variant, $stock, array $packs): array
+    private function formatRow(Product $product, ?ProductVariant $variant, $stock, array $packs, int $locationId): array
     {
         $isService = $product->type === 'is_service';
         $quantity = $isService ? 0.0 : round((float) ($stock->quantity ?? 0), 3);
@@ -184,19 +174,14 @@ class PosLocationCatalogController extends BaseController
         if ($unit) {
             $value = (float) ($unit->operator_value ?: 1);
             if ($value <= 0) $value = 1;
-            $wholesaleUnitPrice = $unit->operator === '/'
-                ? $baseWholesale / $value
-                : $baseWholesale * $value;
+            $wholesaleUnitPrice = $unit->operator === '/' ? $baseWholesale / $value : $baseWholesale * $value;
         }
 
         $discount = (float) ($product->discount ?? 0);
         $discountMethod = (string) ($product->discount_method ?? '2');
-        $discountAmount = 0.0;
-        if ($discount > 0) {
-            $discountAmount = $discountMethod === '1'
-                ? $salePrice * $discount / 100
-                : $discount;
-        }
+        $discountAmount = $discount > 0
+            ? ($discountMethod === '1' ? $salePrice * $discount / 100 : $discount)
+            : 0.0;
         $discounted = $salePrice - $discountAmount;
 
         $taxPercent = (float) ($product->TaxNet ?? 0);
@@ -210,19 +195,13 @@ class PosLocationCatalogController extends BaseController
             $netPrice = $discounted - $taxPrice;
         }
 
-        $wholesaleDiscount = 0.0;
-        if ($discount > 0) {
-            $wholesaleDiscount = $discountMethod === '1'
-                ? $wholesaleUnitPrice * $discount / 100
-                : $discount;
-        }
+        $wholesaleDiscount = $discount > 0
+            ? ($discountMethod === '1' ? $wholesaleUnitPrice * $discount / 100 : $discount)
+            : 0.0;
         $wholesaleDiscounted = $wholesaleUnitPrice - $wholesaleDiscount;
         $wholesaleTax = $taxPercent > 0 ? $wholesaleDiscounted * $taxPercent / 100 : 0.0;
-        $wholesaleNet = $taxMethod === '1'
-            ? $wholesaleDiscounted + $wholesaleTax
-            : $wholesaleDiscounted;
+        $wholesaleNet = $taxMethod === '1' ? $wholesaleDiscounted + $wholesaleTax : $wholesaleDiscounted;
 
-        $image = $product->primaryProductImageFilename();
         $name = $variant ? '['.$variant->name.']'.$product->name : $product->name;
         $code = $variant ? $variant->code : $product->code;
 
@@ -234,7 +213,7 @@ class PosLocationCatalogController extends BaseController
             'name' => (string) $name,
             'code' => (string) $code,
             'barcode' => (string) $code,
-            'image' => $image,
+            'image' => $product->primaryProductImageFilename(),
             'product_type' => (string) $product->type,
             'is_imei' => (bool) $product->is_imei,
             'is_batch_tracked' => (bool) ($product->is_batch_tracked ?? false),
@@ -246,6 +225,8 @@ class PosLocationCatalogController extends BaseController
             'discount_method' => $discountMethod,
             'discount_Method' => $discountMethod,
             'discount' => $discount,
+            // qte is deliberately sellable physical stock, not total physical stock;
+            // reserved stock must never become available through unit conversion.
             'qte' => $isService ? '---' : $available,
             'physical_quantity' => $isService ? '---' : $quantity,
             'reserved_quantity' => $reserved,
@@ -263,7 +244,7 @@ class PosLocationCatalogController extends BaseController
             'Net_price' => $netPrice,
             'tax_price' => $taxPrice,
             'Total_price' => $totalPrice,
-            'inventory_location_id' => (int) ($stock->inventory_location_id ?? 0),
+            'inventory_location_id' => $locationId,
             'stock_source' => 'inventory_location',
         ];
     }
