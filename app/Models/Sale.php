@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PosLocationSaleStockService;
 use App\Services\PosLocationStockBridge;
 use App\Services\PosOperationalContextService;
 use Illuminate\Database\Eloquent\Model;
@@ -55,76 +56,22 @@ class Sale extends Model
         'woocommerce_order_id' => 'integer',
     ];
 
-    public function subscription()
-    {
-        return $this->belongsTo(Subscription::class, 'subscription_id');
-    }
-
-    public function user()
-    {
-        return $this->belongsTo('App\Models\User');
-    }
-
-    public function details()
-    {
-        return $this->hasMany('App\Models\SaleDetail');
-    }
-
-    public function saleDetails()
-    {
-        return $this->hasMany('App\Models\SaleDetail');
-    }
-
-    public function client()
-    {
-        return $this->belongsTo('App\Models\Client');
-    }
-
-    public function facture()
-    {
-        return $this->hasMany('App\Models\PaymentSale');
-    }
+    public function subscription() { return $this->belongsTo(Subscription::class, 'subscription_id'); }
+    public function user() { return $this->belongsTo('App\Models\User'); }
+    public function details() { return $this->hasMany('App\Models\SaleDetail'); }
+    public function saleDetails() { return $this->hasMany('App\Models\SaleDetail'); }
+    public function client() { return $this->belongsTo('App\Models\Client'); }
+    public function facture() { return $this->hasMany('App\Models\PaymentSale'); }
 
     /** Legacy warehouse relation retained during inventory cutover. */
-    public function warehouse()
-    {
-        return $this->belongsTo('App\Models\Warehouse');
-    }
-
-    public function branch()
-    {
-        return $this->belongsTo(Branch::class, 'branch_id');
-    }
-
-    public function inventoryLocation()
-    {
-        return $this->belongsTo(InventoryLocation::class, 'inventory_location_id');
-    }
-
-    public function cashDrawer()
-    {
-        return $this->belongsTo(CashDrawer::class, 'cash_drawer_id');
-    }
-
-    public function salesAgent()
-    {
-        return $this->belongsTo('App\Models\SalesAgent', 'sales_agent_id');
-    }
-
-    public function saleCommissions()
-    {
-        return $this->hasMany('App\Models\SaleCommission', 'sale_id');
-    }
-
-    public function documents()
-    {
-        return $this->hasMany('App\Models\SaleDocument', 'sale_id');
-    }
-
-    public function sarFiscalDocument()
-    {
-        return $this->hasOne(SarFiscalDocument::class, 'sale_id');
-    }
+    public function warehouse() { return $this->belongsTo('App\Models\Warehouse'); }
+    public function branch() { return $this->belongsTo(Branch::class, 'branch_id'); }
+    public function inventoryLocation() { return $this->belongsTo(InventoryLocation::class, 'inventory_location_id'); }
+    public function cashDrawer() { return $this->belongsTo(CashDrawer::class, 'cash_drawer_id'); }
+    public function salesAgent() { return $this->belongsTo('App\Models\SalesAgent', 'sales_agent_id'); }
+    public function saleCommissions() { return $this->hasMany('App\Models\SaleCommission', 'sale_id'); }
+    public function documents() { return $this->hasMany('App\Models\SaleDocument', 'sale_id'); }
+    public function sarFiscalDocument() { return $this->hasOne(SarFiscalDocument::class, 'sale_id'); }
 
     protected static function booted()
     {
@@ -166,12 +113,23 @@ class Sale extends Model
             $sale->cash_drawer_id = $context['cash_drawer_id'] ?? null;
         });
 
+        static::created(function (Sale $sale) {
+            if ((int) $sale->is_pos !== 1 || ! $sale->inventory_location_id || ! $sale->branch_id) return;
+            if (! app()->bound('request')) return;
+
+            $request = request();
+            if (! app(PosLocationStockBridge::class)->isLocationPosRequest($request)) return;
+
+            // This executes inside PosController's surrounding DB transaction.
+            // Any later payment, lot or serial validation failure therefore rolls
+            // the stock movement back together with the sale header.
+            app(PosLocationSaleStockService::class)->apply($sale, $request);
+        });
+
         static::updating(function ($sale) {
             if ($sale->isDirty('quickbooks_invoice_id')) {
                 $original = $sale->getOriginal('quickbooks_invoice_id');
-                if (! empty($original)) {
-                    $sale->quickbooks_invoice_id = $original;
-                }
+                if (! empty($original)) $sale->quickbooks_invoice_id = $original;
             }
         });
     }
