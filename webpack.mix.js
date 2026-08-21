@@ -35,6 +35,7 @@ mix.js('resources/src/main.js', 'public')
     .copy('resources/static/prodex-sidebar-reopen.js', 'public/js/prodex-sidebar-reopen.js')
     .copy('resources/static/prodex-transfer-logistics.js', 'public/js/prodex-transfer-logistics.js')
     .copy('resources/static/prodex-transfer-permission-ui.js', 'public/js/prodex-transfer-permission-ui.js')
+    .copy('resources/static/prodex-transfer-issues.js', 'public/js/prodex-transfer-issues.js')
     .vue()
 
 mix.webpackConfig({
