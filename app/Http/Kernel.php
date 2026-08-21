@@ -112,6 +112,8 @@ class Kernel extends HttpKernel
         'tenant.subscribed' => \App\Http\Middleware\EnsureActiveSubscription::class,
         // Tenant: track last activity timestamp
         'tenant.activity' => \App\Http\Middleware\TrackTenantActivity::class,
+        // Transfer logistics: serialize approvals against source stock rows.
+        'transfer.dispatch.lock' => \App\Http\Middleware\LockTransferDispatchStock::class,
 
     ];
 }
