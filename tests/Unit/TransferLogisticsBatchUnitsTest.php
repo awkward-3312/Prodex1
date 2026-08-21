@@ -32,6 +32,7 @@ class TransferLogisticsBatchUnitsTest extends TestCase
             'id' => 1,
             'name' => 'Producto por caja',
             'code' => 'BOX-1',
+            'unit_purchase_id' => $unitId,
             'is_batch_tracked' => 1,
         ]);
 
@@ -67,7 +68,10 @@ class TransferLogisticsBatchUnitsTest extends TestCase
         $detailId = DB::table('transfer_details')->insertGetId([
             'transfer_id' => $transferId,
             'product_id' => 1,
-            'purchase_unit_id' => $unitId,
+            // Deliberately null: production legacy rows can inherit the purchase
+            // unit from products.unit_purchase_id and both dispatch + receiving
+            // must resolve that fallback identically.
+            'purchase_unit_id' => null,
             'quantity' => 2, // 2 boxes = 24 base units
             'cost' => 5,
             'total' => 10,
@@ -135,6 +139,7 @@ class TransferLogisticsBatchUnitsTest extends TestCase
             $t->increments('id');
             $t->string('name')->nullable();
             $t->string('code')->nullable();
+            $t->integer('unit_purchase_id')->nullable();
             $t->boolean('is_batch_tracked')->default(false);
             $t->timestamps();
             $t->softDeletes();
