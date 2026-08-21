@@ -23,6 +23,9 @@ return new class extends Migration
             });
         }
 
+        // Issue resolution is also deliberately separate from ordinary transfer
+        // editing. The permission exists after migration but must be assigned to a
+        // manager/administrator role explicitly.
         if (Schema::hasTable('permissions')) {
             $permissionId = DB::table('permissions')->where('name', 'transfer_issue_manage')->value('id');
             if (! $permissionId) {
@@ -37,21 +40,7 @@ return new class extends Migration
                 if (Schema::hasColumn('permissions', 'updated_at')) {
                     $payload['updated_at'] = now();
                 }
-                $permissionId = DB::table('permissions')->insertGetId($payload);
-            }
-
-            // Backward-compatible rollout: roles that can edit transfers initially
-            // receive incidence-management permission. Administrators can separate it later.
-            if (Schema::hasTable('permission_role')) {
-                $editPermissionId = DB::table('permissions')->where('name', 'transfer_edit')->value('id');
-                if ($editPermissionId) {
-                    foreach (DB::table('permission_role')->where('permission_id', $editPermissionId)->pluck('role_id') as $roleId) {
-                        DB::table('permission_role')->updateOrInsert(
-                            ['permission_id' => $permissionId, 'role_id' => $roleId],
-                            []
-                        );
-                    }
-                }
+                DB::table('permissions')->insert($payload);
             }
         }
     }
