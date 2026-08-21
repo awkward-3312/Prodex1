@@ -3,8 +3,8 @@ import store from "./store";
 import Vue from "vue";
 import router, { setupRouterGuards } from "./router";
 
-// Organization routes are registered here to keep the very large legacy router
-// stable while the new organization module is introduced incrementally.
+// New organization/operations routes are registered here to avoid destabilizing
+// the very large legacy router while these modules are introduced incrementally.
 router.addRoutes([
   {
     path: "/app/organization",
@@ -19,6 +19,17 @@ router.addRoutes([
         path: "employee-access",
         name: "organization_employee_access",
         component: () => import("./views/app/pages/organization/employee_access"),
+      },
+    ],
+  },
+  {
+    path: "/app/operations",
+    component: () => import("./views/app"),
+    children: [
+      {
+        path: "stock-intake",
+        name: "stock_intake",
+        component: () => import("./views/app/pages/inventory/stock_intake"),
       },
     ],
   },
