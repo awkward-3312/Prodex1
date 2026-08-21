@@ -59,6 +59,7 @@ jobs:
           php -l app/Http/Controllers/TransferDiscrepancyController.php
           php -l app/Services/TransferLogisticsService.php
           php -l app/Services/SafeTransferLogisticsService.php
+          php -l app/Services/IdempotentTransferLogisticsService.php
           php -l app/Services/TransferDispatchGuardService.php
           php -l app/Models/Transfer.php
           php -l app/Models/TransferDetail.php
@@ -71,6 +72,7 @@ jobs:
           php -l database/migrations/tenant/2026_08_20_220100_add_transfer_receipt_batch_allocations.php
           php -l database/migrations/tenant/2026_08_20_220200_add_transfer_discrepancy_resolution_workflow.php
           php -l database/migrations/tenant/2026_08_20_220300_normalize_pending_transfer_logistics.php
+          php -l database/migrations/tenant/2026_08_20_220400_add_transfer_receipt_idempotency.php
           php -l tests/Unit/TransferLogisticsServiceTest.php
           php -l tests/Unit/TransferLogisticsBatchUnitsTest.php
 
@@ -87,6 +89,7 @@ jobs:
         run: npm ci
       - name: Check standalone transfer scripts
         run: |
+          node --check resources/static/prodex-transfer-idempotency.js
           node --check resources/static/prodex-transfer-logistics.js
           node --check resources/static/prodex-transfer-permission-ui.js
           node --check resources/static/prodex-transfer-issues.js
