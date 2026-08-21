@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use App\Models\Central\GeneralSetting;
 use App\Models\Setting;
-use App\Services\SafeTransferLogisticsService;
+use App\Services\IdempotentTransferLogisticsService;
 use App\Services\TenantLimitsService;
 use App\Services\TransferLogisticsService;
 use App\Tenant;
@@ -30,9 +30,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(TenantLimitsService::class);
 
         // Keep the public service contract stable while using the hardened
-        // implementation that keeps aggregate stock and per-batch stock in the
-        // same base units during transfer receiving.
-        $this->app->singleton(TransferLogisticsService::class, SafeTransferLogisticsService::class);
+        // implementation that aligns aggregate/batch units and makes physical
+        // receiving safe to retry after double-clicks or connection loss.
+        $this->app->singleton(TransferLogisticsService::class, IdempotentTransferLogisticsService::class);
     }
 
     /**
