@@ -10,7 +10,6 @@ use App\Services\BatchService;
 use App\Services\TransferLogisticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class TransferLogisticsController extends Controller
 {
@@ -84,9 +83,24 @@ class TransferLogisticsController extends Controller
             $validated['notes'] ?? null
         );
 
+        // Once the shipment is fully accounted for, no other authorized receiver
+        // should keep seeing a stale "en camino" unread alert. Partial receipts stay
+        // visible to every receiver because more physical stock is still outstanding.
+        if (in_array($updated->logistics_status, ['received', 'received_with_issues'], true)) {
+            DB::table('transfer_notifications')
+                ->where('transfer_id', $updated->id)
+                ->where('type', 'incoming_transfer')
+                ->whereNull('read_at')
+                ->update(['read_at' => now(), 'updated_at' => now()]);
+        }
+
         return response()->json([
             'success' => true,
             'transfer' => $this->summary($updated, $user),
+            'open_discrepancies' => DB::table('transfer_discrepancies')
+                ->where('transfer_id', $updated->id)
+                ->where('resolution_status', 'open')
+                ->count(),
         ]);
     }
 
@@ -104,6 +118,7 @@ class TransferLogisticsController extends Controller
             ->get([
                 'transfer_notifications.id',
                 'transfer_notifications.transfer_id',
+                'transfer_notifications.type',
                 'transfer_notifications.title',
                 'transfer_notifications.message',
                 'transfer_notifications.read_at',
