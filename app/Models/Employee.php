@@ -15,12 +15,13 @@ class Employee extends Model
         'id', 'firstname', 'lastname', 'username', 'email', 'gender', 'phone', 'remaining_leave', 'total_leave',
         'birth_date', 'department_id', 'designation_id', 'office_shift_id', 'joining_date',
         'leaving_date', 'marital_status', 'employment_type', 'city', 'province', 'zipcode', 'address', 'resume', 'avatar', 'document',
-        'country', 'company_id', 'facebook', 'skype', 'whatsapp', 'twitter', 'linkedin', 'hourly_rate', 'basic_salary',
+        'country', 'company_id', 'branch_id', 'facebook', 'skype', 'whatsapp', 'twitter', 'linkedin', 'hourly_rate', 'basic_salary',
     ];
 
     protected $casts = [
         'id' => 'integer',
         'company_id' => 'integer',
+        'branch_id' => 'integer',
         'department_id' => 'integer',
         'designation_id' => 'integer',
         'office_shift_id' => 'integer',
@@ -33,6 +34,16 @@ class Employee extends Model
     public function company()
     {
         return $this->hasOne('App\Models\Company', 'id', 'company_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
+    public function user()
+    {
+        return $this->hasOne(User::class, 'employee_id');
     }
 
     public function department()
