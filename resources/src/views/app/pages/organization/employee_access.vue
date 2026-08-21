@@ -8,9 +8,14 @@
           <h4 class="mb-1">Empleados y acceso a PRODEX</h4>
           <p class="text-muted mb-0">El empleado se crea en Gestión de personal. Aquí se crea o vincula su cuenta, se asigna el rol y se limita el alcance operativo por sucursal y bodega.</p>
         </div>
-        <b-button variant="outline-primary" class="mt-2 mt-md-0" @click="$router.push('/app/organization/branches')">
-          <lucide-icon name="building-2" class="mr-1"/> Sucursales
-        </b-button>
+        <div class="mt-2 mt-md-0">
+          <b-button variant="outline-secondary" class="mr-2" @click="openManual">
+            <lucide-icon name="book-open" class="mr-1"/> Ver manual
+          </b-button>
+          <b-button variant="outline-primary" @click="$router.push('/app/organization/branches')">
+            <lucide-icon name="building-2" class="mr-1"/> Sucursales
+          </b-button>
+        </div>
       </div>
     </b-card>
 
@@ -262,6 +267,9 @@ export default {
     },
     editLegacyUser(id) {
       this.$router.push(`/app/User_Management/users/edit/${id}`);
+    },
+    openManual() {
+      this.$router.push({ name: 'KnowledgeBaseList' }).catch(() => {});
     },
   },
 };
