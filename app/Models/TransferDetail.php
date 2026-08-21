@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class TransferDetail extends Model
 {
@@ -24,6 +26,26 @@ class TransferDetail extends Model
         'product_id' => 'integer',
         'product_variant_id' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        $guard = function (TransferDetail $detail) {
+            if (! Schema::hasColumn('transfers', 'logistics_status') || ! $detail->transfer_id) {
+                return;
+            }
+
+            $status = Transfer::whereKey($detail->transfer_id)->value('logistics_status');
+            if (in_array($status, ['in_transit', 'partially_received', 'received', 'received_with_issues'], true)) {
+                throw ValidationException::withMessages([
+                    'transfer' => 'Las líneas de una transferencia despachada ya no pueden modificarse ni eliminarse.',
+                ]);
+            }
+        };
+
+        static::creating($guard);
+        static::updating($guard);
+        static::deleting($guard);
+    }
 
     public function transfer()
     {
