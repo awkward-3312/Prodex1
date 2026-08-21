@@ -66,6 +66,9 @@ class Kernel extends HttpKernel
             // 'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\SetPdfLocale::class,
+            // Constant-time no-op for normal API requests; wraps only
+            // TransferController@approve in source-stock row locks.
+            \App\Http\Middleware\LockTransferDispatchStock::class,
         ],
     ];
 
