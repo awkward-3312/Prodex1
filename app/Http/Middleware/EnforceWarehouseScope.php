@@ -30,6 +30,7 @@ class EnforceWarehouseScope
         $scope = app(WarehouseScopeService::class);
 
         $this->validateRequestSelectors($request, $user, $scope);
+        $this->validateScopeEscalation($request, $user, $scope);
         $this->validateTransferRoute($request, $user, $scope);
 
         return $next($request);
@@ -66,6 +67,54 @@ class EnforceWarehouseScope
                 (int) $request->query('warehouse_id'),
                 'No tienes permiso para consultar esa bodega.'
             );
+        }
+    }
+
+    /**
+     * Prevent a restricted administrator from using legacy user/organization forms
+     * to grant somebody broader warehouse access than the administrator has.
+     *
+     * Several historical endpoints accept arrays named assigned_to or warehouse_ids,
+     * while newer endpoints use scope=all. These values cannot be covered by the
+     * scalar selector validation above, so they are checked explicitly here.
+     */
+    private function validateScopeEscalation(Request $request, $user, WarehouseScopeService $scope): void
+    {
+        if ($request->isMethod('get') || $request->isMethod('head')) {
+            return;
+        }
+
+        $wantsAll = $request->input('scope') === 'all'
+            || $this->truthy($request->input('is_all_warehouses'));
+
+        if ($wantsAll) {
+            throw new AuthorizationException('No puedes conceder acceso global a bodegas desde una cuenta con alcance restringido.');
+        }
+
+        $allowed = $scope->allowedWarehouseIds($user);
+        foreach (['assigned_to', 'warehouse_ids'] as $key) {
+            if (! $request->has($key)) {
+                continue;
+            }
+
+            $requested = $request->input($key);
+            if ($requested === null || $requested === '') {
+                continue;
+            }
+
+            if (! is_array($requested)) {
+                $requested = [$requested];
+            }
+
+            foreach ($requested as $warehouseId) {
+                if ($warehouseId === null || $warehouseId === '' || ! is_numeric($warehouseId)) {
+                    continue;
+                }
+
+                if (! in_array((int) $warehouseId, $allowed, true)) {
+                    throw new AuthorizationException('No puedes asignar una bodega fuera de tu propio alcance operativo.');
+                }
+            }
         }
     }
 
@@ -109,6 +158,23 @@ class EnforceWarehouseScope
         if (in_array($method, $sourceMutationMethods, true) && ! $sourceAllowed) {
             throw new AuthorizationException('Solo usuarios con acceso a la bodega de origen pueden modificar o aprobar esta transferencia.');
         }
+    }
+
+    private function truthy($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (int) $value === 1;
+        }
+
+        if (! is_string($value)) {
+            return false;
+        }
+
+        return in_array(strtolower(trim($value)), ['1', 'true', 'yes', 'on'], true);
     }
 
     private function walk(array $data, callable $callback): void
