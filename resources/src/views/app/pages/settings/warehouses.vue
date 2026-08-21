@@ -1,156 +1,78 @@
 <template>
   <div class="main-content">
-    <breadcumb :page="$t('Warehouses')" :folder="$t('Settings')"/>
+    <breadcumb page="Almacenes / CD" :folder="$t('Settings')"/>
 
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="warehouses"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        enabled: true,
-        placeholder: $t('Search_this_table'),  
-      }"
-        :select-options="{ 
-          enabled: true ,
-          clearSelectionText: '',
-        }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="selected-row-actions">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button
-            @click="New_Warehouse()"
-            class="btn-rounded"
-            variant="btn btn-primary btn-icon m-1"
-          >
-            <lucide-icon name="plus" />
-            {{$t('Add')}}
+
+    <template v-else>
+      <b-card class="mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-start">
+          <div>
+            <h4 class="mb-1">Almacenes y centros de distribución</h4>
+            <p class="text-muted mb-0">Un almacén/CD es una instalación logística independiente. Las bodegas internas de una sucursal se crean como ubicaciones de inventario dentro de esa sucursal y no consumen otro almacén del plan.</p>
+          </div>
+          <b-button @click="New_Warehouse" class="btn-rounded mt-2 mt-md-0" variant="primary">
+            <lucide-icon name="plus" class="mr-1" /> Nuevo almacén / CD
           </b-button>
         </div>
+      </b-card>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <router-link
-              :to="{ name: 'Warehouse_Locations', query: { warehouse_id: props.row.id } }"
-              title="Locations"
-              v-b-tooltip.hover
-              class="mr-2"
-            >
-              <lucide-icon class="text-25 text-primary" name="map-pin" />
-            </router-link>
-            <a @click="Edit_Warehouse(props.row)" title="Edit" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a title="Delete" v-b-tooltip.hover @click="Remove_Warehouse(props.row.id)">
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+      <b-card class="wrapper">
+        <vue-good-table
+          mode="remote"
+          :columns="columns"
+          :totalRows="totalRows"
+          :rows="warehouses"
+          @on-page-change="onPageChange"
+          @on-per-page-change="onPerPageChange"
+          @on-sort-change="onSortChange"
+          @on-search="onSearch"
+          :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
+          :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
+          styleClass="table-hover tableOne vgt-table"
+        >
+          <template slot="table-row" slot-scope="props">
+            <span v-if="props.column.field === 'default_inventory_location'">
+              {{ props.row.default_inventory_location ? props.row.default_inventory_location.name : 'Pendiente de inicializar' }}
+            </span>
+            <span v-else-if="props.column.field === 'actions'">
+              <a @click="Edit_Warehouse(props.row)" title="Editar" v-b-tooltip.hover class="mr-2 cursor-pointer">
+                <lucide-icon class="text-25 text-success" name="pencil" />
+              </a>
+              <a title="Desactivar" v-b-tooltip.hover @click="Remove_Warehouse(props.row.id)" class="cursor-pointer">
+                <lucide-icon class="text-25 text-danger" name="archive" />
+              </a>
+            </span>
+          </template>
+        </vue-good-table>
+      </b-card>
+    </template>
 
     <validation-observer ref="Create_Warehouse">
-      <b-modal hide-footer size="lg" id="New_Warehouse" :title="editmode?$t('Edit'):$t('Add')">
+      <b-modal hide-footer size="lg" id="New_Warehouse" :title="editmode ? 'Editar almacén / CD' : 'Nuevo almacén / CD'">
+        <b-alert show variant="light" class="border">
+          PRODEX creará una ubicación logística “Inventario principal”. Este almacén/CD no pertenece a una sucursal.
+        </b-alert>
         <b-form @submit.prevent="Submit_Warehouse">
           <b-row>
-            <!-- Name -->
             <b-col md="6">
-              <validation-provider
-                name="Name"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Name') + ' ' + '*'">
-                  <b-form-input
-                    :placeholder="$t('Enter_Name_Warehouse')"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Name-feedback"
-                    label="Name"
-                    v-model="warehouse.name"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+              <validation-provider name="Nombre" :rules="{ required: true }" v-slot="validationContext">
+                <b-form-group label="Nombre *">
+                  <b-form-input placeholder="Ej. Centro de distribución principal" :state="getValidationState(validationContext)" v-model.trim="warehouse.name" />
+                  <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
               </validation-provider>
             </b-col>
-
-            <!-- Phone -->
-            <b-col md="6">
-                <b-form-group :label="$t('Phone')">
-                  <b-form-input
-                    :placeholder="$t('Enter_Phone_Warehouse')"
-                    label="Phone"
-                    v-model="warehouse.mobile"
-                  ></b-form-input>
-                </b-form-group>
+            <b-col md="6"><b-form-group label="Teléfono"><b-form-input v-model.trim="warehouse.mobile" /></b-form-group></b-col>
+            <b-col md="6"><b-form-group label="País"><b-form-input v-model.trim="warehouse.country" /></b-form-group></b-col>
+            <b-col md="6"><b-form-group label="Ciudad"><b-form-input v-model.trim="warehouse.city" /></b-form-group></b-col>
+            <b-col md="6"><b-form-group label="Correo"><b-form-input type="email" v-model.trim="warehouse.email" /></b-form-group></b-col>
+            <b-col md="6"><b-form-group label="Código postal"><b-form-input v-model.trim="warehouse.zip" /></b-form-group></b-col>
+            <b-col md="12" class="mt-3 text-right">
+              <b-button variant="outline-secondary" class="mr-2" @click="$bvModal.hide('New_Warehouse')">Cancelar</b-button>
+              <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="mr-1" name="check" /> Guardar</b-button>
+              <div v-if="SubmitProcessing" class="spinner sm spinner-primary mt-3"></div>
             </b-col>
-
-            <!-- Country -->
-            <b-col md="6">
-                <b-form-group :label="$t('Country')">
-                  <b-form-input
-                    :placeholder="$t('Enter_Country_Warehouse')"
-                    label="Country"
-                    v-model="warehouse.country"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- City -->
-            <b-col md="6">
-                <b-form-group :label="$t('City')">
-                  <b-form-input
-                    :placeholder="$t('Enter_City_Warehouse')"
-                    label="City"
-                    v-model="warehouse.city"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
-
-            <!-- Email -->
-            <b-col md="6">
-              <b-form-group :label="$t('Email')">
-                <b-form-input
-                  :placeholder="$t('Enter_Email_Warehouse')"
-                  label="Email"
-                  v-model="warehouse.email"
-                ></b-form-input>
-              </b-form-group>
-            </b-col>
-
-            <!-- Zip Code -->
-            <b-col md="6">
-              <b-form-group :label="$t('ZipCode')">
-                <b-form-input
-                  :placeholder="$t('Enter_ZipCode_Warehouse')"
-                  label="ZipCode"
-                  v-model="warehouse.zip"
-                ></b-form-input>
-              </b-form-group>
-            </b-col>
-
-            <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
-
           </b-row>
         </b-form>
       </b-modal>
@@ -162,388 +84,77 @@
 import NProgress from "nprogress";
 
 export default {
-  metaInfo: {
-    title: "Warehouse"
-  },
+  metaInfo: { title: "Almacenes / CD" },
   data() {
     return {
       isLoading: true,
-      SubmitProcessing:false,
-      serverParams: {
-        columnFilters: {},
-        sort: {
-          field: "id",
-          type: "desc"
-        },
-        page: 1,
-        perPage: 10
-      },
-      selectedIds: [],
-      totalRows: "",
+      SubmitProcessing: false,
+      serverParams: { sort: { field: "id", type: "desc" }, page: 1, perPage: 10 },
+      totalRows: 0,
       search: "",
-      limit: "10",
+      limit: 10,
       warehouses: [],
       editmode: false,
-      warehouse: {
-        id: "",
-        name: "",
-        mobile: "",
-        email: "",
-        zip: "",
-        country: "",
-        city: ""
-      }
+      warehouse: this.emptyWarehouse()
     };
   },
-
   computed: {
     columns() {
       return [
-        {
-          label: this.$t("Name"),
-          field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Phone"),
-          field: "mobile",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Country"),
-          field: "country",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("City"),
-          field: "city",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Email"),
-          field: "email",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("ZipCode"),
-          field: "zip",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { label: "Nombre", field: "name", tdClass: "text-left", thClass: "text-left" },
+        { label: "Ciudad", field: "city", tdClass: "text-left", thClass: "text-left" },
+        { label: "País", field: "country", tdClass: "text-left", thClass: "text-left" },
+        { label: "Inventario principal", field: "default_inventory_location", sortable: false },
+        { label: "Correo", field: "email", tdClass: "text-left", thClass: "text-left" },
+        { label: "Acciones", field: "actions", sortable: false, tdClass: "text-left", thClass: "text-left" }
       ];
     }
   },
-
   methods: {
-    //---- update Params Table
-    updateParams(newProps) {
-      this.serverParams = Object.assign({}, this.serverParams, newProps);
-    },
-
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Warehouses(currentPage);
-      }
-    },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Warehouses(1);
-      }
-    },
-
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
-    },
-
-    //---- Event Sort Change
-
-    onSortChange(params) {
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
-      this.Get_Warehouses(this.serverParams.page);
-    },
-
-    //---- Event Search
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Warehouses(this.serverParams.page);
-    },
-
-    //---- Validation State Form
-    getValidationState({ dirty, validated, valid = null }) {
-      return dirty || validated ? valid : null;
-    },
-
-    //------------- Submit Validation Create & Edit Warehouse
-    Submit_Warehouse() {
-      this.$refs.Create_Warehouse.validate().then(success => {
-        if (!success) {
-          this.makeToast(
-            "danger",
-            this.$t("Please_fill_the_form_correctly"),
-            this.$t("Failed")
-          );
-        } else {
-          if (!this.editmode) {
-            this.Create_Warehouse();
-          } else {
-            this.Update_Warehouse();
-          }
-        }
-      });
-    },
-
-    //------ Toast
-    makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
-        title: title,
-        variant: variant,
-        solid: true
-      });
-    },
-
-    //------------------------------ Modal (create Warehouse) -------------------------------\\
-    New_Warehouse() {
-      this.reset_Form();
-      this.editmode = false;
-      this.$bvModal.show("New_Warehouse");
-    },
-
-    //------------------------------ Modal (Update Warehouse) -------------------------------\\
-    Edit_Warehouse(warehouse) {
-      this.Get_Warehouses(this.serverParams.page);
-      this.reset_Form();
-      this.warehouse = warehouse;
+    emptyWarehouse() { return { id: null, name: "", mobile: "", email: "", zip: "", country: "Honduras", city: "" }; },
+    updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
+    onPageChange({ currentPage }) { if (this.serverParams.page !== currentPage) { this.updateParams({ page: currentPage }); this.Get_Warehouses(currentPage); } },
+    onPerPageChange({ currentPerPage }) { if (this.limit !== currentPerPage) { this.limit = currentPerPage; this.updateParams({ page: 1, perPage: currentPerPage }); this.Get_Warehouses(1); } },
+    onSortChange(params) { this.updateParams({ sort: { type: params[0].type, field: params[0].field } }); this.Get_Warehouses(this.serverParams.page); },
+    onSearch(value) { this.search = value.searchTerm; this.Get_Warehouses(1); },
+    getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
+    toast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }); },
+    Submit_Warehouse() { this.$refs.Create_Warehouse.validate().then(success => { if (!success) return this.toast("danger", "Completa los campos obligatorios.", "Error"); this.editmode ? this.Update_Warehouse() : this.Create_Warehouse(); }); },
+    New_Warehouse() { this.warehouse = this.emptyWarehouse(); this.editmode = false; this.$bvModal.show("New_Warehouse"); },
+    Edit_Warehouse(row) {
+      this.warehouse = { id: row.id, name: row.name || "", mobile: row.mobile || "", email: row.email || "", zip: row.zip || "", country: row.country || "", city: row.city || "" };
       this.editmode = true;
       this.$bvModal.show("New_Warehouse");
     },
-
-    //--------------------------Get ALL warehouses ---------------------------\\
-
-    Get_Warehouses(page) {
-      // Start the progress bar.
+    async Get_Warehouses(page) {
       NProgress.start();
-      NProgress.set(0.1);
-      axios
-        .get(
-          "warehouses?page=" +
-            page +
-            "&SortField=" +
-            this.serverParams.sort.field +
-            "&SortType=" +
-            this.serverParams.sort.type +
-            "&search=" +
-            this.search +
-            "&limit=" +
-            this.limit
-        )
-        .then(response => {
-          this.warehouses = response.data.warehouses;
-          this.totalRows = response.data.totalRows;
-
-          // Complete the animation of theprogress bar.
-          NProgress.done();
-          this.isLoading = false;
-        })
-        .catch(response => {
-          // Complete the animation of theprogress bar.
-          NProgress.done();
-          setTimeout(() => {
-            this.isLoading = false;
-          }, 500);
-        });
+      try {
+        const { data } = await axios.get("warehouses", { params: { page, SortField: this.serverParams.sort.field, SortType: this.serverParams.sort.type, search: this.search, limit: this.limit } });
+        this.warehouses = data.warehouses || [];
+        this.totalRows = data.totalRows || 0;
+      } finally { this.isLoading = false; NProgress.done(); }
     },
-
-    //------------------------------- Create Warehouse ------------------------\\
-    Create_Warehouse() {
+    payload() { return { name: this.warehouse.name, mobile: this.warehouse.mobile || null, email: this.warehouse.email || null, zip: this.warehouse.zip || null, country: this.warehouse.country || null, city: this.warehouse.city || null }; },
+    async Create_Warehouse() {
       this.SubmitProcessing = true;
-      axios
-        .post("warehouses", {
-          name: this.warehouse.name,
-          mobile: this.warehouse.mobile,
-          email: this.warehouse.email,
-          zip: this.warehouse.zip,
-          country: this.warehouse.country,
-          city: this.warehouse.city
-        })
-        .then(response => {
-          this.SubmitProcessing = false;
-          Fire.$emit("Event_Warehouse");
-          this.makeToast(
-            "success",
-            this.$t("Successfully_Created"),
-            this.$t("Success")
-          );
-        })
-        .catch(error => {
-          this.SubmitProcessing = false;
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-        });
+      try { await axios.post("warehouses", this.payload()); this.$bvModal.hide("New_Warehouse"); this.toast("success", "Almacén/CD creado correctamente.", "Éxito"); await this.Get_Warehouses(1); }
+      catch (error) { this.toast("danger", (error.response && error.response.data && error.response.data.message) || "No se pudo crear el almacén/CD.", "Error"); }
+      finally { this.SubmitProcessing = false; }
     },
-
-    //------------------------------- Update Warehouse ------------------------\\
-    Update_Warehouse() {
+    async Update_Warehouse() {
       this.SubmitProcessing = true;
-      axios
-        .put("warehouses/" + this.warehouse.id, {
-          name: this.warehouse.name,
-          mobile: this.warehouse.mobile,
-          email: this.warehouse.email,
-          zip: this.warehouse.zip,
-          country: this.warehouse.country,
-          city: this.warehouse.city
-        })
-        .then(response => {
-          this.SubmitProcessing = false;
-          Fire.$emit("Event_Warehouse");
-
-          this.makeToast(
-            "success",
-            this.$t("Successfully_Updated"),
-            this.$t("Success")
-          );
-        })
-        .catch(error => {
-          this.SubmitProcessing = false;
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-        });
+      try { await axios.put("warehouses/" + this.warehouse.id, this.payload()); this.$bvModal.hide("New_Warehouse"); this.toast("success", "Almacén/CD actualizado correctamente.", "Éxito"); await this.Get_Warehouses(this.serverParams.page); }
+      catch (error) { this.toast("danger", (error.response && error.response.data && error.response.data.message) || "No se pudo actualizar el almacén/CD.", "Error"); }
+      finally { this.SubmitProcessing = false; }
     },
-
-    //------------------------------- reset Form ------------------------\\
-    reset_Form() {
-      this.warehouse = {
-        id: "",
-        name: "",
-        mobile: "",
-        email: "",
-        zip: "",
-        country: "",
-        city: ""
-      };
-    },
-
-    //------------------------------- Delete Warehouse ------------------------\\
     Remove_Warehouse(id) {
-      this.$swal({
-        title: this.$t("Delete_Title"),
-        text: this.$t("Delete_Text"),
-        type: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"),
-        confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          axios
-            .delete("warehouses/" + id)
-            .then(() => {
-              this.$swal(
-                this.$t("Delete_Deleted"),
-                this.$t("Deleted_in_successfully"),
-                "success"
-              );
-
-              Fire.$emit("Delete_Warehouse");
-            })
-            .catch(() => {
-              this.$swal(
-                this.$t("Delete_Failed"),
-                this.$t("Delete_Therewassomethingwronge"),
-                "warning"
-              );
-            });
-        }
-      });
-    },
-
-    //---- Delete units by selection
-
-    delete_by_selected() {
-      this.$swal({
-        title: this.$t("Delete_Title"),
-        text: this.$t("Delete_Text"),
-        type: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"),
-        confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          // Start the progress bar.
-          NProgress.start();
-          NProgress.set(0.1);
-          axios
-            .post("warehouses/delete/by_selection", {
-              selectedIds: this.selectedIds
-            })
-            .then(() => {
-              this.$swal(
-                this.$t("Delete_Deleted"),
-                this.$t("Deleted_in_successfully"),
-                "success"
-              );
-
-              Fire.$emit("Delete_Warehouse");
-            })
-            .catch(() => {
-              // Complete the animation of theprogress bar.
-              setTimeout(() => NProgress.done(), 500);
-              this.$swal(
-                this.$t("Delete_Failed"),
-                this.$t("Delete_Therewassomethingwronge"),
-                "warning"
-              );
-            });
-        }
+      this.$swal({ title: "Desactivar almacén / CD", text: "Se conservará el historial. No desactives un almacén con operaciones pendientes.", type: "warning", showCancelButton: true, confirmButtonText: "Desactivar", cancelButtonText: "Cancelar" }).then(async result => {
+        if (!(result.value || result.isConfirmed)) return;
+        try { await axios.delete("warehouses/" + id); this.toast("success", "Almacén/CD desactivado.", "Éxito"); await this.Get_Warehouses(this.serverParams.page); }
+        catch (error) { this.toast("danger", "No se pudo desactivar el almacén/CD.", "Error"); }
       });
     }
   },
-
-  //----------------------------- Created function-------------------\\
-
-  created: function() {
-    this.Get_Warehouses(1);
-
-    Fire.$on("Event_Warehouse", () => {
-      setTimeout(() => {
-        this.Get_Warehouses(this.serverParams.page);
-        this.$bvModal.hide("New_Warehouse");
-      }, 500);
-    });
-
-    Fire.$on("Delete_Warehouse", () => {
-      setTimeout(() => {
-        this.Get_Warehouses(this.serverParams.page);
-      }, 500);
-    });
-  }
+  created() { this.Get_Warehouses(1); }
 };
 </script>
