@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use LogicException;
 
 class InventoryLocationMovement extends Model
 {
@@ -32,6 +33,17 @@ class InventoryLocationMovement extends Model
         'user_id' => 'integer',
         'metadata' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(function () {
+            throw new LogicException('Los movimientos de inventario son inmutables y no pueden editarse.');
+        });
+
+        static::deleting(function () {
+            throw new LogicException('Los movimientos de inventario son inmutables y no pueden eliminarse.');
+        });
+    }
 
     public function fromLocation()
     {
