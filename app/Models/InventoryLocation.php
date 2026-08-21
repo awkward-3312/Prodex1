@@ -65,12 +65,22 @@ class InventoryLocation extends Model
                 ]);
             }
 
-            if ($location->type === self::TYPE_QUARANTINE) {
-                $location->is_quarantine = true;
-                $location->is_sellable = false;
+            if ($location->is_default_sales && ! $hasBranch) {
+                throw ValidationException::withMessages([
+                    'is_default_sales' => 'Solo una ubicación perteneciente a una sucursal puede ser el piso de venta predeterminado.',
+                ]);
             }
 
-            if ($location->is_default_sales) {
+            if ($location->type === self::TYPE_QUARANTINE || $location->is_quarantine) {
+                if ($location->is_default_sales) {
+                    throw ValidationException::withMessages([
+                        'is_default_sales' => 'Una ubicación de cuarentena no puede ser el piso de venta predeterminado.',
+                    ]);
+                }
+
+                $location->is_quarantine = true;
+                $location->is_sellable = false;
+            } elseif ($location->is_default_sales) {
                 $location->is_sellable = true;
             }
         });
