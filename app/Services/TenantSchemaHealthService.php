@@ -42,6 +42,7 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_21_160000_create_inventory_location_stock_engine.php',
         'database/migrations/tenant/2026_08_21_170000_create_inventory_transition_states.php',
         'database/migrations/tenant/2026_08_21_180000_add_branch_inventory_scope_to_users.php',
+        'database/migrations/tenant/2026_08_21_180000_add_inventory_context_to_sale_returns.php',
         'database/migrations/tenant/2026_08_21_181000_backfill_cash_drawer_operational_context.php',
         'database/migrations/tenant/2026_08_21_182000_add_operational_context_to_sales.php',
         'database/migrations/tenant/2026_08_21_183000_add_location_tracking_to_batches_and_serials.php',
@@ -121,7 +122,10 @@ class TenantSchemaHealthService
         $this->requireColumns($schema, $missing, 'sales', [
             'store_credit_amount', 'fiscal_exemption_data', 'branch_id', 'inventory_location_id', 'cash_drawer_id',
         ]);
-        $this->requireColumns($schema, $missing, 'sale_returns', ['refund_mode', 'store_credit_voucher_id', 'store_credit_amount']);
+        $this->requireColumns($schema, $missing, 'sale_returns', [
+            'refund_mode', 'store_credit_voucher_id', 'store_credit_amount',
+            'branch_id', 'inventory_location_id', 'cash_drawer_id',
+        ]);
 
         $this->requireTable($schema, $missing, 'sar_fiscal_profiles');
         $this->requireTable($schema, $missing, 'sar_points_of_issue');
@@ -197,8 +201,6 @@ class TenantSchemaHealthService
             'last_audited_at', 'last_reconciled_at', 'shadow_enabled_at', 'metadata',
         ]);
 
-        // Batch/serial tracking is optional. When a tenant has those modules, their
-        // physical units must be location-aware before the POS can switch sources.
         if ($schema->hasTable('product_batches')) {
             $this->requireTable($schema, $missing, 'product_batch_location_stocks');
             $this->requireColumns($schema, $missing, 'product_batch_location_stocks', [
