@@ -11,6 +11,8 @@ use App\Models\Employee;
 use App\Models\EmployeeAccount;
 use App\Models\EmployeeExperience;
 use App\Models\OfficeShift;
+use App\Models\Warehouse;
+use App\Services\WarehouseScopeService;
 use App\utils\helpers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -20,7 +22,9 @@ class EmployeesController extends Controller
 {
     public function index(Request $request)
     {
-        $this->authorizeForUser($request->user('api'), 'view', Employee::class);
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'view', Employee::class);
+
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
         $offSet = ($pageStart * $perPage) - $perPage;
@@ -39,7 +43,9 @@ class EmployeesController extends Controller
             'designation:id,designation'
         )->whereNull('deleted_at')->whereNull('leaving_date');
 
-        $Filtred = $helpers->filter($employees, $columns, $param, $request)
+        $this->scopeEmployeesToUser($employees, $user);
+
+        $filtered = $helpers->filter($employees, $columns, $param, $request)
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('firstname', 'LIKE', "%{$request->search}%")
@@ -49,13 +55,15 @@ class EmployeesController extends Controller
             });
 
         if ($request->filled('branch_id')) {
-            $employees->where('branch_id', (int) $request->branch_id);
+            $branchId = (int) $request->branch_id;
+            $this->assertBranchAccess($user, $branchId);
+            $filtered->where('branch_id', $branchId);
         }
 
-        $totalRows = $employees->count();
+        $totalRows = $filtered->count();
         if ($perPage == '-1') $perPage = $totalRows;
 
-        $employees = $employees->offset($offSet)->limit($perPage)->orderBy($order, $dir)->get();
+        $employees = $filtered->offset($offSet)->limit($perPage)->orderBy($order, $dir)->get();
 
         foreach ($employees as $employee) {
             $data[] = [
@@ -75,24 +83,26 @@ class EmployeesController extends Controller
         return response()->json([
             'employees' => $data,
             'companies' => Company::whereNull('deleted_at')->get(['id', 'name']),
-            'branches' => Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'branches' => $this->visibleBranches($user),
             'totalRows' => $totalRows,
         ]);
     }
 
     public function create(Request $request)
     {
-        $this->authorizeForUser($request->user('api'), 'create', Employee::class);
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'create', Employee::class);
 
         return response()->json([
             'companies' => Company::whereNull('deleted_at')->get(['id', 'name']),
-            'branches' => Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']),
+            'branches' => $this->visibleBranches($user),
         ]);
     }
 
     public function store(Request $request)
     {
-        $this->authorizeForUser($request->user('api'), 'create', Employee::class);
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'create', Employee::class);
 
         $this->validate($request, [
             'firstname' => 'required|string',
@@ -107,6 +117,10 @@ class EmployeesController extends Controller
             'designation_id' => 'required',
             'office_shift_id' => 'required',
         ]);
+
+        if ($request->filled('branch_id')) {
+            $this->assertBranchAccess($user, (int) $request->branch_id);
+        }
 
         $data = [
             'firstname' => $request['firstname'],
@@ -132,11 +146,12 @@ class EmployeesController extends Controller
 
     public function show(Request $request, $id)
     {
-        $this->authorizeForUser($request->user('api'), 'view', Employee::class);
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'view', Employee::class);
 
-        $employee = Employee::whereNull('deleted_at')->findOrFail($id);
+        $employee = $this->employeeForUser($user, (int) $id);
         $companies = Company::whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'name']);
-        $branches = Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']);
+        $branches = $this->visibleBranches($user);
         $office_shifts = OfficeShift::where('company_id', $employee->company_id)->whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'name']);
         $departments = Department::where('company_id', $employee->company_id)->whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'department']);
         $designations = Designation::where('department_id', $employee->department_id)->whereNull('deleted_at')->where('is_active', true)->orderBy('id', 'desc')->get(['id', 'designation']);
@@ -146,11 +161,12 @@ class EmployeesController extends Controller
 
     public function edit(Request $request, $id)
     {
-        $this->authorizeForUser($request->user('api'), 'update', Employee::class);
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'update', Employee::class);
 
-        $employee = Employee::whereNull('deleted_at')->findOrFail($id);
+        $employee = $this->employeeForUser($user, (int) $id);
         $companies = Company::whereNull('deleted_at')->get(['id', 'name']);
-        $branches = Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']);
+        $branches = $this->visibleBranches($user);
         $office_shifts = OfficeShift::where('company_id', $employee->company_id)->whereNull('deleted_at')->get(['id', 'name']);
         $departments = Department::where('company_id', $employee->company_id)->whereNull('deleted_at')->get(['id', 'department']);
         $designations = Designation::where('department_id', $employee->department_id)->whereNull('deleted_at')->where('is_active', true)->get(['id', 'designation']);
@@ -160,7 +176,9 @@ class EmployeesController extends Controller
 
     public function update(Request $request, $id)
     {
-        $this->authorizeForUser($request->user('api'), 'update', Employee::class);
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'update', Employee::class);
+        $employee = $this->employeeForUser($user, (int) $id);
 
         $this->validate($request, [
             'firstname' => 'required|string',
@@ -180,6 +198,10 @@ class EmployeesController extends Controller
             'basic_salary' => 'nullable|numeric',
             'hourly_rate' => 'nullable|numeric',
         ]);
+
+        if ($request->filled('branch_id')) {
+            $this->assertBranchAccess($user, (int) $request->branch_id);
+        }
 
         $data = [];
         $data['firstname'] = $request['firstname'];
@@ -207,46 +229,51 @@ class EmployeesController extends Controller
         $data['basic_salary'] = $request['basic_salary'];
         $data['hourly_rate'] = $request['hourly_rate'];
 
-        $employee_leave_info = Employee::find($id);
-        if ($employee_leave_info->total_leave == 0) {
+        if ($employee->total_leave == 0) {
             $data['total_leave'] = $request->total_leave;
             $data['remaining_leave'] = $request->total_leave;
-        } elseif ($request->total_leave > $employee_leave_info->total_leave) {
+        } elseif ($request->total_leave > $employee->total_leave) {
             $data['total_leave'] = $request->total_leave;
-            $data['remaining_leave'] = $request->remaining_leave + ($request->total_leave - $employee_leave_info->total_leave);
-        } elseif ($request->total_leave < $employee_leave_info->total_leave) {
+            $data['remaining_leave'] = $request->remaining_leave + ($request->total_leave - $employee->total_leave);
+        } elseif ($request->total_leave < $employee->total_leave) {
             $data['total_leave'] = $request->total_leave;
-            $data['remaining_leave'] = $request->remaining_leave - ($employee_leave_info->total_leave - $request->total_leave);
+            $data['remaining_leave'] = $request->remaining_leave - ($employee->total_leave - $request->total_leave);
         } else {
             $data['total_leave'] = $request->total_leave;
-            $data['remaining_leave'] = $employee_leave_info->remaining_leave;
+            $data['remaining_leave'] = $employee->remaining_leave;
         }
 
-        Employee::find($id)->update($data);
+        $employee->update($data);
 
         return response()->json(['success' => true]);
     }
 
     public function destroy(Request $request, $id)
     {
-        $this->authorizeForUser($request->user('api'), 'delete', Employee::class);
-        Employee::whereId($id)->update(['deleted_at' => Carbon::now()]);
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'delete', Employee::class);
+        $employee = $this->employeeForUser($user, (int) $id);
+        $employee->update(['deleted_at' => Carbon::now()]);
         return response()->json(['success' => true]);
     }
 
     public function delete_by_selection(Request $request)
     {
-        $this->authorizeForUser($request->user('api'), 'delete', Employee::class);
-        foreach ((array) $request->selectedIds as $employee_id) {
-            Employee::whereId($employee_id)->update(['deleted_at' => Carbon::now()]);
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'delete', Employee::class);
+        foreach ((array) $request->selectedIds as $employeeId) {
+            $employee = $this->employeeForUser($user, (int) $employeeId);
+            $employee->update(['deleted_at' => Carbon::now()]);
         }
         return response()->json(['success' => true]);
     }
 
     public function Get_employees_by_department(Request $request)
     {
-        $employees = Employee::where('department_id', $request->id)->whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'username']);
-        return response()->json($employees);
+        $user = $request->user('api');
+        $employees = Employee::where('department_id', $request->id)->whereNull('deleted_at');
+        $this->scopeEmployeesToUser($employees, $user);
+        return response()->json($employees->orderBy('id', 'desc')->get(['id', 'username']));
     }
 
     public function Get_office_shift_by_company(Request $request)
@@ -257,8 +284,10 @@ class EmployeesController extends Controller
 
     public function update_social_profile(Request $request, $id)
     {
-        $this->authorizeForUser($request->user('api'), 'update', Employee::class);
-        Employee::whereId($id)->update([
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'update', Employee::class);
+        $employee = $this->employeeForUser($user, (int) $id);
+        $employee->update([
             'skype' => $request['skype'],
             'facebook' => $request['facebook'],
             'whatsapp' => $request['whatsapp'],
@@ -270,11 +299,13 @@ class EmployeesController extends Controller
 
     public function get_experiences_by_employee(Request $request)
     {
-        $this->authorizeForUser($request->user('api'), 'view', Employee::class);
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'view', Employee::class);
+        $employee = $this->employeeForUser($user, (int) $request->id);
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
         $offSet = ($pageStart * $perPage) - $perPage;
-        $experiences = EmployeeExperience::where('employee_id', $request->id)->whereNull('deleted_at')->orderBy('id', 'desc');
+        $experiences = EmployeeExperience::where('employee_id', $employee->id)->whereNull('deleted_at')->orderBy('id', 'desc');
         $totalRows = $experiences->count();
         if ($perPage == '-1') $perPage = $totalRows;
         $experiences = $experiences->offset($offSet)->limit($perPage)->orderBy('id', 'desc')->get();
@@ -283,20 +314,74 @@ class EmployeesController extends Controller
 
     public function get_accounts_by_employee(Request $request)
     {
-        $this->authorizeForUser($request->user('api'), 'view', Employee::class);
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'view', Employee::class);
+        $employee = $this->employeeForUser($user, (int) $request->id);
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
         $offSet = ($pageStart * $perPage) - $perPage;
-        $accounts_bank = EmployeeAccount::where('employee_id', $request->id)->whereNull('deleted_at')->orderBy('id', 'desc');
-        $totalRows = $accounts_bank->count();
+        $accountsBank = EmployeeAccount::where('employee_id', $employee->id)->whereNull('deleted_at')->orderBy('id', 'desc');
+        $totalRows = $accountsBank->count();
         if ($perPage == '-1') $perPage = $totalRows;
-        $accounts_bank = $accounts_bank->offset($offSet)->limit($perPage)->orderBy('id', 'desc')->get();
-        return response()->json(['totalRows' => $totalRows, 'accounts_bank' => $accounts_bank]);
+        $accountsBank = $accountsBank->offset($offSet)->limit($perPage)->orderBy('id', 'desc')->get();
+        return response()->json(['totalRows' => $totalRows, 'accounts_bank' => $accountsBank]);
     }
 
     public function Get_employees_by_company(Request $request)
     {
-        $employees = Employee::where('company_id', $request->id)->whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'username']);
-        return response()->json($employees);
+        $user = $request->user('api');
+        $employees = Employee::where('company_id', $request->id)->whereNull('deleted_at');
+        $this->scopeEmployeesToUser($employees, $user);
+        return response()->json($employees->orderBy('id', 'desc')->get(['id', 'username']));
+    }
+
+    private function visibleBranches($user)
+    {
+        $query = Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name');
+        if (! $user || (int) $user->is_all_warehouses === 1) {
+            return $query->get(['id', 'code', 'name']);
+        }
+
+        return $query->whereIn('id', $this->allowedBranchIds($user))->get(['id', 'code', 'name']);
+    }
+
+    private function allowedBranchIds($user): array
+    {
+        if (! $user) return [];
+        if ((int) $user->is_all_warehouses === 1) {
+            return Branch::whereNull('deleted_at')->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        $warehouseIds = app(WarehouseScopeService::class)->allowedWarehouseIds($user);
+        $branchIds = Warehouse::whereNull('deleted_at')
+            ->whereIn('id', $warehouseIds ?: [0])
+            ->whereNotNull('branch_id')
+            ->pluck('branch_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $employeeBranchId = optional($user->employee)->branch_id;
+        if ($employeeBranchId) $branchIds[] = (int) $employeeBranchId;
+
+        return array_values(array_unique($branchIds));
+    }
+
+    private function assertBranchAccess($user, int $branchId): void
+    {
+        if ((int) $user->is_all_warehouses === 1) return;
+        abort_unless(in_array($branchId, $this->allowedBranchIds($user), true), 403, 'No tienes acceso a esta sucursal.');
+    }
+
+    private function scopeEmployeesToUser($query, $user): void
+    {
+        if (! $user || (int) $user->is_all_warehouses === 1) return;
+        $query->whereIn('branch_id', $this->allowedBranchIds($user) ?: [0]);
+    }
+
+    private function employeeForUser($user, int $employeeId): Employee
+    {
+        $query = Employee::whereNull('deleted_at')->whereKey($employeeId);
+        $this->scopeEmployeesToUser($query, $user);
+        return $query->firstOrFail();
     }
 }
