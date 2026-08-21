@@ -1,562 +1,196 @@
 <template>
   <div class="main-content">
-    <breadcumb :page="$t('Designation')" :folder="$t('hrm')"/>
+    <breadcumb page="Puestos laborales" :folder="$t('hrm')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="designations"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        enabled: true,
-        placeholder: $t('Search_this_table'),  
-      }"
-        :select-options="{ 
-          enabled: true ,
-          clearSelectionText: '',
-        }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="selected-row-actions">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
+    <b-card class="mb-3">
+      <div class="d-flex flex-wrap justify-content-between align-items-start">
+        <div>
+          <h4 class="mb-1">Puestos laborales</h4>
+          <p class="text-muted mb-0">Usa una plantilla común o crea un puesto propio. El puesto puede sugerir un rol, pero nunca concede permisos automáticamente.</p>
         </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button
-            @click="New_Designation()"
-            class="btn-rounded"
-            variant="btn btn-primary btn-icon m-1"
-          >
-            <lucide-icon name="plus" />
-            {{$t('Add')}}
-          </b-button>
-        </div>
-
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a @click="Edit_Designation(props.row)" class="cursor-pointer" title="Edit" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a title="Delete" v-b-tooltip.hover class="cursor-pointer" @click="Remove_Designation(props.row.id)">
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
+        <b-button variant="primary" class="mt-2 mt-md-0" @click="openCreate"><lucide-icon name="plus" class="mr-1"/> Nuevo puesto</b-button>
+      </div>
     </b-card>
 
-    <validation-observer ref="Create_Designation">
-      <b-modal hide-footer size="md" id="New_Designation" :title="editmode?$t('Edit'):$t('Add')">
-        <b-form @submit.prevent="Submit_Designation">
-          <b-row>
-           
+    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
 
-               <!-- Company -->
-                 <b-col md="12">
-                  <validation-provider name="Company" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Company') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="designation.company_id"
-                        class="required"
-                        required
-                        @input="Selected_Company"
-                        :placeholder="$t('Choose_Company')"
-                        :reduce="label => label.value"
-                        :options="companies.map(companies => ({label: companies.name, value: companies.id}))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+    <b-card v-else>
+      <div class="d-flex flex-wrap justify-content-between mb-3">
+        <b-form-input v-model="search" placeholder="Buscar puesto" style="max-width:360px" @input="debouncedLoad"/>
+        <small class="text-muted mt-2 mt-md-0">{{ totalRows }} puesto(s)</small>
+      </div>
 
-                <!-- Department -->
-                <b-col md="12">
-                  <validation-provider name="Department" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Department') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="designation.department_id"
-                        class="required"
-                        required
-                        @input="Selected_Department"
-                        :placeholder="$t('Department')"
-                        :reduce="label => label.value"
-                        :options="departments.map(departments => ({label: departments.department, value: departments.id}))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>Puesto</th><th>Empresa</th><th>Departamento</th><th>Tipo</th><th>Rol sugerido</th><th class="text-right">Acciones</th></tr></thead>
+          <tbody>
+            <tr v-for="row in positions" :key="row.id">
+              <td><strong>{{ row.designation }}</strong><div v-if="row.description" class="text-muted text-11">{{ row.description }}</div></td>
+              <td>{{ row.company_name || '—' }}</td>
+              <td>{{ row.department_name || '—' }}</td>
+              <td><span class="badge" :class="row.is_system_default ? 'badge-info' : 'badge-light'">{{ row.is_system_default ? 'Plantilla PRODEX' : 'Personalizado' }}</span></td>
+              <td>{{ row.suggested_role_key || '—' }}</td>
+              <td class="text-right">
+                <a class="cursor-pointer mr-2" @click="openEdit(row)" title="Editar"><lucide-icon name="pencil" class="text-success text-20"/></a>
+                <a class="cursor-pointer" @click="remove(row)" title="Desactivar"><lucide-icon name="archive" class="text-danger text-20"/></a>
+              </td>
+            </tr>
+            <tr v-if="!positions.length"><td colspan="6" class="text-center py-5 text-muted">No hay puestos configurados.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </b-card>
 
-              <!-- Designation -->
-              <b-col md="12">
-                <validation-provider
-                  name="Designation"
-                  :rules="{ required: true}"
-                  v-slot="validationContext"
-                >
-                  <b-form-group :label="$t('Designation') + ' ' + '*'">
-                    <b-form-input
-                      :placeholder="$t('Designation')"
-                      :state="getValidationState(validationContext)"
-                      aria-describedby="Designation-feedback"
-                      label="Designation"
-                      v-model="designation.designation"
-                    ></b-form-input>
-                    <b-form-invalid-feedback id="designation-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
-              </b-col>
+    <b-modal id="position-modal" hide-footer size="lg" :title="editing ? 'Editar puesto' : 'Nuevo puesto'">
+      <b-form @submit.prevent="save">
+        <b-row>
+          <b-col md="6">
+            <b-form-group :label="$t('Company') + ' *'">
+              <v-select v-model="form.company_id" :reduce="o => o.value" :options="companyOptions" @input="loadDepartments" placeholder="Seleccionar empresa"/>
+            </b-form-group>
+          </b-col>
+          <b-col md="6">
+            <b-form-group :label="$t('Department') + ' *'">
+              <v-select v-model="form.department_id" :reduce="o => o.value" :options="departmentOptions" placeholder="Seleccionar departamento"/>
+            </b-form-group>
+          </b-col>
 
-            <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
+          <template v-if="!editing">
+            <b-col md="12">
+              <b-form-group label="Puesto predeterminado">
+                <v-select v-model="form.template_code" :reduce="o => o.value" :options="templateOptions" placeholder="Selecciona una plantilla o escribe un puesto personalizado" @input="applyTemplate"/>
+                <small class="text-muted">Las plantillas son solo un punto de partida. Puedes dejar este campo vacío y crear cualquier puesto que tu empresa necesite.</small>
+              </b-form-group>
             </b-col>
+          </template>
 
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
+          <b-col md="12">
+            <b-form-group label="Nombre del puesto *">
+              <b-form-input v-model.trim="form.designation" required maxlength="192" placeholder="Ej. Encargado de bodega nocturna"/>
+            </b-form-group>
+          </b-col>
+          <b-col md="12">
+            <b-form-group label="Descripción">
+              <b-form-textarea v-model.trim="form.description" rows="3" maxlength="500" placeholder="Responsabilidad general del puesto"/>
+            </b-form-group>
+          </b-col>
+        </b-row>
+
+        <div v-if="selectedTemplate" class="alert alert-light border">
+          <strong>Rol sugerido:</strong> {{ selectedTemplate.role }}<br>
+          <small class="text-muted">Esto no modifica permisos. El rol real se elige cuando se crea la cuenta del empleado.</small>
+        </div>
+        <div v-if="error" class="alert alert-danger">{{ error }}</div>
+        <div class="d-flex justify-content-end">
+          <b-button variant="outline-secondary" class="mr-2" @click="$bvModal.hide('position-modal')">Cancelar</b-button>
+          <b-button type="submit" variant="primary" :disabled="saving">{{ saving ? 'Guardando…' : 'Guardar puesto' }}</b-button>
+        </div>
+      </b-form>
+    </b-modal>
   </div>
 </template>
 
 <script>
-import NProgress from "nprogress";
-
 export default {
-  metaInfo: {
-    title: "Designation"
-  },
+  metaInfo: { title: 'Puestos laborales' },
   data() {
     return {
-      isLoading: true,
-      SubmitProcessing:false,
-      serverParams: {
-        columnFilters: {},
-        sort: {
-          field: "id",
-          type: "desc"
-        },
-        page: 1,
-        perPage: 10
-      },
-      selectedIds: [],
-      totalRows: "",
-      search: "",
-      limit: "10",
-      editmode: false,
-      designations: [], 
+      loading: true,
+      saving: false,
+      editing: false,
+      search: '',
+      totalRows: 0,
+      positions: [],
+      companies: [],
       departments: [],
-      companies :[],
-      designation: {
-          designation: "",
-          company_id: "",
-          department_id: "",
-      }, 
+      templates: [],
+      error: '',
+      timer: null,
+      form: this.emptyForm(),
     };
   },
-
   computed: {
-    columns() {
-      return [
-        {
-          label: this.$t("Designation"),
-          field: "designation",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Company"),
-          field: "company_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Department"),
-          field: "department_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
-      ];
-    }
+    companyOptions() { return this.companies.map(x => ({label:x.name, value:x.id})); },
+    departmentOptions() { return this.departments.map(x => ({label:x.department, value:x.id})); },
+    templateOptions() { return this.templates.map(x => ({label:x.name, value:x.code})); },
+    selectedTemplate() { return this.templates.find(x => x.code === this.form.template_code) || null; },
   },
-
+  created() { this.loadList(); },
+  beforeDestroy() { if (this.timer) clearTimeout(this.timer); },
   methods: {
-    //---- update Params Table
-    updateParams(newProps) {
-      this.serverParams = Object.assign({}, this.serverParams, newProps);
+    emptyForm() { return {id:null, designation:'', template_code:null, description:'', company_id:null, department_id:null}; },
+    async loadList() {
+      this.loading = true;
+      try {
+        const {data} = await axios.get('designations', {params:{page:1, SortField:'designation', SortType:'asc', search:this.search || '', limit:-1}});
+        this.positions = data.designations || [];
+        this.totalRows = Number(data.totalRows || 0);
+      } finally { this.loading = false; }
     },
-
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Designation(currentPage);
+    debouncedLoad() { if (this.timer) clearTimeout(this.timer); this.timer = setTimeout(this.loadList, 250); },
+    async loadCreateData() {
+      const {data} = await axios.get('/designations/create');
+      this.companies = data.companies || [];
+      this.templates = data.templates || [];
+    },
+    async loadDepartments(companyId) {
+      this.departments = [];
+      if (!this.editing) this.form.department_id = null;
+      if (!companyId) return;
+      const {data} = await axios.get('/core/get_departments_by_company?id='+companyId);
+      this.departments = data || [];
+    },
+    applyTemplate(code) {
+      const template = this.templates.find(x => x.code === code);
+      if (!template) return;
+      this.form.designation = template.name;
+      this.form.description = template.description || '';
+    },
+    async openCreate() {
+      this.editing = false;
+      this.form = this.emptyForm();
+      this.departments = [];
+      this.error = '';
+      await this.loadCreateData();
+      this.$bvModal.show('position-modal');
+    },
+    async openEdit(row) {
+      this.editing = true;
+      this.form = {id:row.id, designation:row.designation, template_code:null, description:row.description || '', company_id:row.company_id, department_id:row.department_id};
+      this.error = '';
+      const {data} = await axios.get(`/designations/${row.id}/edit`);
+      this.companies = data.companies || [];
+      this.templates = data.templates || [];
+      await this.loadDepartments(row.company_id);
+      this.form.department_id = row.department_id;
+      this.$bvModal.show('position-modal');
+    },
+    async save() {
+      if (!this.form.company_id || !this.form.department_id || !this.form.designation) {
+        this.error = 'Completa empresa, departamento y nombre del puesto.';
+        return;
       }
+      this.saving = true;
+      this.error = '';
+      const payload = {designation:this.form.designation, template_code:this.editing ? null : this.form.template_code, description:this.form.description, company_id:this.form.company_id, department:this.form.department_id};
+      try {
+        if (this.editing) await axios.put(`/designations/${this.form.id}`, payload);
+        else await axios.post('/designations', payload);
+        this.$bvModal.hide('position-modal');
+        await this.loadList();
+        this.$root.$bvToast.toast('Puesto guardado correctamente.', {title:'Éxito', variant:'success', solid:true});
+      } catch (e) {
+        const data = e && e.response && e.response.data;
+        this.error = (data && data.message) || 'No se pudo guardar el puesto.';
+      } finally { this.saving = false; }
     },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Designation(1);
-      }
-    },
-
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
+    remove(row) {
+      this.$swal({title:'Desactivar puesto', text:`Se desactivará ${row.designation}. Los empleados históricos conservarán la referencia.`, type:'warning', showCancelButton:true, confirmButtonText:'Desactivar', cancelButtonText:'Cancelar'}).then(async result => {
+        if (!(result.value || result.isConfirmed)) return;
+        await axios.delete(`/designations/${row.id}`);
+        await this.loadList();
       });
     },
-
-    //---- Event Sort Change
-
-    onSortChange(params) {
-      let field = "";
-      if (params[0].field == "company_name") {
-        field = "company_id";
-      } else if (params[0].field == "department_name") {
-        field = "department_id";
-      } else {
-        field = params[0].field;
-      }
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
-      this.Get_Designation(this.serverParams.page);
-    },
-
-    //---- Event Search
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Designation(this.serverParams.page);
-    },
-
-    //---- Validation State Form
-    getValidationState({ dirty, validated, valid = null }) {
-      return dirty || validated ? valid : null;
-    },
-
-    //------------- Submit Validation Create & Edit Designation
-    Submit_Designation() {
-      this.$refs.Create_Designation.validate().then(success => {
-        if (!success) {
-          this.makeToast(
-            "danger",
-            this.$t("Please_fill_the_form_correctly"),
-            this.$t("Failed")
-          );
-        } else {
-          if (!this.editmode) {
-            this.Create_Designation();
-          } else {
-            this.Update_Designation();
-          }
-        }
-      });
-    },
-
-    //------ Toast
-    makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
-        title: title,
-        variant: variant,
-        solid: true
-      });
-    },
-
-    //------------------------------ Modal (create Designation) -------------------------------\\
-    New_Designation() {
-      this.reset_Form();
-      this.editmode = false;
-      this.Get_Data_Create();
-      this.$bvModal.show("New_Designation");
-    },
-
-    //------------------------------ Modal (Update Designation) -------------------------------\\
-    Edit_Designation(designation) {
-      this.Get_Designation(this.serverParams.page);
-      this.reset_Form();
-      this.Get_Data_Edit(designation.id);
-      this.Get_departments_by_company(designation.company_id);
-      this.designation = designation;
-      this.editmode = true;
-      this.$bvModal.show("New_Designation");
-    },
-
-     
-    Selected_Department(value) {
-        if (value === null) {
-            this.designation.department_id = "";
-        }
-    },
-
-
-    Selected_Company(value) {
-        if (value === null) {
-            this.designation.company_id = "";
-            this.designation.department_id = "";
-        }
-        this.departments = [];
-        this.designation.department_id = "";
-        this.Get_departments_by_company(value);
-    },
-
-      //---------------------- Get_departments_by_company ------------------------------\\
-        Get_departments_by_company(value) {
-            axios
-                .get("/core/get_departments_by_company?id=" + value)
-                .then(({ data }) => (this.departments = data));
-        },
-
-       //---------------------- Get_Data_Create  ------------------------------\\
-          Get_Data_Create() {
-            axios
-                .get("/designations/create")
-                .then(response => {
-                    this.companies   = response.data.companies;
-                })
-                .catch(error => {
-                    
-                });
-        },
-
-        //---------------------- Get_Data_Edit  ------------------------------\\
-        Get_Data_Edit(id) {
-          axios
-              .get("/designations/"+id+"/edit")
-              .then(response => {
-                  this.companies   = response.data.companies;
-              })
-              .catch(error => {
-                  
-              });
-      },
-
-
-    //--------------------------Get ALL designations ---------------------------\\
-
-    Get_Designation(page) {
-      // Start the progress bar.
-      NProgress.start();
-      NProgress.set(0.1);
-      axios
-        .get(
-          "designations?page=" +
-            page +
-            "&SortField=" +
-            this.serverParams.sort.field +
-            "&SortType=" +
-            this.serverParams.sort.type +
-            "&search=" +
-            this.search +
-            "&limit=" +
-            this.limit
-        )
-        .then(response => {
-          this.totalRows = response.data.totalRows;
-          this.designations = response.data.designations;
-
-          // Complete the animation of theprogress bar.
-          NProgress.done();
-          this.isLoading = false;
-        })
-        .catch(response => {
-          // Complete the animation of theprogress bar.
-          NProgress.done();
-          setTimeout(() => {
-            this.isLoading = false;
-          }, 500);
-        });
-    },
-
-    //------------------------------- Create designation ------------------------\\
-    Create_Designation() {
-      
-      this.SubmitProcessing = true;
-      axios
-        .post("designations", {
-          designation: this.designation.designation,
-          company_id: this.designation.company_id,
-          department: this.designation.department_id,
-          
-        })
-        .then(response => {
-          this.SubmitProcessing = false;
-          Fire.$emit("Event_Designation");
-          this.makeToast(
-            "success",
-            this.$t("Created_in_successfully"),
-            this.$t("Success")
-          );
-        })
-        .catch(error => {
-          this.SubmitProcessing = false;
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-        });
-    },
-
-    //------------------------------- Update designation ------------------------\\
-    Update_Designation() {
-      this.SubmitProcessing = true;
-      axios
-        .put("designations/" + this.designation.id, {
-          designation: this.designation.designation,
-          company_id: this.designation.company_id,
-          department: this.designation.department_id,
-        })
-        .then(response => {
-          this.SubmitProcessing = false;
-          Fire.$emit("Event_Designation");
-
-          this.makeToast(
-            "success",
-            this.$t("Updated_in_successfully"),
-            this.$t("Success")
-          );
-        })
-        .catch(error => {
-          this.SubmitProcessing = false;
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-        });
-    },
-
-    //------------------------------- reset Form ------------------------\\
-    reset_Form() {
-     this.designation = {
-          id: "",
-          designation: "",
-          company_id:"",
-          department_id: "",
-      };
-    },
-
-    //------------------------------- Delete designation ------------------------\\
-    Remove_Designation(id) {
-      this.$swal({
-        title: this.$t("Delete_Title"),
-        text: this.$t("Delete_Text"),
-        type: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"),
-        confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          axios
-            .delete("designations/" + id)
-            .then(() => {
-              this.$swal(
-                this.$t("Delete_Deleted"),
-                this.$t("Deleted_in_successfully"),
-                "success"
-              );
-
-              Fire.$emit("Delete_Designation");
-            })
-            .catch(() => {
-              this.$swal(
-                this.$t("Delete_Failed"),
-                this.$t("Delete_Therewassomethingwronge"),
-                "warning"
-              );
-            });
-        }
-      });
-    },
-
-    //---- Delete department by selection
-
-    delete_by_selected() {
-      this.$swal({
-        title: this.$t("Delete_Title"),
-        text: this.$t("Delete_Text"),
-        type: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"),
-        confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          // Start the progress bar.
-          NProgress.start();
-          NProgress.set(0.1);
-          axios
-            .post("designations/delete/by_selection", {
-              selectedIds: this.selectedIds
-            })
-            .then(() => {
-              this.$swal(
-                this.$t("Delete_Deleted"),
-                this.$t("Deleted_in_successfully"),
-                "success"
-              );
-
-              Fire.$emit("Delete_Designation");
-            })
-            .catch(() => {
-              // Complete the animation of theprogress bar.
-              setTimeout(() => NProgress.done(), 500);
-              this.$swal(
-                this.$t("Delete_Failed"),
-                this.$t("Delete_Therewassomethingwronge"),
-                "warning"
-              );
-            });
-        }
-      });
-    }
   },
-
-  //----------------------------- Created function-------------------\\
-
-  created: function() {
-    this.Get_Designation(1);
-
-    Fire.$on("Event_Designation", () => {
-      setTimeout(() => {
-        this.Get_Designation(this.serverParams.page);
-        this.$bvModal.hide("New_Designation");
-      }, 500);
-    });
-
-    Fire.$on("Delete_Designation", () => {
-      setTimeout(() => {
-        this.Get_Designation(this.serverParams.page);
-      }, 500);
-    });
-  }
 };
 </script>
