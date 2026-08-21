@@ -9,6 +9,7 @@
           <p class="text-muted mb-0">Revisa mercancía en camino hacia tus bodegas. Una transferencia solo aumenta tu inventario cuando un usuario autorizado confirma la recepción física.</p>
         </div>
         <div class="mt-2 mt-md-0">
+          <b-button variant="outline-secondary" class="mr-2" @click="openManual"><lucide-icon name="book-open" class="mr-1"/> Ver manual</b-button>
           <b-button variant="outline-primary" class="mr-2" @click="load"><lucide-icon name="refresh-cw" class="mr-1"/> Actualizar</b-button>
           <b-button variant="primary" @click="openScanner"><lucide-icon name="scan-line" class="mr-1"/> Escanear QR</b-button>
         </div>
@@ -145,6 +146,9 @@ export default {
         return;
       }
       window.location.href = `/transfer-receive/${encodeURIComponent(token)}`;
+    },
+    openManual() {
+      this.$router.push({ name: 'KnowledgeBaseList' }).catch(() => {});
     },
     statusLabel(status) { return status === 'partially_received' ? 'Recepción parcial' : 'En tránsito'; },
     formatDate(value) {
