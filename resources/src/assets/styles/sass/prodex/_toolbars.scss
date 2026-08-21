@@ -1,8 +1,10 @@
 // PRODEX Design System — list filter/action toolbars
-// Targets only list cards that already opted into the PRODEX list-page shell.
-// The structural selector keeps normal forms/grids untouched.
+// Applies to administrative list cards across the tenant UI.
+// Structural selectors are intentionally scoped to .card.wrapper list shells
+// so normal forms and unrelated Bootstrap rows are not affected.
 
-.prodex-ui.px-list-page {
+.prodex-ui {
+  .prodex-list-toolbar,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) {
     align-items: flex-end;
     margin-left: -8px !important;
@@ -10,15 +12,19 @@
     margin-bottom: var(--px-space-5) !important;
   }
 
+  .prodex-list-toolbar > [class*="col-"],
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) > [class*="col-"] {
     padding-left: 8px;
     padding-right: 8px;
   }
 
+  .prodex-list-toolbar .form-group,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-group {
     margin-bottom: 0;
   }
 
+  .prodex-list-toolbar .form-group > label,
+  .prodex-list-toolbar legend.col-form-label,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-group > label,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) legend.col-form-label {
     display: block;
@@ -30,6 +36,9 @@
     font-weight: 700;
   }
 
+  .prodex-list-toolbar .form-control,
+  .prodex-list-toolbar .custom-select,
+  .prodex-list-toolbar .vs__dropdown-toggle,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-control,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .custom-select,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .vs__dropdown-toggle {
@@ -39,6 +48,9 @@
     box-shadow: none;
   }
 
+  .prodex-list-toolbar .form-control:focus,
+  .prodex-list-toolbar .custom-select:focus,
+  .prodex-list-toolbar .vs__dropdown-toggle:focus-within,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-control:focus,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .custom-select:focus,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .vs__dropdown-toggle:focus-within {
@@ -46,6 +58,7 @@
     box-shadow: 0 0 0 3px var(--px-primary-soft);
   }
 
+  .prodex-list-toolbar .btn,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .btn {
     min-height: var(--px-control-height);
     margin-top: 0 !important;
@@ -57,6 +70,7 @@
     font-weight: 600;
   }
 
+  .prodex-list-toolbar > .d-flex,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) > .d-flex {
     min-height: calc(var(--px-control-height) + 23px);
     align-items: flex-end !important;
@@ -64,20 +78,24 @@
 }
 
 @media (max-width: 767.98px) {
-  .prodex-ui.px-list-page {
+  .prodex-ui {
+    .prodex-list-toolbar,
     .card.wrapper > .card-body > .row.mb-3:has(.form-group) {
       align-items: stretch;
       margin-bottom: var(--px-space-4) !important;
     }
 
+    .prodex-list-toolbar > [class*="col-"],
     .card.wrapper > .card-body > .row.mb-3:has(.form-group) > [class*="col-"] {
       margin-bottom: 12px;
     }
 
+    .prodex-list-toolbar > [class*="col-"]:last-child,
     .card.wrapper > .card-body > .row.mb-3:has(.form-group) > [class*="col-"]:last-child {
       margin-bottom: 0;
     }
 
+    .prodex-list-toolbar > .d-flex,
     .card.wrapper > .card-body > .row.mb-3:has(.form-group) > .d-flex {
       min-height: 0;
       justify-content: flex-start !important;
