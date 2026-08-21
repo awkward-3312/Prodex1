@@ -43,6 +43,7 @@ return new class extends Migration
                 $table->string('reference_type', 80)->nullable()->index();
                 $table->string('reference_id', 120)->nullable()->index();
                 $table->string('idempotency_key', 120)->nullable()->unique();
+                $table->string('idempotency_fingerprint', 64)->nullable()->index();
                 $table->string('notes', 500)->nullable();
                 $table->json('metadata')->nullable();
                 $table->timestamps(6);
