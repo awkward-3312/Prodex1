@@ -39,6 +39,8 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_20_220500_backfill_existing_transfer_logistics.php',
         // Organization: company -> branch -> warehouse -> employee -> user/access.
         'database/migrations/tenant/2026_08_21_090000_add_organization_structure_foundation.php',
+        // Inventory architecture phase 1: locations are additive; stock stays in product_warehouse.
+        'database/migrations/tenant/2026_08_21_150000_create_inventory_locations_foundation.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -143,13 +145,21 @@ class TenantSchemaHealthService
         // Organizational structure foundation.
         $this->requireTable($schema, $missing, 'branches');
         $this->requireColumns($schema, $missing, 'branches', [
-            'code', 'name', 'type', 'manager_employee_id', 'default_warehouse_id', 'is_active',
+            'code', 'name', 'type', 'manager_employee_id', 'default_warehouse_id', 'default_inventory_location_id', 'is_active',
         ]);
-        $this->requireColumns($schema, $missing, 'warehouses', ['branch_id']);
+        $this->requireColumns($schema, $missing, 'warehouses', ['branch_id', 'default_inventory_location_id']);
         $this->requireColumns($schema, $missing, 'employees', ['branch_id']);
         $this->requireColumns($schema, $missing, 'users', ['employee_id']);
         $this->requireColumns($schema, $missing, 'designations', [
             'code', 'description', 'is_system_default', 'is_active', 'suggested_role_key',
+        ]);
+
+        // Phase 1 deliberately introduces no stock rows and does not modify
+        // product_warehouse. It only establishes the future source-of-truth owner.
+        $this->requireTable($schema, $missing, 'inventory_locations');
+        $this->requireColumns($schema, $missing, 'inventory_locations', [
+            'branch_id', 'warehouse_id', 'code', 'name', 'type', 'is_sellable',
+            'is_default_sales', 'is_quarantine', 'is_active',
         ]);
 
         return $missing;
