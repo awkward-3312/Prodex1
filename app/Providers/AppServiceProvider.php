@@ -4,7 +4,11 @@ namespace App\Providers;
 
 use App\Models\Central\GeneralSetting;
 use App\Models\Setting;
+use App\Services\BatchService;
 use App\Services\IdempotentTransferLogisticsService;
+use App\Services\LocationAwareBatchService;
+use App\Services\LocationAwareSerialNumberService;
+use App\Services\SerialNumberService;
 use App\Services\TenantLimitsService;
 use App\Services\TransferLogisticsService;
 use App\Tenant;
@@ -33,6 +37,12 @@ class AppServiceProvider extends ServiceProvider
         // implementation that aligns aggregate/batch units and makes physical
         // receiving safe to retry after double-clicks or connection loss.
         $this->app->singleton(TransferLogisticsService::class, IdempotentTransferLogisticsService::class);
+
+        // Existing controllers continue resolving the historical service names.
+        // Location-aware implementations delegate to the legacy behavior unless
+        // the document explicitly carries inventory_location_id.
+        $this->app->singleton(BatchService::class, LocationAwareBatchService::class);
+        $this->app->singleton(SerialNumberService::class, LocationAwareSerialNumberService::class);
     }
 
     /**
