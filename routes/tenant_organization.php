@@ -14,4 +14,6 @@ Route::middleware('auth:api')->prefix('organization')->group(function () {
     Route::post('employee-access/{employeeId}/create', 'Organization\\EmployeeAccessController@create');
     Route::put('employee-access/{employeeId}/link', 'Organization\\EmployeeAccessController@link');
     Route::delete('employee-access/{employeeId}/link', 'Organization\\EmployeeAccessController@unlink');
+
+    Route::get('role-permission-templates', 'Organization\\RoleTemplateController@index');
 });
