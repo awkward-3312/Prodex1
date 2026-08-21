@@ -46,6 +46,62 @@
           </b-row>
         </b-card>
 
+        <b-card v-if="operationalLoaded" class="mb-3">
+          <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
+            <div>
+              <h5 class="mb-1">Asignación temporal</h5>
+              <p class="text-muted mb-0">Úsala cuando la persona cubra otra sucursal temporalmente. No modifica su sucursal habitual.</p>
+            </div>
+            <b-badge v-if="operational.active_temporary_assignment" variant="warning">Temporal activa</b-badge>
+          </div>
+
+          <b-row class="mb-3">
+            <b-col md="6">
+              <div class="border rounded p-3 h-100">
+                <strong>Configuración habitual</strong>
+                <div class="mt-2">Sucursal: {{ operational.default.branch_name || 'Sin definir' }}</div>
+                <div>Inventario: {{ operational.default.inventory_location_name || 'Sin definir' }}</div>
+                <div>Caja: {{ operational.default.cash_drawer_name || 'Sin definir' }}</div>
+              </div>
+            </b-col>
+            <b-col md="6">
+              <div class="border rounded p-3 h-100">
+                <strong>Contexto efectivo ahora</strong>
+                <div class="mt-2">Sucursal: {{ effectiveName('branch') }}</div>
+                <div>Inventario: {{ effectiveName('inventory_location') }}</div>
+                <div>Caja: {{ effectiveName('cash_drawer') }}</div>
+                <small class="text-muted">Fuente: {{ operational.effective && operational.effective.source === 'temporary' ? 'Asignación temporal' : 'Configuración habitual' }}</small>
+              </div>
+            </b-col>
+          </b-row>
+
+          <div v-if="operational.active_temporary_assignment" class="alert alert-warning">
+            <div class="d-flex justify-content-between align-items-start flex-wrap">
+              <div>
+                <strong>{{ operational.active_temporary_assignment.temporary_branch_name }}</strong>
+                <div>{{ operational.active_temporary_assignment.temporary_inventory_location_name || 'Sin ubicación' }}<span v-if="operational.active_temporary_assignment.temporary_cash_drawer_name"> · {{ operational.active_temporary_assignment.temporary_cash_drawer_name }}</span></div>
+                <small>{{ operational.active_temporary_assignment.reason }}</small>
+              </div>
+              <b-button v-if="canTemporaryAssignment" size="sm" variant="outline-danger" class="mt-2 mt-md-0" @click="endTemporaryAssignment">Finalizar asignación</b-button>
+            </div>
+          </div>
+
+          <template v-if="canTemporaryAssignment">
+            <hr>
+            <h6>{{ operational.active_temporary_assignment ? 'Reemplazar asignación temporal' : 'Crear asignación temporal' }}</h6>
+            <b-row>
+              <b-col md="4"><b-form-group label="Sucursal temporal *"><v-select v-model="temporary.branch_id" :reduce="o => o.value" :options="temporaryBranchOptions" @input="temporaryBranchChanged"/></b-form-group></b-col>
+              <b-col md="4"><b-form-group label="Ubicación de inventario *"><v-select v-model="temporary.inventory_location_id" :reduce="o => o.value" :options="temporaryLocationOptions" @input="temporaryLocationChanged"/></b-form-group></b-col>
+              <b-col md="4"><b-form-group label="Caja física"><v-select v-model="temporary.cash_drawer_id" :reduce="o => o.value" :options="temporaryDrawerOptions" placeholder="Opcional para personal que no opera caja"/></b-form-group></b-col>
+              <b-col md="6"><b-form-group label="Inicio"><b-form-input v-model="temporary.starts_at" type="datetime-local"/></b-form-group></b-col>
+              <b-col md="6"><b-form-group label="Fin"><b-form-input v-model="temporary.ends_at" type="datetime-local"/></b-form-group></b-col>
+              <b-col md="12"><b-form-group label="Motivo *"><b-form-textarea v-model.trim="temporary.reason" rows="2" maxlength="2000" placeholder="Ej. Cobertura de turno en Sucursal Mall"/></b-form-group></b-col>
+            </b-row>
+            <div v-if="temporary_error" class="alert alert-danger">{{ temporary_error }}</div>
+            <b-button type="button" variant="outline-primary" :disabled="temporarySaving" @click="saveTemporaryAssignment">{{ temporarySaving ? 'Guardando…' : 'Guardar asignación temporal' }}</b-button>
+          </template>
+        </b-card>
+
         <div v-if="form_error" class="alert alert-danger">{{ form_error }}</div>
         <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="mr-1" name="check"/> {{ SubmitProcessing ? 'Guardando…' : 'Guardar cambios' }}</b-button>
         <b-button variant="secondary" class="ml-2" @click="$router.push({ name: 'Users' })">Cancelar</b-button>
@@ -56,6 +112,7 @@
 
 <script>
 import NProgress from 'nprogress';
+import { mapGetters } from 'vuex';
 
 export default {
   metaInfo: { title: 'Editar usuario' },
@@ -71,9 +128,16 @@ export default {
         statut: 1, record_view: false, scope: 'selected', branch_ids: [], inventory_location_ids: [],
         default_branch_id: null, default_inventory_location_id: null, avatar: null, avatar_name: '',
       },
+      operationalLoaded: false,
+      operational: { default: {}, effective: null, active_temporary_assignment: null, branches: [], inventory_locations: [], cash_drawers: [] },
+      temporary: { branch_id: null, inventory_location_id: null, cash_drawer_id: null, starts_at: '', ends_at: '', reason: '' },
+      temporarySaving: false,
+      temporary_error: '',
     };
   },
   computed: {
+    ...mapGetters(['currentUserPermissions']),
+    canTemporaryAssignment() { return Array.isArray(this.currentUserPermissions) && this.currentUserPermissions.includes('user_temporary_assignment'); },
     roleOptions() { return this.roles.map(r => ({ label: r.description ? `${r.name} — ${r.description}` : r.name, value: r.id })); },
     scopeOptions() {
       const options = [{ label: 'Sucursales seleccionadas', value: 'selected' }];
@@ -88,6 +152,9 @@ export default {
       return this.inventoryLocations.filter(l => ids.includes(Number(l.branch_id))).map(l => ({ label: `${this.branchName(l.branch_id)} · ${l.name}${l.is_default_sales ? ' · Predeterminada' : ''}`, value: l.id }));
     },
     defaultLocationOptions() { return this.inventoryLocations.filter(l => Number(l.branch_id) === Number(this.user.default_branch_id)).map(l => ({ label: `${l.name}${l.is_default_sales ? ' · Piso predeterminado' : ''}`, value: l.id })); },
+    temporaryBranchOptions() { return (this.operational.branches || []).map(b => ({ label: b.code ? `${b.name} · ${b.code}` : b.name, value: b.id })); },
+    temporaryLocationOptions() { return (this.operational.inventory_locations || []).filter(l => Number(l.branch_id) === Number(this.temporary.branch_id)).map(l => ({ label: `${l.name}${l.is_default_sales ? ' · Predeterminada' : ''}`, value: l.id })); },
+    temporaryDrawerOptions() { return (this.operational.cash_drawers || []).filter(d => Number(d.branch_id) === Number(this.temporary.branch_id) && (!d.inventory_location_id || Number(d.inventory_location_id) === Number(this.temporary.inventory_location_id))).map(d => ({ label: d.code ? `${d.name} (${d.code})` : d.name, value: d.id })); },
   },
   created() { this.load(); },
   methods: {
@@ -102,17 +169,21 @@ export default {
         this.canGlobalScope = !!data.can_global_scope;
         const source = data.user || {};
         this.user = Object.assign({}, this.user, source, {
-          password: '',
-          avatar: null,
-          avatar_name: source.avatar || '',
-          branch_ids: source.branch_ids || [],
-          inventory_location_ids: source.inventory_location_ids || [],
-          record_view: !!source.record_view,
-          statut: Number(source.statut) === 0 ? 0 : 1,
+          password: '', avatar: null, avatar_name: source.avatar || '',
+          branch_ids: source.branch_ids || [], inventory_location_ids: source.inventory_location_ids || [],
+          record_view: !!source.record_view, statut: Number(source.statut) === 0 ? 0 : 1,
         });
+        await this.loadOperational();
       } catch (e) {
         this.form_error = (e.response && e.response.data && e.response.data.message) || 'No se pudo cargar el usuario.';
       } finally { this.isLoading = false; NProgress.done(); }
+    },
+    async loadOperational() {
+      try {
+        const { data } = await axios.get(`/users/${this.$route.params.id}/operational-assignment`, { meta: { skipErrorRedirect: true } });
+        this.operational = Object.assign({ default: {}, effective: null, active_temporary_assignment: null, branches: [], inventory_locations: [], cash_drawers: [] }, data || {});
+        this.operationalLoaded = true;
+      } catch (e) { this.operationalLoaded = false; }
     },
     branchName(id) { const branch = this.branches.find(b => Number(b.id) === Number(id)); return branch ? branch.name : 'Sucursal'; },
     defaultLocationId(branchId) {
@@ -122,10 +193,7 @@ export default {
       return floor ? Number(floor.id) : null;
     },
     scopeChanged() {
-      if (this.user.scope === 'all') {
-        this.user.branch_ids = []; this.user.inventory_location_ids = [];
-        this.user.default_branch_id = null; this.user.default_inventory_location_id = null;
-      }
+      if (this.user.scope === 'all') { this.user.branch_ids = []; this.user.inventory_location_ids = []; this.user.default_branch_id = null; this.user.default_inventory_location_id = null; }
     },
     branchesChanged() {
       const ids = this.selectedBranchIds;
@@ -133,10 +201,7 @@ export default {
         const location = this.inventoryLocations.find(l => Number(l.id) === Number(id));
         return location && ids.includes(Number(location.branch_id));
       });
-      if (!ids.includes(Number(this.user.default_branch_id))) {
-        this.user.default_branch_id = ids[0] || null;
-        this.defaultBranchChanged();
-      }
+      if (!ids.includes(Number(this.user.default_branch_id))) { this.user.default_branch_id = ids[0] || null; this.defaultBranchChanged(); }
     },
     defaultBranchChanged() {
       const branchId = Number(this.user.default_branch_id || 0);
@@ -168,7 +233,6 @@ export default {
       data.append('record_view', this.user.record_view ? 1 : 0);
       if (this.user.avatar) data.append('avatar', this.user.avatar);
       data.append('_method', 'PUT');
-
       try {
         await axios.post(`/organization/user-access/${this.$route.params.id}`, data, { meta: { skipErrorRedirect: true } });
         this.makeToast('success', this.$t('Successfully_Updated'), this.$t('Success'));
@@ -179,6 +243,49 @@ export default {
         this.form_error = (Array.isArray(first) ? first[0] : first) || (response && response.message) || 'No se pudo actualizar el usuario.';
         this.makeToast('danger', this.form_error, this.$t('Failed'));
       } finally { this.SubmitProcessing = false; }
+    },
+    effectiveName(kind) {
+      const effective = this.operational.effective || {};
+      const value = effective[kind];
+      return value && value.name ? value.name : 'Sin definir';
+    },
+    temporaryBranchChanged() {
+      const branch = (this.operational.branches || []).find(b => Number(b.id) === Number(this.temporary.branch_id));
+      const locationId = branch && branch.default_inventory_location_id ? Number(branch.default_inventory_location_id) : null;
+      this.temporary.inventory_location_id = locationId;
+      this.temporary.cash_drawer_id = null;
+    },
+    temporaryLocationChanged() { this.temporary.cash_drawer_id = null; },
+    async saveTemporaryAssignment() {
+      if (!this.temporary.branch_id || !this.temporary.inventory_location_id || !this.temporary.reason) {
+        this.temporary_error = 'Selecciona sucursal, ubicación de inventario e indica el motivo.';
+        return;
+      }
+      this.temporarySaving = true; this.temporary_error = '';
+      try {
+        await axios.post(`/users/${this.$route.params.id}/temporary-assignment`, {
+          temporary_branch_id: this.temporary.branch_id,
+          temporary_inventory_location_id: this.temporary.inventory_location_id,
+          temporary_cash_drawer_id: this.temporary.cash_drawer_id || null,
+          starts_at: this.temporary.starts_at || null,
+          ends_at: this.temporary.ends_at || null,
+          reason: this.temporary.reason,
+        }, { meta: { skipErrorRedirect: true } });
+        this.temporary = { branch_id: null, inventory_location_id: null, cash_drawer_id: null, starts_at: '', ends_at: '', reason: '' };
+        await this.loadOperational();
+        this.makeToast('success', 'Asignación temporal aplicada.', this.$t('Success'));
+      } catch (e) {
+        const response = e && e.response && e.response.data;
+        const first = response && response.errors ? Object.values(response.errors)[0] : null;
+        this.temporary_error = (Array.isArray(first) ? first[0] : first) || (response && response.message) || 'No se pudo aplicar la asignación temporal.';
+      } finally { this.temporarySaving = false; }
+    },
+    async endTemporaryAssignment() {
+      const assignment = this.operational.active_temporary_assignment;
+      if (!assignment) return;
+      await axios.post(`/user-operational-assignments/${assignment.id}/end`, {}, { meta: { skipErrorRedirect: true } });
+      await this.loadOperational();
+      this.makeToast('success', 'La persona volvió a su configuración operativa habitual.', this.$t('Success'));
     },
   },
 };
