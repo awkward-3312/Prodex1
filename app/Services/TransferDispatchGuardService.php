@@ -89,13 +89,11 @@ class TransferDispatchGuardService
             return;
         }
 
-        // product_warehouse and product_batches both represent base stock units.
-        // Transfer detail quantity may be expressed as boxes, packs, strips, etc.;
-        // convert it before touching the batch ledger so both ledgers stay identical.
-        $required = $this->toBaseQuantity((float) $detail->quantity, $detail->purchase_unit_id);
-        if ($required <= 0) {
-            return;
-        }
+        // Match the legacy approval controller and the hardened receiving service:
+        // if the detail does not persist purchase_unit_id, use the product's purchase
+        // unit. This keeps aggregate stock and batch stock in the same base units.
+        $unitId = $detail->purchase_unit_id ?: $product->unit_purchase_id;
+        $required = $this->toBaseQuantity((float) $detail->quantity, $unitId, $product->name);
 
         $query = ProductBatch::query()
             ->whereNull('deleted_at')
@@ -159,15 +157,19 @@ class TransferDispatchGuardService
         }
     }
 
-    protected function toBaseQuantity(float $quantity, ?int $unitId): float
+    protected function toBaseQuantity(float $quantity, ?int $unitId, string $productName): float
     {
-        if (! $unitId) {
-            return $quantity;
+        if ($quantity <= 0) {
+            throw ValidationException::withMessages([
+                'transfer' => 'La cantidad de '.$productName.' debe ser mayor que cero.',
+            ]);
         }
 
-        $unit = Unit::find($unitId);
-        if (! $unit || ! $unit->operator_value) {
-            return $quantity;
+        $unit = $unitId ? Unit::find($unitId) : null;
+        if (! $unit || ! in_array($unit->operator, ['*', '/'], true) || (float) $unit->operator_value <= 0) {
+            throw ValidationException::withMessages([
+                'transfer' => 'No se puede despachar '.$productName.' porque su unidad de compra no tiene una conversión válida.',
+            ]);
         }
 
         return $unit->operator === '/'
