@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\Warehouse;
+use App\Services\WarehouseScopeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -15,34 +16,49 @@ class BranchController extends Controller
     public function index(Request $request)
     {
         $this->authorizePermission($request, 'branches_view');
+        $user = $request->user('api');
 
         $branches = Branch::with([
                 'warehouses' => fn ($q) => $q->whereNull('deleted_at')->select('id', 'branch_id', 'name'),
                 'manager:id,firstname,lastname',
                 'defaultWarehouse:id,name',
             ])
-            ->whereNull('deleted_at')
-            ->when($request->filled('search'), function ($query) use ($request) {
+            ->whereNull('deleted_at');
+
+        $this->scopeBranches($branches, $user);
+
+        $branches->when($request->filled('search'), function ($query) use ($request) {
                 $term = '%'.$request->string('search')->toString().'%';
                 $query->where(function ($q) use ($term) {
                     $q->where('name', 'like', $term)->orWhere('code', 'like', $term)->orWhere('city', 'like', $term);
                 });
             })
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
 
-        return response()->json(['branches' => $branches]);
+        return response()->json(['branches' => $branches->get()]);
     }
 
     public function options(Request $request)
     {
+        $this->authorizePermission($request, 'branches_view');
         $user = $request->user('api');
-        abort_unless($user, 401);
+        $branchIds = $this->allowedBranchIds($user);
+        $warehouseIds = app(WarehouseScopeService::class)->allowedWarehouseIds($user);
+
+        $branches = Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name');
+        $warehouses = Warehouse::whereNull('deleted_at')->orderBy('name');
+        $employees = Employee::whereNull('deleted_at')->whereNull('leaving_date')->orderBy('firstname')->orderBy('lastname');
+
+        if ((int) $user->is_all_warehouses !== 1) {
+            $branches->whereIn('id', $branchIds ?: [0]);
+            $warehouses->whereIn('id', $warehouseIds ?: [0]);
+            $employees->whereIn('branch_id', $branchIds ?: [0]);
+        }
 
         return response()->json([
-            'branches' => Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']),
-            'warehouses' => Warehouse::whereNull('deleted_at')->orderBy('name')->get(['id', 'branch_id', 'name']),
-            'employees' => Employee::whereNull('deleted_at')->whereNull('leaving_date')->orderBy('firstname')->orderBy('lastname')->get(['id', 'branch_id', 'firstname', 'lastname']),
+            'branches' => $branches->get(['id', 'code', 'name']),
+            'warehouses' => $warehouses->get(['id', 'branch_id', 'name']),
+            'employees' => $employees->get(['id', 'branch_id', 'firstname', 'lastname']),
         ]);
     }
 
@@ -63,6 +79,9 @@ class BranchController extends Controller
     public function update(Request $request, int $id)
     {
         $this->authorizePermission($request, 'branches_edit');
+        $user = $request->user('api');
+        $this->assertBranchAccess($user, $id);
+
         $branch = Branch::whereNull('deleted_at')->findOrFail($id);
         $data = $this->validated($request, $branch->id);
 
@@ -77,11 +96,10 @@ class BranchController extends Controller
     public function destroy(Request $request, int $id)
     {
         $this->authorizePermission($request, 'branches_delete');
-        $branch = Branch::whereNull('deleted_at')->findOrFail($id);
+        $user = $request->user('api');
+        $this->assertBranchAccess($user, $id);
 
-        // Never detach warehouses or employees here. Their branch_id is historical
-        // context for transactions, transfers and employment records. Deactivation
-        // only prevents the branch from being selected for new operations.
+        $branch = Branch::whereNull('deleted_at')->findOrFail($id);
         $branch->update(['is_active' => false, 'deleted_at' => now()]);
 
         return response()->json(['success' => true]);
@@ -90,8 +108,14 @@ class BranchController extends Controller
     public function assignEmployee(Request $request, int $branchId, int $employeeId)
     {
         $this->authorizePermission($request, 'branches_edit');
+        $user = $request->user('api');
+        $this->assertBranchAccess($user, $branchId);
+
         $branch = Branch::whereNull('deleted_at')->where('is_active', true)->findOrFail($branchId);
         $employee = Employee::whereNull('deleted_at')->findOrFail($employeeId);
+        if ((int) $user->is_all_warehouses !== 1 && $employee->branch_id) {
+            $this->assertBranchAccess($user, (int) $employee->branch_id);
+        }
         $employee->update(['branch_id' => $branch->id]);
 
         return response()->json(['success' => true]);
@@ -140,6 +164,38 @@ class BranchController extends Controller
         if ($warehouseIds) {
             Warehouse::whereIn('id', $warehouseIds)->update(['branch_id' => $branch->id]);
         }
+    }
+
+    private function allowedBranchIds($user): array
+    {
+        if ((int) $user->is_all_warehouses === 1) {
+            return Branch::whereNull('deleted_at')->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        $warehouseIds = app(WarehouseScopeService::class)->allowedWarehouseIds($user);
+        $branchIds = Warehouse::whereNull('deleted_at')
+            ->whereIn('id', $warehouseIds ?: [0])
+            ->whereNotNull('branch_id')
+            ->pluck('branch_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $employeeBranch = optional($user->employee)->branch_id;
+        if ($employeeBranch) $branchIds[] = (int) $employeeBranch;
+
+        return array_values(array_unique($branchIds));
+    }
+
+    private function scopeBranches($query, $user): void
+    {
+        if ((int) $user->is_all_warehouses === 1) return;
+        $query->whereIn('id', $this->allowedBranchIds($user) ?: [0]);
+    }
+
+    private function assertBranchAccess($user, int $branchId): void
+    {
+        if ((int) $user->is_all_warehouses === 1) return;
+        abort_unless(in_array($branchId, $this->allowedBranchIds($user), true), 403, 'No tienes acceso a esta sucursal.');
     }
 
     private function authorizePermission(Request $request, string $permission): void
