@@ -20,6 +20,11 @@ router.addRoutes([
         name: "organization_employee_access",
         component: () => import("./views/app/pages/organization/employee_access"),
       },
+      {
+        path: "role-templates",
+        name: "organization_role_templates",
+        component: () => import("./views/app/pages/organization/role_templates"),
+      },
     ],
   },
   {
