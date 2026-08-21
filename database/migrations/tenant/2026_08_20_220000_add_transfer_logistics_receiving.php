@@ -20,22 +20,22 @@ return new class extends Migration
                 $table->timestamp('dispatched_at')->nullable()->after('logistics_status');
             }
             if (! Schema::hasColumn('transfers', 'dispatched_by_user_id')) {
-                $table->integer('dispatched_by_user_id')->nullable()->index()->after('dispatched_at');
+                $table->unsignedInteger('dispatched_by_user_id')->nullable()->index()->after('dispatched_at');
             }
             if (! Schema::hasColumn('transfers', 'received_at')) {
                 $table->timestamp('received_at')->nullable()->after('dispatched_by_user_id');
             }
             if (! Schema::hasColumn('transfers', 'received_by_user_id')) {
-                $table->integer('received_by_user_id')->nullable()->index()->after('received_at');
+                $table->unsignedInteger('received_by_user_id')->nullable()->index()->after('received_at');
             }
         });
 
         if (! Schema::hasTable('transfer_receipts')) {
             Schema::create('transfer_receipts', function (Blueprint $table) {
                 $table->id();
-                $table->integer('transfer_id')->index();
-                $table->integer('warehouse_id')->index();
-                $table->integer('received_by_user_id')->index();
+                $table->unsignedInteger('transfer_id')->index();
+                $table->unsignedInteger('warehouse_id')->index();
+                $table->unsignedInteger('received_by_user_id')->index();
                 $table->string('status', 32)->default('partial');
                 $table->text('notes')->nullable();
                 $table->timestamp('received_at');
@@ -51,7 +51,7 @@ return new class extends Migration
             Schema::create('transfer_receipt_items', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('transfer_receipt_id')->index();
-                $table->integer('transfer_detail_id')->index();
+                $table->unsignedInteger('transfer_detail_id')->index();
                 $table->decimal('quantity_good', 20, 6)->default(0);
                 $table->decimal('quantity_defective', 20, 6)->default(0);
                 $table->decimal('quantity_missing', 20, 6)->default(0);
@@ -66,17 +66,17 @@ return new class extends Migration
         if (! Schema::hasTable('transfer_discrepancies')) {
             Schema::create('transfer_discrepancies', function (Blueprint $table) {
                 $table->id();
-                $table->integer('transfer_id')->index();
-                $table->integer('transfer_detail_id')->index();
-                $table->integer('warehouse_id')->index();
-                $table->integer('reported_by_user_id')->index();
+                $table->unsignedInteger('transfer_id')->index();
+                $table->unsignedInteger('transfer_detail_id')->index();
+                $table->unsignedInteger('warehouse_id')->index();
+                $table->unsignedInteger('reported_by_user_id')->index();
                 $table->string('type', 24); // missing | defective
                 $table->decimal('quantity', 20, 6);
                 $table->string('resolution_status', 24)->default('open')->index();
                 $table->text('notes')->nullable();
                 $table->timestamp('reported_at');
                 $table->timestamp('resolved_at')->nullable();
-                $table->integer('resolved_by_user_id')->nullable()->index();
+                $table->unsignedInteger('resolved_by_user_id')->nullable()->index();
                 $table->timestamps();
 
                 $table->foreign('transfer_id')->references('id')->on('transfers')->onDelete('cascade');
@@ -89,15 +89,15 @@ return new class extends Migration
         if (! Schema::hasTable('transfer_quarantine_stock')) {
             Schema::create('transfer_quarantine_stock', function (Blueprint $table) {
                 $table->id();
-                $table->integer('transfer_id')->index();
-                $table->integer('transfer_detail_id')->index();
-                $table->integer('warehouse_id')->index();
-                $table->integer('product_id')->index();
-                $table->integer('product_variant_id')->nullable()->index();
+                $table->unsignedInteger('transfer_id')->index();
+                $table->unsignedInteger('transfer_detail_id')->index();
+                $table->unsignedInteger('warehouse_id')->index();
+                $table->unsignedInteger('product_id')->index();
+                $table->unsignedInteger('product_variant_id')->nullable()->index();
                 $table->decimal('quantity', 20, 6);
                 $table->string('status', 24)->default('quarantined')->index();
                 $table->text('notes')->nullable();
-                $table->integer('created_by_user_id')->index();
+                $table->unsignedInteger('created_by_user_id')->index();
                 $table->timestamps();
 
                 $table->foreign('transfer_id')->references('id')->on('transfers')->onDelete('cascade');
@@ -110,10 +110,10 @@ return new class extends Migration
         if (! Schema::hasTable('transfer_events')) {
             Schema::create('transfer_events', function (Blueprint $table) {
                 $table->id();
-                $table->integer('transfer_id')->index();
+                $table->unsignedInteger('transfer_id')->index();
                 $table->string('event_type', 40)->index();
-                $table->integer('actor_user_id')->nullable()->index();
-                $table->integer('warehouse_id')->nullable()->index();
+                $table->unsignedInteger('actor_user_id')->nullable()->index();
+                $table->unsignedInteger('warehouse_id')->nullable()->index();
                 $table->json('payload')->nullable();
                 $table->timestamp('created_at')->useCurrent();
 
@@ -124,8 +124,8 @@ return new class extends Migration
         if (! Schema::hasTable('transfer_notifications')) {
             Schema::create('transfer_notifications', function (Blueprint $table) {
                 $table->id();
-                $table->integer('transfer_id')->index();
-                $table->integer('user_id')->index();
+                $table->unsignedInteger('transfer_id')->index();
+                $table->unsignedInteger('user_id')->index();
                 $table->string('type', 40)->default('incoming_transfer')->index();
                 $table->string('title', 180);
                 $table->text('message');
