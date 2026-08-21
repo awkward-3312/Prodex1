@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\InventoryCompatibilityService;
 use App\Services\PosLocationStockBridge;
 use App\Services\SaleReturnLocationStockBridge;
+use App\Services\TransferLocationStockBridge;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
@@ -24,11 +25,6 @@ class product_warehouse extends Model
         'qte' => 'double',
     ];
 
-    /**
-     * During a branch/location POS request the historical controller still reads
-     * qte for pack validation and response formatting. Project that read from the
-     * selected InventoryLocation without changing the raw CD value in storage.
-     */
     public function getQteAttribute($value)
     {
         if (! app()->bound('request') || ! $this->product_id) return (float) $value;
@@ -46,13 +42,12 @@ class product_warehouse extends Model
         static::saving(function (product_warehouse $row) {
             if (! $row->exists || ! $row->isDirty('qte') || ! $row->product_id) return;
 
-            // Use raw values here because the qte accessor intentionally projects
-            // location stock during POS requests.
             $original = round((float) $row->getRawOriginal('qte'), 3);
             $attributes = $row->getAttributes();
             $target = round((float) ($attributes['qte'] ?? $original), 3);
             $variantId = $row->product_variant_id ? (int) $row->product_variant_id : null;
 
+            // 1) POS sale from a branch inventory location.
             $redirected = app(PosLocationStockBridge::class)->redirectLegacyDecrease(
                 (int) $row->product_id,
                 $variantId,
@@ -60,8 +55,17 @@ class product_warehouse extends Model
                 $target
             );
 
-            // Sale returns use the inverse path: received returns increase the
-            // original branch location and edits/deletes can decrease it again.
+            // 2) Approved transfer dispatch from a physical inventory location.
+            if (! $redirected) {
+                $redirected = app(TransferLocationStockBridge::class)->redirectLegacyDecrease(
+                    (int) $row->product_id,
+                    $variantId,
+                    $original,
+                    $target
+                );
+            }
+
+            // 3) Customer return back to the original POS location (or reversal).
             if (! $redirected) {
                 $redirected = app(SaleReturnLocationStockBridge::class)->redirectLegacyMutation(
                     (int) $row->product_id,
@@ -72,6 +76,8 @@ class product_warehouse extends Model
             }
 
             if ($redirected) {
+                // Preserve the CD/legacy aggregate: physical branch movements now
+                // live exclusively in InventoryLocationStock.
                 $row->setAttribute('qte', $original);
             }
         });
