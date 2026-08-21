@@ -4,6 +4,7 @@
   if (window.__prodexPosLocationBridgeInstalled) return;
   window.__prodexPosLocationBridgeInstalled = true;
 
+  var SESSION_KEY = 'prodex_pos_operational_context_v1';
   var state = window.__prodexPosLocation = window.__prodexPosLocation || {
     loaded: false,
     loading: null,
@@ -38,8 +39,35 @@
     };
   }
 
-  function current() {
-    return state.selected || contextFromPayload(state.payload);
+  function readStoredContext() {
+    try {
+      var raw = window.sessionStorage ? window.sessionStorage.getItem(SESSION_KEY) : null;
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      return {
+        branch_id: normalizeId(parsed.branch_id),
+        inventory_location_id: normalizeId(parsed.inventory_location_id),
+        cash_drawer_id: normalizeId(parsed.cash_drawer_id),
+        source: 'session_override'
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function persistContext(ctx) {
+    try {
+      if (!window.sessionStorage) return;
+      if (!ctx) {
+        window.sessionStorage.removeItem(SESSION_KEY);
+        return;
+      }
+      window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+        branch_id: ctx.branch_id,
+        inventory_location_id: ctx.inventory_location_id,
+        cash_drawer_id: ctx.cash_drawer_id
+      }));
+    } catch (e) {}
   }
 
   function branchById(id) {
@@ -57,9 +85,41 @@
     return rows.find(function (row) { return String(row.id) === String(id); }) || null;
   }
 
+  function contextIsAllowed(ctx, payload) {
+    if (!ctx || !payload) return false;
+    var branch = (payload.branches || []).find(function (row) { return String(row.id) === String(ctx.branch_id); });
+    var location = (payload.inventory_locations || []).find(function (row) {
+      return String(row.id) === String(ctx.inventory_location_id) && String(row.branch_id) === String(ctx.branch_id);
+    });
+    var drawer = (payload.cash_drawers || []).find(function (row) {
+      return String(row.id) === String(ctx.cash_drawer_id)
+        && String(row.branch_id) === String(ctx.branch_id)
+        && String(row.inventory_location_id) === String(ctx.inventory_location_id);
+    });
+    return !!(branch && location && drawer);
+  }
+
+  function restoreSelection(payload) {
+    var effective = contextFromPayload(payload);
+    var stored = readStoredContext();
+    var canOverride = !!(payload && payload.effective && payload.effective.can_override);
+
+    if (stored && canOverride && contextIsAllowed(stored, payload)) {
+      state.selected = stored;
+      return;
+    }
+
+    if (stored) persistContext(null);
+    state.selected = effective;
+  }
+
+  function current() {
+    return state.selected || contextFromPayload(state.payload);
+  }
+
   function canUseLocationMode() {
     var ctx = current();
-    return !!(ctx && ctx.branch_id && ctx.inventory_location_id && ctx.cash_drawer_id);
+    return !!(ctx && ctx.branch_id && ctx.inventory_location_id && ctx.cash_drawer_id && contextIsAllowed(ctx, state.payload));
   }
 
   function canChooseContext() {
@@ -84,7 +144,7 @@
     }).then(function (response) {
       state.payload = response && response.data ? response.data : null;
       state.loaded = true;
-      if (!state.selected) state.selected = contextFromPayload(state.payload);
+      restoreSelection(state.payload);
       applyOperationalChrome();
       return state.payload;
     }).catch(function () {
@@ -124,6 +184,11 @@
     return !!(parsed && /\/pos\/get_products_pos_changes$/i.test(parsed.pathname));
   }
 
+  function isLocationDelta(config) {
+    var parsed = parseUrl(config && config.url);
+    return !!(parsed && /\/pos\/location-inventory\/\d+\/changes$/i.test(parsed.pathname));
+  }
+
   function isCreatePos(config) {
     var parsed = parseUrl(config && config.url);
     return !!(parsed && /\/pos\/create_pos$/i.test(parsed.pathname));
@@ -159,6 +224,12 @@
         data.branch_id = ctx.branch_id;
         data.inventory_location_id = ctx.inventory_location_id;
         data.cash_drawer_id = ctx.cash_drawer_id;
+        config.__prodexPosSaleDetails = Array.isArray(data.details) ? data.details.map(function (row) {
+          return {
+            product_id: normalizeId(row && row.product_id),
+            product_variant_id: normalizeId(row && row.product_variant_id)
+          };
+        }) : [];
         config.__prodexPosLocation = ctx;
       }
       return config;
@@ -168,9 +239,8 @@
       var parsed = parseUrl(config.url);
       if (parsed) {
         config.__prodexOriginalStockFilter = parsed.searchParams.get('stock');
-        // The legacy endpoint remains the metadata/pricing source during the
-        // migration. Asking it for all rows prevents CD stock from hiding a
-        // product that physically exists in a branch inventory location.
+        // Product metadata/pricing remains on the legacy endpoint during the
+        // cutover. Stock itself is overlaid from InventoryLocation below.
         parsed.searchParams.set('stock', '0');
         config.url = relativeApiUrl(parsed);
         config.__prodexPosLocation = ctx;
@@ -199,16 +269,20 @@
     return String(productId) + ':' + (variantId === null || variantId === undefined || variantId === '' ? 'null' : String(variantId));
   }
 
+  function fetchStockMap(ctx) {
+    return api().get('pos/location-inventory/' + ctx.inventory_location_id + '/stock-map', {
+      meta: { skipInitialLoader: true, skipErrorRedirect: true, prodexPosStockMap: true }
+    }).then(function (stockResponse) {
+      return stockResponse && stockResponse.data ? stockResponse.data : {};
+    });
+  }
+
   function overlayLocationStock(response, ctx) {
-    var axios = api();
-    if (!axios || !response || !response.data || !Array.isArray(response.data.products)) {
+    if (!api() || !response || !response.data || !Array.isArray(response.data.products)) {
       return Promise.resolve(response);
     }
 
-    return axios.get('pos/location-inventory/' + ctx.inventory_location_id + '/stock-map', {
-      meta: { skipInitialLoader: true, skipErrorRedirect: true, prodexPosStockMap: true }
-    }).then(function (stockResponse) {
-      var payload = stockResponse && stockResponse.data ? stockResponse.data : {};
+    return fetchStockMap(ctx).then(function (payload) {
       var rows = Array.isArray(payload.products) ? payload.products : [];
       var map = new Map();
       rows.forEach(function (row) {
@@ -236,9 +310,7 @@
       response.data.totalRows = response.data.products.length;
       return response;
     }).catch(function () {
-      // Do not silently fall back to CD quantities once location mode is active.
-      // Returning zero stock is safer than allowing a cashier to sell inventory
-      // that belongs to a different physical location.
+      // Once a POS is location-aware, never expose CD quantities as a fallback.
       response.data.products = response.data.products.map(function (product) {
         if (!product || product.product_type === 'is_service') return product;
         return Object.assign({}, product, {
@@ -250,6 +322,33 @@
           stock_source: 'inventory_location_unavailable'
         });
       });
+      return response;
+    });
+  }
+
+  function refreshSaleUpdatedStock(response, ctx, config) {
+    if (!response || !response.data || response.data.success !== true) return Promise.resolve(response);
+    var sold = Array.isArray(config.__prodexPosSaleDetails) ? config.__prodexPosSaleDetails : [];
+    if (!sold.length) return Promise.resolve(response);
+
+    var wanted = new Set();
+    sold.forEach(function (row) {
+      if (row && row.product_id) wanted.add(stockKey(row.product_id, row.product_variant_id));
+    });
+
+    return fetchStockMap(ctx).then(function (payload) {
+      var rows = Array.isArray(payload.products) ? payload.products : [];
+      response.data.updated_stock = rows.filter(function (row) {
+        return wanted.has(stockKey(row.product_id || row.id, row.product_variant_id));
+      });
+      response.data.server_time = payload.server_time || response.data.server_time;
+      response.data.inventory_location_id = ctx.inventory_location_id;
+      response.data.branch_id = ctx.branch_id;
+      return response;
+    }).catch(function () {
+      // Never let the old CD quantity overwrite the location-aware catalog after
+      // a sale. If refresh fails, leave the UI waiting for the next location delta.
+      response.data.updated_stock = [];
       return response;
     });
   }
@@ -305,6 +404,7 @@
       if (!ctx) return response;
 
       if (isPosCatalog(config)) return overlayLocationStock(response, ctx);
+      if (isCreatePos(config)) return refreshSaleUpdatedStock(response, ctx, config);
       if (isBatchForSale(config)) return overlayBatchAvailability(response, ctx, config);
       return response;
     }, function (error) {
@@ -324,17 +424,17 @@
   }
 
   function applyOperationalChrome() {
-    if (!canUseLocationMode()) return;
-    var label = contextLabel();
     var trigger = document.querySelector('.pos-wh-trigger');
-    if (trigger) {
-      trigger.setAttribute('title', 'Sucursal y ubicación operativa');
-      trigger.setAttribute('data-prodex-location-mode', '1');
-      var eyebrow = trigger.querySelector('.pos-wh-trigger-eyebrow');
-      var text = trigger.querySelector('.pos-wh-trigger-label');
-      if (eyebrow) eyebrow.textContent = 'Sucursal / ubicación';
-      if (text && label) text.textContent = label;
-    }
+    if (!trigger) return;
+
+    if (!canUseLocationMode() && !canChooseContext()) return;
+
+    trigger.setAttribute('title', 'Sucursal y ubicación operativa');
+    trigger.setAttribute('data-prodex-location-mode', '1');
+    var eyebrow = trigger.querySelector('.pos-wh-trigger-eyebrow');
+    var text = trigger.querySelector('.pos-wh-trigger-label');
+    if (eyebrow) eyebrow.textContent = 'Sucursal / ubicación';
+    if (text) text.textContent = contextLabel() || 'Seleccionar ubicación';
 
     var drawer = document.querySelector('.wh-drawer-backdrop');
     if (drawer) drawer.style.display = 'none';
@@ -437,20 +537,22 @@
       var branchId = normalizeId(branchSelect.value);
       var locationId = normalizeId(locationSelect.value);
       var drawerId = normalizeId(drawerSelect.value);
-      if (!branchId || !locationId || !drawerId) return;
-
-      state.selected = {
+      var selected = {
         branch_id: branchId,
         inventory_location_id: locationId,
         cash_drawer_id: drawerId,
         source: 'session_override'
       };
+      if (!branchId || !locationId || !drawerId || !contextIsAllowed(selected, payload)) return;
+
+      state.selected = selected;
+      persistContext(selected);
       closePicker();
       applyOperationalChrome();
       window.dispatchEvent(new CustomEvent('prodex:pos-context-changed', { detail: state.selected }));
 
-      // The existing Vue POS owns the catalog state. A controlled reload is the
-      // safest way to clear any cart/stock cached for the previous physical site.
+      // Reload guarantees the legacy Vue cart cannot retain quantities from a
+      // different branch after an authorized operational reassignment.
       if (window.location && /\/app\/pos(?:$|[/?#])/i.test(window.location.href)) {
         window.location.reload();
       }
@@ -459,7 +561,7 @@
 
   document.addEventListener('click', function (event) {
     var trigger = event.target && event.target.closest ? event.target.closest('.pos-wh-trigger') : null;
-    if (!trigger || !canUseLocationMode()) return;
+    if (!trigger || (!canUseLocationMode() && !canChooseContext())) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -468,7 +570,7 @@
   }, true);
 
   var observer = new MutationObserver(function () {
-    if (canUseLocationMode()) applyOperationalChrome();
+    if (canUseLocationMode() || canChooseContext()) applyOperationalChrome();
   });
 
   function boot() {
