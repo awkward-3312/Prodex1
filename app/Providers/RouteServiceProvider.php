@@ -25,10 +25,6 @@ class RouteServiceProvider extends ServiceProvider
         parent::boot();
     }
 
-    /**
-     * Central vs tenant: when not installed, always load central routes (setup) so setup works on any host.
-     * After install, load central on central domains and tenant routes on tenant domains.
-     */
     public function map()
     {
         if (app()->runningInConsole()) {
@@ -55,7 +51,6 @@ class RouteServiceProvider extends ServiceProvider
 
     protected function mapUniversalRoutes(): void
     {
-        // Reserved for callbacks that must be available without tenant context.
     }
 
     protected function mapCentralRoutes(): void
@@ -77,8 +72,6 @@ class RouteServiceProvider extends ServiceProvider
             'tenant.active',
         ];
 
-        // Must be registered before tenant_web.php because that file ends in the
-        // authenticated SPA catch-all. Phone-camera QR links need this exact route.
         Route::middleware(array_merge(['web'], $tenancy))
             ->namespace($this->namespace)
             ->group(base_path('routes/tenant_transfer_logistics_web.php'));
@@ -92,24 +85,23 @@ class RouteServiceProvider extends ServiceProvider
             ->namespace($this->namespace)
             ->group(base_path('routes/tenant_api.php'));
 
-        // Transfer logistics is isolated from the legacy transfer resource so the
-        // receiving workflow can evolve without destabilizing the historical API.
+        // Organization is isolated from the historical user/warehouse APIs. This
+        // gives branches, employees and operational scope one explicit contract.
+        Route::prefix('api')
+            ->middleware(array_merge(['api'], $tenancy))
+            ->namespace($this->namespace)
+            ->group(base_path('routes/tenant_organization.php'));
+
         Route::prefix('api')
             ->middleware(array_merge(['api'], $tenancy))
             ->namespace($this->namespace)
             ->group(base_path('routes/tenant_transfer_logistics.php'));
 
-        // Attendance integrations live in a small isolated route file so new
-        // biometric/import APIs do not increase the risk of editing the large
-        // historical tenant_api.php file.
         Route::prefix('api')
             ->middleware(array_merge(['api'], $tenancy))
             ->namespace($this->namespace)
             ->group(base_path('routes/tenant_attendance_integrations.php'));
 
-        // Small, isolated route overrides that must be registered after the legacy
-        // tenant API routes. This keeps SAR-specific rendering out of the large
-        // historical route/controller files while preserving non-SAR fallbacks.
         Route::prefix('api')
             ->middleware(array_merge(['api'], $tenancy))
             ->namespace($this->namespace)
