@@ -166,6 +166,21 @@ class UserOperationalAssignmentService
      */
     public function validateRequestedAssignment(User $user, ?int $warehouseId, ?int $cashDrawerId, bool $requireDrawer = true): void
     {
+        // The historical PosController still calls this method before creating a
+        // sale. Once the frontend sends branch_id + inventory_location_id, route
+        // that same call through the new operational validator instead of forcing
+        // a branch-owned cash drawer to belong to a legacy warehouse.
+        if (app()->bound('request') && app(PosLocationStockBridge::class)->isLocationPosRequest(request())) {
+            $this->validateRequestedOperationalAssignment(
+                $user,
+                request()->filled('branch_id') ? (int) request()->input('branch_id') : null,
+                request()->filled('inventory_location_id') ? (int) request()->input('inventory_location_id') : null,
+                $cashDrawerId,
+                $requireDrawer
+            );
+            return;
+        }
+
         if (! $warehouseId) {
             throw ValidationException::withMessages(['warehouse_id' => 'Seleccione un warehouse.']);
         }
