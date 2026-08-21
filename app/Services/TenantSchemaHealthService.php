@@ -41,6 +41,8 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_21_090000_add_organization_structure_foundation.php',
         // Inventory architecture phase 1: locations are additive; stock stays in product_warehouse.
         'database/migrations/tenant/2026_08_21_150000_create_inventory_locations_foundation.php',
+        // Phase 2: parallel stock engine and immutable movement ledger.
+        'database/migrations/tenant/2026_08_21_160000_create_inventory_location_stock_engine.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -154,12 +156,25 @@ class TenantSchemaHealthService
             'code', 'description', 'is_system_default', 'is_active', 'suggested_role_key',
         ]);
 
-        // Phase 1 deliberately introduces no stock rows and does not modify
-        // product_warehouse. It only establishes the future source-of-truth owner.
         $this->requireTable($schema, $missing, 'inventory_locations');
         $this->requireColumns($schema, $missing, 'inventory_locations', [
             'branch_id', 'warehouse_id', 'code', 'name', 'type', 'is_sellable',
             'is_default_sales', 'is_quarantine', 'is_active',
+        ]);
+
+        // Phase 2 remains parallel to legacy product_warehouse. These tables are
+        // not yet the production source of truth, but every tenant must have the
+        // same engine before backfill and controlled dual-write begin.
+        $this->requireTable($schema, $missing, 'inventory_location_stocks');
+        $this->requireColumns($schema, $missing, 'inventory_location_stocks', [
+            'inventory_location_id', 'product_id', 'product_variant_id', 'variant_key',
+            'quantity', 'reserved_quantity', 'manage_stock',
+        ]);
+        $this->requireTable($schema, $missing, 'inventory_location_movements');
+        $this->requireColumns($schema, $missing, 'inventory_location_movements', [
+            'movement_type', 'product_id', 'product_variant_id', 'from_inventory_location_id',
+            'to_inventory_location_id', 'quantity', 'user_id', 'reference_type',
+            'reference_id', 'idempotency_key', 'notes', 'metadata',
         ]);
 
         return $missing;
