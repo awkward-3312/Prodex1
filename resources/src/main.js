@@ -7,13 +7,18 @@ import router, { setupRouterGuards } from "./router";
 // stable while the new organization module is introduced incrementally.
 router.addRoutes([
   {
-    path: "/app/organization/branches",
+    path: "/app/organization",
     component: () => import("./views/app"),
     children: [
       {
-        path: "",
+        path: "branches",
         name: "organization_branches",
         component: () => import("./views/app/pages/organization/branches"),
+      },
+      {
+        path: "employee-access",
+        name: "organization_employee_access",
+        component: () => import("./views/app/pages/organization/employee_access"),
       },
     ],
   },
