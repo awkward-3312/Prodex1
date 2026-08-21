@@ -51,6 +51,19 @@ jobs:
           php -l database/migrations/tenant/2026_08_20_220100_create_attendance_employee_identifiers_table.php
           php -l database/migrations/tenant/2026_08_20_220200_create_attendance_punches_table.php
           php -l database/migrations/tenant/2026_08_20_220300_add_source_to_attendances_table.php
+      - name: PHP syntax check for transfer logistics files
+        run: |
+          php -l app/Http/Controllers/TransferLogisticsController.php
+          php -l app/Http/Controllers/TransferDiscrepancyController.php
+          php -l app/Services/TransferLogisticsService.php
+          php -l app/Models/Transfer.php
+          php -l app/Models/TransferReceipt.php
+          php -l app/Models/TransferReceiptItem.php
+          php -l routes/tenant_transfer_logistics.php
+          php -l routes/tenant_transfer_logistics_web.php
+          php -l database/migrations/tenant/2026_08_20_220000_add_transfer_logistics_receiving.php
+          php -l database/migrations/tenant/2026_08_20_220100_add_transfer_receipt_batch_allocations.php
+          php -l database/migrations/tenant/2026_08_20_220200_add_transfer_discrepancy_resolution_workflow.php
 
   frontend-build:
     runs-on: ubuntu-latest
@@ -63,6 +76,11 @@ jobs:
           cache: npm
       - name: Install frontend dependencies
         run: npm ci
+      - name: Check standalone transfer scripts
+        run: |
+          node --check resources/static/prodex-transfer-logistics.js
+          node --check resources/static/prodex-transfer-permission-ui.js
+          node --check resources/static/prodex-transfer-issues.js
       - name: Production build
         env:
           NODE_OPTIONS: --max-old-space-size=8192
