@@ -77,13 +77,15 @@ class RouteServiceProvider extends ServiceProvider
             'tenant.active',
         ];
 
-        Route::middleware(array_merge(['web'], $tenancy))
-            ->namespace($this->namespace)
-            ->group(base_path('routes/tenant_web.php'));
-
+        // Must be registered before tenant_web.php because that file ends in the
+        // authenticated SPA catch-all. Phone-camera QR links need this exact route.
         Route::middleware(array_merge(['web'], $tenancy))
             ->namespace($this->namespace)
             ->group(base_path('routes/tenant_transfer_logistics_web.php'));
+
+        Route::middleware(array_merge(['web'], $tenancy))
+            ->namespace($this->namespace)
+            ->group(base_path('routes/tenant_web.php'));
 
         Route::prefix('api')
             ->middleware(array_merge(['api'], $tenancy))
