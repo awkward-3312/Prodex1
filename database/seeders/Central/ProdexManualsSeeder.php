@@ -14,7 +14,7 @@ class ProdexManualsSeeder extends Seeder
             ['slug' => 'organizacion-y-accesos'],
             [
                 'name' => 'Organización y accesos',
-                'description' => 'Guías para estructurar sucursales, bodegas, empleados, usuarios y permisos en PRODEX.',
+                'description' => 'Guías para estructurar sucursales, usuarios, roles, puestos y alcance operativo en PRODEX.',
                 'icon' => 'building-2',
                 'sort_order' => 20,
             ]
@@ -24,7 +24,7 @@ class ProdexManualsSeeder extends Seeder
             ['slug' => 'inventario-y-logistica'],
             [
                 'name' => 'Inventario y logística',
-                'description' => 'Guías para movimientos, transferencias, recepción de stock e incidencias.',
+                'description' => 'Guías para ubicaciones de inventario, almacenes/CD, movimientos, transferencias y recepción.',
                 'icon' => 'warehouse',
                 'sort_order' => 30,
             ]
@@ -34,7 +34,7 @@ class ProdexManualsSeeder extends Seeder
             ['slug' => 'sucursales-y-bodegas'],
             [
                 'kb_category_id' => $organization->id,
-                'title' => 'Sucursales y bodegas en PRODEX',
+                'title' => 'Sucursales, ubicaciones de inventario y almacenes/CD',
                 'content' => $this->branchesWarehousesContent(),
                 'is_published' => true,
                 'sort_order' => 10,
@@ -45,7 +45,7 @@ class ProdexManualsSeeder extends Seeder
             ['slug' => 'empleados-usuarios-puestos-permisos'],
             [
                 'kb_category_id' => $organization->id,
-                'title' => 'Empleados, usuarios, puestos y permisos',
+                'title' => 'Usuarios, empleados, puestos, roles y permisos',
                 'content' => $this->employeeAccessContent(),
                 'is_published' => true,
                 'sort_order' => 20,
@@ -56,7 +56,7 @@ class ProdexManualsSeeder extends Seeder
             ['slug' => 'transferencias-stock-entre-sucursales'],
             [
                 'kb_category_id' => $inventory->id,
-                'title' => 'Cómo transferir stock entre sucursales',
+                'title' => 'Cómo transferir stock entre ubicaciones',
                 'content' => $this->stockTransferContent(),
                 'is_published' => true,
                 'sort_order' => 10,
@@ -89,92 +89,129 @@ class ProdexManualsSeeder extends Seeder
     private function branchesWarehousesContent(): string
     {
         return <<<'HTML'
-<h2>Para qué sirve</h2>
-<p>Una <strong>sucursal</strong> representa una ubicación o unidad operativa de la empresa. Una <strong>bodega</strong> representa un lugar donde PRODEX controla existencias. Una sucursal puede tener una o varias bodegas.</p>
-<p>Ejemplo:</p>
+<h2>Tres conceptos diferentes</h2>
+<p>PRODEX separa la estructura comercial de la estructura logística y del lugar exacto donde existe cada producto:</p>
 <ul>
+  <li><strong>Sucursal:</strong> lugar donde opera la empresa: tienda, oficina o punto de atención.</li>
+  <li><strong>Almacén / Centro de distribución (CD):</strong> instalación logística dedicada que abastece a una o varias sucursales.</li>
+  <li><strong>Ubicación de inventario:</strong> lugar exacto donde se mantiene stock, por ejemplo Piso de venta, Bodega de sucursal, Cuarentena, Dañados o Devoluciones.</li>
+</ul>
+<p>Una sucursal no consume un almacén/CD adicional solo por manejar inventario.</p>
+
+<h2>Ejemplo</h2>
+<ul>
+  <li>CD Principal
+    <ul><li>Inventario principal</li></ul>
+  </li>
   <li>Sucursal Mall
     <ul>
-      <li>Bodega de venta</li>
-      <li>Bodega trasera</li>
-      <li>Bodega de cuarentena</li>
+      <li>Piso de venta</li>
+      <li>Bodega de sucursal</li>
+      <li>Cuarentena</li>
     </ul>
   </li>
-  <li>Centro de distribución
+  <li>Sucursal Centro
     <ul>
-      <li>Bodega principal</li>
+      <li>Piso de venta</li>
+      <li>Bodega de sucursal</li>
     </ul>
   </li>
 </ul>
-<h2>Orden recomendado de configuración</h2>
+<p>En este ejemplo la empresa tiene <strong>un CD</strong>, dos sucursales y cinco ubicaciones internas de inventario.</p>
+
+<h2>Crear una sucursal</h2>
 <ol>
-  <li>Cree primero la sucursal.</li>
-  <li>Complete su código, ubicación y responsable.</li>
-  <li>Cree o asigne las bodegas que pertenecen a esa sucursal.</li>
-  <li>Defina una bodega predeterminada si la sucursal tiene más de una.</li>
-  <li>En Gestión de personal, asigne cada empleado a su sucursal.</li>
-  <li>En Usuarios y accesos, configure el rol y las bodegas que ese usuario puede operar.</li>
+  <li>Abra Organización → Sucursales.</li>
+  <li>Indique nombre, código, dirección y responsable.</li>
+  <li>Active <strong>Esta sucursal maneja inventario</strong> si corresponde.</li>
+  <li>PRODEX crea el <strong>Piso de venta</strong> como ubicación predeterminada.</li>
+  <li>Si la sucursal guarda mercancía adicional, puede crear también <strong>Bodega de sucursal</strong>.</li>
+  <li>Agregue después Cuarentena, Dañados u otras ubicaciones cuando la operación lo requiera.</li>
 </ol>
-<h2>Regla importante</h2>
-<p>El <strong>rol</strong> define qué puede hacer una persona. La <strong>sucursal o bodega asignada</strong> define dónde puede hacerlo. Tener permiso de inventario no concede acceso automático al inventario de todas las sucursales.</p>
-<h2>Bodegas y stock</h2>
-<p>Cada bodega mantiene su propio inventario. Mover existencias entre bodegas debe realizarse mediante una transferencia de stock; no edite cantidades manualmente para simular un traslado.</p>
-<h2>Recomendación</h2>
-<p>No elimine una sucursal o bodega que ya tenga historial. Desactívela para conservar trazabilidad de ventas, movimientos, transferencias y auditorías.</p>
+
+<h2>Almacenes/CD</h2>
+<p>Use Almacenes/CD para instalaciones logísticas dedicadas. No cree un almacén nuevo únicamente para representar cada sucursal o cada trastienda.</p>
+
+<h2>Regla de inventario</h2>
+<p>El producto debe moverse mediante operaciones trazables entre ubicaciones. No modifique cantidades directamente para simular un traslado.</p>
 HTML;
     }
 
     private function employeeAccessContent(): string
     {
         return <<<'HTML'
+<h2>La seguridad de PRODEX no depende de Gestión de personal</h2>
+<p>Toda empresa puede crear usuarios, asignar roles y limitar su alcance aunque su plan no incluya Gestión de personal.</p>
+
 <h2>Conceptos</h2>
-<p>PRODEX separa cuatro responsabilidades:</p>
 <ul>
-  <li><strong>Empleado:</strong> la persona dentro de Gestión de personal.</li>
-  <li><strong>Puesto laboral:</strong> su función organizacional, por ejemplo Cajero o Bodeguero.</li>
-  <li><strong>Usuario:</strong> la cuenta con la que entra a PRODEX.</li>
-  <li><strong>Rol y permisos:</strong> las acciones que esa cuenta puede realizar.</li>
+  <li><strong>Usuario:</strong> cuenta que inicia sesión en PRODEX.</li>
+  <li><strong>Rol:</strong> determina qué acciones puede ejecutar.</li>
+  <li><strong>Sucursal y ubicaciones asignadas:</strong> determinan dónde puede ejecutar esas acciones.</li>
+  <li><strong>Empleado:</strong> persona registrada en Gestión de personal; es opcional para efectos de acceso.</li>
+  <li><strong>Puesto:</strong> función laboral como Cajero o Bodeguero. Puede sugerir un rol, pero nunca concede permisos automáticamente.</li>
 </ul>
-<p>El puesto no sustituye al rol. PRODEX puede sugerir un rol según el puesto, pero el administrador decide los permisos finales.</p>
-<h2>Flujo recomendado</h2>
+
+<h2>Empresa sin Gestión de personal</h2>
 <ol>
-  <li>Cree el empleado desde Gestión de personal.</li>
-  <li>Asigne empresa, departamento, sucursal, puesto y turno.</li>
-  <li>Si la persona necesita entrar a PRODEX, cree o vincule su usuario.</li>
-  <li>Desde Usuarios y accesos asigne el rol.</li>
-  <li>Defina sus bodegas operativas y su bodega predeterminada.</li>
-  <li>Active únicamente los permisos necesarios para su trabajo.</li>
+  <li>Abra Usuarios y accesos → Usuarios.</li>
+  <li>Seleccione Crear usuario.</li>
+  <li>Asigne un rol.</li>
+  <li>Seleccione una o varias sucursales.</li>
+  <li>Seleccione las ubicaciones de inventario que puede operar.</li>
+  <li>Defina la sucursal y ubicación predeterminadas.</li>
 </ol>
-<h2>Puestos predeterminados</h2>
-<p>PRODEX ofrece plantillas comunes como Gerente de sucursal, Administrador de sucursal, Cajero, Supervisor de caja, Servicio al cliente, Bodeguero, Encargado de inventario, Encargado de recepción, Vendedor, Compras, Contabilidad, Recursos Humanos y Mantenimiento. También puede crear puestos personalizados.</p>
-<h2>Principio de mínimo acceso</h2>
+
+<h2>Empresa con Gestión de personal</h2>
+<ol>
+  <li>Cree el empleado y asigne sucursal, departamento y puesto.</li>
+  <li>Abra Usuarios y accesos → Acceso de empleados.</li>
+  <li>Cree o vincule su cuenta.</li>
+  <li>Seleccione el rol y el alcance operativo.</li>
+</ol>
+
+<h2>Ejemplos de alcance</h2>
 <ul>
-  <li>Un cajero puede consultar inventario de su sucursal, pero no ajustar existencias ni eliminar productos.</li>
-  <li>Un bodeguero puede registrar movimientos, conteos y recepciones en sus bodegas asignadas.</li>
-  <li>Un gerente puede supervisar la sucursal sin recibir automáticamente permisos administrativos globales.</li>
+  <li><strong>Cajero:</strong> normalmente una sucursal y su Piso de venta.</li>
+  <li><strong>Bodeguero:</strong> puede necesitar Piso de venta, Bodega de sucursal y Cuarentena.</li>
+  <li><strong>Gerente:</strong> puede tener alcance a toda su sucursal, pero solo las acciones habilitadas por su rol.</li>
+  <li><strong>Supervisor regional:</strong> puede utilizar un mismo usuario para varias sucursales.</li>
 </ul>
-<h2>Alcance</h2>
-<p>Los permisos responden <strong>qué puede hacer</strong> el usuario. Las sucursales y bodegas responden <strong>sobre qué datos puede hacerlo</strong>.</p>
+
+<h2>Traslado temporal de personal</h2>
+<p>Cuando una persona cubra otra tienda temporalmente, PRODEX puede aplicar una asignación operativa temporal con la sucursal, ubicación de inventario y caja correspondientes. Al finalizar, vuelve a su configuración habitual.</p>
+
+<h2>Regla principal</h2>
+<p><strong>Rol = qué puede hacer. Alcance = dónde puede hacerlo.</strong></p>
 HTML;
     }
 
     private function stockTransferContent(): string
     {
         return <<<'HTML'
-<h2>Antes de transferir</h2>
-<p>Verifique que la sucursal destino tenga al menos una bodega configurada y que el usuario que despacha tenga acceso a la bodega de origen.</p>
-<h2>Crear la transferencia</h2>
+<h2>Qué es una transferencia</h2>
+<p>Una transferencia logística mueve mercancía físicamente entre dos ubicaciones de inventario que requieren despacho y recepción.</p>
+<p>Ejemplos:</p>
+<ul>
+  <li>CD Principal → Bodega de Sucursal Mall.</li>
+  <li>Sucursal Centro → Sucursal Mall.</li>
+</ul>
+
+<h2>Movimiento interno</h2>
+<p>Cuando la mercancía se mueve dentro de una misma sucursal, por ejemplo <strong>Bodega de sucursal → Piso de venta</strong>, PRODEX puede manejarlo como un movimiento interno sin necesidad de simular otro almacén/CD.</p>
+
+<h2>Transferencia logística</h2>
 <ol>
-  <li>Entre a Inventario y abra Transferencias de stock.</li>
-  <li>Seleccione la bodega de origen y la bodega destino.</li>
+  <li>Seleccione la ubicación de origen y la ubicación destino.</li>
   <li>Agregue los productos y cantidades.</li>
-  <li>Guarde la transferencia.</li>
-  <li>Complete la aprobación o despacho según los permisos configurados por su empresa.</li>
+  <li>Complete la aprobación requerida por su empresa.</li>
+  <li>Despache el envío.</li>
+  <li>El stock queda en tránsito.</li>
+  <li>El receptor verifica físicamente y confirma la recepción.</li>
 </ol>
-<h2>Qué ocurre al despachar</h2>
-<p>El stock sale de la bodega de origen y queda <strong>en tránsito</strong>. No se suma automáticamente a la bodega destino. La sucursal receptora debe confirmar físicamente la recepción.</p>
+
 <h2>Trazabilidad</h2>
-<p>No utilice ajustes manuales para simular una transferencia. El flujo de transferencia conserva origen, destino, usuario, cantidades, incidencias y recepción.</p>
+<p>No utilice ajustes manuales para representar mercancía viajando entre ubicaciones. La transferencia conserva origen, destino, usuario, cantidades, incidencias y recepción.</p>
 HTML;
     }
 
@@ -182,32 +219,38 @@ HTML;
     {
         return <<<'HTML'
 <h2>Quién puede recibir</h2>
-<p>Solo los usuarios con permiso de recepción y acceso a la bodega destino pueden confirmar la entrada.</p>
-<h2>Ver stock en camino</h2>
-<p>Abra <strong>Operaciones → Ingreso de stock</strong>. Allí aparecen las transferencias en tránsito destinadas a sus bodegas autorizadas.</p>
+<p>Solo un usuario cuyo rol incluya recepción y cuyo alcance incluya la ubicación destino puede confirmar la mercancía.</p>
+
+<h2>Ver mercancía en camino</h2>
+<p>Abra Operaciones → Ingreso de stock. Las transferencias destinadas a ubicaciones autorizadas aparecen como pendientes de recibir.</p>
+
 <h2>Recepción</h2>
 <ol>
-  <li>Abra la transferencia entrante o escanee su código QR.</li>
-  <li>Compare físicamente los productos recibidos contra lo enviado.</li>
-  <li>Indique las cantidades correctas, faltantes o defectuosas.</li>
+  <li>Abra la transferencia o escanee su código QR.</li>
+  <li>Compare físicamente cada producto.</li>
+  <li>Registre cantidades correctas, faltantes o defectuosas.</li>
   <li>Confirme la recepción.</li>
 </ol>
+
 <h2>Cuándo aumenta el inventario</h2>
-<p>La existencia disponible de la bodega destino aumenta únicamente cuando la recepción es confirmada. Mientras el envío está en tránsito, no debe venderse como stock recibido.</p>
+<p>La ubicación destino recibe únicamente la cantidad confirmada como correcta. Mientras el envío está en tránsito no debe aparecer como existencia disponible del destino.</p>
 HTML;
     }
 
     private function transferIssuesContent(): string
     {
         return <<<'HTML'
-<h2>Si falta mercancía</h2>
-<p>Registre la cantidad como <strong>faltante</strong> durante la recepción. No confirme una cantidad mayor a la recibida físicamente. PRODEX conserva la incidencia para seguimiento.</p>
-<h2>Si llega mercancía defectuosa</h2>
-<p>Marque la cantidad como <strong>defectuosa</strong>. El producto defectuoso no debe incorporarse automáticamente al inventario vendible; se mantiene identificado para cuarentena o resolución.</p>
+<h2>Mercancía faltante</h2>
+<p>Registre como faltante lo que no llegó físicamente. No incremente el inventario destino por unidades ausentes.</p>
+
+<h2>Mercancía defectuosa</h2>
+<p>Registre las unidades defectuosas. Deben mantenerse fuera del inventario vendible y, cuando corresponda, enviarse a una ubicación de Cuarentena o Dañados.</p>
+
 <h2>Recepciones parciales</h2>
-<p>Cuando una transferencia no llega completa, registre únicamente lo recibido. La transferencia mantiene pendiente lo que aún no se ha recibido o resuelto.</p>
-<h2>Regla de auditoría</h2>
-<p>No corrija diferencias mediante ediciones directas al stock. Utilice siempre el flujo de incidencia para conservar quién recibió, qué faltó, qué llegó defectuoso y cómo se resolvió.</p>
+<p>Registre únicamente las cantidades recibidas. La transferencia conserva lo pendiente hasta su recepción o resolución.</p>
+
+<h2>Auditoría</h2>
+<p>No corrija una discrepancia editando directamente el stock. Utilice el flujo de incidencia para conservar quién recibió, qué faltó, qué llegó defectuoso y cómo se resolvió.</p>
 HTML;
     }
 }
