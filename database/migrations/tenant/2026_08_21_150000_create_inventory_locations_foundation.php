@@ -27,6 +27,10 @@ return new class extends Migration
 
                 $table->index(['branch_id', 'is_active'], 'inventory_locations_branch_active');
                 $table->index(['warehouse_id', 'is_active'], 'inventory_locations_warehouse_active');
+                // Nullable-owner unique keys work well here: MySQL permits repeated
+                // NULL values, while enforcing code uniqueness for the actual owner.
+                $table->unique(['branch_id', 'code'], 'inventory_locations_branch_code_unique');
+                $table->unique(['warehouse_id', 'code'], 'inventory_locations_warehouse_code_unique');
             });
         }
 
