@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class TransferReceipt extends Model
 {
     protected $fillable = [
-        'transfer_id', 'warehouse_id', 'received_by_user_id', 'status', 'notes', 'received_at',
+        'transfer_id', 'warehouse_id', 'received_by_user_id', 'request_token',
+        'status', 'notes', 'received_at',
     ];
 
     protected $casts = [
