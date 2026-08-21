@@ -36,6 +36,7 @@ jobs:
           php -l app/Services/LocationAwareBatchService.php
           php -l app/Services/LocationAwareSerialNumberService.php
           php -l app/Http/Controllers/PosLocationInventoryController.php
+          php -l app/Http/Controllers/PosLocationCatalogController.php
           php -l app/Models/product_warehouse.php
           php -l app/Models/Sale.php
           php -l app/Providers/AppServiceProvider.php
@@ -43,5 +44,6 @@ jobs:
           php -l routes/tenant_pos_location.php
           php -l tests/Unit/PosLocationStockBridgeTest.php
           node --check resources/static/prodex-pos-location-ui.js
+          node --check resources/static/prodex-pos-location-catalog.js
       - name: Run focused bridge tests
         run: vendor/bin/phpunit tests/Unit/PosLocationStockBridgeTest.php
