@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PosLocationStockBridge;
 use App\Services\PosOperationalContextService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
@@ -139,6 +140,14 @@ class Sale extends Model
             if (! $user) return;
 
             $request = request();
+            $bridge = app(PosLocationStockBridge::class);
+            if ($bridge->isLocationPosRequest($request)) {
+                // Fail before the sale exists if the cart still depends on a
+                // warehouse-only batch/serial workflow. This prevents a partial
+                // cutover from corrupting physical traceability.
+                $bridge->assertCartSupported($request);
+            }
+
             $warehouseId = $sale->warehouse_id ?: ($request->filled('warehouse_id') ? (int) $request->input('warehouse_id') : null);
             $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
             $locationId = $request->filled('inventory_location_id') ? (int) $request->input('inventory_location_id') : null;
