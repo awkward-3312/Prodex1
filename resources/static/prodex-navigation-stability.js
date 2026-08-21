@@ -1,62 +1,59 @@
 (function () {
   'use strict';
 
-  if (window.__prodexNavigationStabilityInstalled) return;
-  window.__prodexNavigationStabilityInstalled = true;
+  if (window.__prodexNavigationIdentityInstalled) return;
+  window.__prodexNavigationIdentityInstalled = true;
 
-  var scheduled = null;
   var observer = null;
+  var scheduled = null;
 
-  var stableMap = {
-    'tablero': { module: 'dashboard', section: 'principal', order: 1001 },
-    'operaciones': { module: 'sales', section: 'commercial', order: 2001 },
-    'inventario': { module: 'products', section: 'commercial', order: 2002 },
-    'clientes y proveedores': { module: 'people', section: 'commercial', order: 2003 },
-    'tienda en linea': { module: 'store', section: 'commercial', order: 2004 },
-    'gestion de personal': { module: 'hrm', section: 'team', order: 3001 },
-    'hrm': { module: 'hrm', section: 'team', order: 3001 },
-    'reclutamiento': { module: 'recruit', section: 'team', order: 3002 },
-    'reuniones': { module: 'meeting', section: 'team', order: 3003 },
-    'proyectos': { module: 'projects', section: 'work', order: 4001 },
-    'tareas': { module: 'tasks', section: 'work', order: 4002 },
-    'contratos': { module: 'contracts', section: 'work', order: 4003 },
-    'servicio y mantenimiento': { module: 'service', section: 'work', order: 4004 },
-    'servicios y mantenimiento': { module: 'service', section: 'work', order: 4004 },
-    'activos': { module: 'assets', section: 'work', order: 4005 },
-    'reservas': { module: 'bookings', section: 'work', order: 4006 },
-    'citas': { module: 'bookings', section: 'work', order: 4006 },
-    'contabilidad': { module: 'accounting', section: 'finance', order: 5001 },
-    'comisiones': { module: 'commissions', section: 'finance', order: 5002 },
-    'suscripciones': { module: 'subscription_product', section: 'finance', order: 5003 },
-    'producto de suscripcion': { module: 'subscription_product', section: 'finance', order: 5003 },
-    'marketing': { module: 'marketing', section: 'growth', order: 6001 },
-    'whatsapp': { module: 'whatsapp', section: 'growth', order: 6002 },
-    'configuracion de woocommerce': { module: 'woocommerce', section: 'growth', order: 6003 },
-    'woocommerce': { module: 'woocommerce', section: 'growth', order: 6003 },
-    'configuracion de shopify': { module: 'shopify', section: 'growth', order: 6004 },
-    'shopify': { module: 'shopify', section: 'growth', order: 6004 },
-    'reportes': { module: 'reports', section: 'insights', order: 7001 },
-    'reportes con ia': { module: 'ai_reports', section: 'insights', order: 7002 },
-    'usuarios y acceso': { module: 'user_management', section: 'admin', order: 8001 },
-    'gestion de usuarios': { module: 'user_management', section: 'admin', order: 8001 },
-    'configuraciones': { module: 'settings', section: 'admin', order: 8002 },
-    'configuracion': { module: 'settings', section: 'admin', order: 8002 },
-    'plan y facturacion': { module: 'billing', section: 'admin', order: 8003 },
-    'facturacion': { module: 'billing', section: 'admin', order: 8003 },
-    'soporte': { module: 'support', section: 'admin', order: 8004 },
-    'base de conocimientos': { module: 'knowledge_base', section: 'admin', order: 8005 }
-  };
-
-  var sectionTitles = {
-    principal: 'Principal',
-    commercial: 'Operación del negocio',
-    team: 'Equipo',
-    work: 'Gestión',
-    finance: 'Finanzas',
-    growth: 'Crecimiento e integraciones',
-    other: 'Más herramientas',
-    insights: 'Análisis',
-    admin: 'Administración'
+  // navigation-v3 detects modules from descendant hrefs. Some Vue submenus are
+  // rendered lazily, so their hrefs do not exist until the user expands them.
+  // Add one invisible, permanent identity href to each top-level module based
+  // on its visible label. navigation-v3 can then classify it consistently
+  // before and after a submenu is opened, without this script changing order.
+  var identityHrefByLabel = {
+    'tablero': '/app/dashboard',
+    'operaciones': '/app/sales/__prodex_module',
+    'ventas': '/app/sales/__prodex_module',
+    'inventario': '/app/products/__prodex_module',
+    'productos': '/app/products/__prodex_module',
+    'clientes y proveedores': '/app/people/__prodex_module',
+    'gente': '/app/people/__prodex_module',
+    'tienda en linea': '/app/store/__prodex_module',
+    'tienda': '/app/store/__prodex_module',
+    'gestion de personal': '/app/hrm/__prodex_module',
+    'hrm': '/app/hrm/__prodex_module',
+    'reclutamiento': '/app/recruit/__prodex_module',
+    'reuniones': '/app/meeting/__prodex_module',
+    'marketing': '/app/marketing/__prodex_module',
+    'contabilidad': '/app/accounting/__prodex_module',
+    'suscripciones': '/app/subscription_product/__prodex_module',
+    'producto de suscripcion': '/app/subscription_product/__prodex_module',
+    'servicio y mantenimiento': '/app/service/__prodex_module',
+    'servicios y mantenimiento': '/app/service/__prodex_module',
+    'activos': '/app/assets/__prodex_module',
+    'proyectos': '/app/projects/__prodex_module',
+    'contratos': '/app/contracts/__prodex_module',
+    'tareas': '/app/tasks/__prodex_module',
+    'reservas': '/app/bookings/__prodex_module',
+    'citas': '/app/bookings/__prodex_module',
+    'comisiones': '/app/commissions/__prodex_module',
+    'configuracion de woocommerce': '/app/woocommerce/__prodex_module',
+    'woocommerce': '/app/woocommerce/__prodex_module',
+    'configuracion de shopify': '/app/shopify/__prodex_module',
+    'shopify': '/app/shopify/__prodex_module',
+    'base de conocimientos': '/app/knowledge-base/__prodex_module',
+    'whatsapp': '/app/whatsapp/__prodex_module',
+    'reportes con ia': '/app/reports/ai_reports',
+    'reportes': '/app/reports/__prodex_module',
+    'usuarios y acceso': '/app/user_management/__prodex_module',
+    'gestion de usuarios': '/app/user_management/__prodex_module',
+    'configuraciones': '/app/settings/__prodex_module',
+    'configuracion': '/app/settings/__prodex_module',
+    'plan y facturacion': '/app/billing/__prodex_module',
+    'facturacion': '/app/billing/__prodex_module',
+    'soporte': '/app/support/__prodex_module'
   };
 
   function norm(value) {
@@ -67,93 +64,62 @@
       .replace(/[\u0300-\u036f]/g, '');
   }
 
-  function getList() {
-    return document.querySelector('.vertical-sidebar-wrapper .vertical-nav-menu > .nav-list');
-  }
-
-  function items(list) {
-    return list ? Array.prototype.slice.call(list.children).filter(function (el) {
+  function topItems() {
+    var list = document.querySelector('.vertical-sidebar-wrapper .vertical-nav-menu > .nav-list');
+    if (!list) return [];
+    return Array.prototype.slice.call(list.children).filter(function (el) {
       return el && el.classList && el.classList.contains('nav-item') && !el.classList.contains('prodex-nav-clone');
-    }) : [];
+    });
   }
 
-  function label(li) {
+  function labelFor(li) {
     var node = li.querySelector(':scope > .nav-link .nav-text');
     return norm(node ? node.textContent : '');
   }
 
-  function visible(li) {
-    if (!li || li.classList.contains('prodex-sidebar2-hidden') || li.classList.contains('prodex-nav-absorbed') || li.classList.contains('prodex-nav-v3-search-hidden')) return false;
-    return window.getComputedStyle(li).display !== 'none';
-  }
+  function ensureIdentityAnchors() {
+    topItems().forEach(function (li) {
+      var href = identityHrefByLabel[labelFor(li)];
+      if (!href) return;
 
-  function stabilize() {
-    var list = getList();
-    if (!list) return;
-    var all = items(list);
-
-    all.forEach(function (li, index) {
-      var key = label(li);
-      var stable = stableMap[key];
-
-      if (stable) {
-        li.dataset.prodexStableModule = stable.module;
-        li.dataset.prodexV3Module = stable.module;
-        li.dataset.prodexV3Section = stable.section;
-        li.dataset.prodexV3Order = String(stable.order);
-        li.style.setProperty('--prodex-v3-order', String(stable.order));
-      } else if (!li.dataset.prodexStableOrder) {
-        li.dataset.prodexStableOrder = li.dataset.prodexV3Order || String(6500 + index + 20);
-        li.dataset.prodexStableSection = li.dataset.prodexV3Section || 'other';
-      } else {
-        li.dataset.prodexV3Order = li.dataset.prodexStableOrder;
-        li.dataset.prodexV3Section = li.dataset.prodexStableSection || 'other';
-        li.style.setProperty('--prodex-v3-order', li.dataset.prodexStableOrder);
+      var existing = li.querySelector(':scope > a[data-prodex-module-identity]');
+      if (existing) {
+        if (existing.getAttribute('href') !== href) existing.setAttribute('href', href);
+        return;
       }
 
-      li.classList.remove('prodex-nav-v3-section-first');
-      li.removeAttribute('data-prodex-v3-section-title');
-    });
-
-    Object.keys(sectionTitles).forEach(function (section) {
-      var candidates = all.filter(function (li) {
-        return li.dataset.prodexV3Section === section && visible(li);
-      }).sort(function (a, b) {
-        return Number(a.dataset.prodexV3Order || 99999) - Number(b.dataset.prodexV3Order || 99999);
-      });
-      if (!candidates.length) return;
-      candidates[0].classList.add('prodex-nav-v3-section-first');
-      candidates[0].dataset.prodexV3SectionTitle = sectionTitles[section];
+      var anchor = document.createElement('a');
+      anchor.setAttribute('data-prodex-module-identity', '1');
+      anchor.setAttribute('href', href);
+      anchor.setAttribute('aria-hidden', 'true');
+      anchor.setAttribute('tabindex', '-1');
+      anchor.style.display = 'none';
+      li.appendChild(anchor);
     });
   }
 
-  function schedule(delay) {
+  function schedule() {
     if (scheduled) window.clearTimeout(scheduled);
-    scheduled = window.setTimeout(stabilize, delay || 90);
+    scheduled = window.setTimeout(ensureIdentityAnchors, 0);
   }
 
   function installObserver() {
-    var root = document.querySelector('.vertical-sidebar-wrapper');
-    if (!root || observer) return;
+    if (observer || !document.body) return;
     observer = new MutationObserver(function (mutations) {
-      if (mutations.some(function (m) { return m.type === 'childList'; })) schedule(110);
+      if (mutations.some(function (m) { return m.type === 'childList'; })) schedule();
     });
-    observer.observe(root, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
-  document.addEventListener('click', function (event) {
-    if (event.target && event.target.closest && event.target.closest('.vertical-sidebar-wrapper')) {
-      schedule(120);
-    }
-  }, false);
-
   document.addEventListener('DOMContentLoaded', function () {
-    schedule(180);
-    window.setTimeout(installObserver, 220);
-  });
-
-  window.setTimeout(function () {
-    stabilize();
+    ensureIdentityAnchors();
     installObserver();
-  }, 500);
+  }, { once: true });
+
+  [0, 20, 60, 120, 250, 500, 1000, 1800].forEach(function (delay) {
+    window.setTimeout(function () {
+      ensureIdentityAnchors();
+      installObserver();
+    }, delay);
+  });
 })();
