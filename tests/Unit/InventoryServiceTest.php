@@ -8,6 +8,7 @@ use App\Models\InventoryLocationMovement;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use LogicException;
 use Tests\TestCase;
 
 class InventoryServiceTest extends TestCase
@@ -65,6 +66,7 @@ class InventoryServiceTest extends TestCase
             $table->string('reference_type')->nullable();
             $table->string('reference_id')->nullable();
             $table->string('idempotency_key')->nullable()->unique();
+            $table->string('idempotency_fingerprint', 64)->nullable();
             $table->string('notes')->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
@@ -144,7 +146,20 @@ class InventoryServiceTest extends TestCase
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame(5.0, $service->quantity($location->id, 30));
+        $this->assertNotEmpty($first->idempotency_fingerprint);
         $this->assertSame(1, InventoryLocationMovement::where('idempotency_key', 'sale:100:line:1')->count());
+    }
+
+    public function test_same_idempotency_key_cannot_be_reused_for_different_operation(): void
+    {
+        $location = $this->location('PISO');
+        $service = app(InventoryService::class);
+        $context = ['idempotency_key' => 'command:abc'];
+
+        $service->increase($location->id, 30, 5, null, $context);
+
+        $this->expectException(ValidationException::class);
+        $service->increase($location->id, 30, 6, null, $context);
     }
 
     public function test_variants_have_independent_stock_rows(): void
@@ -170,6 +185,22 @@ class InventoryServiceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $service->adjustTo($location->id, 60, 5);
+    }
+
+    public function test_movement_ledger_cannot_be_edited_or_deleted(): void
+    {
+        $location = $this->location('PISO');
+        $movement = app(InventoryService::class)->increase($location->id, 70, 2);
+
+        try {
+            $movement->update(['notes' => 'alterado']);
+            $this->fail('Expected immutable ledger update to fail.');
+        } catch (LogicException $e) {
+            $this->assertStringContainsString('inmutables', $e->getMessage());
+        }
+
+        $this->expectException(LogicException::class);
+        $movement->delete();
     }
 
     private function location(string $code): InventoryLocation
