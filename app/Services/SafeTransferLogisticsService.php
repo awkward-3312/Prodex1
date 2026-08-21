@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\Product;
 use App\Models\product_warehouse;
 use App\Models\Transfer;
 use App\Models\TransferDetail;
 use App\Models\TransferReceiptItem;
 use App\Models\Unit;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Production binding for TransferLogisticsService.
@@ -39,7 +41,25 @@ class SafeTransferLogisticsService extends TransferLogisticsService
 
     protected function creditGoodStock(Transfer $transfer, TransferDetail $detail, float $quantity, TransferReceiptItem $receiptItem): void
     {
-        $unit = $detail->purchase_unit_id ? Unit::find($detail->purchase_unit_id) : null;
+        $product = Product::find($detail->product_id);
+        if (! $product) {
+            throw ValidationException::withMessages([
+                'transfer' => 'No se pudo identificar el producto de una línea recibida.',
+            ]);
+        }
+
+        // Transfer lines can legitimately have purchase_unit_id = NULL; the legacy
+        // transfer controller then falls back to products.unit_purchase_id. Receiving
+        // must resolve the unit in exactly the same way or a box/pack could be
+        // dispatched as base units but received as single units.
+        $unitId = $detail->purchase_unit_id ?: $product->unit_purchase_id;
+        $unit = $unitId ? Unit::find($unitId) : null;
+        if (! $unit || ! in_array($unit->operator, ['*', '/'], true) || (float) $unit->operator_value <= 0) {
+            throw ValidationException::withMessages([
+                'transfer' => 'No se puede acreditar '.$product->name.' porque su unidad de compra no tiene una conversión válida.',
+            ]);
+        }
+
         $stockQty = $this->convertToBaseQuantity($quantity, $unit);
 
         $query = product_warehouse::whereNull('deleted_at')
