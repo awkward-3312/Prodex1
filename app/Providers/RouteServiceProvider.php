@@ -5,7 +5,6 @@ namespace App\Providers;
 use App\Models\Central\CentralUser;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomainOrSubdomain;
 
@@ -89,12 +88,15 @@ class RouteServiceProvider extends ServiceProvider
             ->namespace($this->namespace)
             ->group(base_path('routes/tenant_api.php'));
 
-        // Organization is isolated from the historical user/warehouse APIs. This
-        // gives branches, employees and operational scope one explicit contract.
         Route::prefix('api')
             ->middleware(array_merge(['api'], $tenancy))
             ->namespace($this->namespace)
             ->group(base_path('routes/tenant_organization.php'));
+
+        Route::prefix('api')
+            ->middleware(array_merge(['api'], $tenancy))
+            ->namespace($this->namespace)
+            ->group(base_path('routes/tenant_pos_context.php'));
 
         Route::prefix('api')
             ->middleware(array_merge(['api'], $tenancy))
