@@ -5,15 +5,15 @@
     <b-card class="mb-3">
       <div class="d-flex flex-wrap align-items-center justify-content-between">
         <div>
-          <h4 class="mb-1">Sucursales y centros operativos</h4>
-          <p class="text-muted mb-0">Organiza empleados y bodegas por ubicación. Los permisos definen qué puede hacer cada usuario; la sucursal y sus bodegas definen dónde puede hacerlo.</p>
+          <h4 class="mb-1">Sucursales</h4>
+          <p class="text-muted mb-0">Una sucursal es donde opera el negocio. Su inventario vive en ubicaciones como Piso de venta, Bodega de sucursal o Cuarentena; no consume un almacén/CD adicional.</p>
         </div>
         <div class="mt-2 mt-md-0">
           <b-button variant="outline-secondary" class="mr-2" @click="goManual">
             <lucide-icon name="book-open" class="mr-1"/> Ver manual
           </b-button>
           <b-button variant="outline-primary" class="mr-2" @click="goWarehouses">
-            <lucide-icon name="warehouse" class="mr-1"/> Bodegas
+            <lucide-icon name="warehouse" class="mr-1"/> Almacenes / CD
           </b-button>
           <b-button variant="primary" @click="openCreate">
             <lucide-icon name="plus" class="mr-1"/> Nueva sucursal
@@ -26,7 +26,7 @@
 
     <b-card v-else>
       <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
-        <b-form-input v-model="search" placeholder="Buscar por nombre, código o ciudad" style="max-width:360px" @input="loadBranches" />
+        <b-form-input v-model="search" placeholder="Buscar por nombre, código o ciudad" style="max-width:360px" @input="loadBranches"/>
         <small class="text-muted mt-2 mt-md-0">{{ branches.length }} sucursal(es)</small>
       </div>
 
@@ -42,8 +42,8 @@
               <th>Tipo</th>
               <th>Ciudad</th>
               <th>Responsable</th>
-              <th>Bodegas</th>
-              <th>Bodega predeterminada</th>
+              <th>Ubicaciones de inventario</th>
+              <th>Venta predeterminada</th>
               <th class="text-right">Acciones</th>
             </tr>
           </thead>
@@ -57,11 +57,18 @@
               <td>{{ branch.city || '—' }}</td>
               <td>{{ managerName(branch.manager) }}</td>
               <td>
-                <span v-if="branch.warehouses && branch.warehouses.length">{{ branch.warehouses.map(w => w.name).join(', ') }}</span>
-                <span v-else class="text-warning">Sin bodegas</span>
+                <template v-if="branch.inventory_locations && branch.inventory_locations.length">
+                  <b-badge v-for="location in branch.inventory_locations" :key="location.id" variant="light" class="mr-1 mb-1">
+                    {{ location.name }}
+                  </b-badge>
+                </template>
+                <span v-else class="text-muted">Sin inventario configurado</span>
               </td>
-              <td>{{ branch.default_warehouse ? branch.default_warehouse.name : '—' }}</td>
-              <td class="text-right">
+              <td>{{ branch.default_inventory_location ? branch.default_inventory_location.name : '—' }}</td>
+              <td class="text-right text-nowrap">
+                <a class="cursor-pointer mr-2" title="Agregar ubicación de inventario" @click="openLocation(branch)">
+                  <lucide-icon name="map-pin-plus" class="text-primary text-20"/>
+                </a>
                 <a class="cursor-pointer mr-2" title="Editar" @click="openEdit(branch)">
                   <lucide-icon name="pencil" class="text-success text-20"/>
                 </a>
@@ -124,15 +131,15 @@
             </b-form-group>
           </b-col>
           <b-col md="12">
-            <b-form-group label="Bodegas de esta sucursal">
-              <v-select v-model="form.warehouse_ids" multiple :reduce="o => o.value" :options="warehouseOptions" placeholder="Selecciona una o varias bodegas"/>
-              <small class="text-muted">Una bodega solo debe pertenecer a una sucursal. Al reasignarla, PRODEX actualizará su pertenencia operativa.</small>
-            </b-form-group>
-          </b-col>
-          <b-col md="12">
-            <b-form-group label="Bodega predeterminada">
-              <v-select v-model="form.default_warehouse_id" :reduce="o => o.value" :options="selectedWarehouseOptions" placeholder="Selecciona la bodega principal de la sucursal"/>
-            </b-form-group>
+            <div class="border rounded p-3 mb-3">
+              <b-form-checkbox v-model="form.inventory_enabled">
+                Esta sucursal maneja inventario
+              </b-form-checkbox>
+              <p class="text-muted text-12 mb-2 mt-1">Al activarlo, PRODEX crea un Piso de venta predeterminado. Esto no crea ni consume otro almacén/CD del plan.</p>
+              <b-form-checkbox v-if="form.inventory_enabled" v-model="form.create_storage_location">
+                Crear también “Bodega de sucursal”
+              </b-form-checkbox>
+            </div>
           </b-col>
         </b-row>
 
@@ -140,6 +147,35 @@
         <div class="d-flex justify-content-end">
           <b-button variant="outline-secondary" class="mr-2" @click="$bvModal.hide('branch-modal')">Cancelar</b-button>
           <b-button variant="primary" type="submit" :disabled="saving">{{ saving ? 'Guardando…' : 'Guardar sucursal' }}</b-button>
+        </div>
+      </b-form>
+    </b-modal>
+
+    <b-modal id="location-modal" hide-footer title="Nueva ubicación de inventario">
+      <div v-if="locationBranch" class="alert alert-light border mb-3">
+        <strong>{{ locationBranch.name }}</strong><br>
+        <small class="text-muted">La ubicación pertenecerá a esta sucursal.</small>
+      </div>
+      <b-form @submit.prevent="saveLocation">
+        <b-form-group label="Nombre *">
+          <b-form-input v-model.trim="locationForm.name" required maxlength="192" placeholder="Ej. Cuarentena"/>
+        </b-form-group>
+        <b-form-group label="Código *">
+          <b-form-input v-model.trim="locationForm.code" required maxlength="64" placeholder="Ej. CUARENTENA"/>
+        </b-form-group>
+        <b-form-group label="Tipo *">
+          <v-select v-model="locationForm.type" :reduce="o => o.value" :options="locationTypes"/>
+        </b-form-group>
+        <b-form-checkbox v-model="locationForm.is_sellable" class="mb-2" :disabled="locationForm.type === 'quarantine'">
+          Inventario disponible para venta
+        </b-form-checkbox>
+        <b-form-checkbox v-model="locationForm.is_default_sales" class="mb-2" :disabled="locationForm.type === 'quarantine'">
+          Usar como ubicación predeterminada de venta
+        </b-form-checkbox>
+        <div v-if="locationError" class="alert alert-danger mt-3">{{ locationError }}</div>
+        <div class="d-flex justify-content-end mt-3">
+          <b-button variant="outline-secondary" class="mr-2" @click="$bvModal.hide('location-modal')">Cancelar</b-button>
+          <b-button type="submit" variant="primary" :disabled="savingLocation">{{ savingLocation ? 'Guardando…' : 'Crear ubicación' }}</b-button>
         </div>
       </b-form>
     </b-modal>
@@ -153,31 +189,43 @@ export default {
     return {
       loading: true,
       saving: false,
+      savingLocation: false,
       editing: false,
       error: '',
+      locationError: '',
       search: '',
       branches: [],
-      warehouses: [],
       employees: [],
+      locationBranch: null,
+      locationTypes: [
+        { label: 'Piso de venta', value: 'sales_floor' },
+        { label: 'Bodega', value: 'storage' },
+        { label: 'Cuarentena', value: 'quarantine' },
+        { label: 'Dañados', value: 'damaged' },
+        { label: 'Devoluciones', value: 'returns' },
+        { label: 'Otra', value: 'other' },
+      ],
       types: [
         { label: 'Sucursal', value: 'branch' },
-        { label: 'Centro de distribución', value: 'distribution_center' },
         { label: 'Oficina', value: 'office' },
         { label: 'Otro', value: 'other' },
+        { label: 'Centro de distribución (legado)', value: 'distribution_center' },
       ],
       form: this.emptyForm(),
+      locationForm: this.emptyLocationForm(),
     };
   },
   computed: {
-    warehouseOptions() {
-      return this.warehouses.map(w => ({ label: w.branch_id && (!this.form.id || Number(w.branch_id) !== Number(this.form.id)) ? `${w.name} · asignada a otra sucursal` : w.name, value: w.id }));
-    },
-    selectedWarehouseOptions() {
-      const ids = (this.form.warehouse_ids || []).map(Number);
-      return this.warehouses.filter(w => ids.includes(Number(w.id))).map(w => ({ label: w.name, value: w.id }));
-    },
     employeeOptions() {
       return this.employees.map(e => ({ label: `${e.firstname} ${e.lastname}`.trim(), value: e.id }));
+    },
+  },
+  watch: {
+    'locationForm.type'(type) {
+      if (type === 'quarantine') {
+        this.locationForm.is_sellable = false;
+        this.locationForm.is_default_sales = false;
+      }
     },
   },
   created() {
@@ -185,15 +233,18 @@ export default {
   },
   methods: {
     emptyForm() {
-      return { id: null, name: '', code: '', type: 'branch', phone: '', email: '', country: 'Honduras', city: '', address: '', manager_employee_id: null, default_warehouse_id: null, warehouse_ids: [], is_active: true };
+      return { id: null, name: '', code: '', type: 'branch', phone: '', email: '', country: 'Honduras', city: '', address: '', manager_employee_id: null, inventory_enabled: true, create_storage_location: true, is_active: true };
+    },
+    emptyLocationForm() {
+      return { name: '', code: '', type: 'storage', is_sellable: false, is_default_sales: false, is_quarantine: false };
     },
     apiConfig() {
       return { meta: { skipErrorRedirect: true } };
     },
     async loadOptions() {
       const { data } = await axios.get('/organization/branches/options', this.apiConfig());
-      this.warehouses = data.warehouses || [];
       this.employees = data.employees || [];
+      if (data.inventory_location_types && data.inventory_location_types.length) this.locationTypes = data.inventory_location_types;
     },
     async loadBranches() {
       try {
@@ -223,8 +274,8 @@ export default {
         city: branch.city || '',
         address: branch.address || '',
         manager_employee_id: branch.manager_employee_id || null,
-        default_warehouse_id: branch.default_warehouse_id || null,
-        warehouse_ids: (branch.warehouses || []).map(w => w.id),
+        inventory_enabled: !!(branch.inventory_locations && branch.inventory_locations.length),
+        create_storage_location: false,
         is_active: !!branch.is_active,
       };
       this.$bvModal.show('branch-modal');
@@ -244,6 +295,28 @@ export default {
         this.error = (data && (data.message || (data.errors && Object.values(data.errors)[0][0]))) || 'No se pudo guardar la sucursal.';
       } finally {
         this.saving = false;
+      }
+    },
+    openLocation(branch) {
+      this.locationBranch = branch;
+      this.locationForm = this.emptyLocationForm();
+      this.locationError = '';
+      this.$bvModal.show('location-modal');
+    },
+    async saveLocation() {
+      if (!this.locationBranch || !this.locationForm.name || !this.locationForm.code) return;
+      this.savingLocation = true;
+      this.locationError = '';
+      try {
+        await axios.post(`/organization/branches/${this.locationBranch.id}/inventory-locations`, this.locationForm, this.apiConfig());
+        this.$bvModal.hide('location-modal');
+        await this.loadBranches();
+        this.$root.$bvToast.toast('Ubicación de inventario creada.', { title: 'Éxito', variant: 'success', solid: true });
+      } catch (e) {
+        const data = e && e.response && e.response.data;
+        this.locationError = (data && (data.message || (data.errors && Object.values(data.errors)[0][0]))) || 'No se pudo crear la ubicación.';
+      } finally {
+        this.savingLocation = false;
       }
     },
     removeBranch(branch) {
