@@ -7,6 +7,8 @@ use App\Models\ProductBatchLocationStock;
 use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\SaleDetailBatch;
+use App\Models\SaleReturn;
+use App\Models\SaleReturnDetailBatch;
 use App\Models\Unit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -85,6 +87,86 @@ class LocationAwareBatchService extends BatchService
                     }
                     $pivot->delete();
                 }
+            }
+        }, 3);
+    }
+
+    /**
+     * A received sale return credits both the aggregate batch and the batch slice
+     * in the original POS inventory location. The parent keeps the historical
+     * aggregate/pivot behavior; this layer adds the physical-location ledger.
+     */
+    public function applyForSaleReturnWithAutoFallback(SaleReturn $return, array $inputDetails, $persistedDetails): void
+    {
+        if (! $return->inventory_location_id) {
+            parent::applyForSaleReturnWithAutoFallback($return, $inputDetails, $persistedDetails);
+            return;
+        }
+
+        DB::transaction(function () use ($return, $inputDetails, $persistedDetails) {
+            parent::applyForSaleReturnWithAutoFallback($return, $inputDetails, $persistedDetails);
+
+            $detailIds = collect($persistedDetails)->pluck('id')->filter()->all();
+            if (! $detailIds) return;
+
+            $pivots = SaleReturnDetailBatch::whereIn('sale_return_detail_id', $detailIds)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($pivots as $pivot) {
+                $stock = ProductBatchLocationStock::where('product_batch_id', $pivot->product_batch_id)
+                    ->where('inventory_location_id', (int) $return->inventory_location_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $stock) {
+                    $stock = ProductBatchLocationStock::create([
+                        'product_batch_id' => (int) $pivot->product_batch_id,
+                        'inventory_location_id' => (int) $return->inventory_location_id,
+                        'quantity' => 0,
+                        'reserved_quantity' => 0,
+                    ]);
+                }
+
+                $stock->quantity = round((float) $stock->quantity + (float) $pivot->qty, 3);
+                $stock->save();
+            }
+        }, 3);
+    }
+
+    public function reverseForSaleReturnDetails($returnDetails): void
+    {
+        DB::transaction(function () use ($returnDetails) {
+            foreach (collect($returnDetails) as $detail) {
+                if (! $detail) continue;
+
+                $return = SaleReturn::find($detail->sale_return_id);
+                if (! $return || ! $return->inventory_location_id) {
+                    parent::reverseForSaleReturnDetails([$detail]);
+                    continue;
+                }
+
+                $pivots = SaleReturnDetailBatch::where('sale_return_detail_id', $detail->id)
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($pivots as $pivot) {
+                    $stock = ProductBatchLocationStock::where('product_batch_id', $pivot->product_batch_id)
+                        ->where('inventory_location_id', (int) $return->inventory_location_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $stock || (float) $stock->quantity + 0.0005 < (float) $pivot->qty) {
+                        throw ValidationException::withMessages([
+                            'batches' => 'No se puede revertir la devolución porque parte del lote ya no está disponible en la ubicación original.',
+                        ]);
+                    }
+
+                    $stock->quantity = round((float) $stock->quantity - (float) $pivot->qty, 3);
+                    $stock->save();
+                }
+
+                parent::reverseForSaleReturnDetails([$detail]);
             }
         }, 3);
     }
