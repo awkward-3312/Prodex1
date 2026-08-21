@@ -138,31 +138,24 @@ return new class extends Migration
             });
         }
 
-        // Dedicated receiving permission. Existing roles that already manage transfers
-        // receive it once for backward-compatible rollout; admins can later separate it.
+        // Receiving is deliberately a separate operational responsibility. Creating
+        // the permission does NOT silently grant it to every role that can edit a
+        // transfer; an administrator must explicitly designate the receiver role.
         if (Schema::hasTable('permissions')) {
             $permissionId = DB::table('permissions')->where('name', 'transfer_receive')->value('id');
             if (! $permissionId) {
-                $permissionId = DB::table('permissions')->insertGetId([
+                $payload = [
                     'name' => 'transfer_receive',
                     'label' => 'Recibir transferencias de stock',
                     'description' => 'Permite confirmar físicamente la recepción de transferencias destinadas a las bodegas asignadas al usuario.',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-
-            if (Schema::hasTable('permission_role')) {
-                $editPermissionId = DB::table('permissions')->where('name', 'transfer_edit')->value('id');
-                if ($editPermissionId) {
-                    $roleIds = DB::table('permission_role')->where('permission_id', $editPermissionId)->pluck('role_id');
-                    foreach ($roleIds as $roleId) {
-                        DB::table('permission_role')->updateOrInsert(
-                            ['permission_id' => $permissionId, 'role_id' => $roleId],
-                            []
-                        );
-                    }
+                ];
+                if (Schema::hasColumn('permissions', 'created_at')) {
+                    $payload['created_at'] = now();
                 }
+                if (Schema::hasColumn('permissions', 'updated_at')) {
+                    $payload['updated_at'] = now();
+                }
+                DB::table('permissions')->insert($payload);
             }
         }
     }
