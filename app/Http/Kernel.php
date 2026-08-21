@@ -6,41 +6,25 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
 class Kernel extends HttpKernel
 {
-    /**
-     * The application's global HTTP middleware stack.
-     *
-     * These middleware are run during every request to your application.
-     *
-     * @var array
-     */
     protected $middlewarePriority = [
         \Illuminate\Session\Middleware\StartSession::class,
         \Illuminate\View\Middleware\ShareErrorsFromSession::class,
         \App\Http\Middleware\Authenticate::class,
-        // \Modules\Store\Http\Middleware\Authenticate::class,
         \Illuminate\Routing\Middleware\ThrottleRequests::class,
         \Illuminate\Session\Middleware\AuthenticateSession::class,
         \Illuminate\Routing\Middleware\SubstituteBindings::class,
         \Illuminate\Auth\Middleware\Authorize::class,
-        // \App\Http\Middleware\AddAuthHeader::class,
     ];
 
     protected $middleware = [
-        // \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\CheckForMaintenanceMode::class,
         \App\Http\Middleware\ServeSetupWhenNotInstalled::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
         \App\Http\Middleware\SetSessionConfig::class,
-
     ];
 
-    /**
-     * The application's route middleware groups.
-     *
-     * @var array
-     */
     protected $middlewareGroups = [
         'web' => [
             \App\Http\Middleware\EnsureNotUpdating::class,
@@ -48,37 +32,25 @@ class Kernel extends HttpKernel
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-
             \App\Http\Middleware\SetLocale::class,
-
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\SafeCreateFreshApiToken::class,
-
         ],
 
         'store' => [
-            // ... other middlewares
             'store.auth',
         ],
 
         'api' => [
-            // 'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\SetPdfLocale::class,
-            // Constant-time no-op for normal API requests; wraps only
-            // TransferController@approve in source-stock row locks.
+            // Both are constant-time no-ops outside TransferController actions.
             \App\Http\Middleware\LockTransferDispatchStock::class,
+            \App\Http\Middleware\ProtectDispatchedTransferMutation::class,
         ],
     ];
 
-    /**
-     * The application's route middleware.
-     *
-     * These middleware may be assigned to groups or used individually.
-     *
-     * @var array
-     */
     protected $routeMiddleware = [
         'auth' => \App\Http\Middleware\Authenticate::class,
         'store.auth' => \App\Http\Middleware\StoreAuthenticate::class,
@@ -97,26 +69,16 @@ class Kernel extends HttpKernel
         'XSS' => \App\Http\Middleware\XSS::class,
         'request.safety' => \App\Http\Middleware\RequestSafety::class,
         'store.enabled' => \App\Http\Middleware\EnsureStoreEnabled::class,
-        // Security: inactivity auto-logout + token activity tracking (Passport)
         'token.timeout' => \App\Http\Middleware\EnforceApiTokenTimeout::class,
         'pdf.locale' => \App\Http\Middleware\SetPdfLocale::class,
-        // Client portal: separate auth from admin/store
         'portal.auth' => \App\Http\Middleware\EnsurePortalAuth::class,
-        // Central (SaaS) super admin
         'auth.central' => \App\Http\Middleware\EnsureCentralAuth::class,
         'central.permission' => \App\Http\Middleware\CheckCentralPermission::class,
-        // Tenant: block suspended/cancelled
         'tenant.active' => \App\Http\Middleware\EnsureTenantNotSuspended::class,
-        // Tenant: enforce plan usage limits (e.g. max_products, max_users)
         'tenant.limit' => \App\Http\Middleware\CheckTenantLimits::class,
-        // Tenant: check feature availability on current plan
         'tenant.feature' => \App\Http\Middleware\CheckTenantFeature::class,
-        // Tenant: require active subscription
         'tenant.subscribed' => \App\Http\Middleware\EnsureActiveSubscription::class,
-        // Tenant: track last activity timestamp
         'tenant.activity' => \App\Http\Middleware\TrackTenantActivity::class,
-        // Transfer logistics: serialize approvals against source stock rows.
         'transfer.dispatch.lock' => \App\Http\Middleware\LockTransferDispatchStock::class,
-
     ];
 }
