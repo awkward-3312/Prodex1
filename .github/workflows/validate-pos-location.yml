@@ -18,6 +18,10 @@ jobs:
           php-version: '8.3'
           extensions: mbstring, xml, curl, sqlite3, pdo_sqlite
           coverage: none
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
       - name: Prepare environment
@@ -38,5 +42,6 @@ jobs:
           php -l app/Providers/RouteServiceProvider.php
           php -l routes/tenant_pos_location.php
           php -l tests/Unit/PosLocationStockBridgeTest.php
+          node --check resources/static/prodex-pos-location-ui.js
       - name: Run focused bridge tests
         run: vendor/bin/phpunit tests/Unit/PosLocationStockBridgeTest.php
