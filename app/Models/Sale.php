@@ -10,11 +10,10 @@ class Sale extends Model
 
     protected $fillable = [
         'date', 'Ref', 'is_pos', 'client_id', 'GrandTotal', 'qte_retturn', 'TaxNet', 'tax_rate', 'notes', 'fiscal_exemption_data',
-        'total_retturn', 'warehouse_id', 'user_id', 'statut', 'discount', 'discount_Method', 'shipping', 'time', 'used_points', 'earned_points', 'discount_from_points',
+        'total_retturn', 'warehouse_id', 'branch_id', 'inventory_location_id', 'cash_drawer_id', 'user_id', 'statut', 'discount', 'discount_Method', 'shipping', 'time', 'used_points', 'earned_points', 'discount_from_points',
         'promotion_discount', 'promotion_code',
         'store_credit_amount',
         'paid_amount', 'payment_statut', 'created_at', 'updated_at', 'deleted_at', 'shipping_status', 'subscription_id', 'sales_agent_id',
-        // Idempotency key for POS sales; nullable for legacy rows and non-POS flows
         'sale_uuid',
         'woocommerce_order_id',
         'woocommerce_order_number',
@@ -33,6 +32,9 @@ class Sale extends Model
         'user_id' => 'integer',
         'client_id' => 'integer',
         'warehouse_id' => 'integer',
+        'branch_id' => 'integer',
+        'inventory_location_id' => 'integer',
+        'cash_drawer_id' => 'integer',
         'sales_agent_id' => 'integer',
         'subscription_id' => 'integer',
         'discount' => 'double',
@@ -80,14 +82,25 @@ class Sale extends Model
         return $this->hasMany('App\Models\PaymentSale');
     }
 
-    public function storeCreditTransactions()
-    {
-        return $this->hasMany(StoreCreditVoucherTransaction::class, 'sale_id');
-    }
-
+    /** Legacy warehouse relation retained during inventory cutover. */
     public function warehouse()
     {
         return $this->belongsTo('App\Models\Warehouse');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
+    public function inventoryLocation()
+    {
+        return $this->belongsTo(InventoryLocation::class, 'inventory_location_id');
+    }
+
+    public function cashDrawer()
+    {
+        return $this->belongsTo(CashDrawer::class, 'cash_drawer_id');
     }
 
     public function salesAgent()
@@ -116,7 +129,6 @@ class Sale extends Model
             if ($sale->isDirty('quickbooks_invoice_id')) {
                 $original = $sale->getOriginal('quickbooks_invoice_id');
                 if (! empty($original)) {
-                    // lock it back to the original and ignore the change
                     $sale->quickbooks_invoice_id = $original;
                 }
             }
