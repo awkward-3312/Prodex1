@@ -27,13 +27,14 @@ mix.js('resources/src/main.js', 'public')
         tailwindcss('./tailwind.config.js'),
         autoprefixer(),
     ])
-    // These files enhance the already-authorized Vue sidebar. Keeping them in
+    // These files enhance already-authorized Vue interfaces. Keeping them in
     // source means rsync --delete cannot accidentally remove them after build.
     .copy('resources/static/prodex-sidebar2-organizer.js', 'public/js/prodex-sidebar2-organizer.js')
     .copy('resources/static/prodex-navigation-v3.js', 'public/js/prodex-navigation-v3.js')
     .copy('resources/static/prodex-navigation-stability.js', 'public/js/prodex-navigation-stability.js')
     .copy('resources/static/prodex-sidebar-reopen.js', 'public/js/prodex-sidebar-reopen.js')
     .copy('resources/static/prodex-transfer-logistics.js', 'public/js/prodex-transfer-logistics.js')
+    .copy('resources/static/prodex-transfer-permission-ui.js', 'public/js/prodex-transfer-permission-ui.js')
     .vue()
 
 mix.webpackConfig({
