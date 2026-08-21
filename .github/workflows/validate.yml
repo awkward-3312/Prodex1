@@ -31,7 +31,7 @@ jobs:
       - name: Run organization scope tests
         run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php
       - name: Run inventory architecture tests
-        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php
+        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php
       - name: PHP syntax check for SAR files
         run: |
           php -l app/Services/SarFiscalNumberService.php
@@ -100,17 +100,23 @@ jobs:
           php -l app/Models/InventoryLocation.php
           php -l app/Models/InventoryLocationStock.php
           php -l app/Models/InventoryLocationMovement.php
+          php -l app/Models/InventoryTransitionState.php
           php -l app/Models/Branch.php
           php -l app/Models/Warehouse.php
           php -l app/Services/InventoryLocationService.php
           php -l app/Services/InventoryService.php
           php -l app/Services/LegacyInventoryReconciliationService.php
+          php -l app/Services/InventoryCompatibilityService.php
           php -l app/Services/TenantSchemaHealthService.php
+          php -l app/Console/Commands/ProdexInventoryReconcile.php
+          php -l app/Console/Commands/ProdexInventoryTransition.php
           php -l database/migrations/tenant/2026_08_21_150000_create_inventory_locations_foundation.php
           php -l database/migrations/tenant/2026_08_21_160000_create_inventory_location_stock_engine.php
+          php -l database/migrations/tenant/2026_08_21_170000_create_inventory_transition_states.php
           php -l tests/Unit/InventoryLocationServiceTest.php
           php -l tests/Unit/InventoryServiceTest.php
           php -l tests/Unit/LegacyInventoryReconciliationServiceTest.php
+          php -l tests/Unit/InventoryCompatibilityServiceTest.php
 
   frontend-build:
     runs-on: ubuntu-latest
