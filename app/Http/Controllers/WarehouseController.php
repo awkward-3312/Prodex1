@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InventoryLocation;
 use App\Models\Product;
 use App\Models\product_warehouse;
 use App\Models\ProductVariant;
 use App\Models\Warehouse;
+use App\Services\InventoryLocationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class WarehouseController extends Controller
 {
@@ -22,7 +23,7 @@ class WarehouseController extends Controller
         $order = $request->SortField;
         $dir = strtolower((string) $request->input('SortType')) === 'asc' ? 'asc' : 'desc';
 
-        $warehouses = Warehouse::with('branch:id,name,code')
+        $warehouses = Warehouse::with('defaultInventoryLocation:id,warehouse_id,code,name,type,is_active')
             ->where('deleted_at', '=', null)
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
@@ -34,10 +35,6 @@ class WarehouseController extends Controller
                         ->orWhere('email', 'LIKE', "%{$request->search}%");
                 });
             });
-
-        if ($request->filled('branch_id')) {
-            $warehouses->where('branch_id', (int) $request->branch_id);
-        }
 
         $totalRows = $warehouses->count();
         if ($perPage == '-1') {
@@ -59,54 +56,66 @@ class WarehouseController extends Controller
     {
         $this->authorizeForUser($request->user('api'), 'create', Warehouse::class);
 
-        request()->validate([
-            'name' => 'required',
-            'branch_id' => [
-                'nullable', 'integer',
-                Rule::exists('branches', 'id')->where(fn ($q) => $q->whereNull('deleted_at')->where('is_active', true)),
-            ],
+        $request->validate([
+            'name' => ['required', 'string', 'max:191'],
+            'mobile' => ['nullable', 'string', 'max:191'],
+            'country' => ['nullable', 'string', 'max:191'],
+            'city' => ['nullable', 'string', 'max:191'],
+            'zip' => ['nullable', 'string', 'max:191'],
+            'email' => ['nullable', 'email', 'max:191'],
         ]);
 
         \DB::transaction(function () use ($request) {
-            $Warehouse = new Warehouse;
-            $Warehouse->branch_id = $request->filled('branch_id') ? (int) $request['branch_id'] : null;
-            $Warehouse->name = $request['name'];
-            $Warehouse->mobile = $request['mobile'];
-            $Warehouse->country = $request['country'];
-            $Warehouse->city = $request['city'];
-            $Warehouse->zip = $request['zip'];
-            $Warehouse->email = $request['email'];
-            $Warehouse->save();
+            $warehouse = new Warehouse;
+            // Warehouses are now standalone logistic facilities / distribution centers.
+            // branch_id remains in the schema only as a transitional legacy field.
+            $warehouse->branch_id = null;
+            $warehouse->name = $request['name'];
+            $warehouse->mobile = $request['mobile'];
+            $warehouse->country = $request['country'];
+            $warehouse->city = $request['city'];
+            $warehouse->zip = $request['zip'];
+            $warehouse->email = $request['email'];
+            $warehouse->save();
+
+            // Every real warehouse/CD owns at least one inventory location. Stock is
+            // still initialized in product_warehouse until the controlled cutover.
+            $location = app(InventoryLocationService::class)->createForWarehouse($warehouse, [
+                'code' => 'MAIN',
+                'name' => 'Inventario principal',
+                'type' => InventoryLocation::TYPE_STORAGE,
+                'is_sellable' => false,
+                'is_active' => true,
+            ]);
+            app(InventoryLocationService::class)->setWarehouseDefault($location);
 
             $products = Product::where('deleted_at', '=', null)->get(['id', 'type']);
 
-            if ($products) {
-                foreach ($products as $product) {
-                    $product_warehouse = [];
-                    $Product_Variants = ProductVariant::where('product_id', $product->id)
-                        ->where('deleted_at', null)
-                        ->get();
+            foreach ($products as $product) {
+                $rows = [];
+                $variants = ProductVariant::where('product_id', $product->id)
+                    ->where('deleted_at', null)
+                    ->get();
 
-                    if ($Product_Variants->isNotEmpty()) {
-                        foreach ($Product_Variants as $product_variant) {
-                            $product_warehouse[] = [
-                                'product_id' => $product->id,
-                                'warehouse_id' => $Warehouse->id,
-                                'product_variant_id' => $product_variant->id,
-                                'manage_stock' => $product->type == 'is_service' ? 0 : 1,
-                            ];
-                        }
-                    } else {
-                        $product_warehouse[] = [
+                if ($variants->isNotEmpty()) {
+                    foreach ($variants as $variant) {
+                        $rows[] = [
                             'product_id' => $product->id,
-                            'warehouse_id' => $Warehouse->id,
-                            'product_variant_id' => null,
+                            'warehouse_id' => $warehouse->id,
+                            'product_variant_id' => $variant->id,
                             'manage_stock' => $product->type == 'is_service' ? 0 : 1,
                         ];
                     }
-
-                    product_warehouse::insert($product_warehouse);
+                } else {
+                    $rows[] = [
+                        'product_id' => $product->id,
+                        'warehouse_id' => $warehouse->id,
+                        'product_variant_id' => null,
+                        'manage_stock' => $product->type == 'is_service' ? 0 : 1,
+                    ];
                 }
+
+                product_warehouse::insert($rows);
             }
         }, 10);
 
@@ -121,16 +130,18 @@ class WarehouseController extends Controller
     {
         $this->authorizeForUser($request->user('api'), 'update', Warehouse::class);
 
-        request()->validate([
-            'name' => 'required',
-            'branch_id' => [
-                'nullable', 'integer',
-                Rule::exists('branches', 'id')->where(fn ($q) => $q->whereNull('deleted_at')->where('is_active', true)),
-            ],
+        $request->validate([
+            'name' => ['required', 'string', 'max:191'],
+            'mobile' => ['nullable', 'string', 'max:191'],
+            'country' => ['nullable', 'string', 'max:191'],
+            'city' => ['nullable', 'string', 'max:191'],
+            'zip' => ['nullable', 'string', 'max:191'],
+            'email' => ['nullable', 'email', 'max:191'],
         ]);
 
+        // Do not rewrite branch_id here. Existing values are retained only for
+        // backward-compatible scope discovery until every legacy user is migrated.
         Warehouse::whereId($id)->update([
-            'branch_id' => $request->filled('branch_id') ? (int) $request['branch_id'] : null,
             'name' => $request['name'],
             'mobile' => $request['mobile'],
             'country' => $request['country'],
@@ -181,7 +192,10 @@ class WarehouseController extends Controller
 
     public function Get_Warehouses()
     {
-        $Warehouses = Warehouse::with('branch:id,name,code')->where('deleted_at', '=', null)->get();
-        return response()->json($Warehouses);
+        $warehouses = Warehouse::with('defaultInventoryLocation:id,warehouse_id,code,name,type,is_active')
+            ->where('deleted_at', '=', null)
+            ->get();
+
+        return response()->json($warehouses);
     }
 }
