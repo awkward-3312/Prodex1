@@ -9,6 +9,9 @@
           <p class="text-muted mb-0">Organiza empleados y bodegas por ubicación. Los permisos definen qué puede hacer cada usuario; la sucursal y sus bodegas definen dónde puede hacerlo.</p>
         </div>
         <div class="mt-2 mt-md-0">
+          <b-button variant="outline-secondary" class="mr-2" @click="goManual">
+            <lucide-icon name="book-open" class="mr-1"/> Ver manual
+          </b-button>
           <b-button variant="outline-primary" class="mr-2" @click="goWarehouses">
             <lucide-icon name="warehouse" class="mr-1"/> Bodegas
           </b-button>
@@ -254,6 +257,9 @@ export default {
     },
     goWarehouses() {
       window.location.href = '/app/settings/warehouses';
+    },
+    goManual() {
+      this.$router.push({ name: 'KnowledgeBaseList' }).catch(() => {});
     },
     managerName(manager) {
       if (!manager) return '—';
