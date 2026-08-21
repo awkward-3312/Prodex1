@@ -55,7 +55,15 @@
 
   function api(method, url, data) {
     if (!window.axios) return Promise.reject(new Error('Axios no disponible'));
-    return window.axios({ method: method, url: API + url, data: data });
+    return window.axios({
+      method: method,
+      url: API + url,
+      data: data,
+      // These calls are capability-aware background probes. A 403 simply means
+      // the current user is not the designated receiver; it must never hijack
+      // the whole SPA and send the user to the global unauthorized page.
+      meta: { skipErrorRedirect: true, skipInitialLoader: true }
+    });
   }
 
   function truckSvg() {
@@ -188,8 +196,7 @@
     var old = document.getElementById('px-tl-toast');
     if (old) old.remove();
     var toast = document.createElement('div');
-    toast.id = 'px-tl-toast';
-    toast.className = 'px-tl-toast';
+    toast.id = 'px-tl-toast'; toast.className = 'px-tl-toast';
     toast.innerHTML = '<strong>' + esc(unread.title || 'Transferencia en camino') + '</strong><span>' + esc(unread.message || '') + '</span>';
     toast.onclick = function () { toast.remove(); loadByToken(unread.receiving_token); };
     document.body.appendChild(toast);
@@ -462,7 +469,6 @@
     maybeAddQrButton();
     pollTimer = window.setInterval(function () { refresh(false); maybeAddQrButton(); }, 45000);
 
-    // SPA navigation does not reload the document, so observe route-driven DOM swaps.
     var observer = new MutationObserver(function () { ensureHeaderButton(); maybeAddQrButton(); });
     observer.observe(document.body, { childList: true, subtree: true });
   }
