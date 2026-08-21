@@ -24,24 +24,15 @@
       <strong>PRODEX necesita JavaScript para funcionar correctamente. Actívalo para continuar.</strong>
     </noscript>
 
-    <!-- built files will be auto injected -->
     <div class="loading_wrap" id="loading_wrap">
-
       <div class="loading"></div>
     </div>
     <div id="app">
-      {{-- Existing local scanner used by POS/attendance and transfer receiving. --}}
       <script src="/assets_setup/js/qrcode.js"></script>
-
     </div>
 
     @php
         $__planSummary = app(\App\Services\TenantLimitsService::class)->getPlanSummary();
-
-        // Manual PRODEX is official help/documentation, not a paid module.
-        // Keep the existing sidebar entry available independently of the
-        // tenant's commercial plan while leaving actual plan entitlements
-        // unchanged in the central database.
         if (isset($__planSummary['features']['knowledge_base'])) {
             $__planSummary['features']['knowledge_base']['enabled'] = true;
         }
@@ -53,23 +44,13 @@
         window.__pageTitleSuffix = @json($app_settings->page_title_suffix ?? 'Gestión empresarial');
     </script>
 
-
     <script src="/js/main.min.js?v=1.3&v={{ time() }}"></script>
 
-    {{--
-      Pinned QRCode.js generator. The receiving token is encoded locally in the
-      browser; it is never sent to the CDN. A manual secure-token fallback remains
-      available if this optional asset cannot be loaded.
-    --}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
             crossorigin="anonymous"
             referrerpolicy="no-referrer"></script>
 
     <script>
-      // main.js sets axios.baseURL to /api/. The logistics enhancer intentionally
-      // uses fully-qualified /api/transfer-logistics paths so QR links and polling
-      // remain explicit. Prevent Axios from prepending /api/ a second time only for
-      // this isolated endpoint family; all historical requests keep their defaults.
       if (window.axios && !window.__prodexTransferLogisticsAxiosFix) {
         window.__prodexTransferLogisticsAxiosFix = true;
         window.axios.interceptors.request.use(function (config) {
@@ -85,6 +66,7 @@
     <script src="/js/prodex-navigation-stability.js?v={{ time() }}"></script>
     <script src="/js/prodex-navigation-v3.js?v={{ time() }}"></script>
     <script src="/js/prodex-sidebar-reopen.js?v={{ time() }}"></script>
+    <script src="/js/prodex-organization-navigation.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-idempotency.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-logistics.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-permission-ui.js?v={{ time() }}"></script>
