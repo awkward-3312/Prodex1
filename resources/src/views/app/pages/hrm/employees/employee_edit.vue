@@ -102,6 +102,18 @@
                 </b-col>
 
                 <b-col md="6" class="mb-2">
+                  <b-form-group label="Sucursal">
+                    <v-select
+                      v-model="employee.branch_id"
+                      :reduce="label => label.value"
+                      placeholder="Selecciona una sucursal"
+                      :options="branches.map(branch => ({label: branch.code ? `${branch.name} (${branch.code})` : branch.name, value: branch.id}))"
+                    />
+                    <small class="text-muted">Define la ubicación organizacional habitual del empleado. El acceso al sistema se controla por separado.</small>
+                  </b-form-group>
+                </b-col>
+
+                <b-col md="6" class="mb-2">
                   <validation-provider name="Departamento" :rules="{ required: true}">
                     <b-form-group slot-scope="{ errors }" label="Departamento *">
                       <v-select v-model="employee.department_id" class="required" required @input="Selected_Department" placeholder="Selecciona un departamento" :reduce="label => label.value" :options="departments.map(item => ({label: item.department, value: item.id}))" />
@@ -111,9 +123,9 @@
                 </b-col>
 
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Cargo" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ errors }" label="Cargo *">
-                      <v-select v-model="employee.designation_id" class="required" required @input="Selected_Designation" placeholder="Selecciona un cargo" :reduce="label => label.value" :options="designations.map(item => ({label: item.designation, value: item.id}))" />
+                  <validation-provider name="Puesto" :rules="{ required: true}">
+                    <b-form-group slot-scope="{ errors }" label="Puesto *">
+                      <v-select v-model="employee.designation_id" class="required" required @input="Selected_Designation" placeholder="Selecciona un puesto" :reduce="label => label.value" :options="designations.map(item => ({label: item.designation, value: item.id}))" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
@@ -159,6 +171,7 @@ export default {
       isLoading: true,
       SubmitProcessing: false,
       companies: [],
+      branches: [],
       departments: [],
       designations: [],
       office_shifts: [],
@@ -186,6 +199,7 @@ export default {
         .then(response => {
           this.employee = response.data.employee;
           this.companies = response.data.companies;
+          this.branches = response.data.branches || [];
           this.departments = response.data.departments;
           this.designations = response.data.designations;
           this.office_shifts = response.data.office_shifts;
@@ -233,6 +247,7 @@ export default {
         phone: this.employee.phone,
         birth_date: this.employee.birth_date,
         company_id: this.employee.company_id,
+        branch_id: this.employee.branch_id || null,
         department_id: this.employee.department_id,
         designation_id: this.employee.designation_id,
         office_shift_id: this.employee.office_shift_id,
