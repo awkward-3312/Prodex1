@@ -41,6 +41,7 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_21_150000_create_inventory_locations_foundation.php',
         'database/migrations/tenant/2026_08_21_160000_create_inventory_location_stock_engine.php',
         'database/migrations/tenant/2026_08_21_170000_create_inventory_transition_states.php',
+        'database/migrations/tenant/2026_08_21_180000_add_branch_inventory_scope_to_users.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -95,8 +96,21 @@ class TenantSchemaHealthService
             'cash_drawer_name_snapshot', 'cash_drawer_code_snapshot',
         ]);
         $this->requireTable($schema, $missing, 'cash_drawers');
+        $this->requireColumns($schema, $missing, 'cash_drawers', ['branch_id', 'inventory_location_id']);
         $this->requireTable($schema, $missing, 'user_operational_assignments');
-        $this->requireColumns($schema, $missing, 'users', ['default_warehouse_id', 'default_cash_drawer_id']);
+        $this->requireColumns($schema, $missing, 'users', [
+            'default_warehouse_id', 'default_branch_id', 'default_inventory_location_id', 'default_cash_drawer_id',
+        ]);
+        $this->requireTable($schema, $missing, 'user_branches');
+        $this->requireColumns($schema, $missing, 'user_branches', ['user_id', 'branch_id']);
+        $this->requireTable($schema, $missing, 'user_inventory_locations');
+        $this->requireColumns($schema, $missing, 'user_inventory_locations', ['user_id', 'inventory_location_id']);
+        $this->requireColumns($schema, $missing, 'user_operational_assignments', [
+            'default_branch_id_snapshot', 'default_branch_name_snapshot',
+            'default_inventory_location_id_snapshot', 'default_inventory_location_name_snapshot',
+            'temporary_branch_id', 'temporary_branch_name_snapshot',
+            'temporary_inventory_location_id', 'temporary_inventory_location_name_snapshot',
+        ]);
 
         $this->requireTable($schema, $missing, 'store_credit_vouchers');
         $this->requireTable($schema, $missing, 'store_credit_voucher_transactions');
@@ -171,9 +185,6 @@ class TenantSchemaHealthService
             'reference_id', 'idempotency_key', 'idempotency_fingerprint', 'notes', 'metadata',
         ]);
 
-        // Transition state is deliberately per legacy warehouse/CD. It lets us
-        // migrate one operational domain at a time while product_warehouse remains
-        // the production source of truth until an explicit later cutover.
         $this->requireTable($schema, $missing, 'inventory_transition_states');
         $this->requireColumns($schema, $missing, 'inventory_transition_states', [
             'warehouse_id', 'inventory_location_id', 'mode', 'status', 'mismatch_count',
