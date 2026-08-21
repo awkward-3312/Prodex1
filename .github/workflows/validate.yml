@@ -85,7 +85,10 @@ jobs:
         run: |
           php -l app/Services/WarehouseScopeService.php
           php -l app/Http/Middleware/EnforceWarehouseScope.php
+          php -l app/Http/Controllers/Organization/BranchController.php
+          php -l app/Http/Controllers/Organization/EmployeeAccessController.php
           php -l app/Http/Controllers/Organization/RoleTemplateController.php
+          php -l app/Http/Controllers/hrm/EmployeesController.php
           php -l app/Providers/RouteServiceProvider.php
           php -l database/seeders/Central/ProdexManualsSeeder.php
           php -l database/migrations/tenant/2026_08_21_090000_add_organization_structure_foundation.php
