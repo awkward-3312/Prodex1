@@ -31,13 +31,14 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_20_220100_create_attendance_employee_identifiers_table.php',
         'database/migrations/tenant/2026_08_20_220200_create_attendance_punches_table.php',
         'database/migrations/tenant/2026_08_20_220300_add_source_to_attendances_table.php',
-        // Transfer logistics: dispatch -> transit -> authorized physical receipt.
         'database/migrations/tenant/2026_08_20_220000_add_transfer_logistics_receiving.php',
         'database/migrations/tenant/2026_08_20_220100_add_transfer_receipt_batch_allocations.php',
         'database/migrations/tenant/2026_08_20_220200_add_transfer_discrepancy_resolution_workflow.php',
         'database/migrations/tenant/2026_08_20_220300_normalize_pending_transfer_logistics.php',
         'database/migrations/tenant/2026_08_20_220400_add_transfer_receipt_idempotency.php',
         'database/migrations/tenant/2026_08_20_220500_backfill_existing_transfer_logistics.php',
+        // Organization: company -> branch -> warehouse -> employee -> user/access.
+        'database/migrations/tenant/2026_08_21_090000_add_organization_structure_foundation.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -61,7 +62,6 @@ class TenantSchemaHealthService
         try {
             tenancy()->initialize($tenant);
             DB::connection('tenant')->getPdo();
-
             $result['connectivity'] = 'ok';
             $result['missing'] = $this->missingRequirements();
             $result['schema_status'] = empty($result['missing']) ? 'updated' : 'outdated';
@@ -70,9 +70,7 @@ class TenantSchemaHealthService
         } catch (Throwable $e) {
             $result['last_error'] = $e->getMessage();
         } finally {
-            if (function_exists('tenancy') && tenancy()->initialized) {
-                tenancy()->end();
-            }
+            if (function_exists('tenancy') && tenancy()->initialized) tenancy()->end();
         }
 
         return $result;
@@ -103,7 +101,6 @@ class TenantSchemaHealthService
         $this->requireColumns($schema, $missing, 'sales', ['store_credit_amount', 'fiscal_exemption_data']);
         $this->requireColumns($schema, $missing, 'sale_returns', ['refund_mode', 'store_credit_voucher_id', 'store_credit_amount']);
 
-        // Honduras SAR fiscal invoicing requirements.
         $this->requireTable($schema, $missing, 'sar_fiscal_profiles');
         $this->requireTable($schema, $missing, 'sar_points_of_issue');
         $this->requireTable($schema, $missing, 'sar_authorizations');
@@ -115,23 +112,17 @@ class TenantSchemaHealthService
             'identification_type', 'identification_number', 'sar_registry_number', 'exoneration_registry_number',
         ]);
 
-        // Tenant-controlled presentation for thermal SAR receipts.
         $this->requireColumns($schema, $missing, 'pos_settings', [
             'receipt_header_alignment', 'receipt_fiscal_alignment', 'receipt_customer_alignment',
             'receipt_items_alignment', 'receipt_totals_alignment', 'receipt_footer_alignment', 'receipt_qr_alignment',
             'receipt_font_size', 'receipt_density', 'receipt_separator',
         ]);
 
-        // Attendance integration foundation. These tables keep biometric/device
-        // identities and raw punch events separate from calculated attendance.
         $this->requireTable($schema, $missing, 'attendance_devices');
         $this->requireTable($schema, $missing, 'attendance_employee_identifiers');
         $this->requireTable($schema, $missing, 'attendance_punches');
         $this->requireColumns($schema, $missing, 'attendances', ['source', 'source_reference']);
 
-        // Stock-transfer logistics. These requirements protect the invariant that
-        // dispatched stock is neither still sellable at origin nor credited at the
-        // destination until an authorized physical receiver accounts for it.
         $this->requireColumns($schema, $missing, 'transfers', [
             'receiving_token', 'logistics_status', 'dispatched_at', 'dispatched_by_user_id',
             'received_at', 'received_by_user_id',
@@ -149,26 +140,31 @@ class TenantSchemaHealthService
         $this->requireTable($schema, $missing, 'transfer_events');
         $this->requireTable($schema, $missing, 'transfer_notifications');
 
+        // Organizational structure foundation.
+        $this->requireTable($schema, $missing, 'branches');
+        $this->requireColumns($schema, $missing, 'branches', [
+            'code', 'name', 'type', 'manager_employee_id', 'default_warehouse_id', 'is_active',
+        ]);
+        $this->requireColumns($schema, $missing, 'warehouses', ['branch_id']);
+        $this->requireColumns($schema, $missing, 'employees', ['branch_id']);
+        $this->requireColumns($schema, $missing, 'users', ['employee_id']);
+        $this->requireColumns($schema, $missing, 'designations', [
+            'code', 'description', 'is_system_default', 'is_active', 'suggested_role_key',
+        ]);
+
         return $missing;
     }
 
     private function requireTable($schema, array &$missing, string $table): void
     {
-        if (! $schema->hasTable($table)) {
-            $missing[] = "Falta tabla: {$table}";
-        }
+        if (! $schema->hasTable($table)) $missing[] = "Falta tabla: {$table}";
     }
 
     private function requireColumns($schema, array &$missing, string $table, array $columns): void
     {
-        if (! $schema->hasTable($table)) {
-            return;
-        }
-
+        if (! $schema->hasTable($table)) return;
         foreach ($columns as $column) {
-            if (! $schema->hasColumn($table, $column)) {
-                $missing[] = "Falta columna: {$table}.{$column}";
-            }
+            if (! $schema->hasColumn($table, $column)) $missing[] = "Falta columna: {$table}.{$column}";
         }
     }
 }
