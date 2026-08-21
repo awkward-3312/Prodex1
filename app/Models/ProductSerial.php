@@ -23,7 +23,7 @@ class ProductSerial extends Model
 
     protected $fillable = [
         'serial_number',
-        'product_id', 'product_variant_id', 'warehouse_id',
+        'product_id', 'product_variant_id', 'warehouse_id', 'inventory_location_id',
         'status',
         'purchase_id', 'purchase_detail_id', 'provider_id', 'cost',
         'sale_id', 'sale_detail_id', 'client_id',
@@ -34,6 +34,7 @@ class ProductSerial extends Model
         'product_id' => 'integer',
         'product_variant_id' => 'integer',
         'warehouse_id' => 'integer',
+        'inventory_location_id' => 'integer',
         'purchase_id' => 'integer',
         'purchase_detail_id' => 'integer',
         'provider_id' => 'integer',
@@ -53,9 +54,15 @@ class ProductSerial extends Model
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 
+    /** Legacy warehouse relation retained during transition. */
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class, 'warehouse_id');
+    }
+
+    public function inventoryLocation()
+    {
+        return $this->belongsTo(InventoryLocation::class, 'inventory_location_id');
     }
 
     public function provider()
@@ -96,5 +103,10 @@ class ProductSerial extends Model
     public function scopeForWarehouse($q, $warehouseId)
     {
         return $q->where('warehouse_id', $warehouseId);
+    }
+
+    public function scopeForInventoryLocation($q, int $locationId)
+    {
+        return $q->where('inventory_location_id', $locationId);
     }
 }
