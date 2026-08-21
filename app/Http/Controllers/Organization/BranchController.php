@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Organization;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Employee;
-use App\Models\Warehouse;
-use App\Services\WarehouseScopeService;
+use App\Models\InventoryLocation;
+use App\Services\BranchScopeService;
+use App\Services\InventoryLocationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -19,9 +20,10 @@ class BranchController extends Controller
         $user = $request->user('api');
 
         $branches = Branch::with([
-                'warehouses' => fn ($q) => $q->whereNull('deleted_at')->select('id', 'branch_id', 'name'),
+                'inventoryLocations' => fn ($q) => $q->whereNull('deleted_at')->where('is_active', true)
+                    ->select('id', 'branch_id', 'code', 'name', 'type', 'is_sellable', 'is_default_sales', 'is_quarantine', 'is_active'),
                 'manager:id,firstname,lastname',
-                'defaultWarehouse:id,name',
+                'defaultInventoryLocation:id,branch_id,code,name,type,is_sellable,is_default_sales',
             ])
             ->whereNull('deleted_at');
 
@@ -42,23 +44,26 @@ class BranchController extends Controller
     {
         $this->authorizePermission($request, 'branches_view');
         $user = $request->user('api');
-        $branchIds = $this->allowedBranchIds($user);
-        $warehouseIds = app(WarehouseScopeService::class)->allowedWarehouseIds($user);
+        $branchIds = app(BranchScopeService::class)->allowedBranchIds($user);
 
         $branches = Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name');
-        $warehouses = Warehouse::whereNull('deleted_at')->orderBy('name');
         $employees = Employee::whereNull('deleted_at')->whereNull('leaving_date')->orderBy('firstname')->orderBy('lastname');
 
-        if ((int) $user->is_all_warehouses !== 1) {
+        if ((int) $user->role_id !== 1) {
             $branches->whereIn('id', $branchIds ?: [0]);
-            $warehouses->whereIn('id', $warehouseIds ?: [0]);
-            $employees->whereIn('branch_id', $branchIds ?: [0]);
+            if ($branchIds) {
+                $employees->where(function ($q) use ($branchIds) {
+                    $q->whereNull('branch_id')->orWhereIn('branch_id', $branchIds);
+                });
+            } else {
+                $employees->whereNull('branch_id');
+            }
         }
 
         return response()->json([
             'branches' => $branches->get(['id', 'code', 'name']),
-            'warehouses' => $warehouses->get(['id', 'branch_id', 'name']),
             'employees' => $employees->get(['id', 'branch_id', 'firstname', 'lastname']),
+            'inventory_location_types' => $this->locationTypeOptions(),
         ]);
     }
 
@@ -68,12 +73,22 @@ class BranchController extends Controller
         $data = $this->validated($request);
 
         $branch = DB::transaction(function () use ($data) {
+            $inventoryEnabled = (bool) ($data['inventory_enabled'] ?? true);
+            $createStorage = (bool) ($data['create_storage_location'] ?? true);
+            unset($data['inventory_enabled'], $data['create_storage_location']);
+
             $branch = Branch::create($data);
-            $this->syncWarehouses($branch, $data['warehouse_ids'] ?? []);
+            if ($inventoryEnabled) {
+                $this->ensureInitialInventoryLocations($branch, $createStorage);
+            }
+
             return $branch;
         });
 
-        return response()->json(['success' => true, 'branch' => $branch->fresh(['warehouses', 'manager', 'defaultWarehouse'])], 201);
+        return response()->json([
+            'success' => true,
+            'branch' => $branch->fresh(['inventoryLocations', 'manager', 'defaultInventoryLocation']),
+        ], 201);
     }
 
     public function update(Request $request, int $id)
@@ -86,11 +101,20 @@ class BranchController extends Controller
         $data = $this->validated($request, $branch->id);
 
         DB::transaction(function () use ($branch, $data) {
+            $inventoryEnabled = (bool) ($data['inventory_enabled'] ?? false);
+            $createStorage = (bool) ($data['create_storage_location'] ?? true);
+            unset($data['inventory_enabled'], $data['create_storage_location']);
+
             $branch->update($data);
-            $this->syncWarehouses($branch, $data['warehouse_ids'] ?? []);
+            if ($inventoryEnabled && ! $branch->inventoryLocations()->whereNull('deleted_at')->where('is_active', true)->exists()) {
+                $this->ensureInitialInventoryLocations($branch, $createStorage);
+            }
         });
 
-        return response()->json(['success' => true, 'branch' => $branch->fresh(['warehouses', 'manager', 'defaultWarehouse'])]);
+        return response()->json([
+            'success' => true,
+            'branch' => $branch->fresh(['inventoryLocations', 'manager', 'defaultInventoryLocation']),
+        ]);
     }
 
     public function destroy(Request $request, int $id)
@@ -113,7 +137,7 @@ class BranchController extends Controller
 
         $branch = Branch::whereNull('deleted_at')->where('is_active', true)->findOrFail($branchId);
         $employee = Employee::whereNull('deleted_at')->findOrFail($employeeId);
-        if ((int) $user->is_all_warehouses !== 1 && $employee->branch_id) {
+        if ((int) $user->role_id !== 1 && $employee->branch_id) {
             $this->assertBranchAccess($user, (int) $employee->branch_id);
         }
         $employee->update(['branch_id' => $branch->id]);
@@ -121,11 +145,33 @@ class BranchController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function storeInventoryLocation(Request $request, int $branchId)
+    {
+        $this->authorizePermission($request, 'branches_edit');
+        $this->assertBranchAccess($request->user('api'), $branchId);
+        $branch = Branch::whereNull('deleted_at')->where('is_active', true)->findOrFail($branchId);
+
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:64'],
+            'name' => ['required', 'string', 'max:192'],
+            'type' => ['required', Rule::in(InventoryLocation::TYPES)],
+            'is_sellable' => ['sometimes', 'boolean'],
+            'is_default_sales' => ['sometimes', 'boolean'],
+            'is_quarantine' => ['sometimes', 'boolean'],
+        ]);
+
+        $location = app(InventoryLocationService::class)->createForBranch($branch, $data);
+
+        return response()->json(['success' => true, 'location' => $location], 201);
+    }
+
     private function validated(Request $request, ?int $branchId = null): array
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:192'],
             'code' => ['nullable', 'string', 'max:40'],
+            // distribution_center remains accepted only for backward compatibility;
+            // new CDs are Warehouses and the UI no longer offers this branch type.
             'type' => ['required', Rule::in(['branch', 'distribution_center', 'office', 'other'])],
             'phone' => ['nullable', 'string', 'max:80'],
             'email' => ['nullable', 'email', 'max:192'],
@@ -133,69 +179,67 @@ class BranchController extends Controller
             'city' => ['nullable', 'string', 'max:120'],
             'address' => ['nullable', 'string', 'max:255'],
             'manager_employee_id' => ['nullable', 'integer'],
-            'default_warehouse_id' => ['nullable', 'integer'],
             'is_active' => ['sometimes', 'boolean'],
-            'warehouse_ids' => ['sometimes', 'array'],
-            'warehouse_ids.*' => ['integer'],
+            'inventory_enabled' => ['sometimes', 'boolean'],
+            'create_storage_location' => ['sometimes', 'boolean'],
         ]);
 
         if (! empty($validated['manager_employee_id'])) {
             abort_unless(Employee::whereNull('deleted_at')->whereKey($validated['manager_employee_id'])->exists(), 422, 'El responsable seleccionado no existe.');
         }
 
-        $warehouseIds = array_values(array_unique(array_map('intval', $validated['warehouse_ids'] ?? [])));
-        if ($warehouseIds) {
-            $existing = Warehouse::whereNull('deleted_at')->whereIn('id', $warehouseIds)->pluck('id')->map(fn ($id) => (int) $id)->all();
-            abort_unless(count($existing) === count($warehouseIds), 422, 'Una de las bodegas seleccionadas no existe.');
-        }
-
-        if (! empty($validated['default_warehouse_id'])) {
-            abort_unless(in_array((int) $validated['default_warehouse_id'], $warehouseIds, true), 422, 'La bodega predeterminada debe pertenecer a la sucursal.');
-        }
-
-        $validated['warehouse_ids'] = $warehouseIds;
         $validated['is_active'] = array_key_exists('is_active', $validated) ? (bool) $validated['is_active'] : true;
         return $validated;
     }
 
-    private function syncWarehouses(Branch $branch, array $warehouseIds): void
+    private function ensureInitialInventoryLocations(Branch $branch, bool $createStorage): void
     {
-        Warehouse::where('branch_id', $branch->id)->whereNotIn('id', $warehouseIds ?: [0])->update(['branch_id' => null]);
-        if ($warehouseIds) {
-            Warehouse::whereIn('id', $warehouseIds)->update(['branch_id' => $branch->id]);
+        $service = app(InventoryLocationService::class);
+
+        if (! $branch->inventoryLocations()->whereNull('deleted_at')->where('code', 'PISO')->exists()) {
+            $service->createForBranch($branch, [
+                'code' => 'PISO',
+                'name' => 'Piso de venta',
+                'type' => InventoryLocation::TYPE_SALES_FLOOR,
+                'is_sellable' => true,
+                'is_default_sales' => true,
+                'is_active' => true,
+            ]);
+        }
+
+        if ($createStorage && ! $branch->inventoryLocations()->whereNull('deleted_at')->where('code', 'BODEGA')->exists()) {
+            $service->createForBranch($branch, [
+                'code' => 'BODEGA',
+                'name' => 'Bodega de sucursal',
+                'type' => InventoryLocation::TYPE_STORAGE,
+                'is_sellable' => false,
+                'is_active' => true,
+            ]);
         }
     }
 
-    private function allowedBranchIds($user): array
+    private function locationTypeOptions(): array
     {
-        if ((int) $user->is_all_warehouses === 1) {
-            return Branch::whereNull('deleted_at')->pluck('id')->map(fn ($id) => (int) $id)->all();
-        }
-
-        $warehouseIds = app(WarehouseScopeService::class)->allowedWarehouseIds($user);
-        $branchIds = Warehouse::whereNull('deleted_at')
-            ->whereIn('id', $warehouseIds ?: [0])
-            ->whereNotNull('branch_id')
-            ->pluck('branch_id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        $employeeBranch = optional($user->employee)->branch_id;
-        if ($employeeBranch) $branchIds[] = (int) $employeeBranch;
-
-        return array_values(array_unique($branchIds));
+        return [
+            ['value' => InventoryLocation::TYPE_SALES_FLOOR, 'label' => 'Piso de venta'],
+            ['value' => InventoryLocation::TYPE_STORAGE, 'label' => 'Bodega'],
+            ['value' => InventoryLocation::TYPE_QUARANTINE, 'label' => 'Cuarentena'],
+            ['value' => InventoryLocation::TYPE_DAMAGED, 'label' => 'Dañados'],
+            ['value' => InventoryLocation::TYPE_RETURNS, 'label' => 'Devoluciones'],
+            ['value' => InventoryLocation::TYPE_OTHER, 'label' => 'Otra'],
+        ];
     }
 
     private function scopeBranches($query, $user): void
     {
-        if ((int) $user->is_all_warehouses === 1) return;
-        $query->whereIn('id', $this->allowedBranchIds($user) ?: [0]);
+        if ((int) $user->role_id === 1) return;
+        $query->whereIn('id', app(BranchScopeService::class)->allowedBranchIds($user) ?: [0]);
     }
 
     private function assertBranchAccess($user, int $branchId): void
     {
-        if ((int) $user->is_all_warehouses === 1) return;
-        abort_unless(in_array($branchId, $this->allowedBranchIds($user), true), 403, 'No tienes acceso a esta sucursal.');
+        if ((int) $user->role_id === 1) return;
+        abort_unless(app(BranchScopeService::class)->canAccess($user, $branchId), 403, 'No tienes acceso a esta sucursal.');
     }
 
     private function authorizePermission(Request $request, string $permission): void
