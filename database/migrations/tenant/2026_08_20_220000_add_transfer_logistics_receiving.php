@@ -20,22 +20,22 @@ return new class extends Migration
                 $table->timestamp('dispatched_at')->nullable()->after('logistics_status');
             }
             if (! Schema::hasColumn('transfers', 'dispatched_by_user_id')) {
-                $table->unsignedBigInteger('dispatched_by_user_id')->nullable()->index()->after('dispatched_at');
+                $table->integer('dispatched_by_user_id')->nullable()->index()->after('dispatched_at');
             }
             if (! Schema::hasColumn('transfers', 'received_at')) {
                 $table->timestamp('received_at')->nullable()->after('dispatched_by_user_id');
             }
             if (! Schema::hasColumn('transfers', 'received_by_user_id')) {
-                $table->unsignedBigInteger('received_by_user_id')->nullable()->index()->after('received_at');
+                $table->integer('received_by_user_id')->nullable()->index()->after('received_at');
             }
         });
 
         if (! Schema::hasTable('transfer_receipts')) {
             Schema::create('transfer_receipts', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('transfer_id')->index();
-                $table->unsignedBigInteger('warehouse_id')->index();
-                $table->unsignedBigInteger('received_by_user_id')->index();
+                $table->integer('transfer_id')->index();
+                $table->integer('warehouse_id')->index();
+                $table->integer('received_by_user_id')->index();
                 $table->string('status', 32)->default('partial');
                 $table->text('notes')->nullable();
                 $table->timestamp('received_at');
@@ -51,7 +51,7 @@ return new class extends Migration
             Schema::create('transfer_receipt_items', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('transfer_receipt_id')->index();
-                $table->unsignedBigInteger('transfer_detail_id')->index();
+                $table->integer('transfer_detail_id')->index();
                 $table->decimal('quantity_good', 20, 6)->default(0);
                 $table->decimal('quantity_defective', 20, 6)->default(0);
                 $table->decimal('quantity_missing', 20, 6)->default(0);
@@ -66,17 +66,17 @@ return new class extends Migration
         if (! Schema::hasTable('transfer_discrepancies')) {
             Schema::create('transfer_discrepancies', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('transfer_id')->index();
-                $table->unsignedBigInteger('transfer_detail_id')->index();
-                $table->unsignedBigInteger('warehouse_id')->index();
-                $table->unsignedBigInteger('reported_by_user_id')->index();
+                $table->integer('transfer_id')->index();
+                $table->integer('transfer_detail_id')->index();
+                $table->integer('warehouse_id')->index();
+                $table->integer('reported_by_user_id')->index();
                 $table->string('type', 24); // missing | defective
                 $table->decimal('quantity', 20, 6);
                 $table->string('resolution_status', 24)->default('open')->index();
                 $table->text('notes')->nullable();
                 $table->timestamp('reported_at');
                 $table->timestamp('resolved_at')->nullable();
-                $table->unsignedBigInteger('resolved_by_user_id')->nullable()->index();
+                $table->integer('resolved_by_user_id')->nullable()->index();
                 $table->timestamps();
 
                 $table->foreign('transfer_id')->references('id')->on('transfers')->onDelete('cascade');
@@ -89,15 +89,15 @@ return new class extends Migration
         if (! Schema::hasTable('transfer_quarantine_stock')) {
             Schema::create('transfer_quarantine_stock', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('transfer_id')->index();
-                $table->unsignedBigInteger('transfer_detail_id')->index();
-                $table->unsignedBigInteger('warehouse_id')->index();
-                $table->unsignedBigInteger('product_id')->index();
-                $table->unsignedBigInteger('product_variant_id')->nullable()->index();
+                $table->integer('transfer_id')->index();
+                $table->integer('transfer_detail_id')->index();
+                $table->integer('warehouse_id')->index();
+                $table->integer('product_id')->index();
+                $table->integer('product_variant_id')->nullable()->index();
                 $table->decimal('quantity', 20, 6);
                 $table->string('status', 24)->default('quarantined')->index();
                 $table->text('notes')->nullable();
-                $table->unsignedBigInteger('created_by_user_id')->index();
+                $table->integer('created_by_user_id')->index();
                 $table->timestamps();
 
                 $table->foreign('transfer_id')->references('id')->on('transfers')->onDelete('cascade');
@@ -110,10 +110,10 @@ return new class extends Migration
         if (! Schema::hasTable('transfer_events')) {
             Schema::create('transfer_events', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('transfer_id')->index();
+                $table->integer('transfer_id')->index();
                 $table->string('event_type', 40)->index();
-                $table->unsignedBigInteger('actor_user_id')->nullable()->index();
-                $table->unsignedBigInteger('warehouse_id')->nullable()->index();
+                $table->integer('actor_user_id')->nullable()->index();
+                $table->integer('warehouse_id')->nullable()->index();
                 $table->json('payload')->nullable();
                 $table->timestamp('created_at')->useCurrent();
 
@@ -124,8 +124,8 @@ return new class extends Migration
         if (! Schema::hasTable('transfer_notifications')) {
             Schema::create('transfer_notifications', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('transfer_id')->index();
-                $table->unsignedBigInteger('user_id')->index();
+                $table->integer('transfer_id')->index();
+                $table->integer('user_id')->index();
                 $table->string('type', 40)->default('incoming_transfer')->index();
                 $table->string('title', 180);
                 $table->text('message');
@@ -143,7 +143,13 @@ return new class extends Migration
         if (Schema::hasTable('permissions')) {
             $permissionId = DB::table('permissions')->where('name', 'transfer_receive')->value('id');
             if (! $permissionId) {
-                $permissionId = DB::table('permissions')->insertGetId(['name' => 'transfer_receive']);
+                $permissionId = DB::table('permissions')->insertGetId([
+                    'name' => 'transfer_receive',
+                    'label' => 'Recibir transferencias de stock',
+                    'description' => 'Permite confirmar físicamente la recepción de transferencias destinadas a las bodegas asignadas al usuario.',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
 
             if (Schema::hasTable('permission_role')) {
@@ -178,12 +184,12 @@ return new class extends Migration
         Schema::dropIfExists('transfer_receipt_items');
         Schema::dropIfExists('transfer_receipts');
 
-        Schema::table('transfers', function (Blueprint $table) {
-            foreach (['receiving_token', 'logistics_status', 'dispatched_at', 'dispatched_by_user_id', 'received_at', 'received_by_user_id'] as $column) {
-                if (Schema::hasColumn('transfers', $column)) {
+        foreach (['receiving_token', 'logistics_status', 'dispatched_at', 'dispatched_by_user_id', 'received_at', 'received_by_user_id'] as $column) {
+            if (Schema::hasColumn('transfers', $column)) {
+                Schema::table('transfers', function (Blueprint $table) use ($column) {
                     $table->dropColumn($column);
-                }
+                });
             }
-        });
+        }
     }
 };
