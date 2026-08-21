@@ -68,6 +68,7 @@ class TransferLogisticsController extends Controller
         $user = $request->user('api');
 
         $validated = $request->validate([
+            'request_token' => ['required', 'string', 'max:80', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.transfer_detail_id' => ['required', 'integer'],
@@ -80,7 +81,8 @@ class TransferLogisticsController extends Controller
             $transfer,
             $user,
             $validated['items'],
-            $validated['notes'] ?? null
+            $validated['notes'] ?? null,
+            $validated['request_token']
         );
 
         // Once the shipment is fully accounted for, no other authorized receiver
