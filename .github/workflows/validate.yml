@@ -57,6 +57,8 @@ jobs:
         run: |
           php -l app/Http/Controllers/TransferLogisticsController.php
           php -l app/Http/Controllers/TransferDiscrepancyController.php
+          php -l app/Http/Middleware/LockTransferDispatchStock.php
+          php -l app/Http/Kernel.php
           php -l app/Services/TransferLogisticsService.php
           php -l app/Services/SafeTransferLogisticsService.php
           php -l app/Services/IdempotentTransferLogisticsService.php
@@ -73,6 +75,7 @@ jobs:
           php -l database/migrations/tenant/2026_08_20_220200_add_transfer_discrepancy_resolution_workflow.php
           php -l database/migrations/tenant/2026_08_20_220300_normalize_pending_transfer_logistics.php
           php -l database/migrations/tenant/2026_08_20_220400_add_transfer_receipt_idempotency.php
+          php -l database/migrations/tenant/2026_08_20_220500_backfill_existing_transfer_logistics.php
           php -l tests/Unit/TransferLogisticsServiceTest.php
           php -l tests/Unit/TransferLogisticsBatchUnitsTest.php
 
