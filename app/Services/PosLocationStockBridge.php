@@ -123,25 +123,27 @@ class PosLocationStockBridge
         $hasSerialColumn = Schema::hasColumn('products', 'is_imei');
         if (! $hasBatchColumn && ! $hasSerialColumn) return;
 
-        $unsupported = Product::whereIn('id', $productIds)
-            ->where(function ($query) use ($hasBatchColumn, $hasSerialColumn) {
-                if ($hasBatchColumn) $query->where('is_batch_tracked', true);
-                if ($hasSerialColumn) {
-                    $hasBatchColumn
-                        ? $query->orWhere('is_imei', true)
-                        : $query->where('is_imei', true);
-                }
-            })
+        $tracked = Product::whereIn('id', $productIds)
             ->get(array_values(array_filter([
                 'id', 'name',
                 $hasBatchColumn ? 'is_batch_tracked' : null,
                 $hasSerialColumn ? 'is_imei' : null,
             ])));
 
-        if ($unsupported->isNotEmpty()) {
-            $names = $unsupported->pluck('name')->filter()->take(5)->implode(', ');
+        $usesBatches = $hasBatchColumn && $tracked->contains(fn ($product) => (bool) $product->is_batch_tracked);
+        $usesSerials = $hasSerialColumn && $tracked->contains(fn ($product) => (bool) $product->is_imei);
+
+        if ($usesBatches && (! Schema::hasTable('product_batch_location_stocks') || ! Schema::hasTable('sale_detail_batches'))) {
             throw ValidationException::withMessages([
-                'details' => 'El POS por ubicación todavía no puede procesar productos con lote o serie/IMEI en esta etapa de transición'.($names ? ": {$names}." : '.'),
+                'details' => 'El inventario por lote de este tenant todavía no está preparado para ventas por ubicación. Ejecuta la actualización de esquema antes de usar este POS.',
+            ]);
+        }
+
+        if ($usesSerials && (! Schema::hasColumn('product_serials', 'inventory_location_id')
+            || ! Schema::hasColumn('product_serial_movements', 'from_inventory_location_id')
+            || ! Schema::hasColumn('product_serial_movements', 'to_inventory_location_id'))) {
+            throw ValidationException::withMessages([
+                'details' => 'El inventario serializado de este tenant todavía no está preparado para ventas por ubicación. Ejecuta la actualización de esquema antes de usar este POS.',
             ]);
         }
     }
