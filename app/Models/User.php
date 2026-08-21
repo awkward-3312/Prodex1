@@ -12,30 +12,16 @@ class User extends Authenticatable
 
     protected $dates = ['deleted_at'];
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
-        'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id', 'is_all_warehouses', 'default_warehouse_id', 'default_cash_drawer_id', 'record_view',
+        'employee_id', 'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id', 'is_all_warehouses', 'default_warehouse_id', 'default_cash_drawer_id', 'record_view',
     ];
 
-    /**
-     * The attributes that should be hidden for arrays.
-     *
-     * @var array
-     */
     protected $hidden = [
         'password', 'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast to native types.
-     *
-     * @var array
-     */
     protected $casts = [
+        'employee_id' => 'integer',
         'email_verified_at' => 'datetime',
         'role_id' => 'integer',
         'statut' => 'integer',
@@ -44,6 +30,11 @@ class User extends Authenticatable
         'default_cash_drawer_id' => 'integer',
         'record_view' => 'boolean',
     ];
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class, 'employee_id');
+    }
 
     public function oauthAccessToken()
     {
@@ -98,25 +89,17 @@ class User extends Authenticatable
             ->exists();
     }
 
-    /**
-     * Check if user has record_view permission (user-level boolean with backward compatibility)
-     * 
-     * @return bool
-     */
     public function hasRecordView()
     {
-        // New way: Check user's record_view field (user-level boolean)
-        // Backward compatibility: If record_view is null, fall back to role permission check
         if (isset($this->record_view)) {
             return (bool) $this->record_view;
-        } else {
-            // Fallback to role permission check for backward compatibility
-            $role = $this->roles()->first();
-            if ($role) {
-                return $role->inRole('record_view');
-            }
         }
-        
+
+        $role = $this->roles()->first();
+        if ($role) {
+            return $role->inRole('record_view');
+        }
+
         return false;
     }
 }
