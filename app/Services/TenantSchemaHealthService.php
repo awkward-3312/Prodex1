@@ -31,6 +31,13 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_20_220100_create_attendance_employee_identifiers_table.php',
         'database/migrations/tenant/2026_08_20_220200_create_attendance_punches_table.php',
         'database/migrations/tenant/2026_08_20_220300_add_source_to_attendances_table.php',
+        // Transfer logistics: dispatch -> transit -> authorized physical receipt.
+        'database/migrations/tenant/2026_08_20_220000_add_transfer_logistics_receiving.php',
+        'database/migrations/tenant/2026_08_20_220100_add_transfer_receipt_batch_allocations.php',
+        'database/migrations/tenant/2026_08_20_220200_add_transfer_discrepancy_resolution_workflow.php',
+        'database/migrations/tenant/2026_08_20_220300_normalize_pending_transfer_logistics.php',
+        'database/migrations/tenant/2026_08_20_220400_add_transfer_receipt_idempotency.php',
+        'database/migrations/tenant/2026_08_20_220500_backfill_existing_transfer_logistics.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -121,6 +128,26 @@ class TenantSchemaHealthService
         $this->requireTable($schema, $missing, 'attendance_employee_identifiers');
         $this->requireTable($schema, $missing, 'attendance_punches');
         $this->requireColumns($schema, $missing, 'attendances', ['source', 'source_reference']);
+
+        // Stock-transfer logistics. These requirements protect the invariant that
+        // dispatched stock is neither still sellable at origin nor credited at the
+        // destination until an authorized physical receiver accounts for it.
+        $this->requireColumns($schema, $missing, 'transfers', [
+            'receiving_token', 'logistics_status', 'dispatched_at', 'dispatched_by_user_id',
+            'received_at', 'received_by_user_id',
+        ]);
+        $this->requireTable($schema, $missing, 'transfer_receipts');
+        $this->requireColumns($schema, $missing, 'transfer_receipts', ['request_token']);
+        $this->requireTable($schema, $missing, 'transfer_receipt_items');
+        $this->requireTable($schema, $missing, 'transfer_receipt_item_batches');
+        $this->requireTable($schema, $missing, 'transfer_discrepancies');
+        $this->requireColumns($schema, $missing, 'transfer_discrepancies', [
+            'resolution_code', 'resolution_reference', 'resolution_notes', 'resolution_status',
+            'resolved_at', 'resolved_by_user_id',
+        ]);
+        $this->requireTable($schema, $missing, 'transfer_quarantine_stock');
+        $this->requireTable($schema, $missing, 'transfer_events');
+        $this->requireTable($schema, $missing, 'transfer_notifications');
 
         return $missing;
     }
