@@ -96,6 +96,21 @@ class InventoryLocation extends Model
         return $this->belongsTo(Warehouse::class, 'warehouse_id');
     }
 
+    public function stocks()
+    {
+        return $this->hasMany(InventoryLocationStock::class, 'inventory_location_id');
+    }
+
+    public function outgoingMovements()
+    {
+        return $this->hasMany(InventoryLocationMovement::class, 'from_inventory_location_id');
+    }
+
+    public function incomingMovements()
+    {
+        return $this->hasMany(InventoryLocationMovement::class, 'to_inventory_location_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->whereNull('deleted_at')->where('is_active', true);
