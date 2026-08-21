@@ -37,7 +37,6 @@
     'contratos': '/app/contracts/__prodex_module',
     'tareas': '/app/tasks/__prodex_module',
     'reservas': '/app/bookings/__prodex_module',
-    'citas': '/app/bookings/__prodex_module',
     'comisiones': '/app/commissions/__prodex_module',
     'configuracion de woocommerce': '/app/woocommerce/__prodex_module',
     'woocommerce': '/app/woocommerce/__prodex_module',
