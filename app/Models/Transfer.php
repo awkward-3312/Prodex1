@@ -50,6 +50,26 @@ class Transfer extends Model
             }
         });
 
+        static::created(function (Transfer $transfer) {
+            if (! Schema::hasTable('transfer_events')) {
+                return;
+            }
+
+            app(TransferLogisticsService::class)->recordEvent(
+                $transfer->id,
+                'created',
+                auth()->id() ?: $transfer->user_id,
+                $transfer->from_warehouse_id,
+                [
+                    'reference' => $transfer->Ref,
+                    'from_warehouse_id' => (int) $transfer->from_warehouse_id,
+                    'to_warehouse_id' => (int) $transfer->to_warehouse_id,
+                    'approval_status' => $transfer->approval_status,
+                ],
+                true
+            );
+        });
+
         static::updating(function (Transfer $transfer) {
             static::assertDifferentWarehouses($transfer);
 
@@ -95,6 +115,24 @@ class Transfer extends Model
         static::saved(function (Transfer $transfer) {
             if (! Schema::hasColumn('transfers', 'logistics_status')) {
                 return;
+            }
+
+            $actorId = auth()->id() ?: $transfer->user_id;
+
+            if ($transfer->wasChanged('approval_status') && Schema::hasTable('transfer_events')) {
+                $approval = (string) $transfer->approval_status;
+                if (in_array($approval, ['approved', 'rejected'], true)) {
+                    app(TransferLogisticsService::class)->recordEvent(
+                        $transfer->id,
+                        $approval,
+                        $actorId,
+                        $transfer->from_warehouse_id,
+                        [
+                            'reference' => $transfer->Ref,
+                            'approval_status' => $approval,
+                        ]
+                    );
+                }
             }
 
             if ($transfer->isApproved() && $transfer->statut === 'sent') {
