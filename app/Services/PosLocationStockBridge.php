@@ -12,14 +12,11 @@ use Illuminate\Validation\ValidationException;
 /**
  * Transitional bridge for the POS cutover.
  *
- * The historical POS still performs its arithmetic against product_warehouse.
- * When the cashier has a real branch + sellable inventory location + branch-owned
- * cash drawer, this service redirects the calculated decrease to InventoryService
- * and leaves the legacy warehouse quantity untouched.
- *
- * Explicit branch/location fields are supported, but the current POS frontend does
- * not need to send them yet: the bridge can infer the same context from the user's
- * active/default operational assignment. This keeps the cutover backward-compatible.
+ * Location-aware sales are now pre-applied directly through InventoryService as
+ * soon as their Sale header exists. The historical PosController can therefore
+ * keep executing its old product_warehouse arithmetic during the transition:
+ * reads are projected from the selected InventoryLocation and writes are
+ * neutralized so the CD row remains unchanged.
  */
 class PosLocationStockBridge
 {
@@ -103,12 +100,32 @@ class PosLocationStockBridge
     public function resolvedOperationalIds(Request $request, User $user): array
     {
         $context = $this->resolveContext($request, $user);
-
         return [
             'branch_id' => (int) $context['branch_id'],
             'inventory_location_id' => (int) $context['inventory_location_id'],
             'cash_drawer_id' => (int) $context['cash_drawer_id'],
         ];
+    }
+
+    /**
+     * Project a legacy product_warehouse.qte read from the active branch stock.
+     * This is request-scoped and only affects CreatePOS, primarily to make the
+     * historical multi-pack preflight compare against the correct physical site.
+     */
+    public function legacyReadableQuantity(int $productId, ?int $variantId, float $fallback, ?Request $request = null): float
+    {
+        $request = $request ?: request();
+        if (! $request || ! $this->isLocationPosRequest($request)) return $fallback;
+
+        $user = $request->user('api') ?: auth()->user();
+        if (! $user instanceof User) return $fallback;
+
+        try {
+            $location = $this->resolveLocation($request, $user);
+            return app(InventoryService::class)->available((int) $location->id, $productId, $variantId);
+        } catch (\Throwable $e) {
+            return $fallback;
+        }
     }
 
     public function assertCartSupported(Request $request): void
@@ -157,8 +174,18 @@ class PosLocationStockBridge
     ): bool {
         $request = $request ?: request();
         if (! $request || ! $this->isLocationPosRequest($request)) return false;
+
+        // The new Sale::created hook already deducted every line atomically from
+        // InventoryLocation. Returning true tells product_warehouse to restore its
+        // raw CD value and prevents a second deduction.
+        if ($request->attributes->get('prodex_location_stock_preapplied') === true) {
+            return true;
+        }
+
         if ($legacyTarget >= $legacyOriginal) return false;
 
+        // Fallback retained for transition tests and any legacy code path that
+        // reaches a qte mutation without having created the Sale through Eloquent.
         $user = $request->user('api') ?: auth()->user();
         if (! $user instanceof User) {
             throw ValidationException::withMessages(['user' => 'No se pudo resolver el usuario operativo del POS.']);
@@ -198,7 +225,6 @@ class PosLocationStockBridge
     {
         $route = $request->route();
         $action = $route ? (string) $route->getActionName() : '';
-
         return str_contains($action, 'PosController@CreatePOS')
             || str_contains($action, 'PosController::CreatePOS');
     }
