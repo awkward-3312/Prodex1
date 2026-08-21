@@ -14,10 +14,10 @@
     { key: 'principal', title: 'Principal', order: 10, modules: ['dashboard'] },
     { key: 'commercial', title: 'Operación del negocio', order: 20, modules: ['sales', 'products', 'people', 'store'] },
     { key: 'team', title: 'Equipo', order: 30, modules: ['hrm', 'recruit', 'meeting'] },
-    { key: 'work', title: 'Gestión', order: 40, modules: ['service', 'assets', 'projects', 'contracts', 'tasks', 'bookings'] },
+    { key: 'work', title: 'Gestión', order: 40, modules: ['projects', 'tasks', 'contracts', 'service', 'assets', 'bookings'] },
     { key: 'finance', title: 'Finanzas', order: 50, modules: ['accounting', 'commissions', 'subscription_product'] },
-    { key: 'growth', title: 'Crecimiento e integraciones', order: 60, modules: ['marketing', 'woocommerce', 'shopify', 'whatsapp'] },
-    { key: 'insights', title: 'Análisis', order: 70, modules: ['ai_reports', 'reports'] },
+    { key: 'growth', title: 'Crecimiento e integraciones', order: 60, modules: ['marketing', 'whatsapp', 'woocommerce', 'shopify'] },
+    { key: 'insights', title: 'Análisis', order: 70, modules: ['reports', 'ai_reports'] },
     { key: 'admin', title: 'Administración', order: 80, modules: ['user_management', 'settings', 'billing', 'support', 'knowledge_base'] }
   ];
 
@@ -33,34 +33,65 @@
   };
 
   var aliases = {
-    dashboard: 'tablero inicio principal',
-    sales: 'ventas operaciones pos punto de venta compras cotizaciones devoluciones promociones',
-    products: 'inventario productos stock existencias ajustes transferencias traslados daños',
-    people: 'clientes proveedores contactos personas',
-    store: 'tienda tienda en línea ecommerce pedidos en línea',
-    hrm: 'gestión de personal recursos humanos empleados asistencia planilla nómina vacaciones',
-    recruit: 'reclutamiento candidatos empleos entrevistas aplicaciones',
-    meeting: 'reuniones calendario',
-    service: 'servicio mantenimiento técnicos reparación',
-    assets: 'activos',
-    projects: 'proyectos',
-    contracts: 'contratos',
-    tasks: 'tareas',
-    bookings: 'reservas citas calendario',
-    accounting: 'contabilidad finanzas gastos depósitos cuentas transferencias diario balance',
-    commissions: 'comisiones agentes ventas',
-    subscription_product: 'suscripciones producto de suscripción',
-    marketing: 'marketing campañas segmentos plantillas',
+    dashboard: 'tablero dashboard inicio principal',
+    sales: 'ventas sales operaciones operations pos punto de venta compras cotizaciones devoluciones promociones',
+    products: 'inventario inventory productos products stock existencias ajustes transferencias traslados daños',
+    people: 'clientes proveedores customers suppliers contactos personas people gente',
+    store: 'tienda tienda en linea online store ecommerce pedidos en linea',
+    hrm: 'gestion de personal recursos humanos human resources empleados asistencia planilla nomina vacaciones hrm',
+    recruit: 'reclutamiento recruitment recruit candidatos empleos entrevistas aplicaciones',
+    meeting: 'reuniones meetings meeting calendario',
+    service: 'servicio mantenimiento service maintenance tecnicos reparacion',
+    assets: 'activos assets',
+    projects: 'proyectos projects',
+    contracts: 'contratos contracts',
+    tasks: 'tareas tasks',
+    bookings: 'reservas reserva citas cita bookings booking appointments calendario',
+    accounting: 'contabilidad accounting finanzas gastos depositos cuentas transferencias diario balance',
+    commissions: 'comisiones commissions agentes ventas',
+    subscription_product: 'suscripciones subscriptions subscription producto de suscripcion subscription product',
+    marketing: 'marketing campanas segmentos plantillas',
     whatsapp: 'whatsapp mensajes plantillas',
-    woocommerce: 'woocommerce comercio electrónico',
-    shopify: 'shopify comercio electrónico',
-    reports: 'reportes informes análisis estadísticas',
-    ai_reports: 'reportes ia inteligencia artificial',
-    user_management: 'usuarios acceso permisos roles',
-    settings: 'configuración ajustes sistema almacenes cajas moneda backup webhooks',
-    billing: 'plan facturación suscripción pago',
-    support: 'soporte ayuda tickets',
-    knowledge_base: 'base de conocimientos manual ayuda documentación'
+    woocommerce: 'woocommerce comercio electronico',
+    shopify: 'shopify comercio electronico',
+    reports: 'reportes reports informes analisis estadisticas',
+    ai_reports: 'reportes con ia reportes ia ai reports inteligencia artificial',
+    user_management: 'usuarios acceso permisos roles user management gestion de usuarios',
+    settings: 'configuracion configuraciones settings ajustes sistema almacenes cajas moneda backup webhooks',
+    billing: 'plan facturacion billing suscripcion pago',
+    support: 'soporte support ayuda tickets',
+    knowledge_base: 'base de conocimientos knowledge base manual ayuda documentacion'
+  };
+
+  var labelModuleMap = {
+    'tablero': 'dashboard', 'dashboard': 'dashboard',
+    'operaciones': 'sales', 'ventas': 'sales', 'sales': 'sales', 'operations': 'sales',
+    'inventario': 'products', 'productos': 'products', 'products': 'products', 'inventory': 'products',
+    'clientes y proveedores': 'people', 'gente': 'people', 'people': 'people', 'customers and suppliers': 'people',
+    'tienda en linea': 'store', 'tienda': 'store', 'store': 'store', 'online store': 'store',
+    'gestion de personal': 'hrm', 'recursos humanos': 'hrm', 'hrm': 'hrm', 'human resources': 'hrm',
+    'reclutamiento': 'recruit', 'recruit': 'recruit', 'recruitment': 'recruit',
+    'reuniones': 'meeting', 'meeting': 'meeting', 'meetings': 'meeting',
+    'proyectos': 'projects', 'projects': 'projects',
+    'tareas': 'tasks', 'tasks': 'tasks',
+    'contratos': 'contracts', 'contracts': 'contracts',
+    'servicio y mantenimiento': 'service', 'servicios y mantenimiento': 'service', 'service & maintenance': 'service', 'service and maintenance': 'service',
+    'activos': 'assets', 'assets': 'assets',
+    'reservas': 'bookings', 'reserva': 'bookings', 'citas': 'bookings', 'cita': 'bookings', 'bookings': 'bookings', 'booking': 'bookings', 'appointments': 'bookings',
+    'contabilidad': 'accounting', 'accounting': 'accounting',
+    'comisiones': 'commissions', 'commissions': 'commissions',
+    'suscripciones': 'subscription_product', 'producto de suscripcion': 'subscription_product', 'subscription product': 'subscription_product', 'subscriptions': 'subscription_product',
+    'marketing': 'marketing',
+    'whatsapp': 'whatsapp',
+    'configuracion de woocommerce': 'woocommerce', 'woocommerce': 'woocommerce', 'woocommerce settings': 'woocommerce',
+    'configuracion de shopify': 'shopify', 'shopify': 'shopify', 'shopify settings': 'shopify',
+    'reportes': 'reports', 'reports': 'reports',
+    'reportes con ia': 'ai_reports', 'reportes ia': 'ai_reports', 'ai reports': 'ai_reports',
+    'usuarios y acceso': 'user_management', 'gestion de usuarios': 'user_management', 'user management': 'user_management',
+    'configuracion': 'settings', 'configuraciones': 'settings', 'settings': 'settings',
+    'plan y facturacion': 'billing', 'facturacion': 'billing', 'billing': 'billing',
+    'soporte': 'support', 'support': 'support', 'support center': 'support',
+    'base de conocimientos': 'knowledge_base', 'knowledge base': 'knowledge_base'
   };
 
   function norm(value) {
@@ -144,6 +175,13 @@
 
   function detectModule(li) {
     var label = text(li);
+    var stableIdentity = norm(li.getAttribute('data-prodex-module-identity'));
+    if (stableIdentity && moduleRank[stableIdentity]) return stableIdentity;
+
+    // The visible top-level label is deliberately checked before descendant
+    // links. Vue renders submenu links lazily; relying on them made a module
+    // change identity (and therefore position) whenever it was opened.
+    if (labelModuleMap[label]) return labelModuleMap[label];
 
     if (hasHref(li, '/app/dashboard')) return 'dashboard';
     if (hasHref(li, '/app/billing/')) return 'billing';
@@ -151,13 +189,13 @@
     if (hasHref(li, '/app/store/') || hasHref(li, '/online_store')) return 'store';
     if (hasHref(li, '/app/people/')) return 'people';
     if (hasHref(li, '/app/user_management/')) return 'user_management';
-    if (hasHref(li, '/app/products/') || label === 'inventario') return 'products';
-    if (hasHref(li, '/app/sales/') || hasHref(li, '/app/pos') || label === 'operaciones') return 'sales';
+    if (hasHref(li, '/app/products/')) return 'products';
+    if (hasHref(li, '/app/sales/') || hasHref(li, '/app/pos')) return 'sales';
     if (hasHref(li, '/app/hrm/')) return 'hrm';
     if (hasHref(li, '/app/recruit/')) return 'recruit';
     if (hasHref(li, '/app/meeting/')) return 'meeting';
     if (hasHref(li, '/app/marketing/')) return 'marketing';
-    if (hasHref(li, '/app/accounting/') || hasHref(li, '/app/accounts') || label === 'contabilidad') return 'accounting';
+    if (hasHref(li, '/app/accounting/') || hasHref(li, '/app/accounting-v2/') || hasHref(li, '/app/accounts')) return 'accounting';
     if (hasHref(li, '/app/subscription_product/')) return 'subscription_product';
     if (hasHref(li, '/app/service/')) return 'service';
     if (hasHref(li, '/app/assets/')) return 'assets';
@@ -173,23 +211,6 @@
     if (hasHref(li, '/app/reports/ai_reports')) return 'ai_reports';
     if (hasHref(li, '/app/reports/')) return 'reports';
     if (hasHref(li, '/app/settings/')) return 'settings';
-
-    if (label === 'gestion de personal' || label === 'hrm') return 'hrm';
-    if (label === 'reclutamiento') return 'recruit';
-    if (label === 'reuniones') return 'meeting';
-    if (label === 'marketing') return 'marketing';
-    if (label === 'contabilidad') return 'accounting';
-    if (label === 'activos') return 'assets';
-    if (label === 'proyectos') return 'projects';
-    if (label === 'contratos') return 'contracts';
-    if (label === 'tareas') return 'tasks';
-    if (label === 'reservas') return 'bookings';
-    if (label === 'comisiones') return 'commissions';
-    if (label.indexOf('woocommerce') !== -1) return 'woocommerce';
-    if (label.indexOf('shopify') !== -1) return 'shopify';
-    if (label.indexOf('base de conocimientos') !== -1) return 'knowledge_base';
-    if (label === 'whatsapp') return 'whatsapp';
-    if (label === 'configuraciones' || label === 'configuracion') return 'settings';
     return null;
   }
 
@@ -225,7 +246,7 @@
     var node = li && li.querySelector(':scope > .nav-link .nav-text');
     if (!node) return;
     var value = friendlyName(moduleKey, node.textContent);
-    if (value) node.textContent = value;
+    if (value && node.textContent !== value) node.textContent = value;
   }
 
   function isActuallyVisible(li) {
@@ -234,17 +255,27 @@
     return window.getComputedStyle(li).display !== 'none';
   }
 
+  function visualSort(a, b) {
+    var ao = parseInt(a.dataset.prodexV3Order || '0', 10);
+    var bo = parseInt(b.dataset.prodexV3Order || '0', 10);
+    return ao - bo;
+  }
+
   function assignGroups(list) {
     var items = topItems(list);
+
     items.forEach(function (li, index) {
       li.classList.remove(FIRST_CLASS);
       li.removeAttribute('data-prodex-v3-section-title');
+
       var moduleKey = detectModule(li);
       li.dataset.prodexV3Module = moduleKey || 'other';
+
       var group = groupFor(moduleKey);
       var groupOrder = group ? group.order : 65;
       var rank = moduleRank[moduleKey] || (index + 20);
       var order = groupOrder * 100 + rank;
+
       li.dataset.prodexV3Order = String(order);
       li.style.setProperty('--prodex-v3-order', String(order));
       li.dataset.prodexV3Section = group ? group.key : 'other';
@@ -256,9 +287,12 @@
       if (link && tooltip) link.setAttribute('title', tooltip);
     });
 
+    // Section headings must follow the CSS visual order, not Vue's original
+    // DOM order. Otherwise a heading can appear in the middle of its group.
+    var visibleInVisualOrder = items.filter(isActuallyVisible).sort(visualSort);
     groups.concat([{ key: 'other', title: 'Más herramientas', order: 65 }]).forEach(function (group) {
-      var first = items.find(function (li) {
-        return li.dataset.prodexV3Section === group.key && isActuallyVisible(li);
+      var first = visibleInVisualOrder.find(function (li) {
+        return li.dataset.prodexV3Section === group.key;
       });
       if (first) {
         first.classList.add(FIRST_CLASS);
@@ -280,8 +314,7 @@
         li.classList.remove(SEARCH_CLASS);
         return;
       }
-      var matched = searchText(li).indexOf(query) !== -1;
-      li.classList.toggle(SEARCH_CLASS, !matched);
+      li.classList.toggle(SEARCH_CLASS, searchText(li).indexOf(query) === -1);
     });
     assignGroups(list);
   }
@@ -315,8 +348,7 @@
   }
 
   function neutralizeLegacyVertical(rootEl) {
-    if (!rootEl) return;
-    rootEl.dataset.prodexFriendlyOrganized = '2';
+    if (rootEl) rootEl.dataset.prodexFriendlyOrganized = '2';
   }
 
   function organize() {
@@ -332,7 +364,7 @@
 
   function schedule() {
     if (scheduled) window.clearTimeout(scheduled);
-    scheduled = window.setTimeout(organize, 40);
+    scheduled = window.setTimeout(organize, 30);
   }
 
   function installObserver() {
