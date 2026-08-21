@@ -13,7 +13,9 @@ class User extends Authenticatable
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'employee_id', 'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id', 'is_all_warehouses', 'default_warehouse_id', 'default_cash_drawer_id', 'record_view',
+        'employee_id', 'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id',
+        'is_all_warehouses', 'default_warehouse_id', 'default_branch_id', 'default_inventory_location_id',
+        'default_cash_drawer_id', 'record_view',
     ];
 
     protected $hidden = [
@@ -27,6 +29,8 @@ class User extends Authenticatable
         'statut' => 'integer',
         'is_all_warehouses' => 'integer',
         'default_warehouse_id' => 'integer',
+        'default_branch_id' => 'integer',
+        'default_inventory_location_id' => 'integer',
         'default_cash_drawer_id' => 'integer',
         'record_view' => 'boolean',
     ];
@@ -65,9 +69,29 @@ class User extends Authenticatable
         return $this->belongsToMany('App\Models\Warehouse');
     }
 
+    public function assignedBranches()
+    {
+        return $this->belongsToMany(Branch::class, 'user_branches', 'user_id', 'branch_id')->withTimestamps();
+    }
+
+    public function assignedInventoryLocations()
+    {
+        return $this->belongsToMany(InventoryLocation::class, 'user_inventory_locations', 'user_id', 'inventory_location_id')->withTimestamps();
+    }
+
     public function defaultWarehouse()
     {
         return $this->belongsTo(Warehouse::class, 'default_warehouse_id');
+    }
+
+    public function defaultBranch()
+    {
+        return $this->belongsTo(Branch::class, 'default_branch_id');
+    }
+
+    public function defaultInventoryLocation()
+    {
+        return $this->belongsTo(InventoryLocation::class, 'default_inventory_location_id');
     }
 
     public function defaultCashDrawer()
