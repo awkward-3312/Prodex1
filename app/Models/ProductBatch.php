@@ -43,9 +43,15 @@ class ProductBatch extends Model
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 
+    /** Legacy aggregate ownership retained until batch consumers are location-native. */
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class, 'warehouse_id');
+    }
+
+    public function locationStocks()
+    {
+        return $this->hasMany(ProductBatchLocationStock::class, 'product_batch_id');
     }
 
     public function provider()
@@ -87,6 +93,14 @@ class ProductBatch extends Model
     public function scopeForWarehouse($q, $warehouseId)
     {
         return $q->where('warehouse_id', $warehouseId);
+    }
+
+    public function scopeForInventoryLocation($q, int $locationId)
+    {
+        return $q->whereHas('locationStocks', function ($stock) use ($locationId) {
+            $stock->where('inventory_location_id', $locationId)
+                ->whereRaw('(quantity - reserved_quantity) > 0.0005');
+        });
     }
 
     public function scopeForProduct($q, $productId)
