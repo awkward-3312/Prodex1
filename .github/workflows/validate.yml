@@ -31,7 +31,7 @@ jobs:
       - name: Run organization scope tests
         run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php
       - name: Run inventory architecture tests
-        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php
+        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php tests/Unit/InventoryReadServiceTest.php
       - name: PHP syntax check for SAR files
         run: |
           php -l app/Services/SarFiscalNumberService.php
@@ -107,6 +107,7 @@ jobs:
           php -l app/Services/InventoryService.php
           php -l app/Services/LegacyInventoryReconciliationService.php
           php -l app/Services/InventoryCompatibilityService.php
+          php -l app/Services/InventoryReadService.php
           php -l app/Services/TenantSchemaHealthService.php
           php -l app/Console/Commands/ProdexInventoryReconcile.php
           php -l app/Console/Commands/ProdexInventoryTransition.php
@@ -117,6 +118,7 @@ jobs:
           php -l tests/Unit/InventoryServiceTest.php
           php -l tests/Unit/LegacyInventoryReconciliationServiceTest.php
           php -l tests/Unit/InventoryCompatibilityServiceTest.php
+          php -l tests/Unit/InventoryReadServiceTest.php
 
   frontend-build:
     runs-on: ubuntu-latest
