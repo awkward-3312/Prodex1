@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Transfer;
+use App\Models\TransferDetail;
+use App\Models\TransferReceiptItem;
 use App\Models\User;
 use App\Services\TransferLogisticsService;
 use Illuminate\Http\Request;
@@ -79,10 +81,12 @@ class TransferDiscrepancyController extends Controller
             'can_manage' => $canManage,
             'resolutions' => [
                 'missing' => [
+                    ['value' => 'received_later', 'label' => 'Recibido posteriormente'],
                     ['value' => 'confirmed_loss', 'label' => 'Pérdida confirmada'],
                     ['value' => 'reconciled_by_adjustment', 'label' => 'Conciliado mediante ajuste de inventario'],
                 ],
                 'defective' => [
+                    ['value' => 'released_to_stock', 'label' => 'Liberado a inventario vendible'],
                     ['value' => 'written_off', 'label' => 'Dado de baja'],
                     ['value' => 'returned_to_origin', 'label' => 'Devuelto a bodega origen'],
                     ['value' => 'reconciled_by_adjustment', 'label' => 'Conciliado mediante ajuste de inventario'],
@@ -99,7 +103,8 @@ class TransferDiscrepancyController extends Controller
 
         $validated = $request->validate([
             'resolution_code' => ['required', 'string', Rule::in([
-                'confirmed_loss', 'reconciled_by_adjustment', 'written_off', 'returned_to_origin',
+                'received_later', 'confirmed_loss', 'reconciled_by_adjustment',
+                'released_to_stock', 'written_off', 'returned_to_origin',
             ])],
             'resolution_reference' => ['nullable', 'string', 'max:120'],
             'resolution_notes' => ['required', 'string', 'max:3000'],
@@ -122,8 +127,8 @@ class TransferDiscrepancyController extends Controller
             abort_unless($allowedWarehouse, 403);
 
             $allowedByType = $issue->type === 'missing'
-                ? ['confirmed_loss', 'reconciled_by_adjustment']
-                : ['written_off', 'returned_to_origin', 'reconciled_by_adjustment'];
+                ? ['received_later', 'confirmed_loss', 'reconciled_by_adjustment']
+                : ['released_to_stock', 'written_off', 'returned_to_origin', 'reconciled_by_adjustment'];
 
             if (! in_array($validated['resolution_code'], $allowedByType, true)) {
                 throw ValidationException::withMessages([
@@ -139,6 +144,17 @@ class TransferDiscrepancyController extends Controller
 
             if ($issue->type === 'defective') {
                 $this->resolveQuarantineQuantity($issue, $transfer, $validated);
+            }
+
+            // A late physical arrival or a quarantined item that is ultimately
+            // accepted as sellable is a RECLASSIFICATION, not a second shipment.
+            // Move the original receipt counters from missing/defective -> good and
+            // credit stock once. This keeps sent = good + defective + missing exact.
+            if ($issue->type === 'missing' && $validated['resolution_code'] === 'received_later') {
+                $this->reclassifyReceiptIssueToGood($issue, $transfer, 'quantity_missing');
+            }
+            if ($issue->type === 'defective' && $validated['resolution_code'] === 'released_to_stock') {
+                $this->reclassifyReceiptIssueToGood($issue, $transfer, 'quantity_defective');
             }
 
             DB::table('transfer_discrepancies')->where('id', $id)->update([
@@ -162,11 +178,65 @@ class TransferDiscrepancyController extends Controller
                     'quantity' => (float) $issue->quantity,
                     'resolution_code' => $validated['resolution_code'],
                     'resolution_reference' => $validated['resolution_reference'] ?? null,
+                    'credited_to_sellable_stock' => in_array($validated['resolution_code'], ['received_later', 'released_to_stock'], true),
                 ]
             );
 
             return response()->json(['success' => true]);
         }, 5);
+    }
+
+    private function reclassifyReceiptIssueToGood(object $issue, Transfer $transfer, string $issueColumn): void
+    {
+        $detail = TransferDetail::findOrFail($issue->transfer_detail_id);
+        $remaining = (float) $issue->quantity;
+        $epsilon = 0.000001;
+
+        if (! in_array($issueColumn, ['quantity_missing', 'quantity_defective'], true)) {
+            throw ValidationException::withMessages(['issue' => 'Tipo de reclasificación inválido.']);
+        }
+
+        $receiptIds = DB::table('transfer_receipts')
+            ->where('transfer_id', $transfer->id)
+            ->select('id');
+
+        $items = TransferReceiptItem::where('transfer_detail_id', $detail->id)
+            ->whereIn('transfer_receipt_id', $receiptIds)
+            ->where($issueColumn, '>', 0)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($items as $item) {
+            if ($remaining <= $epsilon) {
+                break;
+            }
+
+            $available = (float) $item->{$issueColumn};
+            $take = min($available, $remaining);
+            if ($take <= 0) {
+                continue;
+            }
+
+            $item->{$issueColumn} = $available - $take;
+            $item->quantity_good = (float) $item->quantity_good + $take;
+            $item->save();
+
+            if (! method_exists($this->logistics, 'creditIssueResolution')) {
+                throw ValidationException::withMessages([
+                    'issue' => 'El servicio de inventario no soporta la reclasificación segura de esta incidencia.',
+                ]);
+            }
+
+            $this->logistics->creditIssueResolution($transfer, $detail, $take, $item);
+            $remaining -= $take;
+        }
+
+        if ($remaining > $epsilon) {
+            throw ValidationException::withMessages([
+                'issue' => 'La cantidad registrada en la incidencia no coincide con los comprobantes de recepción. No se realizó ningún cambio.',
+            ]);
+        }
     }
 
     /**
@@ -180,6 +250,7 @@ class TransferDiscrepancyController extends Controller
         $remaining = (float) $issue->quantity;
         $epsilon = 0.000001;
         $targetStatus = match ($validated['resolution_code']) {
+            'released_to_stock' => 'released_to_stock',
             'written_off' => 'written_off',
             'returned_to_origin' => 'returned_to_origin',
             'reconciled_by_adjustment' => 'reconciled',
