@@ -29,7 +29,7 @@ jobs:
       - name: Run transfer logistics integrity tests
         run: vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php tests/Unit/TransferLogisticsBatchUnitsTest.php tests/Unit/TransferDispatchPreflightTest.php
       - name: Run organization scope tests
-        run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php
+        run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php tests/Unit/BranchInventoryScopeServiceTest.php
       - name: Run inventory architecture tests
         run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php tests/Unit/InventoryReadServiceTest.php
       - name: PHP syntax check for SAR files
@@ -83,18 +83,28 @@ jobs:
           php -l tests/Unit/TransferLogisticsServiceTest.php
           php -l tests/Unit/TransferLogisticsBatchUnitsTest.php
           php -l tests/Unit/TransferDispatchPreflightTest.php
-      - name: PHP syntax check for organization scope files
+      - name: PHP syntax check for organization and user access files
         run: |
           php -l app/Services/WarehouseScopeService.php
+          php -l app/Services/BranchScopeService.php
+          php -l app/Services/InventoryLocationScopeService.php
+          php -l app/Services/UserOperationalAssignmentService.php
           php -l app/Http/Middleware/EnforceWarehouseScope.php
           php -l app/Http/Controllers/Organization/BranchController.php
           php -l app/Http/Controllers/Organization/EmployeeAccessController.php
+          php -l app/Http/Controllers/Organization/UserAccessController.php
           php -l app/Http/Controllers/Organization/RoleTemplateController.php
           php -l app/Http/Controllers/hrm/EmployeesController.php
+          php -l app/Models/User.php
+          php -l app/Models/UserOperationalAssignment.php
+          php -l app/Models/CashDrawer.php
           php -l app/Providers/RouteServiceProvider.php
+          php -l routes/tenant_organization.php
           php -l database/seeders/Central/ProdexManualsSeeder.php
           php -l database/migrations/tenant/2026_08_21_090000_add_organization_structure_foundation.php
+          php -l database/migrations/tenant/2026_08_21_180000_add_branch_inventory_scope_to_users.php
           php -l tests/Unit/WarehouseScopeServiceTest.php
+          php -l tests/Unit/BranchInventoryScopeServiceTest.php
       - name: PHP syntax check for inventory architecture
         run: |
           php -l app/Models/InventoryLocation.php
