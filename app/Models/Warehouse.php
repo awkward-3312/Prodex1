@@ -9,8 +9,17 @@ class Warehouse extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'name', 'mobile', 'country', 'city', 'email', 'zip',
+        'branch_id', 'name', 'mobile', 'country', 'city', 'email', 'zip',
     ];
+
+    protected $casts = [
+        'branch_id' => 'integer',
+    ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 
     public function assignedUsers()
     {
