@@ -23,18 +23,34 @@ class product_warehouse extends Model
         'qte' => 'double',
     ];
 
+    /**
+     * During a branch/location POS request the historical controller still reads
+     * qte for pack validation and response formatting. Project that read from the
+     * selected InventoryLocation without changing the raw CD value in storage.
+     */
+    public function getQteAttribute($value)
+    {
+        if (! app()->bound('request') || ! $this->product_id) return (float) $value;
+
+        return app(PosLocationStockBridge::class)->legacyReadableQuantity(
+            (int) $this->product_id,
+            $this->product_variant_id ? (int) $this->product_variant_id : null,
+            (float) $value,
+            request()
+        );
+    }
+
     protected static function booted(): void
     {
         static::saving(function (product_warehouse $row) {
             if (! $row->exists || ! $row->isDirty('qte') || ! $row->product_id) return;
 
-            $original = round((float) $row->getOriginal('qte'), 3);
-            $target = round((float) $row->qte, 3);
+            // Use raw values here because the qte accessor intentionally projects
+            // location stock during POS requests.
+            $original = round((float) $row->getRawOriginal('qte'), 3);
+            $attributes = $row->getAttributes();
+            $target = round((float) ($attributes['qte'] ?? $original), 3);
 
-            // The historical POS calculates its stock delta by mutating qte. For
-            // branch/location POS requests we reuse that exact arithmetic, but
-            // redirect the decrease to InventoryService and keep the legacy CD
-            // row unchanged. All other writes behave exactly as before.
             $redirected = app(PosLocationStockBridge::class)->redirectLegacyDecrease(
                 (int) $row->product_id,
                 $row->product_variant_id ? (int) $row->product_variant_id : null,
@@ -43,7 +59,7 @@ class product_warehouse extends Model
             );
 
             if ($redirected) {
-                $row->qte = $original;
+                $row->setAttribute('qte', $original);
             }
         });
 
