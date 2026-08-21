@@ -38,6 +38,7 @@ mix.js('resources/src/main.js', 'public')
     .copy('resources/static/prodex-transfer-logistics.js', 'public/js/prodex-transfer-logistics.js')
     .copy('resources/static/prodex-transfer-permission-ui.js', 'public/js/prodex-transfer-permission-ui.js')
     .copy('resources/static/prodex-transfer-issues.js', 'public/js/prodex-transfer-issues.js')
+    .copy('resources/static/prodex-pos-location-ui.js', 'public/js/prodex-pos-location-ui.js')
     .vue()
 
 mix.webpackConfig({
