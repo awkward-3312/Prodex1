@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Organization;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Employee;
+use App\Models\InventoryLocation;
 use App\Models\Role;
 use App\Models\role_user;
 use App\Models\User;
-use App\Models\Warehouse;
-use App\Services\WarehouseScopeService;
+use App\Services\BranchScopeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -21,37 +22,50 @@ class EmployeeAccessController extends Controller
     {
         $this->authorizeAccess($request);
         $actor = $request->user('api');
+        $allowedBranchIds = app(BranchScopeService::class)->allowedBranchIds($actor);
 
         $employees = Employee::with([
-                'branch:id,name',
+                'branch:id,name,default_inventory_location_id',
                 'designation:id,designation,suggested_role_key',
-                'user:id,employee_id,firstname,lastname,email,role_id,statut,default_warehouse_id,is_all_warehouses',
+                'user:id,employee_id,firstname,lastname,email,role_id,statut,default_branch_id,default_inventory_location_id,is_all_warehouses',
             ])
             ->whereNull('deleted_at')
             ->whereNull('leaving_date');
 
-        if ((int) $actor->is_all_warehouses !== 1) {
-            $employees->whereIn('branch_id', $this->allowedBranchIds($actor) ?: [0]);
+        if ((int) $actor->role_id !== 1) {
+            $employees->whereIn('branch_id', $allowedBranchIds ?: [0]);
         }
 
         $employees = $employees->orderBy('firstname')->orderBy('lastname')
             ->get(['id', 'branch_id', 'designation_id', 'firstname', 'lastname', 'email', 'phone']);
 
-        $unlinkedUsers = User::whereNull('deleted_at')->whereNull('employee_id');
-        if ((int) $actor->is_all_warehouses !== 1) {
-            $allowed = app(WarehouseScopeService::class)->allowedWarehouseIds($actor);
-            $unlinkedUsers->where('is_all_warehouses', 0)
-                ->whereHas('assignedWarehouses', fn ($q) => $q->whereIn('warehouses.id', $allowed ?: [0]));
+        $unlinkedUsers = User::whereNull('deleted_at')->whereNull('employee_id')->orderBy('firstname')->orderBy('lastname')->get();
+        if ((int) $actor->role_id !== 1) {
+            $unlinkedUsers = $unlinkedUsers->filter(fn ($candidate) => $this->candidateInsideActorScope($actor, $candidate))->values();
         }
+
+        $branches = Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name');
+        if ((int) $actor->role_id !== 1) $branches->whereIn('id', $allowedBranchIds ?: [0]);
+        $branches = $branches->get(['id', 'code', 'name', 'default_inventory_location_id']);
+
+        $branchIds = $branches->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $locations = InventoryLocation::active()->whereIn('branch_id', $branchIds ?: [0])
+            ->orderBy('branch_id')->orderBy('name')
+            ->get(['id', 'branch_id', 'code', 'name', 'type', 'is_sellable', 'is_default_sales']);
 
         return response()->json([
             'employees' => $employees,
-            'unlinked_users' => $unlinkedUsers->orderBy('firstname')->orderBy('lastname')->get(['id', 'firstname', 'lastname', 'email', 'role_id', 'statut']),
+            'unlinked_users' => $unlinkedUsers->map(fn ($u) => [
+                'id' => $u->id,
+                'firstname' => $u->firstname,
+                'lastname' => $u->lastname,
+                'email' => $u->email,
+                'role_id' => $u->role_id,
+                'statut' => $u->statut,
+            ])->values(),
             'roles' => Role::whereNull('deleted_at')->orderBy('name')->get(['id', 'name', 'description']),
-            'warehouses' => app(WarehouseScopeService::class)->visibleWarehouses($actor)->map(function ($warehouse) {
-                $warehouse->loadMissing('branch:id,name');
-                return $warehouse;
-            })->values(),
+            'branches' => $branches,
+            'inventory_locations' => $locations,
         ]);
     }
 
@@ -67,11 +81,14 @@ class EmployeeAccessController extends Controller
             'email' => ['required', 'email', 'max:192', Rule::unique('users', 'email')],
             'password' => ['required', 'string', 'min:8', 'max:100'],
             'role_id' => ['required', 'integer', Rule::exists('roles', 'id')->where(fn ($q) => $q->whereNull('deleted_at'))],
-            'warehouse_ids' => ['nullable', 'array'],
-            'warehouse_ids.*' => ['integer'],
-            'default_warehouse_id' => ['nullable', 'integer'],
-            'record_view' => ['sometimes', 'boolean'],
             'scope' => ['nullable', Rule::in(['branch', 'selected', 'all'])],
+            'branch_ids' => ['nullable', 'array'],
+            'branch_ids.*' => ['integer'],
+            'inventory_location_ids' => ['nullable', 'array'],
+            'inventory_location_ids.*' => ['integer'],
+            'default_branch_id' => ['nullable', 'integer'],
+            'default_inventory_location_id' => ['nullable', 'integer'],
+            'record_view' => ['sometimes', 'boolean'],
         ]);
 
         $scope = $validated['scope'] ?? ($employee->branch_id ? 'branch' : 'selected');
@@ -79,22 +96,34 @@ class EmployeeAccessController extends Controller
             abort(403, 'Solo el propietario del tenant puede crear accesos con alcance global desde este flujo.');
         }
 
-        $warehouseIds = $this->resolveWarehouseScope($employee, $scope, $validated['warehouse_ids'] ?? []);
-        if ((int) $actor->is_all_warehouses !== 1 && $scope !== 'all') {
-            $actorAllowed = app(WarehouseScopeService::class)->allowedWarehouseIds($actor);
-            foreach ($warehouseIds as $warehouseId) {
-                abort_unless(in_array((int) $warehouseId, $actorAllowed, true), 403, 'No puedes conceder acceso a una bodega fuera de tu propio alcance.');
+        $branchIds = $this->resolveBranchScope($employee, $scope, $validated['branch_ids'] ?? []);
+        $this->assertActorCanGrantBranches($actor, $branchIds, $scope);
+
+        $locationIds = $this->resolveInventoryLocationScope($scope, $branchIds, $validated['inventory_location_ids'] ?? []);
+
+        $defaultBranchId = ! empty($validated['default_branch_id'])
+            ? (int) $validated['default_branch_id']
+            : ($scope === 'branch' && $employee->branch_id ? (int) $employee->branch_id : ($branchIds[0] ?? null));
+
+        if ($defaultBranchId && $scope !== 'all' && ! in_array($defaultBranchId, $branchIds, true)) {
+            throw ValidationException::withMessages(['default_branch_id' => 'La sucursal predeterminada debe estar dentro del alcance asignado.']);
+        }
+
+        $defaultLocationId = ! empty($validated['default_inventory_location_id'])
+            ? (int) $validated['default_inventory_location_id']
+            : $this->defaultLocationForBranch($defaultBranchId);
+
+        if ($defaultLocationId) {
+            $location = InventoryLocation::active()->find($defaultLocationId);
+            if (! $location || (int) $location->branch_id !== (int) $defaultBranchId) {
+                throw ValidationException::withMessages(['default_inventory_location_id' => 'La ubicación predeterminada debe pertenecer a la sucursal predeterminada.']);
+            }
+            if ($scope !== 'all' && ! in_array($defaultLocationId, $locationIds, true)) {
+                $locationIds[] = $defaultLocationId;
             }
         }
 
-        $defaultWarehouseId = ! empty($validated['default_warehouse_id']) ? (int) $validated['default_warehouse_id'] : null;
-        if ($defaultWarehouseId && $scope !== 'all' && ! in_array($defaultWarehouseId, $warehouseIds, true)) {
-            throw ValidationException::withMessages([
-                'default_warehouse_id' => 'La bodega predeterminada debe estar dentro del alcance asignado al empleado.',
-            ]);
-        }
-
-        $user = DB::transaction(function () use ($employee, $validated, $scope, $warehouseIds, $defaultWarehouseId) {
+        $user = DB::transaction(function () use ($employee, $validated, $scope, $branchIds, $locationIds, $defaultBranchId, $defaultLocationId) {
             $lockedEmployee = Employee::whereKey($employee->id)->lockForUpdate()->firstOrFail();
             if (User::where('employee_id', $lockedEmployee->id)->whereNull('deleted_at')->lockForUpdate()->exists()) {
                 throw ValidationException::withMessages(['employee_id' => 'Este empleado ya tiene una cuenta de acceso.']);
@@ -111,19 +140,20 @@ class EmployeeAccessController extends Controller
                 'avatar' => 'no_avatar.png',
                 'role_id' => (int) $validated['role_id'],
                 'statut' => 1,
+                // Kept for legacy modules until they migrate away from warehouse scope.
                 'is_all_warehouses' => $scope === 'all' ? 1 : 0,
-                'default_warehouse_id' => $defaultWarehouseId,
+                'default_warehouse_id' => null,
+                'default_branch_id' => $defaultBranchId,
+                'default_inventory_location_id' => $defaultLocationId,
                 'default_cash_drawer_id' => null,
                 'record_view' => (bool) ($validated['record_view'] ?? false),
             ]);
 
-            role_user::create([
-                'user_id' => $user->id,
-                'role_id' => (int) $validated['role_id'],
-            ]);
+            role_user::create(['user_id' => $user->id, 'role_id' => (int) $validated['role_id']]);
 
             if ($scope !== 'all') {
-                $user->assignedWarehouses()->sync($warehouseIds);
+                $user->assignedBranches()->sync($branchIds);
+                $user->assignedInventoryLocations()->sync(array_values(array_unique($locationIds)));
             }
 
             return $user;
@@ -131,7 +161,7 @@ class EmployeeAccessController extends Controller
 
         return response()->json([
             'success' => true,
-            'user' => $user->load('employee.branch:id,name'),
+            'user' => $user->load(['employee.branch:id,name', 'defaultBranch:id,name', 'defaultInventoryLocation:id,name']),
         ], 201);
     }
 
@@ -140,10 +170,7 @@ class EmployeeAccessController extends Controller
         $this->authorizeAccess($request);
         $actor = $request->user('api');
         $employee = $this->employeeForActor($actor, $employeeId, true);
-
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer'],
-        ]);
+        $validated = $request->validate(['user_id' => ['required', 'integer']]);
 
         $candidate = User::whereNull('deleted_at')->findOrFail($validated['user_id']);
         $this->assertCanManageUserScope($actor, $candidate);
@@ -155,9 +182,7 @@ class EmployeeAccessController extends Controller
             if ($user->employee_id && (int) $user->employee_id !== (int) $lockedEmployee->id) {
                 throw ValidationException::withMessages(['user_id' => 'Este usuario ya está vinculado a otro empleado.']);
             }
-
-            $existing = User::where('employee_id', $lockedEmployee->id)->where('id', '!=', $user->id)->exists();
-            if ($existing) {
+            if (User::where('employee_id', $lockedEmployee->id)->where('id', '!=', $user->id)->exists()) {
                 throw ValidationException::withMessages(['employee_id' => 'Este empleado ya tiene una cuenta de acceso vinculada.']);
             }
 
@@ -176,93 +201,95 @@ class EmployeeAccessController extends Controller
         if ($linkedUser) $this->assertCanManageUserScope($actor, $linkedUser);
 
         User::where('employee_id', $employee->id)->update(['employee_id' => null]);
-
         return response()->json(['success' => true]);
     }
 
-    private function resolveWarehouseScope(Employee $employee, string $scope, array $requested): array
+    private function resolveBranchScope(Employee $employee, string $scope, array $requested): array
     {
         if ($scope === 'all') return [];
-
         if ($scope === 'branch') {
             abort_unless($employee->branch_id, 422, 'El empleado no tiene una sucursal asignada.');
-            return Warehouse::whereNull('deleted_at')
-                ->where('branch_id', $employee->branch_id)
-                ->orderBy('id')
-                ->pluck('id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
+            return [(int) $employee->branch_id];
         }
 
-        $requested = array_values(array_unique(array_map('intval', $requested)));
+        $requested = array_values(array_unique(array_filter(array_map('intval', $requested), fn ($id) => $id > 0)));
         if (! $requested) return [];
 
-        $existing = Warehouse::whereNull('deleted_at')
-            ->whereIn('id', $requested)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
+        $existing = Branch::whereNull('deleted_at')->where('is_active', true)->whereIn('id', $requested)
+            ->pluck('id')->map(fn ($id) => (int) $id)->all();
         if (count($existing) !== count($requested)) {
-            throw ValidationException::withMessages(['warehouse_ids' => 'Una de las bodegas seleccionadas no existe.']);
-        }
-
-        if ($employee->branch_id) {
-            $outsideBranch = Warehouse::whereIn('id', $requested)
-                ->where(function ($q) use ($employee) {
-                    $q->whereNull('branch_id')->orWhere('branch_id', '!=', $employee->branch_id);
-                })
-                ->exists();
-            if ($outsideBranch) {
-                throw ValidationException::withMessages([
-                    'warehouse_ids' => 'Un empleado asignado a una sucursal no puede recibir acceso operativo a bodegas de otra sucursal desde este flujo.',
-                ]);
-            }
+            throw ValidationException::withMessages(['branch_ids' => 'Una de las sucursales seleccionadas no existe o está inactiva.']);
         }
 
         return $requested;
     }
 
-    private function allowedBranchIds(User $actor): array
+    private function resolveInventoryLocationScope(string $scope, array $branchIds, array $requested): array
     {
-        if ((int) $actor->is_all_warehouses === 1) {
-            return Warehouse::whereNull('deleted_at')->whereNotNull('branch_id')->pluck('branch_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+        if ($scope === 'all') return [];
+
+        $requested = array_values(array_unique(array_filter(array_map('intval', $requested), fn ($id) => $id > 0)));
+        if (! $requested) {
+            return Branch::whereIn('id', $branchIds ?: [0])
+                ->whereNotNull('default_inventory_location_id')
+                ->pluck('default_inventory_location_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()->values()->all();
         }
 
-        $warehouseIds = app(WarehouseScopeService::class)->allowedWarehouseIds($actor);
-        $branchIds = Warehouse::whereNull('deleted_at')
-            ->whereIn('id', $warehouseIds ?: [0])
-            ->whereNotNull('branch_id')
-            ->pluck('branch_id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        $existing = InventoryLocation::active()->whereIn('id', $requested)->whereIn('branch_id', $branchIds ?: [0])
+            ->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if (count($existing) !== count($requested)) {
+            throw ValidationException::withMessages(['inventory_location_ids' => 'Una ubicación seleccionada no pertenece a las sucursales asignadas.']);
+        }
 
-        $employeeBranch = optional($actor->employee)->branch_id;
-        if ($employeeBranch) $branchIds[] = (int) $employeeBranch;
+        return $requested;
+    }
 
-        return array_values(array_unique($branchIds));
+    private function defaultLocationForBranch(?int $branchId): ?int
+    {
+        if (! $branchId) return null;
+        $id = Branch::whereNull('deleted_at')->where('is_active', true)->whereKey($branchId)->value('default_inventory_location_id');
+        return $id ? (int) $id : null;
+    }
+
+    private function assertActorCanGrantBranches(User $actor, array $branchIds, string $scope): void
+    {
+        if ((int) $actor->role_id === 1 || $scope === 'all') return;
+        $allowed = app(BranchScopeService::class)->allowedBranchIds($actor);
+        foreach ($branchIds as $branchId) {
+            abort_unless(in_array($branchId, $allowed, true), 403, 'No puedes conceder acceso a una sucursal fuera de tu propio alcance.');
+        }
     }
 
     private function employeeForActor(User $actor, int $employeeId, bool $requireActive): Employee
     {
         $query = Employee::with('branch:id,name')->whereNull('deleted_at')->whereKey($employeeId);
         if ($requireActive) $query->whereNull('leaving_date');
-        if ((int) $actor->is_all_warehouses !== 1) {
-            $query->whereIn('branch_id', $this->allowedBranchIds($actor) ?: [0]);
+        if ((int) $actor->role_id !== 1) {
+            $query->whereIn('branch_id', app(BranchScopeService::class)->allowedBranchIds($actor) ?: [0]);
         }
         return $query->firstOrFail();
     }
 
+    private function candidateInsideActorScope(User $actor, User $candidate): bool
+    {
+        if ((int) $actor->role_id === 1) return true;
+        if ((int) $candidate->role_id === 1) return false;
+
+        $actorIds = app(BranchScopeService::class)->allowedBranchIds($actor);
+        $candidateIds = app(BranchScopeService::class)->allowedBranchIds($candidate);
+        if (! $candidateIds) return false;
+
+        foreach ($candidateIds as $branchId) {
+            if (! in_array($branchId, $actorIds, true)) return false;
+        }
+        return true;
+    }
+
     private function assertCanManageUserScope(User $actor, User $candidate): void
     {
-        if ((int) $actor->is_all_warehouses === 1) return;
-        abort_if((int) $candidate->is_all_warehouses === 1, 403, 'No puedes administrar una cuenta con alcance global.');
-
-        $allowed = app(WarehouseScopeService::class)->allowedWarehouseIds($actor);
-        $candidateIds = $candidate->assignedWarehouses()->pluck('warehouses.id')->map(fn ($id) => (int) $id)->all();
-        foreach ($candidateIds as $warehouseId) {
-            abort_unless(in_array($warehouseId, $allowed, true), 403, 'No puedes administrar una cuenta fuera de tu alcance operativo.');
-        }
+        abort_unless($this->candidateInsideActorScope($actor, $candidate), 403, 'No puedes administrar una cuenta fuera de tu alcance operativo.');
     }
 
     private function authorizeAccess(Request $request): void
