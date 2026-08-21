@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\TransferDispatchGuardService;
 use App\Services\TransferLogisticsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
@@ -94,10 +95,18 @@ class Transfer extends Model
                 return;
             }
 
-            // Service writes logistics metadata through query builder, so this is
-            // idempotent and cannot recurse through this model event.
             if ($transfer->isApproved() && $transfer->statut === 'sent') {
-                app(TransferLogisticsService::class)->syncDispatchState($transfer->fresh(), auth()->user());
+                $fresh = $transfer->fresh();
+
+                // The legacy approval controller performs the source movement before
+                // saving approval_status. This integrity gate executes inside the same
+                // database transaction: any insufficient aggregate/batch stock throws
+                // and rolls the entire approval/dispatch back atomically.
+                app(TransferDispatchGuardService::class)->finalizeDispatch($fresh);
+
+                // Logistics metadata is written through the query builder, making this
+                // synchronization idempotent and avoiding model-event recursion.
+                app(TransferLogisticsService::class)->syncDispatchState($fresh, auth()->user());
             }
         });
     }
