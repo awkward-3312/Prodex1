@@ -15,6 +15,8 @@ Route::middleware('auth:api')->prefix('organization')->group(function () {
     // the same max_users plan limit regardless of whether it starts from an employee.
     Route::get('user-access/options', 'Organization\\UserAccessController@options');
     Route::post('user-access', 'Organization\\UserAccessController@store')->middleware('tenant.limit:max_users');
+    Route::get('user-access/{id}', 'Organization\\UserAccessEditController@show');
+    Route::put('user-access/{id}', 'Organization\\UserAccessEditController@update');
 
     Route::get('employee-access', 'Organization\\EmployeeAccessController@index');
     Route::post('employee-access/{employeeId}/create', 'Organization\\EmployeeAccessController@create')->middleware('tenant.limit:max_users');
