@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\InventoryCompatibilityService;
 use App\Services\PosLocationStockBridge;
+use App\Services\SaleReturnLocationStockBridge;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
@@ -50,13 +51,25 @@ class product_warehouse extends Model
             $original = round((float) $row->getRawOriginal('qte'), 3);
             $attributes = $row->getAttributes();
             $target = round((float) ($attributes['qte'] ?? $original), 3);
+            $variantId = $row->product_variant_id ? (int) $row->product_variant_id : null;
 
             $redirected = app(PosLocationStockBridge::class)->redirectLegacyDecrease(
                 (int) $row->product_id,
-                $row->product_variant_id ? (int) $row->product_variant_id : null,
+                $variantId,
                 $original,
                 $target
             );
+
+            // Sale returns use the inverse path: received returns increase the
+            // original branch location and edits/deletes can decrease it again.
+            if (! $redirected) {
+                $redirected = app(SaleReturnLocationStockBridge::class)->redirectLegacyMutation(
+                    (int) $row->product_id,
+                    $variantId,
+                    $original,
+                    $target
+                );
+            }
 
             if ($redirected) {
                 $row->setAttribute('qte', $original);
