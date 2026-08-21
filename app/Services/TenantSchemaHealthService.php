@@ -44,6 +44,8 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_21_180000_add_branch_inventory_scope_to_users.php',
         'database/migrations/tenant/2026_08_21_181000_backfill_cash_drawer_operational_context.php',
         'database/migrations/tenant/2026_08_21_182000_add_operational_context_to_sales.php',
+        'database/migrations/tenant/2026_08_21_183000_add_location_tracking_to_batches_and_serials.php',
+        'database/migrations/tenant/2026_08_21_184000_create_batch_location_movement_ledger.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -194,6 +196,29 @@ class TenantSchemaHealthService
             'warehouse_id', 'inventory_location_id', 'mode', 'status', 'mismatch_count',
             'last_audited_at', 'last_reconciled_at', 'shadow_enabled_at', 'metadata',
         ]);
+
+        // Batch/serial tracking is optional. When a tenant has those modules, their
+        // physical units must be location-aware before the POS can switch sources.
+        if ($schema->hasTable('product_batches')) {
+            $this->requireTable($schema, $missing, 'product_batch_location_stocks');
+            $this->requireColumns($schema, $missing, 'product_batch_location_stocks', [
+                'product_batch_id', 'inventory_location_id', 'quantity', 'reserved_quantity',
+            ]);
+            $this->requireTable($schema, $missing, 'product_batch_location_movements');
+            $this->requireColumns($schema, $missing, 'product_batch_location_movements', [
+                'product_batch_id', 'from_inventory_location_id', 'to_inventory_location_id',
+                'quantity', 'user_id', 'reference_type', 'reference_id', 'idempotency_key',
+            ]);
+        }
+
+        if ($schema->hasTable('product_serials')) {
+            $this->requireColumns($schema, $missing, 'product_serials', ['inventory_location_id']);
+        }
+        if ($schema->hasTable('product_serial_movements')) {
+            $this->requireColumns($schema, $missing, 'product_serial_movements', [
+                'from_inventory_location_id', 'to_inventory_location_id',
+            ]);
+        }
 
         return $missing;
     }
