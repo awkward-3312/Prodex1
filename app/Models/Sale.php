@@ -142,26 +142,24 @@ class Sale extends Model
             $request = request();
             $bridge = app(PosLocationStockBridge::class);
             if ($bridge->isLocationPosRequest($request)) {
-                // Fail before the sale exists if the cart still depends on a
-                // warehouse-only batch/serial workflow. This prevents a partial
-                // cutover from corrupting physical traceability.
                 $bridge->assertCartSupported($request);
+                $context = $bridge->resolveContext($request, $user);
+            } else {
+                $warehouseId = $sale->warehouse_id ?: ($request->filled('warehouse_id') ? (int) $request->input('warehouse_id') : null);
+                $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+                $locationId = $request->filled('inventory_location_id') ? (int) $request->input('inventory_location_id') : null;
+                $drawerId = $request->filled('cash_drawer_id') ? (int) $request->input('cash_drawer_id') : null;
+
+                if (! $warehouseId && ! $branchId && ! $locationId && ! $drawerId) return;
+
+                $context = app(PosOperationalContextService::class)->resolve(
+                    $user,
+                    $warehouseId,
+                    $branchId,
+                    $locationId,
+                    $drawerId
+                );
             }
-
-            $warehouseId = $sale->warehouse_id ?: ($request->filled('warehouse_id') ? (int) $request->input('warehouse_id') : null);
-            $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
-            $locationId = $request->filled('inventory_location_id') ? (int) $request->input('inventory_location_id') : null;
-            $drawerId = $request->filled('cash_drawer_id') ? (int) $request->input('cash_drawer_id') : null;
-
-            if (! $warehouseId && ! $branchId && ! $locationId && ! $drawerId) return;
-
-            $context = app(PosOperationalContextService::class)->resolve(
-                $user,
-                $warehouseId,
-                $branchId,
-                $locationId,
-                $drawerId
-            );
 
             $sale->branch_id = $context['branch_id'] ?? null;
             $sale->inventory_location_id = $context['inventory_location_id'] ?? null;
