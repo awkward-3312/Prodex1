@@ -54,6 +54,18 @@ class Transfer extends Model
 
             $originalStatus = (string) $transfer->getOriginal('logistics_status');
             $lockedStatuses = ['in_transit', 'partially_received', 'received', 'received_with_issues'];
+
+            // Legacy transfer forms still expose a "completed" option. Before a
+            // physical destination receipt exists, normalize that intent to "sent"
+            // so approval can only debit the source warehouse. This also closes the
+            // pending-edit -> approve loophole that could otherwise credit destination
+            // inventory without a receiver confirming the shipment.
+            if (! in_array($originalStatus, ['received', 'received_with_issues'], true)
+                && $transfer->isDirty('statut')
+                && $transfer->statut === 'completed') {
+                $transfer->statut = 'sent';
+            }
+
             if (! in_array($originalStatus, $lockedStatuses, true)) {
                 return;
             }
