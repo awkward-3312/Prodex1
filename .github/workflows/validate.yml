@@ -85,8 +85,10 @@ jobs:
         run: |
           php -l app/Services/WarehouseScopeService.php
           php -l app/Http/Middleware/EnforceWarehouseScope.php
+          php -l app/Http/Controllers/Organization/RoleTemplateController.php
           php -l app/Providers/RouteServiceProvider.php
           php -l database/seeders/Central/ProdexManualsSeeder.php
+          php -l database/migrations/tenant/2026_08_21_090000_add_organization_structure_foundation.php
           php -l tests/Unit/WarehouseScopeServiceTest.php
 
   frontend-build:
@@ -100,12 +102,13 @@ jobs:
           cache: npm
       - name: Install frontend dependencies
         run: npm ci
-      - name: Check standalone transfer scripts
+      - name: Check standalone transfer and organization scripts
         run: |
           node --check resources/static/prodex-transfer-idempotency.js
           node --check resources/static/prodex-transfer-logistics.js
           node --check resources/static/prodex-transfer-permission-ui.js
           node --check resources/static/prodex-transfer-issues.js
+          node --check resources/static/prodex-organization-navigation.js
       - name: Production build
         env:
           NODE_OPTIONS: --max-old-space-size=8192
