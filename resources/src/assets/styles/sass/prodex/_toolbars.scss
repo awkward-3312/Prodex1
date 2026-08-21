@@ -1,0 +1,86 @@
+// PRODEX Design System — list filter/action toolbars
+// Targets only list cards that already opted into the PRODEX list-page shell.
+// The structural selector keeps normal forms/grids untouched.
+
+.prodex-ui.px-list-page {
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) {
+    align-items: flex-end;
+    margin-left: -8px !important;
+    margin-right: -8px !important;
+    margin-bottom: var(--px-space-5) !important;
+  }
+
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) > [class*="col-"] {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-group {
+    margin-bottom: 0;
+  }
+
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-group > label,
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) legend.col-form-label {
+    display: block;
+    margin: 0 0 7px;
+    padding: 0;
+    color: var(--px-text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    font-weight: 700;
+  }
+
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-control,
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .custom-select,
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .vs__dropdown-toggle {
+    min-height: var(--px-control-height);
+    border-color: var(--px-border-strong);
+    border-radius: var(--px-radius-md);
+    box-shadow: none;
+  }
+
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-control:focus,
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .custom-select:focus,
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .vs__dropdown-toggle:focus-within {
+    border-color: var(--px-primary);
+    box-shadow: 0 0 0 3px var(--px-primary-soft);
+  }
+
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .btn {
+    min-height: var(--px-control-height);
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) > .d-flex {
+    min-height: calc(var(--px-control-height) + 23px);
+    align-items: flex-end !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .prodex-ui.px-list-page {
+    .card.wrapper > .card-body > .row.mb-3:has(.form-group) {
+      align-items: stretch;
+      margin-bottom: var(--px-space-4) !important;
+    }
+
+    .card.wrapper > .card-body > .row.mb-3:has(.form-group) > [class*="col-"] {
+      margin-bottom: 12px;
+    }
+
+    .card.wrapper > .card-body > .row.mb-3:has(.form-group) > [class*="col-"]:last-child {
+      margin-bottom: 0;
+    }
+
+    .card.wrapper > .card-body > .row.mb-3:has(.form-group) > .d-flex {
+      min-height: 0;
+      justify-content: flex-start !important;
+    }
+  }
+}
