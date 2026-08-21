@@ -31,7 +31,7 @@ jobs:
       - name: Run organization scope tests
         run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php tests/Unit/BranchInventoryScopeServiceTest.php
       - name: Run inventory architecture tests
-        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php tests/Unit/InventoryReadServiceTest.php
+        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php tests/Unit/InventoryReadServiceTest.php tests/Unit/BatchLocationServiceTest.php tests/Unit/SerialLocationServiceTest.php tests/Unit/InternalInventoryMoveServiceTest.php
       - name: PHP syntax check for SAR files
         run: |
           php -l app/Services/SarFiscalNumberService.php
@@ -86,6 +86,7 @@ jobs:
       - name: PHP syntax check for organization and user access files
         run: |
           php -l app/Services/WarehouseScopeService.php
+          php -l app/Services/WarehouseLifecycleService.php
           php -l app/Services/BranchScopeService.php
           php -l app/Services/InventoryLocationScopeService.php
           php -l app/Services/UserOperationalAssignmentService.php
@@ -98,12 +99,14 @@ jobs:
           php -l app/Http/Controllers/hrm/EmployeesController.php
           php -l app/Http/Controllers/CashDrawerController.php
           php -l app/Http/Controllers/WarehouseController.php
+          php -l app/Http/Controllers/PosOperationalContextController.php
           php -l app/Models/User.php
           php -l app/Models/UserOperationalAssignment.php
           php -l app/Models/CashDrawer.php
           php -l app/Models/Sale.php
           php -l app/Providers/RouteServiceProvider.php
           php -l routes/tenant_organization.php
+          php -l routes/tenant_pos_context.php
           php -l database/seeders/Central/ProdexManualsSeeder.php
           php -l database/migrations/tenant/2026_08_21_090000_add_organization_structure_foundation.php
           php -l database/migrations/tenant/2026_08_21_180000_add_branch_inventory_scope_to_users.php
@@ -113,10 +116,16 @@ jobs:
           php -l tests/Unit/BranchInventoryScopeServiceTest.php
       - name: PHP syntax check for inventory architecture
         run: |
+          php -l app/Models/product_warehouse.php
           php -l app/Models/InventoryLocation.php
           php -l app/Models/InventoryLocationStock.php
           php -l app/Models/InventoryLocationMovement.php
           php -l app/Models/InventoryTransitionState.php
+          php -l app/Models/ProductBatch.php
+          php -l app/Models/ProductBatchLocationStock.php
+          php -l app/Models/ProductBatchLocationMovement.php
+          php -l app/Models/ProductSerial.php
+          php -l app/Models/ProductSerialMovement.php
           php -l app/Models/Branch.php
           php -l app/Models/Warehouse.php
           php -l app/Services/InventoryLocationService.php
@@ -124,17 +133,25 @@ jobs:
           php -l app/Services/LegacyInventoryReconciliationService.php
           php -l app/Services/InventoryCompatibilityService.php
           php -l app/Services/InventoryReadService.php
+          php -l app/Services/BatchLocationService.php
+          php -l app/Services/SerialLocationService.php
+          php -l app/Services/InternalInventoryMoveService.php
           php -l app/Services/TenantSchemaHealthService.php
           php -l app/Console/Commands/ProdexInventoryReconcile.php
           php -l app/Console/Commands/ProdexInventoryTransition.php
           php -l database/migrations/tenant/2026_08_21_150000_create_inventory_locations_foundation.php
           php -l database/migrations/tenant/2026_08_21_160000_create_inventory_location_stock_engine.php
           php -l database/migrations/tenant/2026_08_21_170000_create_inventory_transition_states.php
+          php -l database/migrations/tenant/2026_08_21_183000_add_location_tracking_to_batches_and_serials.php
+          php -l database/migrations/tenant/2026_08_21_184000_create_batch_location_movement_ledger.php
           php -l tests/Unit/InventoryLocationServiceTest.php
           php -l tests/Unit/InventoryServiceTest.php
           php -l tests/Unit/LegacyInventoryReconciliationServiceTest.php
           php -l tests/Unit/InventoryCompatibilityServiceTest.php
           php -l tests/Unit/InventoryReadServiceTest.php
+          php -l tests/Unit/BatchLocationServiceTest.php
+          php -l tests/Unit/SerialLocationServiceTest.php
+          php -l tests/Unit/InternalInventoryMoveServiceTest.php
 
   frontend-build:
     runs-on: ubuntu-latest
