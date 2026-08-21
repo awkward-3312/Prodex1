@@ -265,7 +265,13 @@ axios.interceptors.response.use(
 
     const skipErrorRedirect = error.config && error.config.meta && error.config.meta.skipErrorRedirect;
     const method = ((error.config && error.config.method) || 'get').toString().toLowerCase();
-    const isNavigationalLoad = method === 'get' && !skipErrorRedirect;
+    const requestUrl = ((error.config && error.config.url) || '').toString();
+    // Transfer logistics widgets are loaded globally because they decide at runtime
+    // whether the signed-in user is a receiver/issue manager. A 403 from those GETs
+    // is a capability result, not a failed page navigation, so it must never replace
+    // Dashboard (or any other current screen) with the global unauthorized page.
+    const isTransferLogisticsCapabilityRequest = /(^|\/)transfer-logistics(\/|$)/i.test(requestUrl);
+    const isNavigationalLoad = method === 'get' && !skipErrorRedirect && !isTransferLogisticsCapabilityRequest;
 
     if (status === 404 && isNavigationalLoad) {
       router.push({ name: 'NotFound' });
