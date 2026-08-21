@@ -86,6 +86,13 @@ class RouteServiceProvider extends ServiceProvider
             ->namespace($this->namespace)
             ->group(base_path('routes/tenant_api.php'));
 
+        // Transfer logistics is isolated from the legacy transfer resource so the
+        // receiving workflow can evolve without destabilizing the historical API.
+        Route::prefix('api')
+            ->middleware(array_merge(['api'], $tenancy))
+            ->namespace($this->namespace)
+            ->group(base_path('routes/tenant_transfer_logistics.php'));
+
         // Attendance integrations live in a small isolated route file so new
         // biometric/import APIs do not increase the risk of editing the large
         // historical tenant_api.php file.
