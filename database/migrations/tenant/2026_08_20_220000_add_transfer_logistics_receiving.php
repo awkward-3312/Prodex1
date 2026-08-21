@@ -30,6 +30,23 @@ return new class extends Migration
             }
         });
 
+        /*
+         * IMPORTANT FOR EXISTING TENANTS
+         * ------------------------------
+         * PRODEX has tenant databases created at different points in the product's
+         * history. Some legacy primary keys are signed INT while newer schemas may
+         * use unsigned INT/BIGINT. MySQL requires an exact signedness/type match for
+         * foreign keys and therefore an FK added here can make a perfectly usable
+         * tenant fail its controlled upgrade (error 3780).
+         *
+         * Logistics references to legacy tables are intentionally indexed but not
+         * constrained with database FKs. Referential integrity is enforced by the
+         * transactional services/controllers and dispatched transfers are immutable.
+         * New-to-new relations may keep an FK where both sides are controlled here.
+         * This also makes this migration safe to resume after MySQL partially created
+         * transfer_receipts before a previous FK ALTER failed.
+         */
+
         if (! Schema::hasTable('transfer_receipts')) {
             Schema::create('transfer_receipts', function (Blueprint $table) {
                 $table->id();
@@ -40,10 +57,6 @@ return new class extends Migration
                 $table->text('notes')->nullable();
                 $table->timestamp('received_at');
                 $table->timestamps();
-
-                $table->foreign('transfer_id')->references('id')->on('transfers')->onDelete('cascade');
-                $table->foreign('warehouse_id')->references('id')->on('warehouses')->onDelete('restrict');
-                $table->foreign('received_by_user_id')->references('id')->on('users')->onDelete('restrict');
             });
         }
 
@@ -58,8 +71,8 @@ return new class extends Migration
                 $table->text('notes')->nullable();
                 $table->timestamps();
 
+                // Both tables are created by this controlled logistics schema.
                 $table->foreign('transfer_receipt_id')->references('id')->on('transfer_receipts')->onDelete('cascade');
-                $table->foreign('transfer_detail_id')->references('id')->on('transfer_details')->onDelete('cascade');
             });
         }
 
@@ -78,11 +91,6 @@ return new class extends Migration
                 $table->timestamp('resolved_at')->nullable();
                 $table->unsignedInteger('resolved_by_user_id')->nullable()->index();
                 $table->timestamps();
-
-                $table->foreign('transfer_id')->references('id')->on('transfers')->onDelete('cascade');
-                $table->foreign('transfer_detail_id')->references('id')->on('transfer_details')->onDelete('cascade');
-                $table->foreign('warehouse_id')->references('id')->on('warehouses')->onDelete('restrict');
-                $table->foreign('reported_by_user_id')->references('id')->on('users')->onDelete('restrict');
             });
         }
 
@@ -99,11 +107,6 @@ return new class extends Migration
                 $table->text('notes')->nullable();
                 $table->unsignedInteger('created_by_user_id')->index();
                 $table->timestamps();
-
-                $table->foreign('transfer_id')->references('id')->on('transfers')->onDelete('cascade');
-                $table->foreign('transfer_detail_id')->references('id')->on('transfer_details')->onDelete('cascade');
-                $table->foreign('warehouse_id')->references('id')->on('warehouses')->onDelete('restrict');
-                $table->foreign('product_id')->references('id')->on('products')->onDelete('restrict');
             });
         }
 
@@ -116,8 +119,6 @@ return new class extends Migration
                 $table->unsignedInteger('warehouse_id')->nullable()->index();
                 $table->json('payload')->nullable();
                 $table->timestamp('created_at')->useCurrent();
-
-                $table->foreign('transfer_id')->references('id')->on('transfers')->onDelete('cascade');
             });
         }
 
@@ -133,8 +134,6 @@ return new class extends Migration
                 $table->timestamps();
 
                 $table->unique(['transfer_id', 'user_id', 'type'], 'transfer_notif_unique');
-                $table->foreign('transfer_id')->references('id')->on('transfers')->onDelete('cascade');
-                $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             });
         }
 
