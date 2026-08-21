@@ -79,13 +79,10 @@ class BranchController extends Controller
         $this->authorizePermission($request, 'branches_delete');
         $branch = Branch::whereNull('deleted_at')->findOrFail($id);
 
-        DB::transaction(function () use ($branch) {
-            // Historical warehouses and employees are never deleted. They are detached
-            // only after the branch is deactivated so audit history remains intact.
-            Warehouse::where('branch_id', $branch->id)->update(['branch_id' => null]);
-            Employee::where('branch_id', $branch->id)->update(['branch_id' => null]);
-            $branch->update(['is_active' => false, 'deleted_at' => now()]);
-        });
+        // Never detach warehouses or employees here. Their branch_id is historical
+        // context for transactions, transfers and employment records. Deactivation
+        // only prevents the branch from being selected for new operations.
+        $branch->update(['is_active' => false, 'deleted_at' => now()]);
 
         return response()->json(['success' => true]);
     }
@@ -149,7 +146,6 @@ class BranchController extends Controller
     {
         $user = $request->user('api');
         abort_unless($user, 401);
-        // Role 1 is the immutable tenant owner role in the legacy permission UI.
         abort_unless((int) $user->role_id === 1 || $user->hasPermissionName($permission), 403);
     }
 }
