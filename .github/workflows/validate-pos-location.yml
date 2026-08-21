@@ -31,6 +31,7 @@ jobs:
       - name: Syntax check
         run: |
           php -l app/Services/PosLocationStockBridge.php
+          php -l app/Services/PosLocationSaleStockService.php
           php -l app/Services/PosOperationalContextService.php
           php -l app/Services/UserOperationalAssignmentService.php
           php -l app/Services/LocationAwareBatchService.php
@@ -43,7 +44,8 @@ jobs:
           php -l app/Providers/RouteServiceProvider.php
           php -l routes/tenant_pos_location.php
           php -l tests/Unit/PosLocationStockBridgeTest.php
+          php -l tests/Unit/PosLocationSaleStockServiceTest.php
           node --check resources/static/prodex-pos-location-ui.js
           node --check resources/static/prodex-pos-location-catalog.js
       - name: Run focused bridge tests
-        run: vendor/bin/phpunit tests/Unit/PosLocationStockBridgeTest.php
+        run: vendor/bin/phpunit tests/Unit/PosLocationStockBridgeTest.php tests/Unit/PosLocationSaleStockServiceTest.php
