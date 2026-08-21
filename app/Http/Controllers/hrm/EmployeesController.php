@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\hrm;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Department;
 use App\Models\Designation;
@@ -13,43 +14,32 @@ use App\Models\OfficeShift;
 use App\utils\helpers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class EmployeesController extends Controller
 {
-    // ------------ GET ALL employees -----------\\
-
     public function index(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Employee::class);
-        // How many items do you want to display.
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
-        // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = strtolower((string) $request->input('SortType')) === 'asc' ? 'asc' : 'desc';
         $helpers = new helpers;
-        // Filter fields With Params to retrieve
-        $param = [
-            0 => 'like',
-            1 => 'like',
-            2 => '=',
-
-        ];
-        $columns = [
-            0 => 'username',
-            1 => 'employment_type',
-            2 => 'company_id',
-        ];
+        $param = [0 => 'like', 1 => 'like', 2 => '='];
+        $columns = [0 => 'username', 1 => 'employment_type', 2 => 'company_id'];
         $data = [];
 
-        $employees = Employee::with('company:id,name', 'office_shift:id,name', 'department:id,department', 'designation:id,designation')
-            ->where('deleted_at', '=', null)
-            ->where('leaving_date', null);
+        $employees = Employee::with(
+            'company:id,name',
+            'branch:id,name',
+            'office_shift:id,name',
+            'department:id,department',
+            'designation:id,designation'
+        )->whereNull('deleted_at')->whereNull('leaving_date');
 
-        // Multiple Filter
         $Filtred = $helpers->filter($employees, $columns, $param, $request)
-        // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('firstname', 'LIKE', "%{$request->search}%")
@@ -57,54 +47,48 @@ class EmployeesController extends Controller
                         ->orWhere('username', 'LIKE', "%{$request->search}%");
                 });
             });
-        $totalRows = $employees->count();
-        if ($perPage == '-1') {
-            $perPage = $totalRows;
+
+        if ($request->filled('branch_id')) {
+            $employees->where('branch_id', (int) $request->branch_id);
         }
-        $employees = $employees->offset($offSet)
-            ->limit($perPage)
-            ->orderBy($order, $dir)
-            ->get();
+
+        $totalRows = $employees->count();
+        if ($perPage == '-1') $perPage = $totalRows;
+
+        $employees = $employees->offset($offSet)->limit($perPage)->orderBy($order, $dir)->get();
 
         foreach ($employees as $employee) {
-
-            $item['id'] = $employee->id;
-            $item['firstname'] = $employee->firstname;
-            $item['lastname'] = $employee->lastname;
-            $item['phone'] = $employee->phone;
-            $item['company_name'] = $employee['company']->name;
-            $item['department_name'] = $employee['department']->department;
-            $item['designation_name'] = $employee['designation']->designation;
-            $item['office_shift_name'] = $employee['office_shift']->name;
-
-            $data[] = $item;
+            $data[] = [
+                'id' => $employee->id,
+                'firstname' => $employee->firstname,
+                'lastname' => $employee->lastname,
+                'phone' => $employee->phone,
+                'company_name' => optional($employee->company)->name,
+                'branch_name' => optional($employee->branch)->name,
+                'branch_id' => $employee->branch_id,
+                'department_name' => optional($employee->department)->department,
+                'designation_name' => optional($employee->designation)->designation,
+                'office_shift_name' => optional($employee->office_shift)->name,
+            ];
         }
-
-        $companies = Company::where('deleted_at', '=', null)->get(['id', 'name']);
 
         return response()->json([
             'employees' => $data,
-            'companies' => $companies,
+            'companies' => Company::whereNull('deleted_at')->get(['id', 'name']),
+            'branches' => Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'totalRows' => $totalRows,
         ]);
-
     }
-
-    // ---------------- Show Form Create Employee ---------------\\
 
     public function create(Request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'create', Employee::class);
 
-        $companies = Company::where('deleted_at', '=', null)->get(['id', 'name']);
-
         return response()->json([
-            'companies' => $companies,
+            'companies' => Company::whereNull('deleted_at')->get(['id', 'name']),
+            'branches' => Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']),
         ]);
     }
-
-    // ----------------Store  Employee ---------------\\
 
     public function store(Request $request)
     {
@@ -115,78 +99,67 @@ class EmployeesController extends Controller
             'lastname' => 'required|string',
             'gender' => 'required',
             'company_id' => 'required',
+            'branch_id' => [
+                'nullable', 'integer',
+                Rule::exists('branches', 'id')->where(fn ($q) => $q->whereNull('deleted_at')->where('is_active', true)),
+            ],
             'department_id' => 'required',
             'designation_id' => 'required',
             'office_shift_id' => 'required',
         ]);
 
-        $data = [];
-        $data['firstname'] = $request['firstname'];
-        $data['lastname'] = $request['lastname'];
-        $data['username'] = $request['firstname'].' '.$request['lastname'];
-        $data['country'] = $request['country'];
-        $data['email'] = $request['email'];
-        $data['gender'] = $request['gender'];
-        $data['phone'] = $request['phone'];
-        $data['birth_date'] = $request['birth_date'];
-        $data['company_id'] = $request['company_id'];
-        $data['department_id'] = $request['department_id'];
-        $data['designation_id'] = $request['designation_id'];
-        $data['office_shift_id'] = $request['office_shift_id'];
-        $data['joining_date'] = $request['joining_date'];
+        $data = [
+            'firstname' => $request['firstname'],
+            'lastname' => $request['lastname'],
+            'username' => $request['firstname'].' '.$request['lastname'],
+            'country' => $request['country'],
+            'email' => $request['email'],
+            'gender' => $request['gender'],
+            'phone' => $request['phone'],
+            'birth_date' => $request['birth_date'],
+            'company_id' => $request['company_id'],
+            'branch_id' => $request->filled('branch_id') ? (int) $request['branch_id'] : null,
+            'department_id' => $request['department_id'],
+            'designation_id' => $request['designation_id'],
+            'office_shift_id' => $request['office_shift_id'],
+            'joining_date' => $request['joining_date'],
+        ];
 
-        Employee::create($data);
+        $employee = Employee::create($data);
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'employee_id' => $employee->id]);
     }
-
-    // ------------ function show -----------\\
 
     public function show(Request $request, $id)
     {
-
         $this->authorizeForUser($request->user('api'), 'view', Employee::class);
 
-        $employee = Employee::where('deleted_at', '=', null)->findOrFail($id);
-        $companies = Company::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
-        $office_shifts = OfficeShift::where('company_id', $employee->company_id)->where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
-        $departments = Department::where('company_id', $employee->company_id)->where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'department']);
-        $designations = Designation::where('department_id', $employee->department_id)->where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'designation']);
+        $employee = Employee::whereNull('deleted_at')->findOrFail($id);
+        $companies = Company::whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'name']);
+        $branches = Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']);
+        $office_shifts = OfficeShift::where('company_id', $employee->company_id)->whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'name']);
+        $departments = Department::where('company_id', $employee->company_id)->whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'department']);
+        $designations = Designation::where('department_id', $employee->department_id)->whereNull('deleted_at')->where('is_active', true)->orderBy('id', 'desc')->get(['id', 'designation']);
 
-        return response()->json([
-            'employee' => $employee,
-            'companies' => $companies,
-            'office_shifts' => $office_shifts,
-            'departments' => $departments,
-            'designations' => $designations,
-        ]);
-
+        return response()->json(compact('employee', 'companies', 'branches', 'office_shifts', 'departments', 'designations'));
     }
 
     public function edit(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Employee::class);
 
-        $employee = Employee::where('deleted_at', '=', null)->findOrFail($id);
-        $companies = Company::where('deleted_at', '=', null)->get(['id', 'name']);
-        $office_shifts = OfficeShift::where('company_id', $employee->company_id)->where('deleted_at', '=', null)->get(['id', 'name']);
-        $departments = Department::where('company_id', $employee->company_id)->where('deleted_at', '=', null)->get(['id', 'department']);
-        $designations = Designation::where('department_id', $employee->department_id)->where('deleted_at', '=', null)->get(['id', 'designation']);
+        $employee = Employee::whereNull('deleted_at')->findOrFail($id);
+        $companies = Company::whereNull('deleted_at')->get(['id', 'name']);
+        $branches = Branch::whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']);
+        $office_shifts = OfficeShift::where('company_id', $employee->company_id)->whereNull('deleted_at')->get(['id', 'name']);
+        $departments = Department::where('company_id', $employee->company_id)->whereNull('deleted_at')->get(['id', 'department']);
+        $designations = Designation::where('department_id', $employee->department_id)->whereNull('deleted_at')->where('is_active', true)->get(['id', 'designation']);
 
-        return response()->json([
-            'employee' => $employee,
-            'companies' => $companies,
-            'office_shifts' => $office_shifts,
-            'departments' => $departments,
-            'designations' => $designations,
-        ]);
+        return response()->json(compact('employee', 'companies', 'branches', 'office_shifts', 'departments', 'designations'));
     }
-
-    // ---------------- UPDATE Employee -------------\\
 
     public function update(Request $request, $id)
     {
-
         $this->authorizeForUser($request->user('api'), 'update', Employee::class);
 
         $this->validate($request, [
@@ -197,6 +170,10 @@ class EmployeesController extends Controller
             'phone' => 'required',
             'total_leave' => 'required|numeric|min:0',
             'company_id' => 'required',
+            'branch_id' => [
+                'nullable', 'integer',
+                Rule::exists('branches', 'id')->where(fn ($q) => $q->whereNull('deleted_at')->where('is_active', true)),
+            ],
             'department_id' => 'required',
             'designation_id' => 'required',
             'office_shift_id' => 'required',
@@ -214,6 +191,7 @@ class EmployeesController extends Controller
         $data['phone'] = $request['phone'];
         $data['birth_date'] = $request['birth_date'];
         $data['company_id'] = $request['company_id'];
+        $data['branch_id'] = $request->filled('branch_id') ? (int) $request['branch_id'] : null;
         $data['department_id'] = $request['department_id'];
         $data['designation_id'] = $request['designation_id'];
         $data['office_shift_id'] = $request['office_shift_id'];
@@ -229,7 +207,6 @@ class EmployeesController extends Controller
         $data['basic_salary'] = $request['basic_salary'];
         $data['hourly_rate'] = $request['hourly_rate'];
 
-        // calculation of total_leave & remaining_leave
         $employee_leave_info = Employee::find($id);
         if ($employee_leave_info->total_leave == 0) {
             $data['total_leave'] = $request->total_leave;
@@ -240,7 +217,6 @@ class EmployeesController extends Controller
         } elseif ($request->total_leave < $employee_leave_info->total_leave) {
             $data['total_leave'] = $request->total_leave;
             $data['remaining_leave'] = $request->remaining_leave - ($employee_leave_info->total_leave - $request->total_leave);
-
         } else {
             $data['total_leave'] = $request->total_leave;
             $data['remaining_leave'] = $employee_leave_info->remaining_leave;
@@ -251,137 +227,76 @@ class EmployeesController extends Controller
         return response()->json(['success' => true]);
     }
 
-    // ------------ Delete Employee -----------\\
-
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Employee::class);
-
-        Employee::whereId($id)->update([
-            'deleted_at' => Carbon::now(),
-        ]);
-
+        Employee::whereId($id)->update(['deleted_at' => Carbon::now()]);
         return response()->json(['success' => true]);
     }
 
-    // -------------- Delete by selection  ---------------\\
-
     public function delete_by_selection(Request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'delete', Employee::class);
-
-        $selectedIds = $request->selectedIds;
-        foreach ($selectedIds as $employee_id) {
-            Employee::whereId($employee_id)->update([
-                'deleted_at' => Carbon::now(),
-            ]);
+        foreach ((array) $request->selectedIds as $employee_id) {
+            Employee::whereId($employee_id)->update(['deleted_at' => Carbon::now()]);
         }
-
         return response()->json(['success' => true]);
-
     }
 
     public function Get_employees_by_department(Request $request)
     {
-        $employees = Employee::where('department_id', $request->id)->where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'username']);
-
+        $employees = Employee::where('department_id', $request->id)->whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'username']);
         return response()->json($employees);
     }
 
     public function Get_office_shift_by_company(Request $request)
     {
-        $office_shifts = OfficeShift::where('company_id', $request->id)->where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'name']);
-
+        $office_shifts = OfficeShift::where('company_id', $request->id)->whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'name']);
         return response()->json($office_shifts);
     }
-
-    // details employee
 
     public function update_social_profile(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Employee::class);
-
-        $data = [];
-        $data['skype'] = $request['skype'];
-        $data['facebook'] = $request['facebook'];
-        $data['whatsapp'] = $request['whatsapp'];
-        $data['twitter'] = $request['twitter'];
-        $data['linkedin'] = $request['linkedin'];
-
-        Employee::whereId($id)->update($data);
-
+        Employee::whereId($id)->update([
+            'skype' => $request['skype'],
+            'facebook' => $request['facebook'],
+            'whatsapp' => $request['whatsapp'],
+            'twitter' => $request['twitter'],
+            'linkedin' => $request['linkedin'],
+        ]);
         return response()->json(['success' => true]);
     }
 
-    // -------------------- get_experiences_by_employee -------------\\
-
-    public function get_experiences_by_employee(request $request)
+    public function get_experiences_by_employee(Request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'view', Employee::class);
-        // How many items do you want to display.
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
-        // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
-
-        $experiences = EmployeeExperience::where('employee_id', $request->id)
-            ->where('deleted_at', '=', null)
-            ->orderBy('id', 'desc');
-
+        $experiences = EmployeeExperience::where('employee_id', $request->id)->whereNull('deleted_at')->orderBy('id', 'desc');
         $totalRows = $experiences->count();
-        if ($perPage == '-1') {
-            $perPage = $totalRows;
-        }
-        $experiences = $experiences->offset($offSet)
-            ->limit($perPage)
-            ->orderBy('id', 'desc')
-            ->get();
-
-        return response()->json([
-            'totalRows' => $totalRows,
-            'experiences' => $experiences,
-        ]);
-
+        if ($perPage == '-1') $perPage = $totalRows;
+        $experiences = $experiences->offset($offSet)->limit($perPage)->orderBy('id', 'desc')->get();
+        return response()->json(['totalRows' => $totalRows, 'experiences' => $experiences]);
     }
 
-    // -------------------- get_accounts_by_employee -------------\\
-
-    public function get_accounts_by_employee(request $request)
+    public function get_accounts_by_employee(Request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'view', Employee::class);
-        // How many items do you want to display.
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
-        // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
-
-        $accounts_bank = EmployeeAccount::where('employee_id', $request->id)
-            ->where('deleted_at', '=', null)
-            ->orderBy('id', 'desc');
-
+        $accounts_bank = EmployeeAccount::where('employee_id', $request->id)->whereNull('deleted_at')->orderBy('id', 'desc');
         $totalRows = $accounts_bank->count();
-        if ($perPage == '-1') {
-            $perPage = $totalRows;
-        }
-        $accounts_bank = $accounts_bank->offset($offSet)
-            ->limit($perPage)
-            ->orderBy('id', 'desc')
-            ->get();
-
-        return response()->json([
-            'totalRows' => $totalRows,
-            'accounts_bank' => $accounts_bank,
-        ]);
-
+        if ($perPage == '-1') $perPage = $totalRows;
+        $accounts_bank = $accounts_bank->offset($offSet)->limit($perPage)->orderBy('id', 'desc')->get();
+        return response()->json(['totalRows' => $totalRows, 'accounts_bank' => $accounts_bank]);
     }
 
     public function Get_employees_by_company(Request $request)
     {
-        $employees = Employee::where('company_id', $request->id)->where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'username']);
-
+        $employees = Employee::where('company_id', $request->id)->whereNull('deleted_at')->orderBy('id', 'desc')->get(['id', 'username']);
         return response()->json($employees);
     }
 }
