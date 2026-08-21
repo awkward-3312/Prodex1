@@ -43,6 +43,7 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_21_170000_create_inventory_transition_states.php',
         'database/migrations/tenant/2026_08_21_180000_add_branch_inventory_scope_to_users.php',
         'database/migrations/tenant/2026_08_21_181000_backfill_cash_drawer_operational_context.php',
+        'database/migrations/tenant/2026_08_21_182000_add_operational_context_to_sales.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -115,7 +116,9 @@ class TenantSchemaHealthService
 
         $this->requireTable($schema, $missing, 'store_credit_vouchers');
         $this->requireTable($schema, $missing, 'store_credit_voucher_transactions');
-        $this->requireColumns($schema, $missing, 'sales', ['store_credit_amount', 'fiscal_exemption_data']);
+        $this->requireColumns($schema, $missing, 'sales', [
+            'store_credit_amount', 'fiscal_exemption_data', 'branch_id', 'inventory_location_id', 'cash_drawer_id',
+        ]);
         $this->requireColumns($schema, $missing, 'sale_returns', ['refund_mode', 'store_credit_voucher_id', 'store_credit_amount']);
 
         $this->requireTable($schema, $missing, 'sar_fiscal_profiles');
