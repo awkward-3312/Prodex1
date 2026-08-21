@@ -35,7 +35,9 @@
   function makeItem(id, label, href, icon, section, order, moduleKey) {
     var li = document.createElement('li');
     li.id = id;
-    li.className = 'nav-item';
+    // prodex-nav-clone intentionally keeps these explicit, capability-gated links
+    // out of the legacy module classifier so their order never changes after clicks.
+    li.className = 'nav-item prodex-nav-clone';
     li.dataset.prodexV3ModuleFixed = moduleKey;
     li.dataset.prodexV3Module = moduleKey;
     li.dataset.prodexV3Section = section;
@@ -58,6 +60,7 @@
       item = makeItem(config.id, config.label, config.href, config.icon, config.section, config.order, config.module);
       list.appendChild(item);
     }
+    item.classList.add('prodex-nav-clone');
     item.dataset.prodexV3ModuleFixed = config.module;
     item.dataset.prodexV3Section = config.section;
     item.dataset.prodexV3Order = String(config.order);
