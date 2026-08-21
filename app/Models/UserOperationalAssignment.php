@@ -14,10 +14,18 @@ class UserOperationalAssignment extends Model
         'user_id',
         'default_warehouse_id_snapshot',
         'default_warehouse_name_snapshot',
+        'default_branch_id_snapshot',
+        'default_branch_name_snapshot',
+        'default_inventory_location_id_snapshot',
+        'default_inventory_location_name_snapshot',
         'default_cash_drawer_id_snapshot',
         'default_cash_drawer_name_snapshot',
         'temporary_warehouse_id',
         'temporary_warehouse_name_snapshot',
+        'temporary_branch_id',
+        'temporary_branch_name_snapshot',
+        'temporary_inventory_location_id',
+        'temporary_inventory_location_name_snapshot',
         'temporary_cash_drawer_id',
         'temporary_cash_drawer_name_snapshot',
         'assigned_by_user_id',
@@ -31,8 +39,12 @@ class UserOperationalAssignment extends Model
     protected $casts = [
         'user_id' => 'integer',
         'default_warehouse_id_snapshot' => 'integer',
+        'default_branch_id_snapshot' => 'integer',
+        'default_inventory_location_id_snapshot' => 'integer',
         'default_cash_drawer_id_snapshot' => 'integer',
         'temporary_warehouse_id' => 'integer',
+        'temporary_branch_id' => 'integer',
+        'temporary_inventory_location_id' => 'integer',
         'temporary_cash_drawer_id' => 'integer',
         'assigned_by_user_id' => 'integer',
         'starts_at' => 'datetime',
@@ -47,6 +59,16 @@ class UserOperationalAssignment extends Model
     public function temporaryWarehouse()
     {
         return $this->belongsTo(Warehouse::class, 'temporary_warehouse_id');
+    }
+
+    public function temporaryBranch()
+    {
+        return $this->belongsTo(Branch::class, 'temporary_branch_id');
+    }
+
+    public function temporaryInventoryLocation()
+    {
+        return $this->belongsTo(InventoryLocation::class, 'temporary_inventory_location_id');
     }
 
     public function temporaryCashDrawer()
