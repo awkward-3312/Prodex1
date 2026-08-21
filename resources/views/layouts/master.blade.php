@@ -86,6 +86,8 @@
     <script src="/js/prodex-navigation-v3.js?v={{ time() }}"></script>
     <script src="/js/prodex-sidebar-reopen.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-logistics.js?v={{ time() }}"></script>
+    <script src="/js/prodex-transfer-permission-ui.js?v={{ time() }}"></script>
+    <script src="/js/prodex-transfer-issues.js?v={{ time() }}"></script>
 
     @include('partials.plan-upgrade-modal')
     @include('partials.subscription-reminder-banner')
