@@ -6,40 +6,52 @@ use App\Models\InventoryLocation;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Transitional bridge for the POS cutover.
  *
  * The historical POS still performs its arithmetic against product_warehouse.
- * When an explicitly branch/location-scoped POS request is being processed, this
- * service lets the product_warehouse model redirect the calculated delta to the
- * new InventoryService without changing the legacy quantity row.
+ * When the cashier has a real branch + sellable inventory location + branch-owned
+ * cash drawer, this service redirects the calculated decrease to InventoryService
+ * and leaves the legacy warehouse quantity untouched.
  *
- * This is intentionally narrow: only PosController@CreatePOS requests that carry
- * both branch_id and inventory_location_id are eligible. Batch/serial products
- * remain blocked in this bridge stage because their physical ledgers require the
- * dedicated location-aware sale workflow before they can safely be sold.
+ * Explicit branch/location fields are supported, but the current POS frontend does
+ * not need to send them yet: the bridge can infer the same context from the user's
+ * active/default operational assignment. This keeps the cutover backward-compatible.
  */
 class PosLocationStockBridge
 {
     public function isLocationPosRequest(?Request $request = null): bool
     {
         $request = $request ?: request();
-        if (! $request) return false;
+        if (! $request || ! $this->isCreatePosAction($request)) return false;
 
         $branchId = (int) $request->input('branch_id', 0);
         $locationId = (int) $request->input('inventory_location_id', 0);
-        if ($branchId <= 0 || $locationId <= 0) return false;
+        if ($branchId > 0 && $locationId > 0) return true;
 
-        $route = $request->route();
-        $action = $route ? (string) $route->getActionName() : '';
+        $user = $request->user('api') ?: auth()->user();
+        if (! $user instanceof User) return false;
 
-        return str_contains($action, 'PosController@CreatePOS')
-            || str_contains($action, 'PosController::CreatePOS');
+        $effective = app(UserOperationalAssignmentService::class)->effectiveAssignment($user);
+        $branch = $effective['branch'] ?? null;
+        $location = $effective['inventory_location'] ?? null;
+        $drawer = $effective['cash_drawer'] ?? null;
+        $requestDrawerId = $request->input('cash_drawer_id') ? (int) $request->input('cash_drawer_id') : null;
+
+        return $branch
+            && $location
+            && $drawer
+            && (int) $location->branch_id === (int) $branch->id
+            && (bool) $location->is_sellable
+            && (int) $drawer->branch_id === (int) $branch->id
+            && (int) $drawer->inventory_location_id === (int) $location->id
+            && (! $requestDrawerId || (int) $drawer->id === $requestDrawerId);
     }
 
-    public function resolveLocation(Request $request, User $user): InventoryLocation
+    public function resolveContext(Request $request, User $user): array
     {
         if (! $this->isLocationPosRequest($request)) {
             throw ValidationException::withMessages([
@@ -47,22 +59,56 @@ class PosLocationStockBridge
             ]);
         }
 
-        $context = app(PosOperationalContextService::class)->resolve(
+        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $locationId = $request->filled('inventory_location_id') ? (int) $request->input('inventory_location_id') : null;
+        $drawerId = $request->filled('cash_drawer_id') ? (int) $request->input('cash_drawer_id') : null;
+
+        if (! $branchId || ! $locationId) {
+            $effective = app(UserOperationalAssignmentService::class)->effectiveAssignment($user);
+            $branchId = $effective['branch_id'] ? (int) $effective['branch_id'] : null;
+            $locationId = $effective['inventory_location_id'] ? (int) $effective['inventory_location_id'] : null;
+            $drawerId = $drawerId ?: ($effective['cash_drawer_id'] ? (int) $effective['cash_drawer_id'] : null);
+        }
+
+        app(UserOperationalAssignmentService::class)->validateRequestedOperationalAssignment(
             $user,
-            $request->input('warehouse_id') ? (int) $request->input('warehouse_id') : null,
-            (int) $request->input('branch_id'),
-            (int) $request->input('inventory_location_id'),
-            $request->input('cash_drawer_id') ? (int) $request->input('cash_drawer_id') : null
+            $branchId,
+            $locationId,
+            $drawerId,
+            true
         );
 
-        $location = $context['inventory_location'] ?? null;
-        if (! $location || ! $location->is_sellable) {
+        $location = InventoryLocation::active()->find($locationId);
+        if (! $location || ! $location->is_sellable || (int) $location->branch_id !== (int) $branchId) {
             throw ValidationException::withMessages([
-                'inventory_location_id' => 'La ubicación operativa no está habilitada para ventas.',
+                'inventory_location_id' => 'La ubicación operativa no está habilitada para ventas o no pertenece a la sucursal.',
             ]);
         }
 
-        return $location;
+        return [
+            'mode' => 'branch_location',
+            'warehouse_id' => $request->input('warehouse_id') ? (int) $request->input('warehouse_id') : null,
+            'branch_id' => $branchId,
+            'inventory_location_id' => $locationId,
+            'cash_drawer_id' => $drawerId,
+            'inventory_location' => $location,
+        ];
+    }
+
+    public function resolveLocation(Request $request, User $user): InventoryLocation
+    {
+        return $this->resolveContext($request, $user)['inventory_location'];
+    }
+
+    public function resolvedOperationalIds(Request $request, User $user): array
+    {
+        $context = $this->resolveContext($request, $user);
+
+        return [
+            'branch_id' => (int) $context['branch_id'],
+            'inventory_location_id' => (int) $context['inventory_location_id'],
+            'cash_drawer_id' => (int) $context['cash_drawer_id'],
+        ];
     }
 
     public function assertCartSupported(Request $request): void
@@ -73,12 +119,24 @@ class PosLocationStockBridge
         $productIds = $details->pluck('product_id')->filter()->map(fn ($id) => (int) $id)->unique()->values();
         if ($productIds->isEmpty()) return;
 
+        $hasBatchColumn = Schema::hasColumn('products', 'is_batch_tracked');
+        $hasSerialColumn = Schema::hasColumn('products', 'is_imei');
+        if (! $hasBatchColumn && ! $hasSerialColumn) return;
+
         $unsupported = Product::whereIn('id', $productIds)
-            ->where(function ($query) {
-                $query->where('is_batch_tracked', true)
-                    ->orWhere('is_imei', true);
+            ->where(function ($query) use ($hasBatchColumn, $hasSerialColumn) {
+                if ($hasBatchColumn) $query->where('is_batch_tracked', true);
+                if ($hasSerialColumn) {
+                    $hasBatchColumn
+                        ? $query->orWhere('is_imei', true)
+                        : $query->where('is_imei', true);
+                }
             })
-            ->get(['id', 'name', 'is_batch_tracked', 'is_imei']);
+            ->get(array_values(array_filter([
+                'id', 'name',
+                $hasBatchColumn ? 'is_batch_tracked' : null,
+                $hasSerialColumn ? 'is_imei' : null,
+            ])));
 
         if ($unsupported->isNotEmpty()) {
             $names = $unsupported->pluck('name')->filter()->take(5)->implode(', ');
@@ -105,7 +163,8 @@ class PosLocationStockBridge
         }
 
         $this->assertCartSupported($request);
-        $location = $this->resolveLocation($request, $user);
+        $context = $this->resolveContext($request, $user);
+        $location = $context['inventory_location'];
         $quantity = round($legacyOriginal - $legacyTarget, 3);
         if ($quantity <= 0) return false;
 
@@ -120,8 +179,9 @@ class PosLocationStockBridge
                 'reference_id' => $request->input('sale_uuid') ?: null,
                 'notes' => 'Venta POS descontada desde la ubicación operativa durante la transición.',
                 'metadata' => [
-                    'branch_id' => (int) $request->input('branch_id'),
+                    'branch_id' => (int) $context['branch_id'],
                     'inventory_location_id' => (int) $location->id,
+                    'cash_drawer_id' => (int) $context['cash_drawer_id'],
                     'legacy_warehouse_id' => $request->input('warehouse_id') ? (int) $request->input('warehouse_id') : null,
                     'legacy_original_quantity' => round($legacyOriginal, 3),
                     'legacy_target_quantity' => round($legacyTarget, 3),
@@ -130,5 +190,14 @@ class PosLocationStockBridge
         );
 
         return true;
+    }
+
+    private function isCreatePosAction(Request $request): bool
+    {
+        $route = $request->route();
+        $action = $route ? (string) $route->getActionName() : '';
+
+        return str_contains($action, 'PosController@CreatePOS')
+            || str_contains($action, 'PosController::CreatePOS');
     }
 }
