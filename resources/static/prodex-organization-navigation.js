@@ -4,7 +4,7 @@
   if (window.__prodexOrganizationNavigationInstalled) return;
   window.__prodexOrganizationNavigationInstalled = true;
 
-  var permissions = { branches: false, employeeAccess: false, stockIntake: false };
+  var permissions = { branches: false, employeeAccess: false, roleTemplates: false, stockIntake: false };
 
   function apiGet(url) {
     if (!window.axios) return Promise.reject(new Error('Axios no disponible'));
@@ -18,6 +18,7 @@
     return Promise.all([
       apiGet('/api/organization/branches').then(function () { permissions.branches = true; }).catch(function () {}),
       apiGet('/api/organization/employee-access').then(function () { permissions.employeeAccess = true; }).catch(function () {}),
+      apiGet('/api/organization/role-permission-templates').then(function () { permissions.roleTemplates = true; }).catch(function () {}),
       apiGet('/api/transfer-logistics/incoming').then(function () { permissions.stockIntake = true; }).catch(function () {})
     ]);
   }
@@ -28,6 +29,7 @@
 
   function iconSvg(kind) {
     if (kind === 'users') return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+    if (kind === 'shield') return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>';
     if (kind === 'stock') return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21 8-9-5-9 5 9 5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/></svg>';
     return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M8 9h.01"/><path d="M12 9h.01"/><path d="M16 9h.01"/></svg>';
   }
@@ -82,6 +84,11 @@
       allowed: permissions.employeeAccess,
       id: 'prodex-organization-access-nav', label: 'Acceso de empleados', href: '/app/organization/employee-access', icon: 'users',
       section: 'admin', order: 8001.7, module: 'employee_access'
+    });
+    ensureOne({
+      allowed: permissions.roleTemplates,
+      id: 'prodex-role-templates-nav', label: 'Plantillas de roles', href: '/app/organization/role-templates', icon: 'shield',
+      section: 'admin', order: 8001.8, module: 'role_templates'
     });
   }
 
