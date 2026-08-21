@@ -18,6 +18,25 @@ use App\Models\Unit;
  */
 class SafeTransferLogisticsService extends TransferLogisticsService
 {
+    /**
+     * Used when an already-accounted missing/defective quantity is later physically
+     * recovered and reclassified as good stock. The caller first reclassifies the
+     * receipt-item counters, then this method performs the same stock/batch credit as
+     * an ordinary receipt without creating a second receipt total.
+     */
+    public function creditIssueResolution(
+        Transfer $transfer,
+        TransferDetail $detail,
+        float $quantity,
+        TransferReceiptItem $receiptItem
+    ): void {
+        if ($quantity <= 0) {
+            return;
+        }
+
+        $this->creditGoodStock($transfer, $detail, $quantity, $receiptItem);
+    }
+
     protected function creditGoodStock(Transfer $transfer, TransferDetail $detail, float $quantity, TransferReceiptItem $receiptItem): void
     {
         $unit = $detail->purchase_unit_id ? Unit::find($detail->purchase_unit_id) : null;
