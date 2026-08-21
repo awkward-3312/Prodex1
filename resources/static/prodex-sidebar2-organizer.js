@@ -156,7 +156,7 @@
     }
 
     if (sales && visible(sales)) {
-      ['Compras', 'Purchases', 'Promociones', 'Promotions', 'Devolución de ventas', 'Sales Return', 'Cotizaciones', 'Quotations', 'Devolución de compras', 'Purchase Return'].forEach(function (name) {
+      ['Compras', 'Purchases', 'Promociones', 'Promotions', 'Devolución de ventas', 'Sales Return', 'Cotizaciones', 'Quotations', 'Citas', 'Devolución de compras', 'Purchase Return'].forEach(function (name) {
         var li = findTopByLabels(navList, [name]);
         if (li && li !== sales) li.classList.add('prodex-sidebar2-hidden');
       });
