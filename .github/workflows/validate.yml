@@ -30,8 +30,8 @@ jobs:
         run: vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php tests/Unit/TransferLogisticsBatchUnitsTest.php tests/Unit/TransferDispatchPreflightTest.php
       - name: Run organization scope tests
         run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php
-      - name: Run inventory location foundation tests
-        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php
+      - name: Run inventory architecture tests
+        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php
       - name: PHP syntax check for SAR files
         run: |
           php -l app/Services/SarFiscalNumberService.php
@@ -95,15 +95,20 @@ jobs:
           php -l database/seeders/Central/ProdexManualsSeeder.php
           php -l database/migrations/tenant/2026_08_21_090000_add_organization_structure_foundation.php
           php -l tests/Unit/WarehouseScopeServiceTest.php
-      - name: PHP syntax check for inventory location foundation
+      - name: PHP syntax check for inventory architecture
         run: |
           php -l app/Models/InventoryLocation.php
+          php -l app/Models/InventoryLocationStock.php
+          php -l app/Models/InventoryLocationMovement.php
           php -l app/Models/Branch.php
           php -l app/Models/Warehouse.php
           php -l app/Services/InventoryLocationService.php
+          php -l app/Services/InventoryService.php
           php -l app/Services/TenantSchemaHealthService.php
           php -l database/migrations/tenant/2026_08_21_150000_create_inventory_locations_foundation.php
+          php -l database/migrations/tenant/2026_08_21_160000_create_inventory_location_stock_engine.php
           php -l tests/Unit/InventoryLocationServiceTest.php
+          php -l tests/Unit/InventoryServiceTest.php
 
   frontend-build:
     runs-on: ubuntu-latest
