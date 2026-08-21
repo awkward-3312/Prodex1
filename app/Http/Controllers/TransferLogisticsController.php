@@ -186,7 +186,7 @@ class TransferLogisticsController extends Controller
 
         abort_unless(in_array($transfer->logistics_status, ['in_transit', 'partially_received', 'received', 'received_with_issues'], true), 422, 'La transferencia aún no ha sido despachada.');
 
-        $details = TransferDetail::with(['product:id,name,code'])
+        $details = TransferDetail::with(['product:id,name,code,unit_purchase_id'])
             ->where('transfer_id', $transfer->id)
             ->orderBy('id')
             ->get();
@@ -208,7 +208,8 @@ class TransferLogisticsController extends Controller
             $missing = (float) ($prior->missing ?? 0);
             $counted = $good + $defective + $missing;
             $variant = $detail->product_variant_id ? ProductVariant::find($detail->product_variant_id) : null;
-            $unit = $detail->purchase_unit_id ? Unit::find($detail->purchase_unit_id) : null;
+            $unitId = $detail->purchase_unit_id ?: optional($detail->product)->unit_purchase_id;
+            $unit = $unitId ? Unit::find($unitId) : null;
 
             return [
                 'transfer_detail_id' => (int) $detail->id,
