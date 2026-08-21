@@ -6,7 +6,6 @@ use App\Models\InventoryLocation;
 use App\Models\InventoryLocationStock;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\Sale;
 use App\Models\Setting;
 use App\Models\Transfer;
 use App\Models\Unit;
@@ -24,13 +23,32 @@ class TransferLocationController extends BaseController
         $this->authorizeForUser($user, 'create', Transfer::class);
 
         $sourceIds = app(InventoryLocationScopeService::class)->allowedLocationIds($user);
-        $sources = InventoryLocation::active()->whereIn('id', $sourceIds)->get();
-        $destinations = InventoryLocation::active()->get();
+        $sources = InventoryLocation::with(['branch', 'warehouse'])->active()->whereIn('id', $sourceIds)->get();
+        $destinations = InventoryLocation::with(['branch', 'warehouse'])->active()->get();
         $fallbackWarehouseId = $this->fallbackWarehouseId();
 
         return response()->json([
             'sources' => $sources->map(fn ($location) => $this->optionRow($location, $fallbackWarehouseId))->values(),
             'destinations' => $destinations->map(fn ($location) => $this->optionRow($location, $fallbackWarehouseId))->values(),
+        ]);
+    }
+
+    public function context(Request $request, int $transferId)
+    {
+        $user = $request->user('api');
+        $this->authorizeForUser($user, 'view', Transfer::class);
+        $transfer = Transfer::with(['fromInventoryLocation.branch', 'fromInventoryLocation.warehouse', 'toInventoryLocation.branch', 'toInventoryLocation.warehouse'])
+            ->whereNull('deleted_at')->findOrFail($transferId);
+
+        if (! $transfer->from_inventory_location_id || ! $transfer->to_inventory_location_id) {
+            return response()->json(['location_aware' => false]);
+        }
+
+        $fallbackWarehouseId = $this->fallbackWarehouseId();
+        return response()->json([
+            'location_aware' => true,
+            'from' => $this->optionRow($transfer->fromInventoryLocation, $fallbackWarehouseId),
+            'to' => $this->optionRow($transfer->toInventoryLocation, $fallbackWarehouseId),
         ]);
     }
 
@@ -41,13 +59,11 @@ class TransferLocationController extends BaseController
         $location = $this->accessibleSource($user, $locationId);
 
         $stocks = InventoryLocationStock::where('inventory_location_id', $location->id)
-            ->where('quantity', '>', 0)
-            ->get();
+            ->where('quantity', '>', 0)->get();
         if ($stocks->isEmpty()) return response()->json([]);
 
         $products = Product::with(['unitPurchase', 'variants'])
-            ->whereNull('deleted_at')
-            ->whereIn('id', $stocks->pluck('product_id')->unique())
+            ->whereNull('deleted_at')->whereIn('id', $stocks->pluck('product_id')->unique())
             ->get()->keyBy('id');
         $variants = ProductVariant::whereIn('id', $stocks->pluck('product_variant_id')->filter()->unique())
             ->get()->keyBy('id');
@@ -61,10 +77,8 @@ class TransferLocationController extends BaseController
             if ($available <= 0) continue;
 
             $unit = $product->unitPurchase;
-            $purchaseQty = $this->fromBaseQuantity($available, $unit);
             $code = $variant?->code ?: $product->code;
             $name = $variant ? '['.$variant->name.']'.$product->name : $product->name;
-
             $rows[] = [
                 'id' => (int) $product->id,
                 'product_id' => (int) $product->id,
@@ -73,7 +87,7 @@ class TransferLocationController extends BaseController
                 'barcode' => (string) $code,
                 'name' => (string) $name,
                 'qte' => round($available, 3),
-                'qte_purchase' => round($purchaseQty, 3),
+                'qte_purchase' => round($this->fromBaseQuantity($available, $unit), 3),
                 'inventory_location_id' => (int) $location->id,
             ];
         }
@@ -92,9 +106,7 @@ class TransferLocationController extends BaseController
         $product = Product::with('unitPurchase')->whereNull('deleted_at')->findOrFail($productId);
         $variant = $variantId ? ProductVariant::where('product_id', $productId)->findOrFail($variantId) : null;
         $stock = InventoryLocationStock::where('inventory_location_id', $location->id)
-            ->where('product_id', $productId)
-            ->where('variant_key', $variantId ?: 0)
-            ->first();
+            ->where('product_id', $productId)->where('variant_key', $variantId ?: 0)->first();
 
         $available = $stock ? max(0, (float) $stock->quantity - (float) $stock->reserved_quantity) : 0.0;
         $unit = $product->unitPurchase;
@@ -122,10 +134,7 @@ class TransferLocationController extends BaseController
             'fix_cost' => $cost,
             'purchase_unit_id' => $unit?->id,
             'is_batch_tracked' => (bool) ($product->is_batch_tracked ?? false),
-            'warehouse_location' => [
-                'code' => $location->code,
-                'name' => $location->name,
-            ],
+            'warehouse_location' => ['code' => $location->code, 'name' => $location->name],
             'qte' => round($available, 3),
             'qte_purchase' => round($this->fromBaseQuantity($available, $unit), 3),
         ]);
@@ -140,14 +149,10 @@ class TransferLocationController extends BaseController
         return response()->json([
             'supported' => true,
             'batches' => collect(app(BatchLocationService::class)->availableBatches(
-                $locationId,
-                $productId,
-                $variantId > 0 ? $variantId : null
+                $locationId, $productId, $variantId > 0 ? $variantId : null
             ))->map(fn ($batch) => [
-                'id' => $batch['id'],
-                'batch_no' => $batch['batch_no'],
-                'expiry_date' => $batch['expiry_date'],
-                'qty_available' => $batch['available_quantity'],
+                'id' => $batch['id'], 'batch_no' => $batch['batch_no'],
+                'expiry_date' => $batch['expiry_date'], 'qty_available' => $batch['available_quantity'],
                 'unit_cost' => $batch['unit_cost'],
             ])->values(),
         ]);
@@ -163,10 +168,7 @@ class TransferLocationController extends BaseController
 
     private function optionRow(InventoryLocation $location, int $fallbackWarehouseId): array
     {
-        $owner = $location->branch_id
-            ? optional($location->branch)->name
-            : optional($location->warehouse)->name;
-
+        $owner = $location->branch_id ? optional($location->branch)->name : optional($location->warehouse)->name;
         return [
             'id' => (int) $location->id,
             'name' => trim(($owner ? $owner.' · ' : '').$location->name),
@@ -185,21 +187,14 @@ class TransferLocationController extends BaseController
         if ($setting?->warehouse_id && Warehouse::whereNull('deleted_at')->whereKey($setting->warehouse_id)->exists()) {
             return (int) $setting->warehouse_id;
         }
-
         $id = Warehouse::whereNull('deleted_at')->orderBy('id')->value('id');
-        if (! $id) {
-            throw ValidationException::withMessages([
-                'warehouse' => 'La empresa debe tener al menos un Centro de Distribución/Almacén activo.',
-            ]);
-        }
+        if (! $id) throw ValidationException::withMessages(['warehouse' => 'La empresa debe tener al menos un Centro de Distribución/Almacén activo.']);
         return (int) $id;
     }
 
     private function fromBaseQuantity(float $base, ?Unit $unit): float
     {
         if (! $unit || ! $unit->operator_value) return $base;
-        return $unit->operator === '/'
-            ? $base * (float) $unit->operator_value
-            : $base / (float) $unit->operator_value;
+        return $unit->operator === '/' ? $base * (float) $unit->operator_value : $base / (float) $unit->operator_value;
     }
 }
