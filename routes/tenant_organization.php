@@ -9,6 +9,7 @@ Route::middleware('auth:api')->prefix('organization')->group(function () {
     Route::put('branches/{id}', 'Organization\\BranchController@update');
     Route::delete('branches/{id}', 'Organization\\BranchController@destroy');
     Route::put('branches/{branchId}/employees/{employeeId}', 'Organization\\BranchController@assignEmployee');
+    Route::post('branches/{branchId}/inventory-locations', 'Organization\\BranchController@storeInventoryLocation');
 
     Route::get('employee-access', 'Organization\\EmployeeAccessController@index');
     Route::post('employee-access/{employeeId}/create', 'Organization\\EmployeeAccessController@create');
