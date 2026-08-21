@@ -138,23 +138,7 @@ class TransferDiscrepancyController extends Controller
             }
 
             if ($issue->type === 'defective') {
-                $quarantineStatus = match ($validated['resolution_code']) {
-                    'written_off' => 'written_off',
-                    'returned_to_origin' => 'returned_to_origin',
-                    'reconciled_by_adjustment' => 'reconciled',
-                    default => 'quarantined',
-                };
-
-                DB::table('transfer_quarantine_stock')
-                    ->where('transfer_id', $issue->transfer_id)
-                    ->where('transfer_detail_id', $issue->transfer_detail_id)
-                    ->where('warehouse_id', $issue->warehouse_id)
-                    ->where('status', 'quarantined')
-                    ->update([
-                        'status' => $quarantineStatus,
-                        'notes' => $validated['resolution_notes'],
-                        'updated_at' => now(),
-                    ]);
+                $this->resolveQuarantineQuantity($issue, $transfer, $validated);
             }
 
             DB::table('transfer_discrepancies')->where('id', $id)->update([
@@ -183,5 +167,85 @@ class TransferDiscrepancyController extends Controller
 
             return response()->json(['success' => true]);
         }, 5);
+    }
+
+    /**
+     * Resolve exactly the defective quantity represented by one discrepancy.
+     * A transfer can have multiple partial receipts for the same product, so a
+     * blanket UPDATE by transfer/detail would accidentally close unrelated
+     * quarantine stock. Rows are consumed FIFO and split when necessary.
+     */
+    private function resolveQuarantineQuantity(object $issue, Transfer $transfer, array $validated): void
+    {
+        $remaining = (float) $issue->quantity;
+        $epsilon = 0.000001;
+        $targetStatus = match ($validated['resolution_code']) {
+            'written_off' => 'written_off',
+            'returned_to_origin' => 'returned_to_origin',
+            'reconciled_by_adjustment' => 'reconciled',
+            default => 'quarantined',
+        };
+        $targetWarehouseId = $validated['resolution_code'] === 'returned_to_origin'
+            ? (int) $transfer->from_warehouse_id
+            : (int) $issue->warehouse_id;
+
+        $rows = DB::table('transfer_quarantine_stock')
+            ->where('transfer_id', $issue->transfer_id)
+            ->where('transfer_detail_id', $issue->transfer_detail_id)
+            ->where('warehouse_id', $issue->warehouse_id)
+            ->where('status', 'quarantined')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($rows as $row) {
+            if ($remaining <= $epsilon) {
+                break;
+            }
+
+            $rowQty = (float) $row->quantity;
+            if ($rowQty <= 0) {
+                continue;
+            }
+
+            if ($rowQty <= $remaining + $epsilon) {
+                DB::table('transfer_quarantine_stock')->where('id', $row->id)->update([
+                    'warehouse_id' => $targetWarehouseId,
+                    'status' => $targetStatus,
+                    'notes' => $validated['resolution_notes'],
+                    'updated_at' => now(),
+                ]);
+                $remaining -= $rowQty;
+                continue;
+            }
+
+            // Only part of this quarantine row belongs to the discrepancy. Keep the
+            // unresolved balance quarantined and split the resolved quantity out.
+            DB::table('transfer_quarantine_stock')->where('id', $row->id)->update([
+                'quantity' => $rowQty - $remaining,
+                'updated_at' => now(),
+            ]);
+
+            DB::table('transfer_quarantine_stock')->insert([
+                'transfer_id' => $row->transfer_id,
+                'transfer_detail_id' => $row->transfer_detail_id,
+                'warehouse_id' => $targetWarehouseId,
+                'product_id' => $row->product_id,
+                'product_variant_id' => $row->product_variant_id,
+                'quantity' => $remaining,
+                'status' => $targetStatus,
+                'notes' => $validated['resolution_notes'],
+                'created_by_user_id' => $row->created_by_user_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $remaining = 0;
+        }
+
+        if ($remaining > $epsilon) {
+            throw ValidationException::withMessages([
+                'issue' => 'La cantidad defectuosa en cuarentena no coincide con la incidencia. No se realizó ningún cambio.',
+            ]);
+        }
     }
 }
