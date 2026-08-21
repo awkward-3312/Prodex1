@@ -30,15 +30,17 @@ return new class extends Migration
             });
         }
 
+        // Do not use ->after(...): controlled upgrades must remain safe even on
+        // older tenant schemas whose column order differs from fresh installs.
         if (Schema::hasTable('branches') && ! Schema::hasColumn('branches', 'default_inventory_location_id')) {
             Schema::table('branches', function (Blueprint $table) {
-                $table->integer('default_inventory_location_id')->nullable()->after('default_warehouse_id')->index();
+                $table->integer('default_inventory_location_id')->nullable()->index();
             });
         }
 
         if (Schema::hasTable('warehouses') && ! Schema::hasColumn('warehouses', 'default_inventory_location_id')) {
             Schema::table('warehouses', function (Blueprint $table) {
-                $table->integer('default_inventory_location_id')->nullable()->after('branch_id')->index();
+                $table->integer('default_inventory_location_id')->nullable()->index();
             });
         }
     }
