@@ -42,6 +42,7 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_21_160000_create_inventory_location_stock_engine.php',
         'database/migrations/tenant/2026_08_21_170000_create_inventory_transition_states.php',
         'database/migrations/tenant/2026_08_21_180000_add_branch_inventory_scope_to_users.php',
+        'database/migrations/tenant/2026_08_21_181000_backfill_cash_drawer_operational_context.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
