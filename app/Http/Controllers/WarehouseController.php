@@ -8,26 +8,22 @@ use App\Models\ProductVariant;
 use App\Models\Warehouse;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class WarehouseController extends Controller
 {
-    // ----------- GET ALL  Warehouse --------------\\
-
     public function index(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Warehouse::class);
 
-        // How many items do you want to display.
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
-        // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = strtolower((string) $request->input('SortType')) === 'asc' ? 'asc' : 'desc';
 
-        $warehouses = Warehouse::where('deleted_at', '=', null)
-
-        // Search With Multiple Param
+        $warehouses = Warehouse::with('branch:id,name,code')
+            ->where('deleted_at', '=', null)
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('name', 'LIKE', "%{$request->search}%")
@@ -38,10 +34,16 @@ class WarehouseController extends Controller
                         ->orWhere('email', 'LIKE', "%{$request->search}%");
                 });
             });
+
+        if ($request->filled('branch_id')) {
+            $warehouses->where('branch_id', (int) $request->branch_id);
+        }
+
         $totalRows = $warehouses->count();
         if ($perPage == '-1') {
             $perPage = $totalRows;
         }
+
         $warehouses = $warehouses->offset($offSet)
             ->limit($perPage)
             ->orderBy($order, $dir)
@@ -53,19 +55,21 @@ class WarehouseController extends Controller
         ]);
     }
 
-    // ----------- Store new Warehouse --------------\\
-
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', Warehouse::class);
 
         request()->validate([
             'name' => 'required',
+            'branch_id' => [
+                'nullable', 'integer',
+                Rule::exists('branches', 'id')->where(fn ($q) => $q->whereNull('deleted_at')->where('is_active', true)),
+            ],
         ]);
 
         \DB::transaction(function () use ($request) {
-
             $Warehouse = new Warehouse;
+            $Warehouse->branch_id = $request->filled('branch_id') ? (int) $request['branch_id'] : null;
             $Warehouse->name = $request['name'];
             $Warehouse->mobile = $request['mobile'];
             $Warehouse->country = $request['country'];
@@ -85,7 +89,6 @@ class WarehouseController extends Controller
 
                     if ($Product_Variants->isNotEmpty()) {
                         foreach ($Product_Variants as $product_variant) {
-
                             $product_warehouse[] = [
                                 'product_id' => $product->id,
                                 'warehouse_id' => $Warehouse->id,
@@ -105,21 +108,14 @@ class WarehouseController extends Controller
                     product_warehouse::insert($product_warehouse);
                 }
             }
-
         }, 10);
 
         return response()->json(['success' => true]);
     }
 
-    // ------------ function show -----------\\
-
     public function show($id)
     {
-        //
-
     }
-
-    // -----------Update Warehouse --------------\\
 
     public function update(Request $request, $id)
     {
@@ -127,9 +123,14 @@ class WarehouseController extends Controller
 
         request()->validate([
             'name' => 'required',
+            'branch_id' => [
+                'nullable', 'integer',
+                Rule::exists('branches', 'id')->where(fn ($q) => $q->whereNull('deleted_at')->where('is_active', true)),
+            ],
         ]);
 
         Warehouse::whereId($id)->update([
+            'branch_id' => $request->filled('branch_id') ? (int) $request['branch_id'] : null,
             'name' => $request['name'],
             'mobile' => $request['mobile'],
             'country' => $request['country'],
@@ -141,14 +142,11 @@ class WarehouseController extends Controller
         return response()->json(['success' => true]);
     }
 
-    // ----------- Delete  Warehouse --------------\\
-
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Warehouse::class);
 
         \DB::transaction(function () use ($id) {
-
             Warehouse::whereId($id)->update([
                 'deleted_at' => Carbon::now(),
             ]);
@@ -156,17 +154,13 @@ class WarehouseController extends Controller
             product_warehouse::where('warehouse_id', $id)->update([
                 'deleted_at' => Carbon::now(),
             ]);
-
         }, 10);
 
         return response()->json(['success' => true]);
     }
 
-    // -------------- Delete by selection  ---------------\\
-
     public function delete_by_selection(Request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'delete', Warehouse::class);
 
         \DB::transaction(function () use ($request) {
@@ -180,18 +174,14 @@ class WarehouseController extends Controller
                     'deleted_at' => Carbon::now(),
                 ]);
             }
-
         }, 10);
 
         return response()->json(['success' => true]);
     }
 
-    // ----------- GET ALL  Warehouse --------------\\
-
     public function Get_Warehouses()
     {
-        $Warehouses = Warehouse::where('deleted_at', '=', null)->get();
-
+        $Warehouses = Warehouse::with('branch:id,name,code')->where('deleted_at', '=', null)->get();
         return response()->json($Warehouses);
     }
 }
