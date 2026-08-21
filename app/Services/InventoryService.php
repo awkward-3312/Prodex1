@@ -44,6 +44,13 @@ class InventoryService
         array $context = []
     ): InventoryLocationMovement {
         $quantity = $this->positiveQuantity($quantity);
+        $context = $this->fingerprinted($context, [
+            'operation' => self::MOVEMENT_INCREASE,
+            'location_id' => $locationId,
+            'product_id' => $productId,
+            'variant_id' => $variantId,
+            'quantity' => $quantity,
+        ]);
 
         return $this->transactional($context, function () use ($locationId, $productId, $variantId, $quantity, $context) {
             $this->activeLocation($locationId);
@@ -63,6 +70,13 @@ class InventoryService
         array $context = []
     ): InventoryLocationMovement {
         $quantity = $this->positiveQuantity($quantity);
+        $context = $this->fingerprinted($context, [
+            'operation' => self::MOVEMENT_DECREASE,
+            'location_id' => $locationId,
+            'product_id' => $productId,
+            'variant_id' => $variantId,
+            'quantity' => $quantity,
+        ]);
 
         return $this->transactional($context, function () use ($locationId, $productId, $variantId, $quantity, $context) {
             $this->activeLocation($locationId);
@@ -89,6 +103,15 @@ class InventoryService
         if ($fromLocationId === $toLocationId) {
             throw ValidationException::withMessages(['to_inventory_location_id' => 'El origen y el destino deben ser ubicaciones diferentes.']);
         }
+
+        $context = $this->fingerprinted($context, [
+            'operation' => self::MOVEMENT_TRANSFER,
+            'from_location_id' => $fromLocationId,
+            'to_location_id' => $toLocationId,
+            'product_id' => $productId,
+            'variant_id' => $variantId,
+            'quantity' => $quantity,
+        ]);
 
         return $this->transactional($context, function () use ($fromLocationId, $toLocationId, $productId, $variantId, $quantity, $context) {
             $this->activeLocation($fromLocationId);
@@ -125,6 +148,13 @@ class InventoryService
         array $context = []
     ): InventoryLocationMovement {
         $quantity = $this->positiveQuantity($quantity);
+        $context = $this->fingerprinted($context, [
+            'operation' => self::MOVEMENT_RESERVE,
+            'location_id' => $locationId,
+            'product_id' => $productId,
+            'variant_id' => $variantId,
+            'quantity' => $quantity,
+        ]);
 
         return $this->transactional($context, function () use ($locationId, $productId, $variantId, $quantity, $context) {
             $this->activeLocation($locationId);
@@ -147,6 +177,13 @@ class InventoryService
         array $context = []
     ): InventoryLocationMovement {
         $quantity = $this->positiveQuantity($quantity);
+        $context = $this->fingerprinted($context, [
+            'operation' => self::MOVEMENT_RELEASE,
+            'location_id' => $locationId,
+            'product_id' => $productId,
+            'variant_id' => $variantId,
+            'quantity' => $quantity,
+        ]);
 
         return $this->transactional($context, function () use ($locationId, $productId, $variantId, $quantity, $context) {
             $this->activeLocation($locationId);
@@ -168,6 +205,13 @@ class InventoryService
         array $context = []
     ): InventoryLocationMovement {
         $quantity = $this->positiveQuantity($quantity);
+        $context = $this->fingerprinted($context, [
+            'operation' => self::MOVEMENT_CONSUME_RESERVED,
+            'location_id' => $locationId,
+            'product_id' => $productId,
+            'variant_id' => $variantId,
+            'quantity' => $quantity,
+        ]);
 
         return $this->transactional($context, function () use ($locationId, $productId, $variantId, $quantity, $context) {
             $this->activeLocation($locationId);
@@ -191,6 +235,13 @@ class InventoryService
         array $context = []
     ): InventoryLocationMovement {
         $newQuantity = $this->nonNegativeQuantity($newQuantity);
+        $context = $this->fingerprinted($context, [
+            'operation' => self::MOVEMENT_ADJUSTMENT,
+            'location_id' => $locationId,
+            'product_id' => $productId,
+            'variant_id' => $variantId,
+            'target_quantity' => $newQuantity,
+        ]);
 
         return $this->transactional($context, function () use ($locationId, $productId, $variantId, $newQuantity, $context) {
             $this->activeLocation($locationId);
@@ -211,7 +262,8 @@ class InventoryService
             $stock->quantity = $newQuantity;
             $stock->save();
 
-            $context['metadata'] = array_merge($context['metadata'] ?? [], [
+            $movementContext = $context;
+            $movementContext['metadata'] = array_merge($context['metadata'] ?? [], [
                 'old_quantity' => $oldQuantity,
                 'new_quantity' => $newQuantity,
                 'direction' => $newQuantity > $oldQuantity ? 'increase' : 'decrease',
@@ -224,7 +276,7 @@ class InventoryService
                 $newQuantity < $oldQuantity ? $locationId : null,
                 $newQuantity > $oldQuantity ? $locationId : null,
                 $delta,
-                $context
+                $movementContext
             );
         });
     }
@@ -235,7 +287,16 @@ class InventoryService
             $key = isset($context['idempotency_key']) ? trim((string) $context['idempotency_key']) : '';
             if ($key !== '') {
                 $existing = InventoryLocationMovement::where('idempotency_key', $key)->lockForUpdate()->first();
-                if ($existing) return $existing;
+                if ($existing) {
+                    $expected = (string) ($context['_idempotency_fingerprint'] ?? '');
+                    $actual = (string) ($existing->idempotency_fingerprint ?? '');
+                    if ($expected === '' || $actual === '' || ! hash_equals($actual, $expected)) {
+                        throw ValidationException::withMessages([
+                            'idempotency_key' => 'La clave de idempotencia ya fue utilizada para una operación de inventario diferente.',
+                        ]);
+                    }
+                    return $existing;
+                }
             }
 
             return $callback();
@@ -302,9 +363,22 @@ class InventoryService
             'idempotency_key' => isset($context['idempotency_key']) && trim((string) $context['idempotency_key']) !== ''
                 ? trim((string) $context['idempotency_key'])
                 : null,
+            'idempotency_fingerprint' => $context['_idempotency_fingerprint'] ?? null,
             'notes' => $context['notes'] ?? null,
             'metadata' => $context['metadata'] ?? null,
         ]);
+    }
+
+    private function fingerprinted(array $context, array $operation): array
+    {
+        $key = isset($context['idempotency_key']) ? trim((string) $context['idempotency_key']) : '';
+        if ($key !== '') {
+            $context['_idempotency_fingerprint'] = hash(
+                'sha256',
+                json_encode($operation, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            );
+        }
+        return $context;
     }
 
     private function assertEnough(float $available, float $requested, string $message): void
