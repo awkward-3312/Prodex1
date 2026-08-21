@@ -1,0 +1,40 @@
+// Targeted modal fixes that must live outside component-scoped styles because
+// BootstrapVue teleports modal markup to the document body.
+
+// Manual attendance uses vuejs-datepicker. The shared compact modal primitive
+// clips modal contents to preserve rounded corners, which also clips the date
+// calendar when it extends below the form. Let only this modal paint outside
+// its content box and keep the calendar above the footer and adjacent fields.
+#Modal_attendance___BV_modal_content_,
+#Modal_attendance___BV_modal_body_ {
+  overflow: visible !important;
+}
+
+#Modal_attendance___BV_modal_header_ {
+  border-radius: 14px 14px 0 0;
+}
+
+#Modal_attendance___BV_modal_body_ .prodex-form-shell {
+  border-radius: 0 0 14px 14px;
+  background: #fff;
+}
+
+#Modal_attendance___BV_modal_body_ .vdp-datepicker {
+  position: relative;
+  z-index: 20;
+}
+
+#Modal_attendance___BV_modal_body_ .vdp-datepicker__calendar {
+  z-index: 1080 !important;
+  width: min(320px, 100%);
+  border: 1px solid #dce3eb;
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, .16);
+}
+
+@media (max-width: 767.98px) {
+  #Modal_attendance___BV_modal_body_ .vdp-datepicker__calendar {
+    width: 100%;
+    max-width: 100%;
+  }
+}
