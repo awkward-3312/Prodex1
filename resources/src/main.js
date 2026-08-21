@@ -3,6 +3,22 @@ import store from "./store";
 import Vue from "vue";
 import router, { setupRouterGuards } from "./router";
 
+// Organization routes are registered here to keep the very large legacy router
+// stable while the new organization module is introduced incrementally.
+router.addRoutes([
+  {
+    path: "/app/organization/branches",
+    component: () => import("./views/app"),
+    children: [
+      {
+        path: "",
+        name: "organization_branches",
+        component: () => import("./views/app/pages/organization/branches"),
+      },
+    ],
+  },
+]);
+
 import App from "./App.vue";
 import Auth from './auth/index.js';
 import { installSarInvoiceBridge } from './utils/sarInvoiceBridge';
@@ -266,12 +282,9 @@ axios.interceptors.response.use(
     const skipErrorRedirect = error.config && error.config.meta && error.config.meta.skipErrorRedirect;
     const method = ((error.config && error.config.method) || 'get').toString().toLowerCase();
     const requestUrl = ((error.config && error.config.url) || '').toString();
-    // Transfer logistics widgets are loaded globally because they decide at runtime
-    // whether the signed-in user is a receiver/issue manager. A 403 from those GETs
-    // is a capability result, not a failed page navigation, so it must never replace
-    // Dashboard (or any other current screen) with the global unauthorized page.
     const isTransferLogisticsCapabilityRequest = /(^|\/)transfer-logistics(\/|$)/i.test(requestUrl);
-    const isNavigationalLoad = method === 'get' && !skipErrorRedirect && !isTransferLogisticsCapabilityRequest;
+    const isOrganizationCapabilityRequest = /(^|\/)organization(\/|$)/i.test(requestUrl);
+    const isNavigationalLoad = method === 'get' && !skipErrorRedirect && !isTransferLogisticsCapabilityRequest && !isOrganizationCapabilityRequest;
 
     if (status === 404 && isNavigationalLoad) {
       router.push({ name: 'NotFound' });
@@ -290,8 +303,6 @@ axios.interceptors.response.use(
   }
 );
 
-// Every sales receipt/reprint receives the same SAR snapshot block, independent
-// of which Vue page opened #invoice-POS.
 installSarInvoiceBridge(window.axios);
 
 import vSelect from 'vue-select'
