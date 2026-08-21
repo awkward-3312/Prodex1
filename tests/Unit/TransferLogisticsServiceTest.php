@@ -89,6 +89,28 @@ class TransferLogisticsServiceTest extends TestCase
         $this->assertDatabaseCount('transfer_receipts', 2);
     }
 
+    public function test_same_partial_receipt_request_token_is_safe_to_retry(): void
+    {
+        [$origin, $destination] = $this->warehouses();
+        $receiver = $this->userWithPermission($destination, TransferLogisticsService::RECEIVE_PERMISSION);
+        $transfer = $this->transfer($origin, $destination, 10);
+        $detailId = $this->detail($transfer->id, 10);
+        $service = app(TransferLogisticsService::class);
+        $token = 'RCV-test-idempotency-001';
+        $items = [[
+            'transfer_detail_id' => $detailId,
+            'quantity_good' => 4,
+        ]];
+
+        $first = $service->receive($transfer, $receiver, $items, null, $token);
+        $retry = $service->receive($first->fresh(), $receiver, $items, null, $token);
+
+        $this->assertSame('partially_received', $retry->logistics_status);
+        $this->assertEquals(4.0, (float) DB::table('product_warehouse')->where('warehouse_id', $destination)->value('qte'));
+        $this->assertEquals(1, DB::table('transfer_receipts')->where('transfer_id', $transfer->id)->count());
+        $this->assertEquals($token, DB::table('transfer_receipts')->where('transfer_id', $transfer->id)->value('request_token'));
+    }
+
     public function test_defective_and_missing_quantities_never_enter_sellable_stock(): void
     {
         [$origin, $destination] = $this->warehouses();
@@ -255,7 +277,7 @@ class TransferLogisticsServiceTest extends TestCase
             $t->increments('id'); $t->integer('transfer_id'); $t->decimal('quantity', 20, 6); $t->integer('purchase_unit_id')->nullable(); $t->integer('product_id'); $t->integer('product_variant_id')->nullable();
             $t->decimal('cost', 20, 6)->default(0); $t->decimal('TaxNet', 20, 6)->default(0); $t->decimal('discount', 20, 6)->default(0); $t->string('discount_method')->nullable(); $t->string('tax_method')->nullable(); $t->decimal('total', 20, 6)->default(0); $t->timestamps();
         });
-        Schema::create('transfer_receipts', function ($t) { $t->id(); $t->integer('transfer_id'); $t->integer('warehouse_id'); $t->integer('received_by_user_id'); $t->string('status'); $t->text('notes')->nullable(); $t->timestamp('received_at'); $t->timestamps(); });
+        Schema::create('transfer_receipts', function ($t) { $t->id(); $t->integer('transfer_id'); $t->integer('warehouse_id'); $t->integer('received_by_user_id'); $t->string('request_token')->nullable()->unique(); $t->string('status'); $t->text('notes')->nullable(); $t->timestamp('received_at'); $t->timestamps(); });
         Schema::create('transfer_receipt_items', function ($t) { $t->id(); $t->unsignedBigInteger('transfer_receipt_id'); $t->integer('transfer_detail_id'); $t->decimal('quantity_good', 20, 6)->default(0); $t->decimal('quantity_defective', 20, 6)->default(0); $t->decimal('quantity_missing', 20, 6)->default(0); $t->text('notes')->nullable(); $t->timestamps(); });
         Schema::create('transfer_discrepancies', function ($t) { $t->id(); $t->integer('transfer_id'); $t->integer('transfer_detail_id'); $t->integer('warehouse_id'); $t->integer('reported_by_user_id'); $t->string('type'); $t->decimal('quantity', 20, 6); $t->string('resolution_status')->default('open'); $t->text('notes')->nullable(); $t->timestamp('reported_at'); $t->timestamp('resolved_at')->nullable(); $t->integer('resolved_by_user_id')->nullable(); $t->timestamps(); });
         Schema::create('transfer_quarantine_stock', function ($t) { $t->id(); $t->integer('transfer_id'); $t->integer('transfer_detail_id'); $t->integer('warehouse_id'); $t->integer('product_id'); $t->integer('product_variant_id')->nullable(); $t->decimal('quantity', 20, 6); $t->string('status')->default('quarantined'); $t->text('notes')->nullable(); $t->integer('created_by_user_id'); $t->timestamps(); });
