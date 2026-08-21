@@ -89,6 +89,7 @@ jobs:
           php -l app/Services/BranchScopeService.php
           php -l app/Services/InventoryLocationScopeService.php
           php -l app/Services/UserOperationalAssignmentService.php
+          php -l app/Services/PosOperationalContextService.php
           php -l app/Http/Middleware/EnforceWarehouseScope.php
           php -l app/Http/Controllers/Organization/BranchController.php
           php -l app/Http/Controllers/Organization/EmployeeAccessController.php
@@ -100,12 +101,14 @@ jobs:
           php -l app/Models/User.php
           php -l app/Models/UserOperationalAssignment.php
           php -l app/Models/CashDrawer.php
+          php -l app/Models/Sale.php
           php -l app/Providers/RouteServiceProvider.php
           php -l routes/tenant_organization.php
           php -l database/seeders/Central/ProdexManualsSeeder.php
           php -l database/migrations/tenant/2026_08_21_090000_add_organization_structure_foundation.php
           php -l database/migrations/tenant/2026_08_21_180000_add_branch_inventory_scope_to_users.php
           php -l database/migrations/tenant/2026_08_21_181000_backfill_cash_drawer_operational_context.php
+          php -l database/migrations/tenant/2026_08_21_182000_add_operational_context_to_sales.php
           php -l tests/Unit/WarehouseScopeServiceTest.php
           php -l tests/Unit/BranchInventoryScopeServiceTest.php
       - name: PHP syntax check for inventory architecture
