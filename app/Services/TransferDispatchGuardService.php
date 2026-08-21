@@ -9,7 +9,6 @@ use App\Models\Transfer;
 use App\Models\TransferDetail;
 use App\Models\TransferDetailBatch;
 use App\Models\Unit;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -90,7 +89,10 @@ class TransferDispatchGuardService
             return;
         }
 
-        $required = (float) $detail->quantity;
+        // product_warehouse and product_batches both represent base stock units.
+        // Transfer detail quantity may be expressed as boxes, packs, strips, etc.;
+        // convert it before touching the batch ledger so both ledgers stay identical.
+        $required = $this->toBaseQuantity((float) $detail->quantity, $detail->purchase_unit_id);
         if ($required <= 0) {
             return;
         }
@@ -151,12 +153,25 @@ class TransferDispatchGuardService
         }
 
         if ($remaining > 0.000001) {
-            // Defensive invariant: the availability check above means this should
-            // never happen, but never expose an in-transit transfer if allocation is
-            // incomplete. The surrounding DB transaction will restore all changes.
             throw ValidationException::withMessages([
                 'transfer' => 'No se pudo completar la asignación de lotes del despacho.',
             ]);
         }
+    }
+
+    protected function toBaseQuantity(float $quantity, ?int $unitId): float
+    {
+        if (! $unitId) {
+            return $quantity;
+        }
+
+        $unit = Unit::find($unitId);
+        if (! $unit || ! $unit->operator_value) {
+            return $quantity;
+        }
+
+        return $unit->operator === '/'
+            ? $quantity / (float) $unit->operator_value
+            : $quantity * (float) $unit->operator_value;
     }
 }
