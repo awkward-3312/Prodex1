@@ -70,6 +70,10 @@ class RouteServiceProvider extends ServiceProvider
             PreventAccessFromCentralDomains::class,
             InitializeTenancyByDomainOrSubdomain::class,
             'tenant.active',
+            // Runs only after tenancy has selected the tenant database. It is a no-op
+            // for guests and web pages, but blocks authenticated API users from
+            // operating against warehouses outside their assigned scope.
+            \App\Http\Middleware\EnforceWarehouseScope::class,
         ];
 
         Route::middleware(array_merge(['web'], $tenancy))
