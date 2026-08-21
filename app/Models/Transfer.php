@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\TransferDispatchGuardService;
+use App\Services\TransferLocationDispatchService;
 use App\Services\TransferLogisticsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
@@ -11,7 +12,6 @@ use Illuminate\Validation\ValidationException;
 class Transfer extends Model
 {
     protected $table = 'transfers';
-
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
@@ -24,28 +24,30 @@ class Transfer extends Model
     ];
 
     protected $casts = [
-        'user_id' => 'integer',
-        'from_warehouse_id' => 'integer',
-        'to_warehouse_id' => 'integer',
-        'from_inventory_location_id' => 'integer',
-        'to_inventory_location_id' => 'integer',
-        'items' => 'double',
-        'GrandTotal' => 'double',
-        'discount' => 'double',
-        'shipping' => 'double',
-        'TaxNet' => 'double',
-        'tax_rate' => 'double',
-        'dispatched_by_user_id' => 'integer',
-        'received_by_user_id' => 'integer',
-        'dispatched_at' => 'datetime',
-        'received_at' => 'datetime',
+        'user_id' => 'integer', 'from_warehouse_id' => 'integer', 'to_warehouse_id' => 'integer',
+        'from_inventory_location_id' => 'integer', 'to_inventory_location_id' => 'integer',
+        'items' => 'double', 'GrandTotal' => 'double', 'discount' => 'double', 'shipping' => 'double',
+        'TaxNet' => 'double', 'tax_rate' => 'double', 'dispatched_by_user_id' => 'integer',
+        'received_by_user_id' => 'integer', 'dispatched_at' => 'datetime', 'received_at' => 'datetime',
     ];
 
     protected static function booted(): void
     {
         static::creating(function (Transfer $transfer) {
-            static::assertDifferentOrigins($transfer);
+            // TransferController is intentionally kept backward compatible. The
+            // modern UI sends location IDs inside transfer.*, so capture them here
+            // without forcing the large legacy controller to know the new schema.
+            if (Schema::hasColumn('transfers', 'from_inventory_location_id')) {
+                $request = request();
+                $from = $request?->input('transfer.from_inventory_location_id')
+                    ?: $request?->input('transfer.from_inventory_location');
+                $to = $request?->input('transfer.to_inventory_location_id')
+                    ?: $request?->input('transfer.to_inventory_location');
+                if ($from) $transfer->from_inventory_location_id = (int) $from;
+                if ($to) $transfer->to_inventory_location_id = (int) $to;
+            }
 
+            static::assertDifferentOrigins($transfer);
             if ($transfer->approval_status === 'pending' && $transfer->statut === 'completed') {
                 $transfer->statut = 'sent';
             }
@@ -53,12 +55,8 @@ class Transfer extends Model
 
         static::created(function (Transfer $transfer) {
             if (! Schema::hasTable('transfer_events')) return;
-
             app(TransferLogisticsService::class)->recordEvent(
-                $transfer->id,
-                'created',
-                auth()->id() ?: $transfer->user_id,
-                $transfer->from_warehouse_id,
+                $transfer->id, 'created', auth()->id() ?: $transfer->user_id, $transfer->from_warehouse_id,
                 [
                     'reference' => $transfer->Ref,
                     'from_warehouse_id' => $transfer->from_warehouse_id ? (int) $transfer->from_warehouse_id : null,
@@ -66,72 +64,59 @@ class Transfer extends Model
                     'from_inventory_location_id' => $transfer->from_inventory_location_id ? (int) $transfer->from_inventory_location_id : null,
                     'to_inventory_location_id' => $transfer->to_inventory_location_id ? (int) $transfer->to_inventory_location_id : null,
                     'approval_status' => $transfer->approval_status,
-                ],
-                true
+                ], true
             );
         });
 
         static::updating(function (Transfer $transfer) {
             static::assertDifferentOrigins($transfer);
-
             if (! Schema::hasColumn('transfers', 'logistics_status')) return;
 
             $originalStatus = (string) $transfer->getOriginal('logistics_status');
             $lockedStatuses = ['in_transit', 'partially_received', 'received', 'received_with_issues'];
 
             if (! in_array($originalStatus, ['received', 'received_with_issues'], true)
-                && $transfer->isDirty('statut')
-                && $transfer->statut === 'completed') {
+                && $transfer->isDirty('statut') && $transfer->statut === 'completed') {
                 $transfer->statut = 'sent';
             }
-
             if (! in_array($originalStatus, $lockedStatuses, true)) return;
 
-            if ($transfer->isDirty('from_warehouse_id')
-                || $transfer->isDirty('to_warehouse_id')
-                || $transfer->isDirty('from_inventory_location_id')
-                || $transfer->isDirty('to_inventory_location_id')) {
-                throw ValidationException::withMessages([
-                    'transfer' => 'No se puede cambiar el origen o destino después de despachar la transferencia.',
-                ]);
+            if ($transfer->isDirty('from_warehouse_id') || $transfer->isDirty('to_warehouse_id')
+                || $transfer->isDirty('from_inventory_location_id') || $transfer->isDirty('to_inventory_location_id')) {
+                throw ValidationException::withMessages(['transfer' => 'No se puede cambiar el origen o destino después de despachar la transferencia.']);
             }
-
             if ($transfer->isDirty('statut') && $transfer->statut === 'completed') {
-                throw ValidationException::withMessages([
-                    'transfer' => 'La transferencia solo puede completarse desde la recepción del destino.',
-                ]);
+                throw ValidationException::withMessages(['transfer' => 'La transferencia solo puede completarse desde la recepción del destino.']);
             }
-
             if ($transfer->isDirty('deleted_at')) {
-                throw ValidationException::withMessages([
-                    'transfer' => 'Una transferencia despachada no puede eliminarse; debe resolverse mediante el flujo logístico.',
-                ]);
+                throw ValidationException::withMessages(['transfer' => 'Una transferencia despachada no puede eliminarse; debe resolverse mediante el flujo logístico.']);
             }
         });
 
         static::saved(function (Transfer $transfer) {
             if (! Schema::hasColumn('transfers', 'logistics_status')) return;
-
             $actorId = auth()->id() ?: $transfer->user_id;
 
             if ($transfer->wasChanged('approval_status') && Schema::hasTable('transfer_events')) {
                 $approval = (string) $transfer->approval_status;
                 if (in_array($approval, ['approved', 'rejected'], true)) {
                     app(TransferLogisticsService::class)->recordEvent(
-                        $transfer->id,
-                        $approval,
-                        $actorId,
-                        $transfer->from_warehouse_id,
-                        [
-                            'reference' => $transfer->Ref,
-                            'approval_status' => $approval,
-                        ]
+                        $transfer->id, $approval, $actorId, $transfer->from_warehouse_id,
+                        ['reference' => $transfer->Ref, 'approval_status' => $approval]
                     );
                 }
             }
 
             if ($transfer->isApproved() && $transfer->statut === 'sent') {
                 $fresh = $transfer->fresh();
+
+                // Physical location stock is authoritative for modern transfers.
+                // This executes inside the same approval transaction and is
+                // idempotent, so any failure rolls the approval back atomically.
+                if ($fresh->from_inventory_location_id) {
+                    app(TransferLocationDispatchService::class)->ensureDispatched($fresh);
+                }
+
                 app(TransferDispatchGuardService::class)->finalizeDispatch($fresh);
                 app(TransferLogisticsService::class)->syncDispatchState($fresh, auth()->user());
             }
@@ -140,23 +125,16 @@ class Transfer extends Model
 
     protected static function assertDifferentOrigins(Transfer $transfer): void
     {
-        // New location-aware transfers may share the same legacy CD anchor. What
-        // matters physically is that their inventory locations are different.
         if ($transfer->from_inventory_location_id && $transfer->to_inventory_location_id) {
             if ((int) $transfer->from_inventory_location_id === (int) $transfer->to_inventory_location_id) {
-                throw ValidationException::withMessages([
-                    'transfer' => 'La ubicación de inventario de origen y destino deben ser diferentes.',
-                ]);
+                throw ValidationException::withMessages(['transfer' => 'La ubicación de inventario de origen y destino deben ser diferentes.']);
             }
             return;
         }
 
-        if ($transfer->from_warehouse_id
-            && $transfer->to_warehouse_id
+        if ($transfer->from_warehouse_id && $transfer->to_warehouse_id
             && (int) $transfer->from_warehouse_id === (int) $transfer->to_warehouse_id) {
-            throw ValidationException::withMessages([
-                'transfer' => 'La bodega de origen y la bodega destino deben ser diferentes.',
-            ]);
+            throw ValidationException::withMessages(['transfer' => 'La bodega de origen y la bodega destino deben ser diferentes.']);
         }
     }
 
@@ -170,13 +148,6 @@ class Transfer extends Model
     public function dispatchedBy() { return $this->belongsTo(User::class, 'dispatched_by_user_id'); }
     public function receivedBy() { return $this->belongsTo(User::class, 'received_by_user_id'); }
 
-    public function getApprovalStatusAttribute($value)
-    {
-        return $value === null ? 'approved' : $value;
-    }
-
-    public function isApproved()
-    {
-        return $this->approval_status === 'approved';
-    }
+    public function getApprovalStatusAttribute($value) { return $value === null ? 'approved' : $value; }
+    public function isApproved() { return $this->approval_status === 'approved'; }
 }
