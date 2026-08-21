@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Services\PosOperationalContextService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class Sale extends Model
 {
@@ -125,6 +127,38 @@ class Sale extends Model
 
     protected static function booted()
     {
+        static::creating(function (Sale $sale) {
+            if ((int) $sale->is_pos !== 1 || ! $sale->user_id) return;
+            if (! Schema::hasColumn('sales', 'branch_id')
+                || ! Schema::hasColumn('sales', 'inventory_location_id')
+                || ! Schema::hasColumn('sales', 'cash_drawer_id')) {
+                return;
+            }
+
+            $user = User::whereNull('deleted_at')->find($sale->user_id);
+            if (! $user) return;
+
+            $request = request();
+            $warehouseId = $sale->warehouse_id ?: ($request->filled('warehouse_id') ? (int) $request->input('warehouse_id') : null);
+            $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+            $locationId = $request->filled('inventory_location_id') ? (int) $request->input('inventory_location_id') : null;
+            $drawerId = $request->filled('cash_drawer_id') ? (int) $request->input('cash_drawer_id') : null;
+
+            if (! $warehouseId && ! $branchId && ! $locationId && ! $drawerId) return;
+
+            $context = app(PosOperationalContextService::class)->resolve(
+                $user,
+                $warehouseId,
+                $branchId,
+                $locationId,
+                $drawerId
+            );
+
+            $sale->branch_id = $context['branch_id'] ?? null;
+            $sale->inventory_location_id = $context['inventory_location_id'] ?? null;
+            $sale->cash_drawer_id = $context['cash_drawer_id'] ?? null;
+        });
+
         static::updating(function ($sale) {
             if ($sale->isDirty('quickbooks_invoice_id')) {
                 $original = $sale->getOriginal('quickbooks_invoice_id');
