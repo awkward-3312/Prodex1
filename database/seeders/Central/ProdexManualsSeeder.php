@@ -20,6 +20,16 @@ class ProdexManualsSeeder extends Seeder
             ]
         );
 
+        $inventory = KbCategory::updateOrCreate(
+            ['slug' => 'inventario-y-logistica'],
+            [
+                'name' => 'Inventario y logística',
+                'description' => 'Guías para movimientos, transferencias, recepción de stock e incidencias.',
+                'icon' => 'warehouse',
+                'sort_order' => 30,
+            ]
+        );
+
         KbArticle::updateOrCreate(
             ['slug' => 'sucursales-y-bodegas'],
             [
@@ -39,6 +49,39 @@ class ProdexManualsSeeder extends Seeder
                 'content' => $this->employeeAccessContent(),
                 'is_published' => true,
                 'sort_order' => 20,
+            ]
+        );
+
+        KbArticle::updateOrCreate(
+            ['slug' => 'transferencias-stock-entre-sucursales'],
+            [
+                'kb_category_id' => $inventory->id,
+                'title' => 'Cómo transferir stock entre sucursales',
+                'content' => $this->stockTransferContent(),
+                'is_published' => true,
+                'sort_order' => 10,
+            ]
+        );
+
+        KbArticle::updateOrCreate(
+            ['slug' => 'recibir-transferencias-stock-qr'],
+            [
+                'kb_category_id' => $inventory->id,
+                'title' => 'Cómo recibir una transferencia de stock',
+                'content' => $this->stockReceivingContent(),
+                'is_published' => true,
+                'sort_order' => 20,
+            ]
+        );
+
+        KbArticle::updateOrCreate(
+            ['slug' => 'faltantes-defectuosos-transferencias'],
+            [
+                'kb_category_id' => $inventory->id,
+                'title' => 'Faltantes y productos defectuosos en transferencias',
+                'content' => $this->transferIssuesContent(),
+                'is_published' => true,
+                'sort_order' => 30,
             ]
         );
     }
@@ -112,6 +155,59 @@ HTML;
 </ul>
 <h2>Alcance</h2>
 <p>Los permisos responden <strong>qué puede hacer</strong> el usuario. Las sucursales y bodegas responden <strong>sobre qué datos puede hacerlo</strong>.</p>
+HTML;
+    }
+
+    private function stockTransferContent(): string
+    {
+        return <<<'HTML'
+<h2>Antes de transferir</h2>
+<p>Verifique que la sucursal destino tenga al menos una bodega configurada y que el usuario que despacha tenga acceso a la bodega de origen.</p>
+<h2>Crear la transferencia</h2>
+<ol>
+  <li>Entre a Inventario y abra Transferencias de stock.</li>
+  <li>Seleccione la bodega de origen y la bodega destino.</li>
+  <li>Agregue los productos y cantidades.</li>
+  <li>Guarde la transferencia.</li>
+  <li>Complete la aprobación o despacho según los permisos configurados por su empresa.</li>
+</ol>
+<h2>Qué ocurre al despachar</h2>
+<p>El stock sale de la bodega de origen y queda <strong>en tránsito</strong>. No se suma automáticamente a la bodega destino. La sucursal receptora debe confirmar físicamente la recepción.</p>
+<h2>Trazabilidad</h2>
+<p>No utilice ajustes manuales para simular una transferencia. El flujo de transferencia conserva origen, destino, usuario, cantidades, incidencias y recepción.</p>
+HTML;
+    }
+
+    private function stockReceivingContent(): string
+    {
+        return <<<'HTML'
+<h2>Quién puede recibir</h2>
+<p>Solo los usuarios con permiso de recepción y acceso a la bodega destino pueden confirmar la entrada.</p>
+<h2>Ver stock en camino</h2>
+<p>Abra <strong>Operaciones → Ingreso de stock</strong>. Allí aparecen las transferencias en tránsito destinadas a sus bodegas autorizadas.</p>
+<h2>Recepción</h2>
+<ol>
+  <li>Abra la transferencia entrante o escanee su código QR.</li>
+  <li>Compare físicamente los productos recibidos contra lo enviado.</li>
+  <li>Indique las cantidades correctas, faltantes o defectuosas.</li>
+  <li>Confirme la recepción.</li>
+</ol>
+<h2>Cuándo aumenta el inventario</h2>
+<p>La existencia disponible de la bodega destino aumenta únicamente cuando la recepción es confirmada. Mientras el envío está en tránsito, no debe venderse como stock recibido.</p>
+HTML;
+    }
+
+    private function transferIssuesContent(): string
+    {
+        return <<<'HTML'
+<h2>Si falta mercancía</h2>
+<p>Registre la cantidad como <strong>faltante</strong> durante la recepción. No confirme una cantidad mayor a la recibida físicamente. PRODEX conserva la incidencia para seguimiento.</p>
+<h2>Si llega mercancía defectuosa</h2>
+<p>Marque la cantidad como <strong>defectuosa</strong>. El producto defectuoso no debe incorporarse automáticamente al inventario vendible; se mantiene identificado para cuarentena o resolución.</p>
+<h2>Recepciones parciales</h2>
+<p>Cuando una transferencia no llega completa, registre únicamente lo recibido. La transferencia mantiene pendiente lo que aún no se ha recibido o resuelto.</p>
+<h2>Regla de auditoría</h2>
+<p>No corrija diferencias mediante ediciones directas al stock. Utilice siempre el flujo de incidencia para conservar quién recibió, qué faltó, qué llegó defectuoso y cómo se resolvió.</p>
 HTML;
     }
 }
