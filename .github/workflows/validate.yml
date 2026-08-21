@@ -26,6 +26,8 @@ jobs:
           php artisan key:generate --force || true
       - name: Run focused SAR tests
         run: vendor/bin/phpunit tests/Unit/SarFiscalNumberServiceTest.php tests/Unit/TenantTaxConfigResolverTest.php tests/Unit/SarInvoiceSettingsTest.php
+      - name: Run transfer logistics integrity tests
+        run: vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php
       - name: PHP syntax check for SAR files
         run: |
           php -l app/Services/SarFiscalNumberService.php
@@ -64,6 +66,7 @@ jobs:
           php -l database/migrations/tenant/2026_08_20_220000_add_transfer_logistics_receiving.php
           php -l database/migrations/tenant/2026_08_20_220100_add_transfer_receipt_batch_allocations.php
           php -l database/migrations/tenant/2026_08_20_220200_add_transfer_discrepancy_resolution_workflow.php
+          php -l tests/Unit/TransferLogisticsServiceTest.php
 
   frontend-build:
     runs-on: ubuntu-latest
