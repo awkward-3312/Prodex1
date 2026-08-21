@@ -22,6 +22,16 @@ class LockTransferDispatchStock
 {
     public function handle(Request $request, Closure $next)
     {
+        $route = $request->route();
+        $action = $route && method_exists($route, 'getActionName') ? (string) $route->getActionName() : '';
+
+        // Registered in the tenant API group so the protection cannot accidentally
+        // be omitted from the approval route later. All unrelated API calls are a
+        // constant-time no-op.
+        if (! str_ends_with($action, 'TransferController@approve')) {
+            return $next($request);
+        }
+
         return DB::transaction(function () use ($request, $next) {
             $transferId = (int) $request->route('id');
 
