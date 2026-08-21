@@ -19,11 +19,12 @@ class ProductSerialMovement extends Model
     const ACTION_PURCHASE_RETURNED = 'purchase_returned';
     const ACTION_STATUS_CHANGED = 'status_changed';
     const ACTION_ADJUSTED = 'adjusted';
+    const ACTION_LOCATION_MOVED = 'location_moved';
 
     protected $fillable = [
         'product_serial_id', 'serial_number',
         'action', 'from_status', 'to_status',
-        'warehouse_id',
+        'warehouse_id', 'from_inventory_location_id', 'to_inventory_location_id',
         'reference_type', 'reference_id',
         'user_id', 'notes',
         'created_at',
@@ -32,6 +33,8 @@ class ProductSerialMovement extends Model
     protected $casts = [
         'product_serial_id' => 'integer',
         'warehouse_id' => 'integer',
+        'from_inventory_location_id' => 'integer',
+        'to_inventory_location_id' => 'integer',
         'reference_id' => 'integer',
         'user_id' => 'integer',
         'created_at' => 'datetime',
@@ -40,5 +43,15 @@ class ProductSerialMovement extends Model
     public function serial()
     {
         return $this->belongsTo(ProductSerial::class, 'product_serial_id');
+    }
+
+    public function fromInventoryLocation()
+    {
+        return $this->belongsTo(InventoryLocation::class, 'from_inventory_location_id');
+    }
+
+    public function toInventoryLocation()
+    {
+        return $this->belongsTo(InventoryLocation::class, 'to_inventory_location_id');
     }
 }
