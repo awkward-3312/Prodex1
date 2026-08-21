@@ -41,6 +41,8 @@ class Transfer extends Model
     protected static function booted(): void
     {
         static::creating(function (Transfer $transfer) {
+            static::assertDifferentWarehouses($transfer);
+
             // New transfers cannot credit destination stock from the legacy
             // "completed" selector. Completion now belongs to destination receipt.
             if ($transfer->approval_status === 'pending' && $transfer->statut === 'completed') {
@@ -49,6 +51,8 @@ class Transfer extends Model
         });
 
         static::updating(function (Transfer $transfer) {
+            static::assertDifferentWarehouses($transfer);
+
             if (! Schema::hasColumn('transfers', 'logistics_status')) {
                 return;
             }
@@ -58,9 +62,7 @@ class Transfer extends Model
 
             // Legacy transfer forms still expose a "completed" option. Before a
             // physical destination receipt exists, normalize that intent to "sent"
-            // so approval can only debit the source warehouse. This also closes the
-            // pending-edit -> approve loophole that could otherwise credit destination
-            // inventory without a receiver confirming the shipment.
+            // so approval can only debit the source warehouse.
             if (! in_array($originalStatus, ['received', 'received_with_issues'], true)
                 && $transfer->isDirty('statut')
                 && $transfer->statut === 'completed') {
@@ -109,6 +111,17 @@ class Transfer extends Model
                 app(TransferLogisticsService::class)->syncDispatchState($fresh, auth()->user());
             }
         });
+    }
+
+    protected static function assertDifferentWarehouses(Transfer $transfer): void
+    {
+        if ($transfer->from_warehouse_id
+            && $transfer->to_warehouse_id
+            && (int) $transfer->from_warehouse_id === (int) $transfer->to_warehouse_id) {
+            throw ValidationException::withMessages([
+                'transfer' => 'La bodega de origen y la bodega destino deben ser diferentes.',
+            ]);
+        }
     }
 
     public function user()
