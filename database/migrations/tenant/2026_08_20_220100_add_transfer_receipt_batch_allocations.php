@@ -18,8 +18,10 @@ return new class extends Migration
                 $table->decimal('quantity_good', 20, 6)->default(0);
                 $table->timestamps();
 
-                $table->foreign('transfer_receipt_item_id')->references('id')->on('transfer_receipt_items')->onDelete('cascade');
-                $table->foreign('transfer_detail_batch_id')->references('id')->on('transfer_detail_batches')->onDelete('cascade');
+                // Keep these references indexed rather than FK-constrained. Existing
+                // tenant databases may carry historical signedness differences even
+                // when the logical IDs are compatible. Application-level logistics
+                // transactions enforce the relation and dispatched rows are immutable.
             });
         }
     }
