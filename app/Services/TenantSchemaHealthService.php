@@ -37,12 +37,10 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_20_220300_normalize_pending_transfer_logistics.php',
         'database/migrations/tenant/2026_08_20_220400_add_transfer_receipt_idempotency.php',
         'database/migrations/tenant/2026_08_20_220500_backfill_existing_transfer_logistics.php',
-        // Organization: company -> branch -> warehouse -> employee -> user/access.
         'database/migrations/tenant/2026_08_21_090000_add_organization_structure_foundation.php',
-        // Inventory architecture phase 1: locations are additive; stock stays in product_warehouse.
         'database/migrations/tenant/2026_08_21_150000_create_inventory_locations_foundation.php',
-        // Phase 2: parallel stock engine and immutable movement ledger.
         'database/migrations/tenant/2026_08_21_160000_create_inventory_location_stock_engine.php',
+        'database/migrations/tenant/2026_08_21_170000_create_inventory_transition_states.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -144,7 +142,6 @@ class TenantSchemaHealthService
         $this->requireTable($schema, $missing, 'transfer_events');
         $this->requireTable($schema, $missing, 'transfer_notifications');
 
-        // Organizational structure foundation.
         $this->requireTable($schema, $missing, 'branches');
         $this->requireColumns($schema, $missing, 'branches', [
             'code', 'name', 'type', 'manager_employee_id', 'default_warehouse_id', 'default_inventory_location_id', 'is_active',
@@ -162,9 +159,6 @@ class TenantSchemaHealthService
             'is_default_sales', 'is_quarantine', 'is_active',
         ]);
 
-        // Phase 2 remains parallel to legacy product_warehouse. These tables are
-        // not yet the production source of truth, but every tenant must have the
-        // same engine before backfill and controlled dual-write begin.
         $this->requireTable($schema, $missing, 'inventory_location_stocks');
         $this->requireColumns($schema, $missing, 'inventory_location_stocks', [
             'inventory_location_id', 'product_id', 'product_variant_id', 'variant_key',
@@ -174,7 +168,16 @@ class TenantSchemaHealthService
         $this->requireColumns($schema, $missing, 'inventory_location_movements', [
             'movement_type', 'product_id', 'product_variant_id', 'from_inventory_location_id',
             'to_inventory_location_id', 'quantity', 'user_id', 'reference_type',
-            'reference_id', 'idempotency_key', 'notes', 'metadata',
+            'reference_id', 'idempotency_key', 'idempotency_fingerprint', 'notes', 'metadata',
+        ]);
+
+        // Transition state is deliberately per legacy warehouse/CD. It lets us
+        // migrate one operational domain at a time while product_warehouse remains
+        // the production source of truth until an explicit later cutover.
+        $this->requireTable($schema, $missing, 'inventory_transition_states');
+        $this->requireColumns($schema, $missing, 'inventory_transition_states', [
+            'warehouse_id', 'inventory_location_id', 'mode', 'status', 'mismatch_count',
+            'last_audited_at', 'last_reconciled_at', 'shadow_enabled_at', 'metadata',
         ]);
 
         return $missing;
