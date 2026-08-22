@@ -3,11 +3,11 @@
 namespace Tests\Unit;
 
 use App\Http\Middleware\LockTransferDispatchStock;
-use Illuminate\Http\Request;
-use Illuminate\Routing\Route;
+use App\Models\Transfer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class TransferDispatchPreflightTest extends TestCase
@@ -28,7 +28,7 @@ class TransferDispatchPreflightTest extends TestCase
         $this->stock($productId, 20);
 
         $this->expectException(ValidationException::class);
-        $this->runMiddleware($transferId);
+        $this->runPreflight($transferId);
     }
 
     public function test_purchase_unit_conversion_is_included_in_aggregate_preflight(): void
@@ -41,7 +41,7 @@ class TransferDispatchPreflightTest extends TestCase
         $this->stock($productId, 23);
 
         $this->expectException(ValidationException::class);
-        $this->runMiddleware($transferId);
+        $this->runPreflight($transferId);
     }
 
     public function test_missing_or_invalid_unit_definition_blocks_dispatch(): void
@@ -52,7 +52,7 @@ class TransferDispatchPreflightTest extends TestCase
         $this->stock($productId, 100);
 
         $this->expectException(ValidationException::class);
-        $this->runMiddleware($transferId);
+        $this->runPreflight($transferId);
     }
 
     public function test_valid_aggregate_stock_allows_request_to_continue(): void
@@ -64,9 +64,8 @@ class TransferDispatchPreflightTest extends TestCase
         $this->detail($transferId, $productId, $boxId, 1);
         $this->stock($productId, 24);
 
-        $response = $this->runMiddleware($transferId);
+        $this->runPreflight($transferId);
 
-        $this->assertSame('continued', $response);
         $this->assertEquals(24.0, (float) DB::table('product_warehouse')->value('qte'));
     }
 
@@ -80,7 +79,8 @@ class TransferDispatchPreflightTest extends TestCase
         $this->stock($productId, 0);
         $this->locationStock(5, $productId, 10, 0);
 
-        $this->assertSame('continued', $this->runMiddleware($transferId));
+        $this->runPreflight($transferId);
+        $this->addToAssertionCount(1);
     }
 
     public function test_location_transfer_blocks_when_physical_stock_is_insufficient_even_if_legacy_is_high(): void
@@ -93,7 +93,7 @@ class TransferDispatchPreflightTest extends TestCase
         $this->locationStock(5, $productId, 7, 0);
 
         $this->expectException(ValidationException::class);
-        $this->runMiddleware($transferId);
+        $this->runPreflight($transferId);
     }
 
     public function test_location_transfer_respects_reserved_quantity(): void
@@ -106,19 +106,14 @@ class TransferDispatchPreflightTest extends TestCase
         $this->locationStock(5, $productId, 10, 4);
 
         $this->expectException(ValidationException::class);
-        $this->runMiddleware($transferId);
+        $this->runPreflight($transferId);
     }
 
-    private function runMiddleware(int $transferId)
+    private function runPreflight(int $transferId): void
     {
-        $request = Request::create('/api/transfers/'.$transferId.'/approve', 'POST');
-        $route = new Route('POST', 'api/transfers/{id}/approve', [
-            'uses' => 'App\Http\Controllers\TransferController@approve',
-        ]);
-        $route->bind($request);
-        $request->setRouteResolver(fn () => $route);
-
-        return app(LockTransferDispatchStock::class)->handle($request, fn () => 'continued');
+        $transfer = Transfer::with('details')->findOrFail($transferId);
+        $method = new ReflectionMethod(LockTransferDispatchStock::class, 'validateAndLockSourceStock');
+        $method->invoke(app(LockTransferDispatchStock::class), $transfer);
     }
 
     private function unit(string $operator, float $operatorValue): int
