@@ -31,12 +31,13 @@ class FinalTransferLogisticsController extends TransferLogisticsController
             return response()->json(['transfers' => [], 'unread' => 0]);
         }
 
-        $query = Transfer::with([
-                'from_warehouse:id,name',
-                'to_warehouse:id,name',
-                'fromInventoryLocation:id,name',
-                'toInventoryLocation:id,name',
-            ])
+        $relations = ['from_warehouse:id,name', 'to_warehouse:id,name'];
+        if ($hasLocationColumns) {
+            $relations[] = 'fromInventoryLocation:id,name';
+            $relations[] = 'toInventoryLocation:id,name';
+        }
+
+        $query = Transfer::with($relations)
             ->whereNull('deleted_at')
             ->whereIn('logistics_status', ['in_transit', 'partially_received']);
 
@@ -142,7 +143,11 @@ class FinalTransferLogisticsController extends TransferLogisticsController
         $transferId = (int) ($data['transfer']['id'] ?? 0);
         if ($transferId <= 0) return $response;
 
-        $transfer = Transfer::with(['fromInventoryLocation', 'toInventoryLocation'])->find($transferId);
+        $transfer = Transfer::find($transferId);
+        if ($transfer && Schema::hasTable('inventory_locations')
+            && Schema::hasColumn('transfers', 'from_inventory_location_id')) {
+            $transfer->load(['fromInventoryLocation', 'toInventoryLocation']);
+        }
         if ($transfer) {
             $data['transfer'] = $this->physicalSummary($data['transfer'] ?? [], $transfer);
         }
@@ -181,13 +186,21 @@ class FinalTransferLogisticsController extends TransferLogisticsController
         $data = $response->getData(true);
 
         if (isset($data['transfer']['id'])) {
-            $transfer = Transfer::with(['fromInventoryLocation', 'toInventoryLocation'])->find((int) $data['transfer']['id']);
+            $transfer = Transfer::find((int) $data['transfer']['id']);
+            if ($transfer && Schema::hasTable('inventory_locations')
+                && Schema::hasColumn('transfers', 'from_inventory_location_id')) {
+                $transfer->load(['fromInventoryLocation', 'toInventoryLocation']);
+            }
             if ($transfer) $data['transfer'] = $this->physicalSummary($data['transfer'], $transfer);
         }
 
         if (isset($data['transfers']) && is_array($data['transfers'])) {
             $ids = collect($data['transfers'])->pluck('id')->filter()->map(fn ($id) => (int) $id)->all();
-            $models = Transfer::with(['fromInventoryLocation', 'toInventoryLocation'])->whereIn('id', $ids)->get()->keyBy('id');
+            $query = Transfer::whereIn('id', $ids);
+            if (Schema::hasTable('inventory_locations') && Schema::hasColumn('transfers', 'from_inventory_location_id')) {
+                $query->with(['fromInventoryLocation', 'toInventoryLocation']);
+            }
+            $models = $query->get()->keyBy('id');
             foreach ($data['transfers'] as &$summary) {
                 $transfer = $models->get((int) ($summary['id'] ?? 0));
                 if ($transfer) $summary = $this->physicalSummary($summary, $transfer);
@@ -222,10 +235,13 @@ class FinalTransferLogisticsController extends TransferLogisticsController
 
     private function physicalSummary(array $summary, Transfer $transfer): array
     {
-        if (! $transfer->from_inventory_location_id && ! $transfer->to_inventory_location_id) return $summary;
+        if (! Schema::hasColumn('transfers', 'from_inventory_location_id')
+            || (! $transfer->from_inventory_location_id && ! $transfer->to_inventory_location_id)) {
+            return $summary;
+        }
 
-        $from = $transfer->fromInventoryLocation;
-        $to = $transfer->toInventoryLocation;
+        $from = $transfer->relationLoaded('fromInventoryLocation') ? $transfer->fromInventoryLocation : null;
+        $to = $transfer->relationLoaded('toInventoryLocation') ? $transfer->toInventoryLocation : null;
         $summary['from_inventory_location_id'] = $transfer->from_inventory_location_id ? (int) $transfer->from_inventory_location_id : null;
         $summary['to_inventory_location_id'] = $transfer->to_inventory_location_id ? (int) $transfer->to_inventory_location_id : null;
         $summary['from_inventory_location'] = $from?->name;
