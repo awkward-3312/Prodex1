@@ -27,16 +27,10 @@ class ProdexTenantUpgrade extends Command
 
         if ($tenants->isEmpty()) {
             $this->warn('No tenants found for upgrade.');
-            return self::SUCCESS;
+            return ! empty($tenantIds) ? self::FAILURE : self::SUCCESS;
         }
 
-        $controlledMigrations = array_values(array_unique(array_merge(
-            TenantSchemaHealthService::CONTROLLED_MIGRATIONS,
-            [
-                'database/migrations/tenant/2026_08_21_186000_create_transfer_detail_serials.php',
-                'database/migrations/tenant/2026_08_21_187000_create_transfer_batch_issue_allocations.php',
-            ]
-        )));
+        $controlledMigrations = TenantSchemaHealthService::CONTROLLED_MIGRATIONS;
 
         foreach ($tenants as $tenant) {
             $creds = $tenant->getEffectiveDatabaseCredentials();
