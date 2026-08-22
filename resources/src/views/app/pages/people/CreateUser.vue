@@ -46,7 +46,12 @@
           </b-row>
         </b-card>
 
-        <div v-if="form_error" class="alert alert-danger">{{ form_error }}</div>
+        <div v-if="form_errors.length" class="alert alert-danger">
+          <div class="font-weight-bold mb-1">No se pudo crear el usuario:</div>
+          <ul class="mb-0 pl-3">
+            <li v-for="(message, index) in form_errors" :key="index">{{ message }}</li>
+          </ul>
+        </div>
         <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="mr-1" name="check"/> {{ SubmitProcessing ? 'Guardando…' : 'Crear usuario' }}</b-button>
         <b-button variant="secondary" class="ml-2" @click="$router.push({ name: 'Users' })">Cancelar</b-button>
       </b-form>
@@ -64,6 +69,7 @@ export default {
       SubmitProcessing: false,
       email_exist: '',
       form_error: '',
+      form_errors: [],
       roles: [],
       branches: [],
       inventoryLocations: [],
@@ -94,6 +100,11 @@ export default {
   created() { this.getOptions(); },
   methods: {
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
+    makeToast(variant, msg, title) {
+      if (this.$root && this.$root.$bvToast) {
+        this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      }
+    },
     async getOptions() {
       NProgress.start();
       try {
@@ -142,14 +153,23 @@ export default {
     },
     onFileSelected(e) { this.user.avatar = e.target.files && e.target.files[0] ? e.target.files[0] : null; },
     Submit_User() {
+      this.form_errors = [];
       this.$refs.Create_User.validate().then(success => {
-        if (!success) { this.makeToast('danger', this.$t('Please_fill_the_form_correctly'), this.$t('Failed')); return; }
-        if (this.user.scope !== 'all' && !this.selectedBranchIds.length) { this.form_error = 'Selecciona al menos una sucursal.'; return; }
+        if (!success) {
+          const message = this.$t('Please_fill_the_form_correctly');
+          this.form_errors = [message];
+          this.makeToast('danger', message, this.$t('Failed'));
+          return;
+        }
+        if (this.user.scope !== 'all' && !this.selectedBranchIds.length) {
+          this.form_errors = ['Selecciona al menos una sucursal.'];
+          return;
+        }
         this.Create_User();
       });
     },
     async Create_User() {
-      this.SubmitProcessing = true; this.email_exist = ''; this.form_error = '';
+      this.SubmitProcessing = true; this.email_exist = ''; this.form_error = ''; this.form_errors = [];
       const data = new FormData();
       Object.keys(this.user).forEach(key => {
         if (['branch_ids', 'inventory_location_ids', 'avatar', 'record_view'].includes(key)) return;
@@ -165,9 +185,22 @@ export default {
         this.$router.push({ name: 'Users' });
       } catch (error) {
         const response = error && error.response && error.response.data;
-        if (response && response.errors && response.errors.email) this.email_exist = response.errors.email[0];
-        const first = response && response.errors ? Object.values(response.errors)[0] : null;
-        this.form_error = (Array.isArray(first) ? first[0] : first) || (response && response.message) || 'No se pudo crear el usuario.';
+        const errors = response && response.errors ? response.errors : null;
+        if (errors && errors.email) this.email_exist = errors.email[0];
+
+        if (errors) {
+          this.form_errors = Object.values(errors).reduce((messages, value) => {
+            if (Array.isArray(value)) return messages.concat(value.filter(Boolean));
+            if (value) messages.push(value);
+            return messages;
+          }, []);
+        }
+
+        if (!this.form_errors.length) {
+          this.form_errors = [(response && response.message) || 'No se pudo crear el usuario.'];
+        }
+
+        this.form_error = this.form_errors[0];
         this.makeToast('danger', this.form_error, this.$t('Failed'));
       } finally { this.SubmitProcessing = false; }
     },
