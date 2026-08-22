@@ -14,9 +14,7 @@ class TransferListScopeService
     public function apply(Builder $query, User $user): Builder
     {
         $warehouseIds = app(WarehouseScopeService::class)->allowedWarehouseIds($user);
-        $hasLocations = Schema::hasTable('inventory_locations')
-            && Schema::hasColumn('transfers', 'from_inventory_location_id')
-            && Schema::hasColumn('transfers', 'to_inventory_location_id');
+        $hasLocations = $this->supportsLocationTransferSchema();
 
         if (! $hasLocations) {
             return $query->where(function ($scope) use ($warehouseIds) {
@@ -25,7 +23,12 @@ class TransferListScopeService
             });
         }
 
-        $locationIds = app(InventoryLocationScopeService::class)->allowedLocationIds($user);
+        // EnforceWarehouseScope has historically treated is_all_warehouses as a
+        // genuinely global operational scope. Preserve that contract for modern
+        // transfers instead of shrinking these users to an explicit/default location.
+        $locationIds = (int) ($user->is_all_warehouses ?? 0) === 1
+            ? InventoryLocation::active()->pluck('id')->map(fn ($id) => (int) $id)->all()
+            : app(InventoryLocationScopeService::class)->allowedLocationIds($user);
 
         return $query->where(function ($scope) use ($locationIds, $warehouseIds) {
             $hasModern = false;
@@ -59,7 +62,10 @@ class TransferListScopeService
 
     public function sourceOptions(User $user): Collection
     {
-        if (! Schema::hasTable('inventory_locations')) {
+        // A tenant may temporarily have inventory_locations before both transfer
+        // location columns exist. In that state the listing is intentionally legacy,
+        // so the filter options must remain warehouse IDs as well.
+        if (! $this->supportsLocationTransferSchema()) {
             return app(WarehouseScopeService::class)->visibleWarehouses($user)
                 ->map(fn ($warehouse) => [
                     'id' => (int) $warehouse->id,
@@ -67,7 +73,9 @@ class TransferListScopeService
                 ]);
         }
 
-        $ids = app(InventoryLocationScopeService::class)->allowedLocationIds($user);
+        $ids = (int) ($user->is_all_warehouses ?? 0) === 1
+            ? InventoryLocation::active()->pluck('id')->map(fn ($id) => (int) $id)->all()
+            : app(InventoryLocationScopeService::class)->allowedLocationIds($user);
 
         return InventoryLocation::with(['branch', 'warehouse'])
             ->active()
@@ -97,5 +105,12 @@ class TransferListScopeService
         $owner = $location->branch_id ? $location->branch : $location->warehouse;
         $ownerName = trim((string) ($owner?->name ?? ''));
         return trim(($ownerName !== '' ? $ownerName.' · ' : '').$location->name);
+    }
+
+    private function supportsLocationTransferSchema(): bool
+    {
+        return Schema::hasTable('inventory_locations')
+            && Schema::hasColumn('transfers', 'from_inventory_location_id')
+            && Schema::hasColumn('transfers', 'to_inventory_location_id');
     }
 }
