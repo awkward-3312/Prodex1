@@ -12,6 +12,7 @@ class TransferWorkflowAuditTest extends TestCase
         $service = file_get_contents($root.'/app/Services/TransferWorkflowService.php');
         $controller = file_get_contents($root.'/app/Http/Controllers/TransferWorkflowController.php');
         $model = file_get_contents($root.'/app/Models/Transfer.php');
+        $mutationGuard = file_get_contents($root.'/app/Http/Middleware/ProtectDispatchedTransferMutation.php');
         $routes = file_get_contents($root.'/routes/tenant_transfer_logistics.php');
         $overrides = file_get_contents($root.'/routes/tenant_transfer_overrides.php');
         $ui = file_get_contents($root.'/resources/static/prodex-transfer-workflow.js');
@@ -32,6 +33,9 @@ class TransferWorkflowAuditTest extends TestCase
         $this->assertStringContainsString('$approvedAwaitingDispatch', $model);
         $this->assertStringContainsString('Una transferencia aprobada queda bloqueada hasta su despacho', $model);
         $this->assertStringNotContainsString('TransferController@approve', $model);
+        $this->assertStringContainsString("->where('approval_status', 'approved')", $mutationGuard);
+        $this->assertStringContainsString("->whereNull('dispatched_at')", $mutationGuard);
+        $this->assertStringContainsString('No se puede editar ni eliminar una transferencia aprobada o despachada', $mutationGuard);
 
         $this->assertStringContainsString('/transfer-workflow/{id}/approve', $routes);
         $this->assertStringContainsString('/transfer-workflow/{id}/dispatch', $routes);
