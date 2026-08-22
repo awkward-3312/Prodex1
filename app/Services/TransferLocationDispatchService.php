@@ -3,9 +3,13 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\ProductBatch;
+use App\Models\ProductBatchLocationStock;
 use App\Models\Transfer;
 use App\Models\TransferDetail;
+use App\Models\TransferDetailBatch;
 use App\Models\Unit;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class TransferLocationDispatchService
@@ -20,18 +24,23 @@ class TransferLocationDispatchService
             throw ValidationException::withMessages(['transfer' => 'No se puede despachar una transferencia sin productos.']);
         }
 
-        // Group repeated lines for the same physical SKU so the immutable inventory
-        // ledger gets one deterministic/idempotent dispatch per SKU and transfer.
         $groups = [];
         foreach ($details as $detail) {
             $product = Product::find($detail->product_id);
             if (! $product) {
                 throw ValidationException::withMessages(['transfer' => 'Uno de los productos de la transferencia ya no existe.']);
             }
+
             $unitId = $detail->purchase_unit_id ?: $product->unit_purchase_id;
             $unit = $unitId ? Unit::find($unitId) : null;
             $base = $this->toBaseQuantity((float) $detail->quantity, $unit, $product->name);
             $variantId = $detail->product_variant_id ? (int) $detail->product_variant_id : null;
+
+            if ((bool) ($product->is_batch_tracked ?? false)) {
+                $this->dispatchBatches($transfer, $detail, $product, $base, $variantId);
+            }
+            app(TransferSerialLocationService::class)->dispatchDetail($transfer, $detail, $product, $base);
+
             $key = (int) $detail->product_id.':'.($variantId ?: 0);
             if (! isset($groups[$key])) {
                 $groups[$key] = [
@@ -62,6 +71,92 @@ class TransferLocationDispatchService
                     ],
                 ]
             );
+        }
+    }
+
+    private function dispatchBatches(
+        Transfer $transfer,
+        TransferDetail $detail,
+        Product $product,
+        float $required,
+        ?int $variantId
+    ): void {
+        if (! Schema::hasTable('product_batch_location_stocks') || ! Schema::hasTable('transfer_detail_batches')) {
+            throw ValidationException::withMessages([
+                'transfer' => 'El producto '.$product->name.' usa lotes, pero el esquema de lotes por ubicación aún no está disponible.',
+            ]);
+        }
+
+        $existing = TransferDetailBatch::where('transfer_detail_id', $detail->id)->lockForUpdate()->get();
+        if ($existing->isNotEmpty()) {
+            if (abs((float) $existing->sum('qty') - $required) > 0.0005) {
+                throw ValidationException::withMessages([
+                    'transfer' => 'La asignación de lotes existente no coincide con la cantidad de '.$product->name.'.',
+                ]);
+            }
+            return;
+        }
+
+        $rows = ProductBatchLocationStock::with('batch')
+            ->where('inventory_location_id', (int) $transfer->from_inventory_location_id)
+            ->whereHas('batch', function ($query) use ($detail, $variantId) {
+                $query->where('product_id', (int) $detail->product_id)
+                    ->where('status', 'active')
+                    ->whereNull('deleted_at');
+                $variantId === null
+                    ? $query->whereNull('product_variant_id')
+                    : $query->where('product_variant_id', $variantId);
+            })
+            ->lockForUpdate()
+            ->get()
+            ->filter(fn ($row) => $row->available_quantity > 0)
+            ->sortBy(function ($row) {
+                $expiry = optional($row->batch)->expiry_date;
+                return ($expiry ? $expiry->format('Y-m-d') : '9999-12-31')
+                    .'|'.str_pad((string) $row->product_batch_id, 12, '0', STR_PAD_LEFT);
+            });
+
+        $available = round((float) $rows->sum(fn ($row) => $row->available_quantity), 3);
+        if ($available + 0.0005 < $required) {
+            throw ValidationException::withMessages([
+                'transfer' => 'No hay suficiente existencia por lote en la ubicación origen para '.$product->name.'.',
+            ]);
+        }
+
+        $remaining = round($required, 3);
+        foreach ($rows as $row) {
+            if ($remaining <= 0.0005) break;
+            $take = min($remaining, $row->available_quantity);
+            if ($take <= 0) continue;
+
+            $stock = ProductBatchLocationStock::whereKey($row->id)->lockForUpdate()->firstOrFail();
+            $batch = ProductBatch::whereKey($row->product_batch_id)->lockForUpdate()->firstOrFail();
+            if ($stock->available_quantity + 0.0005 < $take || (float) $batch->qty + 0.0005 < $take) {
+                throw ValidationException::withMessages([
+                    'transfer' => 'El lote '.$batch->batch_no.' cambió de existencia mientras se aprobaba la transferencia.',
+                ]);
+            }
+
+            $stock->quantity = round((float) $stock->quantity - $take, 3);
+            $stock->save();
+            $batch->qty = round((float) $batch->qty - $take, 3);
+            $batch->save();
+
+            TransferDetailBatch::create([
+                'transfer_detail_id' => $detail->id,
+                'source_batch_id' => $batch->id,
+                'dest_batch_id' => null,
+                'qty' => $take,
+                'unit_cost' => $batch->unit_cost,
+            ]);
+
+            $remaining = round($remaining - $take, 3);
+        }
+
+        if ($remaining > 0.0005) {
+            throw ValidationException::withMessages([
+                'transfer' => 'No se pudo completar la asignación FEFO de lotes para '.$product->name.'.',
+            ]);
         }
     }
 
