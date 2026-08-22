@@ -39,6 +39,8 @@ jobs:
           php -l app/Models/Transfer.php
           php -l app/Models/TransferDetailSerial.php
           php -l app/Http/Middleware/LockTransferDispatchStock.php
+          php -l app/Http/Middleware/CheckTenantFeature.php
+          php -l app/Services/TenantLimitsService.php
           php -l app/Services/TransferLocationDispatchService.php
           php -l app/Services/TransferSerialLocationService.php
           php -l app/Services/TransferBatchIssueService.php
