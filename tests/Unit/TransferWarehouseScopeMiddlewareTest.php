@@ -71,7 +71,7 @@ class TransferWarehouseScopeMiddlewareTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function test_transfer_pdf_is_readable_from_destination_scope_but_not_unrelated_scope(): void
+    public function test_transfer_pdf_is_readable_from_destination_scope(): void
     {
         $this->transfer(4, 20, 10, 1, 1);
 
@@ -86,7 +86,7 @@ class TransferWarehouseScopeMiddlewareTest extends TestCase
             '/api/transfer_pdf/4',
             [],
             'App\Http\Controllers\TransferController@transfer_pdf',
-            ['id' => 4]
+            'api/transfer_pdf/{id}'
         );
 
         $this->invokeValidation($request, $user, $warehouseScope, $locationScope);
@@ -110,13 +110,16 @@ class TransferWarehouseScopeMiddlewareTest extends TestCase
         );
     }
 
-    private function request(string $method, string $uri, array $data, string $action, array $parameters = []): Request
-    {
+    private function request(
+        string $method,
+        string $uri,
+        array $data,
+        string $action,
+        ?string $routeUri = null
+    ): Request {
         $request = Request::create($uri, $method, $data);
-        $route = new Route([$method], ltrim($uri, '/'), ['uses' => $action]);
-        foreach ($parameters as $key => $value) {
-            $route->setParameter($key, $value);
-        }
+        $route = new Route([$method], $routeUri ?: ltrim($uri, '/'), ['uses' => $action]);
+        $route->bind($request);
         $request->setRouteResolver(fn () => $route);
         return $request;
     }
