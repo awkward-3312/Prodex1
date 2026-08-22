@@ -24,13 +24,20 @@ class TransferWorkflowAuditTest extends TestCase
         $this->assertStringContainsString("'events' => \$events", $controller);
         $this->assertStringContainsString("'actor_name'", $controller);
         $this->assertStringContainsString("'created_at'", $controller);
+        $this->assertStringContainsString('assertSourceScope($user, $transfer)', $controller);
+        $this->assertStringContainsString('assertRecordScope($user, $transfer)', $controller);
+        $this->assertStringContainsString('InventoryLocationScopeService::class', $controller);
 
         $this->assertStringContainsString('$legacyApproval', $model);
         $this->assertStringContainsString('TransferWorkflowController', $model);
+        $this->assertStringContainsString('$approvedAwaitingDispatch', $model);
+        $this->assertStringContainsString('Una transferencia aprobada queda bloqueada hasta su despacho', $model);
 
         $this->assertStringContainsString('/transfer-workflow/{id}/approve', $routes);
         $this->assertStringContainsString('/transfer-workflow/{id}/dispatch', $routes);
         $this->assertStringContainsString('Historial de la transferencia', $ui);
         $this->assertStringContainsString('Despachar ahora', $ui);
+        $this->assertStringContainsString('function referenceColumn(table)', $ui);
+        $this->assertStringNotContainsString('/^TR_', $ui);
     }
 }
