@@ -35,6 +35,7 @@ class TransferWorkflowController extends BaseController
         $this->authorizeForUser($user, 'update', Transfer::class);
         $transfer = Transfer::whereNull('deleted_at')->findOrFail($id);
         $this->assertSourceScope($user, $transfer);
+        $this->assertRecordScope($user, $transfer);
         $updated = $this->workflow->approve($transfer, $user);
         return $this->payload($request, $updated);
     }
@@ -46,6 +47,7 @@ class TransferWorkflowController extends BaseController
         $validated = $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);
         $transfer = Transfer::whereNull('deleted_at')->findOrFail($id);
         $this->assertSourceScope($user, $transfer);
+        $this->assertRecordScope($user, $transfer);
         $updated = $this->workflow->reject($transfer, $user, $validated['reason'] ?? null);
         return $this->payload($request, $updated);
     }
@@ -56,6 +58,7 @@ class TransferWorkflowController extends BaseController
         $this->authorizeForUser($user, 'update', Transfer::class);
         $transfer = Transfer::whereNull('deleted_at')->findOrFail($id);
         $this->assertSourceScope($user, $transfer);
+        $this->assertRecordScope($user, $transfer);
         $updated = $this->workflow->dispatch($transfer, $user);
         return $this->payload($request, $updated);
     }
@@ -106,7 +109,7 @@ class TransferWorkflowController extends BaseController
             : optional($transfer->to_warehouse)->name;
         $pending = ! $transfer->approval_status || $transfer->approval_status === 'pending';
         $inTransit = in_array((string) $transfer->logistics_status, ['in_transit', 'partially_received'], true);
-        $canOperateSource = $this->canAccessSource($user, $transfer);
+        $canOperateSource = $this->canAccessSource($user, $transfer) && $this->canOperateRecord($user, $transfer);
 
         return response()->json([
             'transfer' => [
@@ -143,6 +146,17 @@ class TransferWorkflowController extends BaseController
     {
         abort_unless($this->canAccessSource($user, $transfer), 403,
             'No tienes acceso a la ubicación de origen de esta transferencia.');
+    }
+
+    private function assertRecordScope(User $user, Transfer $transfer): void
+    {
+        if ($this->canOperateRecord($user, $transfer)) return;
+        $this->authorizeForUser($user, 'check_record', $transfer);
+    }
+
+    private function canOperateRecord(User $user, Transfer $transfer): bool
+    {
+        return $user->hasRecordView() || (int) $transfer->user_id === (int) $user->id;
     }
 
     private function canAccessSource(User $user, Transfer $transfer): bool
