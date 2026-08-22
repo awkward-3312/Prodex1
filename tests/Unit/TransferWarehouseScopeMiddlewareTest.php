@@ -115,6 +115,23 @@ class TransferWarehouseScopeMiddlewareTest extends TestCase
         $this->invokeValidation($request, $user, $warehouseScope, $locationScope);
     }
 
+    public function test_bulk_delete_rejects_legacy_transfer_outside_source_warehouse_scope(): void
+    {
+        $this->transfer(6, null, null, 2, 1);
+
+        $user = $this->user();
+        $warehouseScope = Mockery::mock(WarehouseScopeService::class);
+        $warehouseScope->shouldReceive('allowedWarehouseIds')->with($user)->andReturn([1]);
+        $locationScope = Mockery::mock(InventoryLocationScopeService::class);
+
+        $request = $this->request('POST', '/api/transfers/delete/by_selection', [
+            'selectedIds' => [6],
+        ], 'App\Http\Controllers\TransferController@delete_by_selection');
+
+        $this->expectException(AuthorizationException::class);
+        $this->invokeValidation($request, $user, $warehouseScope, $locationScope);
+    }
+
     private function invokeValidation(
         Request $request,
         User $user,
