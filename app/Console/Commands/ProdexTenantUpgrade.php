@@ -30,6 +30,13 @@ class ProdexTenantUpgrade extends Command
             return self::SUCCESS;
         }
 
+        $controlledMigrations = array_values(array_unique(array_merge(
+            TenantSchemaHealthService::CONTROLLED_MIGRATIONS,
+            [
+                'database/migrations/tenant/2026_08_21_186000_create_transfer_detail_serials.php',
+            ]
+        )));
+
         foreach ($tenants as $tenant) {
             $creds = $tenant->getEffectiveDatabaseCredentials();
             $this->newLine();
@@ -38,7 +45,7 @@ class ProdexTenantUpgrade extends Command
             try {
                 tenancy()->initialize($tenant);
 
-                foreach (TenantSchemaHealthService::CONTROLLED_MIGRATIONS as $relativePath) {
+                foreach ($controlledMigrations as $relativePath) {
                     $path = base_path($relativePath);
                     $migration = basename($relativePath, '.php');
 
