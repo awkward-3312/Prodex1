@@ -132,6 +132,45 @@ class TransferListScopeServiceTest extends TestCase
         $this->assertSame([200, 201], $query->orderBy('id')->pluck('id')->all());
     }
 
+    public function test_restricted_user_with_no_operational_scope_sees_no_transfers(): void
+    {
+        DB::table('transfers')->insert([
+            [
+                'id' => 300,
+                'from_warehouse_id' => 1,
+                'to_warehouse_id' => 2,
+                'from_inventory_location_id' => 10,
+                'to_inventory_location_id' => 20,
+                'created_at' => now(), 'updated_at' => now(), 'deleted_at' => null,
+            ],
+            [
+                'id' => 301,
+                'from_warehouse_id' => 1,
+                'to_warehouse_id' => 2,
+                'from_inventory_location_id' => null,
+                'to_inventory_location_id' => null,
+                'created_at' => now(), 'updated_at' => now(), 'deleted_at' => null,
+            ],
+        ]);
+
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->id = 111;
+        $user->is_all_warehouses = 0;
+
+        $locationScope = Mockery::mock(InventoryLocationScopeService::class);
+        $locationScope->shouldReceive('allowedLocationIds')->with($user)->andReturn([]);
+        $this->app->instance(InventoryLocationScopeService::class, $locationScope);
+
+        $warehouseScope = Mockery::mock(WarehouseScopeService::class);
+        $warehouseScope->shouldReceive('allowedWarehouseIds')->with($user)->andReturn([]);
+        $this->app->instance(WarehouseScopeService::class, $warehouseScope);
+
+        $query = Transfer::query()->whereNull('deleted_at');
+        app(TransferListScopeService::class)->apply($query, $user);
+
+        $this->assertSame([], $query->pluck('id')->all());
+    }
+
     public function test_source_options_stay_on_warehouses_during_partial_transfer_schema_rollout(): void
     {
         Schema::drop('transfers');
