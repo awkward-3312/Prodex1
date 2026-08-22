@@ -11,10 +11,6 @@
     try { return new URL(String(url || ''), window.location.origin + '/api/'); }
     catch (e) { return null; }
   }
-  function rel(u) {
-    var p = (u.pathname || '').replace(/^\/api\//, '').replace(/^\//, '');
-    return p + (u.search || '');
-  }
   function dataObject(config) {
     if (!config) return null;
     if (config.data && typeof config.data === 'object') return config.data;
@@ -162,17 +158,63 @@
     }, function (error) { return Promise.reject(error); });
   }
 
+  function normalized(value) {
+    return String(value || '').trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function directionForText(value) {
+    var text = normalized(value);
+    if (!text) return null;
+    var hasWarehouse = text.includes('warehouse') || text.includes('almacen') || text.includes('bodega');
+    if (!hasWarehouse) return null;
+    if (text.includes('from') || text.includes('origen')) return 'from';
+    if (text.includes('to warehouse') || text.includes('destino')) return 'to';
+    return null;
+  }
+
+  function replaceDirectionalText(root, fromText, toText) {
+    if (!root || !document.createTreeWalker) return;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var node;
+    while ((node = walker.nextNode())) {
+      var direction = directionForText(node.nodeValue);
+      if (direction === 'from') node.nodeValue = fromText;
+      if (direction === 'to') node.nodeValue = toText;
+    }
+  }
+
   function relabel() {
-    if (!/\/app\/transfers\/(store|edit)/i.test(window.location.pathname)) return;
-    var groups = document.querySelectorAll('.form-group');
-    groups.forEach(function (group) {
-      var label = group.querySelector('label');
-      if (!label) return;
-      var text = (label.textContent || '').trim().toLowerCase();
-      if (text.includes('from warehouse') || text.includes('almacén de origen') || text.includes('bodega de origen')) {
-        label.textContent = 'Ubicación de inventario de origen *';
-      } else if (text.includes('to warehouse') || text.includes('almacén de destino') || text.includes('bodega de destino')) {
-        label.textContent = 'Ubicación de inventario de destino *';
+    var path = window.location.pathname || '';
+    var isForm = /\/app\/transfers\/(store|edit)/i.test(path);
+    var isIndex = /\/app\/transfers\/?$/i.test(path);
+    if (!isForm && !isIndex) return;
+
+    if (isForm) {
+      document.querySelectorAll('.form-group').forEach(function (group) {
+        var label = group.querySelector('label');
+        if (!label) return;
+        var direction = directionForText(label.textContent);
+        if (direction === 'from') label.textContent = 'Ubicación de inventario de origen *';
+        if (direction === 'to') label.textContent = 'Ubicación de inventario de destino *';
+      });
+      return;
+    }
+
+    document.querySelectorAll('.form-group label').forEach(function (label) {
+      var direction = directionForText(label.textContent);
+      if (direction === 'from') label.textContent = 'Origen';
+      if (direction === 'to') label.textContent = 'Destino';
+    });
+
+    document.querySelectorAll('.vgt-table thead th').forEach(function (header) {
+      replaceDirectionalText(header, 'Origen', 'Destino');
+    });
+
+    document.querySelectorAll('input[placeholder]').forEach(function (input) {
+      var placeholder = normalized(input.getAttribute('placeholder'));
+      if (placeholder.includes('warehouse') || placeholder.includes('almacen') || placeholder.includes('bodega')) {
+        input.setAttribute('placeholder', 'Selecciona una ubicación');
       }
     });
   }
