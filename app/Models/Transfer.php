@@ -64,6 +64,31 @@ class Transfer extends Model
             $originalStatus = (string) $transfer->getOriginal('logistics_status');
             $lockedStatuses = ['in_transit', 'partially_received', 'received', 'received_with_issues'];
 
+            // Approval is an authorization only. Until physical dispatch occurs the
+            // old edit/delete code must not be allowed to "restore" quantities that
+            // were never debited. Keep this intermediate state immutable except for
+            // fields used by the explicit dispatch transition itself.
+            $approvedAwaitingDispatch = $transfer->getOriginal('approval_status') === 'approved'
+                && ! in_array($originalStatus, $lockedStatuses, true)
+                && ! $transfer->getOriginal('dispatched_at');
+            if ($approvedAwaitingDispatch) {
+                $dispatchFields = [
+                    'statut', 'receiving_token', 'logistics_status', 'dispatched_at',
+                    'dispatched_by_user_id', 'updated_at',
+                ];
+                $businessChanges = array_diff(array_keys($transfer->getDirty()), $dispatchFields);
+                if ($businessChanges) {
+                    throw ValidationException::withMessages([
+                        'transfer' => 'Una transferencia aprobada queda bloqueada hasta su despacho. No se puede editar ni eliminar porque el inventario todavía no ha salido físicamente del origen.',
+                    ]);
+                }
+                if ($transfer->isDirty('statut') && $transfer->statut !== 'sent') {
+                    throw ValidationException::withMessages([
+                        'transfer' => 'Una transferencia aprobada pendiente de despacho solo puede avanzar al estado enviado.',
+                    ]);
+                }
+            }
+
             if (! in_array($originalStatus, ['received', 'received_with_issues'], true)
                 && $transfer->isDirty('statut') && $transfer->statut === 'completed') $transfer->statut = 'sent';
             if (! in_array($originalStatus, $lockedStatuses, true)) return;
