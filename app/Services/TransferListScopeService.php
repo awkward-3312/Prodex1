@@ -30,6 +30,13 @@ class TransferListScopeService
             ? InventoryLocation::active()->pluck('id')->map(fn ($id) => (int) $id)->all()
             : app(InventoryLocationScopeService::class)->allowedLocationIds($user);
 
+        // A restricted account with no operational assignment must see nothing.
+        // Leaving the nested callback empty would make Laravel drop the WHERE group
+        // entirely, turning "no scope" into tenant-wide visibility.
+        if (empty($locationIds) && empty($warehouseIds)) {
+            return $query->whereRaw('1 = 0');
+        }
+
         return $query->where(function ($scope) use ($locationIds, $warehouseIds) {
             $hasModern = false;
 
