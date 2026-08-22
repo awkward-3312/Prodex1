@@ -45,6 +45,7 @@ jobs:
           php -l app/Services/TransferListScopeService.php
           php -l app/Services/TransferBusinessDestinationService.php
           php -l app/Services/TransferLocationDispatchService.php
+          php -l app/Services/TransferWorkflowService.php
           php -l app/Services/TransferSerialLocationService.php
           php -l app/Services/TransferBatchIssueService.php
           php -l app/Services/LocationAwareTransferLogisticsService.php
@@ -53,6 +54,7 @@ jobs:
           php -l app/Services/TransferLocationStockBridge.php
           php -l app/Http/Controllers/TransferDiscrepancyController.php
           php -l app/Http/Controllers/TransferLocationController.php
+          php -l app/Http/Controllers/TransferWorkflowController.php
           php -l app/Http/Controllers/FinalTransferController.php
           php -l app/Http/Controllers/FinalTransferLogisticsController.php
           php -l app/Http/Controllers/LocationAwareTransferDiscrepancyController.php
@@ -74,8 +76,10 @@ jobs:
           php -l tests/Unit/TransferLocationAccessControllerTest.php
           php -l tests/Unit/TransferDiscrepancyLocationAccessTest.php
           php -l tests/Unit/TransferDispatchPreflightTest.php
+          php -l tests/Unit/TransferWorkflowAuditTest.php
           node --check resources/static/prodex-transfer-location-ui.js
           node --check resources/static/prodex-transfer-logistics.js
+          node --check resources/static/prodex-transfer-workflow.js
 
       - name: Run focused transfer tests
         run: |
@@ -86,6 +90,7 @@ jobs:
           vendor/bin/phpunit tests/Unit/TransferBusinessDestinationServiceTest.php
           vendor/bin/phpunit tests/Unit/TransferLocationAccessControllerTest.php
           vendor/bin/phpunit tests/Unit/TransferDiscrepancyLocationAccessTest.php
+          vendor/bin/phpunit tests/Unit/TransferWorkflowAuditTest.php
           vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php tests/Unit/TransferLogisticsBatchUnitsTest.php tests/Unit/TransferDispatchPreflightTest.php
 
       - name: Install frontend dependencies
