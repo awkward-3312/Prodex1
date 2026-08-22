@@ -9,6 +9,24 @@ use Illuminate\Validation\ValidationException;
 class TransferBusinessDestinationService
 {
     /**
+     * Load the active physical locations once for a transfer-options request.
+     * Branch-owned locations are only eligible while their branch is active.
+     */
+    public function activeLocations(): Collection
+    {
+        return InventoryLocation::with(['branch', 'warehouse'])
+            ->active()
+            ->where(function ($query) {
+                $query->whereNotNull('warehouse_id')
+                    ->orWhereHas('branch', function ($branch) {
+                        $branch->whereNull('deleted_at')->where('is_active', true);
+                    });
+            })
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
      * Return user-facing destinations for a physical source location.
      *
      * Business rules:
@@ -16,12 +34,14 @@ class TransferBusinessDestinationService
      * - Branch storage -> another branch storage OR the same branch sales floor.
      * - Branch sales floor -> same branch storage (return/rebalancing path).
      */
-    public function optionsForSource(InventoryLocation $source): Collection
+    public function optionsForSource(InventoryLocation $source, ?Collection $locations = null): Collection
     {
-        $locations = InventoryLocation::with(['branch', 'warehouse'])
-            ->active()
-            ->orderBy('id')
-            ->get();
+        $locations = $locations ?: $this->activeLocations();
+
+        // A branch location is not operational if its owner branch was disabled.
+        if ($source->branch_id && ! $this->branchIsActive($source)) {
+            return collect();
+        }
 
         if ($source->warehouse_id) {
             return $this->branchStorageOptions($locations);
@@ -55,16 +75,21 @@ class TransferBusinessDestinationService
 
     public function assertAllowed(int $sourceLocationId, int $destinationLocationId): void
     {
-        $source = InventoryLocation::active()->find($sourceLocationId);
-        $destination = InventoryLocation::active()->find($destinationLocationId);
+        $locations = $this->activeLocations();
+        $source = $locations->firstWhere('id', $sourceLocationId);
+        $destination = $locations->firstWhere('id', $destinationLocationId);
 
         if (! $source || ! $destination) {
             throw ValidationException::withMessages([
-                'transfer.to_inventory_location_id' => 'La ubicación de origen o destino no existe o está inactiva.',
+                'transfer.to_inventory_location_id' => 'La ubicación de origen o destino no existe, está inactiva o pertenece a una sucursal cerrada.',
             ]);
         }
 
-        $allowed = $this->optionsForSource($source)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $allowed = $this->optionsForSource($source, $locations)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
         if (! in_array((int) $destination->id, $allowed, true)) {
             throw ValidationException::withMessages([
                 'transfer.to_inventory_location_id' => 'Ese recorrido de inventario no está permitido. Los envíos a sucursales ingresan primero a su bodega.',
@@ -75,7 +100,9 @@ class TransferBusinessDestinationService
     private function branchStorageOptions(Collection $locations): Collection
     {
         return $locations
-            ->filter(fn (InventoryLocation $location) => $location->branch_id && $location->type === InventoryLocation::TYPE_STORAGE)
+            ->filter(fn (InventoryLocation $location) => $location->branch_id
+                && $location->type === InventoryLocation::TYPE_STORAGE
+                && $this->branchIsActive($location))
             ->groupBy('branch_id')
             ->map(function (Collection $group) {
                 $storage = $this->preferredStorage($group);
@@ -89,7 +116,8 @@ class TransferBusinessDestinationService
     {
         return $this->preferredStorage(
             $locations->filter(fn (InventoryLocation $location) => (int) $location->branch_id === $branchId
-                && $location->type === InventoryLocation::TYPE_STORAGE)
+                && $location->type === InventoryLocation::TYPE_STORAGE
+                && $this->branchIsActive($location))
         );
     }
 
@@ -104,10 +132,21 @@ class TransferBusinessDestinationService
     private function defaultSalesFloor(Collection $locations, int $branchId): ?InventoryLocation
     {
         $floors = $locations->filter(fn (InventoryLocation $location) => (int) $location->branch_id === $branchId
-            && $location->type === InventoryLocation::TYPE_SALES_FLOOR);
+            && $location->type === InventoryLocation::TYPE_SALES_FLOOR
+            && $this->branchIsActive($location));
 
         return $floors->first(fn (InventoryLocation $location) => (bool) $location->is_default_sales)
             ?: $floors->sortBy('id')->first();
+    }
+
+    private function branchIsActive(InventoryLocation $location): bool
+    {
+        if (! $location->branch_id) return true;
+        if (! $location->relationLoaded('branch')) $location->load('branch');
+
+        return $location->branch
+            && ! $location->branch->deleted_at
+            && (bool) $location->branch->is_active;
     }
 
     private function locationOption(InventoryLocation $location, string $label, string $destinationType): array
