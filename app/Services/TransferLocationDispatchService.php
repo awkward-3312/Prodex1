@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\ProductBatch;
+use App\Models\ProductBatchLocationMovement;
 use App\Models\ProductBatchLocationStock;
 use App\Models\Transfer;
 use App\Models\TransferDetail;
@@ -81,7 +82,9 @@ class TransferLocationDispatchService
         float $required,
         ?int $variantId
     ): void {
-        if (! Schema::hasTable('product_batch_location_stocks') || ! Schema::hasTable('transfer_detail_batches')) {
+        if (! Schema::hasTable('product_batch_location_stocks')
+            || ! Schema::hasTable('product_batch_location_movements')
+            || ! Schema::hasTable('transfer_detail_batches')) {
             throw ValidationException::withMessages([
                 'transfer' => 'El producto '.$product->name.' usa lotes, pero el esquema de lotes por ubicación aún no está disponible.',
             ]);
@@ -148,6 +151,22 @@ class TransferLocationDispatchService
                 'dest_batch_id' => null,
                 'qty' => $take,
                 'unit_cost' => $batch->unit_cost,
+            ]);
+
+            ProductBatchLocationMovement::create([
+                'product_batch_id' => $batch->id,
+                'from_inventory_location_id' => (int) $transfer->from_inventory_location_id,
+                'to_inventory_location_id' => null,
+                'quantity' => $take,
+                'user_id' => auth()->id(),
+                'reference_type' => 'TransferDispatchBatch',
+                'reference_id' => (string) $detail->id,
+                'idempotency_key' => 'transfer:dispatch:detail:'.$detail->id.':batch:'.$batch->id,
+                'notes' => 'Lote despachado desde ubicación física y puesto en tránsito.',
+                'metadata' => [
+                    'transfer_id' => (int) $transfer->id,
+                    'transfer_detail_id' => (int) $detail->id,
+                ],
             ]);
 
             $remaining = round($remaining - $take, 3);
