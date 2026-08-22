@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\Branch;
 use App\Models\InventoryLocation;
 use App\Models\Product;
+use App\Models\ProductBatchLocationMovement;
 use App\Models\ProductBatchLocationStock;
 use App\Models\Transfer;
 use App\Models\TransferDetail;
+use App\Models\TransferDetailSerial;
 use App\Models\TransferReceiptItem;
 use App\Models\Unit;
 use App\Models\User;
@@ -60,6 +62,85 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
         }
 
         return $updated->fresh(['from_warehouse', 'to_warehouse', 'fromInventoryLocation', 'toInventoryLocation', 'details.product']);
+    }
+
+    /**
+     * Reclassify an already-accounted issue into good stock without duplicating
+     * physical inventory. Missing units are late arrivals (increase destination),
+     * while defective units already exist in quarantine and therefore MOVE from
+     * quarantine to the destination sellable location.
+     */
+    public function creditIssueResolution(
+        Transfer $transfer,
+        TransferDetail $detail,
+        float $quantity,
+        TransferReceiptItem $receiptItem,
+        ?string $issueColumn = null
+    ): void {
+        if (! $transfer->to_inventory_location_id) {
+            parent::creditIssueResolution($transfer, $detail, $quantity, $receiptItem, $issueColumn);
+            return;
+        }
+        if ($quantity <= 0) return;
+
+        $product = Product::find($detail->product_id);
+        if (! $product) {
+            throw ValidationException::withMessages(['issue' => 'No se pudo identificar el producto de la incidencia.']);
+        }
+
+        $stockQty = app(TransferSerialLocationService::class)->baseQuantityForDetail($detail, $product, $quantity);
+        $sourceIssue = $issueColumn ?: $this->inferResolvedIssueColumn($detail, $receiptItem, $product, $stockQty);
+        $variantId = $detail->product_variant_id ? (int) $detail->product_variant_id : null;
+
+        if ($sourceIssue === 'quantity_defective') {
+            $quarantineLocationId = $this->quarantineLocationIdForTransferDetail($transfer, $detail);
+            if (! $quarantineLocationId) {
+                throw ValidationException::withMessages([
+                    'issue' => 'No se pudo identificar la ubicación de cuarentena de la mercancía defectuosa.',
+                ]);
+            }
+
+            app(InventoryService::class)->move(
+                $quarantineLocationId,
+                (int) $transfer->to_inventory_location_id,
+                (int) $detail->product_id,
+                $stockQty,
+                $variantId,
+                [
+                    'user_id' => auth()->id(),
+                    'reference_type' => 'TransferIssueResolution',
+                    'reference_id' => (string) $receiptItem->id,
+                    'idempotency_key' => 'transfer:receipt:item:'.$receiptItem->id.':resolution:defective',
+                    'notes' => 'Producto liberado de cuarentena a inventario vendible.',
+                    'metadata' => ['transfer_id' => (int) $transfer->id, 'transfer_detail_id' => (int) $detail->id],
+                ]
+            );
+        } else {
+            app(InventoryService::class)->increase(
+                (int) $transfer->to_inventory_location_id,
+                (int) $detail->product_id,
+                $stockQty,
+                $variantId,
+                [
+                    'user_id' => auth()->id(),
+                    'reference_type' => 'TransferIssueResolution',
+                    'reference_id' => (string) $receiptItem->id,
+                    'idempotency_key' => 'transfer:receipt:item:'.$receiptItem->id.':resolution:missing',
+                    'notes' => 'Mercancía faltante recibida posteriormente en el destino.',
+                    'metadata' => ['transfer_id' => (int) $transfer->id, 'transfer_detail_id' => (int) $detail->id],
+                ]
+            );
+        }
+
+        app(TransferSerialLocationService::class)->reclassifyIssueToGood(
+            $transfer,
+            $detail,
+            $stockQty,
+            $receiptItem,
+            $sourceIssue
+        );
+
+        $this->creditBatchStockIfApplicable($transfer, $detail, $stockQty, $receiptItem);
     }
 
     public function notifyDestinationReceivers(Transfer $transfer): void
@@ -193,6 +274,7 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
 
         if (! $transfer->to_inventory_location_id
             || ! Schema::hasTable('product_batch_location_stocks')
+            || ! Schema::hasTable('product_batch_location_movements')
             || ! Schema::hasTable('transfer_receipt_item_batches')) {
             return;
         }
@@ -206,16 +288,44 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
             $qty = round((float) $row->quantity_good, 3);
             if ($batchId <= 0 || $qty <= 0) continue;
 
-            $stock = ProductBatchLocationStock::firstOrCreate(
-                [
+            $key = 'transfer:receipt:batch-row:'.$row->id.':location:'.$transfer->to_inventory_location_id;
+            if (ProductBatchLocationMovement::where('idempotency_key', $key)->exists()) {
+                continue;
+            }
+
+            DB::transaction(function () use ($batchId, $qty, $transfer, $receiptItem, $row, $key) {
+                if (ProductBatchLocationMovement::where('idempotency_key', $key)->lockForUpdate()->exists()) {
+                    return;
+                }
+
+                $stock = ProductBatchLocationStock::firstOrCreate(
+                    [
+                        'product_batch_id' => $batchId,
+                        'inventory_location_id' => (int) $transfer->to_inventory_location_id,
+                    ],
+                    ['quantity' => 0, 'reserved_quantity' => 0]
+                );
+                $stock = ProductBatchLocationStock::whereKey($stock->id)->lockForUpdate()->firstOrFail();
+                $stock->quantity = round((float) $stock->quantity + $qty, 3);
+                $stock->save();
+
+                ProductBatchLocationMovement::create([
                     'product_batch_id' => $batchId,
-                    'inventory_location_id' => (int) $transfer->to_inventory_location_id,
-                ],
-                ['quantity' => 0, 'reserved_quantity' => 0]
-            );
-            $stock = ProductBatchLocationStock::whereKey($stock->id)->lockForUpdate()->firstOrFail();
-            $stock->quantity = round((float) $stock->quantity + $qty, 3);
-            $stock->save();
+                    'from_inventory_location_id' => null,
+                    'to_inventory_location_id' => (int) $transfer->to_inventory_location_id,
+                    'quantity' => $qty,
+                    'user_id' => auth()->id(),
+                    'reference_type' => 'TransferReceiptBatch',
+                    'reference_id' => (string) $row->id,
+                    'idempotency_key' => $key,
+                    'notes' => 'Lote acreditado físicamente por recepción de transferencia.',
+                    'metadata' => [
+                        'transfer_id' => (int) $transfer->id,
+                        'receipt_item_id' => (int) $receiptItem->id,
+                        'transfer_receipt_item_batch_id' => (int) $row->id,
+                    ],
+                ]);
+            }, 3);
         }
     }
 
@@ -301,6 +411,60 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
             );
             app(TransferSerialLocationService::class)->receiveMissing($transfer, $detail, $baseQty, $receiptItem);
         }
+    }
+
+    private function inferResolvedIssueColumn(
+        TransferDetail $detail,
+        TransferReceiptItem $receiptItem,
+        Product $product,
+        float $resolvedBaseQty
+    ): string {
+        if (! Schema::hasTable('transfer_detail_serials') || ! (bool) ($product->is_imei ?? false)) {
+            // For non-serialized lines, a quarantine record proves the quantity was
+            // defective; otherwise the resolution is a late missing arrival.
+            return $this->quarantineLocationIdForTransferDetail($detail->transfer, $detail)
+                ? 'quantity_defective'
+                : 'quantity_missing';
+        }
+
+        $service = app(TransferSerialLocationService::class);
+        $missingCurrent = $service->baseQuantityForDetail($detail, $product, (float) $receiptItem->quantity_missing);
+        $defectiveCurrent = $service->baseQuantityForDetail($detail, $product, (float) $receiptItem->quantity_defective);
+        $missingPivots = TransferDetailSerial::where('transfer_detail_id', $detail->id)
+            ->where('transfer_receipt_item_id', $receiptItem->id)
+            ->where('status', TransferDetailSerial::STATUS_MISSING)
+            ->count();
+        $defectivePivots = TransferDetailSerial::where('transfer_detail_id', $detail->id)
+            ->where('transfer_receipt_item_id', $receiptItem->id)
+            ->where('status', TransferDetailSerial::STATUS_DEFECTIVE)
+            ->count();
+
+        if (abs(($missingPivots - $missingCurrent) - $resolvedBaseQty) < 0.0005) {
+            return 'quantity_missing';
+        }
+        if (abs(($defectivePivots - $defectiveCurrent) - $resolvedBaseQty) < 0.0005) {
+            return 'quantity_defective';
+        }
+
+        throw ValidationException::withMessages([
+            'issue' => 'No se pudo determinar con seguridad el tipo físico de la incidencia resuelta.',
+        ]);
+    }
+
+    private function quarantineLocationIdForTransferDetail(Transfer $transfer, TransferDetail $detail): ?int
+    {
+        if (! Schema::hasTable('transfer_quarantine_stock') || ! Schema::hasColumn('transfer_quarantine_stock', 'inventory_location_id')) {
+            return null;
+        }
+
+        $id = DB::table('transfer_quarantine_stock')
+            ->where('transfer_id', $transfer->id)
+            ->where('transfer_detail_id', $detail->id)
+            ->whereNotNull('inventory_location_id')
+            ->orderByDesc('id')
+            ->value('inventory_location_id');
+
+        return $id ? (int) $id : null;
     }
 
     private function quarantineLocation(InventoryLocation $destination): InventoryLocation
