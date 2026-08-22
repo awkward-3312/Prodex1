@@ -24,13 +24,11 @@ class TransferLocationController extends BaseController
         $this->authorizeForUser($user, 'create', Transfer::class);
 
         $sourceIds = app(InventoryLocationScopeService::class)->allowedLocationIds($user);
-        $sources = InventoryLocation::with(['branch', 'warehouse'])
-            ->active()
-            ->whereIn('id', $sourceIds)
-            ->orderBy('id')
-            ->get();
-        $fallbackWarehouseId = $this->fallbackWarehouseId();
         $destinationService = app(TransferBusinessDestinationService::class);
+        $locations = $destinationService->activeLocations();
+        $sources = $locations->whereIn('id', $sourceIds)->values();
+        $locationsById = $locations->keyBy('id');
+        $fallbackWarehouseId = $this->fallbackWarehouseId();
 
         $sourceRows = $sources
             ->map(fn ($location) => $this->optionRow($location, $fallbackWarehouseId))
@@ -39,9 +37,9 @@ class TransferLocationController extends BaseController
         $destinationGroups = [];
         foreach ($sources as $source) {
             $destinationGroups[(string) $source->id] = $destinationService
-                ->optionsForSource($source)
-                ->map(function (array $row) use ($fallbackWarehouseId) {
-                    $location = InventoryLocation::with(['branch', 'warehouse'])->active()->find($row['id']);
+                ->optionsForSource($source, $locations)
+                ->map(function (array $row) use ($fallbackWarehouseId, $locationsById) {
+                    $location = $locationsById->get((int) $row['id']);
                     if (! $location) return null;
                     $option = $this->optionRow($location, $fallbackWarehouseId);
                     $option['name'] = $row['name'];
