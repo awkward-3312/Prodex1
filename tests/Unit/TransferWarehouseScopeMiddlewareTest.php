@@ -93,6 +93,28 @@ class TransferWarehouseScopeMiddlewareTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function test_transfer_pdf_rejects_user_outside_both_locations(): void
+    {
+        $this->transfer(5, 20, 10, 1, 1);
+
+        $user = $this->user();
+        $warehouseScope = Mockery::mock(WarehouseScopeService::class);
+        $locationScope = Mockery::mock(InventoryLocationScopeService::class);
+        $locationScope->shouldReceive('canAccess')->with($user, 20)->andReturn(false);
+        $locationScope->shouldReceive('canAccess')->with($user, 10)->andReturn(false);
+
+        $request = $this->request(
+            'GET',
+            '/api/transfer_pdf/5',
+            [],
+            'App\Http\Controllers\TransferController@transfer_pdf',
+            'api/transfer_pdf/{id}'
+        );
+
+        $this->expectException(AuthorizationException::class);
+        $this->invokeValidation($request, $user, $warehouseScope, $locationScope);
+    }
+
     private function invokeValidation(
         Request $request,
         User $user,
