@@ -38,21 +38,21 @@ class FinalTransferLogisticsService extends LocationAwareTransferLogisticsServic
         ?string $notes = null,
         ?string $requestToken = null
     ): Transfer {
-        $updated = parent::receive($transfer, $user, $items, $notes, $requestToken);
+        return DB::transaction(function () use ($transfer, $user, $items, $notes, $requestToken) {
+            $updated = parent::receive($transfer, $user, $items, $notes, $requestToken);
 
-        if (! $transfer->to_inventory_location_id || ! app(TransferBatchIssueService::class)->isSupported()) {
-            return $updated;
-        }
+            if (! $transfer->to_inventory_location_id || ! app(TransferBatchIssueService::class)->isSupported()) {
+                return $updated;
+            }
 
-        $receipt = DB::table('transfer_receipts')
-            ->where('transfer_id', $transfer->id)
-            ->when($requestToken, fn ($query) => $query->where('request_token', $requestToken))
-            ->when(! $requestToken, fn ($query) => $query->where('received_by_user_id', $user->id))
-            ->orderByDesc('id')
-            ->first();
-        if (! $receipt) return $updated;
+            $receipt = DB::table('transfer_receipts')
+                ->where('transfer_id', $transfer->id)
+                ->when($requestToken, fn ($query) => $query->where('request_token', $requestToken))
+                ->when(! $requestToken, fn ($query) => $query->where('received_by_user_id', $user->id))
+                ->orderByDesc('id')
+                ->first();
+            if (! $receipt) return $updated;
 
-        DB::transaction(function () use ($transfer, $receipt) {
             $receiptItems = TransferReceiptItem::where('transfer_receipt_id', $receipt->id)
                 ->orderBy('id')->lockForUpdate()->get();
 
@@ -99,9 +99,9 @@ class FinalTransferLogisticsService extends LocationAwareTransferLogisticsServic
                     );
                 }
             }
-        }, 3);
 
-        return $updated;
+            return $updated;
+        }, 5);
     }
 
     protected function creditBatchStockIfApplicable(
