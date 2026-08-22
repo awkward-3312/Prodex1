@@ -94,7 +94,21 @@ class Transfer extends Model
                 }
             }
 
-            if ($transfer->isApproved() && $transfer->statut === 'sent') {
+            // Backward compatibility: the historical TransferController@approve endpoint
+            // approved and dispatched in one action. Keep that behavior only for that
+            // legacy endpoint. The new TransferWorkflowController separates approval
+            // from physical dispatch so stock moves only when the user clicks Despachar.
+            $action = '';
+            try {
+                $route = request()->route();
+                $action = $route ? (string) $route->getActionName() : '';
+            } catch (\Throwable $e) {
+                $action = '';
+            }
+            $legacyApproval = str_contains($action, 'TransferController@approve')
+                && ! str_contains($action, 'TransferWorkflowController');
+
+            if ($legacyApproval && $transfer->isApproved() && $transfer->statut === 'sent') {
                 $fresh = $transfer->fresh();
                 if ($fresh->from_inventory_location_id) app(TransferLocationDispatchService::class)->ensureDispatched($fresh);
                 app(TransferDispatchGuardService::class)->finalizeDispatch($fresh);
