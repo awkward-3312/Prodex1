@@ -12,6 +12,7 @@ use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\BatchLocationService;
 use App\Services\InventoryLocationScopeService;
+use App\Services\TransferBusinessDestinationService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -23,13 +24,42 @@ class TransferLocationController extends BaseController
         $this->authorizeForUser($user, 'create', Transfer::class);
 
         $sourceIds = app(InventoryLocationScopeService::class)->allowedLocationIds($user);
-        $sources = InventoryLocation::with(['branch', 'warehouse'])->active()->whereIn('id', $sourceIds)->get();
-        $destinations = InventoryLocation::with(['branch', 'warehouse'])->active()->get();
+        $sources = InventoryLocation::with(['branch', 'warehouse'])
+            ->active()
+            ->whereIn('id', $sourceIds)
+            ->orderBy('id')
+            ->get();
         $fallbackWarehouseId = $this->fallbackWarehouseId();
+        $destinationService = app(TransferBusinessDestinationService::class);
+
+        $sourceRows = $sources
+            ->map(fn ($location) => $this->optionRow($location, $fallbackWarehouseId))
+            ->values();
+
+        $destinationGroups = [];
+        foreach ($sources as $source) {
+            $destinationGroups[(string) $source->id] = $destinationService
+                ->optionsForSource($source)
+                ->map(function (array $row) use ($fallbackWarehouseId) {
+                    $location = InventoryLocation::with(['branch', 'warehouse'])->active()->find($row['id']);
+                    if (! $location) return null;
+                    $option = $this->optionRow($location, $fallbackWarehouseId);
+                    $option['name'] = $row['name'];
+                    $option['destination_type'] = $row['destination_type'] ?? null;
+                    return $option;
+                })
+                ->filter()
+                ->values()
+                ->all();
+        }
 
         return response()->json([
-            'sources' => $sources->map(fn ($location) => $this->optionRow($location, $fallbackWarehouseId))->values(),
-            'destinations' => $destinations->map(fn ($location) => $this->optionRow($location, $fallbackWarehouseId))->values(),
+            'sources' => $sourceRows,
+            // The destination list is intentionally empty until an origin is chosen.
+            // The UI then uses destination_groups[source_location_id].
+            'destinations' => [],
+            'destination_groups' => $destinationGroups,
+            'business_routing' => true,
         ]);
     }
 
