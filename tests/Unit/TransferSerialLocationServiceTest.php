@@ -115,7 +115,7 @@ class TransferSerialLocationServiceTest extends TestCase
         }
     }
 
-    public function test_serials_leave_source_and_are_received_or_marked_missing(): void
+    public function test_serials_leave_source_and_issue_reclassification_is_retry_safe(): void
     {
         $transfer = new Transfer();
         $transfer->id = 100;
@@ -149,5 +149,13 @@ class TransferSerialLocationServiceTest extends TestCase
 
         $this->assertSame(1, TransferDetailSerial::where('status', 'missing')->count());
         $this->assertSame(1, ProductSerial::where('status', ProductSerial::STATUS_RESERVED)->whereNull('inventory_location_id')->count());
+
+        $service->reclassifyIssueToGood($transfer, $detail, 1, $missingItem, 'quantity_missing');
+        $service->reclassifyIssueToGood($transfer, $detail, 1, $missingItem, 'quantity_missing');
+
+        $this->assertSame(2, ProductSerial::where('status', ProductSerial::STATUS_AVAILABLE)->where('inventory_location_id', 9)->count());
+        $this->assertSame(1, TransferDetailSerial::where('status', 'received')->where('issue_type', 'resolved_missing')->count());
+        $this->assertSame(0, TransferDetailSerial::where('status', 'missing')->count());
+        $this->assertSame(5, DB::table('product_serial_movements')->count());
     }
 }
