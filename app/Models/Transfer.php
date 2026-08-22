@@ -34,23 +34,9 @@ class Transfer extends Model
     protected static function booted(): void
     {
         static::creating(function (Transfer $transfer) {
-            // TransferController is intentionally kept backward compatible. The
-            // modern UI sends location IDs inside transfer.*, so capture them here
-            // without forcing the large legacy controller to know the new schema.
-            if (Schema::hasColumn('transfers', 'from_inventory_location_id')) {
-                $request = request();
-                $from = $request?->input('transfer.from_inventory_location_id')
-                    ?: $request?->input('transfer.from_inventory_location');
-                $to = $request?->input('transfer.to_inventory_location_id')
-                    ?: $request?->input('transfer.to_inventory_location');
-                if ($from) $transfer->from_inventory_location_id = (int) $from;
-                if ($to) $transfer->to_inventory_location_id = (int) $to;
-            }
-
+            static::captureRequestedLocations($transfer);
             static::assertDifferentOrigins($transfer);
-            if ($transfer->approval_status === 'pending' && $transfer->statut === 'completed') {
-                $transfer->statut = 'sent';
-            }
+            if ($transfer->approval_status === 'pending' && $transfer->statut === 'completed') $transfer->statut = 'sent';
         });
 
         static::created(function (Transfer $transfer) {
@@ -69,6 +55,9 @@ class Transfer extends Model
         });
 
         static::updating(function (Transfer $transfer) {
+            if (! in_array((string) $transfer->getOriginal('logistics_status'), ['in_transit', 'partially_received', 'received', 'received_with_issues'], true)) {
+                static::captureRequestedLocations($transfer);
+            }
             static::assertDifferentOrigins($transfer);
             if (! Schema::hasColumn('transfers', 'logistics_status')) return;
 
@@ -76,9 +65,7 @@ class Transfer extends Model
             $lockedStatuses = ['in_transit', 'partially_received', 'received', 'received_with_issues'];
 
             if (! in_array($originalStatus, ['received', 'received_with_issues'], true)
-                && $transfer->isDirty('statut') && $transfer->statut === 'completed') {
-                $transfer->statut = 'sent';
-            }
+                && $transfer->isDirty('statut') && $transfer->statut === 'completed') $transfer->statut = 'sent';
             if (! in_array($originalStatus, $lockedStatuses, true)) return;
 
             if ($transfer->isDirty('from_warehouse_id') || $transfer->isDirty('to_warehouse_id')
@@ -109,18 +96,23 @@ class Transfer extends Model
 
             if ($transfer->isApproved() && $transfer->statut === 'sent') {
                 $fresh = $transfer->fresh();
-
-                // Physical location stock is authoritative for modern transfers.
-                // This executes inside the same approval transaction and is
-                // idempotent, so any failure rolls the approval back atomically.
-                if ($fresh->from_inventory_location_id) {
-                    app(TransferLocationDispatchService::class)->ensureDispatched($fresh);
-                }
-
+                if ($fresh->from_inventory_location_id) app(TransferLocationDispatchService::class)->ensureDispatched($fresh);
                 app(TransferDispatchGuardService::class)->finalizeDispatch($fresh);
                 app(TransferLogisticsService::class)->syncDispatchState($fresh, auth()->user());
             }
         });
+    }
+
+    protected static function captureRequestedLocations(Transfer $transfer): void
+    {
+        if (! Schema::hasColumn('transfers', 'from_inventory_location_id')) return;
+        try { $request = request(); } catch (\Throwable $e) { return; }
+        if (! $request) return;
+
+        $from = $request->input('transfer.from_inventory_location_id') ?: $request->input('transfer.from_inventory_location');
+        $to = $request->input('transfer.to_inventory_location_id') ?: $request->input('transfer.to_inventory_location');
+        if ($from) $transfer->from_inventory_location_id = (int) $from;
+        if ($to) $transfer->to_inventory_location_id = (int) $to;
     }
 
     protected static function assertDifferentOrigins(Transfer $transfer): void
@@ -131,7 +123,6 @@ class Transfer extends Model
             }
             return;
         }
-
         if ($transfer->from_warehouse_id && $transfer->to_warehouse_id
             && (int) $transfer->from_warehouse_id === (int) $transfer->to_warehouse_id) {
             throw ValidationException::withMessages(['transfer' => 'La bodega de origen y la bodega destino deben ser diferentes.']);
