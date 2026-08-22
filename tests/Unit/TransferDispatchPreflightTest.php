@@ -70,6 +70,47 @@ class TransferDispatchPreflightTest extends TestCase
         $this->assertEquals(24.0, (float) DB::table('product_warehouse')->value('qte'));
     }
 
+    public function test_location_transfer_uses_physical_stock_not_legacy_aggregate(): void
+    {
+        $unitId = $this->unit('*', 1);
+        $productId = $this->product('Stock físico', $unitId);
+        $transferId = $this->transfer(5, 9);
+        $this->detail($transferId, $productId, $unitId, 8);
+
+        // Deliberately contradictory ledgers: the legacy CD says zero while the
+        // authoritative physical location has enough stock.
+        $this->stock($productId, 0);
+        $this->locationStock(5, $productId, 10, 0);
+
+        $this->assertSame('continued', $this->runMiddleware($transferId));
+    }
+
+    public function test_location_transfer_blocks_when_physical_stock_is_insufficient_even_if_legacy_is_high(): void
+    {
+        $unitId = $this->unit('*', 1);
+        $productId = $this->product('Stock físico insuficiente', $unitId);
+        $transferId = $this->transfer(5, 9);
+        $this->detail($transferId, $productId, $unitId, 8);
+        $this->stock($productId, 1000);
+        $this->locationStock(5, $productId, 7, 0);
+
+        $this->expectException(ValidationException::class);
+        $this->runMiddleware($transferId);
+    }
+
+    public function test_location_transfer_respects_reserved_quantity(): void
+    {
+        $unitId = $this->unit('*', 1);
+        $productId = $this->product('Stock reservado', $unitId);
+        $transferId = $this->transfer(5, 9);
+        $this->detail($transferId, $productId, $unitId, 7);
+        $this->stock($productId, 100);
+        $this->locationStock(5, $productId, 10, 4);
+
+        $this->expectException(ValidationException::class);
+        $this->runMiddleware($transferId);
+    }
+
     private function runMiddleware(int $transferId)
     {
         $request = Request::create('/api/transfers/'.$transferId.'/approve', 'POST');
@@ -105,7 +146,7 @@ class TransferDispatchPreflightTest extends TestCase
         ]);
     }
 
-    private function transfer(): int
+    private function transfer(?int $fromLocationId = null, ?int $toLocationId = null): int
     {
         return DB::table('transfers')->insertGetId([
             'date' => now()->toDateString(),
@@ -114,6 +155,8 @@ class TransferDispatchPreflightTest extends TestCase
             'user_id' => 1,
             'from_warehouse_id' => 1,
             'to_warehouse_id' => 2,
+            'from_inventory_location_id' => $fromLocationId,
+            'to_inventory_location_id' => $toLocationId,
             'items' => 1,
             'statut' => 'sent',
             'approval_status' => 'pending',
@@ -159,6 +202,21 @@ class TransferDispatchPreflightTest extends TestCase
         ]);
     }
 
+    private function locationStock(int $locationId, int $productId, float $quantity, float $reserved): void
+    {
+        DB::table('inventory_location_stocks')->insert([
+            'inventory_location_id' => $locationId,
+            'product_id' => $productId,
+            'product_variant_id' => null,
+            'variant_key' => 0,
+            'quantity' => $quantity,
+            'reserved_quantity' => $reserved,
+            'manage_stock' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     private function createSchema(): void
     {
         Schema::create('products', function ($table) {
@@ -191,6 +249,18 @@ class TransferDispatchPreflightTest extends TestCase
             $table->softDeletes();
         });
 
+        Schema::create('inventory_location_stocks', function ($table) {
+            $table->increments('id');
+            $table->integer('inventory_location_id');
+            $table->integer('product_id');
+            $table->integer('product_variant_id')->nullable();
+            $table->integer('variant_key')->default(0);
+            $table->decimal('quantity', 20, 6)->default(0);
+            $table->decimal('reserved_quantity', 20, 6)->default(0);
+            $table->boolean('manage_stock')->default(true);
+            $table->timestamps();
+        });
+
         Schema::create('transfers', function ($table) {
             $table->increments('id');
             $table->date('date')->nullable();
@@ -199,6 +269,8 @@ class TransferDispatchPreflightTest extends TestCase
             $table->integer('user_id')->nullable();
             $table->integer('from_warehouse_id');
             $table->integer('to_warehouse_id');
+            $table->integer('from_inventory_location_id')->nullable();
+            $table->integer('to_inventory_location_id')->nullable();
             $table->decimal('items', 20, 6)->default(0);
             $table->string('statut')->default('sent');
             $table->string('approval_status')->nullable();
