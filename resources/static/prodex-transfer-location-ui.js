@@ -4,16 +4,12 @@
   if (window.__prodexTransferLocationUiInstalled) return;
   window.__prodexTransferLocationUiInstalled = true;
 
-  var state = { options: null, loading: null };
+  var state = { options: null, loading: null, destinationTarget: null };
 
   function api() { return window.axios || null; }
   function parse(url) {
     try { return new URL(String(url || ''), window.location.origin + '/api/'); }
     catch (e) { return null; }
-  }
-  function rel(u) {
-    var p = (u.pathname || '').replace(/^\/api\//, '').replace(/^\//, '');
-    return p + (u.search || '');
   }
   function dataObject(config) {
     if (!config) return null;
@@ -39,9 +35,31 @@
     return state.options && Array.isArray(state.options.sources)
       ? state.options.sources.find(function (x) { return String(x.id) === String(id); }) : null;
   }
+  function destinationsForSource(id) {
+    if (!state.options || !state.options.destination_groups) return [];
+    var rows = state.options.destination_groups[String(id)];
+    return Array.isArray(rows) ? rows : [];
+  }
+  function allDestinations() {
+    if (!state.options) return [];
+    var rows = [];
+    if (Array.isArray(state.options.destinations)) rows = rows.concat(state.options.destinations);
+    var groups = state.options.destination_groups || {};
+    Object.keys(groups).forEach(function (key) {
+      if (Array.isArray(groups[key])) rows = rows.concat(groups[key]);
+    });
+    return rows;
+  }
   function destination(id) {
-    return state.options && Array.isArray(state.options.destinations)
-      ? state.options.destinations.find(function (x) { return String(x.id) === String(id); }) : null;
+    return allDestinations().find(function (x) { return String(x.id) === String(id); }) || null;
+  }
+  function replaceArray(target, rows) {
+    if (!Array.isArray(target)) return;
+    target.splice.apply(target, [0, target.length].concat(rows || []));
+  }
+  function syncDestinations(sourceId) {
+    var rows = destinationsForSource(sourceId);
+    replaceArray(state.destinationTarget, rows);
   }
 
   function isCreateFormGet(config) {
@@ -104,6 +122,7 @@
       var batch = batchMatch(config);
 
       if (list) {
+        syncDestinations(list[1]);
         config.url = 'transfer-location/' + list[1] + '/products';
         config.meta = Object.assign({}, config.meta || {}, { prodexTransferLocation: true, skipErrorRedirect: true });
         return config;
@@ -140,8 +159,10 @@
         var edit = editMatch(config);
         if (!edit) {
           response.data.warehouses = options.sources || [];
-          response.data.to_warehouses = options.destinations || [];
+          response.data.to_warehouses = [];
+          state.destinationTarget = response.data.to_warehouses;
           response.data.inventory_location_mode = true;
+          response.data.business_routing = !!options.business_routing;
           return response;
         }
 
@@ -153,8 +174,13 @@
             response.data.transfer.from_warehouse = ctx.from.id;
             response.data.transfer.to_warehouse = ctx.to.id;
             response.data.warehouses = options.sources || [];
-            response.data.to_warehouses = options.destinations || [];
+            response.data.to_warehouses = destinationsForSource(ctx.from.id).slice();
+            if (!response.data.to_warehouses.some(function (row) { return String(row.id) === String(ctx.to.id); })) {
+              response.data.to_warehouses.push(ctx.to);
+            }
+            state.destinationTarget = response.data.to_warehouses;
             response.data.inventory_location_mode = true;
+            response.data.business_routing = !!options.business_routing;
           }
           return response;
         }).catch(function () { return response; });
@@ -199,8 +225,14 @@
         var label = group.querySelector('label');
         if (!label) return;
         var direction = directionForText(label.textContent);
-        if (direction === 'from') label.textContent = 'Ubicación de inventario de origen *';
-        if (direction === 'to') label.textContent = 'Ubicación de inventario de destino *';
+        if (direction === 'from') label.textContent = 'Origen *';
+        if (direction === 'to') label.textContent = 'Destino *';
+      });
+      document.querySelectorAll('input[placeholder]').forEach(function (input) {
+        var placeholder = normalized(input.getAttribute('placeholder'));
+        if (placeholder.includes('warehouse') || placeholder.includes('almacen') || placeholder.includes('bodega')) {
+          input.setAttribute('placeholder', 'Selecciona origen o destino');
+        }
       });
       return;
     }

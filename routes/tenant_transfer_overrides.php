@@ -12,12 +12,17 @@ $transferMiddleware = [
     'tenant.feature:transfers',
 ];
 
-Route::middleware($transferMiddleware)
-    ->get('transfers', 'FinalTransferController@index');
+Route::middleware($transferMiddleware)->group(function () {
+    // These overrides are loaded after tenant_api.php. Keeping the same
+    // method/URI makes the effective modern transfer endpoints use the final
+    // controller, which enforces the business routing rules before delegating
+    // to the legacy persistence flow.
+    Route::get('transfers', 'FinalTransferController@index');
+    Route::post('transfers', 'FinalTransferController@store');
+    Route::put('transfers/{id}', 'FinalTransferController@update');
+    Route::patch('transfers/{id}', 'FinalTransferController@update');
 
-// tenant_api.php still declares the legacy PDF route in its historical public
-// print block. This override file is loaded afterwards by RouteServiceProvider,
-// so redefining the same method/URI here makes the effective tenant route
-// authenticated and keeps EnforceWarehouseScope able to authorize the user.
-Route::middleware($transferMiddleware)
-    ->get('transfer_pdf/{id}', 'TransferController@transfer_pdf');
+    // tenant_api.php still declares the legacy PDF route in its historical
+    // public print block. Redefine it here so the effective route is protected.
+    Route::get('transfer_pdf/{id}', 'TransferController@transfer_pdf');
+});

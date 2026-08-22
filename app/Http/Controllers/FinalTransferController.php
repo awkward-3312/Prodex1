@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Transfer;
+use App\Services\TransferBusinessDestinationService;
 use App\Services\TransferListScopeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -10,6 +11,18 @@ use Illuminate\Support\Facades\Schema;
 
 class FinalTransferController extends TransferController
 {
+    public function store(Request $request)
+    {
+        $this->assertBusinessRoute($request);
+        return parent::store($request);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $this->assertBusinessRoute($request);
+        return parent::update($request, $id);
+    }
+
     public function index(Request $request)
     {
         $user = $request->user('api');
@@ -119,5 +132,16 @@ class FinalTransferController extends TransferController
             'transfers' => $transfers,
             'inventory_location_mode' => $hasLocations,
         ]);
+    }
+
+    private function assertBusinessRoute(Request $request): void
+    {
+        $from = $request->input('transfer.from_inventory_location_id');
+        $to = $request->input('transfer.to_inventory_location_id');
+
+        // Legacy warehouse-only payloads remain supported during the rollout.
+        if (! $from || ! $to) return;
+
+        app(TransferBusinessDestinationService::class)->assertAllowed((int) $from, (int) $to);
     }
 }
