@@ -122,7 +122,7 @@ class TransferWarehouseScopeMiddlewareTest extends TestCase
 
         $this->assertStringContainsString("'auth:api'", $override);
         $this->assertStringContainsString(
-            "->get('transfer_pdf/{id}', 'TransferController@transfer_pdf')",
+            "Route::get('transfer_pdf/{id}', 'TransferController@transfer_pdf')",
             $override
         );
 
