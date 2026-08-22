@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('product_batch_location_movements', function (Blueprint $table) {
             $table->integer('id', true);
             $table->integer('product_batch_id')->index();
-            $table->integer('from_inventory_location_id')->nullable()->index();
+            $table->integer('from_inventory_location_id')->nullable()->index('batch_loc_moves_from_location_idx');
             $table->integer('to_inventory_location_id')->nullable()->index();
             $table->decimal('quantity', 12, 3);
             $table->integer('user_id')->nullable()->index();
