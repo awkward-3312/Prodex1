@@ -110,7 +110,15 @@ class TransferDiscrepancyController extends Controller
             'resolution_notes' => ['required', 'string', 'max:3000'],
         ]);
 
-        return DB::transaction(function () use ($id, $user, $validated) {
+        // Location-aware controllers may authorize a modern transfer by its physical
+        // inventory location rather than by the legacy warehouse pivot. They publish
+        // only the compatibility warehouse IDs of that already-authorized transfer.
+        $compatWarehouseIds = array_values(array_unique(array_filter(array_map(
+            'intval',
+            (array) $request->attributes->get('prodex_transfer_authorized_warehouse_ids', [])
+        ))));
+
+        return DB::transaction(function () use ($id, $user, $validated, $compatWarehouseIds) {
             $issue = DB::table('transfer_discrepancies')->where('id', $id)->lockForUpdate()->first();
             abort_unless($issue, 404);
 
@@ -121,7 +129,10 @@ class TransferDiscrepancyController extends Controller
             }
 
             $transfer = Transfer::whereNull('deleted_at')->findOrFail($issue->transfer_id);
-            $warehouseIds = $this->logistics->warehouseIdsForUser($user);
+            $warehouseIds = array_values(array_unique(array_merge(
+                $this->logistics->warehouseIdsForUser($user),
+                $compatWarehouseIds
+            )));
             $allowedWarehouse = in_array((int) $transfer->to_warehouse_id, $warehouseIds, true)
                 || in_array((int) $transfer->from_warehouse_id, $warehouseIds, true);
             abort_unless($allowedWarehouse, 403);
@@ -146,10 +157,6 @@ class TransferDiscrepancyController extends Controller
                 $this->resolveQuarantineQuantity($issue, $transfer, $validated);
             }
 
-            // A late physical arrival or a quarantined item that is ultimately
-            // accepted as sellable is a RECLASSIFICATION, not a second shipment.
-            // Move the original receipt counters from missing/defective -> good and
-            // credit stock once. This keeps sent = good + defective + missing exact.
             if ($issue->type === 'missing' && $validated['resolution_code'] === 'received_later') {
                 $this->reclassifyReceiptIssueToGood($issue, $transfer, 'quantity_missing');
             }
@@ -239,12 +246,6 @@ class TransferDiscrepancyController extends Controller
         }
     }
 
-    /**
-     * Resolve exactly the defective quantity represented by one discrepancy.
-     * A transfer can have multiple partial receipts for the same product, so a
-     * blanket UPDATE by transfer/detail would accidentally close unrelated
-     * quarantine stock. Rows are consumed FIFO and split when necessary.
-     */
     private function resolveQuarantineQuantity(object $issue, Transfer $transfer, array $validated): void
     {
         $remaining = (float) $issue->quantity;
@@ -290,8 +291,6 @@ class TransferDiscrepancyController extends Controller
                 continue;
             }
 
-            // Only part of this quarantine row belongs to the discrepancy. Keep the
-            // unresolved balance quarantined and split the resolved quantity out.
             DB::table('transfer_quarantine_stock')->where('id', $row->id)->update([
                 'quantity' => $rowQty - $remaining,
                 'updated_at' => now(),
