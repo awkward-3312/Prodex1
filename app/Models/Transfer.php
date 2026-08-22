@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Services\TransferDispatchGuardService;
-use App\Services\TransferLocationDispatchService;
 use App\Services\TransferLogisticsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
@@ -64,6 +62,30 @@ class Transfer extends Model
             $originalStatus = (string) $transfer->getOriginal('logistics_status');
             $lockedStatuses = ['in_transit', 'partially_received', 'received', 'received_with_issues'];
 
+            // Approval authorizes the operation but does not move inventory. While
+            // waiting for dispatch, legacy edit/delete routines must never be able
+            // to restore quantities that have not actually left the source.
+            $approvedAwaitingDispatch = $transfer->getOriginal('approval_status') === 'approved'
+                && ! in_array($originalStatus, $lockedStatuses, true)
+                && ! $transfer->getOriginal('dispatched_at');
+            if ($approvedAwaitingDispatch) {
+                $dispatchFields = [
+                    'statut', 'receiving_token', 'logistics_status', 'dispatched_at',
+                    'dispatched_by_user_id', 'updated_at',
+                ];
+                $businessChanges = array_diff(array_keys($transfer->getDirty()), $dispatchFields);
+                if ($businessChanges) {
+                    throw ValidationException::withMessages([
+                        'transfer' => 'Una transferencia aprobada queda bloqueada hasta su despacho. No se puede editar ni eliminar porque el inventario todavía no ha salido físicamente del origen.',
+                    ]);
+                }
+                if ($transfer->isDirty('statut') && $transfer->statut !== 'sent') {
+                    throw ValidationException::withMessages([
+                        'transfer' => 'Una transferencia aprobada pendiente de despacho solo puede avanzar al estado enviado.',
+                    ]);
+                }
+            }
+
             if (! in_array($originalStatus, ['received', 'received_with_issues'], true)
                 && $transfer->isDirty('statut') && $transfer->statut === 'completed') $transfer->statut = 'sent';
             if (! in_array($originalStatus, $lockedStatuses, true)) return;
@@ -92,13 +114,6 @@ class Transfer extends Model
                         ['reference' => $transfer->Ref, 'approval_status' => $approval]
                     );
                 }
-            }
-
-            if ($transfer->isApproved() && $transfer->statut === 'sent') {
-                $fresh = $transfer->fresh();
-                if ($fresh->from_inventory_location_id) app(TransferLocationDispatchService::class)->ensureDispatched($fresh);
-                app(TransferDispatchGuardService::class)->finalizeDispatch($fresh);
-                app(TransferLogisticsService::class)->syncDispatchState($fresh, auth()->user());
             }
         });
     }

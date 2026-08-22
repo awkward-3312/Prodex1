@@ -14,4 +14,12 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::get('/transfer-logistics/{id}/qr', 'FinalTransferLogisticsController@qrPayload');
     Route::get('/transfer-logistics/{id}', 'FinalTransferLogisticsController@show');
     Route::post('/transfer-logistics/{id}/receive', 'FinalTransferLogisticsController@receive');
+
+    // Explicit operational workflow. Approval authorizes the transfer; dispatch is
+    // the physical stock movement and the point at which the destination is notified.
+    Route::get('/transfer-workflow/reference/{reference}', 'TransferWorkflowController@showByReference');
+    Route::get('/transfer-workflow/{id}', 'TransferWorkflowController@show');
+    Route::post('/transfer-workflow/{id}/approve', 'TransferWorkflowController@approve');
+    Route::post('/transfer-workflow/{id}/reject', 'TransferWorkflowController@reject');
+    Route::post('/transfer-workflow/{id}/dispatch', 'TransferWorkflowController@dispatch');
 });

@@ -1,0 +1,50 @@
+<?php
+
+namespace Tests\Unit;
+
+use PHPUnit\Framework\TestCase;
+
+class TransferWorkflowAuditTest extends TestCase
+{
+    public function test_explicit_workflow_separates_approval_dispatch_and_audit(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $service = file_get_contents($root.'/app/Services/TransferWorkflowService.php');
+        $controller = file_get_contents($root.'/app/Http/Controllers/TransferWorkflowController.php');
+        $model = file_get_contents($root.'/app/Models/Transfer.php');
+        $mutationGuard = file_get_contents($root.'/app/Http/Middleware/ProtectDispatchedTransferMutation.php');
+        $routes = file_get_contents($root.'/routes/tenant_transfer_logistics.php');
+        $overrides = file_get_contents($root.'/routes/tenant_transfer_overrides.php');
+        $ui = file_get_contents($root.'/resources/static/prodex-transfer-workflow.js');
+
+        $this->assertStringContainsString('public function approve(Transfer $transfer, User $actor)', $service);
+        $this->assertStringContainsString("\$locked->approval_status = 'approved'", $service);
+        $this->assertStringContainsString('public function dispatch(Transfer $transfer, User $actor)', $service);
+        $this->assertStringContainsString('TransferLocationDispatchService::class', $service);
+        $this->assertStringContainsString('syncDispatchState($locked, $actor)', $service);
+
+        $this->assertStringContainsString("'events' => \$events", $controller);
+        $this->assertStringContainsString("'actor_name'", $controller);
+        $this->assertStringContainsString("'created_at'", $controller);
+        $this->assertStringContainsString('assertSourceScope($user, $transfer)', $controller);
+        $this->assertStringContainsString('assertRecordScope($user, $transfer)', $controller);
+        $this->assertStringContainsString('InventoryLocationScopeService::class', $controller);
+
+        $this->assertStringContainsString('$approvedAwaitingDispatch', $model);
+        $this->assertStringContainsString('Una transferencia aprobada queda bloqueada hasta su despacho', $model);
+        $this->assertStringNotContainsString('TransferController@approve', $model);
+        $this->assertStringContainsString("->where('approval_status', 'approved')", $mutationGuard);
+        $this->assertStringContainsString("->whereNull('dispatched_at')", $mutationGuard);
+        $this->assertStringContainsString('No se puede editar ni eliminar una transferencia aprobada o despachada', $mutationGuard);
+
+        $this->assertStringContainsString('/transfer-workflow/{id}/approve', $routes);
+        $this->assertStringContainsString('/transfer-workflow/{id}/dispatch', $routes);
+        $this->assertStringContainsString("Route::post('transfers/{id}/approve', 'TransferWorkflowController@approve')", $overrides);
+        $this->assertStringContainsString("Route::post('transfers/{id}/reject', 'TransferWorkflowController@reject')", $overrides);
+
+        $this->assertStringContainsString('Historial de la transferencia', $ui);
+        $this->assertStringContainsString('Despachar ahora', $ui);
+        $this->assertStringContainsString('function referenceColumn(table)', $ui);
+        $this->assertStringNotContainsString('/^TR_', $ui);
+    }
+}

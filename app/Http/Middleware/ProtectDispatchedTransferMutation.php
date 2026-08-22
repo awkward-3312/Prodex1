@@ -8,12 +8,12 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
- * API boundary guard for immutable dispatched transfers.
+ * API boundary guard for immutable transfer lifecycle states.
  *
- * Eloquent model events already protect normal saves, but bulk-delete/update code
- * can bypass model events. This middleware closes that path before any legacy
- * controller code is allowed to delete details or mutate a shipment that has left
- * the source warehouse.
+ * Eloquent model events protect normal saves, but legacy update/delete routines
+ * may alter stock before the transfer header itself is saved. This middleware
+ * therefore rejects the request at the API boundary, before controller code can
+ * restore or move any inventory.
  */
 class ProtectDispatchedTransferMutation
 {
@@ -49,14 +49,26 @@ class ProtectDispatchedTransferMutation
     {
         $locked = Transfer::whereIn('id', $ids)
             ->whereNull('deleted_at')
-            ->whereIn('logistics_status', self::LOCKED)
+            ->where(function ($query) {
+                $query->whereIn('logistics_status', self::LOCKED)
+                    ->orWhere(function ($pendingDispatch) {
+                        $pendingDispatch->where('approval_status', 'approved')
+                            ->whereNull('dispatched_at')
+                            ->where(function ($status) {
+                                $status->whereNull('logistics_status')
+                                    ->orWhere('logistics_status', '')
+                                    ->orWhere('logistics_status', 'pending');
+                            });
+                    });
+            })
             ->pluck('Ref')
             ->filter()
             ->values();
 
         if ($locked->isNotEmpty()) {
             throw ValidationException::withMessages([
-                'transfer' => 'No se puede editar ni eliminar una transferencia despachada. Debe resolverse mediante recepción/incidencias. '.
+                'transfer' => 'No se puede editar ni eliminar una transferencia aprobada o despachada. '.
+                    'Si está aprobada, debe despacharse; si ya salió del origen, debe resolverse mediante recepción/incidencias. '.
                     'Transferencia(s): '.$locked->implode(', '),
             ]);
         }

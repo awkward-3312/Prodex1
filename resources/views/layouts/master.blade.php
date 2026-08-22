@@ -42,6 +42,7 @@
         window.__prodexTransferLogisticsAxiosFix = true;
         window.axios.interceptors.request.use(function (config) {
           if (config && typeof config.url === 'string' && config.url.indexOf('/api/transfer-logistics') === 0) config.baseURL = '';
+          if (config && typeof config.url === 'string' && config.url.indexOf('/api/transfer-workflow') === 0) config.baseURL = '';
           return config;
         });
       }
@@ -55,6 +56,7 @@
     <script src="/js/prodex-transfer-idempotency.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-location-ui.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-logistics.js?v={{ time() }}"></script>
+    <script src="/js/prodex-transfer-workflow.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-permission-ui.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-issues.js?v={{ time() }}"></script>
     <script src="/js/prodex-pos-location-ui.js?v={{ time() }}"></script>
