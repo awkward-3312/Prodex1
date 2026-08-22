@@ -38,6 +38,7 @@ jobs:
         run: |
           php -l app/Models/Transfer.php
           php -l app/Models/TransferDetailSerial.php
+          php -l app/Http/Middleware/LockTransferDispatchStock.php
           php -l app/Services/TransferLocationDispatchService.php
           php -l app/Services/TransferSerialLocationService.php
           php -l app/Services/TransferBatchIssueService.php
@@ -45,6 +46,7 @@ jobs:
           php -l app/Services/FinalTransferLogisticsService.php
           php -l app/Services/TransferIssueLocationResolutionService.php
           php -l app/Services/TransferLocationStockBridge.php
+          php -l app/Http/Controllers/TransferDiscrepancyController.php
           php -l app/Http/Controllers/TransferLocationController.php
           php -l app/Http/Controllers/FinalTransferLogisticsController.php
           php -l app/Http/Controllers/LocationAwareTransferDiscrepancyController.php
@@ -58,6 +60,7 @@ jobs:
           php -l database/migrations/tenant/2026_08_21_187000_create_transfer_batch_issue_allocations.php
           php -l tests/Unit/TransferSerialLocationServiceTest.php
           php -l tests/Unit/TransferBatchIssueServiceTest.php
+          php -l tests/Unit/TransferDispatchPreflightTest.php
           node --check resources/static/prodex-transfer-location-ui.js
           node --check resources/static/prodex-transfer-logistics.js
 
