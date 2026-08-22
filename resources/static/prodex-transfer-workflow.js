@@ -174,6 +174,37 @@
     if (old) old.remove();
   }
 
+  function referenceColumn(table) {
+    var headers = table.querySelectorAll('thead th');
+    for (var i = 0; i < headers.length; i += 1) {
+      var label = (headers[i].textContent || '').trim().toLowerCase();
+      if (label.indexOf('referencia') >= 0 || label.indexOf('reference') >= 0 || label.indexOf('référence') >= 0) return i;
+    }
+    return -1;
+  }
+
+  function enhanceReferences() {
+    Array.prototype.forEach.call(document.querySelectorAll('table, .vgt-table'), function (table) {
+      var column = referenceColumn(table);
+      if (column < 0) return;
+      Array.prototype.forEach.call(table.querySelectorAll('tbody tr'), function (row) {
+        var cells = row.querySelectorAll('td');
+        var cell = cells[column];
+        if (!cell || cell.__pxTransferWorkflow) return;
+        var text = (cell.textContent || '').trim();
+        if (!text || text.length > 100 || /\s/.test(text)) return;
+        cell.__pxTransferWorkflow = true;
+        cell.classList.add('px-twf-ref');
+        cell.title = 'Abrir flujo e historial';
+        cell.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          openByReference(text);
+        });
+      });
+    });
+  }
+
   function enhance() {
     var path = location.pathname || '';
     if (path.indexOf('/app/transfers/list') < 0) return;
@@ -183,22 +214,12 @@
       var hint = document.createElement('div');
       hint.id = 'px-transfer-workflow-hint';
       hint.className = 'px-twf-hint';
-      hint.innerHTML = '<strong>Flujo de transferencias:</strong> haz clic en una <span>referencia TR_</span> para aprobar, despachar y revisar quién hizo cada movimiento.';
+      hint.innerHTML = '<strong>Flujo de transferencias:</strong> haz clic en la <span>referencia</span> para aprobar, despachar y revisar quién hizo cada movimiento.';
       var bread = main.querySelector('.breadcrumb, .breadcumb, nav');
       if (bread && bread.nextSibling) bread.parentNode.insertBefore(hint, bread.nextSibling);
       else main.insertBefore(hint, main.firstChild);
     }
-    Array.prototype.forEach.call(document.querySelectorAll('td, .vgt-table td'), function (cell) {
-      var text = (cell.textContent || '').trim();
-      if (/^TR_[A-Za-z0-9_-]+$/.test(text) && !cell.__pxTransferWorkflow) {
-        cell.__pxTransferWorkflow = true;
-        cell.classList.add('px-twf-ref');
-        cell.title = 'Abrir flujo e historial';
-        cell.addEventListener('click', function (event) {
-          event.preventDefault(); event.stopPropagation(); openByReference(text);
-        });
-      }
-    });
+    enhanceReferences();
   }
 
   setInterval(function () {
