@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\InventoryLocationStock;
 use App\Models\Product;
 use App\Models\product_warehouse;
 use App\Models\Transfer;
@@ -9,16 +10,15 @@ use App\Models\Unit;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Serialize transfer approval against the exact source-stock rows it will debit.
  *
- * Besides locking stock rows, this middleware performs the final preflight before
- * the legacy approval controller mutates inventory: every line must have a valid
- * unit definition and the total quantity requested for each product/variant must
- * fit in the source warehouse. Grouping is important because the same SKU can be
- * present on more than one transfer line.
+ * Legacy transfers lock product_warehouse. Location-aware transfers lock the
+ * authoritative InventoryLocationStock rows instead, so a valid branch-to-branch
+ * shipment is never blocked (or falsely approved) by an unrelated CD aggregate.
  */
 class LockTransferDispatchStock
 {
@@ -29,9 +29,6 @@ class LockTransferDispatchStock
         $route = $request->route();
         $action = $route && method_exists($route, 'getActionName') ? (string) $route->getActionName() : '';
 
-        // Registered in the tenant API group so the protection cannot accidentally
-        // be omitted from the approval route later. All unrelated API calls are a
-        // constant-time no-op.
         if (! str_ends_with($action, 'TransferController@approve')) {
             return $next($request);
         }
@@ -45,8 +42,6 @@ class LockTransferDispatchStock
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            // If another approval won the race while this request waited for the
-            // transfer row, let the controller return its normal idempotent no-op.
             if (! $transfer->isApproved()) {
                 $this->validateAndLockSourceStock($transfer);
             }
@@ -114,10 +109,43 @@ class LockTransferDispatchStock
             $requirements[$key]['required'] += $baseQuantity;
         }
 
-        // Sort keys so concurrent approvals lock shared stock rows in a stable order,
-        // reducing deadlock risk when transfers contain several of the same SKUs.
         ksort($requirements, SORT_STRING);
 
+        if ($transfer->from_inventory_location_id) {
+            $this->lockPhysicalLocationStock($transfer, $requirements);
+            return;
+        }
+
+        $this->lockLegacyWarehouseStock($transfer, $requirements);
+    }
+
+    private function lockPhysicalLocationStock(Transfer $transfer, array $requirements): void
+    {
+        if (! Schema::hasTable('inventory_location_stocks')) {
+            throw ValidationException::withMessages([
+                'transfer' => 'El inventario por ubicación todavía no está disponible para esta transferencia. Actualiza el esquema del tenant antes de aprobarla.',
+            ]);
+        }
+
+        foreach ($requirements as $requirement) {
+            $query = InventoryLocationStock::where('inventory_location_id', (int) $transfer->from_inventory_location_id)
+                ->where('product_id', $requirement['product_id'])
+                ->where('variant_key', (int) ($requirement['variant_id'] ?: 0));
+
+            $source = $query->lockForUpdate()->first();
+            $available = $source ? (float) $source->quantity - (float) $source->reserved_quantity : 0.0;
+            $required = (float) $requirement['required'];
+
+            if ($available + self::EPSILON < $required) {
+                throw ValidationException::withMessages([
+                    'transfer' => 'Stock insuficiente en la ubicación de origen para '.$requirement['product_name'].'. Disponible: '.$this->number($available).'; requerido: '.$this->number($required).'.',
+                ]);
+            }
+        }
+    }
+
+    private function lockLegacyWarehouseStock(Transfer $transfer, array $requirements): void
+    {
         foreach ($requirements as $requirement) {
             $query = product_warehouse::whereNull('deleted_at')
                 ->where('warehouse_id', $transfer->from_warehouse_id)
@@ -138,14 +166,22 @@ class LockTransferDispatchStock
                 ]);
             }
 
-            $available = (float) $source->qte;
+            // getRawOriginal avoids request-aware compatibility accessors: this is
+            // explicitly the legacy path, so the lock and the quantity must refer to
+            // the same aggregate row.
+            $available = (float) $source->getRawOriginal('qte');
             $required = (float) $requirement['required'];
 
             if ($available + self::EPSILON < $required) {
                 throw ValidationException::withMessages([
-                    'transfer' => 'Stock insuficiente para despachar '.$requirement['product_name'].'. Disponible: '.rtrim(rtrim(number_format($available, 6, '.', ''), '0'), '.').'; requerido: '.rtrim(rtrim(number_format($required, 6, '.', ''), '0'), '.').'.',
+                    'transfer' => 'Stock insuficiente para despachar '.$requirement['product_name'].'. Disponible: '.$this->number($available).'; requerido: '.$this->number($required).'.',
                 ]);
             }
         }
+    }
+
+    private function number(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 6, '.', ''), '0'), '.');
     }
 }
