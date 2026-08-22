@@ -15,5 +15,8 @@ class CreateUserValidationFeedbackTest extends TestCase
         $this->assertStringContainsString('form_errors: []', $source);
         $this->assertStringContainsString('Object.values(errors).reduce', $source);
         $this->assertStringContainsString('v-for="(message, index) in form_errors"', $source);
+        $this->assertStringContainsString("typeof error === 'object' ? error : null", $source);
+        $this->assertStringContainsString('response.field && response.message', $source);
+        $this->assertStringContainsString("typeof error === 'string' ? error", $source);
     }
 }

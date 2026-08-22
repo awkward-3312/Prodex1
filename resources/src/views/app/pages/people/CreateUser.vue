@@ -184,9 +184,11 @@ export default {
         this.makeToast('success', this.$t('Successfully_Created'), this.$t('Success'));
         this.$router.push({ name: 'Users' });
       } catch (error) {
-        const response = error && error.response && error.response.data;
+        const response = error && error.response && error.response.data
+          ? error.response.data
+          : (error && typeof error === 'object' ? error : null);
         const errors = response && response.errors ? response.errors : null;
-        if (errors && errors.email) this.email_exist = errors.email[0];
+        if (errors && errors.email) this.email_exist = Array.isArray(errors.email) ? errors.email[0] : errors.email;
 
         if (errors) {
           this.form_errors = Object.values(errors).reduce((messages, value) => {
@@ -196,8 +198,15 @@ export default {
           }, []);
         }
 
+        if (!this.form_errors.length && response && response.field && response.message) {
+          this.form_errors = [`${response.message} (${response.field})`];
+        }
+
         if (!this.form_errors.length) {
-          this.form_errors = [(response && response.message) || 'No se pudo crear el usuario.'];
+          const message = response && (response.message || response.error)
+            ? (response.message || response.error)
+            : (typeof error === 'string' ? error : 'No se pudo crear el usuario.');
+          this.form_errors = [message];
         }
 
         this.form_error = this.form_errors[0];
