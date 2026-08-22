@@ -16,20 +16,20 @@ class TransferWorkflowAuditTest extends TestCase
         $ui = file_get_contents($root.'/resources/static/prodex-transfer-workflow.js');
 
         $this->assertStringContainsString('public function approve(Transfer $transfer, User $actor)', $service);
-        $this->assertStringContainsString("$locked->approval_status = 'approved'", $service);
+        $this->assertStringContainsString("\$locked->approval_status = 'approved'", $service);
         $this->assertStringContainsString('public function dispatch(Transfer $transfer, User $actor)', $service);
         $this->assertStringContainsString('TransferLocationDispatchService::class', $service);
         $this->assertStringContainsString('syncDispatchState($locked, $actor)', $service);
 
-        $this->assertStringContainsString("'events' => $events", $controller);
+        $this->assertStringContainsString("'events' => \$events", $controller);
         $this->assertStringContainsString("'actor_name'", $controller);
         $this->assertStringContainsString("'created_at'", $controller);
 
         $this->assertStringContainsString('$legacyApproval', $model);
         $this->assertStringContainsString('TransferWorkflowController', $model);
 
-        $this->assertStringContainsString("/transfer-workflow/{id}/approve", $routes);
-        $this->assertStringContainsString("/transfer-workflow/{id}/dispatch", $routes);
+        $this->assertStringContainsString('/transfer-workflow/{id}/approve', $routes);
+        $this->assertStringContainsString('/transfer-workflow/{id}/dispatch', $routes);
         $this->assertStringContainsString('Historial de la transferencia', $ui);
         $this->assertStringContainsString('Despachar ahora', $ui);
     }
