@@ -44,11 +44,11 @@ return new class extends Migration
                 $columns = [
                     'default_branch_id_snapshot' => fn () => $table->integer('default_branch_id_snapshot')->nullable()->index(),
                     'default_branch_name_snapshot' => fn () => $table->string('default_branch_name_snapshot', 191)->nullable(),
-                    'default_inventory_location_id_snapshot' => fn () => $table->integer('default_inventory_location_id_snapshot')->nullable()->index(),
+                    'default_inventory_location_id_snapshot' => fn () => $table->integer('default_inventory_location_id_snapshot')->nullable()->index('uoa_default_inventory_location_idx'),
                     'default_inventory_location_name_snapshot' => fn () => $table->string('default_inventory_location_name_snapshot', 191)->nullable(),
                     'temporary_branch_id' => fn () => $table->integer('temporary_branch_id')->nullable()->index(),
                     'temporary_branch_name_snapshot' => fn () => $table->string('temporary_branch_name_snapshot', 191)->nullable(),
-                    'temporary_inventory_location_id' => fn () => $table->integer('temporary_inventory_location_id')->nullable()->index(),
+                    'temporary_inventory_location_id' => fn () => $table->integer('temporary_inventory_location_id')->nullable()->index('uoa_temporary_inventory_location_idx'),
                     'temporary_inventory_location_name_snapshot' => fn () => $table->string('temporary_inventory_location_name_snapshot', 191)->nullable(),
                 ];
 
