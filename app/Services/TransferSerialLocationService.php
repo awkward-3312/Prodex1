@@ -101,6 +101,105 @@ class TransferSerialLocationService
         $this->receiveSlice($transfer, $detail, $baseQuantity, $receiptItem, TransferDetailSerial::STATUS_MISSING, 'missing', null);
     }
 
+    /**
+     * Turn serials already classified as missing/defective into received-good units.
+     * The issue marker remains in issue_type so an exact retry is a no-op.
+     */
+    public function reclassifyIssueToGood(
+        Transfer $transfer,
+        TransferDetail $detail,
+        float $baseQuantity,
+        TransferReceiptItem $receiptItem,
+        string $issueColumn
+    ): void {
+        if (! $this->isSupported()) return;
+
+        $product = Product::find($detail->product_id);
+        if (! $product || ! (bool) ($product->is_imei ?? false)) return;
+
+        $sourceStatus = match ($issueColumn) {
+            'quantity_missing' => TransferDetailSerial::STATUS_MISSING,
+            'quantity_defective' => TransferDetailSerial::STATUS_DEFECTIVE,
+            default => throw ValidationException::withMessages(['issue' => 'Tipo de incidencia serializada inválido.']),
+        };
+        $resolvedMarker = 'resolved_'.$sourceStatus;
+        $count = $this->serialCount($baseQuantity, $product->name);
+        if ($count === 0) return;
+
+        $already = TransferDetailSerial::where('transfer_detail_id', $detail->id)
+            ->where('transfer_receipt_item_id', $receiptItem->id)
+            ->where('status', TransferDetailSerial::STATUS_RECEIVED)
+            ->where('issue_type', $resolvedMarker)
+            ->lockForUpdate()
+            ->count();
+        if ($already === $count) return;
+        if ($already > 0) {
+            throw ValidationException::withMessages(['issue' => 'La resolución de seriales/IMEI quedó parcialmente aplicada.']);
+        }
+
+        $pivots = TransferDetailSerial::where('transfer_detail_id', $detail->id)
+            ->where('transfer_receipt_item_id', $receiptItem->id)
+            ->where('status', $sourceStatus)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->limit($count)
+            ->get();
+
+        if ($pivots->count() !== $count) {
+            throw ValidationException::withMessages([
+                'issue' => 'La cantidad de seriales/IMEI de la incidencia no coincide con la resolución solicitada.',
+            ]);
+        }
+
+        foreach ($pivots as $pivot) {
+            $serial = ProductSerial::whereKey($pivot->product_serial_id)->lockForUpdate()->first();
+            if (! $serial) {
+                throw ValidationException::withMessages(['issue' => 'No se encontró uno de los seriales/IMEI de la incidencia.']);
+            }
+
+            if ($sourceStatus === TransferDetailSerial::STATUS_MISSING) {
+                $valid = $serial->status === ProductSerial::STATUS_RESERVED && $serial->inventory_location_id === null;
+            } else {
+                $valid = $serial->status === ProductSerial::STATUS_DAMAGED;
+            }
+            if (! $valid) {
+                throw ValidationException::withMessages([
+                    'issue' => 'Un serial/IMEI cambió de estado antes de resolver la incidencia.',
+                ]);
+            }
+
+            $fromStatus = $serial->status;
+            $fromLocation = $serial->inventory_location_id ? (int) $serial->inventory_location_id : null;
+            $serial->status = ProductSerial::STATUS_AVAILABLE;
+            $serial->inventory_location_id = (int) $transfer->to_inventory_location_id;
+            if ($transfer->to_warehouse_id) $serial->warehouse_id = (int) $transfer->to_warehouse_id;
+            $serial->save();
+
+            $pivot->status = TransferDetailSerial::STATUS_RECEIVED;
+            $pivot->issue_type = $resolvedMarker;
+            $pivot->received_at = now();
+            $pivot->save();
+
+            ProductSerialMovement::create([
+                'product_serial_id' => $serial->id,
+                'serial_number' => $serial->serial_number,
+                'action' => ProductSerialMovement::ACTION_LOCATION_MOVED,
+                'from_status' => $fromStatus,
+                'to_status' => ProductSerial::STATUS_AVAILABLE,
+                'warehouse_id' => $serial->warehouse_id,
+                'from_inventory_location_id' => $fromLocation,
+                'to_inventory_location_id' => (int) $transfer->to_inventory_location_id,
+                'reference_type' => 'TransferIssueResolution',
+                'reference_id' => (int) $receiptItem->id,
+                'user_id' => auth()->id(),
+                'notes' => $sourceStatus === TransferDetailSerial::STATUS_MISSING
+                    ? 'Serial/IMEI faltante recibido posteriormente.'
+                    : 'Serial/IMEI liberado de cuarentena a inventario vendible.',
+                'created_at' => now(),
+            ]);
+        }
+    }
+
     private function receiveSlice(
         Transfer $transfer,
         TransferDetail $detail,
@@ -124,9 +223,7 @@ class TransferSerialLocationService
             ->lockForUpdate()
             ->count();
 
-        if ($already === $count) {
-            return;
-        }
+        if ($already === $count) return;
         if ($already > 0) {
             throw ValidationException::withMessages([
                 'transfer' => 'La recepción serializada de '.$product->name.' quedó parcialmente registrada y requiere revisión.',
