@@ -61,6 +61,7 @@ jobs:
           php -l tests/Unit/TransferSerialLocationServiceTest.php
           php -l tests/Unit/TransferBatchIssueServiceTest.php
           php -l tests/Unit/TransferLocationAccessControllerTest.php
+          php -l tests/Unit/TransferDiscrepancyLocationAccessTest.php
           php -l tests/Unit/TransferDispatchPreflightTest.php
           node --check resources/static/prodex-transfer-location-ui.js
           node --check resources/static/prodex-transfer-logistics.js
@@ -70,6 +71,7 @@ jobs:
           vendor/bin/phpunit tests/Unit/TransferSerialLocationServiceTest.php
           vendor/bin/phpunit tests/Unit/TransferBatchIssueServiceTest.php
           vendor/bin/phpunit tests/Unit/TransferLocationAccessControllerTest.php
+          vendor/bin/phpunit tests/Unit/TransferDiscrepancyLocationAccessTest.php
           vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php tests/Unit/TransferLogisticsBatchUnitsTest.php tests/Unit/TransferDispatchPreflightTest.php
 
       - name: Install frontend dependencies
