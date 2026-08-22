@@ -47,24 +47,20 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_21_182000_add_operational_context_to_sales.php',
         'database/migrations/tenant/2026_08_21_183000_add_location_tracking_to_batches_and_serials.php',
         'database/migrations/tenant/2026_08_21_184000_create_batch_location_movement_ledger.php',
+        'database/migrations/tenant/2026_08_21_185000_add_inventory_locations_to_transfers.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
     {
         $tenant->loadMissing('domains');
         $creds = $tenant->getEffectiveDatabaseCredentials();
-
         $result = [
             'tenant_id' => $tenant->id,
             'tenant_name' => $tenant->company_name ?? $tenant->id,
             'domain' => optional($tenant->domains->first())->domain,
             'database' => $creds['database'] ?? null,
-            'connectivity' => 'error',
-            'schema_status' => 'unknown',
-            'status' => 'error',
-            'status_label' => 'Error',
-            'missing' => [],
-            'last_error' => null,
+            'connectivity' => 'error', 'schema_status' => 'unknown', 'status' => 'error',
+            'status_label' => 'Error', 'missing' => [], 'last_error' => null,
         ];
 
         try {
@@ -80,7 +76,6 @@ class TenantSchemaHealthService
         } finally {
             if (function_exists('tenancy') && tenancy()->initialized) tenancy()->end();
         }
-
         return $result;
     }
 
@@ -103,29 +98,21 @@ class TenantSchemaHealthService
         $this->requireTable($schema, $missing, 'cash_drawers');
         $this->requireColumns($schema, $missing, 'cash_drawers', ['branch_id', 'inventory_location_id']);
         $this->requireTable($schema, $missing, 'user_operational_assignments');
-        $this->requireColumns($schema, $missing, 'users', [
-            'default_warehouse_id', 'default_branch_id', 'default_inventory_location_id', 'default_cash_drawer_id',
-        ]);
+        $this->requireColumns($schema, $missing, 'users', ['default_warehouse_id', 'default_branch_id', 'default_inventory_location_id', 'default_cash_drawer_id']);
         $this->requireTable($schema, $missing, 'user_branches');
         $this->requireColumns($schema, $missing, 'user_branches', ['user_id', 'branch_id']);
         $this->requireTable($schema, $missing, 'user_inventory_locations');
         $this->requireColumns($schema, $missing, 'user_inventory_locations', ['user_id', 'inventory_location_id']);
         $this->requireColumns($schema, $missing, 'user_operational_assignments', [
-            'default_branch_id_snapshot', 'default_branch_name_snapshot',
-            'default_inventory_location_id_snapshot', 'default_inventory_location_name_snapshot',
-            'temporary_branch_id', 'temporary_branch_name_snapshot',
+            'default_branch_id_snapshot', 'default_branch_name_snapshot', 'default_inventory_location_id_snapshot',
+            'default_inventory_location_name_snapshot', 'temporary_branch_id', 'temporary_branch_name_snapshot',
             'temporary_inventory_location_id', 'temporary_inventory_location_name_snapshot',
         ]);
 
         $this->requireTable($schema, $missing, 'store_credit_vouchers');
         $this->requireTable($schema, $missing, 'store_credit_voucher_transactions');
-        $this->requireColumns($schema, $missing, 'sales', [
-            'store_credit_amount', 'fiscal_exemption_data', 'branch_id', 'inventory_location_id', 'cash_drawer_id',
-        ]);
-        $this->requireColumns($schema, $missing, 'sale_returns', [
-            'refund_mode', 'store_credit_voucher_id', 'store_credit_amount',
-            'branch_id', 'inventory_location_id', 'cash_drawer_id',
-        ]);
+        $this->requireColumns($schema, $missing, 'sales', ['store_credit_amount', 'fiscal_exemption_data', 'branch_id', 'inventory_location_id', 'cash_drawer_id']);
+        $this->requireColumns($schema, $missing, 'sale_returns', ['refund_mode', 'store_credit_voucher_id', 'store_credit_amount', 'branch_id', 'inventory_location_id', 'cash_drawer_id']);
 
         $this->requireTable($schema, $missing, 'sar_fiscal_profiles');
         $this->requireTable($schema, $missing, 'sar_points_of_issue');
@@ -134,14 +121,12 @@ class TenantSchemaHealthService
         $this->requireColumns($schema, $missing, 'sar_fiscal_profiles', ['invoice_settings']);
         $this->requireColumns($schema, $missing, 'products', ['fiscal_tax_category']);
         $this->requireColumns($schema, $missing, 'sale_details', ['fiscal_tax_category', 'fiscal_tax_rate']);
-        $this->requireColumns($schema, $missing, 'clients', [
-            'identification_type', 'identification_number', 'sar_registry_number', 'exoneration_registry_number',
-        ]);
+        $this->requireColumns($schema, $missing, 'clients', ['identification_type', 'identification_number', 'sar_registry_number', 'exoneration_registry_number']);
 
         $this->requireColumns($schema, $missing, 'pos_settings', [
-            'receipt_header_alignment', 'receipt_fiscal_alignment', 'receipt_customer_alignment',
-            'receipt_items_alignment', 'receipt_totals_alignment', 'receipt_footer_alignment', 'receipt_qr_alignment',
-            'receipt_font_size', 'receipt_density', 'receipt_separator',
+            'receipt_header_alignment', 'receipt_fiscal_alignment', 'receipt_customer_alignment', 'receipt_items_alignment',
+            'receipt_totals_alignment', 'receipt_footer_alignment', 'receipt_qr_alignment', 'receipt_font_size',
+            'receipt_density', 'receipt_separator',
         ]);
 
         $this->requireTable($schema, $missing, 'attendance_devices');
@@ -150,77 +135,49 @@ class TenantSchemaHealthService
         $this->requireColumns($schema, $missing, 'attendances', ['source', 'source_reference']);
 
         $this->requireColumns($schema, $missing, 'transfers', [
-            'receiving_token', 'logistics_status', 'dispatched_at', 'dispatched_by_user_id',
-            'received_at', 'received_by_user_id',
+            'receiving_token', 'logistics_status', 'dispatched_at', 'dispatched_by_user_id', 'received_at',
+            'received_by_user_id', 'from_inventory_location_id', 'to_inventory_location_id',
         ]);
         $this->requireTable($schema, $missing, 'transfer_receipts');
-        $this->requireColumns($schema, $missing, 'transfer_receipts', ['request_token']);
+        $this->requireColumns($schema, $missing, 'transfer_receipts', ['request_token', 'inventory_location_id']);
         $this->requireTable($schema, $missing, 'transfer_receipt_items');
         $this->requireTable($schema, $missing, 'transfer_receipt_item_batches');
         $this->requireTable($schema, $missing, 'transfer_discrepancies');
         $this->requireColumns($schema, $missing, 'transfer_discrepancies', [
-            'resolution_code', 'resolution_reference', 'resolution_notes', 'resolution_status',
-            'resolved_at', 'resolved_by_user_id',
+            'resolution_code', 'resolution_reference', 'resolution_notes', 'resolution_status', 'resolved_at', 'resolved_by_user_id',
         ]);
         $this->requireTable($schema, $missing, 'transfer_quarantine_stock');
+        $this->requireColumns($schema, $missing, 'transfer_quarantine_stock', ['inventory_location_id']);
         $this->requireTable($schema, $missing, 'transfer_events');
         $this->requireTable($schema, $missing, 'transfer_notifications');
 
         $this->requireTable($schema, $missing, 'branches');
-        $this->requireColumns($schema, $missing, 'branches', [
-            'code', 'name', 'type', 'manager_employee_id', 'default_warehouse_id', 'default_inventory_location_id', 'is_active',
-        ]);
+        $this->requireColumns($schema, $missing, 'branches', ['code', 'name', 'type', 'manager_employee_id', 'default_warehouse_id', 'default_inventory_location_id', 'is_active']);
         $this->requireColumns($schema, $missing, 'warehouses', ['branch_id', 'default_inventory_location_id']);
         $this->requireColumns($schema, $missing, 'employees', ['branch_id']);
         $this->requireColumns($schema, $missing, 'users', ['employee_id']);
-        $this->requireColumns($schema, $missing, 'designations', [
-            'code', 'description', 'is_system_default', 'is_active', 'suggested_role_key',
-        ]);
+        $this->requireColumns($schema, $missing, 'designations', ['code', 'description', 'is_system_default', 'is_active', 'suggested_role_key']);
 
         $this->requireTable($schema, $missing, 'inventory_locations');
-        $this->requireColumns($schema, $missing, 'inventory_locations', [
-            'branch_id', 'warehouse_id', 'code', 'name', 'type', 'is_sellable',
-            'is_default_sales', 'is_quarantine', 'is_active',
-        ]);
-
+        $this->requireColumns($schema, $missing, 'inventory_locations', ['branch_id', 'warehouse_id', 'code', 'name', 'type', 'is_sellable', 'is_default_sales', 'is_quarantine', 'is_active']);
         $this->requireTable($schema, $missing, 'inventory_location_stocks');
-        $this->requireColumns($schema, $missing, 'inventory_location_stocks', [
-            'inventory_location_id', 'product_id', 'product_variant_id', 'variant_key',
-            'quantity', 'reserved_quantity', 'manage_stock',
-        ]);
+        $this->requireColumns($schema, $missing, 'inventory_location_stocks', ['inventory_location_id', 'product_id', 'product_variant_id', 'variant_key', 'quantity', 'reserved_quantity', 'manage_stock']);
         $this->requireTable($schema, $missing, 'inventory_location_movements');
         $this->requireColumns($schema, $missing, 'inventory_location_movements', [
-            'movement_type', 'product_id', 'product_variant_id', 'from_inventory_location_id',
-            'to_inventory_location_id', 'quantity', 'user_id', 'reference_type',
-            'reference_id', 'idempotency_key', 'idempotency_fingerprint', 'notes', 'metadata',
+            'movement_type', 'product_id', 'product_variant_id', 'from_inventory_location_id', 'to_inventory_location_id',
+            'quantity', 'user_id', 'reference_type', 'reference_id', 'idempotency_key', 'idempotency_fingerprint', 'notes', 'metadata',
         ]);
-
         $this->requireTable($schema, $missing, 'inventory_transition_states');
-        $this->requireColumns($schema, $missing, 'inventory_transition_states', [
-            'warehouse_id', 'inventory_location_id', 'mode', 'status', 'mismatch_count',
-            'last_audited_at', 'last_reconciled_at', 'shadow_enabled_at', 'metadata',
-        ]);
+        $this->requireColumns($schema, $missing, 'inventory_transition_states', ['warehouse_id', 'inventory_location_id', 'mode', 'status', 'mismatch_count', 'last_audited_at', 'last_reconciled_at', 'shadow_enabled_at', 'metadata']);
 
         if ($schema->hasTable('product_batches')) {
             $this->requireTable($schema, $missing, 'product_batch_location_stocks');
-            $this->requireColumns($schema, $missing, 'product_batch_location_stocks', [
-                'product_batch_id', 'inventory_location_id', 'quantity', 'reserved_quantity',
-            ]);
+            $this->requireColumns($schema, $missing, 'product_batch_location_stocks', ['product_batch_id', 'inventory_location_id', 'quantity', 'reserved_quantity']);
             $this->requireTable($schema, $missing, 'product_batch_location_movements');
-            $this->requireColumns($schema, $missing, 'product_batch_location_movements', [
-                'product_batch_id', 'from_inventory_location_id', 'to_inventory_location_id',
-                'quantity', 'user_id', 'reference_type', 'reference_id', 'idempotency_key',
-            ]);
+            $this->requireColumns($schema, $missing, 'product_batch_location_movements', ['product_batch_id', 'from_inventory_location_id', 'to_inventory_location_id', 'quantity', 'user_id', 'reference_type', 'reference_id', 'idempotency_key']);
         }
-
-        if ($schema->hasTable('product_serials')) {
-            $this->requireColumns($schema, $missing, 'product_serials', ['inventory_location_id']);
-        }
-        if ($schema->hasTable('product_serial_movements')) {
-            $this->requireColumns($schema, $missing, 'product_serial_movements', [
-                'from_inventory_location_id', 'to_inventory_location_id',
-            ]);
-        }
+        if ($schema->hasTable('product_serials')) $this->requireColumns($schema, $missing, 'product_serials', ['inventory_location_id']);
+        if ($schema->hasTable('product_serial_movements')) $this->requireColumns($schema, $missing, 'product_serial_movements', ['from_inventory_location_id', 'to_inventory_location_id']);
 
         return $missing;
     }
@@ -233,8 +190,6 @@ class TenantSchemaHealthService
     private function requireColumns($schema, array &$missing, string $table, array $columns): void
     {
         if (! $schema->hasTable($table)) return;
-        foreach ($columns as $column) {
-            if (! $schema->hasColumn($table, $column)) $missing[] = "Falta columna: {$table}.{$column}";
-        }
+        foreach ($columns as $column) if (! $schema->hasColumn($table, $column)) $missing[] = "Falta columna: {$table}.{$column}";
     }
 }
