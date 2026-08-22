@@ -41,6 +41,7 @@ jobs:
           php -l app/Http/Middleware/LockTransferDispatchStock.php
           php -l app/Http/Middleware/CheckTenantFeature.php
           php -l app/Services/TenantLimitsService.php
+          php -l app/Services/TransferListScopeService.php
           php -l app/Services/TransferLocationDispatchService.php
           php -l app/Services/TransferSerialLocationService.php
           php -l app/Services/TransferBatchIssueService.php
@@ -50,18 +51,22 @@ jobs:
           php -l app/Services/TransferLocationStockBridge.php
           php -l app/Http/Controllers/TransferDiscrepancyController.php
           php -l app/Http/Controllers/TransferLocationController.php
+          php -l app/Http/Controllers/FinalTransferController.php
           php -l app/Http/Controllers/FinalTransferLogisticsController.php
           php -l app/Http/Controllers/LocationAwareTransferDiscrepancyController.php
           php -l app/Http/Controllers/FinalTransferDiscrepancyController.php
           php -l app/Providers/AppServiceProvider.php
+          php -l app/Providers/RouteServiceProvider.php
           php -l app/Console/Commands/ProdexTenantUpgrade.php
           php -l routes/tenant_transfer_logistics.php
           php -l routes/tenant_transfer_locations.php
+          php -l routes/tenant_transfer_overrides.php
           php -l database/migrations/tenant/2026_08_21_185000_add_inventory_locations_to_transfers.php
           php -l database/migrations/tenant/2026_08_21_186000_create_transfer_detail_serials.php
           php -l database/migrations/tenant/2026_08_21_187000_create_transfer_batch_issue_allocations.php
           php -l tests/Unit/TransferSerialLocationServiceTest.php
           php -l tests/Unit/TransferBatchIssueServiceTest.php
+          php -l tests/Unit/TransferListScopeServiceTest.php
           php -l tests/Unit/TransferLocationAccessControllerTest.php
           php -l tests/Unit/TransferDiscrepancyLocationAccessTest.php
           php -l tests/Unit/TransferDispatchPreflightTest.php
@@ -72,6 +77,7 @@ jobs:
         run: |
           vendor/bin/phpunit tests/Unit/TransferSerialLocationServiceTest.php
           vendor/bin/phpunit tests/Unit/TransferBatchIssueServiceTest.php
+          vendor/bin/phpunit tests/Unit/TransferListScopeServiceTest.php
           vendor/bin/phpunit tests/Unit/TransferLocationAccessControllerTest.php
           vendor/bin/phpunit tests/Unit/TransferDiscrepancyLocationAccessTest.php
           vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php tests/Unit/TransferLogisticsBatchUnitsTest.php tests/Unit/TransferDispatchPreflightTest.php
