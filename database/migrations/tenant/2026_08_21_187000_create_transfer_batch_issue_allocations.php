@@ -12,8 +12,8 @@ return new class extends Migration
 
         Schema::create('transfer_receipt_item_batch_issues', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('transfer_receipt_item_id')->index();
-            $table->unsignedBigInteger('transfer_detail_batch_id')->index();
+            $table->unsignedBigInteger('transfer_receipt_item_id')->index('tr_batch_issues_receipt_item_idx');
+            $table->unsignedBigInteger('transfer_detail_batch_id')->index('tr_batch_issues_detail_batch_idx');
             $table->unsignedBigInteger('source_batch_id')->index();
             $table->unsignedBigInteger('destination_batch_id')->nullable()->index();
             $table->unsignedBigInteger('inventory_location_id')->nullable()->index();
