@@ -9,6 +9,15 @@ use App\Models\WhatsappUsage;
 
 class TenantLimitsService
 {
+    /**
+     * Capabilities that are part of PRODEX's operational foundation rather than
+     * optional commercial modules. They still require an active/trial subscription,
+     * but are not removed merely because an older plan row has the feature flag off.
+     */
+    public const CORE_FEATURES = [
+        'transfers',
+    ];
+
     protected ?Plan $plan = null;
     protected ?TenantSubscription $subscription = null;
     protected bool $resolved = false;
@@ -59,8 +68,15 @@ class TenantLimitsService
     public function hasFeature(string $feature): bool
     {
         $plan = $this->resolvePlan();
+        if (! $plan) {
+            return false;
+        }
 
-        return $plan ? $plan->hasFeature($feature) : false;
+        if (in_array($feature, self::CORE_FEATURES, true)) {
+            return true;
+        }
+
+        return $plan->hasFeature($feature);
     }
 
     public function getMaxAllowed(string $limitKey): ?int
@@ -80,7 +96,6 @@ class TenantLimitsService
             return 0;
         }
 
-        // Monthly-reset counters are tracked separately, not by counting rows.
         if ($meta['monthly'] ?? false) {
             return $this->monthlyUsage($limitKey);
         }
@@ -106,7 +121,7 @@ class TenantLimitsService
         $max = $plan->getLimit($limitKey);
 
         if ($max < 0) {
-            return false; // unlimited
+            return false;
         }
 
         $meta = Plan::AVAILABLE_LIMITS[$limitKey] ?? null;
@@ -128,10 +143,6 @@ class TenantLimitsService
         return $current >= $max;
     }
 
-    /**
-     * Current usage for a monthly-reset limit key. Currently only
-     * 'max_whatsapp_messages' is backed by the whatsapp_usages counter.
-     */
     protected function monthlyUsage(string $limitKey): int
     {
         if ($limitKey === 'max_whatsapp_messages') {
@@ -145,9 +156,6 @@ class TenantLimitsService
         return 0;
     }
 
-    /**
-     * Icon mapping from Bootstrap Icons (bi-*) to Iconsmind (i-*) for SPA.
-     */
     protected function mapIcon(string $biIcon): string
     {
         $map = [
@@ -231,7 +239,7 @@ class TenantLimitsService
             $features[$key] = [
                 'label'   => $meta['label'],
                 'icon'    => $this->mapIcon($meta['icon']),
-                'enabled' => $plan->hasFeature($key),
+                'enabled' => $this->hasFeature($key),
             ];
         }
 
@@ -243,11 +251,6 @@ class TenantLimitsService
         ];
     }
 
-    /**
-     * Data for the in-app subscription reminder banner, or null when nothing
-     * should be shown. Mirrors the email/SMS reminder rules: gated by the
-     * super-admin "banner" channel + the configured threshold window.
-     */
     public function getSubscriptionBanner(): ?array
     {
         $sub = $this->resolveSubscription();
@@ -264,7 +267,6 @@ class TenantLimitsService
         $threshold = $setting->bannerThresholdDays();
         $planName  = $sub->plan?->name ?? '';
 
-        // 1) Trial ending soon.
         if ($setting->trialRemindersEnabled() && $sub->isOnTrial() && $sub->trial_ends_at) {
             $days = (int) now()->startOfDay()->diffInDays($sub->trial_ends_at->copy()->startOfDay(), false);
             if ($days >= 0 && $days <= $threshold) {
@@ -272,8 +274,6 @@ class TenantLimitsService
             }
         }
 
-        // 2) Paid subscription expired (past end date, awaiting the daily flip)
-        //    or expiring within the threshold window.
         if ($setting->remindersEnabled() && $sub->ends_at && ! $sub->isOnTrial()) {
             if ($sub->ends_at->isPast()) {
                 return $this->bannerPayload('expired', 'danger', 0, $sub->ends_at, $planName);
@@ -291,8 +291,8 @@ class TenantLimitsService
     protected function bannerPayload(string $type, string $level, int $days, $date, string $planName): array
     {
         return [
-            'type'      => $type,             // trial | expiry | expired
-            'level'     => $level,            // warning | danger
+            'type'      => $type,
+            'level'     => $level,
             'days'      => $days,
             'date'      => $date?->format('M d, Y') ?? '',
             'ref'       => $date?->toDateString() ?? '',
@@ -300,32 +300,22 @@ class TenantLimitsService
         ];
     }
 
-    // ─────────────────────────── WhatsApp quota ───────────────────────────
-
-    /** WhatsApp messages sent by this tenant in the current month. */
     public function getWhatsappUsage(): int
     {
         return $this->monthlyUsage('max_whatsapp_messages');
     }
 
-    /**
-     * Whether the tenant has hit its monthly WhatsApp message quota.
-     * No active plan = treated as quota reached (cannot send).
-     */
     public function whatsappQuotaReached(): bool
     {
         return $this->hasReachedLimit('max_whatsapp_messages');
     }
 
-    /**
-     * Remaining WhatsApp messages this month, or null when unlimited.
-     */
     public function getWhatsappRemaining(): ?int
     {
         $max = $this->getMaxAllowed('max_whatsapp_messages');
 
         if ($max === null) {
-            return null; // unlimited
+            return null;
         }
 
         return max(0, $max - $this->getWhatsappUsage());
