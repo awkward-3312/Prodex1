@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Services\TransferDispatchGuardService;
-use App\Services\TransferLocationDispatchService;
 use App\Services\TransferLogisticsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
@@ -64,10 +62,9 @@ class Transfer extends Model
             $originalStatus = (string) $transfer->getOriginal('logistics_status');
             $lockedStatuses = ['in_transit', 'partially_received', 'received', 'received_with_issues'];
 
-            // Approval is an authorization only. Until physical dispatch occurs the
-            // old edit/delete code must not be allowed to "restore" quantities that
-            // were never debited. Keep this intermediate state immutable except for
-            // fields used by the explicit dispatch transition itself.
+            // Approval authorizes the operation but does not move inventory. While
+            // waiting for dispatch, legacy edit/delete routines must never be able
+            // to restore quantities that have not actually left the source.
             $approvedAwaitingDispatch = $transfer->getOriginal('approval_status') === 'approved'
                 && ! in_array($originalStatus, $lockedStatuses, true)
                 && ! $transfer->getOriginal('dispatched_at');
@@ -117,27 +114,6 @@ class Transfer extends Model
                         ['reference' => $transfer->Ref, 'approval_status' => $approval]
                     );
                 }
-            }
-
-            // Backward compatibility: the historical TransferController@approve endpoint
-            // approved and dispatched in one action. Keep that behavior only for that
-            // legacy endpoint. The new TransferWorkflowController separates approval
-            // from physical dispatch so stock moves only when the user clicks Despachar.
-            $action = '';
-            try {
-                $route = request()->route();
-                $action = $route ? (string) $route->getActionName() : '';
-            } catch (\Throwable $e) {
-                $action = '';
-            }
-            $legacyApproval = str_contains($action, 'TransferController@approve')
-                && ! str_contains($action, 'TransferWorkflowController');
-
-            if ($legacyApproval && $transfer->isApproved() && $transfer->statut === 'sent') {
-                $fresh = $transfer->fresh();
-                if ($fresh->from_inventory_location_id) app(TransferLocationDispatchService::class)->ensureDispatched($fresh);
-                app(TransferDispatchGuardService::class)->finalizeDispatch($fresh);
-                app(TransferLogisticsService::class)->syncDispatchState($fresh, auth()->user());
             }
         });
     }
