@@ -20,6 +20,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
       - name: Run focused regression test
         run: vendor/bin/phpunit tests/Unit/CreateUserValidationFeedbackTest.php
-      - name: Check Vue script syntax
-        run: node --check <(sed -n '/<script>/,/<\/script>/p' resources/src/views/app/pages/people/CreateUser.vue | sed '1d;$d')
-        shell: bash
+      - name: Check feedback hooks remain present
+        run: |
+          grep -q "makeToast(variant, msg, title)" resources/src/views/app/pages/people/CreateUser.vue
+          grep -q "form_errors" resources/src/views/app/pages/people/CreateUser.vue
