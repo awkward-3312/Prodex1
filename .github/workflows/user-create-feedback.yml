@@ -1,0 +1,25 @@
+name: Validate User Create Feedback
+
+on:
+  pull_request:
+    paths:
+      - 'resources/src/views/app/pages/people/CreateUser.vue'
+      - 'tests/Unit/CreateUserValidationFeedbackTest.php'
+      - '.github/workflows/user-create-feedback.yml'
+
+jobs:
+  user-create-feedback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Run focused regression test
+        run: vendor/bin/phpunit tests/Unit/CreateUserValidationFeedbackTest.php
+      - name: Check Vue script syntax
+        run: node --check <(sed -n '/<script>/,/<\/script>/p' resources/src/views/app/pages/people/CreateUser.vue | sed '1d;$d')
+        shell: bash
