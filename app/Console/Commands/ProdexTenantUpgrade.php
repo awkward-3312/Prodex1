@@ -98,6 +98,11 @@ class ProdexTenantUpgrade extends Command
         $this->newLine();
         $this->info("Summary: {$summary['tenants']} tenants, {$summary['ok']} healthy, {$summary['warnings']} warnings, {$summary['failed']} failures.");
 
-        return $summary['failed'] > 0 ? self::FAILURE : self::SUCCESS;
+        // A controlled tenant upgrade is only safe to automate when every tenant
+        // finishes healthy. Missing migration files, non-zero migration exits or
+        // outstanding schema requirements are deployment blockers, not soft success.
+        return ($summary['warnings'] > 0 || $summary['failed'] > 0)
+            ? self::FAILURE
+            : self::SUCCESS;
     }
 }
