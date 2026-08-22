@@ -139,7 +139,6 @@ class TransferWarehouseScopeMiddlewareTest extends TestCase
         InventoryLocationScopeService $locationScope
     ): void {
         $method = new ReflectionMethod(EnforceWarehouseScope::class, 'validateTransferRoute');
-        $method->setAccessible(true);
         $method->invoke(
             app(EnforceWarehouseScope::class),
             $request,
