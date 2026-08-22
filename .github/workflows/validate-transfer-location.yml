@@ -47,6 +47,7 @@ jobs:
           php -l app/Http/Controllers/TransferLocationController.php
           php -l app/Http/Controllers/FinalTransferLogisticsController.php
           php -l app/Http/Controllers/LocationAwareTransferDiscrepancyController.php
+          php -l app/Http/Controllers/FinalTransferDiscrepancyController.php
           php -l app/Providers/AppServiceProvider.php
           php -l app/Console/Commands/ProdexTenantUpgrade.php
           php -l routes/tenant_transfer_logistics.php
