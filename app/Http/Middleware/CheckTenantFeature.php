@@ -17,7 +17,11 @@ class CheckTenantFeature
 
     /**
      * Usage: middleware('tenant.feature:pos')
-     *        middleware('tenant.feature:hrm,accounting')  ← requires ANY of the listed features
+     *        middleware('tenant.feature:hrm,accounting')  ← requires ANY listed feature.
+     *
+     * All checks go through TenantLimitsService so core operational capabilities
+     * (for example stock transfers) remain available across active plans even if
+     * an older plan row still carries a disabled feature flag.
      */
     public function handle(Request $request, Closure $next, string ...$features)
     {
@@ -25,16 +29,12 @@ class CheckTenantFeature
             return $next($request);
         }
 
-        $plan = $this->limits->getActivePlan();
-
-        // No active plan → block
-        if (! $plan) {
+        if (! $this->limits->getActivePlan()) {
             return $this->deny($request, $features);
         }
 
-        // Allow if the plan has at least one of the listed features
         foreach ($features as $feature) {
-            if ($plan->hasFeature($feature)) {
+            if ($this->limits->hasFeature($feature)) {
                 return $next($request);
             }
         }
