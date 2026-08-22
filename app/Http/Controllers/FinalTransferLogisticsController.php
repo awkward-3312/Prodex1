@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\InventoryLocation;
-use App\Models\ProductSerial;
 use App\Models\Transfer;
 use App\Models\TransferDetailSerial;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
 class FinalTransferLogisticsController extends TransferLogisticsController
@@ -69,7 +67,7 @@ class FinalTransferLogisticsController extends TransferLogisticsController
             unset($line);
         }
 
-        return response()->json($data, $response->getStatusCode(), $response->headers->all());
+        return response()->json($data, $response->getStatusCode());
     }
 
     private function augmentSummaryResponse($response)
@@ -92,7 +90,7 @@ class FinalTransferLogisticsController extends TransferLogisticsController
             unset($summary);
         }
 
-        return response()->json($data, $response->getStatusCode(), $response->headers->all());
+        return response()->json($data, $response->getStatusCode());
     }
 
     private function physicalSummary(array $summary, Transfer $transfer): array
