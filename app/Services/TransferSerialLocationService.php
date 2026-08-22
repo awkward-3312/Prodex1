@@ -10,7 +10,6 @@ use App\Models\TransferDetail;
 use App\Models\TransferDetailSerial;
 use App\Models\TransferReceiptItem;
 use App\Models\Unit;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -119,6 +118,21 @@ class TransferSerialLocationService
         $count = $this->serialCount($baseQuantity, $product->name);
         if ($count === 0) return;
 
+        $already = TransferDetailSerial::where('transfer_detail_id', $detail->id)
+            ->where('transfer_receipt_item_id', $receiptItem->id)
+            ->where('status', $pivotStatus)
+            ->lockForUpdate()
+            ->count();
+
+        if ($already === $count) {
+            return;
+        }
+        if ($already > 0) {
+            throw ValidationException::withMessages([
+                'transfer' => 'La recepción serializada de '.$product->name.' quedó parcialmente registrada y requiere revisión.',
+            ]);
+        }
+
         $pivots = TransferDetailSerial::where('transfer_detail_id', $detail->id)
             ->where('status', TransferDetailSerial::STATUS_IN_TRANSIT)
             ->orderBy('id')
@@ -150,8 +164,6 @@ class TransferSerialLocationService
                 $serial->inventory_location_id = $destinationLocationId;
                 if ($transfer->to_warehouse_id) $serial->warehouse_id = (int) $transfer->to_warehouse_id;
             } else {
-                // Missing units remain reserved and location-less so they cannot be sold
-                // until the discrepancy workflow resolves their physical whereabouts.
                 $serial->status = ProductSerial::STATUS_RESERVED;
                 $serial->inventory_location_id = null;
             }
