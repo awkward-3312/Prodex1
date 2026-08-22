@@ -34,6 +34,7 @@ class ProdexTenantUpgrade extends Command
             TenantSchemaHealthService::CONTROLLED_MIGRATIONS,
             [
                 'database/migrations/tenant/2026_08_21_186000_create_transfer_detail_serials.php',
+                'database/migrations/tenant/2026_08_21_187000_create_transfer_batch_issue_allocations.php',
             ]
         )));
 
