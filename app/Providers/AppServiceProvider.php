@@ -5,9 +5,9 @@ namespace App\Providers;
 use App\Models\Central\GeneralSetting;
 use App\Models\Setting;
 use App\Services\BatchService;
+use App\Services\FinalTransferLogisticsService;
 use App\Services\LocationAwareBatchService;
 use App\Services\LocationAwareSerialNumberService;
-use App\Services\LocationAwareTransferLogisticsService;
 use App\Services\ProdexTenantSchemaHealthService;
 use App\Services\SerialNumberService;
 use App\Services\TenantLimitsService;
@@ -31,10 +31,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(TenantLimitsService::class);
         $this->app->singleton(TenantSchemaHealthService::class, ProdexTenantSchemaHealthService::class);
 
-        // One public contract for both generations of transfer. The implementation
-        // retains all previous idempotency/safety layers and switches to physical
-        // InventoryLocation stock only when a transfer carries location IDs.
-        $this->app->singleton(TransferLogisticsService::class, LocationAwareTransferLogisticsService::class);
+        // One public contract for both generations of transfer. The final binding
+        // includes retry safety, physical locations, batches, serials/IMEI and
+        // discrepancy reconciliation while legacy warehouse transfers still fall back.
+        $this->app->singleton(TransferLogisticsService::class, FinalTransferLogisticsService::class);
 
         $this->app->singleton(BatchService::class, LocationAwareBatchService::class);
         $this->app->singleton(SerialNumberService::class, LocationAwareSerialNumberService::class);
