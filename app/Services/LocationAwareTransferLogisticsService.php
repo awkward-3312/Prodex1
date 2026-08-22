@@ -15,13 +15,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Location-aware extension of the hardened/idempotent transfer receiver.
- *
- * Legacy warehouse transfers continue through the inherited implementation.
- * Modern transfers debit a physical InventoryLocation on dispatch and credit the
- * destination location only after the destination user confirms receipt.
- */
 class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsService
 {
     public function userCanReceive(User $user, Transfer $transfer): bool
@@ -47,8 +40,6 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
             return $updated;
         }
 
-        // Resolve exactly the receipt produced by this call when an idempotency
-        // token is available; otherwise use the newest receipt by this receiver.
         $receipt = DB::table('transfer_receipts')
             ->where('transfer_id', $transfer->id)
             ->when($requestToken, fn ($q) => $q->where('request_token', $requestToken))
@@ -57,12 +48,15 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
             ->first();
 
         if ($receipt) {
-            DB::table('transfer_receipts')->where('id', $receipt->id)->update([
-                'inventory_location_id' => (int) $transfer->to_inventory_location_id,
-                'updated_at' => now(),
-            ]);
+            DB::transaction(function () use ($transfer, $receipt, $user) {
+                DB::table('transfer_receipts')->where('id', $receipt->id)->update([
+                    'inventory_location_id' => (int) $transfer->to_inventory_location_id,
+                    'updated_at' => now(),
+                ]);
 
-            $this->creditDefectiveToQuarantine($transfer, (int) $receipt->id, $user);
+                $this->creditDefectiveToQuarantine($transfer, (int) $receipt->id, $user);
+                $this->processMissingSerials($transfer, (int) $receipt->id);
+            }, 3);
         }
 
         return $updated->fresh(['from_warehouse', 'to_warehouse', 'fromInventoryLocation', 'toInventoryLocation', 'details.product']);
@@ -112,8 +106,6 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
             );
         }
 
-        // Role 1 is a global administrator; include active admins so a tenant can
-        // never create an incoming shipment nobody is capable of receiving.
         $candidateIds = $candidateIds->merge(User::where('role_id', 1)->where('statut', 1)->pluck('id'));
 
         $users = User::whereIn('id', $candidateIds->filter()->unique()->values())
@@ -187,8 +179,7 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
             ]
         );
 
-        // Keep the existing batch identity/pivots and aggregate batch history, then
-        // mirror the received batch slices into the physical destination location.
+        app(TransferSerialLocationService::class)->receiveGood($transfer, $detail, $stockQty, $receiptItem);
         $this->creditBatchStockIfApplicable($transfer, $detail, $stockQty, $receiptItem);
     }
 
@@ -267,6 +258,17 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
                 ]
             );
 
+            $receiptItem = TransferReceiptItem::find($item->id);
+            if ($receiptItem) {
+                app(TransferSerialLocationService::class)->receiveDefective(
+                    $transfer,
+                    $detail,
+                    $baseQty,
+                    $receiptItem,
+                    (int) $quarantine->id
+                );
+            }
+
             DB::table('transfer_quarantine_stock')
                 ->where('transfer_id', $transfer->id)
                 ->where('transfer_detail_id', $detail->id)
@@ -275,6 +277,29 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
                     'inventory_location_id' => (int) $quarantine->id,
                     'updated_at' => now(),
                 ]);
+        }
+    }
+
+    private function processMissingSerials(Transfer $transfer, int $receiptId): void
+    {
+        if (! Schema::hasTable('transfer_detail_serials')) return;
+
+        $items = TransferReceiptItem::where('transfer_receipt_id', $receiptId)
+            ->where('quantity_missing', '>', 0)
+            ->get();
+
+        foreach ($items as $receiptItem) {
+            $detail = TransferDetail::find($receiptItem->transfer_detail_id);
+            if (! $detail) continue;
+            $product = Product::find($detail->product_id);
+            if (! $product || ! (bool) ($product->is_imei ?? false)) continue;
+
+            $baseQty = app(TransferSerialLocationService::class)->baseQuantityForDetail(
+                $detail,
+                $product,
+                (float) $receiptItem->quantity_missing
+            );
+            app(TransferSerialLocationService::class)->receiveMissing($transfer, $detail, $baseQty, $receiptItem);
         }
     }
 
