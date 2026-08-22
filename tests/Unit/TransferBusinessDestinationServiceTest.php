@@ -91,6 +91,27 @@ class TransferBusinessDestinationServiceTest extends TestCase
         $this->assertTrue(true);
     }
 
+    public function test_inactive_branch_is_not_offered_and_cannot_receive_inventory(): void
+    {
+        [$cd, , , $branchBStorage] = $this->fixture();
+        $branchBStorage->branch->update(['is_active' => false]);
+
+        $options = app(TransferBusinessDestinationService::class)->optionsForSource($cd);
+        $this->assertNotContains($branchBStorage->id, $options->pluck('id')->all());
+
+        $this->expectException(ValidationException::class);
+        app(TransferBusinessDestinationService::class)->assertAllowed($cd->id, $branchBStorage->id);
+    }
+
+    public function test_route_overrides_send_modern_mutations_through_final_controller(): void
+    {
+        $routes = file_get_contents(base_path('routes/tenant_transfer_overrides.php'));
+
+        $this->assertStringContainsString("Route::post('transfers', 'FinalTransferController@store')", $routes);
+        $this->assertStringContainsString("Route::put('transfers/{id}', 'FinalTransferController@update')", $routes);
+        $this->assertStringContainsString("Route::patch('transfers/{id}', 'FinalTransferController@update')", $routes);
+    }
+
     private function fixture(): array
     {
         $warehouse = Warehouse::create(['name' => 'Centro de Distribución']);
