@@ -11,6 +11,10 @@
     try { return new URL(String(url || ''), window.location.origin + '/api/'); }
     catch (e) { return null; }
   }
+  function rel(u) {
+    var p = (u.pathname || '').replace(/^\/api\//, '').replace(/^\//, '');
+    return p + (u.search || '');
+  }
   function dataObject(config) {
     if (!config) return null;
     if (config.data && typeof config.data === 'object') return config.data;
@@ -187,7 +191,7 @@
   function relabel() {
     var path = window.location.pathname || '';
     var isForm = /\/app\/transfers\/(store|edit)/i.test(path);
-    var isIndex = /\/app\/transfers\/?$/i.test(path);
+    var isIndex = /\/app\/transfers(?:\/list)?\/?$/i.test(path);
     if (!isForm && !isIndex) return;
 
     if (isForm) {
