@@ -8,8 +8,10 @@ use App\Services\BatchService;
 use App\Services\LocationAwareBatchService;
 use App\Services\LocationAwareSerialNumberService;
 use App\Services\LocationAwareTransferLogisticsService;
+use App\Services\ProdexTenantSchemaHealthService;
 use App\Services\SerialNumberService;
 use App\Services\TenantLimitsService;
+use App\Services\TenantSchemaHealthService;
 use App\Services\TransferLogisticsService;
 use App\Tenant;
 use Illuminate\Support\Facades\Blade;
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->singleton(TenantLimitsService::class);
+        $this->app->singleton(TenantSchemaHealthService::class, ProdexTenantSchemaHealthService::class);
 
         // One public contract for both generations of transfer. The implementation
         // retains all previous idempotency/safety layers and switches to physical
