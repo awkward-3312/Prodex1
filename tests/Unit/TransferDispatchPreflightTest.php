@@ -77,8 +77,6 @@ class TransferDispatchPreflightTest extends TestCase
         $transferId = $this->transfer(5, 9);
         $this->detail($transferId, $productId, $unitId, 8);
 
-        // Deliberately contradictory ledgers: the legacy CD says zero while the
-        // authoritative physical location has enough stock.
         $this->stock($productId, 0);
         $this->locationStock(5, $productId, 10, 0);
 
@@ -115,7 +113,7 @@ class TransferDispatchPreflightTest extends TestCase
     {
         $request = Request::create('/api/transfers/'.$transferId.'/approve', 'POST');
         $route = new Route('POST', 'api/transfers/{id}/approve', [
-            'uses' => 'App\\Http\\Controllers\\TransferController@approve',
+            'uses' => 'App\Http\Controllers\TransferController@approve',
         ]);
         $route->bind($request);
         $request->setRouteResolver(fn () => $route);
