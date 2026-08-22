@@ -8,28 +8,18 @@
     <link rel="stylesheet" href="/css/master.css">
     <link rel="icon" href="{{ global_asset(upload_path('settings') . '/' . ($app_settings->favicon ?? 'favicon.ico')) }}">
     <title>{{ $app_settings->app_name ?? 'PRODEX' }}</title>
-
-    {{-- PWA --}}
     <link rel="manifest" href="/pwa/app.webmanifest">
     <meta name="theme-color" content="#2f3640">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="{{ $app_settings->app_name ?? 'PRODEX' }}">
     <link rel="apple-touch-icon" href="{{ pwa_icon_url(192) }}">
-
   </head>
 
   <body class="text-left">
-    <noscript>
-      <strong>PRODEX necesita JavaScript para funcionar correctamente. Actívalo para continuar.</strong>
-    </noscript>
-
-    <div class="loading_wrap" id="loading_wrap">
-      <div class="loading"></div>
-    </div>
-    <div id="app">
-      <script src="/assets_setup/js/qrcode.js"></script>
-    </div>
+    <noscript><strong>PRODEX necesita JavaScript para funcionar correctamente. Actívalo para continuar.</strong></noscript>
+    <div class="loading_wrap" id="loading_wrap"><div class="loading"></div></div>
+    <div id="app"><script src="/assets_setup/js/qrcode.js"></script></div>
 
     @php
         $__planSummary = app(\App\Services\TenantLimitsService::class)->getPlanSummary();
@@ -45,18 +35,13 @@
     </script>
 
     <script src="/js/main.min.js?v=1.3&v={{ time() }}"></script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <script>
       if (window.axios && !window.__prodexTransferLogisticsAxiosFix) {
         window.__prodexTransferLogisticsAxiosFix = true;
         window.axios.interceptors.request.use(function (config) {
-          if (config && typeof config.url === 'string' && config.url.indexOf('/api/transfer-logistics') === 0) {
-            config.baseURL = '';
-          }
+          if (config && typeof config.url === 'string' && config.url.indexOf('/api/transfer-logistics') === 0) config.baseURL = '';
           return config;
         });
       }
@@ -68,6 +53,7 @@
     <script src="/js/prodex-sidebar-reopen.js?v={{ time() }}"></script>
     <script src="/js/prodex-organization-navigation.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-idempotency.js?v={{ time() }}"></script>
+    <script src="/js/prodex-transfer-location-ui.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-logistics.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-permission-ui.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-issues.js?v={{ time() }}"></script>
