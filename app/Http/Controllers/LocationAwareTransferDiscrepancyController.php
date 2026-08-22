@@ -20,6 +20,12 @@ class LocationAwareTransferDiscrepancyController extends TransferDiscrepancyCont
             $detail = TransferDetail::findOrFail($issue->transfer_detail_id);
             $resolutionCode = (string) $request->input('resolution_code');
 
+            // The parent controller reclassifies receipt counters before it calls the
+            // logistics service. Publish the exact issue type on this request so the
+            // final location-aware binding never has to guess missing vs defective.
+            $request->attributes->set('prodex_transfer_issue_type', (string) $issue->type);
+            $request->attributes->set('prodex_transfer_issue_id', (int) $issue->id);
+
             // Capture the physical quarantine location before the legacy resolver
             // updates/splits its audit rows. The outer transaction makes the parent
             // resolution and the physical stock disposition one atomic operation.
