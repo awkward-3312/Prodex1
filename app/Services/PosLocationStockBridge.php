@@ -224,8 +224,29 @@ class PosLocationStockBridge
     private function isCreatePosAction(Request $request): bool
     {
         $route = $request->route();
-        $action = $route ? (string) $route->getActionName() : '';
-        return str_contains($action, 'PosController@CreatePOS')
-            || str_contains($action, 'PosController::CreatePOS');
+        if (! $route) return false;
+
+        // Real Laravel controller routes expose getActionName(); lightweight route
+        // fixtures and some cached-route states may only carry the original `uses`
+        // action. Accept either representation but still require the exact POS action.
+        $candidates = [];
+        if (method_exists($route, 'getActionName')) {
+            $candidates[] = (string) $route->getActionName();
+        }
+        if (method_exists($route, 'getAction')) {
+            $uses = $route->getAction('uses');
+            if (is_string($uses)) $candidates[] = $uses;
+            $controller = $route->getAction('controller');
+            if (is_string($controller)) $candidates[] = $controller;
+        }
+
+        foreach (array_unique($candidates) as $action) {
+            if (str_contains($action, 'PosController@CreatePOS')
+                || str_contains($action, 'PosController::CreatePOS')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
