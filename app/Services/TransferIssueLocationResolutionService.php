@@ -10,7 +10,6 @@ use App\Models\ProductSerialMovement;
 use App\Models\Transfer;
 use App\Models\TransferDetail;
 use App\Models\TransferDetailSerial;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -113,7 +112,7 @@ class TransferIssueLocationResolutionService
             throw ValidationException::withMessages(['issue' => 'Un producto serializado no puede resolverse con una cantidad fraccionaria.']);
         }
 
-        $marker = $resolutionCode === 'written_off' ? 'written_off' : 'returned_to_origin';
+        $marker = ($resolutionCode === 'written_off' ? 'writeoff#' : 'return#').(int) $issue->id;
         $already = TransferDetailSerial::where('transfer_detail_id', $detail->id)
             ->where('status', TransferDetailSerial::STATUS_DEFECTIVE)
             ->where('issue_type', $marker)
