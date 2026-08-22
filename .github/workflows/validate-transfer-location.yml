@@ -40,6 +40,7 @@ jobs:
           php -l app/Models/TransferDetailSerial.php
           php -l app/Services/TransferLocationDispatchService.php
           php -l app/Services/TransferSerialLocationService.php
+          php -l app/Services/TransferBatchIssueService.php
           php -l app/Services/LocationAwareTransferLogisticsService.php
           php -l app/Services/FinalTransferLogisticsService.php
           php -l app/Services/TransferIssueLocationResolutionService.php
@@ -54,13 +55,16 @@ jobs:
           php -l routes/tenant_transfer_locations.php
           php -l database/migrations/tenant/2026_08_21_185000_add_inventory_locations_to_transfers.php
           php -l database/migrations/tenant/2026_08_21_186000_create_transfer_detail_serials.php
+          php -l database/migrations/tenant/2026_08_21_187000_create_transfer_batch_issue_allocations.php
           php -l tests/Unit/TransferSerialLocationServiceTest.php
+          php -l tests/Unit/TransferBatchIssueServiceTest.php
           node --check resources/static/prodex-transfer-location-ui.js
           node --check resources/static/prodex-transfer-logistics.js
 
       - name: Run focused transfer tests
         run: |
           vendor/bin/phpunit tests/Unit/TransferSerialLocationServiceTest.php
+          vendor/bin/phpunit tests/Unit/TransferBatchIssueServiceTest.php
           vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php tests/Unit/TransferLogisticsBatchUnitsTest.php tests/Unit/TransferDispatchPreflightTest.php
 
       - name: Install frontend dependencies
