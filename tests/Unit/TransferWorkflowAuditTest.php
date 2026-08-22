@@ -13,6 +13,7 @@ class TransferWorkflowAuditTest extends TestCase
         $controller = file_get_contents($root.'/app/Http/Controllers/TransferWorkflowController.php');
         $model = file_get_contents($root.'/app/Models/Transfer.php');
         $routes = file_get_contents($root.'/routes/tenant_transfer_logistics.php');
+        $overrides = file_get_contents($root.'/routes/tenant_transfer_overrides.php');
         $ui = file_get_contents($root.'/resources/static/prodex-transfer-workflow.js');
 
         $this->assertStringContainsString('public function approve(Transfer $transfer, User $actor)', $service);
@@ -28,13 +29,15 @@ class TransferWorkflowAuditTest extends TestCase
         $this->assertStringContainsString('assertRecordScope($user, $transfer)', $controller);
         $this->assertStringContainsString('InventoryLocationScopeService::class', $controller);
 
-        $this->assertStringContainsString('$legacyApproval', $model);
-        $this->assertStringContainsString('TransferWorkflowController', $model);
         $this->assertStringContainsString('$approvedAwaitingDispatch', $model);
         $this->assertStringContainsString('Una transferencia aprobada queda bloqueada hasta su despacho', $model);
+        $this->assertStringNotContainsString('TransferController@approve', $model);
 
         $this->assertStringContainsString('/transfer-workflow/{id}/approve', $routes);
         $this->assertStringContainsString('/transfer-workflow/{id}/dispatch', $routes);
+        $this->assertStringContainsString("Route::post('transfers/{id}/approve', 'TransferWorkflowController@approve')", $overrides);
+        $this->assertStringContainsString("Route::post('transfers/{id}/reject', 'TransferWorkflowController@reject')", $overrides);
+
         $this->assertStringContainsString('Historial de la transferencia', $ui);
         $this->assertStringContainsString('Despachar ahora', $ui);
         $this->assertStringContainsString('function referenceColumn(table)', $ui);
