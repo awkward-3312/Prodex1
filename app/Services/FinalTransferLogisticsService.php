@@ -5,15 +5,30 @@ namespace App\Services;
 use App\Models\Transfer;
 use App\Models\TransferDetail;
 use App\Models\TransferReceiptItem;
+use App\Models\User;
 
 /**
- * Final production transfer binding. The discrepancy controller exposes the
- * issue currently being resolved through a request attribute, allowing the
- * location-aware inventory layer to distinguish missing vs defective stock
- * without changing the legacy controller method contract.
+ * Final production transfer binding. Request-scoped compatibility hints are used
+ * only while resolving a known location-aware transfer; normal legacy warehouse
+ * authorization remains unchanged.
  */
 class FinalTransferLogisticsService extends LocationAwareTransferLogisticsService
 {
+    public function warehouseIdsForUser(User $user): array
+    {
+        $ids = parent::warehouseIdsForUser($user);
+
+        if (! app()->bound('request')) return $ids;
+        $extra = request()->attributes->get('prodex_transfer_authorized_warehouse_ids', []);
+        if (! is_array($extra) || ! $extra) return $ids;
+
+        foreach ($extra as $id) {
+            if (is_numeric($id) && (int) $id > 0) $ids[] = (int) $id;
+        }
+
+        return array_values(array_unique($ids));
+    }
+
     public function creditIssueResolution(
         Transfer $transfer,
         TransferDetail $detail,
