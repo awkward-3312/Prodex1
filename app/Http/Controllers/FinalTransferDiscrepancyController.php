@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InventoryLocation;
+use App\Models\Transfer;
+use App\Models\TransferDetail;
 use App\Models\User;
 use App\Services\InventoryLocationScopeService;
+use App\Services\TransferBatchIssueService;
 use App\Services\TransferLogisticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -123,5 +127,51 @@ class FinalTransferDiscrepancyController extends LocationAwareTransferDiscrepanc
                 ],
             ],
         ]);
+    }
+
+    public function resolve(Request $request, int $id)
+    {
+        return DB::transaction(function () use ($request, $id) {
+            $issue = DB::table('transfer_discrepancies')->where('id', $id)->lockForUpdate()->first();
+            abort_unless($issue, 404);
+
+            $transfer = Transfer::whereNull('deleted_at')->findOrFail($issue->transfer_id);
+            $detail = TransferDetail::findOrFail($issue->transfer_detail_id);
+            $resolutionCode = (string) $request->input('resolution_code');
+
+            $response = parent::resolve($request, $id);
+
+            if ($transfer->to_inventory_location_id && app(TransferBatchIssueService::class)->isSupported()) {
+                $originQuarantineLocationId = $resolutionCode === 'returned_to_origin'
+                    ? $this->originQuarantineLocationId($transfer)
+                    : null;
+
+                app(TransferBatchIssueService::class)->resolveDisposition(
+                    $issue,
+                    $transfer,
+                    $detail,
+                    $resolutionCode,
+                    $originQuarantineLocationId
+                );
+            }
+
+            return $response;
+        }, 5);
+    }
+
+    private function originQuarantineLocationId(Transfer $transfer): ?int
+    {
+        if (! $transfer->from_inventory_location_id) return null;
+        $source = InventoryLocation::active()->find($transfer->from_inventory_location_id);
+        if (! $source) return null;
+
+        $query = InventoryLocation::active()->where(function ($q) {
+            $q->where('is_quarantine', true)->orWhere('type', InventoryLocation::TYPE_QUARANTINE);
+        });
+
+        if ($source->branch_id) $query->where('branch_id', $source->branch_id);
+        else $query->where('warehouse_id', $source->warehouse_id);
+
+        return ($id = $query->value('id')) ? (int) $id : null;
     }
 }
