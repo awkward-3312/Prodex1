@@ -20,16 +20,11 @@ class LocationAwareTransferDiscrepancyController extends TransferDiscrepancyCont
             $detail = TransferDetail::findOrFail($issue->transfer_detail_id);
             $resolutionCode = (string) $request->input('resolution_code');
 
-            // The parent controller reclassifies receipt counters before it calls the
-            // logistics service. Publish the exact issue type on this request so the
-            // final location-aware binding never has to guess missing vs defective.
             $request->attributes->set('prodex_transfer_issue_type', (string) $issue->type);
             $request->attributes->set('prodex_transfer_issue_id', (int) $issue->id);
 
-            // Capture the physical quarantine location before the legacy resolver
-            // updates/splits its audit rows. The outer transaction makes the parent
-            // resolution and the physical stock disposition one atomic operation.
             $quarantineLocationId = null;
+            $beforeQuarantineMaxId = 0;
             if ($transfer->to_inventory_location_id && $issue->type === 'defective') {
                 $quarantineLocationId = DB::table('transfer_quarantine_stock')
                     ->where('transfer_id', $transfer->id)
@@ -38,11 +33,28 @@ class LocationAwareTransferDiscrepancyController extends TransferDiscrepancyCont
                     ->whereNotNull('inventory_location_id')
                     ->orderBy('id')
                     ->value('inventory_location_id');
+
+                $beforeQuarantineMaxId = (int) (DB::table('transfer_quarantine_stock')->max('id') ?? 0);
             }
 
             $response = parent::resolve($request, $id);
 
             if ($transfer->to_inventory_location_id) {
+                // The legacy resolver may split one quarantine audit row. Its insert
+                // predates inventory_location_id, so restore that physical context on
+                // only the newly-created split rows before final stock disposition.
+                if ($quarantineLocationId && $beforeQuarantineMaxId > 0) {
+                    DB::table('transfer_quarantine_stock')
+                        ->where('id', '>', $beforeQuarantineMaxId)
+                        ->where('transfer_id', $transfer->id)
+                        ->where('transfer_detail_id', $detail->id)
+                        ->whereNull('inventory_location_id')
+                        ->update([
+                            'inventory_location_id' => (int) $quarantineLocationId,
+                            'updated_at' => now(),
+                        ]);
+                }
+
                 app(TransferIssueLocationResolutionService::class)->apply(
                     $issue,
                     $transfer,
