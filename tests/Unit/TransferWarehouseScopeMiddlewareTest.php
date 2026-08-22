@@ -115,6 +115,25 @@ class TransferWarehouseScopeMiddlewareTest extends TestCase
         $this->invokeValidation($request, $user, $warehouseScope, $locationScope);
     }
 
+    public function test_transfer_pdf_override_requires_authentication_and_loads_after_legacy_routes(): void
+    {
+        $override = file_get_contents(base_path('routes/tenant_transfer_overrides.php'));
+        $provider = file_get_contents(base_path('app/Providers/RouteServiceProvider.php'));
+
+        $this->assertStringContainsString("'auth:api'", $override);
+        $this->assertStringContainsString(
+            "->get('transfer_pdf/{id}', 'TransferController@transfer_pdf')",
+            $override
+        );
+
+        $tenantApiPosition = strpos($provider, "'tenant_api.php'");
+        $overridePosition = strpos($provider, "'tenant_transfer_overrides.php'");
+
+        $this->assertNotFalse($tenantApiPosition);
+        $this->assertNotFalse($overridePosition);
+        $this->assertGreaterThan($tenantApiPosition, $overridePosition);
+    }
+
     public function test_bulk_delete_rejects_legacy_transfer_outside_source_warehouse_scope(): void
     {
         $this->transfer(6, null, null, 2, 1);
