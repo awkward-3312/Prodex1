@@ -259,9 +259,10 @@ class TransferLogisticsServiceTest extends TestCase
         Schema::create('permission_role', function ($t) { $t->increments('id'); $t->unsignedInteger('permission_id'); $t->unsignedInteger('role_id'); });
         Schema::create('user_warehouse', function ($t) { $t->increments('id'); $t->unsignedInteger('user_id'); $t->unsignedInteger('warehouse_id'); $t->timestamps(); });
 
-        Schema::create('products', function ($t) { $t->increments('id'); $t->string('name')->nullable(); $t->string('code')->nullable(); $t->boolean('is_batch_tracked')->default(false); $t->timestamps(); $t->softDeletes(); });
-        DB::table('products')->insert(['id' => 1, 'name' => 'Producto', 'code' => 'P001', 'is_batch_tracked' => 0, 'created_at' => now(), 'updated_at' => now()]);
         Schema::create('units', function ($t) { $t->increments('id'); $t->string('ShortName')->nullable(); $t->string('operator')->nullable(); $t->decimal('operator_value', 20, 6)->nullable(); $t->timestamps(); $t->softDeletes(); });
+        DB::table('units')->insert(['id' => 1, 'ShortName' => 'u', 'operator' => '*', 'operator_value' => 1, 'created_at' => now(), 'updated_at' => now()]);
+        Schema::create('products', function ($t) { $t->increments('id'); $t->string('name')->nullable(); $t->string('code')->nullable(); $t->integer('unit_purchase_id')->nullable(); $t->boolean('is_batch_tracked')->default(false); $t->timestamps(); $t->softDeletes(); });
+        DB::table('products')->insert(['id' => 1, 'name' => 'Producto', 'code' => 'P001', 'unit_purchase_id' => 1, 'is_batch_tracked' => 0, 'created_at' => now(), 'updated_at' => now()]);
         Schema::create('product_warehouse', function ($t) { $t->increments('id'); $t->integer('product_id'); $t->integer('warehouse_id'); $t->integer('product_variant_id')->nullable(); $t->decimal('qte', 20, 6)->default(0); $t->integer('manage_stock')->default(1); $t->timestamps(); $t->softDeletes(); });
 
         Schema::create('transfers', function ($t) {

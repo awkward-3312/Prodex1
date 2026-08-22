@@ -48,6 +48,8 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_21_183000_add_location_tracking_to_batches_and_serials.php',
         'database/migrations/tenant/2026_08_21_184000_create_batch_location_movement_ledger.php',
         'database/migrations/tenant/2026_08_21_185000_add_inventory_locations_to_transfers.php',
+        'database/migrations/tenant/2026_08_21_186000_create_transfer_detail_serials.php',
+        'database/migrations/tenant/2026_08_21_187000_create_transfer_batch_issue_allocations.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -150,6 +152,15 @@ class TenantSchemaHealthService
         $this->requireColumns($schema, $missing, 'transfer_quarantine_stock', ['inventory_location_id']);
         $this->requireTable($schema, $missing, 'transfer_events');
         $this->requireTable($schema, $missing, 'transfer_notifications');
+        $this->requireTable($schema, $missing, 'transfer_detail_serials');
+        $this->requireColumns($schema, $missing, 'transfer_detail_serials', [
+            'transfer_detail_id', 'product_serial_id', 'transfer_receipt_item_id', 'status', 'issue_type', 'received_at',
+        ]);
+        $this->requireTable($schema, $missing, 'transfer_receipt_item_batch_issues');
+        $this->requireColumns($schema, $missing, 'transfer_receipt_item_batch_issues', [
+            'transfer_receipt_item_id', 'transfer_detail_batch_id', 'source_batch_id', 'destination_batch_id',
+            'inventory_location_id', 'issue_type', 'quantity', 'resolved_quantity', 'resolution_status', 'resolution_code', 'resolved_at',
+        ]);
 
         $this->requireTable($schema, $missing, 'branches');
         $this->requireColumns($schema, $missing, 'branches', ['code', 'name', 'type', 'manager_employee_id', 'default_warehouse_id', 'default_inventory_location_id', 'is_active']);

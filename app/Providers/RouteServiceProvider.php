@@ -62,6 +62,7 @@ class RouteServiceProvider extends ServiceProvider
             'tenant_pos_location.php',
             'tenant_transfer_locations.php',
             'tenant_transfer_logistics.php',
+            'tenant_transfer_overrides.php',
             'tenant_attendance_integrations.php',
             'tenant_sar_overrides.php',
         ] as $routeFile) {

@@ -25,8 +25,6 @@ class EnforceWarehouseScope
         $locationScope = app(InventoryLocationScopeService::class);
         $locationTransfer = $this->isLocationTransferPayload($request);
 
-        // Global warehouse users retain their historical broad access. Location
-        // selectors are still validated against existence/activeness below.
         if ((int) ($user->is_all_warehouses ?? 0) !== 1) {
             $this->validateRequestSelectors($request, $user, $warehouseScope, $locationScope, $locationTransfer);
             $this->validateScopeEscalation($request, $user, $warehouseScope);
@@ -45,8 +43,6 @@ class EnforceWarehouseScope
         InventoryLocationScopeService $locationScope,
         bool $locationTransfer
     ): void {
-        // A location-aware transfer carries legacy warehouse anchors only for
-        // backward-compatible columns. Do not treat those anchors as work scope.
         $protectedKeys = $locationTransfer
             ? ['warehouse_id', 'default_warehouse_id']
             : ['warehouse_id', 'default_warehouse_id', 'from_warehouse_id', 'from_warehouse'];
@@ -63,8 +59,6 @@ class EnforceWarehouseScope
             throw new AuthorizationException('No tienes permiso para operar con la ubicación de inventario de origen.');
         }
 
-        // Destination may belong to another branch/CD; that is exactly what a
-        // transfer is for. It only has to be an active inventory location.
         $toLocation = $request->input('transfer.to_inventory_location_id')
             ?: $request->input('to_inventory_location_id');
         if ($toLocation && ! InventoryLocation::active()->whereKey((int) $toLocation)->exists()) {
@@ -114,27 +108,49 @@ class EnforceWarehouseScope
         InventoryLocationScopeService $locationScope
     ): void {
         $route = $request->route();
-        if (! $route || ! method_exists($route, 'getActionName')) return;
-        $action = (string) $route->getActionName();
-        if (! str_contains($action, 'TransferController@')) return;
+        if (! $route) return;
 
-        $method = str_contains($action, '@') ? substr($action, strrpos($action, '@') + 1) : '';
+        $action = $this->resolvedRouteAction($route);
+        if ($action === '' || ! str_contains($action, 'TransferController@')) return;
+
+        $method = substr($action, strrpos($action, '@') + 1);
+
+        if ($method === 'delete_by_selection') {
+            $selectedIds = collect((array) $request->input('selectedIds', []))
+                ->filter(fn ($id) => is_numeric($id) && (int) $id > 0)
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values();
+
+            if ($selectedIds->isEmpty()) return;
+
+            $transfers = Transfer::whereNull('deleted_at')->whereIn('id', $selectedIds)->get();
+            if ($transfers->count() !== $selectedIds->count()) {
+                throw new AuthorizationException('Una o más transferencias seleccionadas no existen o ya no están disponibles.');
+            }
+
+            foreach ($transfers as $transfer) {
+                if (! $this->canMutateTransferSource($transfer, $user, $warehouseScope, $locationScope)) {
+                    throw new AuthorizationException('Solo usuarios con acceso al origen pueden eliminar transferencias seleccionadas.');
+                }
+            }
+            return;
+        }
+
         $id = $request->route('id') ?: $request->route('transfer');
         if (! $id || ! is_numeric($id)) return;
 
         $transfer = Transfer::whereNull('deleted_at')->find((int) $id);
         if (! $transfer) return;
 
-        if ($transfer->from_inventory_location_id && $transfer->to_inventory_location_id) {
-            $sourceAllowed = $locationScope->canAccess($user, (int) $transfer->from_inventory_location_id);
-            $destinationAllowed = $locationScope->canAccess($user, (int) $transfer->to_inventory_location_id);
-        } else {
-            $allowed = $warehouseScope->allowedWarehouseIds($user);
-            $sourceAllowed = in_array((int) $transfer->from_warehouse_id, $allowed, true);
-            $destinationAllowed = in_array((int) $transfer->to_warehouse_id, $allowed, true);
-        }
+        [$sourceAllowed, $destinationAllowed] = $this->transferAccess(
+            $transfer,
+            $user,
+            $warehouseScope,
+            $locationScope
+        );
 
-        $readMethods = ['show', 'edit', 'get_transfer_detail', 'Print_Transfer'];
+        $readMethods = ['show', 'edit', 'get_transfer_detail', 'Print_Transfer', 'transfer_pdf'];
         if (in_array($method, $readMethods, true)) {
             if (! $sourceAllowed && ! $destinationAllowed) throw new AuthorizationException('No tienes acceso a esta transferencia.');
             return;
@@ -144,6 +160,56 @@ class EnforceWarehouseScope
         if (in_array($method, $sourceMutationMethods, true) && ! $sourceAllowed) {
             throw new AuthorizationException('Solo usuarios con acceso al origen pueden modificar o aprobar esta transferencia.');
         }
+    }
+
+    private function resolvedRouteAction($route): string
+    {
+        $candidates = [];
+
+        if (method_exists($route, 'getActionName')) {
+            $candidates[] = (string) $route->getActionName();
+        }
+        if (method_exists($route, 'getAction')) {
+            foreach (['controller', 'uses'] as $key) {
+                $value = $route->getAction($key);
+                if (is_string($value)) $candidates[] = $value;
+            }
+        }
+
+        foreach (array_unique($candidates) as $candidate) {
+            if (str_contains($candidate, 'TransferController@')) return $candidate;
+        }
+
+        return '';
+    }
+
+    private function canMutateTransferSource(
+        Transfer $transfer,
+        $user,
+        WarehouseScopeService $warehouseScope,
+        InventoryLocationScopeService $locationScope
+    ): bool {
+        return $this->transferAccess($transfer, $user, $warehouseScope, $locationScope)[0];
+    }
+
+    private function transferAccess(
+        Transfer $transfer,
+        $user,
+        WarehouseScopeService $warehouseScope,
+        InventoryLocationScopeService $locationScope
+    ): array {
+        if ($transfer->from_inventory_location_id && $transfer->to_inventory_location_id) {
+            return [
+                $locationScope->canAccess($user, (int) $transfer->from_inventory_location_id),
+                $locationScope->canAccess($user, (int) $transfer->to_inventory_location_id),
+            ];
+        }
+
+        $allowed = $warehouseScope->allowedWarehouseIds($user);
+        return [
+            in_array((int) $transfer->from_warehouse_id, $allowed, true),
+            in_array((int) $transfer->to_warehouse_id, $allowed, true),
+        ];
     }
 
     private function isLocationTransferPayload(Request $request): bool

@@ -27,16 +27,10 @@ class ProdexTenantUpgrade extends Command
 
         if ($tenants->isEmpty()) {
             $this->warn('No tenants found for upgrade.');
-            return self::SUCCESS;
+            return ! empty($tenantIds) ? self::FAILURE : self::SUCCESS;
         }
 
-        $controlledMigrations = array_values(array_unique(array_merge(
-            TenantSchemaHealthService::CONTROLLED_MIGRATIONS,
-            [
-                'database/migrations/tenant/2026_08_21_186000_create_transfer_detail_serials.php',
-                'database/migrations/tenant/2026_08_21_187000_create_transfer_batch_issue_allocations.php',
-            ]
-        )));
+        $controlledMigrations = TenantSchemaHealthService::CONTROLLED_MIGRATIONS;
 
         foreach ($tenants as $tenant) {
             $creds = $tenant->getEffectiveDatabaseCredentials();
@@ -98,6 +92,11 @@ class ProdexTenantUpgrade extends Command
         $this->newLine();
         $this->info("Summary: {$summary['tenants']} tenants, {$summary['ok']} healthy, {$summary['warnings']} warnings, {$summary['failed']} failures.");
 
-        return $summary['failed'] > 0 ? self::FAILURE : self::SUCCESS;
+        // A controlled tenant upgrade is only safe to automate when every tenant
+        // finishes healthy. Missing migration files, non-zero migration exits or
+        // outstanding schema requirements are deployment blockers, not soft success.
+        return ($summary['warnings'] > 0 || $summary['failed'] > 0)
+            ? self::FAILURE
+            : self::SUCCESS;
     }
 }
