@@ -18,6 +18,13 @@ class TransferDiscrepancyLocationAccessTest extends TestCase
     {
         parent::setUp();
 
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $pdo = DB::connection()->getPdo();
+            if (method_exists($pdo, 'sqliteCreateFunction')) {
+                $pdo->sqliteCreateFunction('CONCAT', fn (...$parts) => implode('', $parts));
+            }
+        }
+
         Schema::create('warehouses', function ($table) {
             $table->increments('id');
             $table->string('name');
