@@ -8,7 +8,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::post('/transfer-logistics/notifications/{notificationId}/read', 'TransferLogisticsController@markNotificationRead');
 
     Route::get('/transfer-logistics/issues', 'TransferDiscrepancyController@index');
-    Route::post('/transfer-logistics/issues/{id}/resolve', 'TransferDiscrepancyController@resolve');
+    Route::post('/transfer-logistics/issues/{id}/resolve', 'LocationAwareTransferDiscrepancyController@resolve');
 
     Route::get('/transfer-logistics/scan/{token}', 'TransferLogisticsController@showByToken');
     Route::get('/transfer-logistics/{id}/qr', 'TransferLogisticsController@qrPayload');
