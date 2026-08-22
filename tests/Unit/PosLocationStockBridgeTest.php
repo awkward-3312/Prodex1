@@ -16,7 +16,7 @@ class PosLocationStockBridgeTest extends TestCase
             'inventory_location_id' => 20,
         ]);
 
-        $route = new Route(['POST'], 'pos/create_pos', ['uses' => 'App\\Http\\Controllers\\PosController@CreatePOS']);
+        $route = new Route(['POST'], 'pos/create_pos', ['uses' => 'App\Http\Controllers\PosController@CreatePOS']);
         $request->setRouteResolver(fn () => $route);
 
         $this->assertTrue(app(PosLocationStockBridge::class)->isLocationPosRequest($request));
@@ -29,7 +29,7 @@ class PosLocationStockBridgeTest extends TestCase
             'inventory_location_id' => 20,
         ]);
 
-        $route = new Route(['POST'], 'adjustments', ['uses' => 'App\\Http\\Controllers\\AdjustmentController@store']);
+        $route = new Route(['POST'], 'adjustments', ['uses' => 'App\Http\Controllers\AdjustmentController@store']);
         $request->setRouteResolver(fn () => $route);
 
         $this->assertFalse(app(PosLocationStockBridge::class)->isLocationPosRequest($request));
