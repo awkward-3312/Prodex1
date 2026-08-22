@@ -39,6 +39,7 @@ jobs:
           php -l app/Models/Transfer.php
           php -l app/Models/TransferDetailSerial.php
           php -l app/Http/Middleware/LockTransferDispatchStock.php
+          php -l app/Http/Middleware/EnforceWarehouseScope.php
           php -l app/Http/Middleware/CheckTenantFeature.php
           php -l app/Services/TenantLimitsService.php
           php -l app/Services/TransferListScopeService.php
@@ -67,6 +68,7 @@ jobs:
           php -l tests/Unit/TransferSerialLocationServiceTest.php
           php -l tests/Unit/TransferBatchIssueServiceTest.php
           php -l tests/Unit/TransferListScopeServiceTest.php
+          php -l tests/Unit/TransferWarehouseScopeMiddlewareTest.php
           php -l tests/Unit/TransferLocationAccessControllerTest.php
           php -l tests/Unit/TransferDiscrepancyLocationAccessTest.php
           php -l tests/Unit/TransferDispatchPreflightTest.php
@@ -78,6 +80,7 @@ jobs:
           vendor/bin/phpunit tests/Unit/TransferSerialLocationServiceTest.php
           vendor/bin/phpunit tests/Unit/TransferBatchIssueServiceTest.php
           vendor/bin/phpunit tests/Unit/TransferListScopeServiceTest.php
+          vendor/bin/phpunit tests/Unit/TransferWarehouseScopeMiddlewareTest.php
           vendor/bin/phpunit tests/Unit/TransferLocationAccessControllerTest.php
           vendor/bin/phpunit tests/Unit/TransferDiscrepancyLocationAccessTest.php
           vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php tests/Unit/TransferLogisticsBatchUnitsTest.php tests/Unit/TransferDispatchPreflightTest.php
