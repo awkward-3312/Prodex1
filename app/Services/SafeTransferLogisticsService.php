@@ -22,15 +22,16 @@ class SafeTransferLogisticsService extends TransferLogisticsService
 {
     /**
      * Used when an already-accounted missing/defective quantity is later physically
-     * recovered and reclassified as good stock. The caller first reclassifies the
-     * receipt-item counters, then this method performs the same stock/batch credit as
-     * an ordinary receipt without creating a second receipt total.
+     * recovered and reclassified as good stock. The optional issue column lets the
+     * location-aware subclass distinguish a late arrival from quarantine release;
+     * legacy warehouse accounting intentionally ignores it.
      */
     public function creditIssueResolution(
         Transfer $transfer,
         TransferDetail $detail,
         float $quantity,
-        TransferReceiptItem $receiptItem
+        TransferReceiptItem $receiptItem,
+        ?string $issueColumn = null
     ): void {
         if ($quantity <= 0) {
             return;
@@ -48,10 +49,6 @@ class SafeTransferLogisticsService extends TransferLogisticsService
             ]);
         }
 
-        // Transfer lines can legitimately have purchase_unit_id = NULL; the legacy
-        // transfer controller then falls back to products.unit_purchase_id. Receiving
-        // must resolve the unit in exactly the same way or a box/pack could be
-        // dispatched as base units but received as single units.
         $unitId = $detail->purchase_unit_id ?: $product->unit_purchase_id;
         $unit = $unitId ? Unit::find($unitId) : null;
         if (! $unit || ! in_array($unit->operator, ['*', '/'], true) || (float) $unit->operator_value <= 0) {
@@ -85,8 +82,6 @@ class SafeTransferLogisticsService extends TransferLogisticsService
         $row->qte = (float) $row->qte + $stockQty;
         $row->save();
 
-        // transfer_detail_batches quantities are stored in base stock units. Credit
-        // exactly the same base quantity to destination batches.
         $this->creditBatchStockIfApplicable($transfer, $detail, $stockQty, $receiptItem);
     }
 }
