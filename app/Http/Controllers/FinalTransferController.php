@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Schema;
 
 class FinalTransferController extends TransferController
 {
+    private ?string $createdTransferReference = null;
+
     public function store(Request $request)
     {
         $this->assertBusinessRoute($request);
@@ -23,11 +25,14 @@ class FinalTransferController extends TransferController
         // touch stock; the outer transaction then approves and dispatches that exact
         // row before anything is committed. If dispatch fails, creation is rolled back.
         return DB::transaction(function () use ($request, $user) {
+            $this->createdTransferReference = null;
             parent::store($request);
+
+            abort_unless($this->createdTransferReference, 500, 'No se pudo identificar la transferencia recién creada.');
 
             $transfer = Transfer::whereNull('deleted_at')
                 ->where('user_id', $user->id)
-                ->orderByDesc('id')
+                ->where('Ref', $this->createdTransferReference)
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -47,6 +52,46 @@ class FinalTransferController extends TransferController
                 ],
             ]);
         }, 10);
+    }
+
+    /**
+     * Parent::store() calls this method to build the transfer reference. We serialize
+     * that generation on the tenant settings row and retain the exact reference used
+     * by this request, so concurrent creates can never rediscover another request's
+     * transfer by "latest id".
+     */
+    public function getNumberOrder()
+    {
+        $setting = DB::table('settings')
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->first();
+
+        if (! $setting) {
+            $reference = parent::getNumberOrder();
+            $this->createdTransferReference = $reference;
+            return $reference;
+        }
+
+        $prefix = ! empty($setting->transfer_prefix) ? $setting->transfer_prefix : 'TR';
+        $last = DB::table('transfers')
+            ->where('Ref', 'like', $prefix.'_%')
+            ->latest('id')
+            ->lockForUpdate()
+            ->first();
+
+        if ($last) {
+            $parts = explode('_', (string) $last->Ref);
+            $reference = isset($parts[1]) && is_numeric($parts[1])
+                ? $parts[0].'_'.str_pad(((int) $parts[1]) + 1, 4, '0', STR_PAD_LEFT)
+                : $prefix.'_0001';
+        } else {
+            $reference = $prefix.'_0001';
+        }
+
+        $this->createdTransferReference = $reference;
+        return $reference;
     }
 
     public function update(Request $request, $id)
