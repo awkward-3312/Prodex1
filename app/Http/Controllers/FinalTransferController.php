@@ -5,16 +5,93 @@ namespace App\Http\Controllers;
 use App\Models\Transfer;
 use App\Services\TransferBusinessDestinationService;
 use App\Services\TransferListScopeService;
+use App\Services\TransferWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class FinalTransferController extends TransferController
 {
+    private ?string $createdTransferReference = null;
+
     public function store(Request $request)
     {
         $this->assertBusinessRoute($request);
-        return parent::store($request);
+        $user = $request->user('api') ?: Auth::user();
+
+        // Creating a transfer is the operational dispatch action. The legacy
+        // controller still builds the header/details safely as pending and does not
+        // touch stock; the outer transaction then approves and dispatches that exact
+        // row before anything is committed. If dispatch fails, creation is rolled back.
+        return DB::transaction(function () use ($request, $user) {
+            $this->createdTransferReference = null;
+            parent::store($request);
+
+            abort_unless($this->createdTransferReference, 500, 'No se pudo identificar la transferencia recién creada.');
+
+            $transfer = Transfer::whereNull('deleted_at')
+                ->where('user_id', $user->id)
+                ->where('Ref', $this->createdTransferReference)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $workflow = app(TransferWorkflowService::class);
+            $transfer = $workflow->approve($transfer, $user);
+            $transfer = $workflow->dispatch($transfer, $user);
+
+            return response()->json([
+                'success' => true,
+                'transfer' => [
+                    'id' => (int) $transfer->id,
+                    'reference' => $transfer->Ref,
+                    'approval_status' => $transfer->approval_status,
+                    'logistics_status' => $transfer->logistics_status,
+                    'receiving_token' => $transfer->receiving_token,
+                    'dispatched_at' => optional($transfer->dispatched_at)->toIso8601String(),
+                ],
+            ]);
+        }, 10);
+    }
+
+    /**
+     * Parent::store() calls this method to build the transfer reference. We serialize
+     * that generation on the tenant settings row and retain the exact reference used
+     * by this request, so concurrent creates can never rediscover another request's
+     * transfer by "latest id".
+     */
+    public function getNumberOrder()
+    {
+        $setting = DB::table('settings')
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->first();
+
+        if (! $setting) {
+            $reference = parent::getNumberOrder();
+            $this->createdTransferReference = $reference;
+            return $reference;
+        }
+
+        $prefix = ! empty($setting->transfer_prefix) ? $setting->transfer_prefix : 'TR';
+        $last = DB::table('transfers')
+            ->where('Ref', 'like', $prefix.'_%')
+            ->latest('id')
+            ->lockForUpdate()
+            ->first();
+
+        if ($last) {
+            $parts = explode('_', (string) $last->Ref);
+            $reference = isset($parts[1]) && is_numeric($parts[1])
+                ? $parts[0].'_'.str_pad(((int) $parts[1]) + 1, 4, '0', STR_PAD_LEFT)
+                : $prefix.'_0001';
+        } else {
+            $reference = $prefix.'_0001';
+        }
+
+        $this->createdTransferReference = $reference;
+        return $reference;
     }
 
     public function update(Request $request, $id)
@@ -122,6 +199,7 @@ class FinalTransferController extends TransferController
                 'items' => (float) $transfer->items,
                 'statut' => $transfer->statut,
                 'approval_status' => $transfer->approval_status,
+                'logistics_status' => $transfer->logistics_status ?: 'pending',
                 'from_inventory_location_id' => $transfer->from_inventory_location_id ? (int) $transfer->from_inventory_location_id : null,
                 'to_inventory_location_id' => $transfer->to_inventory_location_id ? (int) $transfer->to_inventory_location_id : null,
             ])->values();
