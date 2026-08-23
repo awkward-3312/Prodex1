@@ -85,7 +85,7 @@ class BranchTransferReceivingScopeTest extends TestCase
         });
     }
 
-    public function test_branch_receiver_automatically_gets_branch_storage_without_losing_explicit_floor(): void
+    public function test_branch_receiver_gets_primary_storage_only_for_receiving(): void
     {
         $roleId = DB::table('roles')->insertGetId(['name' => 'Gerente', 'created_at' => now(), 'updated_at' => now()]);
         $permissionId = DB::table('permissions')->insertGetId(['name' => 'transfer_receive', 'created_at' => now(), 'updated_at' => now()]);
@@ -94,6 +94,7 @@ class BranchTransferReceivingScopeTest extends TestCase
         $branchId = DB::table('branches')->insertGetId(['name' => 'Sucursal 1', 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()]);
         $floorId = $this->location($branchId, 'PISO', InventoryLocation::TYPE_SALES_FLOOR, true);
         $storageId = $this->location($branchId, 'BODEGA', InventoryLocation::TYPE_STORAGE, false);
+        $secondaryStorageId = $this->location($branchId, 'BODEGA-2', InventoryLocation::TYPE_STORAGE, false);
 
         $userId = DB::table('users')->insertGetId([
             'firstname' => 'Gerente', 'email' => 'gerente@test.local', 'password' => 'x',
@@ -104,12 +105,20 @@ class BranchTransferReceivingScopeTest extends TestCase
         DB::table('user_branches')->insert(['user_id' => $userId, 'branch_id' => $branchId, 'created_at' => now(), 'updated_at' => now()]);
         DB::table('user_inventory_locations')->insert(['user_id' => $userId, 'inventory_location_id' => $floorId, 'created_at' => now(), 'updated_at' => now()]);
 
-        $ids = app(InventoryLocationScopeService::class)->allowedLocationIds(User::findOrFail($userId));
-        sort($ids);
+        $user = User::findOrFail($userId);
+        $scope = app(InventoryLocationScopeService::class);
+
+        $this->assertSame([$floorId], $scope->allowedLocationIds($user));
+
+        $receiving = $scope->receivingLocationIds($user);
+        sort($receiving);
         $expected = [$floorId, $storageId];
         sort($expected);
 
-        $this->assertSame($expected, $ids);
+        $this->assertSame($expected, $receiving);
+        $this->assertTrue($scope->canReceiveAt($user, $storageId));
+        $this->assertFalse($scope->canAccess($user, $storageId));
+        $this->assertFalse($scope->canReceiveAt($user, $secondaryStorageId));
     }
 
     private function location(int $branchId, string $code, string $type, bool $sellable): int
