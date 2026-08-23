@@ -31,6 +31,19 @@ class FinalTransferLogisticsService extends LocationAwareTransferLogisticsServic
         return array_values(array_unique($ids));
     }
 
+    public function userCanReceive(User $user, Transfer $transfer): bool
+    {
+        if (! $transfer->to_inventory_location_id) {
+            return parent::userCanReceive($user, $transfer);
+        }
+
+        return $user->hasPermissionName(self::RECEIVE_PERMISSION)
+            && app(InventoryLocationScopeService::class)->canReceiveAt(
+                $user,
+                (int) $transfer->to_inventory_location_id
+            );
+    }
+
     public function receive(
         Transfer $transfer,
         User $user,
