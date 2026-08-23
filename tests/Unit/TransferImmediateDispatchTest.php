@@ -16,6 +16,10 @@ class TransferImmediateDispatchTest extends TestCase
 
         $this->assertStringContainsString('return DB::transaction(function () use ($request, $user)', $controller);
         $this->assertStringContainsString('parent::store($request);', $controller);
+        $this->assertStringContainsString('private ?string $createdTransferReference = null;', $controller);
+        $this->assertStringContainsString("->where('Ref', \$this->createdTransferReference)", $controller);
+        $this->assertStringContainsString("->lockForUpdate()", $controller);
+        $this->assertStringNotContainsString("->where('user_id', \$user->id)\n                ->orderByDesc('id')", $controller);
         $this->assertStringContainsString('$transfer = $workflow->approve($transfer, $user);', $controller);
         $this->assertStringContainsString('$transfer = $workflow->dispatch($transfer, $user);', $controller);
         $this->assertStringContainsString("'logistics_status' => \$transfer->logistics_status", $controller);
