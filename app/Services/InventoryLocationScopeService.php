@@ -67,9 +67,53 @@ class InventoryLocationScopeService
         return [];
     }
 
+    /**
+     * Physical destinations this user may receive into.
+     *
+     * Receiving is intentionally broader than normal operational scope: a branch
+     * manager may work day-to-day from the sales floor but still receive inter-site
+     * shipments into that branch's primary storage. This must never make that
+     * storage a valid source for transfers, POS, adjustments, or other operations.
+     */
+    public function receivingLocationIds(User $user): array
+    {
+        $normal = $this->allowedLocationIds($user);
+        if ((int) $user->role_id === 1) return $normal;
+
+        if (! Schema::hasTable('inventory_locations')
+            || ! Schema::hasTable('roles')
+            || ! Schema::hasTable('role_user')
+            || ! Schema::hasTable('permissions')
+            || ! Schema::hasTable('permission_role')
+            || ! $user->hasPermissionName(TransferLogisticsService::RECEIVE_PERMISSION)) {
+            return $normal;
+        }
+
+        $branchIds = app(BranchScopeService::class)->allowedBranchIds($user);
+        if (! $branchIds) return $normal;
+
+        $primaryStorageIds = InventoryLocation::active()
+            ->whereIn('branch_id', $branchIds)
+            ->where('type', InventoryLocation::TYPE_STORAGE)
+            ->orderByRaw("CASE WHEN UPPER(code) = 'BODEGA' THEN 0 ELSE 1 END")
+            ->orderBy('id')
+            ->get(['id', 'branch_id'])
+            ->groupBy('branch_id')
+            ->map(fn ($locations) => (int) $locations->first()->id)
+            ->values()
+            ->all();
+
+        return $this->activeUnique(array_merge($normal, $primaryStorageIds));
+    }
+
     public function canAccess(User $user, int $locationId): bool
     {
         return in_array($locationId, $this->allowedLocationIds($user), true);
+    }
+
+    public function canReceiveAt(User $user, int $locationId): bool
+    {
+        return in_array($locationId, $this->receivingLocationIds($user), true);
     }
 
     private function explicitLocationIds(User $user): array

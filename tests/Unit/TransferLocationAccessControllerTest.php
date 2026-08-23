@@ -82,7 +82,7 @@ class TransferLocationAccessControllerTest extends TestCase
         $this->app->instance(TransferLogisticsService::class, $logistics);
 
         $locations = Mockery::mock(InventoryLocationScopeService::class);
-        $locations->shouldReceive('allowedLocationIds')->with($user)->andReturn([10]);
+        $locations->shouldReceive('receivingLocationIds')->with($user)->andReturn([10]);
         $this->app->instance(InventoryLocationScopeService::class, $locations);
 
         $controller = new FinalTransferLogisticsController($logistics);

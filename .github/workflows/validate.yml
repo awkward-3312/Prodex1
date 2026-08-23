@@ -29,7 +29,7 @@ jobs:
       - name: Run transfer logistics integrity tests
         run: vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php tests/Unit/TransferLogisticsBatchUnitsTest.php tests/Unit/TransferDispatchPreflightTest.php
       - name: Run organization scope tests
-        run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php tests/Unit/BranchInventoryScopeServiceTest.php
+        run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php tests/Unit/BranchInventoryScopeServiceTest.php tests/Unit/BranchTransferReceivingScopeTest.php
       - name: Run inventory architecture tests
         run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php tests/Unit/InventoryReadServiceTest.php tests/Unit/BatchLocationServiceTest.php tests/Unit/SerialLocationServiceTest.php tests/Unit/InternalInventoryMoveServiceTest.php
       - name: PHP syntax check for SAR files
@@ -114,6 +114,7 @@ jobs:
           php -l database/migrations/tenant/2026_08_21_182000_add_operational_context_to_sales.php
           php -l tests/Unit/WarehouseScopeServiceTest.php
           php -l tests/Unit/BranchInventoryScopeServiceTest.php
+          php -l tests/Unit/BranchTransferReceivingScopeTest.php
       - name: PHP syntax check for inventory architecture
         run: |
           php -l app/Models/product_warehouse.php

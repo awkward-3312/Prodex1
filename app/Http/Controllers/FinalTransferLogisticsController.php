@@ -24,7 +24,7 @@ class FinalTransferLogisticsController extends TransferLogisticsController
             && Schema::hasColumn('transfers', 'to_inventory_location_id')
             && Schema::hasTable('inventory_locations');
         $locationIds = $hasLocationColumns
-            ? app(InventoryLocationScopeService::class)->allowedLocationIds($user)
+            ? app(InventoryLocationScopeService::class)->receivingLocationIds($user)
             : [];
 
         if (! $warehouseIds && ! $locationIds) {
