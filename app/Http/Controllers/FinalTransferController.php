@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Transfer;
 use App\Services\TransferBusinessDestinationService;
 use App\Services\TransferListScopeService;
+use App\Services\TransferWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class FinalTransferController extends TransferController
@@ -14,7 +16,37 @@ class FinalTransferController extends TransferController
     public function store(Request $request)
     {
         $this->assertBusinessRoute($request);
-        return parent::store($request);
+        $user = $request->user('api') ?: Auth::user();
+
+        // Creating a transfer is the operational dispatch action. The legacy
+        // controller still builds the header/details safely as pending and does not
+        // touch stock; the outer transaction then approves and dispatches that exact
+        // row before anything is committed. If dispatch fails, creation is rolled back.
+        return DB::transaction(function () use ($request, $user) {
+            parent::store($request);
+
+            $transfer = Transfer::whereNull('deleted_at')
+                ->where('user_id', $user->id)
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $workflow = app(TransferWorkflowService::class);
+            $transfer = $workflow->approve($transfer, $user);
+            $transfer = $workflow->dispatch($transfer, $user);
+
+            return response()->json([
+                'success' => true,
+                'transfer' => [
+                    'id' => (int) $transfer->id,
+                    'reference' => $transfer->Ref,
+                    'approval_status' => $transfer->approval_status,
+                    'logistics_status' => $transfer->logistics_status,
+                    'receiving_token' => $transfer->receiving_token,
+                    'dispatched_at' => optional($transfer->dispatched_at)->toIso8601String(),
+                ],
+            ]);
+        }, 10);
     }
 
     public function update(Request $request, $id)
@@ -122,6 +154,7 @@ class FinalTransferController extends TransferController
                 'items' => (float) $transfer->items,
                 'statut' => $transfer->statut,
                 'approval_status' => $transfer->approval_status,
+                'logistics_status' => $transfer->logistics_status ?: 'pending',
                 'from_inventory_location_id' => $transfer->from_inventory_location_id ? (int) $transfer->from_inventory_location_id : null,
                 'to_inventory_location_id' => $transfer->to_inventory_location_id ? (int) $transfer->to_inventory_location_id : null,
             ])->values();
