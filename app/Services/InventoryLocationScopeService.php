@@ -16,11 +16,12 @@ class InventoryLocationScopeService
             return $this->allActiveLocationIds();
         }
 
+        $receivingStorage = $this->branchReceivingStorageIds($user);
         $explicit = $this->explicitLocationIds($user);
         $temporary = $this->temporaryLocationId($user);
         if ($explicit) {
             if ($temporary) $explicit[] = $temporary;
-            return $this->activeUnique($explicit);
+            return $this->activeUnique(array_merge($explicit, $receivingStorage));
         }
 
         $fallback = [];
@@ -29,8 +30,8 @@ class InventoryLocationScopeService
         }
         if ($temporary) $fallback[] = $temporary;
 
-        if ($fallback) {
-            return $this->activeUnique($fallback);
+        if ($fallback || $receivingStorage) {
+            return $this->activeUnique(array_merge($fallback, $receivingStorage));
         }
 
         // Transitional default for branch-scoped users: when no explicit inventory
@@ -70,6 +71,24 @@ class InventoryLocationScopeService
     public function canAccess(User $user, int $locationId): bool
     {
         return in_array($locationId, $this->allowedLocationIds($user), true);
+    }
+
+    private function branchReceivingStorageIds(User $user): array
+    {
+        if (! $user->hasPermissionName(TransferLogisticsService::RECEIVE_PERMISSION)
+            || ! Schema::hasTable('inventory_locations')) {
+            return [];
+        }
+
+        $branchIds = app(BranchScopeService::class)->allowedBranchIds($user);
+        if (! $branchIds) return [];
+
+        return InventoryLocation::active()
+            ->whereIn('branch_id', $branchIds)
+            ->where('type', InventoryLocation::TYPE_STORAGE)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     private function explicitLocationIds(User $user): array
