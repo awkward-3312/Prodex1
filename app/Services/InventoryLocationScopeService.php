@@ -16,12 +16,11 @@ class InventoryLocationScopeService
             return $this->allActiveLocationIds();
         }
 
-        $receivingStorage = $this->branchReceivingStorageIds($user);
         $explicit = $this->explicitLocationIds($user);
         $temporary = $this->temporaryLocationId($user);
         if ($explicit) {
             if ($temporary) $explicit[] = $temporary;
-            return $this->activeUnique(array_merge($explicit, $receivingStorage));
+            return $this->activeUnique($explicit);
         }
 
         $fallback = [];
@@ -30,8 +29,8 @@ class InventoryLocationScopeService
         }
         if ($temporary) $fallback[] = $temporary;
 
-        if ($fallback || $receivingStorage) {
-            return $this->activeUnique(array_merge($fallback, $receivingStorage));
+        if ($fallback) {
+            return $this->activeUnique($fallback);
         }
 
         // Transitional default for branch-scoped users: when no explicit inventory
@@ -68,30 +67,32 @@ class InventoryLocationScopeService
         return [];
     }
 
-    public function canAccess(User $user, int $locationId): bool
+    /**
+     * Physical destinations this user may receive into.
+     *
+     * Receiving is intentionally broader than normal operational scope: a branch
+     * manager may work day-to-day from the sales floor but still receive inter-site
+     * shipments into that branch's primary storage. This must never make that
+     * storage a valid source for transfers, POS, adjustments, or other operations.
+     */
+    public function receivingLocationIds(User $user): array
     {
-        return in_array($locationId, $this->allowedLocationIds($user), true);
-    }
+        $normal = $this->allowedLocationIds($user);
+        if ((int) $user->role_id === 1) return $normal;
 
-    private function branchReceivingStorageIds(User $user): array
-    {
         if (! Schema::hasTable('inventory_locations')
             || ! Schema::hasTable('roles')
             || ! Schema::hasTable('role_user')
             || ! Schema::hasTable('permissions')
             || ! Schema::hasTable('permission_role')
             || ! $user->hasPermissionName(TransferLogisticsService::RECEIVE_PERMISSION)) {
-            return [];
+            return $normal;
         }
 
         $branchIds = app(BranchScopeService::class)->allowedBranchIds($user);
-        if (! $branchIds) return [];
+        if (! $branchIds) return $normal;
 
-        // TransferBusinessDestinationService sends inter-site transfers to the
-        // primary storage location of each branch (code BODEGA when present,
-        // otherwise the oldest active storage). Mirror that rule here instead
-        // of granting every internal storage location in the branch.
-        return InventoryLocation::active()
+        $primaryStorageIds = InventoryLocation::active()
             ->whereIn('branch_id', $branchIds)
             ->where('type', InventoryLocation::TYPE_STORAGE)
             ->orderByRaw("CASE WHEN UPPER(code) = 'BODEGA' THEN 0 ELSE 1 END")
@@ -101,6 +102,18 @@ class InventoryLocationScopeService
             ->map(fn ($locations) => (int) $locations->first()->id)
             ->values()
             ->all();
+
+        return $this->activeUnique(array_merge($normal, $primaryStorageIds));
+    }
+
+    public function canAccess(User $user, int $locationId): bool
+    {
+        return in_array($locationId, $this->allowedLocationIds($user), true);
+    }
+
+    public function canReceiveAt(User $user, int $locationId): bool
+    {
+        return in_array($locationId, $this->receivingLocationIds($user), true);
     }
 
     private function explicitLocationIds(User $user): array
