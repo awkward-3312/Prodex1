@@ -79,6 +79,7 @@ class InventoryLocationScopeService
             || ! Schema::hasTable('roles')
             || ! Schema::hasTable('role_user')
             || ! Schema::hasTable('permissions')
+            || ! Schema::hasTable('permission_role')
             || ! $user->hasPermissionName(TransferLogisticsService::RECEIVE_PERMISSION)) {
             return [];
         }
@@ -86,11 +87,19 @@ class InventoryLocationScopeService
         $branchIds = app(BranchScopeService::class)->allowedBranchIds($user);
         if (! $branchIds) return [];
 
+        // TransferBusinessDestinationService sends inter-site transfers to the
+        // primary storage location of each branch (code BODEGA when present,
+        // otherwise the oldest active storage). Mirror that rule here instead
+        // of granting every internal storage location in the branch.
         return InventoryLocation::active()
             ->whereIn('branch_id', $branchIds)
             ->where('type', InventoryLocation::TYPE_STORAGE)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->orderByRaw("CASE WHEN UPPER(code) = 'BODEGA' THEN 0 ELSE 1 END")
+            ->orderBy('id')
+            ->get(['id', 'branch_id'])
+            ->groupBy('branch_id')
+            ->map(fn ($locations) => (int) $locations->first()->id)
+            ->values()
             ->all();
     }
 
