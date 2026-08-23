@@ -21,5 +21,5 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::get('/transfer-workflow/{id}', 'TransferWorkflowController@show');
     Route::post('/transfer-workflow/{id}/approve', 'TransferWorkflowController@approve');
     Route::post('/transfer-workflow/{id}/reject', 'TransferWorkflowController@reject');
-    Route::post('/transfer-workflow/{id}/dispatch', 'TransferWorkflowController@dispatch');
+    Route::post('/transfer-workflow/{id}/dispatch', 'TransferWorkflowController@dispatchTransfer');
 });
