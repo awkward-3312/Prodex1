@@ -75,8 +75,11 @@ class InventoryLocationScopeService
 
     private function branchReceivingStorageIds(User $user): array
     {
-        if (! $user->hasPermissionName(TransferLogisticsService::RECEIVE_PERMISSION)
-            || ! Schema::hasTable('inventory_locations')) {
+        if (! Schema::hasTable('inventory_locations')
+            || ! Schema::hasTable('roles')
+            || ! Schema::hasTable('role_user')
+            || ! Schema::hasTable('permissions')
+            || ! $user->hasPermissionName(TransferLogisticsService::RECEIVE_PERMISSION)) {
             return [];
         }
 
