@@ -52,7 +52,7 @@ class TransferWorkflowController extends BaseController
         return $this->payload($request, $updated);
     }
 
-    public function dispatch(Request $request, int $id)
+    public function dispatchTransfer(Request $request, int $id)
     {
         $user = $request->user('api');
         $this->authorizeForUser($user, 'update', Transfer::class);
