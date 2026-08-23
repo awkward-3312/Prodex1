@@ -87,6 +87,7 @@ class BranchTransferReceivingScopeTest extends TestCase
 
     public function test_branch_receiver_gets_primary_storage_only_for_receiving(): void
     {
+        DB::table('roles')->insert(['id' => 1, 'name' => 'Owner', 'created_at' => now(), 'updated_at' => now()]);
         $roleId = DB::table('roles')->insertGetId(['name' => 'Gerente', 'created_at' => now(), 'updated_at' => now()]);
         $permissionId = DB::table('permissions')->insertGetId(['name' => 'transfer_receive', 'created_at' => now(), 'updated_at' => now()]);
         DB::table('permission_role')->insert(['permission_id' => $permissionId, 'role_id' => $roleId]);
