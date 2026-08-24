@@ -53,8 +53,6 @@
   function lockTransferActions() {
     if (!isTransferPage()) return;
 
-    // Bulk deletion is unsafe for mixed selections because dispatched transfers are
-    // immutable. Individual pending transfers can still be deleted through their row.
     Array.prototype.forEach.call(document.querySelectorAll('.vgt-selection-info-row, .vgt-selection-info-row__actions, [class*="selected-row-actions"]'), function (box) {
       Array.prototype.forEach.call(box.querySelectorAll('button,a'), function (el) {
         var text = normalize(el.textContent);
@@ -110,14 +108,15 @@
     s.textContent = [
       '#px-transfer-logistics-btn{display:none!important}',
       '#notif-dd .dropdown-menu{min-width:350px!important;max-width:min(410px,calc(100vw - 24px))!important}',
-      '.px-unified-head{padding:12px 14px 8px;font-size:12px;font-weight:800;color:#344054;border-top:1px solid #eef1f4}',
+      '.px-notification-title{padding:13px 14px 10px;font-size:13px;font-weight:800;color:#202939;border-bottom:1px solid #eef1f4}',
+      '.px-notification-section{padding:9px 14px 6px;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#98a2b3;border-top:1px solid #eef1f4}',
       '.px-unified-transfer{display:block;width:100%;border:0;border-top:1px solid #f1f3f5;background:#fff;padding:11px 14px;text-align:left;cursor:pointer}',
-      '.px-unified-transfer:hover{background:#faf8fc}.px-unified-transfer.unread{background:#fbf8ff}',
+      '.px-unified-transfer:hover{background:#f8fafc}.px-unified-transfer.unread{background:#f2fbfd}',
       '.px-unified-transfer strong{display:block;font-size:12px;color:#202939}.px-unified-transfer span{display:block;margin-top:3px;font-size:11px;line-height:1.4;color:#667085}',
       '.px-unified-empty{padding:20px 14px;text-align:center;color:#7a8494;font-size:12px}',
-      '.px-unified-action{display:block;width:calc(100% - 24px);margin:10px 12px 12px;border:1px solid #d8e0e9;background:#fff;color:#63318f;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:800;cursor:pointer}',
-      '.main-header #notif-dd .badge{min-width:18px!important;width:auto!important;padding:2px 5px!important}',
-      'body.dark-theme .px-unified-transfer,body.dark-theme .px-unified-action{background:#1f2030;color:#e5e7eb;border-color:#34364a}body.dark-theme .px-unified-transfer strong{color:#f4f4f5}'
+      '.px-unified-action{display:block;width:calc(100% - 24px);margin:10px 12px 12px;border:1px solid #d8e0e9;background:#fff;color:#16839a;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:800;cursor:pointer}',
+      '.main-header #notif-dd .badge,.vertical-top-nav #notif-dd .badge{min-width:18px!important;width:auto!important;padding:2px 5px!important}',
+      'body.dark-theme .px-unified-transfer,body.dark-theme .px-unified-action{background:#1f2030;color:#e5e7eb;border-color:#34364a}body.dark-theme .px-unified-transfer strong,body.dark-theme .px-notification-title{color:#f4f4f5}'
     ].join('');
     document.head.appendChild(s);
   }
@@ -133,8 +132,6 @@
       state.loaded = true;
       renderNotificationCenter();
     }).catch(function (error) {
-      // 403 simply means this user is not a destination receiver. The stock-alert
-      // bell remains fully functional and should not redirect to an unauthorized page.
       if (error && error.response && error.response.status === 403) {
         state.notifications = [];
         state.unread = 0;
@@ -178,6 +175,22 @@
     existing.style.display = 'flex';
   }
 
+  function removeGeneratedInventoryHeading(menu) {
+    var old = menu && menu.querySelector('#px-stock-alert-heading');
+    if (old) old.remove();
+  }
+
+  function addInventoryHeading(menu) {
+    removeGeneratedInventoryHeading(menu);
+    var stockItem = menu && menu.querySelector('.notification-item');
+    if (!stockItem) return;
+    var heading = document.createElement('div');
+    heading.id = 'px-stock-alert-heading';
+    heading.className = 'px-notification-section';
+    heading.textContent = 'Inventario';
+    stockItem.parentNode.insertBefore(heading, stockItem);
+  }
+
   function renderNotificationCenter() {
     var root = document.getElementById('notif-dd');
     if (!root) return;
@@ -189,23 +202,31 @@
 
     var old = menu.querySelector('#px-unified-notifications');
     if (old) old.remove();
+    removeGeneratedInventoryHeading(menu);
 
+    var stockCount = stockAlertCount(menu);
     var wrap = document.createElement('div');
     wrap.id = 'px-unified-notifications';
 
-    var html = '<div class="px-unified-head">Transferencias</div>';
-    if (!state.notifications.length) {
-      html += '<div class="px-unified-empty">No tienes transferencias nuevas.</div>';
-    } else {
+    var html = '<div class="px-notification-title">Notificaciones</div>';
+
+    if (state.notifications.length) {
+      html += '<div class="px-notification-section">Transferencias</div>';
       state.notifications.slice(0, 8).forEach(function (n) {
         html += '<button type="button" class="px-unified-transfer ' + (!n.read_at ? 'unread' : '') + '" data-px-transfer="' + Number(n.transfer_id || 0) + '" data-px-notification="' + Number(n.id || 0) + '">' +
           '<strong>' + esc((n.title || 'Transferencia') + (n.reference ? ' · ' + n.reference : '')) + '</strong>' +
-          '<span>' + esc(n.message || 'Transferencia disponible para recepción.') + '</span></button>';
+          '<span>' + esc(n.message || 'Hay una actualización de transferencia.') + '</span></button>';
       });
+      html += '<button type="button" class="px-unified-action" data-px-open-receiving="1">Ir a recepción de transferencias</button>';
     }
-    html += '<button type="button" class="px-unified-action" data-px-open-receiving="1">Abrir recepción de transferencias</button>';
+
+    if (!state.notifications.length && stockCount <= 0) {
+      html += '<div class="px-unified-empty">No tienes notificaciones nuevas.</div>';
+    }
+
     wrap.innerHTML = html;
-    menu.appendChild(wrap);
+    menu.insertBefore(wrap, menu.firstChild);
+    addInventoryHeading(menu);
 
     Array.prototype.forEach.call(wrap.querySelectorAll('[data-px-transfer]'), function (button) {
       button.addEventListener('click', function () {
