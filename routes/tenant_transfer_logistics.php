@@ -13,6 +13,10 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     // Resolve the physical inventory destination used by transfer-generated damage records.
     Route::get('/transfer-logistics/damage-location/{id}', 'TransferDamageLocationController@show');
 
+    // Read-only company-wide stock visibility. Cashiers may consult other branches/CDs,
+    // but this endpoint never authorizes sales or inventory mutations in those locations.
+    Route::get('/inventory-visibility/search', 'InventoryVisibilityController@search');
+
     Route::get('/transfer-logistics/scan/{token}', 'FinalTransferLogisticsController@showByToken');
     Route::get('/transfer-logistics/{id}/qr', 'FinalTransferLogisticsController@qrPayload');
     Route::get('/transfer-logistics/{id}', 'FinalTransferLogisticsController@show');
