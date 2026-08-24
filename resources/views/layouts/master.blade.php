@@ -62,6 +62,7 @@
     <script src="/js/prodex-pos-location-ui.js?v={{ time() }}"></script>
     <script src="/js/prodex-pos-location-catalog.js?v={{ time() }}"></script>
     <script src="/js/prodex-pos-location-offline.js?v={{ time() }}"></script>
+    <script src="/js/prodex-erp-integrity-ui.js?v={{ time() }}"></script>
 
     @include('partials.plan-upgrade-modal')
     @include('partials.subscription-reminder-banner')
