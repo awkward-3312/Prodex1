@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 class Damage extends Model
 {
@@ -10,13 +11,36 @@ class Damage extends Model
 
     protected $fillable = [
         'date', 'Ref', 'user_id', 'warehouse_id', 'time',
-        'items', 'notes', 'created_at', 'updated_at', 'deleted_at',
+        'items', 'notes', 'source_type', 'source_id', 'transfer_id', 'source_locked',
+        'created_at', 'updated_at', 'deleted_at',
     ];
 
     protected $casts = [
         'user_id' => 'integer',
         'warehouse_id' => 'integer',
+        'source_id' => 'integer',
+        'transfer_id' => 'integer',
+        'source_locked' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(function (Damage $damage) {
+            if ((bool) $damage->getOriginal('source_locked')) {
+                throw ValidationException::withMessages([
+                    'damage' => 'Este daño fue generado por una operación logística y no puede editarse manualmente.',
+                ]);
+            }
+        });
+
+        static::deleting(function (Damage $damage) {
+            if ((bool) $damage->getOriginal('source_locked')) {
+                throw ValidationException::withMessages([
+                    'damage' => 'Este daño fue generado por una operación logística y no puede eliminarse manualmente.',
+                ]);
+            }
+        });
+    }
 
     public function user()
     {
@@ -33,8 +57,3 @@ class Damage extends Model
         return $this->belongsTo('App\Models\Warehouse');
     }
 }
-
-
-
-
-
