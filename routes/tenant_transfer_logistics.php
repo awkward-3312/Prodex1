@@ -7,8 +7,8 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::get('/transfer-logistics/notifications', 'FinalTransferLogisticsController@notifications');
     Route::post('/transfer-logistics/notifications/{notificationId}/read', 'FinalTransferLogisticsController@markNotificationRead');
 
-    Route::get('/transfer-logistics/issues', 'FinalTransferDiscrepancyController@index');
-    Route::post('/transfer-logistics/issues/{id}/resolve', 'FinalTransferDiscrepancyController@resolve');
+    Route::get('/transfer-logistics/issues', 'ReadableTransferDiscrepancyController@index');
+    Route::post('/transfer-logistics/issues/{id}/resolve', 'ReadableTransferDiscrepancyController@resolve');
 
     // Resolve the physical inventory destination used by transfer-generated damage records.
     Route::get('/transfer-logistics/damage-location/{id}', 'TransferDamageLocationController@show');
