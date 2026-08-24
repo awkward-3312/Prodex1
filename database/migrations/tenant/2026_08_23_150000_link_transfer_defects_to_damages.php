@@ -37,9 +37,8 @@ return new class extends Migration
             DB::statement('CREATE INDEX damages_transfer_id_index ON damages (transfer_id)');
         }
 
-        // Backfill defects already placed in quarantine before this migration. These are
-        // audit records only; inventory is not touched because quarantined quantities were
-        // never credited into sellable destination stock.
+        // Backfill defects already placed in quarantine. Runtime synchronization is handled
+        // by TransferLogisticsService so production does not depend on MySQL TRIGGER privileges.
         DB::table('transfer_quarantine_stock')
             ->where('quantity', '>', 0)
             ->orderBy('id')
@@ -81,84 +80,6 @@ return new class extends Migration
                     ]);
                 }
             });
-
-        DB::unprepared('DROP TRIGGER IF EXISTS prodex_transfer_quarantine_to_damage');
-        DB::unprepared('DROP TRIGGER IF EXISTS prodex_lock_transfer_damage_update');
-        DB::unprepared('DROP TRIGGER IF EXISTS prodex_lock_transfer_damage_delete');
-
-        DB::unprepared(<<<'SQL'
-CREATE TRIGGER prodex_transfer_quarantine_to_damage
-AFTER INSERT ON transfer_quarantine_stock
-FOR EACH ROW
-BEGIN
-    DECLARE v_damage_id BIGINT;
-
-    IF NEW.quantity > 0 AND NOT EXISTS (
-        SELECT 1
-        FROM damages
-        WHERE source_type = 'transfer_quarantine'
-          AND source_id = NEW.id
-        LIMIT 1
-    ) THEN
-        INSERT INTO damages (
-            user_id, date, time, Ref, warehouse_id, items, notes,
-            source_type, source_id, transfer_id, source_locked,
-            created_at, updated_at
-        ) VALUES (
-            COALESCE(NEW.created_by_user_id, 1),
-            CURRENT_DATE(),
-            CURRENT_TIME(),
-            CONCAT('TR-DMG-', NEW.transfer_id, '-', NEW.id),
-            NEW.warehouse_id,
-            1,
-            'Daño registrado automáticamente durante la recepción de una transferencia.',
-            'transfer_quarantine',
-            NEW.id,
-            NEW.transfer_id,
-            1,
-            COALESCE(NEW.created_at, CURRENT_TIMESTAMP(6)),
-            COALESCE(NEW.updated_at, CURRENT_TIMESTAMP(6))
-        );
-
-        SET v_damage_id = LAST_INSERT_ID();
-
-        INSERT INTO damage_details (
-            damage_id, quantity, product_id, product_variant_id, created_at, updated_at
-        ) VALUES (
-            v_damage_id,
-            NEW.quantity,
-            NEW.product_id,
-            NEW.product_variant_id,
-            COALESCE(NEW.created_at, CURRENT_TIMESTAMP(6)),
-            COALESCE(NEW.updated_at, CURRENT_TIMESTAMP(6))
-        );
-    END IF;
-END
-SQL);
-
-        DB::unprepared(<<<'SQL'
-CREATE TRIGGER prodex_lock_transfer_damage_update
-BEFORE UPDATE ON damages
-FOR EACH ROW
-BEGIN
-    IF OLD.source_locked = 1 AND OLD.source_type = 'transfer_quarantine' THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Los daños generados por recepción de transferencias son documentos logísticos inmutables.';
-    END IF;
-END
-SQL);
-
-        DB::unprepared(<<<'SQL'
-CREATE TRIGGER prodex_lock_transfer_damage_delete
-BEFORE DELETE ON damages
-FOR EACH ROW
-BEGIN
-    IF OLD.source_locked = 1 AND OLD.source_type = 'transfer_quarantine' THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Los daños generados por recepción de transferencias no pueden eliminarse.';
-    END IF;
-END
-SQL);
     }
 
     public function down(): void
@@ -166,10 +87,6 @@ SQL);
         if (! Schema::hasTable('damages')) {
             return;
         }
-
-        DB::unprepared('DROP TRIGGER IF EXISTS prodex_transfer_quarantine_to_damage');
-        DB::unprepared('DROP TRIGGER IF EXISTS prodex_lock_transfer_damage_update');
-        DB::unprepared('DROP TRIGGER IF EXISTS prodex_lock_transfer_damage_delete');
 
         $indexes = collect(DB::select('SHOW INDEX FROM damages'))->pluck('Key_name')->unique();
         if ($indexes->contains('damages_source_unique')) {
