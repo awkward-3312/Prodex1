@@ -43,6 +43,7 @@
         window.axios.interceptors.request.use(function (config) {
           if (config && typeof config.url === 'string' && config.url.indexOf('/api/transfer-logistics') === 0) config.baseURL = '';
           if (config && typeof config.url === 'string' && config.url.indexOf('/api/transfer-workflow') === 0) config.baseURL = '';
+          if (config && typeof config.url === 'string' && config.url.indexOf('/api/inventory-visibility') === 0) config.baseURL = '';
           return config;
         });
       }
@@ -60,6 +61,7 @@
     <script src="/js/prodex-transfer-permission-ui.js?v={{ time() }}"></script>
     <script src="/js/prodex-transfer-issues.js?v={{ time() }}"></script>
     <script src="/js/prodex-damage-location-ui.js?v={{ time() }}"></script>
+    <script src="/js/prodex-inventory-visibility.js?v={{ time() }}"></script>
     <script src="/js/prodex-pos-location-ui.js?v={{ time() }}"></script>
     <script src="/js/prodex-pos-location-catalog.js?v={{ time() }}"></script>
     <script src="/js/prodex-pos-location-offline.js?v={{ time() }}"></script>
