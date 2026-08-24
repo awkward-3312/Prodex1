@@ -1,5 +1,6 @@
 <?php
 
+use Carbon\Carbon;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -36,25 +37,28 @@ return new class extends Migration
             DB::statement('CREATE INDEX damages_transfer_id_index ON damages (transfer_id)');
         }
 
-        // Backfill defects already placed in transfer quarantine before this migration.
+        // Backfill defects already placed in quarantine before this migration. These are
+        // audit records only; inventory is not touched because quarantined quantities were
+        // never credited into sellable destination stock.
         DB::table('transfer_quarantine_stock')
             ->where('quantity', '>', 0)
             ->orderBy('id')
             ->chunkById(200, function ($rows) {
                 foreach ($rows as $row) {
-                    $exists = DB::table('damages')
+                    if (DB::table('damages')
                         ->where('source_type', 'transfer_quarantine')
                         ->where('source_id', $row->id)
-                        ->exists();
-
-                    if ($exists) {
+                        ->exists()) {
                         continue;
                     }
 
+                    $createdAt = $row->created_at ? Carbon::parse($row->created_at) : now();
+                    $updatedAt = $row->updated_at ? Carbon::parse($row->updated_at) : $createdAt;
+
                     $damageId = DB::table('damages')->insertGetId([
                         'user_id' => $row->created_by_user_id ?: 1,
-                        'date' => optional($row->created_at)->format('Y-m-d') ?: now()->toDateString(),
-                        'time' => optional($row->created_at)->format('H:i:s') ?: now()->toTimeString(),
+                        'date' => $createdAt->toDateString(),
+                        'time' => $createdAt->format('H:i:s'),
                         'Ref' => 'TR-DMG-'.$row->transfer_id.'-'.$row->id,
                         'warehouse_id' => $row->warehouse_id,
                         'items' => 1,
@@ -63,8 +67,8 @@ return new class extends Migration
                         'source_id' => $row->id,
                         'transfer_id' => $row->transfer_id,
                         'source_locked' => 1,
-                        'created_at' => $row->created_at ?: now(),
-                        'updated_at' => $row->updated_at ?: now(),
+                        'created_at' => $createdAt,
+                        'updated_at' => $updatedAt,
                     ]);
 
                     DB::table('damage_details')->insert([
@@ -72,8 +76,8 @@ return new class extends Migration
                         'quantity' => $row->quantity,
                         'product_id' => $row->product_id,
                         'product_variant_id' => $row->product_variant_id,
-                        'created_at' => $row->created_at ?: now(),
-                        'updated_at' => $row->updated_at ?: now(),
+                        'created_at' => $createdAt,
+                        'updated_at' => $updatedAt,
                     ]);
                 }
             });
@@ -82,9 +86,6 @@ return new class extends Migration
         DB::unprepared('DROP TRIGGER IF EXISTS prodex_lock_transfer_damage_update');
         DB::unprepared('DROP TRIGGER IF EXISTS prodex_lock_transfer_damage_delete');
 
-        // Defective units are already excluded from sellable destination stock and live in
-        // transfer_quarantine_stock. This trigger creates the audit/document record only;
-        // it intentionally does NOT subtract product_warehouse again.
         DB::unprepared(<<<'SQL'
 CREATE TRIGGER prodex_transfer_quarantine_to_damage
 AFTER INSERT ON transfer_quarantine_stock
