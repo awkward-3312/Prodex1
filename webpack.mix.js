@@ -27,6 +27,7 @@ mix.js('resources/src/main.js', 'public')
     .copy('resources/static/prodex-pos-location-ui.js', 'public/js/prodex-pos-location-ui.js')
     .copy('resources/static/prodex-pos-location-catalog.js', 'public/js/prodex-pos-location-catalog.js')
     .copy('resources/static/prodex-pos-location-offline.js', 'public/js/prodex-pos-location-offline.js')
+    .copy('resources/static/prodex-erp-integrity-ui.js', 'public/js/prodex-erp-integrity-ui.js')
     .vue()
 
 mix.webpackConfig({
