@@ -7,7 +7,9 @@ use App\Models\Transfer;
 use App\Models\TransferDetail;
 use App\Models\TransferReceiptItem;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Final production transfer binding. Request-scoped compatibility hints are used
@@ -54,20 +56,26 @@ class FinalTransferLogisticsService extends LocationAwareTransferLogisticsServic
         return DB::transaction(function () use ($transfer, $user, $items, $notes, $requestToken) {
             $updated = parent::receive($transfer, $user, $items, $notes, $requestToken);
 
-            if (! $transfer->to_inventory_location_id || ! app(TransferBatchIssueService::class)->isSupported()) {
-                return $updated;
-            }
-
             $receipt = DB::table('transfer_receipts')
                 ->where('transfer_id', $transfer->id)
                 ->when($requestToken, fn ($query) => $query->where('request_token', $requestToken))
                 ->when(! $requestToken, fn ($query) => $query->where('received_by_user_id', $user->id))
                 ->orderByDesc('id')
                 ->first();
+
             if (! $receipt) return $updated;
 
             $receiptItems = TransferReceiptItem::where('transfer_receipt_id', $receipt->id)
                 ->orderBy('id')->lockForUpdate()->get();
+
+            // Defective units are already excluded from sellable destination stock by the
+            // logistics flow. Mirror them into the Damage module as immutable audit
+            // documents without subtracting inventory a second time.
+            $this->syncTransferDamages($transfer, $receiptItems, $user);
+
+            if (! $transfer->to_inventory_location_id || ! app(TransferBatchIssueService::class)->isSupported()) {
+                return $updated;
+            }
 
             foreach ($receiptItems as $receiptItem) {
                 $detail = TransferDetail::find($receiptItem->transfer_detail_id);
@@ -115,6 +123,74 @@ class FinalTransferLogisticsService extends LocationAwareTransferLogisticsServic
 
             return $updated;
         }, 5);
+    }
+
+    private function syncTransferDamages(Transfer $transfer, $receiptItems, User $user): void
+    {
+        if (! Schema::hasTable('damages')
+            || ! Schema::hasTable('damage_details')
+            || ! Schema::hasTable('transfer_quarantine_stock')
+            || ! Schema::hasColumn('damages', 'source_type')
+            || ! Schema::hasColumn('damages', 'source_id')
+            || ! Schema::hasColumn('damages', 'transfer_id')
+            || ! Schema::hasColumn('damages', 'source_locked')) {
+            return;
+        }
+
+        $detailIds = $receiptItems
+            ->filter(fn ($item) => (float) $item->quantity_defective > 0)
+            ->pluck('transfer_detail_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($detailIds->isEmpty()) return;
+
+        $rows = DB::table('transfer_quarantine_stock')
+            ->where('transfer_id', $transfer->id)
+            ->whereIn('transfer_detail_id', $detailIds)
+            ->where('quantity', '>', 0)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($rows as $row) {
+            $exists = DB::table('damages')
+                ->where('source_type', 'transfer_quarantine')
+                ->where('source_id', $row->id)
+                ->exists();
+            if ($exists) continue;
+
+            $createdAt = $row->created_at ? Carbon::parse($row->created_at) : now();
+            $updatedAt = $row->updated_at ? Carbon::parse($row->updated_at) : $createdAt;
+
+            $damageId = DB::table('damages')->insertGetId([
+                'user_id' => $row->created_by_user_id ?: $user->id,
+                'date' => $createdAt->toDateString(),
+                'time' => $createdAt->format('H:i:s'),
+                'Ref' => 'TR-DMG-'.$row->transfer_id.'-'.$row->id,
+                // warehouse_id remains as the legacy compatibility owner. The UI resolves
+                // the actual physical destination through transfers.to_inventory_location_id.
+                'warehouse_id' => $row->warehouse_id,
+                'items' => 1,
+                'notes' => 'Daño registrado automáticamente durante la recepción de una transferencia.',
+                'source_type' => 'transfer_quarantine',
+                'source_id' => $row->id,
+                'transfer_id' => $row->transfer_id,
+                'source_locked' => 1,
+                'created_at' => $createdAt,
+                'updated_at' => $updatedAt,
+            ]);
+
+            DB::table('damage_details')->insert([
+                'damage_id' => $damageId,
+                'quantity' => $row->quantity,
+                'product_id' => $row->product_id,
+                'product_variant_id' => $row->product_variant_id,
+                'created_at' => $createdAt,
+                'updated_at' => $updatedAt,
+            ]);
+        }
     }
 
     protected function creditBatchStockIfApplicable(
