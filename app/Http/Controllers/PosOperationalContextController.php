@@ -25,7 +25,7 @@ class PosOperationalContextController extends BaseController
             ->where('is_active', true)
             ->whereIn('id', $branchIds ?: [0])
             ->orderBy('name')
-            ->get(['id', 'code', 'name', 'default_inventory_location_id']);
+            ->get(['id', 'code', 'name', 'default_warehouse_id', 'default_inventory_location_id']);
 
         $locations = InventoryLocation::active()
             ->whereNotNull('branch_id')
