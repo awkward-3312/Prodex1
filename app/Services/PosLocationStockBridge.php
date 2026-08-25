@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Branch;
 use App\Models\InventoryLocation;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -84,7 +86,7 @@ class PosLocationStockBridge
 
         return [
             'mode' => 'branch_location',
-            'warehouse_id' => $request->input('warehouse_id') ? (int) $request->input('warehouse_id') : null,
+            'warehouse_id' => $this->resolveLegacyWarehouseId($request, (int) $branchId),
             'branch_id' => $branchId,
             'inventory_location_id' => $locationId,
             'cash_drawer_id' => $drawerId,
@@ -219,6 +221,34 @@ class PosLocationStockBridge
         );
 
         return true;
+    }
+
+    private function resolveLegacyWarehouseId(Request $request, int $branchId): ?int
+    {
+        $requested = $request->filled('warehouse_id') ? (int) $request->input('warehouse_id') : null;
+        if ($requested) {
+            $candidate = Warehouse::whereNull('deleted_at')
+                ->whereKey($requested)
+                ->where('branch_id', $branchId)
+                ->first();
+            if ($candidate) return (int) $candidate->id;
+        }
+
+        $branch = Branch::whereNull('deleted_at')->find($branchId);
+        if ($branch && $branch->default_warehouse_id) {
+            $default = Warehouse::whereNull('deleted_at')
+                ->whereKey($branch->default_warehouse_id)
+                ->where('branch_id', $branchId)
+                ->first();
+            if ($default) return (int) $default->id;
+        }
+
+        $fallback = Warehouse::whereNull('deleted_at')
+            ->where('branch_id', $branchId)
+            ->orderBy('id')
+            ->first();
+
+        return $fallback ? (int) $fallback->id : null;
     }
 
     private function isCreatePosAction(Request $request): bool
