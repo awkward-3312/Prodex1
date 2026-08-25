@@ -122,18 +122,29 @@
     });
   }
 
-  document.addEventListener('click', function (event) {
+  function blockLockedTriggerActivation(event) {
     var trigger = event.target && event.target.closest ? event.target.closest('.pos-wh-trigger') : null;
-    if (!trigger) return;
+    if (!trigger) return false;
 
     var effective = effectiveContext(state.context);
-    if (!effective || effective.can_override) return;
+    if (!effective || effective.can_override) return false;
 
     event.preventDefault();
     event.stopPropagation();
     if (event.stopImmediatePropagation) event.stopImmediatePropagation();
     closeLegacyDrawer();
     apply();
+    return true;
+  }
+
+  document.addEventListener('click', function (event) {
+    blockLockedTriggerActivation(event);
+  }, true);
+
+  document.addEventListener('keydown', function (event) {
+    var key = event.key;
+    if (key !== 'Enter' && key !== ' ' && key !== 'Spacebar') return;
+    blockLockedTriggerActivation(event);
   }, true);
 
   function boot() {
