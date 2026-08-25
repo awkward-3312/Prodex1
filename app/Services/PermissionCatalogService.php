@@ -11,6 +11,7 @@ class PermissionCatalogService
     {
         $names = Permission::query()->orderBy('name')->pluck('name')->values();
         $known = $names->flip();
+        $moduleOrder = array_flip($this->moduleOrder());
 
         $groups = $names
             ->map(fn (string $name) => $this->describe($name, $known->all()))
@@ -22,7 +23,7 @@ class PermissionCatalogService
                     'permissions' => $items->sortBy(fn ($item) => [$item['action_order'], $item['label']])->values()->all(),
                 ];
             })
-            ->sortBy(fn ($group) => array_search($group['key'], $this->moduleOrder(), true) ?: 999)
+            ->sortBy(fn ($group) => $moduleOrder[$group['key']] ?? 999)
             ->values()
             ->all();
 
