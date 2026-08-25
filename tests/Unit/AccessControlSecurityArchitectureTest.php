@@ -32,16 +32,18 @@ class AccessControlSecurityArchitectureTest extends TestCase
         $root = dirname(__DIR__, 2);
         $catalog = file_get_contents($root.'/app/Services/PermissionCatalogService.php');
         $editor = file_get_contents($root.'/resources/src/views/app/pages/settings/permissions/RoleEditor.vue');
-        $this->assertStringContainsString("'description'=>$this->descriptionFor", str_replace(' ', '', $catalog));
+        $compact = str_replace(' ', '', $catalog);
+
+        $this->assertStringContainsString("'description'=>\$this->descriptionFor", $compact);
         $this->assertStringContainsString("'dependency_labels'", $catalog);
-        $this->assertStringContainsString("'payment_sales_add'=>'Registrar pagos de ventas'", str_replace(' ', '', $catalog));
-        $this->assertStringContainsString("'Pos_view'=>'Usar punto de venta (POS)'", str_replace(' ', '', $catalog));
-        $this->assertStringContainsString("'manager'=>['label'=>'Acceso completo'", str_replace(' ', '', $catalog));
-        $this->assertStringContainsString("'bookings'=>'reservas'", str_replace(' ', '', $catalog));
-        $this->assertStringContainsString("'commissions'=>'comisiones'", str_replace(' ', '', $catalog));
-        $this->assertStringContainsString("'tax'=>'impuestos'", str_replace(' ', '', $catalog));
-        $this->assertStringContainsString("'discount'=>'descuentos'", str_replace(' ', '', $catalog));
-        $this->assertStringContainsString("'cash drawers'=>'cajas de efectivo'", $catalog);
+        $this->assertStringContainsString("'payment_sales_add'=>'Registrarpagosdeventas'", $compact);
+        $this->assertStringContainsString("'Pos_view'=>'Usarpuntodeventa(POS)'", $compact);
+        $this->assertStringContainsString("'manager'=>['label'=>'Accesocompleto'", $compact);
+        $this->assertStringContainsString("'bookings'=>'reservas'", $compact);
+        $this->assertStringContainsString("'commissions'=>'comisiones'", $compact);
+        $this->assertStringContainsString("'tax'=>'impuestos'", $compact);
+        $this->assertStringContainsString("'discount'=>'descuentos'", $compact);
+        $this->assertStringContainsString("'cashdrawers'=>'cajasdeefectivo'", $compact);
         $this->assertStringContainsString('Configuración rápida', $editor);
         $this->assertStringContainsString('Acceso completo', $editor);
         $this->assertStringContainsString('También activará:', $editor);
