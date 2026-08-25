@@ -35,6 +35,7 @@ router.addRoutes([
 import App from "./App.vue";
 import Auth from './auth/index.js';
 import { installSarInvoiceBridge } from './utils/sarInvoiceBridge';
+import { installPosOperationalLocationBridge } from './utils/posOperationalLocationBridge';
 window.auth = new Auth();
 import { ValidationObserver, ValidationProvider, extend, localize } from 'vee-validate';
 import * as rules from "vee-validate/dist/rules";
@@ -118,6 +119,7 @@ axios.interceptors.response.use(response => { decrementPending(response && respo
 });
 
 installSarInvoiceBridge(window.axios);
+installPosOperationalLocationBridge(window.axios);
 import vSelect from 'vue-select';
 Vue.component('v-select', vSelect);
 import 'vue-select/dist/vue-select.css';
