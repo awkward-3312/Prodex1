@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Permission;
 use App\Models\Role;
+use App\Services\PermissionCatalogService;
 use App\utils\helpers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -11,11 +12,12 @@ use Illuminate\Validation\ValidationException;
 
 class PermissionsController extends BaseController
 {
-    // ----------- GET ALL Roles --------------\\
+    private const OWNER_ROLE_ID = 1;
 
     public function index(Request $request)
     {
-        $this->authorizeForUser($request->user('api'), 'view', Role::class);
+        $actor = $request->user('api');
+        $this->authorizeForUser($actor, 'view', Role::class);
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
         $offSet = ($pageStart * $perPage) - $perPage;
@@ -23,7 +25,8 @@ class PermissionsController extends BaseController
         $dir = strtolower((string) $request->input('SortType')) === 'asc' ? 'asc' : 'desc';
         $helpers = new helpers;
 
-        $roles = Role::where('deleted_at', '=', null)
+        $roles = Role::whereNull('deleted_at')
+            ->when((int) $actor->role_id !== self::OWNER_ROLE_ID, fn ($query) => $query->where('id', '!=', self::OWNER_ROLE_ID))
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('name', 'LIKE', "%{$request->search}%")
@@ -32,22 +35,15 @@ class PermissionsController extends BaseController
             });
 
         $totalRows = $roles->count();
-        if ($perPage == '-1') {
-            $perPage = $totalRows;
-        }
-
-        $roles = $roles->offset($offSet)
-            ->limit($perPage)
-            ->orderBy($order, $dir)
-            ->get();
+        if ($perPage == '-1') $perPage = $totalRows;
 
         return response()->json([
-            'roles' => $roles,
+            'roles' => $roles->offset($offSet)->limit($perPage)->orderBy($order, $dir)->get(),
             'totalRows' => $totalRows,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PermissionCatalogService $catalog)
     {
         $this->authorizeForUser($request->user('api'), 'create', Role::class);
 
@@ -59,35 +55,28 @@ class PermissionsController extends BaseController
                 'permissions.*' => 'string|max:120',
             ]);
 
-            \DB::transaction(function () use ($request) {
-                $role = new Role;
-                $role->name = $request->input('role.name');
-                $role->label = $request->input('role.name');
-                $role->status = 0;
-                $role->description = $request->input('role.description');
-                $role->save();
-
-                $this->syncPermissions($role, $request->input('permissions', []));
+            \DB::transaction(function () use ($request, $catalog) {
+                $role = Role::create([
+                    'name' => $request->input('role.name'),
+                    'label' => $request->input('role.name'),
+                    'status' => 0,
+                    'description' => $request->input('role.description'),
+                ]);
+                $this->syncPermissions($role, $request->input('permissions', []), $catalog);
             }, 10);
 
             return response()->json(['success' => true]);
         } catch (ValidationException $e) {
-            return response()->json([
-                'status' => 422,
-                'msg' => 'error',
-                'errors' => $e->errors(),
-            ], 422);
+            return response()->json(['status' => 422, 'msg' => 'error', 'errors' => $e->errors()], 422);
         }
     }
 
-    public function show($id)
-    {
-        //
-    }
+    public function show($id) {}
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, PermissionCatalogService $catalog)
     {
         $this->authorizeForUser($request->user('api'), 'update', Role::class);
+        $this->assertMutableRole((int) $id);
 
         try {
             $request->validate([
@@ -97,94 +86,69 @@ class PermissionsController extends BaseController
                 'permissions.*' => 'string|max:120',
             ]);
 
-            \DB::transaction(function () use ($request, $id) {
-                $role = Role::findOrFail($id);
-                $role->name = $request->input('role.name');
-                $role->label = $request->input('role.name');
-                $role->description = $request->input('role.description');
-                $role->save();
-
-                $this->syncPermissions($role, $request->input('permissions', []));
+            \DB::transaction(function () use ($request, $id, $catalog) {
+                $role = Role::whereNull('deleted_at')->findOrFail($id);
+                $role->update([
+                    'name' => $request->input('role.name'),
+                    'label' => $request->input('role.name'),
+                    'description' => $request->input('role.description'),
+                ]);
+                $this->syncPermissions($role, $request->input('permissions', []), $catalog);
             }, 10);
 
             return response()->json(['success' => true]);
         } catch (ValidationException $e) {
-            return response()->json([
-                'status' => 422,
-                'msg' => 'error',
-                'errors' => $e->errors(),
-            ], 422);
+            return response()->json(['status' => 422, 'msg' => 'error', 'errors' => $e->errors()], 422);
         }
     }
 
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Role::class);
-
-        Role::whereId($id)->update([
-            'deleted_at' => Carbon::now(),
-        ]);
-
+        $this->assertMutableRole((int) $id);
+        Role::whereId($id)->update(['deleted_at' => Carbon::now()]);
         return response()->json(['success' => true]);
     }
 
     public function delete_by_selection(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'delete', Role::class);
-
-        $selectedIds = $request->selectedIds;
-        foreach ($selectedIds as $role_id) {
-            Role::whereId($role_id)->update([
-                'deleted_at' => Carbon::now(),
-            ]);
-        }
-
+        $selectedIds = collect($request->selectedIds ?? [])->map(fn ($id) => (int) $id)->unique()->values();
+        abort_if($selectedIds->contains(self::OWNER_ROLE_ID), 403, 'El rol propietario es un rol de sistema y no puede eliminarse.');
+        Role::whereIn('id', $selectedIds)->update(['deleted_at' => Carbon::now()]);
         return response()->json(['success' => true]);
     }
 
-    public function getRoleswithoutpaginate()
+    public function getRoleswithoutpaginate(Request $request)
     {
-        $roles = Role::where('deleted_at', null)->get(['id', 'name']);
-
+        $actor = $request->user('api');
+        $roles = Role::whereNull('deleted_at')
+            ->when($actor && (int) $actor->role_id !== self::OWNER_ROLE_ID, fn ($query) => $query->where('id', '!=', self::OWNER_ROLE_ID))
+            ->get(['id', 'name']);
         return response()->json($roles);
     }
 
     public function edit(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Role::class);
+        $this->assertMutableRole((int) $id);
 
-        if ($id != '1') {
-            $role = Role::with('permissions')->where('deleted_at', '=', null)->findOrFail($id);
-            $item = [
-                'name' => $role->name,
-                'description' => $role->description,
-            ];
-
-            $data = $role->permissions->pluck('name')->values()->all();
-
-            return response()->json([
-                'permissions' => $data,
-                'role' => $item,
-            ]);
-        }
-
+        $role = Role::with('permissions')->whereNull('deleted_at')->findOrFail($id);
         return response()->json([
-            'success' => false,
-        ], 401);
+            'permissions' => $role->permissions->pluck('name')->values()->all(),
+            'role' => ['name' => $role->name, 'description' => $role->description],
+        ]);
     }
 
-    private function syncPermissions(Role $role, array $permissions): void
+    private function syncPermissions(Role $role, array $permissions, PermissionCatalogService $catalog): void
     {
-        $permissionNames = collect($permissions)
-            ->map(fn ($permission) => trim((string) $permission))
-            ->filter()
-            ->unique()
-            ->values();
-
-        $permissionIds = $permissionNames->map(function (string $permissionName) {
-            return Permission::firstOrCreate(['name' => $permissionName])->id;
-        })->all();
-
+        $permissionNames = $catalog->normalizeSelection($permissions);
+        $permissionIds = Permission::whereIn('name', $permissionNames)->pluck('id')->all();
         $role->permissions()->sync($permissionIds);
+    }
+
+    private function assertMutableRole(int $roleId): void
+    {
+        abort_if($roleId === self::OWNER_ROLE_ID, 403, 'El rol propietario es un rol de sistema protegido y no puede modificarse ni eliminarse.');
     }
 }
