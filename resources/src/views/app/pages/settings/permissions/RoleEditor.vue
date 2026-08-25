@@ -32,29 +32,34 @@
             <strong>{{ permissions.length }} permisos seleccionados</strong>
             <div class="text-muted text-12">{{ selectedSensitive.length }} sensibles · {{ catalogCount }} disponibles</div>
           </div>
-          <b-form-input v-model.trim="search" class="permission-search" placeholder="Buscar permiso o módulo..."/>
+          <b-form-input v-model.trim="search" class="permission-search" placeholder="Buscar por función, por ejemplo: ventas, pagos, inventario..."/>
         </div>
       </b-card>
 
       <b-alert v-if="selectedSensitive.length" show variant="warning" class="mb-3">
         <strong>Permisos sensibles activos:</strong>
         {{ selectedSensitive.map(p => p.label).join(', ') }}.
-        Concede estas capacidades solo a personal de confianza.
+        Estas acciones pueden afectar dinero, inventario, usuarios o configuración. Concédelas solo cuando el puesto realmente las necesite.
       </b-alert>
 
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
       <b-card v-for="group in filteredGroups" :key="group.key" class="mb-3 module-card">
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-          <div>
-            <h5 class="mb-0">{{ group.label }}</h5>
+        <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
+          <div class="module-heading">
+            <h5 class="mb-1">{{ group.label }}</h5>
+            <div v-if="group.description" class="text-muted module-description">{{ group.description }}</div>
             <small class="text-muted">{{ selectedIn(group) }}/{{ group.permissions.length }} seleccionados</small>
           </div>
-          <div class="module-actions">
-            <b-button size="sm" variant="outline-secondary" @click="applyPreset(group, 'read_only')">Solo lectura</b-button>
-            <b-button size="sm" variant="outline-secondary" @click="applyPreset(group, 'operator')">Operador</b-button>
-            <b-button size="sm" variant="outline-secondary" @click="applyPreset(group, 'manager')">Admin. módulo</b-button>
-            <b-button size="sm" variant="outline-danger" @click="clearGroup(group)">Limpiar</b-button>
+          <div class="quick-access">
+            <div class="quick-access-label">Configuración rápida</div>
+            <div class="module-actions">
+              <b-button size="sm" variant="outline-secondary" title="Permite consultar información sin modificarla" v-b-tooltip.hover @click="applyPreset(group, 'read_only')">Solo lectura</b-button>
+              <b-button size="sm" variant="outline-secondary" title="Permite consultar y registrar operaciones habituales sin permisos sensibles" v-b-tooltip.hover @click="applyPreset(group, 'operator')">Operador</b-button>
+              <b-button size="sm" variant="outline-secondary" title="Activa todas las operaciones no sensibles disponibles en este módulo" v-b-tooltip.hover @click="applyPreset(group, 'manager')">Acceso completo</b-button>
+              <b-button size="sm" variant="outline-danger" title="Quita todos los permisos seleccionados de este módulo" v-b-tooltip.hover @click="clearGroup(group)">Limpiar</b-button>
+            </div>
+            <small class="text-muted d-block mt-1">Puedes usar un nivel rápido y luego ajustar permisos individualmente.</small>
           </div>
         </div>
 
@@ -64,10 +69,12 @@
             <span class="permission-copy">
               <span class="permission-title">
                 {{ permission.label }}
-                <b-badge v-if="permission.sensitive" variant="warning" class="ml-1">Sensible</b-badge>
+                <b-badge v-if="permission.sensitive" variant="warning" class="ml-1" title="Esta acción puede afectar información sensible o procesos críticos" v-b-tooltip.hover>Sensible</b-badge>
               </span>
-              <small>{{ permission.name }}</small>
-              <small v-if="permission.dependencies.length" class="dependency">Requiere: {{ permission.dependencies.join(', ') }}</small>
+              <small class="permission-description">{{ permission.description }}</small>
+              <small v-if="permission.dependency_labels && permission.dependency_labels.length" class="dependency">
+                <strong>También activará:</strong> {{ permission.dependency_labels.join(', ') }}
+              </small>
             </span>
             <span class="action-badge">{{ actionLabel(permission.action) }}</span>
           </label>
@@ -116,7 +123,13 @@ export default {
       if (!q) return this.groups;
       return this.groups.map(group => ({
         ...group,
-        permissions: group.permissions.filter(p => group.label.toLowerCase().includes(q) || p.label.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)),
+        permissions: group.permissions.filter(p =>
+          group.label.toLowerCase().includes(q) ||
+          (group.description || '').toLowerCase().includes(q) ||
+          p.label.toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q) ||
+          p.name.toLowerCase().includes(q)
+        ),
       })).filter(group => group.permissions.length);
     },
   },
@@ -204,17 +217,29 @@ export default {
 
 <style scoped>
 .permission-toolbar, .module-card, .save-card { border: 1px solid #edf0f4; border-radius: 12px; }
-.permission-search { max-width: 340px; }
-.module-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.permission-search { max-width: 420px; }
+.module-heading { max-width: 52%; }
+.module-description { font-size: 13px; margin-bottom: 2px; }
+.quick-access { text-align: right; }
+.quick-access-label { font-size: 11px; font-weight: 700; color: #667085; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
+.module-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .permission-matrix { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.permission-row { display: flex; align-items: flex-start; gap: 10px; border: 1px solid #e7eaf0; border-radius: 10px; padding: 10px 12px; margin: 0; cursor: pointer; background: #fff; }
+.permission-row { display: flex; align-items: flex-start; gap: 10px; border: 1px solid #e7eaf0; border-radius: 10px; padding: 12px; margin: 0; cursor: pointer; background: #fff; min-height: 92px; }
+.permission-row:hover { border-color: #cdd5df; box-shadow: 0 1px 3px rgba(16, 24, 40, .05); }
 .permission-row.sensitive { border-color: #f3d7a3; background: #fffaf0; }
 .permission-row input { margin-top: 4px; }
 .permission-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; }
 .permission-title { font-weight: 600; color: #344054; }
-.permission-copy small { color: #98a2b3; overflow-wrap: anywhere; }
-.permission-copy .dependency { color: #667085; margin-top: 2px; }
+.permission-copy small { overflow-wrap: anywhere; }
+.permission-description { color: #667085; margin-top: 4px; line-height: 1.35; }
+.permission-copy .dependency { color: #475467; margin-top: 6px; }
 .action-badge { background: #f2f4f7; border-radius: 999px; padding: 2px 8px; font-size: 10px; color: #667085; white-space: nowrap; }
 .text-12 { font-size: 12px; }
-@media (max-width: 991px) { .permission-matrix { grid-template-columns: 1fr; } .permission-search { max-width: none; width: 100%; margin-top: 10px; } }
+@media (max-width: 991px) {
+  .permission-matrix { grid-template-columns: 1fr; }
+  .permission-search { max-width: none; width: 100%; margin-top: 10px; }
+  .module-heading { max-width: 100%; width: 100%; }
+  .quick-access { width: 100%; text-align: left; margin-top: 12px; }
+  .module-actions { justify-content: flex-start; }
+}
 </style>

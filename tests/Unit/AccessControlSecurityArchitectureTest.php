@@ -27,4 +27,23 @@ class AccessControlSecurityArchitectureTest extends TestCase
         $this->assertStringContainsString('transfer_receive', $catalog);
         $this->assertStringContainsString('transfer_view', $catalog);
     }
+
+    public function test_permission_editor_uses_human_language_instead_of_technical_codes(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $catalog = file_get_contents($root.'/app/Services/PermissionCatalogService.php');
+        $editor = file_get_contents($root.'/resources/src/views/app/pages/settings/permissions/RoleEditor.vue');
+
+        $this->assertStringContainsString("'description' => \$this->descriptionFor", $catalog);
+        $this->assertStringContainsString("'dependency_labels'", $catalog);
+        $this->assertStringContainsString("'payment_sales_add' => 'Registrar pagos de ventas'", $catalog);
+        $this->assertStringContainsString("'Pos_view' => 'Usar punto de venta (POS)'", $catalog);
+        $this->assertStringContainsString("'manager' => ['label' => 'Acceso completo'", $catalog);
+
+        $this->assertStringContainsString('Configuración rápida', $editor);
+        $this->assertStringContainsString('Acceso completo', $editor);
+        $this->assertStringContainsString('También activará:', $editor);
+        $this->assertStringContainsString('permission.description', $editor);
+        $this->assertStringNotContainsString('<small>{{ permission.name }}</small>', $editor);
+    }
 }
