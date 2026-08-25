@@ -59,6 +59,7 @@ jobs:
           php -l app/Http/Controllers/FinalTransferLogisticsController.php
           php -l app/Http/Controllers/LocationAwareTransferDiscrepancyController.php
           php -l app/Http/Controllers/FinalTransferDiscrepancyController.php
+          php -l app/Http/Controllers/NotificationCenterController.php
           php -l app/Providers/AppServiceProvider.php
           php -l app/Providers/RouteServiceProvider.php
           php -l app/Console/Commands/ProdexTenantUpgrade.php
@@ -77,9 +78,11 @@ jobs:
           php -l tests/Unit/TransferDiscrepancyLocationAccessTest.php
           php -l tests/Unit/TransferDispatchPreflightTest.php
           php -l tests/Unit/TransferWorkflowAuditTest.php
+          php -l tests/Unit/GlobalNotificationCenterArchitectureTest.php
           node --check resources/static/prodex-transfer-location-ui.js
           node --check resources/static/prodex-transfer-logistics.js
           node --check resources/static/prodex-transfer-workflow.js
+          node --check resources/static/prodex-erp-integrity-ui.js
 
       - name: Run focused transfer tests
         run: |
@@ -92,6 +95,7 @@ jobs:
           vendor/bin/phpunit tests/Unit/TransferDiscrepancyLocationAccessTest.php
           vendor/bin/phpunit tests/Unit/TransferWorkflowAuditTest.php
           vendor/bin/phpunit tests/Unit/TransferLogisticsServiceTest.php tests/Unit/TransferLogisticsBatchUnitsTest.php tests/Unit/TransferDispatchPreflightTest.php
+          vendor/bin/phpunit tests/Unit/GlobalNotificationCenterArchitectureTest.php
 
       - name: Install frontend dependencies
         run: npm ci --no-audit --no-fund
