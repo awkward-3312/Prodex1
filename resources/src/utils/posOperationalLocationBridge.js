@@ -268,11 +268,13 @@ export function installPosOperationalLocationBridge(axios) {
     const path = normalizePath(config && config.url);
     if (!path || (config.meta && (config.meta.prodexOperationalContextRequest || config.meta.prodexLocationStockRefresh))) return config;
 
+    const isCurrentRegister = /^cash-registers\/current\/\d+$/.test(path);
     const relevant = path === 'pos/data_create_pos'
       || path === 'pos/get_products_pos'
       || path === 'pos/get_products_pos_changes'
       || path === 'pos/create_pos'
       || path === 'serial_numbers/available'
+      || isCurrentRegister
       || /^batches_for_sale\//.test(path);
 
     if (!relevant) return config;
@@ -281,6 +283,34 @@ export function installPosOperationalLocationBridge(axios) {
     if (!context || !context.effective || !context.effective.inventory_location_id) return config;
 
     if (path === 'pos/data_create_pos') {
+      return config;
+    }
+
+    if (isCurrentRegister) {
+      const params = Object.assign({}, config.params || {});
+      const location = locationForConfig(context, config);
+      const compatibilityId = location ? compatibilityWarehouseId(context, location) : null;
+
+      // The POS UI exposes an inventory-location id through its legacy
+      // sale.warehouse_id field. The cash-register endpoint still expects a
+      // real warehouses.id, so never send the location id as warehouse_id.
+      if (compatibilityId) params.warehouse_id = compatibilityId;
+      else delete params.warehouse_id;
+
+      // A cashier may legitimately have a sellable location without a physical
+      // drawer. Only scope by drawer when one is actually assigned.
+      if (!context.effective.can_override && Number(context.effective.cash_drawer_id) > 0) {
+        params.cash_drawer_id = Number(context.effective.cash_drawer_id);
+      } else if (!params.cash_drawer_id) {
+        delete params.cash_drawer_id;
+      }
+
+      config.params = params;
+      withMeta(config, {
+        skipErrorRedirect: true,
+        prodexCashRegisterContext: true,
+        inventoryLocationId: Number(context.effective.inventory_location_id),
+      });
       return config;
     }
 
