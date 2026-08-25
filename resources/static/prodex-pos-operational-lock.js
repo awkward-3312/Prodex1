@@ -1,0 +1,137 @@
+(function () {
+  'use strict';
+
+  if (window.__prodexPosOperationalLockInstalled) return;
+  window.__prodexPosOperationalLockInstalled = true;
+
+  var state = {
+    context: null,
+    loading: false,
+    observer: null
+  };
+
+  function api() {
+    return window.axios || null;
+  }
+
+  function positiveId(value) {
+    var n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  function effectiveContext(payload) {
+    if (!payload || !payload.effective) return null;
+    var branchId = positiveId(payload.effective.branch_id);
+    var locationId = positiveId(payload.effective.inventory_location_id);
+    if (!branchId || !locationId) return null;
+    return {
+      branch_id: branchId,
+      inventory_location_id: locationId,
+      can_override: !!payload.effective.can_override
+    };
+  }
+
+  function findById(rows, id) {
+    if (!Array.isArray(rows)) return null;
+    return rows.find(function (row) { return Number(row.id) === Number(id); }) || null;
+  }
+
+  function assignedLabel(payload, effective) {
+    var branch = findById(payload.branches, effective.branch_id);
+    var location = findById(payload.inventory_locations, effective.inventory_location_id);
+    var parts = [];
+    if (branch && branch.name) parts.push(branch.name);
+    if (location && location.name) parts.push(location.name);
+    return parts.join(' · ') || 'Ubicación asignada';
+  }
+
+  function closeLegacyDrawer() {
+    document.querySelectorAll('.wh-drawer-backdrop').forEach(function (drawer) {
+      drawer.style.setProperty('display', 'none', 'important');
+      drawer.setAttribute('aria-hidden', 'true');
+    });
+  }
+
+  function apply() {
+    var payload = state.context;
+    var effective = effectiveContext(payload);
+    if (!effective) return;
+
+    var locked = !effective.can_override;
+    document.documentElement.classList.toggle('prodex-pos-assigned-location-locked', locked);
+
+    document.querySelectorAll('.pos-wh-trigger').forEach(function (trigger) {
+      var eyebrow = trigger.querySelector('.pos-wh-trigger-eyebrow');
+      var label = trigger.querySelector('.pos-wh-trigger-label');
+      var caret = trigger.querySelector('.pos-wh-trigger-caret');
+
+      if (eyebrow) eyebrow.textContent = 'Ubicación';
+      if (label) label.textContent = assignedLabel(payload, effective);
+
+      if (locked) {
+        trigger.setAttribute('title', 'Ubicación operativa asignada');
+        trigger.setAttribute('aria-disabled', 'true');
+        trigger.setAttribute('tabindex', '-1');
+        trigger.style.setProperty('cursor', 'default', 'important');
+        if (caret) caret.style.setProperty('display', 'none', 'important');
+      }
+    });
+
+    if (locked) closeLegacyDrawer();
+  }
+
+  function load() {
+    var axios = api();
+    if (!axios || state.loading) return;
+    state.loading = true;
+
+    axios.get('pos/operational-context', {
+      meta: {
+        skipInitialLoader: true,
+        skipErrorRedirect: true,
+        prodexPosOperationalLock: true
+      }
+    }).then(function (response) {
+      state.context = response && response.data ? response.data : null;
+      apply();
+    }).catch(function () {
+      state.context = null;
+    }).finally(function () {
+      state.loading = false;
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    var trigger = event.target && event.target.closest ? event.target.closest('.pos-wh-trigger') : null;
+    if (!trigger) return;
+
+    var effective = effectiveContext(state.context);
+    if (!effective || effective.can_override) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    closeLegacyDrawer();
+    apply();
+  }, true);
+
+  function boot() {
+    load();
+    if (typeof MutationObserver !== 'undefined' && document.documentElement) {
+      state.observer = new MutationObserver(function () { apply(); });
+      state.observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+    setInterval(function () {
+      if (/\/app\/pos(?:$|[/?#])/i.test(window.location.href)) {
+        if (!state.context) load();
+        apply();
+      }
+    }, 1500);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else {
+    boot();
+  }
+})();
