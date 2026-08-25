@@ -6,8 +6,7 @@
 
   var state = {
     context: null,
-    loading: false,
-    observer: null
+    loading: false
   };
 
   function api() {
@@ -45,10 +44,20 @@
     return parts.join(' · ') || 'Ubicación asignada';
   }
 
+  function setText(element, value) {
+    if (element && element.textContent !== value) element.textContent = value;
+  }
+
+  function setAttribute(element, name, value) {
+    if (element && element.getAttribute(name) !== value) element.setAttribute(name, value);
+  }
+
   function closeLegacyDrawer() {
     document.querySelectorAll('.wh-drawer-backdrop').forEach(function (drawer) {
-      drawer.style.setProperty('display', 'none', 'important');
-      drawer.setAttribute('aria-hidden', 'true');
+      if (drawer.style.getPropertyValue('display') !== 'none') {
+        drawer.style.setProperty('display', 'none', 'important');
+      }
+      setAttribute(drawer, 'aria-hidden', 'true');
     });
   }
 
@@ -58,22 +67,34 @@
     if (!effective) return;
 
     var locked = !effective.can_override;
-    document.documentElement.classList.toggle('prodex-pos-assigned-location-locked', locked);
+    var root = document.documentElement;
+    if (root) {
+      if (locked && !root.classList.contains('prodex-pos-assigned-location-locked')) {
+        root.classList.add('prodex-pos-assigned-location-locked');
+      } else if (!locked && root.classList.contains('prodex-pos-assigned-location-locked')) {
+        root.classList.remove('prodex-pos-assigned-location-locked');
+      }
+    }
 
+    var locationLabel = assignedLabel(payload, effective);
     document.querySelectorAll('.pos-wh-trigger').forEach(function (trigger) {
       var eyebrow = trigger.querySelector('.pos-wh-trigger-eyebrow');
       var label = trigger.querySelector('.pos-wh-trigger-label');
       var caret = trigger.querySelector('.pos-wh-trigger-caret');
 
-      if (eyebrow) eyebrow.textContent = 'Ubicación';
-      if (label) label.textContent = assignedLabel(payload, effective);
+      setText(eyebrow, 'Ubicación');
+      setText(label, locationLabel);
 
       if (locked) {
-        trigger.setAttribute('title', 'Ubicación operativa asignada');
-        trigger.setAttribute('aria-disabled', 'true');
-        trigger.setAttribute('tabindex', '-1');
-        trigger.style.setProperty('cursor', 'default', 'important');
-        if (caret) caret.style.setProperty('display', 'none', 'important');
+        setAttribute(trigger, 'title', 'Ubicación operativa asignada');
+        setAttribute(trigger, 'aria-disabled', 'true');
+        setAttribute(trigger, 'tabindex', '-1');
+        if (trigger.style.getPropertyValue('cursor') !== 'default') {
+          trigger.style.setProperty('cursor', 'default', 'important');
+        }
+        if (caret && caret.style.getPropertyValue('display') !== 'none') {
+          caret.style.setProperty('display', 'none', 'important');
+        }
       }
     });
 
@@ -117,10 +138,6 @@
 
   function boot() {
     load();
-    if (typeof MutationObserver !== 'undefined' && document.documentElement) {
-      state.observer = new MutationObserver(function () { apply(); });
-      state.observer.observe(document.documentElement, { childList: true, subtree: true });
-    }
     setInterval(function () {
       if (/\/app\/pos(?:$|[/?#])/i.test(window.location.href)) {
         if (!state.context) load();
