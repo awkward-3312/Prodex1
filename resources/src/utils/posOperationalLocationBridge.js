@@ -46,12 +46,25 @@ function compatibilityWarehouseId(context, location) {
     : null;
 }
 
+function requestDataObject(config) {
+  if (!config) return {};
+  if (config.data && typeof config.data === 'object') return config.data;
+  if (typeof config.data === 'string' && config.data.trim()) {
+    try {
+      const parsed = JSON.parse(config.data);
+      if (parsed && typeof parsed === 'object') {
+        config.data = parsed;
+        return parsed;
+      }
+    } catch (e) {}
+  }
+  return {};
+}
+
 function locationForConfig(context, config) {
   if (!context) return null;
   const params = (config && config.params) || {};
-  const data = (config && config.data && typeof config.data === 'object' && !(config.data instanceof FormData))
-    ? config.data
-    : {};
+  const data = requestDataObject(config);
   const requested = params.inventory_location_id || params.warehouse_id || data.inventory_location_id || data.warehouse_id;
   return findLocation(context, requested) || effectiveLocation(context);
 }
@@ -187,14 +200,53 @@ function decorateBootstrap(data, context) {
   return data;
 }
 
-function transformLocationDelta(response) {
-  if (!response || !response.data || !Array.isArray(response.data.products)) return response;
-  response.data.products = response.data.products.map(row => {
+function transformLocationRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map(row => {
     if (row && row.available_quantity !== undefined && row.available_quantity !== null) {
       return Object.assign({}, row, { qte: row.available_quantity });
     }
     return row;
   });
+}
+
+function transformLocationDelta(response) {
+  if (!response || !response.data || !Array.isArray(response.data.products)) return response;
+  response.data.products = transformLocationRows(response.data.products);
+  return response;
+}
+
+async function refreshSaleLocationStock(axios, response) {
+  const config = response && response.config;
+  const meta = config && config.meta;
+  if (!response || !response.data || response.data.success !== true || !meta || !meta.prodexLocationSale) {
+    return response;
+  }
+
+  const locationId = Number(meta.inventoryLocationId || 0);
+  const sold = Array.isArray(meta.prodexLocationSaleDetails) ? meta.prodexLocationSaleDetails : [];
+  if (!locationId || !sold.length) return response;
+
+  const wanted = new Set(sold.map(row => `${Number(row.product_id)}:${Number(row.product_variant_id || 0)}`));
+  try {
+    const stockResponse = await axios.get(`pos/location-inventory/${locationId}/stock-map`, {
+      meta: {
+        skipErrorRedirect: true,
+        skipInitialLoader: true,
+        prodexLocationStockRefresh: true,
+      },
+    });
+    const rows = transformLocationRows((stockResponse.data && stockResponse.data.products) || []);
+    response.data.updated_stock = rows.filter(row => wanted.has(`${Number(row.product_id || row.id)}:${Number(row.product_variant_id || 0)}`));
+    if (stockResponse.data && stockResponse.data.server_time) {
+      response.data.server_time = stockResponse.data.server_time;
+    }
+    response.data.inventory_location_id = locationId;
+  } catch (e) {
+    // Never let a legacy warehouse quantity overwrite the location-aware POS.
+    // The next location delta will refresh the UI when connectivity recovers.
+    response.data.updated_stock = [];
+  }
   return response;
 }
 
@@ -214,7 +266,7 @@ export function installPosOperationalLocationBridge(axios) {
 
   axios.interceptors.request.use(async config => {
     const path = normalizePath(config && config.url);
-    if (!path || (config.meta && config.meta.prodexOperationalContextRequest)) return config;
+    if (!path || (config.meta && (config.meta.prodexOperationalContextRequest || config.meta.prodexLocationStockRefresh))) return config;
 
     const relevant = path === 'pos/data_create_pos'
       || path === 'pos/get_products_pos'
@@ -252,7 +304,7 @@ export function installPosOperationalLocationBridge(axios) {
     }
 
     if (path === 'pos/create_pos') {
-      const data = config.data && typeof config.data === 'object' ? config.data : {};
+      const data = requestDataObject(config);
       const branch = branchForLocation(context, location);
       const compatibilityId = compatibilityWarehouseId(context, location);
       data.branch_id = Number(location.branch_id || (branch && branch.id) || context.effective.branch_id);
@@ -265,7 +317,16 @@ export function installPosOperationalLocationBridge(axios) {
         data.cash_drawer_id = Number(context.effective.cash_drawer_id);
       }
       config.data = data;
-      withMeta(config, { prodexLocationSale: true, inventoryLocationId: Number(location.id) });
+      withMeta(config, {
+        prodexLocationSale: true,
+        inventoryLocationId: Number(location.id),
+        prodexLocationSaleDetails: Array.isArray(data.details)
+          ? data.details.map(row => ({
+              product_id: Number(row && row.product_id),
+              product_variant_id: Number((row && row.product_variant_id) || 0),
+            }))
+          : [],
+      });
       return config;
     }
 
@@ -304,6 +365,10 @@ export function installPosOperationalLocationBridge(axios) {
 
     if (response && response.config && response.config.meta && response.config.meta.prodexLocationDelta) {
       return transformLocationDelta(response);
+    }
+
+    if (response && response.config && response.config.meta && response.config.meta.prodexLocationSale) {
+      return refreshSaleLocationStock(axios, response);
     }
 
     return response;
