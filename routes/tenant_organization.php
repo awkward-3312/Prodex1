@@ -23,5 +23,6 @@ Route::middleware('auth:api')->prefix('organization')->group(function () {
     Route::put('employee-access/{employeeId}/link', 'Organization\\EmployeeAccessController@link');
     Route::delete('employee-access/{employeeId}/link', 'Organization\\EmployeeAccessController@unlink');
 
+    Route::get('permission-catalog', 'Organization\\PermissionCatalogController@index');
     Route::get('role-permission-templates', 'Organization\\RoleTemplateController@index');
 });

@@ -27,8 +27,17 @@ jobs:
       - name: Syntax check
         run: |
           php -l app/Http/Controllers/Organization/UserAccessController.php
+          php -l app/Http/Controllers/Organization/PermissionCatalogController.php
+          php -l app/Http/Controllers/PermissionsController.php
+          php -l app/Http/Middleware/ProtectOwnerPrivilegeEscalation.php
+          php -l app/Services/PermissionCatalogService.php
+          php -l app/Models/User.php
+          php -l app/Models/role_user.php
           php -l app/Console/Commands/ProdexTenantUpgrade.php
           php -l database/migrations/tenant/2026_08_22_230000_make_users_phone_nullable.php
           php -l tests/Unit/UserPhoneNullableMigrationTest.php
-      - name: Optional phone regression test
-        run: vendor/bin/phpunit tests/Unit/UserPhoneNullableMigrationTest.php
+          php -l tests/Unit/AccessControlSecurityArchitectureTest.php
+      - name: User access regression tests
+        run: |
+          vendor/bin/phpunit tests/Unit/UserPhoneNullableMigrationTest.php
+          vendor/bin/phpunit tests/Unit/AccessControlSecurityArchitectureTest.php

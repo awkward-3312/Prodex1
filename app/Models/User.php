@@ -42,7 +42,7 @@ class User extends Authenticatable
 
     public function oauthAccessToken()
     {
-        return $this->hasMany('\App\Models\OauthAccessToken');
+        return $this->hasMany('\\App\\Models\\OauthAccessToken');
     }
 
     public function roles()
@@ -66,7 +66,7 @@ class User extends Authenticatable
 
     public function assignedWarehouses()
     {
-        return $this->belongsToMany('App\Models\Warehouse');
+        return $this->belongsToMany('App\\Models\\Warehouse');
     }
 
     public function assignedBranches()
