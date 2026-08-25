@@ -15,17 +15,13 @@
     <meta name="apple-mobile-web-app-title" content="{{ $app_settings->app_name ?? 'PRODEX' }}">
     <link rel="apple-touch-icon" href="{{ pwa_icon_url(192) }}">
   </head>
-
   <body class="text-left">
     <noscript><strong>PRODEX necesita JavaScript para funcionar correctamente. Actívalo para continuar.</strong></noscript>
     <div class="loading_wrap" id="loading_wrap"><div class="loading"></div></div>
     <div id="app"><script src="/assets_setup/js/qrcode.js"></script></div>
-
     @php
         $__planSummary = app(\App\Services\TenantLimitsService::class)->getPlanSummary();
-        if (isset($__planSummary['features']['knowledge_base'])) {
-            $__planSummary['features']['knowledge_base']['enabled'] = true;
-        }
+        if (isset($__planSummary['features']['knowledge_base'])) $__planSummary['features']['knowledge_base']['enabled'] = true;
     @endphp
     <script>
         window.__planSummary = @json($__planSummary);
@@ -33,10 +29,8 @@
         window.__appName = @json($app_settings->app_name ?? 'PRODEX');
         window.__pageTitleSuffix = @json($app_settings->page_title_suffix ?? 'Gestión empresarial');
     </script>
-
     <script src="/js/main.min.js?v=1.3&v={{ time() }}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
     <script>
       if (window.axios && !window.__prodexTransferLogisticsAxiosFix) {
         window.__prodexTransferLogisticsAxiosFix = true;
@@ -44,11 +38,11 @@
           if (config && typeof config.url === 'string' && config.url.indexOf('/api/transfer-logistics') === 0) config.baseURL = '';
           if (config && typeof config.url === 'string' && config.url.indexOf('/api/transfer-workflow') === 0) config.baseURL = '';
           if (config && typeof config.url === 'string' && config.url.indexOf('/api/inventory-visibility') === 0) config.baseURL = '';
+          if (config && typeof config.url === 'string' && config.url.indexOf('/api/notification-center') === 0) config.baseURL = '';
           return config;
         });
       }
     </script>
-
     <script src="/js/prodex-sidebar2-organizer.js?v={{ time() }}"></script>
     <script src="/js/prodex-navigation-stability.js?v={{ time() }}"></script>
     <script src="/js/prodex-navigation-v3.js?v={{ time() }}"></script>
@@ -62,12 +56,10 @@
     <script src="/js/prodex-transfer-issues.js?v={{ time() }}"></script>
     <script src="/js/prodex-damage-location-ui.js?v={{ time() }}"></script>
     <script src="/js/prodex-inventory-visibility.js?v={{ time() }}"></script>
-    <script src="/js/prodex-inventory-spa-navigation.js?v={{ time() }}"></script>
     <script src="/js/prodex-pos-location-ui.js?v={{ time() }}"></script>
     <script src="/js/prodex-pos-location-catalog.js?v={{ time() }}"></script>
     <script src="/js/prodex-pos-location-offline.js?v={{ time() }}"></script>
     <script src="/js/prodex-erp-integrity-ui.js?v={{ time() }}"></script>
-
     @include('partials.plan-upgrade-modal')
     @include('partials.subscription-reminder-banner')
   </body>
