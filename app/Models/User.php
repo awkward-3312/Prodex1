@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Auth;
 use Laravel\Passport\HasApiTokens;
 
 class User extends Authenticatable
@@ -18,112 +20,58 @@ class User extends Authenticatable
         'default_cash_drawer_id', 'record_view',
     ];
 
-    protected $hidden = [
-        'password', 'remember_token',
-    ];
+    protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
-        'employee_id' => 'integer',
-        'email_verified_at' => 'datetime',
-        'role_id' => 'integer',
-        'statut' => 'integer',
-        'is_all_warehouses' => 'integer',
-        'default_warehouse_id' => 'integer',
-        'default_branch_id' => 'integer',
-        'default_inventory_location_id' => 'integer',
-        'default_cash_drawer_id' => 'integer',
-        'record_view' => 'boolean',
+        'employee_id' => 'integer', 'email_verified_at' => 'datetime', 'role_id' => 'integer', 'statut' => 'integer',
+        'is_all_warehouses' => 'integer', 'default_warehouse_id' => 'integer', 'default_branch_id' => 'integer',
+        'default_inventory_location_id' => 'integer', 'default_cash_drawer_id' => 'integer', 'record_view' => 'boolean',
     ];
 
-    public function employee()
+    protected static function booted(): void
     {
-        return $this->belongsTo(Employee::class, 'employee_id');
+        static::saving(function (User $user) {
+            $actor = Auth::guard('api')->user() ?: Auth::user();
+            if (! $actor || (int) $actor->role_id === 1) return;
+
+            $originalRoleId = (int) $user->getOriginal('role_id');
+            if (($user->exists && $originalRoleId === 1) || (int) $user->role_id === 1) {
+                throw new AuthorizationException('Solo el propietario puede crear, modificar o asignar cuentas con rol propietario.');
+            }
+        });
     }
 
-    public function oauthAccessToken()
-    {
-        return $this->hasMany('\App\Models\OauthAccessToken');
-    }
-
-    public function roles()
-    {
-        return $this->belongsToMany(Role::class);
-    }
-
-    public function assignRole(Role $role)
-    {
-        return $this->roles()->save($role);
-    }
+    public function employee() { return $this->belongsTo(Employee::class, 'employee_id'); }
+    public function oauthAccessToken() { return $this->hasMany('\\App\\Models\\OauthAccessToken'); }
+    public function roles() { return $this->belongsToMany(Role::class); }
+    public function assignRole(Role $role) { return $this->roles()->save($role); }
 
     public function hasRole($role)
     {
-        if (is_string($role)) {
-            return $this->roles->contains('name', $role);
-        }
-
+        if (is_string($role)) return $this->roles->contains('name', $role);
         return (bool) $role->intersect($this->roles)->count();
     }
 
-    public function assignedWarehouses()
-    {
-        return $this->belongsToMany('App\Models\Warehouse');
-    }
-
-    public function assignedBranches()
-    {
-        return $this->belongsToMany(Branch::class, 'user_branches', 'user_id', 'branch_id')->withTimestamps();
-    }
-
-    public function assignedInventoryLocations()
-    {
-        return $this->belongsToMany(InventoryLocation::class, 'user_inventory_locations', 'user_id', 'inventory_location_id')->withTimestamps();
-    }
-
-    public function defaultWarehouse()
-    {
-        return $this->belongsTo(Warehouse::class, 'default_warehouse_id');
-    }
-
-    public function defaultBranch()
-    {
-        return $this->belongsTo(Branch::class, 'default_branch_id');
-    }
-
-    public function defaultInventoryLocation()
-    {
-        return $this->belongsTo(InventoryLocation::class, 'default_inventory_location_id');
-    }
-
-    public function defaultCashDrawer()
-    {
-        return $this->belongsTo(CashDrawer::class, 'default_cash_drawer_id');
-    }
-
-    public function operationalAssignments()
-    {
-        return $this->hasMany(UserOperationalAssignment::class);
-    }
+    public function assignedWarehouses() { return $this->belongsToMany('App\\Models\\Warehouse'); }
+    public function assignedBranches() { return $this->belongsToMany(Branch::class, 'user_branches', 'user_id', 'branch_id')->withTimestamps(); }
+    public function assignedInventoryLocations() { return $this->belongsToMany(InventoryLocation::class, 'user_inventory_locations', 'user_id', 'inventory_location_id')->withTimestamps(); }
+    public function defaultWarehouse() { return $this->belongsTo(Warehouse::class, 'default_warehouse_id'); }
+    public function defaultBranch() { return $this->belongsTo(Branch::class, 'default_branch_id'); }
+    public function defaultInventoryLocation() { return $this->belongsTo(InventoryLocation::class, 'default_inventory_location_id'); }
+    public function defaultCashDrawer() { return $this->belongsTo(CashDrawer::class, 'default_cash_drawer_id'); }
+    public function operationalAssignments() { return $this->hasMany(UserOperationalAssignment::class); }
 
     public function hasPermissionName(string $permissionName): bool
     {
-        return $this->roles()
-            ->whereHas('permissions', function ($query) use ($permissionName) {
-                $query->where('name', $permissionName);
-            })
-            ->exists();
+        return $this->roles()->whereHas('permissions', function ($query) use ($permissionName) {
+            $query->where('name', $permissionName);
+        })->exists();
     }
 
     public function hasRecordView()
     {
-        if (isset($this->record_view)) {
-            return (bool) $this->record_view;
-        }
-
+        if (isset($this->record_view)) return (bool) $this->record_view;
         $role = $this->roles()->first();
-        if ($role) {
-            return $role->inRole('record_view');
-        }
-
-        return false;
+        return $role ? $role->inRole('record_view') : false;
     }
 }
