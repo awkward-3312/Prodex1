@@ -108,6 +108,11 @@ class Sale extends Model
                 );
             }
 
+            // Snapshot the resolved operational address, including the legacy
+            // warehouse compatibility pointer. The request may temporarily use an
+            // InventoryLocation id in the historical warehouse_id UI field; never
+            // persist that synthetic value as if it were a real warehouse.
+            $sale->warehouse_id = $context['warehouse_id'] ?? null;
             $sale->branch_id = $context['branch_id'] ?? null;
             $sale->inventory_location_id = $context['inventory_location_id'] ?? null;
             $sale->cash_drawer_id = $context['cash_drawer_id'] ?? null;
