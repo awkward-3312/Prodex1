@@ -44,6 +44,7 @@ class Kernel extends HttpKernel
 
         'api' => [
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\ProtectOwnerPrivilegeEscalation::class,
             \App\Http\Middleware\SetPdfLocale::class,
             // Both are constant-time no-ops outside TransferController actions.
             \App\Http\Middleware\LockTransferDispatchStock::class,
