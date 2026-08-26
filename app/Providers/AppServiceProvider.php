@@ -8,11 +8,13 @@ use App\Services\BatchService;
 use App\Services\FinalTransferLogisticsService;
 use App\Services\LocationAwareBatchService;
 use App\Services\LocationAwareSerialNumberService;
+use App\Services\PosOptionalCashDrawerAssignmentService;
 use App\Services\ProdexTenantSchemaHealthService;
 use App\Services\SerialNumberService;
 use App\Services\TenantLimitsService;
 use App\Services\TenantSchemaHealthService;
 use App\Services\TransferLogisticsService;
+use App\Services\UserOperationalAssignmentService;
 use App\Tenant;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Lang;
@@ -38,6 +40,11 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(BatchService::class, LocationAwareBatchService::class);
         $this->app->singleton(SerialNumberService::class, LocationAwareSerialNumberService::class);
+
+        // Native POS uses Branch + InventoryLocation as its required operating
+        // context. A physical cash drawer is optional there, while legacy flows
+        // keep the historical assignment rules through the parent service.
+        $this->app->bind(UserOperationalAssignmentService::class, PosOptionalCashDrawerAssignmentService::class);
     }
 
     public function boot()
