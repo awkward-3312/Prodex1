@@ -22,6 +22,7 @@ class PosNativeCatalogGateArchitectureTest extends TestCase
     {
         $script = file_get_contents(base_path('resources/static/prodex-pos-location-catalog.js'));
 
+        // Keep this recovery strictly visual: operational state remains owned by POS services/controllers.
         $this->assertStringNotContainsString('cash_register_id =', $script);
         $this->assertStringNotContainsString('cash_drawer_id = null', $script);
         $this->assertStringNotContainsString('warehouse_id = null', $script);
