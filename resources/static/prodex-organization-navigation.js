@@ -4,7 +4,7 @@
   if (window.__prodexOrganizationNavigationInstalled) return;
   window.__prodexOrganizationNavigationInstalled = true;
 
-  var permissions = { branches: false, employeeAccess: false, roleTemplates: false, stockIntake: false };
+  var permissions = { branches: false, employeeAccess: false, roleTemplates: false, stockIntake: false, cashRegisterReport: false };
 
   function apiGet(url) {
     if (!window.axios) return Promise.reject(new Error('Axios no disponible'));
@@ -15,11 +15,15 @@
   }
 
   function discover() {
+    var today = new Date().toISOString().slice(0, 10);
     return Promise.all([
       apiGet('/api/organization/branches').then(function () { permissions.branches = true; }).catch(function () {}),
       apiGet('/api/organization/employee-access').then(function () { permissions.employeeAccess = true; }).catch(function () {}),
       apiGet('/api/organization/role-permission-templates').then(function () { permissions.roleTemplates = true; }).catch(function () {}),
-      apiGet('/api/transfer-logistics/incoming').then(function () { permissions.stockIntake = true; }).catch(function () {})
+      apiGet('/api/transfer-logistics/incoming').then(function () { permissions.stockIntake = true; }).catch(function () {}),
+      apiGet('/api/report/cash_registers?limit=1&page=1&from=' + today + '&to=' + today)
+        .then(function () { permissions.cashRegisterReport = true; })
+        .catch(function () {})
     ]);
   }
 
@@ -31,6 +35,7 @@
     if (kind === 'users') return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
     if (kind === 'shield') return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>';
     if (kind === 'stock') return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21 8-9-5-9 5 9 5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/></svg>';
+    if (kind === 'report') return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 16 4-4 3 3 5-6"/></svg>';
     return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M8 9h.01"/><path d="M12 9h.01"/><path d="M16 9h.01"/></svg>';
   }
 
@@ -69,6 +74,47 @@
     item.style.setProperty('--prodex-v3-order', String(config.order));
   }
 
+  function makeCashRegisterReportItem(vertical) {
+    var li = document.createElement('li');
+    li.id = vertical ? 'prodex-cash-register-report-vertical' : 'prodex-cash-register-report-large';
+    li.className = vertical ? 'submenu-item' : 'nav-item';
+
+    var anchor = document.createElement('a');
+    anchor.href = '/app/reports/cash-registers';
+    anchor.className = vertical ? 'submenu-link' : '';
+    anchor.title = 'Reporte de cierres de caja';
+    anchor.innerHTML = '<span class="' + (vertical ? 'submenu-icon' : 'nav-icon') + '" aria-hidden="true">' + iconSvg('report') + '</span><span class="item-name">Reporte de cierres de caja</span>';
+    li.appendChild(anchor);
+    return li;
+  }
+
+  function ensureCashRegisterReportLink() {
+    var ids = ['prodex-cash-register-report-vertical', 'prodex-cash-register-report-large'];
+    if (!permissions.cashRegisterReport) {
+      ids.forEach(function (id) {
+        var old = document.getElementById(id);
+        if (old) old.remove();
+      });
+      return;
+    }
+
+    // Current vertical sidebar: the Sales submenu is rendered only while Sales is open.
+    var verticalSubmenus = document.querySelectorAll('.vertical-sidebar-wrapper .vertical-nav-menu .nav-item.has-submenu > .submenu');
+    Array.prototype.forEach.call(verticalSubmenus, function (submenu) {
+      if (submenu.querySelector('a[href="/app/pos"], a[href="/app/sales/list"], a[href="/app/sales/store"]')) {
+        if (!submenu.querySelector('#prodex-cash-register-report-vertical')) {
+          submenu.appendChild(makeCashRegisterReportItem(true));
+        }
+      }
+    });
+
+    // Legacy/large sidebar keeps child menus in the DOM and marks the parent explicitly.
+    var largeSales = document.querySelector('.sidebar-left-secondary ul.childNav[data-parent="sales"]');
+    if (largeSales && !largeSales.querySelector('#prodex-cash-register-report-large')) {
+      largeSales.appendChild(makeCashRegisterReportItem(false));
+    }
+  }
+
   function ensure() {
     ensureOne({
       allowed: permissions.stockIntake,
@@ -90,17 +136,21 @@
       id: 'prodex-role-templates-nav', label: 'Plantillas de roles', href: '/app/organization/role-templates', icon: 'shield',
       section: 'admin', order: 8001.8, module: 'role_templates'
     });
+    ensureCashRegisterReportLink();
   }
 
   function init() {
     discover().then(function () {
       ensure();
       [100, 350, 900, 1800].forEach(function (delay) { window.setTimeout(ensure, delay); });
-      var root = document.querySelector('.vertical-sidebar-wrapper');
-      if (root) {
+      var roots = [
+        document.querySelector('.vertical-sidebar-wrapper'),
+        document.querySelector('.sidebar-left-secondary')
+      ].filter(Boolean);
+      roots.forEach(function (root) {
         new MutationObserver(function () { window.setTimeout(ensure, 20); })
           .observe(root, { childList: true, subtree: true });
-      }
+      });
     });
   }
 
