@@ -6,14 +6,14 @@
       <div class="d-flex flex-wrap justify-content-between align-items-start">
         <div>
           <h4 class="mb-1">Empleados y acceso a PRODEX</h4>
-          <p class="text-muted mb-0">El rol define qué puede hacer el usuario. La sucursal y las ubicaciones de inventario definen dónde puede hacerlo.</p>
+          <p class="text-muted mb-0">El rol define qué puede hacer el usuario. La sucursal, ubicación y caja física definen dónde opera cuando utiliza POS.</p>
         </div>
         <div class="mt-2 mt-md-0">
           <b-button variant="outline-secondary" class="mr-2" @click="openManual">
             <lucide-icon name="book-open" class="mr-1"/> Ver manual
           </b-button>
           <b-button variant="outline-primary" @click="$router.push('/app/organization/branches')">
-            <lucide-icon name="building-2" class="mr-1"/> Sucursales
+            <lucide-icon name="building-2" class="mr-1"/> Sucursales y cajas
           </b-button>
         </div>
       </div>
@@ -37,7 +37,7 @@
               <th>Sucursal laboral</th>
               <th>Puesto</th>
               <th>Cuenta</th>
-              <th>Ubicación operativa</th>
+              <th>Contexto operativo</th>
               <th>Estado</th>
               <th class="text-right">Acciones</th>
             </tr>
@@ -61,6 +61,9 @@
                 <template v-if="employee.user">
                   <div>{{ branchName(employee.user.default_branch_id) }}</div>
                   <div class="text-muted text-11">{{ locationName(employee.user.default_inventory_location_id) }}</div>
+                  <div v-if="employee.user.default_cash_drawer" class="text-info text-11">
+                    <lucide-icon name="wallet-cards" class="mr-1"/>{{ employee.user.default_cash_drawer.name }}
+                  </div>
                 </template>
                 <span v-else>—</span>
               </td>
@@ -109,7 +112,7 @@
 
             <b-col md="6">
               <b-form-group label="Rol *">
-                <v-select v-model="form.role_id" :reduce="o => o.value" :options="roleOptions" placeholder="Seleccionar rol" required/>
+                <v-select v-model="form.role_id" :reduce="o => o.value" :options="roleOptions" placeholder="Seleccionar rol" required @input="onRoleChanged"/>
                 <small v-if="activeEmployee.designation && activeEmployee.designation.suggested_role_key" class="text-muted">
                   El puesto sugiere {{ activeEmployee.designation.suggested_role_key }}, pero los permisos reales dependen del rol seleccionado.
                 </small>
@@ -137,7 +140,7 @@
             <b-col md="12" v-if="form.scope !== 'all' && selectedBranchIds.length">
               <b-form-group label="Ubicaciones de inventario permitidas">
                 <v-select multiple v-model="form.inventory_location_ids" :reduce="o => o.value" :options="allowedLocationOptions" placeholder="Seleccionar Piso de venta, Bodega, Cuarentena, etc."/>
-                <small class="text-muted">Ejemplo: una cajera normalmente usa solo Piso de venta; un bodeguero puede operar Piso de venta, Bodega y Cuarentena según sus permisos.</small>
+                <small class="text-muted">Una cajera normalmente usa solo Piso de venta; otros puestos pueden tener varias ubicaciones según su función.</small>
               </b-form-group>
             </b-col>
 
@@ -149,9 +152,29 @@
 
             <b-col md="6" v-if="form.scope !== 'all'">
               <b-form-group label="Ubicación predeterminada de inventario">
-                <v-select v-model="form.default_inventory_location_id" :reduce="o => o.value" :options="defaultLocationOptions" placeholder="Seleccionar ubicación"/>
+                <v-select v-model="form.default_inventory_location_id" :reduce="o => o.value" :options="defaultLocationOptions" placeholder="Seleccionar ubicación" @input="onDefaultLocationChanged"/>
                 <small class="text-muted">Para cajeros debe ser normalmente el Piso de venta de su sucursal.</small>
               </b-form-group>
+            </b-col>
+
+            <b-col md="12" v-if="selectedRole && selectedRole.uses_pos">
+              <div class="border rounded p-3 mb-3">
+                <b-form-group :label="selectedRole.requires_cash_drawer ? 'Caja física predeterminada *' : 'Caja física predeterminada'" class="mb-1">
+                  <v-select
+                    v-model="form.default_cash_drawer_id"
+                    :reduce="o => o.value"
+                    :options="defaultCashDrawerOptions"
+                    :placeholder="defaultCashDrawerOptions.length ? 'Seleccionar caja física' : 'No hay cajas disponibles en esta ubicación'"
+                  />
+                </b-form-group>
+                <small class="text-muted">
+                  La caja pertenece a la empresa y a la ubicación; esta asignación solo define la caja habitual del empleado. Puede reasignarse posteriormente sin perder historial.
+                </small>
+                <b-alert v-if="selectedRole.requires_cash_drawer && !defaultCashDrawerOptions.length" show variant="warning" class="mt-2 mb-0 py-2">
+                  Este rol necesita una caja física para operar POS. Crea una en la sucursal y ubicación seleccionadas antes de guardar el acceso.
+                  <b-button size="sm" variant="outline-warning" class="ml-2" @click="$router.push('/app/organization/branches')">Administrar cajas</b-button>
+                </b-alert>
+              </div>
             </b-col>
 
             <b-col md="12">
@@ -186,6 +209,7 @@ export default {
       roles: [],
       branches: [],
       inventoryLocations: [],
+      cashDrawers: [],
       activeEmployee: null,
       form: this.emptyForm(),
     };
@@ -197,12 +221,16 @@ export default {
       return this.employees.filter(e => [
         this.fullName(e), e.email, e.branch && e.branch.name,
         e.designation && e.designation.designation, e.user && e.user.email,
+        e.user && e.user.default_cash_drawer && e.user.default_cash_drawer.name,
       ].filter(Boolean).join(' ').toLowerCase().includes(q));
     },
     withoutAccess() { return this.employees.filter(e => !e.user).length; },
     withAccess() { return this.employees.filter(e => !!e.user).length; },
     roleOptions() {
       return this.roles.map(r => ({ label: r.description ? `${r.name} — ${r.description}` : r.name, value: r.id }));
+    },
+    selectedRole() {
+      return this.roles.find(r => Number(r.id) === Number(this.form.role_id)) || null;
     },
     scopeOptions() {
       const options = [
@@ -235,6 +263,14 @@ export default {
         .filter(location => Number(location.branch_id) === branchId)
         .map(location => ({ label: `${location.name}${location.is_default_sales ? ' · Piso predeterminado' : ''}`, value: location.id }));
     },
+    defaultCashDrawerOptions() {
+      const branchId = Number(this.form.default_branch_id || 0);
+      const locationId = Number(this.form.default_inventory_location_id || 0);
+      if (!branchId || !locationId) return [];
+      return this.cashDrawers
+        .filter(drawer => Number(drawer.branch_id) === branchId && Number(drawer.inventory_location_id) === locationId && !!drawer.is_active)
+        .map(drawer => ({ label: drawer.code ? `${drawer.name} · ${drawer.code}` : drawer.name, value: drawer.id }));
+    },
   },
   created() { this.load(); },
   methods: {
@@ -243,6 +279,7 @@ export default {
         email: '', password: '', role_id: null, scope: 'selected',
         branch_ids: [], inventory_location_ids: [],
         default_branch_id: null, default_inventory_location_id: null,
+        default_cash_drawer_id: null,
         record_view: false,
       };
     },
@@ -254,6 +291,7 @@ export default {
         this.roles = data.roles || [];
         this.branches = data.branches || [];
         this.inventoryLocations = data.inventory_locations || [];
+        this.cashDrawers = data.cash_drawers || [];
       } finally {
         this.loading = false;
       }
@@ -290,6 +328,13 @@ export default {
       this.error = '';
       this.$bvModal.show('create-access-modal');
     },
+    onRoleChanged() {
+      if (!this.selectedRole || !this.selectedRole.uses_pos) {
+        this.form.default_cash_drawer_id = null;
+        return;
+      }
+      this.selectSingleDrawerWhenUnambiguous();
+    },
     onScopeChanged() {
       if (this.form.scope === 'branch' && this.activeEmployee && this.activeEmployee.branch_id) {
         const branchId = Number(this.activeEmployee.branch_id);
@@ -304,6 +349,7 @@ export default {
         this.form.default_branch_id = null;
         this.form.default_inventory_location_id = null;
       }
+      this.form.default_cash_drawer_id = null;
     },
     onBranchesChanged() {
       const branchIds = this.selectedBranchIds;
@@ -318,6 +364,7 @@ export default {
     },
     onDefaultBranchChanged() {
       const branchId = Number(this.form.default_branch_id || 0);
+      this.form.default_cash_drawer_id = null;
       if (!branchId) {
         this.form.default_inventory_location_id = null;
         return;
@@ -330,6 +377,28 @@ export default {
           this.form.inventory_location_ids.push(defaultId);
         }
       }
+      this.selectSingleDrawerWhenUnambiguous();
+    },
+    onDefaultLocationChanged() {
+      const locationId = Number(this.form.default_inventory_location_id || 0);
+      this.form.default_cash_drawer_id = null;
+      if (locationId && !(this.form.inventory_location_ids || []).map(Number).includes(locationId)) {
+        this.form.inventory_location_ids.push(locationId);
+      }
+      this.selectSingleDrawerWhenUnambiguous();
+    },
+    selectSingleDrawerWhenUnambiguous() {
+      if (this.selectedRole && this.selectedRole.uses_pos && this.defaultCashDrawerOptions.length === 1) {
+        this.form.default_cash_drawer_id = this.defaultCashDrawerOptions[0].value;
+      }
+    },
+    errorMessage(error, fallback) {
+      const data = (error && error.response && error.response.data) || (error && typeof error === 'object' ? error : null);
+      if (data && data.errors) {
+        const first = Object.values(data.errors)[0];
+        return Array.isArray(first) ? first[0] : first;
+      }
+      return (data && (data.message || data.error)) || fallback;
     },
     async createAccess() {
       if (!this.activeEmployee || !this.form.role_id) {
@@ -338,6 +407,10 @@ export default {
       }
       if (this.form.scope !== 'all' && !this.selectedBranchIds.length) {
         this.error = 'Selecciona al menos una sucursal.';
+        return;
+      }
+      if (this.selectedRole && this.selectedRole.requires_cash_drawer && !this.form.default_cash_drawer_id) {
+        this.error = 'Este rol necesita una caja física predeterminada para operar POS.';
         return;
       }
       this.saving = true;
@@ -351,11 +424,7 @@ export default {
         await this.load();
         this.$root.$bvToast.toast('Cuenta vinculada al empleado correctamente.', { title: 'Éxito', variant: 'success', solid: true });
       } catch (e) {
-        const data = e && e.response && e.response.data;
-        if (data && data.errors) {
-          const first = Object.values(data.errors)[0];
-          this.error = Array.isArray(first) ? first[0] : first;
-        } else this.error = (data && data.message) || 'No se pudo crear el acceso.';
+        this.error = this.errorMessage(e, 'No se pudo crear el acceso.');
       } finally {
         this.saving = false;
       }
