@@ -13,13 +13,10 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SafePosCashRegisterReportController extends PosCashRegisterReportController
 {
-    public function report(
-        Request $request,
-        \App\Services\BranchScopeService $branchScope,
-        \App\Services\InventoryLocationScopeService $locationScope
-    ) {
+    public function report(Request $request)
+    {
         try {
-            return parent::report($request, $branchScope, $locationScope);
+            return parent::report($request);
         } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
             throw $e;
         } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
