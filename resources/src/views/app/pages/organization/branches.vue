@@ -6,11 +6,14 @@
       <div class="d-flex flex-wrap align-items-center justify-content-between">
         <div>
           <h4 class="mb-1">Sucursales</h4>
-          <p class="text-muted mb-0">Una sucursal es donde opera el negocio. Su inventario vive en ubicaciones como Piso de venta, Bodega de sucursal o Cuarentena; no consume un almacén/CD adicional.</p>
+          <p class="text-muted mb-0">Una sucursal contiene sus ubicaciones de inventario y sus cajas físicas. Las cajas operan desde una ubicación vendible, normalmente Piso de venta.</p>
         </div>
         <div class="mt-2 mt-md-0">
           <b-button variant="outline-secondary" class="mr-2" @click="goManual">
             <lucide-icon name="book-open" class="mr-1"/> Ver manual
+          </b-button>
+          <b-button variant="outline-info" class="mr-2" @click="goCashDrawers">
+            <lucide-icon name="wallet-cards" class="mr-1"/> Cajas físicas
           </b-button>
           <b-button variant="outline-primary" class="mr-2" @click="goWarehouses">
             <lucide-icon name="warehouse" class="mr-1"/> Almacenes / CD
@@ -44,6 +47,7 @@
               <th>Responsable</th>
               <th>Ubicaciones de inventario</th>
               <th>Venta predeterminada</th>
+              <th>Cajas físicas</th>
               <th class="text-right">Acciones</th>
             </tr>
           </thead>
@@ -65,9 +69,17 @@
                 <span v-else class="text-muted">Sin inventario configurado</span>
               </td>
               <td>{{ branch.default_inventory_location ? branch.default_inventory_location.name : '—' }}</td>
+              <td>
+                <b-button size="sm" variant="outline-info" @click="manageDrawers(branch)">
+                  <lucide-icon name="wallet-cards" class="mr-1"/> Administrar
+                </b-button>
+              </td>
               <td class="text-right text-nowrap">
                 <a class="cursor-pointer mr-2" title="Agregar ubicación de inventario" @click="openLocation(branch)">
                   <lucide-icon name="map-pin-plus" class="text-primary text-20"/>
+                </a>
+                <a class="cursor-pointer mr-2" title="Administrar cajas físicas" @click="manageDrawers(branch)">
+                  <lucide-icon name="wallet-cards" class="text-info text-20"/>
                 </a>
                 <a class="cursor-pointer mr-2" title="Editar" @click="openEdit(branch)">
                   <lucide-icon name="pencil" class="text-success text-20"/>
@@ -291,7 +303,7 @@ export default {
         await Promise.all([this.loadOptions(), this.loadBranches()]);
         this.$root.$bvToast.toast('Sucursal guardada correctamente.', { title: 'Éxito', variant: 'success', solid: true });
       } catch (e) {
-        const data = e && e.response && e.response.data;
+        const data = (e && e.response && e.response.data) || (e && typeof e === 'object' ? e : null);
         this.error = (data && (data.message || (data.errors && Object.values(data.errors)[0][0]))) || 'No se pudo guardar la sucursal.';
       } finally {
         this.saving = false;
@@ -313,11 +325,14 @@ export default {
         await this.loadBranches();
         this.$root.$bvToast.toast('Ubicación de inventario creada.', { title: 'Éxito', variant: 'success', solid: true });
       } catch (e) {
-        const data = e && e.response && e.response.data;
+        const data = (e && e.response && e.response.data) || (e && typeof e === 'object' ? e : null);
         this.locationError = (data && (data.message || (data.errors && Object.values(data.errors)[0][0]))) || 'No se pudo crear la ubicación.';
       } finally {
         this.savingLocation = false;
       }
+    },
+    manageDrawers(branch) {
+      this.$router.push({ path: '/app/settings/cash_drawers', query: { branch_id: branch.id } }).catch(() => {});
     },
     removeBranch(branch) {
       this.$swal({ title: 'Desactivar sucursal', text: `Se desactivará ${branch.name}. No se eliminará su historial.`, type: 'warning', showCancelButton: true, confirmButtonText: 'Desactivar', cancelButtonText: 'Cancelar' }).then(async result => {
@@ -330,6 +345,9 @@ export default {
     },
     goWarehouses() {
       window.location.href = '/app/settings/warehouses';
+    },
+    goCashDrawers() {
+      this.$router.push('/app/settings/cash_drawers').catch(() => {});
     },
     goManual() {
       this.$router.push({ name: 'KnowledgeBaseList' }).catch(() => {});
