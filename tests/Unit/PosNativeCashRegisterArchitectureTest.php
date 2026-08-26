@@ -28,8 +28,8 @@ class PosNativeCashRegisterArchitectureTest extends TestCase
     {
         $controller = file_get_contents(base_path('app/Http/Controllers/PosCashRegisterController.php'));
 
-        $this->assertStringContainsString("where($column('inventory_location_id'), $register->inventory_location_id)", $controller);
-        $this->assertStringContainsString("'inventory_location' => optional($register->inventoryLocation)->name", $controller);
+        $this->assertStringContainsString("inventory_location_id'), \$register->inventory_location_id", $controller);
+        $this->assertStringContainsString("'inventory_location' => optional(\$register->inventoryLocation)->name", $controller);
         $this->assertStringContainsString('warehouse_id is written only as a legacy compatibility pointer', $controller);
     }
 
