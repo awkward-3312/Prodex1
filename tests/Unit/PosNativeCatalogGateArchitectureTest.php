@@ -21,6 +21,7 @@ class PosNativeCatalogGateArchitectureTest extends TestCase
     {
         $script = file_get_contents(base_path('resources/static/prodex-pos-location-ui.js'));
 
+        // DOM decoration must never create its own MutationObserver feedback loop.
         $this->assertStringContainsString("eyebrow.textContent !== expectedEyebrow", $script);
         $this->assertStringContainsString("text.textContent !== expectedLabel", $script);
         $this->assertStringContainsString("drawer.style.display !== 'none'", $script);
