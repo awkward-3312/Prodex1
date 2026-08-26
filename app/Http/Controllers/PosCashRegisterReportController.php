@@ -25,11 +25,11 @@ use Illuminate\Support\Facades\Auth;
  */
 class PosCashRegisterReportController extends CashRegisterController
 {
-    public function report(
-        Request $request,
-        BranchScopeService $branchScope,
-        InventoryLocationScopeService $locationScope
-    ) {
+    public function report(Request $request)
+    {
+        $branchScope = app(BranchScopeService::class);
+        $locationScope = app(InventoryLocationScopeService::class);
+
         $this->authorizeForUser($request->user('api'), 'cash_register_report', Sale::class);
 
         $user = Auth::user();

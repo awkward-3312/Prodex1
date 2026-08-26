@@ -2,7 +2,11 @@
 
 namespace Tests\Unit;
 
+use App\Http\Controllers\CashRegisterController;
+use App\Http\Controllers\PosCashRegisterReportController;
+use App\Http\Controllers\SafePosCashRegisterReportController;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 class PosNativeCashRegisterReportArchitectureTest extends TestCase
 {
@@ -17,6 +21,17 @@ class PosNativeCashRegisterReportArchitectureTest extends TestCase
         $this->assertStringContainsString("'cash_drawer_id'", $controller);
         $this->assertStringContainsString('is_legacy_context', $controller);
         $this->assertStringContainsString('legacy_warehouse_id', $controller);
+    }
+
+    public function test_report_controller_signatures_are_php_compatible(): void
+    {
+        $base = new ReflectionMethod(CashRegisterController::class, 'report');
+        $native = new ReflectionMethod(PosCashRegisterReportController::class, 'report');
+        $safe = new ReflectionMethod(SafePosCashRegisterReportController::class, 'report');
+
+        $this->assertSame($base->getNumberOfRequiredParameters(), $native->getNumberOfRequiredParameters());
+        $this->assertSame($native->getNumberOfRequiredParameters(), $safe->getNumberOfRequiredParameters());
+        $this->assertSame(1, $native->getNumberOfRequiredParameters());
     }
 
     public function test_report_frontend_exposes_native_filters(): void
@@ -38,6 +53,6 @@ class PosNativeCashRegisterReportArchitectureTest extends TestCase
 
         $this->assertStringContainsString('tenant_pos_reports.php', $provider);
         $this->assertStringContainsString('report/cash_registers_native', $routes);
-        $this->assertStringContainsString('PosCashRegisterReportController@report', $routes);
+        $this->assertStringContainsString('SafePosCashRegisterReportController@report', $routes);
     }
 }
