@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Organization;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\CashDrawer;
 use App\Models\InventoryLocation;
 use App\Models\Role;
 use App\Models\role_user;
@@ -28,15 +29,40 @@ class UserAccessController extends Controller
         if ((int) $actor->role_id !== 1) $branches->whereIn('id', $branchIds ?: [0]);
         $branches = $branches->get(['id', 'code', 'name', 'default_inventory_location_id']);
 
+        $visibleBranchIds = $branches->pluck('id')->map(fn ($id) => (int) $id)->all();
         $locations = InventoryLocation::active()
-            ->whereIn('branch_id', $branches->pluck('id')->all() ?: [0])
+            ->whereIn('branch_id', $visibleBranchIds ?: [0])
             ->orderBy('branch_id')->orderBy('name')
             ->get(['id', 'branch_id', 'code', 'name', 'type', 'is_sellable', 'is_default_sales']);
 
+        $cashDrawers = CashDrawer::whereNull('deleted_at')
+            ->where('is_active', true)
+            ->whereIn('branch_id', $visibleBranchIds ?: [0])
+            ->whereNotNull('inventory_location_id')
+            ->orderBy('branch_id')->orderBy('name')
+            ->get(['id', 'branch_id', 'inventory_location_id', 'name', 'code', 'is_active']);
+
+        $roles = Role::with('permissions:id,name')
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name', 'description'])
+            ->map(function (Role $role) {
+                $permissions = $role->permissions->pluck('name');
+                $usesPos = $permissions->contains('Pos_view');
+                return [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'description' => $role->description,
+                    'uses_pos' => $usesPos,
+                    'requires_cash_drawer' => $usesPos && ! $permissions->contains('cash_register_override_assignment'),
+                ];
+            })->values();
+
         return response()->json([
-            'roles' => Role::whereNull('deleted_at')->orderBy('name')->get(['id', 'name', 'description']),
+            'roles' => $roles,
             'branches' => $branches,
             'inventory_locations' => $locations,
+            'cash_drawers' => $cashDrawers,
             'can_global_scope' => (int) $actor->role_id === 1,
         ]);
     }
@@ -61,6 +87,7 @@ class UserAccessController extends Controller
             'inventory_location_ids.*' => ['integer'],
             'default_branch_id' => ['nullable', 'integer'],
             'default_inventory_location_id' => ['nullable', 'integer'],
+            'default_cash_drawer_id' => ['nullable', 'integer'],
             'record_view' => ['sometimes', 'boolean'],
             'avatar' => ['nullable', 'image', 'max:2048'],
         ]);
@@ -89,9 +116,26 @@ class UserAccessController extends Controller
             if (! in_array((int) $defaultLocationId, $locationIds, true)) $locationIds[] = (int) $defaultLocationId;
         }
 
+        $requiresDrawer = $this->roleRequiresCashDrawer((int) $validated['role_id']);
+        $defaultCashDrawerId = ! empty($validated['default_cash_drawer_id']) ? (int) $validated['default_cash_drawer_id'] : null;
+
+        if ($requiresDrawer && $scope === 'all') {
+            throw ValidationException::withMessages([
+                'scope' => 'Un rol POS restringido debe tener una sucursal, ubicación y caja física predeterminadas; no puede crearse con alcance global.',
+            ]);
+        }
+        if ($requiresDrawer && ! $defaultCashDrawerId) {
+            throw ValidationException::withMessages([
+                'default_cash_drawer_id' => 'Este rol opera POS sin permiso para cambiar de caja. Asigna una caja física predeterminada.',
+            ]);
+        }
+        if ($defaultCashDrawerId) {
+            $this->assertDrawerMatchesContext($defaultCashDrawerId, $defaultBranchId, $defaultLocationId);
+        }
+
         $filename = $this->storeAvatar($request);
 
-        $user = DB::transaction(function () use ($validated, $scope, $branchIds, $locationIds, $defaultBranchId, $defaultLocationId, $filename) {
+        $user = DB::transaction(function () use ($validated, $scope, $branchIds, $locationIds, $defaultBranchId, $defaultLocationId, $defaultCashDrawerId, $filename) {
             $user = User::create([
                 'firstname' => $validated['firstname'],
                 'lastname' => $validated['lastname'],
@@ -106,7 +150,7 @@ class UserAccessController extends Controller
                 'default_warehouse_id' => null,
                 'default_branch_id' => $defaultBranchId ? (int) $defaultBranchId : null,
                 'default_inventory_location_id' => $defaultLocationId ? (int) $defaultLocationId : null,
-                'default_cash_drawer_id' => null,
+                'default_cash_drawer_id' => $defaultCashDrawerId,
                 'record_view' => (bool) ($validated['record_view'] ?? false),
             ]);
 
@@ -122,7 +166,7 @@ class UserAccessController extends Controller
 
         return response()->json([
             'success' => true,
-            'user' => $user->load(['defaultBranch:id,name', 'defaultInventoryLocation:id,name']),
+            'user' => $user->load(['defaultBranch:id,name', 'defaultInventoryLocation:id,name', 'defaultCashDrawer:id,name,code']),
         ], 201);
     }
 
@@ -154,6 +198,30 @@ class UserAccessController extends Controller
             throw ValidationException::withMessages(['inventory_location_ids' => 'Una ubicación seleccionada no pertenece a las sucursales asignadas.']);
         }
         return $ids;
+    }
+
+    private function roleRequiresCashDrawer(int $roleId): bool
+    {
+        $role = Role::with('permissions:id,name')->whereNull('deleted_at')->find($roleId);
+        if (! $role) return false;
+        $permissions = $role->permissions->pluck('name');
+        return $permissions->contains('Pos_view') && ! $permissions->contains('cash_register_override_assignment');
+    }
+
+    private function assertDrawerMatchesContext(int $drawerId, ?int $branchId, ?int $locationId): void
+    {
+        if (! $branchId || ! $locationId) {
+            throw ValidationException::withMessages([
+                'default_cash_drawer_id' => 'Selecciona primero la sucursal y ubicación predeterminadas.',
+            ]);
+        }
+
+        $drawer = CashDrawer::whereNull('deleted_at')->where('is_active', true)->find($drawerId);
+        if (! $drawer || (int) $drawer->branch_id !== (int) $branchId || (int) $drawer->inventory_location_id !== (int) $locationId) {
+            throw ValidationException::withMessages([
+                'default_cash_drawer_id' => 'La caja física debe estar activa y pertenecer a la sucursal y ubicación predeterminadas.',
+            ]);
+        }
     }
 
     private function assertActorCanGrantBranches(User $actor, array $branchIds, string $scope): void
