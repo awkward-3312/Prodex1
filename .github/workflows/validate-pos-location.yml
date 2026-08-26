@@ -52,14 +52,16 @@ jobs:
           php -l routes/tenant_pos_register.php
           php -l routes/tenant_pos_reports.php
           php -l database/migrations/tenant/2026_08_25_181500_add_native_location_context_to_cash_registers.php
+          php -l database/migrations/tenant/2026_08_26_091500_make_cash_register_warehouse_nullable.php
           php -l tests/Unit/PosLocationStockBridgeTest.php
           php -l tests/Unit/PosLocationSaleStockServiceTest.php
           php -l tests/Unit/PosNativeCashRegisterArchitectureTest.php
           php -l tests/Unit/PosNativeCashRegisterReportArchitectureTest.php
           php -l tests/Unit/PosCashDrawerAssignmentArchitectureTest.php
+          php -l tests/Unit/PosCashRegisterWarehouseNullableArchitectureTest.php
           node --check resources/src/utils/posOperationalLocationBridge.js
           node --check resources/static/prodex-pos-location-ui.js
           node --check resources/static/prodex-pos-location-catalog.js
           node --check resources/static/prodex-pos-optional-cash-drawer.js
       - name: Run focused bridge tests
-        run: vendor/bin/phpunit tests/Unit/PosLocationStockBridgeTest.php tests/Unit/PosLocationSaleStockServiceTest.php tests/Unit/PosNativeCashRegisterArchitectureTest.php tests/Unit/PosNativeCashRegisterReportArchitectureTest.php tests/Unit/PosCashDrawerAssignmentArchitectureTest.php
+        run: vendor/bin/phpunit tests/Unit/PosLocationStockBridgeTest.php tests/Unit/PosLocationSaleStockServiceTest.php tests/Unit/PosNativeCashRegisterArchitectureTest.php tests/Unit/PosNativeCashRegisterReportArchitectureTest.php tests/Unit/PosCashDrawerAssignmentArchitectureTest.php tests/Unit/PosCashRegisterWarehouseNullableArchitectureTest.php
