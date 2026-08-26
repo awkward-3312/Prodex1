@@ -6,24 +6,35 @@ use PHPUnit\Framework\TestCase;
 
 class PosNativeCatalogGateArchitectureTest extends TestCase
 {
-    public function test_native_catalog_bridge_releases_only_the_pos_product_gate(): void
+    public function test_native_catalog_bridge_does_not_mutate_vue_component_state(): void
     {
         $script = file_get_contents(base_path('resources/static/prodex-pos-location-catalog.js'));
 
-        $this->assertStringContainsString('function releasePosCatalogGate()', $script);
-        $this->assertStringContainsString("document.querySelector('.pos-codecanyon')", $script);
-        $this->assertStringContainsString("hasOwnProperty.call(vm.\$data, 'productsReady')", $script);
-        $this->assertStringContainsString('vm.productsReady = true', $script);
-        $this->assertStringContainsString('config.__prodexPosNativeCatalog', $script);
-        $this->assertStringContainsString('isNativeCatalog(config)', $script);
+        $this->assertStringContainsString('config.__prodexPosNativeCatalog = true', $script);
+        $this->assertStringContainsString("parsed.pathname = '/api/pos/location-inventory/' + ctx.inventory_location_id + '/catalog'", $script);
+        $this->assertStringNotContainsString('__vue__', $script);
+        $this->assertStringNotContainsString('productsReady', $script);
+        $this->assertStringNotContainsString('releasePosCatalogGate', $script);
     }
 
-    public function test_gate_recovery_does_not_mutate_cash_register_or_stock_business_state(): void
+    public function test_operational_chrome_patch_is_idempotent_and_animation_frame_throttled(): void
     {
-        $script = file_get_contents(base_path('resources/static/prodex-pos-location-catalog.js'));
+        $script = file_get_contents(base_path('resources/static/prodex-pos-location-ui.js'));
 
-        // Keep this recovery strictly visual: operational state remains owned by POS services/controllers.
-        $this->assertStringNotContainsString('cash_register_id =', $script);
+        $this->assertStringContainsString("eyebrow.textContent !== expectedEyebrow", $script);
+        $this->assertStringContainsString("text.textContent !== expectedLabel", $script);
+        $this->assertStringContainsString("drawer.style.display !== 'none'", $script);
+        $this->assertStringContainsString('var chromePatchScheduled = false', $script);
+        $this->assertStringContainsString('window.requestAnimationFrame(run)', $script);
+        $this->assertStringContainsString('scheduleOperationalChrome()', $script);
+        $this->assertStringNotContainsString('setInterval(function ()', $script);
+    }
+
+    public function test_observer_safety_fix_does_not_mutate_pos_business_state(): void
+    {
+        $script = file_get_contents(base_path('resources/static/prodex-pos-location-ui.js'));
+
+        $this->assertStringNotContainsString('cash_register_id = null', $script);
         $this->assertStringNotContainsString('cash_drawer_id = null', $script);
         $this->assertStringNotContainsString('warehouse_id = null', $script);
         $this->assertStringNotContainsString('inventory_location_id = null', $script);
