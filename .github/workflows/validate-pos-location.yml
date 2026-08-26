@@ -34,13 +34,15 @@ jobs:
           php -l app/Services/PosLocationSaleStockService.php
           php -l app/Services/PosOperationalContextService.php
           php -l app/Services/UserOperationalAssignmentService.php
-          php -l app/Services/PosOptionalCashDrawerAssignmentService.php
           php -l app/Services/LocationAwareBatchService.php
           php -l app/Services/LocationAwareSerialNumberService.php
           php -l app/Http/Controllers/PosLocationInventoryController.php
           php -l app/Http/Controllers/PosLocationCatalogController.php
           php -l app/Http/Controllers/PosCashRegisterController.php
           php -l app/Http/Controllers/PosCashRegisterReportController.php
+          php -l app/Http/Controllers/Organization/UserAccessController.php
+          php -l app/Http/Controllers/Organization/UserAccessEditController.php
+          php -l app/Http/Controllers/Organization/EmployeeAccessController.php
           php -l app/Models/product_warehouse.php
           php -l app/Models/Sale.php
           php -l app/Models/CashRegister.php
@@ -54,11 +56,10 @@ jobs:
           php -l tests/Unit/PosLocationSaleStockServiceTest.php
           php -l tests/Unit/PosNativeCashRegisterArchitectureTest.php
           php -l tests/Unit/PosNativeCashRegisterReportArchitectureTest.php
-          php -l tests/Unit/PosOptionalCashDrawerBridgeTest.php
-          php -l tests/Unit/PosOptionalCashDrawerArchitectureTest.php
+          php -l tests/Unit/PosCashDrawerAssignmentArchitectureTest.php
           node --check resources/src/utils/posOperationalLocationBridge.js
           node --check resources/static/prodex-pos-location-ui.js
           node --check resources/static/prodex-pos-location-catalog.js
           node --check resources/static/prodex-pos-optional-cash-drawer.js
       - name: Run focused bridge tests
-        run: vendor/bin/phpunit tests/Unit/PosLocationStockBridgeTest.php tests/Unit/PosLocationSaleStockServiceTest.php tests/Unit/PosNativeCashRegisterArchitectureTest.php tests/Unit/PosNativeCashRegisterReportArchitectureTest.php tests/Unit/PosOptionalCashDrawerBridgeTest.php tests/Unit/PosOptionalCashDrawerArchitectureTest.php
+        run: vendor/bin/phpunit tests/Unit/PosLocationStockBridgeTest.php tests/Unit/PosLocationSaleStockServiceTest.php tests/Unit/PosNativeCashRegisterArchitectureTest.php tests/Unit/PosNativeCashRegisterReportArchitectureTest.php tests/Unit/PosCashDrawerAssignmentArchitectureTest.php

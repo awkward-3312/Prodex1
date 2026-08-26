@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <breadcumb page="Cajas físicas" :folder="$t('Settings')" />
+    <breadcumb page="Cajas físicas" :folder="contextBranch ? contextBranch.name : $t('Settings')" />
 
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
@@ -8,16 +8,28 @@
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
         <div>
           <h5 class="mb-1">Cajas físicas</h5>
-          <small class="text-muted">Cada caja pertenece a una sucursal y descuenta ventas desde una ubicación de inventario vendible, normalmente el Piso de venta.</small>
+          <small class="text-muted">
+            <template v-if="contextBranch">Administrando cajas de {{ contextBranch.name }}. </template>
+            Cada caja pertenece a una sucursal y opera desde una ubicación vendible, normalmente Piso de venta.
+          </small>
         </div>
-        <b-button variant="primary" class="btn-rounded" @click="openCreate">
-          <lucide-icon name="plus" class="mr-1" />
-          Agregar
-        </b-button>
+        <div class="mt-2 mt-md-0">
+          <b-button v-if="contextBranchId" variant="outline-secondary" class="mr-2" @click="backToBranches">
+            <lucide-icon name="arrow-left" class="mr-1"/> Sucursales
+          </b-button>
+          <b-button variant="primary" class="btn-rounded" @click="openCreate">
+            <lucide-icon name="plus" class="mr-1" />
+            Agregar caja
+          </b-button>
+        </div>
       </div>
 
       <b-alert v-if="!branches.length" show variant="warning">
         Primero crea una sucursal con inventario y un Piso de venta antes de agregar una caja física.
+      </b-alert>
+
+      <b-alert v-if="contextBranch && !sellableLocationsForContext.length" show variant="warning">
+        {{ contextBranch.name }} no tiene una ubicación activa habilitada para venta. Crea o habilita un Piso de venta antes de agregar cajas físicas.
       </b-alert>
 
       <div class="table-responsive">
@@ -35,7 +47,7 @@
           </thead>
           <tbody>
             <tr v-for="drawer in cashDrawers" :key="drawer.id">
-              <td>{{ drawer.name }}</td>
+              <td><strong>{{ drawer.name }}</strong></td>
               <td>{{ drawer.code }}</td>
               <td>
                 <span v-if="drawer.branch">{{ drawer.branch.name }}</span>
@@ -56,14 +68,14 @@
                 <a href="#" class="mr-3" title="Editar" @click.prevent="openEdit(drawer)">
                   <lucide-icon class="text-success" name="pencil" />
                 </a>
-                <a href="#" title="Eliminar" @click.prevent="removeDrawer(drawer)">
-                  <lucide-icon class="text-danger" name="trash-2" />
+                <a href="#" title="Desactivar" @click.prevent="removeDrawer(drawer)">
+                  <lucide-icon class="text-danger" name="archive" />
                 </a>
               </td>
             </tr>
             <tr v-if="!cashDrawers.length">
               <td colspan="7" class="text-center text-muted py-4">
-                No hay cajas físicas registradas.
+                {{ contextBranch ? 'Esta sucursal todavía no tiene cajas físicas registradas.' : 'No hay cajas físicas registradas.' }}
               </td>
             </tr>
           </tbody>
@@ -72,14 +84,9 @@
     </b-card>
 
     <validation-observer ref="CashDrawerForm">
-      <b-modal
-        id="CashDrawerModal"
-        hide-footer
-        size="lg"
-        :title="editMode ? 'Editar caja física' : 'Agregar caja física'"
-      >
+      <b-modal id="CashDrawerModal" hide-footer size="lg" :title="editMode ? 'Editar caja física' : 'Agregar caja física'">
         <b-alert show variant="light" class="border">
-          La caja no crea inventario propio. Las ventas realizadas desde ella descuentan de la ubicación seleccionada.
+          La caja física identifica el punto donde trabaja el cajero. No crea inventario propio: las ventas descuentan de la ubicación seleccionada.
         </b-alert>
 
         <b-form @submit.prevent="submitDrawer">
@@ -87,11 +94,7 @@
             <b-col md="6">
               <validation-provider name="Nombre" rules="required" v-slot="validationContext">
                 <b-form-group label="Nombre *">
-                  <b-form-input
-                    v-model.trim="form.name"
-                    :state="getValidationState(validationContext)"
-                    placeholder="Ej. Caja principal"
-                  />
+                  <b-form-input v-model.trim="form.name" :state="getValidationState(validationContext)" placeholder="Ej. Caja 1"/>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
               </validation-provider>
@@ -100,11 +103,7 @@
             <b-col md="6">
               <validation-provider name="Código" rules="required" v-slot="validationContext">
                 <b-form-group label="Código *">
-                  <b-form-input
-                    v-model.trim="form.code"
-                    :state="getValidationState(validationContext)"
-                    placeholder="Ej. CAJA-MALL-01"
-                  />
+                  <b-form-input v-model.trim="form.code" :state="getValidationState(validationContext)" placeholder="Ej. SPS-PISO-CAJA-01"/>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
               </validation-provider>
@@ -118,12 +117,11 @@
                     :reduce="option => option.value"
                     :options="branchOptions"
                     :class="{ 'is-invalid': validationContext.errors.length }"
+                    :disabled="!!contextBranchId"
                     placeholder="Selecciona una sucursal"
                     @input="onBranchChange"
                   />
-                  <b-form-invalid-feedback class="d-block" v-if="validationContext.errors.length">
-                    {{ validationContext.errors[0] }}
-                  </b-form-invalid-feedback>
+                  <b-form-invalid-feedback class="d-block" v-if="validationContext.errors.length">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
               </validation-provider>
             </b-col>
@@ -138,9 +136,7 @@
                     :class="{ 'is-invalid': validationContext.errors.length }"
                     placeholder="Ej. Piso de venta"
                   />
-                  <b-form-invalid-feedback class="d-block" v-if="validationContext.errors.length">
-                    {{ validationContext.errors[0] }}
-                  </b-form-invalid-feedback>
+                  <b-form-invalid-feedback class="d-block" v-if="validationContext.errors.length">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   <small class="text-muted">Solo aparecen ubicaciones activas y habilitadas para venta de la sucursal seleccionada.</small>
                 </b-form-group>
               </validation-provider>
@@ -156,22 +152,15 @@
 
             <b-col md="12">
               <b-form-group label="Descripción">
-                <b-form-textarea
-                  v-model.trim="form.description"
-                  rows="3"
-                  placeholder="Descripción opcional"
-                />
+                <b-form-textarea v-model.trim="form.description" rows="3" placeholder="Ej. Caja principal del mostrador derecho"/>
               </b-form-group>
             </b-col>
 
             <b-col md="12" class="mt-3">
               <b-button type="submit" variant="primary" :disabled="submitting || !locationOptions.length">
-                <lucide-icon name="check" class="mr-1" />
-                Guardar
+                <lucide-icon name="check" class="mr-1" /> Guardar caja
               </b-button>
-              <b-button variant="secondary" class="ml-2" @click="$bvModal.hide('CashDrawerModal')">
-                Cancelar
-              </b-button>
+              <b-button variant="secondary" class="ml-2" @click="$bvModal.hide('CashDrawerModal')">Cancelar</b-button>
               <div v-if="submitting" class="spinner sm spinner-primary mt-3"></div>
             </b-col>
           </b-row>
@@ -185,15 +174,14 @@
 import NProgress from "nprogress";
 
 export default {
-  metaInfo: {
-    title: "Cajas físicas"
-  },
+  metaInfo: { title: "Cajas físicas" },
 
   data() {
     return {
       isLoading: true,
       submitting: false,
       editMode: false,
+      contextBranchId: null,
       cashDrawers: [],
       branches: [],
       inventoryLocations: [],
@@ -202,8 +190,19 @@ export default {
   },
 
   computed: {
+    contextBranch() {
+      if (!this.contextBranchId) return null;
+      return this.branches.find(branch => Number(branch.id) === Number(this.contextBranchId)) || null;
+    },
+    sellableLocationsForContext() {
+      if (!this.contextBranchId) return [];
+      return this.inventoryLocations.filter(location => Number(location.branch_id) === Number(this.contextBranchId) && !!location.is_sellable);
+    },
     branchOptions() {
-      return this.branches.map(branch => ({
+      const branches = this.contextBranchId
+        ? this.branches.filter(branch => Number(branch.id) === Number(this.contextBranchId))
+        : this.branches;
+      return branches.map(branch => ({
         label: branch.code ? `${branch.name} (${branch.code})` : branch.name,
         value: branch.id
       }));
@@ -232,41 +231,31 @@ export default {
         is_active: 1
       };
     },
-
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
     },
-
     toast(variant, message, title) {
-      this.$root.$bvToast.toast(message, {
-        title,
-        variant,
-        solid: true
-      });
+      this.$root.$bvToast.toast(message, { title, variant, solid: true });
     },
-
     errorMessage(error) {
-      const data = error.response && error.response.data;
+      const data = (error && error.response && error.response.data) || (error && typeof error === 'object' ? error : null);
       if (data && data.errors) {
         const first = Object.keys(data.errors)[0];
-        if (first && data.errors[first] && data.errors[first][0]) {
-          return data.errors[first][0];
-        }
+        if (first && data.errors[first] && data.errors[first][0]) return data.errors[first][0];
       }
-      return (data && data.message) || "No se pudo completar la operación.";
+      return (data && (data.message || data.error)) || "No se pudo completar la operación.";
     },
-
     resetForm() {
       this.form = this.emptyForm();
-      if (this.branches.length === 1) {
+      if (this.contextBranchId) {
+        this.form.branch_id = Number(this.contextBranchId);
+        this.selectDefaultLocation();
+      } else if (this.branches.length === 1) {
         this.form.branch_id = this.branches[0].id;
         this.selectDefaultLocation();
       }
-      if (this.$refs.CashDrawerForm) {
-        this.$refs.CashDrawerForm.reset();
-      }
+      if (this.$refs.CashDrawerForm) this.$refs.CashDrawerForm.reset();
     },
-
     selectDefaultLocation() {
       const branch = this.branches.find(item => Number(item.id) === Number(this.form.branch_id));
       const options = this.locationOptions;
@@ -275,12 +264,10 @@ export default {
         : null;
       this.form.inventory_location_id = preferred ? preferred.value : (options.length === 1 ? options[0].value : null);
     },
-
     onBranchChange() {
       this.form.inventory_location_id = null;
       this.selectDefaultLocation();
     },
-
     openCreate() {
       if (!this.branches.length) {
         this.toast("warning", "Primero crea una sucursal con Piso de venta.", "Atención");
@@ -288,9 +275,12 @@ export default {
       }
       this.editMode = false;
       this.resetForm();
+      if (!this.locationOptions.length) {
+        this.toast("warning", "La sucursal seleccionada no tiene una ubicación habilitada para venta.", "Atención");
+        return;
+      }
       this.$bvModal.show("CashDrawerModal");
     },
-
     openEdit(drawer) {
       this.editMode = true;
       this.form = {
@@ -305,12 +295,12 @@ export default {
       };
       this.$bvModal.show("CashDrawerModal");
     },
-
     async loadData() {
       this.isLoading = true;
       NProgress.start();
       try {
-        const response = await axios.get("cash-drawers");
+        const params = this.contextBranchId ? { branch_id: this.contextBranchId } : {};
+        const response = await axios.get("cash-drawers", { params, meta: { skipErrorRedirect: true } });
         this.cashDrawers = response.data.cash_drawers || [];
         this.branches = response.data.branches || [];
         this.inventoryLocations = response.data.inventory_locations || [];
@@ -321,7 +311,6 @@ export default {
         NProgress.done();
       }
     },
-
     submitDrawer() {
       this.$refs.CashDrawerForm.validate().then(valid => {
         if (!valid || !this.form.branch_id || !this.form.inventory_location_id) {
@@ -331,13 +320,11 @@ export default {
         this.saveDrawer();
       });
     },
-
     async saveDrawer() {
       this.submitting = true;
       const payload = {
         branch_id: this.form.branch_id,
         inventory_location_id: this.form.inventory_location_id,
-        // Preserve a legacy compatibility pointer for already-existing drawers.
         warehouse_id: this.form.warehouse_id || null,
         name: this.form.name,
         code: this.form.code,
@@ -346,17 +333,10 @@ export default {
       };
 
       try {
-        if (this.editMode) {
-          await axios.put("cash-drawers/" + this.form.id, payload);
-        } else {
-          await axios.post("cash-drawers", payload);
-        }
+        if (this.editMode) await axios.put("cash-drawers/" + this.form.id, payload, { meta: { skipErrorRedirect: true } });
+        else await axios.post("cash-drawers", payload, { meta: { skipErrorRedirect: true } });
         this.$bvModal.hide("CashDrawerModal");
-        this.toast(
-          "success",
-          this.editMode ? "Caja física actualizada correctamente." : "Caja física creada correctamente.",
-          "Éxito"
-        );
+        this.toast("success", this.editMode ? "Caja física actualizada correctamente." : "Caja física creada correctamente.", "Éxito");
         await this.loadData();
       } catch (error) {
         this.toast("danger", this.errorMessage(error), "Error");
@@ -364,30 +344,34 @@ export default {
         this.submitting = false;
       }
     },
-
     removeDrawer(drawer) {
       this.$swal({
-        title: "¿Eliminar caja física?",
-        text: "La caja dejará de estar disponible para nuevas sesiones. El historial se conserva.",
+        title: "¿Desactivar caja física?",
+        text: "La caja dejará de estar disponible para nuevas sesiones. El historial de ventas y arqueos se conserva.",
         type: "warning",
         showCancelButton: true,
         confirmButtonColor: "#d33",
         cancelButtonText: "Cancelar",
-        confirmButtonText: "Eliminar"
+        confirmButtonText: "Desactivar"
       }).then(async result => {
         if (!(result.value || result.isConfirmed)) return;
         try {
-          await axios.delete("cash-drawers/" + drawer.id);
-          this.toast("success", "Caja física eliminada correctamente.", "Éxito");
+          await axios.delete("cash-drawers/" + drawer.id, { meta: { skipErrorRedirect: true } });
+          this.toast("success", "Caja física desactivada correctamente.", "Éxito");
           await this.loadData();
         } catch (error) {
           this.toast("danger", this.errorMessage(error), "Error");
         }
       });
+    },
+    backToBranches() {
+      this.$router.push('/app/organization/branches').catch(() => {});
     }
   },
 
   created() {
+    const queryBranchId = Number(this.$route && this.$route.query && this.$route.query.branch_id || 0);
+    this.contextBranchId = queryBranchId > 0 ? queryBranchId : null;
     this.loadData();
   }
 };
