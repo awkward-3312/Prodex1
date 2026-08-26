@@ -43,6 +43,17 @@ class PosNativeCashRegisterArchitectureTest extends TestCase
         $this->assertStringContainsString('delete data.warehouse_id', $bridge);
     }
 
+    public function test_current_register_read_cannot_block_global_initial_loader(): void
+    {
+        $bridge = file_get_contents(base_path('resources/src/utils/posOperationalLocationBridge.js'));
+
+        $this->assertStringContainsString('prodexCurrentRegisterRead: true', $bridge);
+        $this->assertMatchesRegularExpression(
+            '/prodexCurrentRegisterRead:\s*true[\s\S]{0,120}skipInitialLoader:\s*true|skipInitialLoader:\s*true[\s\S]{0,120}prodexCurrentRegisterRead:\s*true/',
+            $bridge
+        );
+    }
+
     public function test_tenant_upgrade_includes_native_register_migration(): void
     {
         $command = file_get_contents(base_path('app/Console/Commands/ProdexTenantUpgrade.php'));
