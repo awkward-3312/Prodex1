@@ -60,6 +60,7 @@ class RouteServiceProvider extends ServiceProvider
             'tenant_organization.php',
             'tenant_pos_context.php',
             'tenant_pos_location.php',
+            'tenant_pos_register.php',
             'tenant_transfer_locations.php',
             'tenant_transfer_logistics.php',
             'tenant_transfer_overrides.php',

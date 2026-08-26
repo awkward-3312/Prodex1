@@ -110,8 +110,9 @@ function mapCashDrawers(context) {
   }
 
   return drawers.map(drawer => Object.assign({}, drawer, {
-    // Legacy POS filters drawers by warehouse_id. While the POS UI is migrated,
-    // expose the location id through that compatibility field.
+    // Legacy POS components still use warehouse_id as their selection key.
+    // Keep the virtual UI key isolated here; native register requests below
+    // translate it back to branch/location before reaching the backend.
     warehouse_id: Number(drawer.inventory_location_id),
   }));
 }
@@ -243,8 +244,6 @@ async function refreshSaleLocationStock(axios, response) {
     }
     response.data.inventory_location_id = locationId;
   } catch (e) {
-    // Never let a legacy warehouse quantity overwrite the location-aware POS.
-    // The next location delta will refresh the UI when connectivity recovers.
     response.data.updated_stock = [];
   }
   return response;
@@ -260,6 +259,15 @@ function parseBatchPath(path) {
   };
 }
 
+function nativeRegisterPath(path) {
+  const current = path.match(/^cash-registers\/current\/(\d+)$/);
+  if (current) return `pos/registers/current/${current[1]}`;
+  if (path === 'cash-registers/open') return 'pos/registers/open';
+  if (path === 'cash-registers/cash-in-out') return 'pos/registers/cash-in-out';
+  if (path === 'cash-registers/close') return 'pos/registers/close';
+  return null;
+}
+
 export function installPosOperationalLocationBridge(axios) {
   if (!axios || state.installed) return;
   state.installed = true;
@@ -268,13 +276,13 @@ export function installPosOperationalLocationBridge(axios) {
     const path = normalizePath(config && config.url);
     if (!path || (config.meta && (config.meta.prodexOperationalContextRequest || config.meta.prodexLocationStockRefresh))) return config;
 
-    const isCurrentRegister = /^cash-registers\/current\/\d+$/.test(path);
+    const registerPath = nativeRegisterPath(path);
     const relevant = path === 'pos/data_create_pos'
       || path === 'pos/get_products_pos'
       || path === 'pos/get_products_pos_changes'
       || path === 'pos/create_pos'
       || path === 'serial_numbers/available'
-      || isCurrentRegister
+      || !!registerPath
       || /^batches_for_sale\//.test(path);
 
     if (!relevant) return config;
@@ -282,35 +290,46 @@ export function installPosOperationalLocationBridge(axios) {
     const context = await loadContext(axios);
     if (!context || !context.effective || !context.effective.inventory_location_id) return config;
 
-    if (path === 'pos/data_create_pos') {
-      return config;
-    }
+    if (path === 'pos/data_create_pos') return config;
 
-    if (isCurrentRegister) {
-      const params = Object.assign({}, config.params || {});
-      const location = locationForConfig(context, config);
-      const compatibilityId = location ? compatibilityWarehouseId(context, location) : null;
-
-      // The POS UI exposes an inventory-location id through its legacy
-      // sale.warehouse_id field. The cash-register endpoint still expects a
-      // real warehouses.id, so never send the location id as warehouse_id.
-      if (compatibilityId) params.warehouse_id = compatibilityId;
-      else delete params.warehouse_id;
-
-      // A cashier may legitimately have a sellable location without a physical
-      // drawer. Only scope by drawer when one is actually assigned.
-      if (!context.effective.can_override && Number(context.effective.cash_drawer_id) > 0) {
-        params.cash_drawer_id = Number(context.effective.cash_drawer_id);
-      } else if (!params.cash_drawer_id) {
-        delete params.cash_drawer_id;
-      }
-
-      config.params = params;
+    if (registerPath) {
+      config.url = registerPath;
       withMeta(config, {
         skipErrorRedirect: true,
-        prodexCashRegisterContext: true,
-        inventoryLocationId: Number(context.effective.inventory_location_id),
+        prodexNativeRegister: true,
       });
+
+      if (/^pos\/registers\/current\//.test(registerPath)) {
+        const location = locationForConfig(context, config) || effectiveLocation(context);
+        const branch = location ? branchForLocation(context, location) : null;
+        const params = Object.assign({}, config.params || {});
+        delete params.warehouse_id;
+        params.branch_id = Number((branch && branch.id) || context.effective.branch_id);
+        params.inventory_location_id = Number((location && location.id) || context.effective.inventory_location_id);
+        if (!context.effective.can_override && Number(context.effective.cash_drawer_id) > 0) {
+          params.cash_drawer_id = Number(context.effective.cash_drawer_id);
+        } else if (!params.cash_drawer_id) {
+          delete params.cash_drawer_id;
+        }
+        config.params = params;
+        return config;
+      }
+
+      if (registerPath === 'pos/registers/open') {
+        const data = requestDataObject(config);
+        const location = locationForConfig(context, config) || effectiveLocation(context);
+        const branch = location ? branchForLocation(context, location) : null;
+        delete data.warehouse_id;
+        data.branch_id = Number((branch && branch.id) || context.effective.branch_id);
+        data.inventory_location_id = Number((location && location.id) || context.effective.inventory_location_id);
+        if (!context.effective.can_override && Number(context.effective.cash_drawer_id) > 0) {
+          data.cash_drawer_id = Number(context.effective.cash_drawer_id);
+        } else if (!data.cash_drawer_id) {
+          delete data.cash_drawer_id;
+        }
+        config.data = data;
+      }
+
       return config;
     }
 
@@ -339,9 +358,8 @@ export function installPosOperationalLocationBridge(axios) {
       const compatibilityId = compatibilityWarehouseId(context, location);
       data.branch_id = Number(location.branch_id || (branch && branch.id) || context.effective.branch_id);
       data.inventory_location_id = Number(location.id);
-      // Keep a real legacy warehouse pointer when the branch has one. When it
-      // does not, the location id is only a temporary request compatibility
-      // value; PosLocationStockBridge/Sale normalize it before persistence.
+      // Sale.warehouse_id remains a historical compatibility pointer for now;
+      // operational stock/register decisions are made from branch/location.
       data.warehouse_id = compatibilityId || Number(location.id);
       if (!context.effective.can_override && context.effective.cash_drawer_id) {
         data.cash_drawer_id = Number(context.effective.cash_drawer_id);

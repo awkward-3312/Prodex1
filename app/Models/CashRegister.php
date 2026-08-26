@@ -11,6 +11,8 @@ class CashRegister extends Model
 
     protected $fillable = [
         'user_id',
+        'branch_id',
+        'inventory_location_id',
         'warehouse_id',
         'cash_drawer_id',
         'opening_balance',
@@ -42,6 +44,10 @@ class CashRegister extends Model
         'closed_by_user_name_snapshot',
         'warehouse_id_snapshot',
         'warehouse_name_snapshot',
+        'branch_id_snapshot',
+        'branch_name_snapshot',
+        'inventory_location_id_snapshot',
+        'inventory_location_name_snapshot',
         'cash_drawer_name_snapshot',
         'cash_drawer_code_snapshot',
         'tenant_id_snapshot',
@@ -60,6 +66,8 @@ class CashRegister extends Model
 
     protected $casts = [
         'user_id' => 'integer',
+        'branch_id' => 'integer',
+        'inventory_location_id' => 'integer',
         'warehouse_id' => 'integer',
         'cash_drawer_id' => 'integer',
         'opening_balance' => 'double',
@@ -83,6 +91,8 @@ class CashRegister extends Model
         'opened_by_user_id_snapshot' => 'integer',
         'closed_by_user_id' => 'integer',
         'warehouse_id_snapshot' => 'integer',
+        'branch_id_snapshot' => 'integer',
+        'inventory_location_id_snapshot' => 'integer',
         'session_duration_seconds' => 'integer',
         'closing_snapshot' => 'array',
         'opened_at' => 'datetime',
@@ -94,6 +104,17 @@ class CashRegister extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
+    public function inventoryLocation()
+    {
+        return $this->belongsTo(InventoryLocation::class, 'inventory_location_id');
+    }
+
+    /** Legacy warehouse relation retained for historical sessions/reports. */
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
