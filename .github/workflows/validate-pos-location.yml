@@ -53,8 +53,10 @@ jobs:
           php -l tests/Unit/PosLocationSaleStockServiceTest.php
           php -l tests/Unit/PosNativeCashRegisterArchitectureTest.php
           php -l tests/Unit/PosNativeCashRegisterReportArchitectureTest.php
+          php -l tests/Unit/PosOptionalCashDrawerBridgeTest.php
           node --check resources/src/utils/posOperationalLocationBridge.js
           node --check resources/static/prodex-pos-location-ui.js
           node --check resources/static/prodex-pos-location-catalog.js
+          node --check resources/static/prodex-pos-optional-cash-drawer.js
       - name: Run focused bridge tests
-        run: vendor/bin/phpunit tests/Unit/PosLocationStockBridgeTest.php tests/Unit/PosLocationSaleStockServiceTest.php tests/Unit/PosNativeCashRegisterArchitectureTest.php tests/Unit/PosNativeCashRegisterReportArchitectureTest.php
+        run: vendor/bin/phpunit tests/Unit/PosLocationStockBridgeTest.php tests/Unit/PosLocationSaleStockServiceTest.php tests/Unit/PosNativeCashRegisterArchitectureTest.php tests/Unit/PosNativeCashRegisterReportArchitectureTest.php tests/Unit/PosOptionalCashDrawerBridgeTest.php
