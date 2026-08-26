@@ -312,6 +312,13 @@ export function installPosOperationalLocationBridge(axios) {
           delete params.cash_drawer_id;
         }
         config.params = params;
+        // Current-register lookups are background state checks. They must never
+        // keep the application-wide initial loader visible if a duplicate/read
+        // request is slow or left pending by a legacy POS component.
+        withMeta(config, {
+          skipInitialLoader: true,
+          prodexCurrentRegisterRead: true,
+        });
         return config;
       }
 
