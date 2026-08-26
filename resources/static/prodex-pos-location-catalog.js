@@ -22,26 +22,6 @@
     return !!(parsed && /\/pos\/get_products_pos$/i.test(parsed.pathname));
   }
 
-  function isNativeCatalog(config) {
-    var parsed = parseUrl(config && config.url);
-    return !!(parsed && /\/pos\/location-inventory\/\d+\/catalog$/i.test(parsed.pathname));
-  }
-
-  function releasePosCatalogGate() {
-    try {
-      if (!/\/app\/pos(?:$|[/?#])/i.test(window.location.href || '')) return;
-      var root = document.querySelector('.pos-codecanyon');
-      var vm = root && root.__vue__;
-      if (!vm || !vm.$data || !Object.prototype.hasOwnProperty.call(vm.$data, 'productsReady')) return;
-
-      // The POS shell is intentionally allowed to render as soon as the native
-      // location catalog has produced an HTTP result. Product loading continues
-      // to be represented by productsLoading; a secondary promise/interceptor
-      // must never leave the entire register hidden behind the gate forever.
-      if (vm.productsReady !== true) vm.productsReady = true;
-    } catch (e) {}
-  }
-
   function normalizeId(value) {
     var n = Number(value);
     return Number.isFinite(n) && n > 0 ? n : null;
@@ -118,22 +98,6 @@
         config.__prodexPosNativeLocationId = ctx.inventory_location_id;
         return config;
       });
-    });
-
-    window.axios.interceptors.response.use(function (response) {
-      var config = response && response.config;
-      if ((config && config.__prodexPosNativeCatalog) || isNativeCatalog(config)) {
-        releasePosCatalogGate();
-      }
-      return response;
-    }, function (error) {
-      var config = error && error.config;
-      if ((config && config.__prodexPosNativeCatalog) || isNativeCatalog(config)) {
-        // getProducts() already has its own error/cache handling. Releasing the
-        // shell here preserves that fallback while preventing a permanent gate.
-        releasePosCatalogGate();
-      }
-      return Promise.reject(error);
     });
 
     return true;

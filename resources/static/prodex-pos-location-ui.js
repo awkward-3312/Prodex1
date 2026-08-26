@@ -429,15 +429,20 @@
 
     if (!canUseLocationMode() && !canChooseContext()) return;
 
-    trigger.setAttribute('title', 'Sucursal y ubicación operativa');
-    trigger.setAttribute('data-prodex-location-mode', '1');
+    var expectedTitle = 'Sucursal y ubicación operativa';
+    if (trigger.getAttribute('title') !== expectedTitle) trigger.setAttribute('title', expectedTitle);
+    if (trigger.getAttribute('data-prodex-location-mode') !== '1') trigger.setAttribute('data-prodex-location-mode', '1');
+
     var eyebrow = trigger.querySelector('.pos-wh-trigger-eyebrow');
     var text = trigger.querySelector('.pos-wh-trigger-label');
-    if (eyebrow) eyebrow.textContent = 'Sucursal / ubicación';
-    if (text) text.textContent = contextLabel() || 'Seleccionar ubicación';
+    var expectedEyebrow = 'Sucursal / ubicación';
+    var expectedLabel = contextLabel() || 'Seleccionar ubicación';
+
+    if (eyebrow && eyebrow.textContent !== expectedEyebrow) eyebrow.textContent = expectedEyebrow;
+    if (text && text.textContent !== expectedLabel) text.textContent = expectedLabel;
 
     var drawer = document.querySelector('.wh-drawer-backdrop');
-    if (drawer) drawer.style.display = 'none';
+    if (drawer && drawer.style.display !== 'none') drawer.style.display = 'none';
   }
 
   function closePicker() {
@@ -569,21 +574,33 @@
     if (canChooseContext()) openPicker();
   }, true);
 
+  var chromePatchScheduled = false;
+  function scheduleOperationalChrome() {
+    if (chromePatchScheduled) return;
+    chromePatchScheduled = true;
+
+    var run = function () {
+      chromePatchScheduled = false;
+      if (canUseLocationMode() || canChooseContext()) applyOperationalChrome();
+    };
+
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(run);
+    } else {
+      window.setTimeout(run, 16);
+    }
+  }
+
   var observer = new MutationObserver(function () {
-    if (canUseLocationMode() || canChooseContext()) applyOperationalChrome();
+    scheduleOperationalChrome();
   });
 
   function boot() {
     installAxiosBridge();
-    loadContext(false);
+    loadContext(false).then(scheduleOperationalChrome);
     try {
-      observer.observe(document.documentElement, { childList: true, subtree: true });
+      observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
     } catch (e) {}
-    setInterval(function () {
-      if (/\/app\/pos(?:$|[/?#])/i.test(window.location.href)) {
-        loadContext(false).then(applyOperationalChrome);
-      }
-    }, 3000);
   }
 
   if (document.readyState === 'loading') {
