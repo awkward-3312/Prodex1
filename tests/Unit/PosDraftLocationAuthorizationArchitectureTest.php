@@ -24,8 +24,8 @@ class PosDraftLocationAuthorizationArchitectureTest extends TestCase
 
         $this->assertStringNotContainsString('allowedWarehouseIds($user)', $this->draftPreparationMethod($middleware));
         $this->assertStringContainsString("Warehouse::whereNull('deleted_at')", $middleware);
-        $this->assertStringContainsString("PosController@CreateDraft", $middleware);
-        $this->assertStringContainsString("$path === 'api/pos/create_pos' || $path === 'api/pos/create_draft'", $middleware);
+        $this->assertStringContainsString('PosController@CreateDraft', $middleware);
+        $this->assertStringContainsString("\$path === 'api/pos/create_pos' || \$path === 'api/pos/create_draft'", $middleware);
     }
 
     public function test_create_draft_keeps_legacy_warehouse_requests_unchanged(): void
