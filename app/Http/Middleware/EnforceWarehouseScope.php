@@ -24,9 +24,10 @@ class EnforceWarehouseScope
         $warehouseScope = app(WarehouseScopeService::class);
         $locationScope = app(InventoryLocationScopeService::class);
         $locationTransfer = $this->isLocationTransferPayload($request);
+        $locationPosSale = $this->isLocationPosSale($request);
 
         if ((int) ($user->is_all_warehouses ?? 0) !== 1) {
-            $this->validateRequestSelectors($request, $user, $warehouseScope, $locationScope, $locationTransfer);
+            $this->validateRequestSelectors($request, $user, $warehouseScope, $locationScope, $locationTransfer, $locationPosSale);
             $this->validateScopeEscalation($request, $user, $warehouseScope);
             $this->validateTransferRoute($request, $user, $warehouseScope, $locationScope);
         } else {
@@ -41,11 +42,23 @@ class EnforceWarehouseScope
         $user,
         WarehouseScopeService $warehouseScope,
         InventoryLocationScopeService $locationScope,
-        bool $locationTransfer
+        bool $locationTransfer,
+        bool $locationPosSale
     ): void {
-        $protectedKeys = $locationTransfer
-            ? ['warehouse_id', 'default_warehouse_id']
-            : ['warehouse_id', 'default_warehouse_id', 'from_warehouse_id', 'from_warehouse'];
+        // Location-native POS sales are authorized by Branch -> InventoryLocation ->
+        // CashDrawer. Their warehouse_id is only a historical compatibility pointer
+        // for legacy Sale/report fields and must not decide whether the cashier may sell.
+        if ($locationPosSale) {
+            $locationId = (int) $request->input('inventory_location_id');
+            if (! $locationScope->canAccess($user, $locationId)) {
+                throw new AuthorizationException('No tienes permiso para operar con la ubicación de inventario seleccionada.');
+            }
+            $protectedKeys = ['default_warehouse_id', 'from_warehouse_id', 'from_warehouse'];
+        } else {
+            $protectedKeys = $locationTransfer
+                ? ['warehouse_id', 'default_warehouse_id']
+                : ['warehouse_id', 'default_warehouse_id', 'from_warehouse_id', 'from_warehouse'];
+        }
 
         $this->walk($request->all(), function (string $key, $value) use ($protectedKeys, $user, $warehouseScope) {
             if (! in_array($key, $protectedKeys, true)) return;
@@ -72,7 +85,7 @@ class EnforceWarehouseScope
 
     private function validateLocationExistence(Request $request): void
     {
-        foreach (['transfer.from_inventory_location_id', 'transfer.to_inventory_location_id', 'from_inventory_location_id', 'to_inventory_location_id'] as $key) {
+        foreach (['transfer.from_inventory_location_id', 'transfer.to_inventory_location_id', 'from_inventory_location_id', 'to_inventory_location_id', 'inventory_location_id'] as $key) {
             $value = $request->input($key);
             if ($value && ! InventoryLocation::active()->whereKey((int) $value)->exists()) {
                 throw new AuthorizationException('La ubicación de inventario seleccionada no existe o está inactiva.');
@@ -143,12 +156,7 @@ class EnforceWarehouseScope
         $transfer = Transfer::whereNull('deleted_at')->find((int) $id);
         if (! $transfer) return;
 
-        [$sourceAllowed, $destinationAllowed] = $this->transferAccess(
-            $transfer,
-            $user,
-            $warehouseScope,
-            $locationScope
-        );
+        [$sourceAllowed, $destinationAllowed] = $this->transferAccess($transfer, $user, $warehouseScope, $locationScope);
 
         $readMethods = ['show', 'edit', 'get_transfer_detail', 'Print_Transfer', 'transfer_pdf'];
         if (in_array($method, $readMethods, true)) {
@@ -165,39 +173,26 @@ class EnforceWarehouseScope
     private function resolvedRouteAction($route): string
     {
         $candidates = [];
-
-        if (method_exists($route, 'getActionName')) {
-            $candidates[] = (string) $route->getActionName();
-        }
+        if (method_exists($route, 'getActionName')) $candidates[] = (string) $route->getActionName();
         if (method_exists($route, 'getAction')) {
             foreach (['controller', 'uses'] as $key) {
                 $value = $route->getAction($key);
                 if (is_string($value)) $candidates[] = $value;
             }
         }
-
         foreach (array_unique($candidates) as $candidate) {
             if (str_contains($candidate, 'TransferController@')) return $candidate;
         }
-
         return '';
     }
 
-    private function canMutateTransferSource(
-        Transfer $transfer,
-        $user,
-        WarehouseScopeService $warehouseScope,
-        InventoryLocationScopeService $locationScope
-    ): bool {
+    private function canMutateTransferSource(Transfer $transfer, $user, WarehouseScopeService $warehouseScope, InventoryLocationScopeService $locationScope): bool
+    {
         return $this->transferAccess($transfer, $user, $warehouseScope, $locationScope)[0];
     }
 
-    private function transferAccess(
-        Transfer $transfer,
-        $user,
-        WarehouseScopeService $warehouseScope,
-        InventoryLocationScopeService $locationScope
-    ): array {
+    private function transferAccess(Transfer $transfer, $user, WarehouseScopeService $warehouseScope, InventoryLocationScopeService $locationScope): array
+    {
         if ($transfer->from_inventory_location_id && $transfer->to_inventory_location_id) {
             return [
                 $locationScope->canAccess($user, (int) $transfer->from_inventory_location_id),
@@ -214,8 +209,31 @@ class EnforceWarehouseScope
 
     private function isLocationTransferPayload(Request $request): bool
     {
-        return (bool) ($request->input('transfer.from_inventory_location_id')
-            ?: $request->input('from_inventory_location_id'));
+        return (bool) ($request->input('transfer.from_inventory_location_id') ?: $request->input('from_inventory_location_id'));
+    }
+
+    private function isLocationPosSale(Request $request): bool
+    {
+        if (! $request->isMethod('post') || ! $request->filled('branch_id') || ! $request->filled('inventory_location_id')) {
+            return false;
+        }
+
+        $route = $request->route();
+        if ($route) {
+            $candidates = [];
+            if (method_exists($route, 'getActionName')) $candidates[] = (string) $route->getActionName();
+            if (method_exists($route, 'getAction')) {
+                foreach (['controller', 'uses'] as $key) {
+                    $value = $route->getAction($key);
+                    if (is_string($value)) $candidates[] = $value;
+                }
+            }
+            foreach (array_unique($candidates) as $action) {
+                if (str_contains($action, 'PosController@CreatePOS') || str_contains($action, 'PosController::CreatePOS')) return true;
+            }
+        }
+
+        return trim($request->path(), '/') === 'api/pos/create_pos';
     }
 
     private function truthy($value): bool
