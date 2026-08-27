@@ -23,6 +23,15 @@ class EnforceWarehouseScope
 
         $warehouseScope = app(WarehouseScopeService::class);
         $locationScope = app(InventoryLocationScopeService::class);
+
+        // The modern POS exposes InventoryLocation ids through the legacy
+        // `warehouse_id` UI field. CreateDraft still persists a legacy
+        // warehouse_id, so translate that virtual location selector to a real,
+        // authorized compatibility warehouse before legacy validation runs.
+        // This keeps drafts usable while the draft_sales schema is still being
+        // migrated away from its historical warehouse-only identity.
+        $this->prepareLocationPosDraftRequest($request, $user, $warehouseScope, $locationScope);
+
         $locationTransfer = $this->isLocationTransferPayload($request);
         $locationPosSale = $this->isLocationPosSale($request);
 
@@ -205,6 +214,92 @@ class EnforceWarehouseScope
             in_array((int) $transfer->from_warehouse_id, $allowed, true),
             in_array((int) $transfer->to_warehouse_id, $allowed, true),
         ];
+    }
+
+    /**
+     * `pos.vue` still posts the selected InventoryLocation through warehouse_id
+     * when placing a sale on hold. Translate only the CreateDraft action; other
+     * warehouse-based endpoints retain their normal scope enforcement.
+     */
+    private function prepareLocationPosDraftRequest(
+        Request $request,
+        $user,
+        WarehouseScopeService $warehouseScope,
+        InventoryLocationScopeService $locationScope
+    ): void {
+        if (! $this->isPosCreateDraftRequest($request)) return;
+
+        $virtualId = $request->input('warehouse_id');
+        if ($virtualId === null || $virtualId === '' || ! is_numeric($virtualId)) return;
+
+        $location = InventoryLocation::active()
+            ->with('branch')
+            ->find((int) $virtualId);
+
+        // If the id is not an InventoryLocation, this is a true legacy warehouse
+        // request and the existing warehouse checks below must handle it unchanged.
+        if (! $location) return;
+
+        if (! $locationScope->canAccess($user, (int) $location->id)) {
+            throw new AuthorizationException('No tienes permiso para poner en espera una venta de esta ubicación de inventario.');
+        }
+
+        $allowedWarehouseIds = array_values(array_map('intval', $warehouseScope->allowedWarehouseIds($user)));
+        $compatibilityWarehouseId = null;
+
+        // Warehouse-owned locations can use their owner directly.
+        if ($location->warehouse_id && in_array((int) $location->warehouse_id, $allowedWarehouseIds, true)) {
+            $compatibilityWarehouseId = (int) $location->warehouse_id;
+        }
+
+        // Branch-owned locations use the branch's legacy default warehouse only
+        // as a persistence compatibility pointer for draft_sales.warehouse_id.
+        if (! $compatibilityWarehouseId && $location->branch && $location->branch->default_warehouse_id) {
+            $candidate = (int) $location->branch->default_warehouse_id;
+            if (in_array($candidate, $allowedWarehouseIds, true)) {
+                $compatibilityWarehouseId = $candidate;
+            }
+        }
+
+        // Some migrated tenants have no branch default warehouse yet. A held sale
+        // does not move stock, so using one of the user's already-authorized legacy
+        // warehouses is safe as a temporary persistence pointer until draft_sales
+        // becomes fully location-native.
+        if (! $compatibilityWarehouseId && ! empty($allowedWarehouseIds)) {
+            $compatibilityWarehouseId = (int) $allowedWarehouseIds[0];
+        }
+
+        if (! $compatibilityWarehouseId) {
+            throw new AuthorizationException('No existe una referencia de almacén compatible para guardar la venta en espera.');
+        }
+
+        $request->merge([
+            'warehouse_id' => $compatibilityWarehouseId,
+            'branch_id' => $location->branch_id ? (int) $location->branch_id : null,
+            'inventory_location_id' => (int) $location->id,
+        ]);
+    }
+
+    private function isPosCreateDraftRequest(Request $request): bool
+    {
+        if (! $request->isMethod('post')) return false;
+
+        $route = $request->route();
+        if ($route) {
+            $candidates = [];
+            if (method_exists($route, 'getActionName')) $candidates[] = (string) $route->getActionName();
+            if (method_exists($route, 'getAction')) {
+                foreach (['controller', 'uses'] as $key) {
+                    $value = $route->getAction($key);
+                    if (is_string($value)) $candidates[] = $value;
+                }
+            }
+            foreach (array_unique($candidates) as $action) {
+                if (str_contains($action, 'PosController@CreateDraft') || str_contains($action, 'PosController::CreateDraft')) return true;
+            }
+        }
+
+        return trim($request->path(), '/') === 'api/pos/create_draft';
     }
 
     private function isLocationTransferPayload(Request $request): bool
