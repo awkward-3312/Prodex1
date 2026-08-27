@@ -27,7 +27,10 @@ return new class extends Migration
             $table->string('Ref', 192);
             $table->boolean('is_pos')->nullable()->default(false);
             $table->integer('client_id')->index('sale_client_id');
-            $table->integer('warehouse_id')->index('warehouse_id_sale');
+            // Warehouse is now a legacy compatibility pointer for sales. Modern POS
+            // sales are owned by branch_id + inventory_location_id + cash_drawer_id
+            // and may legitimately have no distribution-center warehouse at all.
+            $table->integer('warehouse_id')->nullable()->index('warehouse_id_sale');
             $table->integer('subscription_id')->nullable()->index('subscription_id');
             $table->decimal('tax_rate', 15)->nullable()->default(0);
             $table->decimal('TaxNet', 15)->nullable()->default(0);
