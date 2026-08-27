@@ -23,4 +23,12 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
             \App\Http\Controllers\PosLocationInventoryController::class,
             'show',
         ])->whereNumber('locationId')->whereNumber('productId');
+
+        // Registered after tenant_api.php so this replaces the legacy recent-draft
+        // listing for the same URI. Location-only cashiers can therefore see their
+        // own held sales even when they have no UserWarehouse compatibility rows.
+        Route::get('/get_draft_sales', [
+            \App\Http\Controllers\PosDraftRecentController::class,
+            'index',
+        ]);
     });
