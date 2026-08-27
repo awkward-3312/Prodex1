@@ -8,7 +8,9 @@ use App\Services\BatchService;
 use App\Services\FinalTransferLogisticsService;
 use App\Services\LocationAwareBatchService;
 use App\Services\LocationAwareSerialNumberService;
+use App\Services\PosAwareSarFiscalSaleService;
 use App\Services\ProdexTenantSchemaHealthService;
+use App\Services\SarFiscalSaleService;
 use App\Services\SerialNumberService;
 use App\Services\TenantLimitsService;
 use App\Services\TenantSchemaHealthService;
@@ -38,6 +40,11 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(BatchService::class, LocationAwareBatchService::class);
         $this->app->singleton(SerialNumberService::class, LocationAwareSerialNumberService::class);
+
+        // SAR remains mandatory when enabled. Modern POS sales resolve the fiscal
+        // point through their physical cash drawer while legacy sales keep the
+        // original warehouse-based resolver as a fallback.
+        $this->app->singleton(SarFiscalSaleService::class, PosAwareSarFiscalSaleService::class);
     }
 
     public function boot()
