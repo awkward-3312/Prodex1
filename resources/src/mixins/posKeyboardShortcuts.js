@@ -5,6 +5,7 @@
  */
 
 export const POS_SHORTCUTS_STORAGE_KEY = "pos_keyboard_shortcuts_enabled";
+const POS_AUX_STYLE_ID = "prodex-pos-aux-modal-styles";
 
 export function posShortcutsEnabled() {
   try {
@@ -43,6 +44,267 @@ function escapeHtml(value) {
 
 function formValue(id) {
   try { const el=document.getElementById(id); return el ? String(el.value||"").trim() : ""; } catch(e){ return ""; }
+}
+
+function ensurePosAuxiliaryStyles() {
+  if (typeof document === "undefined" || document.getElementById(POS_AUX_STYLE_ID)) return;
+  const style=document.createElement("style");
+  style.id=POS_AUX_STYLE_ID;
+  style.textContent=`
+    #OpenRegisterModal___BV_modal_content,
+    #CloseRegisterModal___BV_modal_content,
+    #Quick_Add_Customer___BV_modal_content {
+      border: 0 !important;
+      border-radius: 14px !important;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(31,31,44,.16) !important;
+      font-family: Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color: #1f1f2c;
+    }
+    #OpenRegisterModal___BV_modal_header,
+    #CloseRegisterModal___BV_modal_header,
+    #Quick_Add_Customer___BV_modal_header {
+      padding: 18px 20px 14px !important;
+      border-bottom: 1px solid #ececf2 !important;
+      background: #fff !important;
+      align-items: center !important;
+    }
+    #OpenRegisterModal___BV_modal_title,
+    #CloseRegisterModal___BV_modal_title,
+    #Quick_Add_Customer___BV_modal_title {
+      margin: 0 !important;
+      color: #1f1f2c !important;
+      font-size: 16px !important;
+      line-height: 1.3 !important;
+      font-weight: 700 !important;
+      letter-spacing: -.01em;
+    }
+    #OpenRegisterModal___BV_modal_header .close,
+    #CloseRegisterModal___BV_modal_header .close,
+    #Quick_Add_Customer___BV_modal_header .close {
+      width: 32px;
+      height: 32px;
+      padding: 0 !important;
+      margin: -4px -4px -4px auto !important;
+      border-radius: 8px;
+      color: #6b6b7d;
+      opacity: 1;
+      font-size: 22px;
+      font-weight: 400;
+      line-height: 30px;
+      transition: background .12s ease,color .12s ease;
+    }
+    #OpenRegisterModal___BV_modal_header .close:hover,
+    #CloseRegisterModal___BV_modal_header .close:hover,
+    #Quick_Add_Customer___BV_modal_header .close:hover {
+      background: #f5f3fd;
+      color: #6f53d9;
+    }
+    #OpenRegisterModal___BV_modal_body,
+    #CloseRegisterModal___BV_modal_body,
+    #Quick_Add_Customer___BV_modal_body {
+      padding: 18px 20px 20px !important;
+      background: #fff !important;
+    }
+    #OpenRegisterModal .form-group,
+    #CloseRegisterModal .form-group,
+    #Quick_Add_Customer .form-group {
+      margin-bottom: 14px !important;
+    }
+    #OpenRegisterModal label,
+    #CloseRegisterModal label,
+    #Quick_Add_Customer label,
+    .prodex-sar-popup label {
+      display: block;
+      margin: 0 0 6px !important;
+      color: #54546a !important;
+      font-size: 11px !important;
+      line-height: 1.35;
+      font-weight: 700 !important;
+      letter-spacing: .02em;
+      text-transform: none;
+    }
+    #OpenRegisterModal .form-control,
+    #OpenRegisterModal .custom-select,
+    #CloseRegisterModal .form-control,
+    #CloseRegisterModal .custom-select,
+    #Quick_Add_Customer .form-control,
+    #Quick_Add_Customer .custom-select,
+    #Quick_Add_Customer .vs__dropdown-toggle,
+    .prodex-sar-popup .swal2-input {
+      min-height: 40px !important;
+      margin: 0 !important;
+      border: 1px solid #dedee8 !important;
+      border-radius: 9px !important;
+      background: #fff !important;
+      color: #1f1f2c !important;
+      font-family: inherit !important;
+      font-size: 13px !important;
+      box-shadow: none !important;
+      transition: border-color .12s ease,box-shadow .12s ease,background .12s ease;
+    }
+    #OpenRegisterModal textarea.form-control,
+    #CloseRegisterModal textarea.form-control,
+    #Quick_Add_Customer textarea.form-control {
+      min-height: 82px !important;
+      resize: vertical;
+    }
+    #OpenRegisterModal .form-control:focus,
+    #OpenRegisterModal .custom-select:focus,
+    #CloseRegisterModal .form-control:focus,
+    #CloseRegisterModal .custom-select:focus,
+    #Quick_Add_Customer .form-control:focus,
+    #Quick_Add_Customer .custom-select:focus,
+    #Quick_Add_Customer .vs__dropdown-toggle:focus-within,
+    .prodex-sar-popup .swal2-input:focus {
+      border-color: #8b73e7 !important;
+      box-shadow: 0 0 0 3px rgba(111,83,217,.10) !important;
+      outline: 0 !important;
+    }
+    #OpenRegisterModal .text-right,
+    #CloseRegisterModal .text-right,
+    #Quick_Add_Customer .mt-3.col-md-12 {
+      display: flex !important;
+      justify-content: flex-end !important;
+      align-items: center;
+      gap: 8px;
+      padding-top: 4px;
+    }
+    #OpenRegisterModal .btn,
+    #CloseRegisterModal .btn,
+    #Quick_Add_Customer .btn,
+    .prodex-sar-popup .swal2-actions .swal2-styled {
+      min-height: 38px !important;
+      margin: 0 !important;
+      padding: 8px 14px !important;
+      border: 1px solid transparent !important;
+      border-radius: 9px !important;
+      box-shadow: none !important;
+      font-family: inherit !important;
+      font-size: 12px !important;
+      line-height: 1.2 !important;
+      font-weight: 700 !important;
+      transition: transform .12s ease,background .12s ease,border-color .12s ease;
+    }
+    #OpenRegisterModal .btn-secondary,
+    #CloseRegisterModal .btn-secondary,
+    #Quick_Add_Customer .btn-secondary,
+    .prodex-sar-popup .swal2-cancel {
+      border-color: #dedee8 !important;
+      background: #fff !important;
+      color: #54546a !important;
+    }
+    #OpenRegisterModal .btn-success,
+    #OpenRegisterModal .btn-primary,
+    #CloseRegisterModal .btn-success,
+    #CloseRegisterModal .btn-primary,
+    #Quick_Add_Customer .btn-primary,
+    .prodex-sar-popup .swal2-confirm {
+      border-color: #6f53d9 !important;
+      background: #6f53d9 !important;
+      color: #fff !important;
+    }
+    .prodex-sar-popup .swal2-deny {
+      border-color: #f3cccc !important;
+      background: #fff5f5 !important;
+      color: #a83232 !important;
+    }
+    #OpenRegisterModal .btn:hover:not(:disabled),
+    #CloseRegisterModal .btn:hover:not(:disabled),
+    #Quick_Add_Customer .btn:hover:not(:disabled),
+    .prodex-sar-popup .swal2-actions .swal2-styled:hover {
+      transform: translateY(-1px);
+    }
+    #OpenRegisterModal .btn:disabled,
+    #CloseRegisterModal .btn:disabled,
+    #Quick_Add_Customer .btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    #prodex-sar-sale-data-btn {
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid #e6e6ec;
+      border-radius: 8px;
+      background: #fff;
+      color: #54546a;
+      font: 600 11px/1 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color .12s ease,background .12s ease,color .12s ease,transform .12s ease;
+    }
+    #prodex-sar-sale-data-btn:hover {
+      border-color: #cfc8ee;
+      background: #f7f5fe;
+      color: #6f53d9;
+      transform: translateY(-1px);
+    }
+    #prodex-sar-sale-data-btn.is-configured {
+      border-color: #b9ddc6;
+      background: #f1faf4;
+      color: #267447;
+    }
+    .prodex-sar-popup {
+      width: min(520px, calc(100vw - 32px)) !important;
+      padding: 0 0 18px !important;
+      border-radius: 14px !important;
+      overflow: hidden !important;
+      box-shadow: 0 20px 50px rgba(31,31,44,.16) !important;
+      font-family: Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif !important;
+    }
+    .prodex-sar-popup .swal2-title {
+      margin: 0 !important;
+      padding: 18px 20px 14px !important;
+      border-bottom: 1px solid #ececf2;
+      color: #1f1f2c !important;
+      font-size: 16px !important;
+      line-height: 1.3 !important;
+      font-weight: 700 !important;
+      text-align: left !important;
+    }
+    .prodex-sar-popup .swal2-html-container {
+      margin: 0 !important;
+      padding: 18px 20px 0 !important;
+      overflow: visible !important;
+      color: #54546a !important;
+      font-size: 12px !important;
+      text-align: left !important;
+    }
+    .prodex-sar-popup .swal2-input {
+      width: 100% !important;
+      padding: 8px 10px !important;
+    }
+    .prodex-sar-popup .prodex-sar-field + .prodex-sar-field { margin-top: 13px; }
+    .prodex-sar-popup .prodex-sar-help {
+      display: block;
+      margin-top: 14px;
+      padding: 10px 11px;
+      border-radius: 8px;
+      background: #f7f7fb;
+      color: #6b6b7d;
+      line-height: 1.45;
+    }
+    .prodex-sar-popup .swal2-actions {
+      width: auto !important;
+      margin: 18px 20px 0 !important;
+      padding-top: 14px;
+      border-top: 1px solid #ececf2;
+      justify-content: flex-end !important;
+      gap: 8px;
+    }
+    @media (max-width: 575px) {
+      #OpenRegisterModal___BV_modal_outer_ .modal-dialog,
+      #CloseRegisterModal___BV_modal_outer_ .modal-dialog,
+      #Quick_Add_Customer___BV_modal_outer_ .modal-dialog { margin: 12px !important; }
+      #OpenRegisterModal___BV_modal_body,
+      #CloseRegisterModal___BV_modal_body,
+      #Quick_Add_Customer___BV_modal_body { padding: 16px !important; }
+      .prodex-sar-popup .swal2-title { padding: 16px !important; }
+      .prodex-sar-popup .swal2-html-container { padding: 16px 16px 0 !important; }
+      .prodex-sar-popup .swal2-actions { margin: 16px 16px 0 !important; }
+    }
+  `;
+  document.head.appendChild(style);
 }
 
 export default {
@@ -99,15 +361,14 @@ export default {
         if(!button)return;
         const active=this.hasSarSaleData();
         button.textContent=active?"Fiscal configurado":"Datos fiscales";
-        button.style.borderColor=active?"#16a34a":"#d1d5db";
-        button.style.color=active?"#166534":"#374151";
-        button.style.background=active?"#f0fdf4":"#ffffff";
+        button.classList.toggle("is-configured",active);
       } catch(e) {}
     },
 
     ensureSarSaleButton() {
       try {
         if(typeof document==="undefined"||!this.isHondurasLineTaxMode())return;
+        ensurePosAuxiliaryStyles();
         if(document.getElementById("prodex-sar-sale-data-btn")){this.updateSarSaleButton();return;}
         const anchor=document.querySelector(".pos-cust-trigger")||document.querySelector(".pos-shell-register-status")||document.querySelector(".pos-shell-header");
         if(!anchor||!anchor.parentNode)return;
@@ -116,7 +377,6 @@ export default {
         button.type="button";
         button.textContent="Datos fiscales";
         button.title="Datos fiscales o de exoneración de esta venta";
-        button.style.cssText="height:32px;padding:0 10px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;";
         button.addEventListener("click",()=>this.configureSarSaleData());
         if(anchor.nextSibling)anchor.parentNode.insertBefore(button,anchor.nextSibling);else anchor.parentNode.appendChild(button);
         this.updateSarSaleButton();
@@ -131,21 +391,25 @@ export default {
         exonerated_card_number:""
       },this.sarFiscalSaleData||{});
       if(!this.$swal)return;
+      ensurePosAuxiliaryStyles();
 
       this.$swal({
         title:"Datos fiscales de esta venta",
+        customClass:{ popup:"prodex-sar-popup" },
+        buttonsStyling:false,
         html:
-          '<div style="text-align:left;font-size:12px;">'+
-          '<label style="display:block;margin:8px 0 3px;">No. orden de compra exenta</label><input id="sar-sale-exempt-po" class="swal2-input" style="margin:0;width:100%;" value="'+escapeHtml(current.exempt_purchase_order_number)+'">'+
-          '<label style="display:block;margin:8px 0 3px;">No. registro SAG/SAR</label><input id="sar-sale-registry" class="swal2-input" style="margin:0;width:100%;" value="'+escapeHtml(current.sar_registry_number)+'">'+
-          '<label style="display:block;margin:8px 0 3px;">No. registro exonerado</label><input id="sar-sale-exoneration" class="swal2-input" style="margin:0;width:100%;" value="'+escapeHtml(current.exoneration_registry_number)+'">'+
-          '<label style="display:block;margin:8px 0 3px;">No. carnet/documento exonerado</label><input id="sar-sale-card" class="swal2-input" style="margin:0;width:100%;" value="'+escapeHtml(current.exonerated_card_number)+'">'+
-          '<small style="display:block;margin-top:8px;color:#6b7280;">Déjalos en blanco cuando la operación no sea exenta o exonerada. Se congelan con la factura emitida.</small></div>',
+          '<div class="prodex-sar-fields">'+
+          '<div class="prodex-sar-field"><label for="sar-sale-exempt-po">No. orden de compra exenta</label><input id="sar-sale-exempt-po" class="swal2-input" value="'+escapeHtml(current.exempt_purchase_order_number)+'"></div>'+
+          '<div class="prodex-sar-field"><label for="sar-sale-registry">No. registro SAG/SAR</label><input id="sar-sale-registry" class="swal2-input" value="'+escapeHtml(current.sar_registry_number)+'"></div>'+
+          '<div class="prodex-sar-field"><label for="sar-sale-exoneration">No. registro exonerado</label><input id="sar-sale-exoneration" class="swal2-input" value="'+escapeHtml(current.exoneration_registry_number)+'"></div>'+
+          '<div class="prodex-sar-field"><label for="sar-sale-card">No. carnet/documento exonerado</label><input id="sar-sale-card" class="swal2-input" value="'+escapeHtml(current.exonerated_card_number)+'"></div>'+
+          '<small class="prodex-sar-help">Déjalos en blanco cuando la operación no sea exenta o exonerada. Estos datos quedan asociados a la factura emitida.</small></div>',
         showCancelButton:true,
         showDenyButton:this.hasSarSaleData(),
         confirmButtonText:"Guardar",
         cancelButtonText:"Cancelar",
         denyButtonText:"Limpiar",
+        focusConfirm:false,
         preConfirm:()=>({
           exempt_purchase_order_number:formValue("sar-sale-exempt-po"),
           sar_registry_number:formValue("sar-sale-registry"),
@@ -169,6 +433,7 @@ export default {
   },
 
   mounted() {
+    ensurePosAuxiliaryStyles();
     if(this.sarFiscalSaleData===undefined)this.$set(this,"sarFiscalSaleData",{});
 
     this._posShortcutsHandler=e=>{
