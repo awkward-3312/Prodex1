@@ -26,11 +26,11 @@ class EnforceWarehouseScope
 
         // The modern POS exposes InventoryLocation ids through the legacy
         // `warehouse_id` UI field. CreateDraft still persists a legacy
-        // warehouse_id, so translate that virtual location selector to a real,
-        // authorized compatibility warehouse before legacy validation runs.
-        // This keeps drafts usable while the draft_sales schema is still being
-        // migrated away from its historical warehouse-only identity.
-        $this->prepareLocationPosDraftRequest($request, $user, $warehouseScope, $locationScope);
+        // warehouse_id, so translate that virtual location selector to a real
+        // compatibility warehouse before legacy persistence runs. Authorization
+        // remains location-native; the compatibility warehouse never grants or
+        // restricts the cashier's operational access.
+        $this->prepareLocationPosDraftRequest($request, $user, $locationScope);
 
         $locationTransfer = $this->isLocationTransferPayload($request);
         $locationPosSale = $this->isLocationPosSale($request);
@@ -54,9 +54,9 @@ class EnforceWarehouseScope
         bool $locationTransfer,
         bool $locationPosSale
     ): void {
-        // Location-native POS sales are authorized by Branch -> InventoryLocation ->
-        // CashDrawer. Their warehouse_id is only a historical compatibility pointer
-        // for legacy Sale/report fields and must not decide whether the cashier may sell.
+        // Location-native POS sales and held sales are authorized by Branch ->
+        // InventoryLocation -> CashDrawer. Their warehouse_id is only a historical
+        // compatibility pointer and must not decide whether the cashier may operate.
         if ($locationPosSale) {
             $locationId = (int) $request->input('inventory_location_id');
             if (! $locationScope->canAccess($user, $locationId)) {
@@ -224,7 +224,6 @@ class EnforceWarehouseScope
     private function prepareLocationPosDraftRequest(
         Request $request,
         $user,
-        WarehouseScopeService $warehouseScope,
         InventoryLocationScopeService $locationScope
     ): void {
         if (! $this->isPosCreateDraftRequest($request)) return;
@@ -244,29 +243,30 @@ class EnforceWarehouseScope
             throw new AuthorizationException('No tienes permiso para poner en espera una venta de esta ubicación de inventario.');
         }
 
-        $allowedWarehouseIds = array_values(array_map('intval', $warehouseScope->allowedWarehouseIds($user)));
         $compatibilityWarehouseId = null;
 
-        // Warehouse-owned locations can use their owner directly.
-        if ($location->warehouse_id && in_array((int) $location->warehouse_id, $allowedWarehouseIds, true)) {
+        // Warehouse-owned locations can use their owner as the persistence pointer.
+        if ($location->warehouse_id) {
             $compatibilityWarehouseId = (int) $location->warehouse_id;
         }
 
-        // Branch-owned locations use the branch's legacy default warehouse only
-        // as a persistence compatibility pointer for draft_sales.warehouse_id.
+        // Branch-owned locations prefer the branch's historical default warehouse.
+        // This warehouse is NOT used for authorization or stock; it only satisfies
+        // the legacy non-null draft_sales.warehouse_id column.
         if (! $compatibilityWarehouseId && $location->branch && $location->branch->default_warehouse_id) {
-            $candidate = (int) $location->branch->default_warehouse_id;
-            if (in_array($candidate, $allowedWarehouseIds, true)) {
-                $compatibilityWarehouseId = $candidate;
-            }
+            $compatibilityWarehouseId = (int) $location->branch->default_warehouse_id;
         }
 
-        // Some migrated tenants have no branch default warehouse yet. A held sale
-        // does not move stock, so using one of the user's already-authorized legacy
-        // warehouses is safe as a temporary persistence pointer until draft_sales
-        // becomes fully location-native.
-        if (! $compatibilityWarehouseId && ! empty($allowedWarehouseIds)) {
-            $compatibilityWarehouseId = (int) $allowedWarehouseIds[0];
+        // Migrated branches may have no default warehouse. Pick an existing legacy
+        // warehouse solely as a compatibility pointer. The location authorization
+        // above is authoritative and a held sale does not move inventory.
+        if (! $compatibilityWarehouseId) {
+            $compatibilityWarehouseId = (int) (\App\Models\Warehouse::whereNull('deleted_at')
+                ->where('branch_id', $location->branch_id)
+                ->value('id') ?: 0);
+        }
+        if (! $compatibilityWarehouseId) {
+            $compatibilityWarehouseId = (int) (\App\Models\Warehouse::whereNull('deleted_at')->value('id') ?: 0);
         }
 
         if (! $compatibilityWarehouseId) {
@@ -325,10 +325,12 @@ class EnforceWarehouseScope
             }
             foreach (array_unique($candidates) as $action) {
                 if (str_contains($action, 'PosController@CreatePOS') || str_contains($action, 'PosController::CreatePOS')) return true;
+                if (str_contains($action, 'PosController@CreateDraft') || str_contains($action, 'PosController::CreateDraft')) return true;
             }
         }
 
-        return trim($request->path(), '/') === 'api/pos/create_pos';
+        $path = trim($request->path(), '/');
+        return $path === 'api/pos/create_pos' || $path === 'api/pos/create_draft';
     }
 
     private function truthy($value): bool
