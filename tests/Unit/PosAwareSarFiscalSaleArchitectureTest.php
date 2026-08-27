@@ -10,10 +10,10 @@ class PosAwareSarFiscalSaleArchitectureTest extends TestCase
     {
         $service = file_get_contents(base_path('app/Services/PosAwareSarFiscalSaleService.php'));
 
-        $this->assertStringContainsString("where('cash_drawer_id', $cashDrawerId)", $service);
-        $this->assertStringContainsString("(int) $drawer->branch_id !== (int) $sale->branch_id", $service);
-        $this->assertStringContainsString("$originalWarehouseId = $sale->getAttribute('warehouse_id')", $service);
-        $this->assertStringContainsString("$sale->setAttribute('warehouse_id', $originalWarehouseId)", $service);
+        $this->assertStringContainsString("where('cash_drawer_id', \$cashDrawerId)", $service);
+        $this->assertStringContainsString('(int) $drawer->branch_id !== (int) $sale->branch_id', $service);
+        $this->assertStringContainsString("\$originalWarehouseId = \$sale->getAttribute('warehouse_id')", $service);
+        $this->assertStringContainsString("\$sale->setAttribute('warehouse_id', \$originalWarehouseId)", $service);
         $this->assertStringContainsString('No existe un punto SAR activo para la caja física seleccionada.', $service);
     }
 
@@ -23,7 +23,7 @@ class PosAwareSarFiscalSaleArchitectureTest extends TestCase
         $legacy = file_get_contents(base_path('app/Services/SarFiscalSaleService.php'));
 
         $this->assertStringContainsString('singleton(SarFiscalSaleService::class, PosAwareSarFiscalSaleService::class)', $provider);
-        $this->assertStringContainsString("if (! $profile || ! $profile->enabled)", $legacy);
+        $this->assertStringContainsString('if (! $profile || ! $profile->enabled)', $legacy);
         $this->assertStringContainsString('No existe una autorización SAR activa para el punto de emisión seleccionado.', $legacy);
     }
 }
