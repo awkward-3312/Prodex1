@@ -131,7 +131,19 @@ class Sale extends Model
             app(PosLocationSaleStockService::class)->apply($sale, $request);
         });
 
-        static::updating(function ($sale) {
+        static::updating(function (Sale $sale) {
+            // A location-native POS sale must never be re-contaminated by the old
+            // warehouse selector later in CreatePOS. Batch/serial compatibility code
+            // may temporarily copy request.warehouse_id onto the in-memory model;
+            // that request value can actually be an InventoryLocation id. Preserve
+            // the warehouse pointer that was resolved and persisted at creation.
+            if ((int) $sale->is_pos === 1
+                && $sale->inventory_location_id
+                && $sale->branch_id
+                && $sale->isDirty('warehouse_id')) {
+                $sale->warehouse_id = $sale->getOriginal('warehouse_id');
+            }
+
             if ($sale->isDirty('quickbooks_invoice_id')) {
                 $original = $sale->getOriginal('quickbooks_invoice_id');
                 if (! empty($original)) $sale->quickbooks_invoice_id = $original;
