@@ -12,10 +12,10 @@ class PosDraftLocationAuthorizationArchitectureTest extends TestCase
 
         $this->assertStringContainsString('prepareLocationPosDraftRequest', $middleware);
         $this->assertStringContainsString('PosController@CreateDraft', $middleware);
-        $this->assertStringContainsString("InventoryLocation::active()", $middleware);
-        $this->assertStringContainsString("No tienes permiso para poner en espera una venta de esta ubicación de inventario.", $middleware);
-        $this->assertStringContainsString("'warehouse_id' => $compatibilityWarehouseId", $middleware);
-        $this->assertStringContainsString("'inventory_location_id' => (int) $location->id", $middleware);
+        $this->assertStringContainsString('InventoryLocation::active()', $middleware);
+        $this->assertStringContainsString('No tienes permiso para poner en espera una venta de esta ubicación de inventario.', $middleware);
+        $this->assertStringContainsString("'warehouse_id' => \$compatibilityWarehouseId", $middleware);
+        $this->assertStringContainsString("'inventory_location_id' => (int) \$location->id", $middleware);
     }
 
     public function test_create_draft_keeps_legacy_warehouse_requests_unchanged(): void
