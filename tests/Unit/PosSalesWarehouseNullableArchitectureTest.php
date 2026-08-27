@@ -26,7 +26,7 @@ class PosSalesWarehouseNullableArchitectureTest extends TestCase
         $sale = file_get_contents(base_path('app/Models/Sale.php'));
 
         $this->assertStringContainsString('Legacy warehouse relation retained during inventory cutover.', $sale);
-        $this->assertStringContainsString("$sale->warehouse_id = $context['warehouse_id'] ?? null", $sale);
-        $this->assertStringContainsString("$sale->inventory_location_id = $context['inventory_location_id'] ?? null", $sale);
+        $this->assertStringContainsString('$sale->warehouse_id = $context[\'warehouse_id\'] ?? null', $sale);
+        $this->assertStringContainsString('$sale->inventory_location_id = $context[\'inventory_location_id\'] ?? null', $sale);
     }
 }
