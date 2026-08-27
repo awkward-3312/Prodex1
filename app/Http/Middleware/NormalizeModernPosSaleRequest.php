@@ -2,12 +2,16 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Client;
 use App\Models\InventoryLocation;
 use App\Models\Product;
 use App\Models\ProductPack;
 use App\Models\ProductVariant;
+use App\Models\Setting;
 use App\Models\Unit;
 use App\Models\Warehouse;
+use App\Services\PromotionEngine;
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -29,32 +33,55 @@ class NormalizeModernPosSaleRequest
 
         // Compatibility is resolved only on the server. The browser never needs to
         // send an InventoryLocation id disguised as a warehouse id again.
-        $request->merge([
-            'warehouse_id' => $this->realCompatibilityWarehouseId($request, $location) ?: 0,
-        ]);
+        $compatibilityWarehouseId = $this->realCompatibilityWarehouseId($request, $location);
+        $request->merge(['warehouse_id' => $compatibilityWarehouseId ?: 0]);
 
         $details = $this->normalizeDetails((array) $request->input('details', []));
         if (empty($details)) {
             throw ValidationException::withMessages(['details' => 'La venta debe contener al menos un producto.']);
         }
-        $request->merge(['details' => $details]);
 
         $linesSubtotal = round(collect($details)->sum(fn ($row) => (float) ($row['subtotal'] ?? 0)), 2);
+        $productSubtotals = collect($details)->map(fn ($row) => [
+            'product_id' => (int) $row['product_id'],
+            'subtotal' => (float) $row['subtotal'],
+        ])->values()->all();
+        $itemCount = (int) collect($details)->sum(fn ($row) => (float) ($row['quantity'] ?? 0));
+        $productIds = collect($details)->pluck('product_id')->map(fn ($id) => (int) $id)->values()->all();
+
+        // Promotions are recalculated on the server from authoritative line values.
+        // PosController will calculate them again before persistence; both layers now
+        // operate on the same normalized cart and cannot trust a fabricated discount.
+        $promotion = app(PromotionEngine::class)->applyTo([
+            'warehouse_id' => (int) ($compatibilityWarehouseId ?: 0),
+            'subtotal' => $linesSubtotal,
+            'item_count' => $itemCount,
+            'product_ids' => $productIds,
+            'product_subtotals' => $productSubtotals,
+            'code' => $request->input('promotion_code'),
+            'client_id' => $request->input('client_id'),
+            'now' => Carbon::now(),
+        ]);
+        $promotionDiscount = max(0, (float) ($promotion['total_discount'] ?? 0));
+
         $manualDiscount = $this->manualDiscountAmount(
             $linesSubtotal,
             (float) $request->input('discount', 0),
             (string) $request->input('discount_Method', '2')
         );
-        $pointsDiscount = min(max(0, (float) $request->input('discount_from_points', 0)), max(0, $linesSubtotal - $manualDiscount));
-        $promotionDiscount = min(max(0, (float) $request->input('promotion_discount', 0)), max(0, $linesSubtotal - $manualDiscount - $pointsDiscount));
+        $pointsDiscount = $this->authoritativePointsDiscount($request, max(0, $linesSubtotal - $manualDiscount));
         $shipping = max(0, (float) $request->input('shipping', 0));
+        $grandTotal = round(max(0, $linesSubtotal - $manualDiscount - $pointsDiscount - $promotionDiscount + $shipping), 2);
 
         $request->merge([
-            'GrandTotal' => round(max(0, $linesSubtotal - $manualDiscount - $pointsDiscount - $promotionDiscount + $shipping), 2),
+            'details' => $details,
+            'GrandTotal' => $grandTotal,
+            'discount_from_points' => $pointsDiscount,
+            'promotion_discount' => $promotionDiscount,
             'promotion_subtotal' => $linesSubtotal,
-            'promotion_item_count' => (int) collect($details)->sum(fn ($row) => (float) ($row['quantity'] ?? 0)),
-            'promotion_product_ids' => collect($details)->pluck('product_id')->map(fn ($id) => (int) $id)->values()->all(),
-            'promotion_product_subtotals' => collect($details)->mapWithKeys(fn ($row) => [(int) $row['product_id'] => (float) $row['subtotal']])->all(),
+            'promotion_item_count' => $itemCount,
+            'promotion_product_ids' => $productIds,
+            'promotion_product_subtotals' => $productSubtotals,
         ]);
 
         return $next($request);
@@ -118,6 +145,18 @@ class NormalizeModernPosSaleRequest
                     ? $variant->wholesale
                     : ((float) ($product->wholesale_price ?? 0) > 0 ? $product->wholesale_price : $basePrice));
                 $unitPrice = $this->convertUnitPrice($wholesale, $unit);
+            } elseif ($priceType !== 'retail') {
+                // Preserve existing legitimate manual-price workflows, but never
+                // accept a price below the configured minimum when one exists.
+                $requested = max(0, (float) ($row['Unit_price'] ?? 0));
+                $minimumBase = (float) ($variant && (float) ($variant->min_price ?? 0) > 0
+                    ? $variant->min_price
+                    : ($product->min_price ?? 0));
+                $minimum = $this->convertUnitPrice($minimumBase, $unit);
+                if ($minimum > 0 && $requested + 0.000001 < $minimum) {
+                    throw ValidationException::withMessages(["details.$index.Unit_price" => 'El precio indicado está por debajo del precio mínimo permitido.']);
+                }
+                $unitPrice = $requested;
             }
 
             if (! empty($row['product_pack_id'])) {
@@ -141,6 +180,8 @@ class NormalizeModernPosSaleRequest
             $discounted = max(0, $unitPrice - $discountAmount);
             $taxPercent = max(0, (float) ($product->TaxNet ?? 0));
             $taxMethod = (string) ($product->tax_method ?? '1');
+            // Deliberately matches PosLocationCatalogController semantics so the
+            // server and the currently deployed POS display agree exactly.
             $taxAmount = $taxPercent > 0 ? $discounted * $taxPercent / 100 : 0.0;
             if ($taxMethod === '1') {
                 $netPrice = $discounted;
@@ -162,6 +203,21 @@ class NormalizeModernPosSaleRequest
             $row['product_type'] = (string) $product->type;
             return $row;
         })->all();
+    }
+
+    private function authoritativePointsDiscount(Request $request, float $availableSubtotal): float
+    {
+        $usedPoints = max(0, (float) $request->input('used_points', 0));
+        if ($usedPoints <= 0) return 0.0;
+
+        $client = Client::whereNull('deleted_at')->find((int) $request->input('client_id'));
+        if (! $client || ! $client->is_royalty_eligible || (float) $client->points < $usedPoints) {
+            throw ValidationException::withMessages(['used_points' => 'Los puntos solicitados no están disponibles para este cliente.']);
+        }
+
+        $rate = max(0, (float) optional(Setting::whereNull('deleted_at')->first())->point_to_amount_rate);
+        $discount = $rate > 0 ? $usedPoints * $rate : 0.0;
+        return round(min($availableSubtotal, $discount), 2);
     }
 
     private function convertUnitPrice(float $basePrice, ?Unit $unit): float
