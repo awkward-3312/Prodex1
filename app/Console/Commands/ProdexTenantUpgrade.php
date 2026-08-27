@@ -36,6 +36,8 @@ class ProdexTenantUpgrade extends Command
                 'database/migrations/tenant/2026_08_22_230000_make_users_phone_nullable.php',
                 'database/migrations/tenant/2026_08_23_150000_link_transfer_defects_to_damages.php',
                 'database/migrations/tenant/2026_08_25_181500_add_native_location_context_to_cash_registers.php',
+                'database/migrations/tenant/2026_08_26_091500_make_cash_register_warehouse_nullable.php',
+                'database/migrations/tenant/2026_08_27_143000_enforce_cash_register_warehouse_nullable.php',
             ]
         )));
 
