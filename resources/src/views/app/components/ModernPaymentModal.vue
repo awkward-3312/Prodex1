@@ -141,7 +141,7 @@
                               step="0.01"
                               min="0"
                               inputmode="decimal"
-                              pattern="\\d*(\\.\\d*)?"
+                              pattern="\d*(\.\d*)?"
                               :disabled="Number(paymentForm.amountDue) === 0"
                               placeholder="0.00"
                               class="form-input" 
@@ -569,6 +569,46 @@ export default {
         console && console.warn && console.warn(`[${variant}] ${title}: ${msg}`);
       }
     },
+    getApiErrorMessage(error, fallback = 'Invalid data') {
+      const data = error && error.response ? error.response.data : error;
+
+      if (typeof data === 'string' && data.trim()) {
+        return data;
+      }
+
+      if (data && typeof data === 'object') {
+        if (data.message) return String(data.message);
+        if (data.error) return String(data.error);
+
+        if (data.errors && typeof data.errors === 'object') {
+          const values = Object.values(data.errors).reduce((all, value) => {
+            if (Array.isArray(value)) return all.concat(value);
+            if (value !== undefined && value !== null) all.push(value);
+            return all;
+          }, []);
+          const first = values.find(value => value !== undefined && value !== null && String(value).trim());
+          if (first) return String(first);
+        }
+      }
+
+      if (error && error.message && error.message !== 'Network Error') {
+        return String(error.message);
+      }
+
+      return fallback;
+    },
+    isTrueNetworkError(error) {
+      if (!error || typeof error !== 'object') return false;
+      if (error.response) return false;
+      return error.message === 'Network Error' || !!error.request;
+    },
+    notifyInvoicePrintStarted() {
+      this.makeToast && this.makeToast(
+        'success',
+        'Factura generada y enviada al flujo de impresión.',
+        this.$t ? this.$t('Success') : 'Success'
+      );
+    },
     getPaymentIcon(method) {
       const name = ((method && method.name) || '').toLowerCase();
       if (name.includes('cash')) return 'wallet';
@@ -790,10 +830,14 @@ export default {
         // If Direct Network Printing is enabled, send straight to the
         // configured network printer and skip the browser print popup.
         setTimeout(() => this.print_pos(id, posSettings), 300);
+        return true;
       } catch (e) {
         if (typeof NProgress !== 'undefined') {
           setTimeout(() => NProgress.done(), 300);
         }
+        const message = this.getApiErrorMessage(e, 'La venta fue creada, pero no se pudo generar la factura para impresión.');
+        this.makeToast && this.makeToast('danger', message, this.$t ? this.$t('Failed') : 'Failed');
+        throw e;
       }
     },
 
@@ -815,7 +859,7 @@ export default {
             return { ok: false, configured: true, message };
           })
           .catch((err) => {
-            const message = (err && err.response && err.response.data && err.response.data.message) || (err && err.message) || 'Network printer unreachable';
+            const message = this.getApiErrorMessage(err, 'Network printer unreachable');
             return { ok: false, configured: true, message };
           });
       } catch (e) {
@@ -835,7 +879,7 @@ export default {
           if (result && result.ok) {
             this.makeToast && this.makeToast(
               'success',
-              this.$t ? this.$t('Sent_to_network_printer') || 'Sent to network printer' : 'Sent to network printer',
+              'Factura enviada correctamente a la impresora.',
               this.$t ? this.$t('Success') : 'Success'
             );
             return;
@@ -857,14 +901,33 @@ export default {
 
     printBrowserFallback() {
       var el = document.getElementById('invoice-POS');
-      if (!el) { return; }
+      if (!el) {
+        this.makeToast && this.makeToast(
+          'warning',
+          'La factura fue generada, pero no se encontró el contenido para imprimir. Puedes reimprimirla desde ventas.',
+          this.$t ? this.$t('Warning') : 'Warning'
+        );
+        return;
+      }
       var divContents = el.innerHTML;
       var a = window.open('', '', 'height=600, width=480');
-      if (!a) { return; }
+      if (!a) {
+        this.makeToast && this.makeToast(
+          'warning',
+          'La factura fue generada, pero el navegador bloqueó la ventana de impresión. Habilita las ventanas emergentes y usa Reimprimir.',
+          this.$t ? this.$t('Warning') : 'Warning'
+        );
+        return;
+      }
       a.document.write('<html><head><link rel="stylesheet" href="/css/pos_print.css"></head><body>');
       a.document.write(divContents);
       a.document.write('</body></html>');
       a.document.close();
+      this.makeToast && this.makeToast(
+        'success',
+        'Factura generada y enviada al flujo de impresión.',
+        this.$t ? this.$t('Success') : 'Success'
+      );
       const reloadParent = () => {
         try { window.removeEventListener('focus', reloadParent); } catch(e) {}
         try { a.close(); } catch(e) {}
@@ -873,7 +936,14 @@ export default {
       try { a.onafterprint = reloadParent; } catch(e) {}
       setTimeout(() => {
         try { a.focus(); } catch(e) {}
-        try { a.print(); } catch(e) { reloadParent(); }
+        try { a.print(); } catch(e) {
+          this.makeToast && this.makeToast(
+            'danger',
+            'La factura fue generada, pero no fue posible abrir el diálogo de impresión. Puedes reimprimirla desde ventas.',
+            this.$t ? this.$t('Failed') : 'Failed'
+          );
+          reloadParent();
+        }
       }, 300);
     },
 
@@ -1027,6 +1097,7 @@ export default {
           } else {
             await this.Invoice_POS(response.data.id);
           }
+          this.notifyInvoicePrintStarted();
           this.$emit('payment-success', {
             id: response.data.id,
             payload,
@@ -1036,13 +1107,15 @@ export default {
           this.$refs.paymentModal && this.$refs.paymentModal.hide && this.$refs.paymentModal.hide();
         } else {
           if (typeof NProgress !== 'undefined') NProgress.done();
-          this.makeToast('danger', this.$t ? this.$t('InvalidData') : 'Invalid data', this.$t ? this.$t('Failed') : 'Failed');
+          const message = this.getApiErrorMessage(response && response.data, this.$t ? this.$t('InvalidData') : 'Invalid data');
+          this.makeToast('danger', message, this.$t ? this.$t('Failed') : 'Failed');
         }
       } catch (e) {
         this.paymentProcessing = false;
         this.isSubmitting = false;
         if (typeof NProgress !== 'undefined') NProgress.done();
-        this.makeToast('danger', this.$t ? this.$t('InvalidData') : 'Invalid data', this.$t ? this.$t('Failed') : 'Failed');
+        const message = this.getApiErrorMessage(e, this.$t ? this.$t('InvalidData') : 'Invalid data');
+        this.makeToast('danger', message, this.$t ? this.$t('Failed') : 'Failed');
       }
     },
 
@@ -1227,6 +1300,7 @@ export default {
           } else {
             await this.Invoice_POS(response.data.id);
           }
+          this.notifyInvoicePrintStarted();
           this.$emit('payment-success', {
             id: response.data.id,
             payload,
@@ -1238,13 +1312,14 @@ export default {
           if (typeof NProgress !== 'undefined') NProgress.done();
           this.paymentProcessing = false;
           this.isSubmitting = false;
-          this.makeToast('danger', this.$t ? this.$t('InvalidData') : 'Invalid data', this.$t ? this.$t('Failed') : 'Failed');
+          const message = this.getApiErrorMessage(response && response.data, this.$t ? this.$t('InvalidData') : 'Invalid data');
+          this.makeToast('danger', message, this.$t ? this.$t('Failed') : 'Failed');
         }
       } catch (error) {
         if (typeof NProgress !== 'undefined') NProgress.done();
         this.paymentProcessing = false;
         this.isSubmitting = false;
-        const isNetworkError = !error.response || error.message === 'Network Error';
+        const isNetworkError = this.isTrueNetworkError(error);
         // In this non-card branch, true offline handling is already covered by the
         // explicit (!isOnline && !usingCard) path above. Here we are effectively
         // in "online" mode, so do NOT silently queue a new offline sale; instead
@@ -1255,7 +1330,8 @@ export default {
             : 'Network error, please try again.';
           this.makeToast && this.makeToast('danger', msg, this.$t ? this.$t('Failed') : 'Failed');
         } else {
-          this.makeToast('danger', this.$t ? this.$t('InvalidData') : 'Invalid data', this.$t ? this.$t('Failed') : 'Failed');
+          const message = this.getApiErrorMessage(error, this.$t ? this.$t('InvalidData') : 'Invalid data');
+          this.makeToast('danger', message, this.$t ? this.$t('Failed') : 'Failed');
         }
       }
     },
