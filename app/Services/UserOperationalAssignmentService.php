@@ -166,15 +166,32 @@ class UserOperationalAssignmentService
      */
     public function validateRequestedAssignment(User $user, ?int $warehouseId, ?int $cashDrawerId, bool $requireDrawer = true): void
     {
-        // The historical PosController still calls this method. If the request is
-        // now backed by a real branch/location/cash-drawer assignment, validate
-        // that operational context instead of forcing the branch drawer to belong
-        // to a legacy warehouse. The bridge also supports inferring the context
-        // from the user's current assignment when the old frontend sends no IDs.
+        // Native POS payloads carry their real branch/location explicitly. Validate
+        // those IDs directly before consulting any legacy warehouse compatibility
+        // pointer. This keeps warehouse_id available for historical Sale fields
+        // without allowing it to decide authorization for a branch/location drawer.
         if (app()->bound('request')) {
+            $request = request();
+            $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+            $locationId = $request->filled('inventory_location_id') ? (int) $request->input('inventory_location_id') : null;
+            $requestDrawerId = $cashDrawerId ?: ($request->filled('cash_drawer_id') ? (int) $request->input('cash_drawer_id') : null);
+
+            if ($branchId && $locationId) {
+                $this->validateRequestedOperationalAssignment(
+                    $user,
+                    $branchId,
+                    $locationId,
+                    $requestDrawerId,
+                    $requireDrawer
+                );
+                return;
+            }
+
+            // Backward-compatible fallback for location-aware requests whose IDs
+            // are inferred from the user's effective assignment.
             $bridge = app(PosLocationStockBridge::class);
-            if ($bridge->isLocationPosRequest(request())) {
-                $ids = $bridge->resolvedOperationalIds(request(), $user);
+            if ($bridge->isLocationPosRequest($request)) {
+                $ids = $bridge->resolvedOperationalIds($request, $user);
                 $this->validateRequestedOperationalAssignment(
                     $user,
                     $ids['branch_id'],
