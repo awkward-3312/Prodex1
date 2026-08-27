@@ -10,10 +10,10 @@ class PosDraftRecentLocationOnlyArchitectureTest extends TestCase
     {
         $source = file_get_contents(base_path('app/Http/Controllers/PosDraftRecentController.php'));
 
-        $this->assertStringContainsString("UserWarehouse::where('user_id', $user->id)", $source);
+        $this->assertStringContainsString("UserWarehouse::where('user_id', \$user->id)", $source);
         $this->assertStringContainsString('if (! $isAllWarehouses && empty($warehouseIds))', $source);
-        $this->assertStringContainsString("$draftSales->where('user_id', $user->id);", $source);
-        $this->assertStringContainsString("$draftSales->whereIn('warehouse_id', $warehouseIds);", $source);
+        $this->assertStringContainsString("\$draftSales->where('user_id', \$user->id);", $source);
+        $this->assertStringContainsString("\$draftSales->whereIn('warehouse_id', \$warehouseIds);", $source);
     }
 
     public function test_location_safe_route_overrides_legacy_recent_draft_route(): void
