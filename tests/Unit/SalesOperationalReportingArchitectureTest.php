@@ -23,10 +23,10 @@ class SalesOperationalReportingArchitectureTest extends TestCase
 
         $this->assertStringContainsString("Route::get('dashboard_data', 'OperationalDashboardController@dashboard_data')", $routes);
         $this->assertStringContainsString("Route::get('sales', 'OperationalSalesController@index')", $routes);
-        $this->assertStringContainsString("report/get_sales_by_user", $routes);
-        $this->assertStringContainsString("report/seller_report", $routes);
-        $this->assertStringContainsString("report/warehouse_report", $routes);
-        $this->assertStringContainsString("report/sales_warehouse", $routes);
+        $this->assertStringContainsString('report/get_sales_by_user', $routes);
+        $this->assertStringContainsString('report/seller_report', $routes);
+        $this->assertStringContainsString('report/warehouse_report', $routes);
+        $this->assertStringContainsString('report/sales_warehouse', $routes);
 
         $this->assertLessThan(
             strpos($provider, "'tenant_pos_reports.php'"),
@@ -43,7 +43,7 @@ class SalesOperationalReportingArchitectureTest extends TestCase
             'app/Http/Controllers/OperationalBranchReportController.php',
         ] as $path) {
             $source = file_get_contents(base_path($path));
-            $this->assertStringNotContainsString("warehouse_id =", $source, $path);
+            $this->assertStringNotContainsString('warehouse_id =', $source, $path);
             $this->assertStringNotContainsString("update(['warehouse_id'", $source, $path);
         }
     }
@@ -55,6 +55,6 @@ class SalesOperationalReportingArchitectureTest extends TestCase
         $this->assertStringContainsString("'branch_name'", $source);
         $this->assertStringContainsString("'inventory_location_name'", $source);
         $this->assertStringContainsString("'cash_drawer_name'", $source);
-        $this->assertStringContainsString("'warehouse_name' => $scope->displayLocation", $source);
+        $this->assertStringContainsString("'warehouse_name' => \$scope->displayLocation", $source);
     }
 }
