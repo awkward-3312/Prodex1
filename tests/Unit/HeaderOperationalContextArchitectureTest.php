@@ -24,9 +24,9 @@ class HeaderOperationalContextArchitectureTest extends TestCase
 
         $this->assertStringContainsString('/api/operational-context', $ui);
         $this->assertStringContainsString('installRefreshTracker', $ui);
+        $this->assertStringContainsString('isTrackedDataRequest', $ui);
         $this->assertStringContainsString('Actualizado ahora', $ui);
         $this->assertStringContainsString('dashboard_data', $ui);
         $this->assertStringContainsString('real_time_sales_counter_data', $ui);
-        $this->assertStringContainsString('/\\/report\\//', $ui);
     }
 }
