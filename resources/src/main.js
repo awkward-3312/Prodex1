@@ -36,6 +36,7 @@ import App from "./App.vue";
 import Auth from './auth/index.js';
 import { installSarInvoiceBridge } from './utils/sarInvoiceBridge';
 import { installPosOperationalLocationBridge } from './utils/posOperationalLocationBridge';
+import { installNavigationPerformance } from './utils/navigationPerformance';
 window.auth = new Auth();
 import { ValidationObserver, ValidationProvider, extend, localize } from 'vee-validate';
 import * as rules from "vee-validate/dist/rules";
@@ -140,6 +141,7 @@ import { setupGlobalOfflineSync } from './utils/globalOfflineSync';
 loadI18n().then(i18n => {
   store.commit('SetDefaultLanguage', { i18n, Language: i18n.locale });
   setupRouterGuards(i18n);
+  installNavigationPerformance(window.axios, router);
   try { setupGlobalOfflineSync(); } catch (e) {}
   new Vue({ store, router, VueCookie, i18n, render: h => h(App) }).$mount('#app');
 });
