@@ -12,14 +12,19 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
         Route::get('dashboard_data', 'OperationalDashboardController@dashboard_data');
         Route::get('sales', 'OperationalSalesController@index');
 
-        Route::get('report/sales', 'OperationalReportController@Report_Sales');
+        Route::get('report/sales', 'TimeAwareOperationalReportController@Report_Sales');
         Route::get('report/users', 'OperationalReportController@users_Report');
         Route::get('report/get_sales_by_user', 'OperationalReportController@get_sales_by_user');
-        Route::get('report/seller_report', 'OperationalReportController@seller_report');
+        Route::get('report/seller_report', 'TimeAwareOperationalReportController@seller_report');
         Route::get('report/top_products', 'OperationalReportController@report_top_products');
         Route::get('report/top_customers', 'OperationalReportController@report_top_customers');
         Route::get('report/sales_by_category_report', 'OperationalReportController@sales_by_category_report');
         Route::get('report/sales_by_brand_report', 'OperationalReportController@sales_by_brand_report');
+
+        // Sales analytics must use the same branch-aware visibility rules as the
+        // normal sales report. These routes intentionally override tenant_api.php.
+        Route::get('sales_3d_dashboard_data', 'OperationalSalesAnalyticsController@sales3dData');
+        Route::get('real_time_sales_counter_data', 'OperationalSalesAnalyticsController@realTimeData');
 
         // Historical "warehouse" report screens remain available, but their sales
         // side is now resolved by branch for modern POS transactions.
