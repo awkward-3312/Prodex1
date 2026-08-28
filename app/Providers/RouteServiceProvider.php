@@ -47,6 +47,11 @@ class RouteServiceProvider extends ServiceProvider
             PreventAccessFromCentralDomains::class,
             InitializeTenancyByDomainOrSubdomain::class,
             'tenant.active',
+            // Normalize the modern POS payload only after tenancy is initialized.
+            // The middleware is a no-op for every other tenant request, but placing
+            // it here guarantees CreatePOS sees the compatibility warehouse value
+            // before legacy validation regardless of duplicate route resolution.
+            \App\Http\Middleware\NormalizeModernPosSaleRequest::class,
             \App\Http\Middleware\EnforceWarehouseScope::class,
         ];
 
