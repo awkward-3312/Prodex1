@@ -130,6 +130,13 @@ class SalesReportingScopeService
         User $user,
         string $alias = 'sales'
     ) {
+        // Tenant owners must always be able to audit every sale in their tenant,
+        // including sales created by cashiers and other employees. record_view is
+        // a staff-level restriction and must never reduce owner visibility.
+        if ((int) $user->role_id === 1) {
+            return $query;
+        }
+
         if (! $user->hasRecordView()) {
             $query->where("{$alias}.user_id", $user->id);
         }
