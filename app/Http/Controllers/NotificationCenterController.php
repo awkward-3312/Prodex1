@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\BranchScopeService;
 use App\Services\InventoryLocationScopeService;
 use App\Services\TransferLogisticsService;
 use Illuminate\Http\Request;
@@ -35,6 +36,8 @@ class NotificationCenterController extends Controller
         $this->appendLaravelNotifications($items, $user);
         $this->appendTransferDiscrepancies($items, $user);
         $this->appendInventoryAlerts($items, $user);
+        $this->appendCashRegisterDiscrepancies($items, $user);
+        $this->appendBatchExpiryAlerts($items, $user);
 
         $notifications = $items
             ->sortByDesc(fn (array $item) => (string) ($item['created_at'] ?? ''))
@@ -264,6 +267,173 @@ class NotificationCenterController extends Controller
         ]);
     }
 
+    private function appendCashRegisterDiscrepancies($items, User $user): void
+    {
+        if (! Schema::hasTable('cash_registers')) {
+            return;
+        }
+
+        $canSee = (int) $user->role_id === 1 || $user->hasPermissionName('cash_register_report');
+        if (! $canSee) {
+            return;
+        }
+
+        $differenceColumn = Schema::hasColumn('cash_registers', 'cash_difference') ? 'cash_difference' : 'difference';
+        if (! Schema::hasColumn('cash_registers', $differenceColumn)) {
+            return;
+        }
+
+        $query = DB::table('cash_registers as cr')
+            ->where('cr.status', 'closed')
+            ->whereNotNull('cr.'.$differenceColumn)
+            ->whereRaw('ABS(cr.'.$differenceColumn.') >= 0.01')
+            ->where('cr.closed_at', '>=', now()->subDays(7));
+
+        if (! $user->hasRecordView()) {
+            $query->where('cr.user_id', $user->id);
+        } elseif ((int) $user->role_id !== 1) {
+            $branchIds = Schema::hasTable('branches') ? app(BranchScopeService::class)->allowedBranchIds($user) : [];
+            $locationIds = Schema::hasTable('inventory_locations') ? app(InventoryLocationScopeService::class)->allowedLocationIds($user) : [];
+            $warehouseIds = app(TransferLogisticsService::class)->warehouseIdsForUser($user);
+            $hasBranch = Schema::hasColumn('cash_registers', 'branch_id');
+            $hasLocation = Schema::hasColumn('cash_registers', 'inventory_location_id');
+
+            $query->where(function ($scope) use ($branchIds, $locationIds, $warehouseIds, $hasBranch, $hasLocation) {
+                $hasNativeScope = false;
+                if ($hasLocation && $locationIds) {
+                    $scope->whereIn('cr.inventory_location_id', $locationIds);
+                    $hasNativeScope = true;
+                } elseif ($hasBranch && $branchIds) {
+                    $scope->whereIn('cr.branch_id', $branchIds);
+                    $hasNativeScope = true;
+                }
+
+                if ($warehouseIds && Schema::hasColumn('cash_registers', 'warehouse_id')) {
+                    if ($hasNativeScope) {
+                        $scope->orWhere(function ($legacy) use ($warehouseIds, $hasLocation) {
+                            if ($hasLocation) {
+                                $legacy->whereNull('cr.inventory_location_id');
+                            }
+                            $legacy->whereIn('cr.warehouse_id', $warehouseIds);
+                        });
+                    } else {
+                        $scope->whereIn('cr.warehouse_id', $warehouseIds);
+                        $hasNativeScope = true;
+                    }
+                }
+
+                if (! $hasNativeScope) {
+                    $scope->whereRaw('1 = 0');
+                }
+            });
+        }
+
+        $columns = ['cr.id', 'cr.user_id', 'cr.closed_at', 'cr.'.$differenceColumn.' as discrepancy'];
+        if (Schema::hasColumn('cash_registers', 'opened_by_user_name_snapshot')) {
+            $columns[] = 'cr.opened_by_user_name_snapshot as cashier_name';
+        }
+        if (Schema::hasColumn('cash_registers', 'branch_name_snapshot')) {
+            $columns[] = 'cr.branch_name_snapshot as branch_name';
+        }
+        if (Schema::hasColumn('cash_registers', 'inventory_location_name_snapshot')) {
+            $columns[] = 'cr.inventory_location_name_snapshot as location_name';
+        }
+
+        $rows = $query->orderByDesc('cr.closed_at')->limit(5)->get($columns);
+
+        foreach ($rows as $row) {
+            $context = trim(collect([
+                $row->branch_name ?? null,
+                $row->location_name ?? null,
+            ])->filter()->implode(' · '));
+            $cashier = $row->cashier_name ?? ('Usuario #'.$row->user_id);
+            $difference = (float) $row->discrepancy;
+
+            $items->push([
+                'key' => 'pos:cash-register-discrepancy:'.$row->id,
+                'category' => 'pos',
+                'type' => 'cash_register_discrepancy',
+                'title' => 'Diferencia de caja · #'.$row->id,
+                'message' => $cashier.' cerró con una diferencia de '.number_format($difference, 2, '.', ',').($context ? ' · '.$context : '').'.',
+                'unread' => true,
+                'persistent' => false,
+                'created_at' => $row->closed_at,
+                'action' => '/app/reports/cash_register_report',
+                'read_endpoint' => null,
+            ]);
+        }
+    }
+
+    private function appendBatchExpiryAlerts($items, User $user): void
+    {
+        if (! Schema::hasTable('product_batches') || ! Schema::hasTable('products')) {
+            return;
+        }
+
+        $canSee = (int) $user->role_id === 1 || $user->hasPermissionName('product_view');
+        if (! $canSee) {
+            return;
+        }
+
+        $query = DB::table('product_batches as pb')
+            ->join('products as p', 'p.id', '=', 'pb.product_id')
+            ->whereNull('pb.deleted_at')
+            ->whereNull('p.deleted_at')
+            ->whereNotNull('pb.expiry_date')
+            ->where('pb.expiry_date', '>=', now()->toDateString())
+            ->where('pb.expiry_date', '<=', now()->addDays(30)->toDateString())
+            ->where('pb.qty', '>', 0)
+            ->whereNotIn('pb.status', ['written_off', 'expired']);
+
+        if ((int) $user->role_id !== 1) {
+            if (Schema::hasTable('product_batch_location_stocks')) {
+                $locationIds = app(InventoryLocationScopeService::class)->allowedLocationIds($user);
+                if (! $locationIds) {
+                    return;
+                }
+
+                $query->whereExists(function ($exists) use ($locationIds) {
+                    $exists->select(DB::raw(1))
+                        ->from('product_batch_location_stocks as pbls')
+                        ->whereColumn('pbls.product_batch_id', 'pb.id')
+                        ->whereIn('pbls.inventory_location_id', $locationIds)
+                        ->where('pbls.quantity', '>', 0);
+                });
+            } else {
+                $warehouseIds = app(TransferLogisticsService::class)->warehouseIdsForUser($user);
+                if (! $warehouseIds) {
+                    return;
+                }
+                $query->whereIn('pb.warehouse_id', $warehouseIds);
+            }
+        }
+
+        $count = (clone $query)->distinct()->count('pb.id');
+        if ($count <= 0) {
+            return;
+        }
+
+        $nearest = (clone $query)->orderBy('pb.expiry_date')->first(['pb.expiry_date']);
+        $days = $nearest ? max(0, now()->startOfDay()->diffInDays($nearest->expiry_date, false)) : null;
+        $message = $count.' lote(s) con existencias vencen dentro de los próximos 30 días.';
+        if ($days !== null) {
+            $message .= ' El vencimiento más cercano es en '.$days.' día(s).';
+        }
+
+        $items->push([
+            'key' => 'inventory:batches-expiring-30d',
+            'category' => 'inventory',
+            'type' => 'batch_expiry_alert',
+            'title' => 'Lotes próximos a vencer · '.$count,
+            'message' => $message,
+            'unread' => true,
+            'persistent' => false,
+            'created_at' => now()->toDateTimeString(),
+            'action' => '/app/products/batches',
+            'read_endpoint' => null,
+        ]);
+    }
+
     private function categoryFor(string $type, array $data): string
     {
         if (! empty($data['category']) && isset(self::CATEGORIES[$data['category']])) {
@@ -278,10 +448,12 @@ class NotificationCenterController extends Controller
             'inventory' => 'inventory',
             'product' => 'inventory',
             'stock' => 'inventory',
+            'batch' => 'inventory',
             'purchase' => 'purchases',
             'supplier' => 'purchases',
             'sale' => 'pos',
             'pos' => 'pos',
+            'cash_register' => 'pos',
             'cash_drawer' => 'pos',
             'attendance' => 'hr',
             'leave' => 'hr',
