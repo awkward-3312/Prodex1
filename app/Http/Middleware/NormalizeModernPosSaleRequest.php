@@ -142,26 +142,33 @@ class NormalizeModernPosSaleRequest
 
             $unit = ! empty($row['sale_unit_id']) ? Unit::find((int) $row['sale_unit_id']) : $product->unitSale;
             $basePrice = (float) ($variant?->price ?? $product->price ?? 0);
-            $unitPrice = $this->convertUnitPrice($basePrice, $unit);
+            $standardUnitPrice = $this->convertUnitPrice($basePrice, $unit);
 
             $priceType = strtolower((string) ($row['price_type'] ?? 'retail'));
+            if (! in_array($priceType, ['retail', 'wholesale'], true)) {
+                throw ValidationException::withMessages(["details.$index.price_type" => 'Tipo de precio inválido.']);
+            }
             if ($priceType === 'wholesale') {
                 $wholesale = (float) ($variant && (float) ($variant->wholesale ?? 0) > 0
                     ? $variant->wholesale
                     : ((float) ($product->wholesale_price ?? 0) > 0 ? $product->wholesale_price : $basePrice));
-                $unitPrice = $this->convertUnitPrice($wholesale, $unit);
-            } elseif ($priceType !== 'retail') {
-                // Preserve existing legitimate manual-price workflows, but never
-                // accept a price below the configured minimum when one exists.
-                $requested = max(0, (float) ($row['Unit_price'] ?? 0));
-                $minimumBase = (float) ($variant && (float) ($variant->min_price ?? 0) > 0
-                    ? $variant->min_price
-                    : ($product->min_price ?? 0));
-                $minimum = $this->convertUnitPrice($minimumBase, $unit);
-                if ($minimum > 0 && $requested + 0.000001 < $minimum) {
-                    throw ValidationException::withMessages(["details.$index.Unit_price" => 'El precio indicado está por debajo del precio mínimo permitido.']);
-                }
-                $unitPrice = $requested;
+                $standardUnitPrice = $this->convertUnitPrice($wholesale, $unit);
+            }
+
+            $minimumBase = (float) ($variant && (float) ($variant->min_price ?? 0) > 0
+                ? $variant->min_price
+                : ($product->min_price ?? 0));
+            $minimumEffective = $this->convertUnitPrice($minimumBase, $unit);
+
+            // Unit price is intentionally editable in the POS detail modal. Preserve
+            // that workflow, but validate it server-side instead of trusting all the
+            // derived totals sent by the browser.
+            $requestedUnitPrice = isset($row['Unit_price']) && is_numeric($row['Unit_price'])
+                ? max(0, (float) $row['Unit_price'])
+                : $standardUnitPrice;
+            $unitPrice = $requestedUnitPrice;
+            if ($minimumEffective > 0 && $unitPrice <= $minimumEffective) {
+                throw ValidationException::withMessages(["details.$index.Unit_price" => 'El precio indicado está por debajo del precio mínimo permitido.']);
             }
 
             if (! empty($row['product_pack_id'])) {
@@ -172,9 +179,13 @@ class NormalizeModernPosSaleRequest
                 if (! $pack) {
                     throw ValidationException::withMessages(["details.$index.product_pack_id" => 'El pack seleccionado no está disponible.']);
                 }
-                $unitPrice = (float) $pack->price;
+                // Pack identity/quantity comes from master data. Its displayed price
+                // remains editable through the same POS detail-price workflow.
                 $row['pack_multiplier'] = (float) $pack->multiplier;
                 $row['pack_name'] = (string) $pack->name;
+                if (! isset($row['Unit_price']) || ! is_numeric($row['Unit_price'])) {
+                    $unitPrice = (float) $pack->price;
+                }
             } else {
                 $row['pack_multiplier'] = isset($row['pack_multiplier']) && (float) $row['pack_multiplier'] > 0 ? (float) $row['pack_multiplier'] : 1;
             }
@@ -191,11 +202,7 @@ class NormalizeModernPosSaleRequest
                 : 0.0;
             $discounted = max(0, $unitPrice - $discountAmount);
 
-            $minimumBase = (float) ($variant && (float) ($variant->min_price ?? 0) > 0
-                ? $variant->min_price
-                : ($product->min_price ?? 0));
-            $minimumEffective = $this->convertUnitPrice($minimumBase, $unit);
-            if ($minimumEffective > 0 && $discounted + 0.000001 < $minimumEffective) {
+            if ($minimumEffective > 0 && $discounted < $minimumEffective) {
                 throw ValidationException::withMessages(["details.$index.discount" => 'El descuento deja el producto por debajo del precio mínimo permitido.']);
             }
 
