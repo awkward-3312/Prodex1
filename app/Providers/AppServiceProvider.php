@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Central\GeneralSetting;
 use App\Models\Setting;
 use App\Services\BatchService;
+use App\Services\BusinessAuditService;
 use App\Services\FinalTransferLogisticsService;
 use App\Services\LocationAwareBatchService;
 use App\Services\LocationAwareSerialNumberService;
@@ -16,7 +17,9 @@ use App\Services\TenantLimitsService;
 use App\Services\TenantSchemaHealthService;
 use App\Services\TransferLogisticsService;
 use App\Tenant;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Schema;
@@ -32,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(TenantLimitsService::class);
         $this->app->singleton(TenantSchemaHealthService::class, ProdexTenantSchemaHealthService::class);
+        $this->app->singleton(BusinessAuditService::class);
 
         // One public contract for both generations of transfer. The final binding
         // includes retry safety, physical locations, batches, serials/IMEI and
@@ -50,6 +54,20 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Schema::defaultStringLength(191);
+
+        // Centralized, fail-open audit trail for critical business models. The
+        // service filters the model list before touching the database, so normal
+        // framework/internal Eloquent events are effectively ignored.
+        Event::listen('eloquent.*: *', function (string $eventName, array $data) {
+            if (! preg_match('/^eloquent\.(created|updated|deleted): /', $eventName, $matches)) {
+                return;
+            }
+
+            $model = $data[0] ?? null;
+            if ($model instanceof Model) {
+                app(BusinessAuditService::class)->record($matches[1], $model);
+            }
+        });
 
         Lang::load('*', 'super', 'es');
         Lang::addLines(config('prodex_spanish_ui.super_translations', []), 'es');
