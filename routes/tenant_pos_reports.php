@@ -20,4 +20,9 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
         Route::get('report/top_customers', 'OperationalReportController@report_top_customers');
         Route::get('report/sales_by_category_report', 'OperationalReportController@sales_by_category_report');
         Route::get('report/sales_by_brand_report', 'OperationalReportController@sales_by_brand_report');
+
+        // Historical "warehouse" report screens remain available, but their sales
+        // side is now resolved by branch for modern POS transactions.
+        Route::get('report/warehouse_report', 'OperationalBranchReportController@Warehouse_Report');
+        Route::get('report/sales_warehouse', 'OperationalBranchReportController@Sales_Warehouse');
     });
