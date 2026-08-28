@@ -97,6 +97,16 @@ class OperationalDashboardController extends DashboardController
         $report['today_sales'] = (float) ($salesAgg->total ?? 0);
         $report['sales_due'] = (float) ($salesAgg->total ?? 0) - (float) ($salesAgg->paid ?? 0);
         $report['today_invoices'] = (clone $base)->count();
+
+        // Legacy dashboard code formats some monetary values with number_format(),
+        // which turns 1200 into "1,200.00". Vue's Number() then returns NaN and
+        // displays zero. Keep API monetary values numeric at this boundary.
+        foreach (['return_purchases', 'today_purchases', 'return_sales', 'purchase_due', 'profit'] as $key) {
+            if (array_key_exists($key, $report) && is_string($report[$key])) {
+                $report[$key] = (float) str_replace(',', '', $report[$key]);
+            }
+        }
+
         // Do not fabricate profit from revenue. Profit/COGS remains the accounting
         // controller's responsibility until FIFO costing is location-native.
         $payload['report_dashboard']['original']['report'] = $report;
