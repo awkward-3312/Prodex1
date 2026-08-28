@@ -110,9 +110,6 @@ function mapCashDrawers(context) {
   }
 
   return drawers.map(drawer => Object.assign({}, drawer, {
-    // Legacy POS components still use warehouse_id as their selection key.
-    // Keep the virtual UI key isolated here; native register requests below
-    // translate it back to branch/location before reaching the backend.
     warehouse_id: Number(drawer.inventory_location_id),
   }));
 }
@@ -312,9 +309,6 @@ export function installPosOperationalLocationBridge(axios) {
           delete params.cash_drawer_id;
         }
         config.params = params;
-        // Current-register lookups are background state checks. They must never
-        // keep the application-wide initial loader visible if a duplicate/read
-        // request is slow or left pending by a legacy POS component.
         withMeta(config, {
           skipInitialLoader: true,
           prodexCurrentRegisterRead: true,
@@ -362,12 +356,12 @@ export function installPosOperationalLocationBridge(axios) {
     if (path === 'pos/create_pos') {
       const data = requestDataObject(config);
       const branch = branchForLocation(context, location);
-      const compatibilityId = compatibilityWarehouseId(context, location);
       data.branch_id = Number(location.branch_id || (branch && branch.id) || context.effective.branch_id);
       data.inventory_location_id = Number(location.id);
-      // Sale.warehouse_id remains a historical compatibility pointer for now;
-      // operational stock/register decisions are made from branch/location.
-      data.warehouse_id = compatibilityId || Number(location.id);
+      // Modern POS identity is branch + inventory location + cash drawer.
+      // warehouse_id is intentionally omitted; backend resolves any temporary
+      // legacy compatibility pointer without trusting a browser-supplied id.
+      delete data.warehouse_id;
       if (!context.effective.can_override && context.effective.cash_drawer_id) {
         data.cash_drawer_id = Number(context.effective.cash_drawer_id);
       }
