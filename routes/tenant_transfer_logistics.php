@@ -6,6 +6,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::get('/notification-center', 'NotificationCenterController@index');
     Route::post('/notification-center/{notificationId}/read', 'NotificationCenterController@markLaravelNotificationRead');
     Route::get('/business-audit', 'BusinessAuditController@index');
+    Route::get('/operational-context', 'HeaderOperationalContextController@show');
 
     Route::get('/transfer-logistics/incoming', 'FinalTransferLogisticsController@incoming');
     Route::get('/transfer-logistics/notifications', 'FinalTransferLogisticsController@notifications');
