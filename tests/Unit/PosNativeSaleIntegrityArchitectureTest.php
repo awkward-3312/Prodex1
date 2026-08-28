@@ -16,13 +16,18 @@ class PosNativeSaleIntegrityArchitectureTest extends TestCase
         $this->assertStringNotContainsString('data.warehouse_id = compatibilityId || Number(location.id);', $bridge);
     }
 
-    public function test_modern_create_pos_is_normalized_after_authentication(): void
+    public function test_modern_create_pos_is_normalized_in_tenant_stack_before_warehouse_scope(): void
     {
         $routes = file_get_contents(base_path('routes/tenant_pos_location.php'));
         $provider = file_get_contents(base_path('app/Providers/RouteServiceProvider.php'));
 
-        $this->assertStringContainsString("Route::post('/pos/create_pos', 'PosController@CreatePOS')", $routes);
-        $this->assertStringContainsString('NormalizeModernPosSaleRequest::class', $routes);
+        $normalizer = strpos($provider, 'NormalizeModernPosSaleRequest::class');
+        $warehouseScope = strpos($provider, 'EnforceWarehouseScope::class');
+
+        $this->assertNotFalse($normalizer);
+        $this->assertNotFalse($warehouseScope);
+        $this->assertLessThan($warehouseScope, $normalizer);
+        $this->assertStringNotContainsString("Route::post('/pos/create_pos', 'PosController@CreatePOS')", $routes);
         $this->assertStringContainsString("'tenant_api.php'", $provider);
         $this->assertStringContainsString("'tenant_pos_location.php'", $provider);
     }
