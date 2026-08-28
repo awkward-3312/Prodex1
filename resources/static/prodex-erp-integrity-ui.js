@@ -3,8 +3,17 @@
   if (window.__prodexErpIntegrityUiInstalled) return;
   window.__prodexErpIntegrityUiInstalled = true;
 
-  var state = { notifications: [], unread: 0, categories: {}, loaded: false };
+  var state = {
+    notifications: [],
+    unread: 0,
+    categories: {},
+    loaded: false,
+    operationalContext: null,
+    lastUpdatedAt: 0
+  };
   var timer = null;
+  var contextTimer = null;
+  var freshnessTimer = null;
 
   function esc(value) {
     return String(value == null ? '' : value)
@@ -53,22 +62,33 @@
       '.main-header #lang-dd .dropdown-toggle,.main-header #notif-dd .dropdown-toggle{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border-radius:10px!important;display:flex!important;align-items:center!important;justify-content:center!important;position:relative!important;overflow:visible!important;box-shadow:none!important}',
       '.main-header #lang-dd .dropdown-toggle svg,.main-header #notif-dd .dropdown-toggle svg{width:19px!important;height:19px!important;margin:0!important}',
 
+      /* Small operational context and freshness indicators. */
+      '.px-header-meta{display:flex;align-items:center;gap:6px;min-width:0}',
+      '.px-operational-context,.px-data-freshness{height:30px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;color:#475467;font-size:11px;font-weight:600;line-height:1;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}',
+      '.px-operational-context:before{content:"";width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#17a2b8}',
+      '.px-operational-context.is-temporary:before{background:#f59e0b}',
+      '.px-data-freshness{color:#667085;font-weight:500}',
+      '.px-data-freshness:before{content:"";width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:#12b76a}',
+
       /* The notification count belongs to the bell, never between neighbouring buttons. */
       '.main-header #notif-dd{position:relative!important}',
       '.main-header #notif-dd .badge,.vertical-top-nav #notif-dd .badge{position:absolute!important;top:-6px!important;right:-6px!important;left:auto!important;z-index:4!important;min-width:18px!important;width:auto!important;height:18px!important;padding:0 5px!important;border-radius:999px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:10px!important;font-weight:700!important;line-height:18px!important;white-space:nowrap!important;box-sizing:border-box!important;pointer-events:none!important}',
       '.main-header #notif-dd .dropdown-menu{right:0!important;left:auto!important;margin-top:10px!important;overflow:hidden!important}',
       '.main-header #notif-dd .dropdown-scroll{max-height:min(440px,70vh)!important}',
 
-      /* Bootstrap's link-button styles were making the profile control look like a large purple square. */
+      /* Bootstrap link-button styles can otherwise enlarge the profile control. */
       '.main-header #user-dd .user-dropdown-toggle,.main-header #user-dd button.user-dropdown-toggle{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;margin:0!important;border:1px solid #e5e7eb!important;border-radius:10px!important;background:#fff!important;color:#667085!important;display:flex!important;align-items:center!important;justify-content:center!important;box-shadow:none!important;text-decoration:none!important;overflow:hidden!important}',
       '.main-header #user-dd .user-dropdown-toggle:hover,.main-header #user-dd .user-dropdown-toggle:focus,.main-header #user-dd .user-dropdown-toggle:active{background:#f8fafc!important;border-color:#cfd5dd!important;color:#344054!important;box-shadow:none!important}',
       '.main-header #user-dd .user-avatar{width:28px!important;height:28px!important;min-width:28px!important;border-radius:50%!important;overflow:hidden!important;margin:0!important;background:#f2f4f7!important}',
       '.main-header #user-dd .user-avatar img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;border-radius:50%!important;margin:0!important}',
       '.main-header #user-dd .dropdown-menu{right:0!important;left:auto!important;margin-top:10px!important}',
 
+      '@media (max-width:1199.98px){.px-data-freshness{display:none!important}.px-operational-context{max-width:170px!important}}',
+      '@media (max-width:991.98px){.px-header-meta{display:none!important}}',
       '@media (max-width:575.98px){.main-header .header-part-right{gap:6px!important}.main-header #lang-dd .dropdown-toggle,.main-header #notif-dd .dropdown-toggle,.main-header #user-dd .user-dropdown-toggle{width:36px!important;height:36px!important;min-width:36px!important}.main-header #notif-dd .dropdown-menu{position:fixed!important;top:58px!important;right:12px!important;left:12px!important;width:auto!important;min-width:0!important;max-width:none!important}}',
 
       'body.dark-theme .px-unified-notification{background:#1f2030;color:#e5e7eb;border-color:#34364a}body.dark-theme .px-unified-notification strong,body.dark-theme .px-notification-title{color:#f4f4f5}',
+      'body.dark-theme .px-operational-context,body.dark-theme .px-data-freshness{background:#1a1a2e;border-color:#2d2d44;color:#d0d0d0}',
       'body.dark-theme .main-header #user-dd .user-dropdown-toggle{background:#1a1a2e!important;border-color:#2d2d44!important;color:#d0d0d0!important}',
       'body.dark-theme .main-header #user-dd .user-dropdown-toggle:hover{background:#2d2d44!important;border-color:#764ba2!important;color:#fff!important}'
     ].join('');
@@ -95,6 +115,94 @@
         render();
       }
     });
+  }
+
+  function fetchOperationalContext() {
+    if (!window.axios) return;
+    window.axios.get('/api/operational-context', {
+      baseURL: '',
+      meta: { skipErrorRedirect: true, skipInitialLoader: true }
+    }).then(function (response) {
+      state.operationalContext = response && response.data ? response.data : null;
+      renderHeaderMeta();
+    }).catch(function () {
+      state.operationalContext = null;
+      renderHeaderMeta();
+    });
+  }
+
+  function isDataRoute() {
+    var path = window.location.pathname || '';
+    return path === '/app/dashboard'
+      || path.indexOf('/app/reports/') === 0
+      || path === '/app/real-time-sales-counter';
+  }
+
+  function isTrackedDataRequest(config) {
+    if (!config || String(config.method || 'get').toLowerCase() !== 'get') return false;
+    var url = String(config.url || '');
+    if (!url) return false;
+    return /dashboard_data|sales_3d_dashboard_data|real_time_sales_counter_data|analytics_summary|\/report\/|cash_register_report/i.test(url);
+  }
+
+  function installRefreshTracker() {
+    if (!window.axios || window.__prodexRefreshTrackerInstalled) return;
+    window.__prodexRefreshTrackerInstalled = true;
+    window.axios.interceptors.response.use(function (response) {
+      if (response && isTrackedDataRequest(response.config)) {
+        state.lastUpdatedAt = Date.now();
+        renderHeaderMeta();
+      }
+      return response;
+    }, function (error) {
+      return Promise.reject(error);
+    });
+  }
+
+  function freshnessText() {
+    if (!state.lastUpdatedAt) return '';
+    var seconds = Math.max(0, Math.floor((Date.now() - state.lastUpdatedAt) / 1000));
+    if (seconds < 60) return 'Actualizado ahora';
+    var minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return 'Actualizado hace ' + minutes + ' min';
+    try {
+      return 'Actualizado ' + new Date(state.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return 'Actualizado';
+    }
+  }
+
+  function renderHeaderMeta() {
+    var right = document.querySelector('.main-header .header-part-right');
+    if (!right) return;
+
+    var wrap = right.querySelector('#px-header-meta');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'px-header-meta';
+      wrap.className = 'px-header-meta';
+      var firstDropdown = right.querySelector('.dropdown');
+      if (firstDropdown) right.insertBefore(wrap, firstDropdown);
+      else right.appendChild(wrap);
+    }
+
+    var context = state.operationalContext;
+    var contextLabel = context && context.label ? String(context.label) : '';
+    var html = '';
+
+    if (contextLabel) {
+      var contextTitle = contextLabel;
+      if (context.temporary) contextTitle += ' · Asignación temporal';
+      html += '<span class="px-operational-context' + (context.temporary ? ' is-temporary' : '') + '" title="' + esc(contextTitle) + '">' + esc(contextLabel) + '</span>';
+    }
+
+    if (isDataRoute() && state.lastUpdatedAt) {
+      var exact = new Date(state.lastUpdatedAt).toLocaleString();
+      html += '<span class="px-data-freshness" title="Última respuesta del servidor: ' + esc(exact) + '">' + esc(freshnessText()) + '</span>';
+    }
+
+    wrap.innerHTML = html;
+    wrap.style.display = html ? '' : 'none';
   }
 
   function updateBadge() {
@@ -131,6 +239,7 @@
   }
 
   function render() {
+    renderHeaderMeta();
     var root = document.getElementById('notif-dd');
     if (!root) return;
     var menu = root.querySelector('.dropdown-menu');
@@ -195,9 +304,20 @@
 
   function install() {
     style();
+    installRefreshTracker();
+    fetchOperationalContext();
     fetchNotifications();
+    renderHeaderMeta();
+
     if (timer) clearInterval(timer);
     timer = setInterval(fetchNotifications, 30000);
+
+    if (contextTimer) clearInterval(contextTimer);
+    contextTimer = setInterval(fetchOperationalContext, 300000);
+
+    if (freshnessTimer) clearInterval(freshnessTimer);
+    freshnessTimer = setInterval(renderHeaderMeta, 30000);
+
     document.addEventListener('click', function (e) {
       if (e.target && e.target.closest && e.target.closest('#notif-dd')) {
         setTimeout(render, 60);
