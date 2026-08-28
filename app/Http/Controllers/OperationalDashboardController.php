@@ -56,7 +56,9 @@ class OperationalDashboardController extends DashboardController
         $scope->apply($customerQuery, $user, 'sales', $warehouseId, $branchId);
         $payload['customers'] = ['original' => $customerQuery
             ->selectRaw('clients.name as name, COUNT(*) as value')
-            ->groupBy('clients.name')->orderByDesc('value')->limit(5)->get()->toArray()];
+            ->groupBy('clients.name')->orderByDesc('value')->limit(5)->get()
+            ->map(fn ($row) => ['name' => (string) $row->name, 'value' => (float) $row->value])
+            ->values()->all()];
 
         $productQuery = SaleDetail::query()
             ->join('sales', 'sale_details.sale_id', '=', 'sales.id')
@@ -66,8 +68,10 @@ class OperationalDashboardController extends DashboardController
         $scope->applyRecordVisibility($productQuery, $user, 'sales');
         $scope->apply($productQuery, $user, 'sales', $warehouseId, $branchId);
         $payload['product_report'] = ['original' => $productQuery
-            ->selectRaw('products.name as name, SUM(sale_details.quantity) as value')
-            ->groupBy('products.name')->orderByDesc('value')->limit(5)->get()->toArray()];
+            ->selectRaw('products.name as name, COALESCE(SUM(sale_details.quantity),0) as value')
+            ->groupBy('products.name')->orderByDesc('value')->limit(5)->get()
+            ->map(fn ($row) => ['name' => (string) $row->name, 'value' => (float) $row->value])
+            ->values()->all()];
 
         $payments = PaymentSale::query()
             ->join('sales', 'payment_sales.sale_id', '=', 'sales.id')
@@ -98,17 +102,12 @@ class OperationalDashboardController extends DashboardController
         $report['sales_due'] = (float) ($salesAgg->total ?? 0) - (float) ($salesAgg->paid ?? 0);
         $report['today_invoices'] = (clone $base)->count();
 
-        // Legacy dashboard code formats some monetary values with number_format(),
-        // which turns 1200 into "1,200.00". Vue's Number() then returns NaN and
-        // displays zero. Keep API monetary values numeric at this boundary.
         foreach (['return_purchases', 'today_purchases', 'return_sales', 'purchase_due', 'profit'] as $key) {
             if (array_key_exists($key, $report) && is_string($report[$key])) {
                 $report[$key] = (float) str_replace(',', '', $report[$key]);
             }
         }
 
-        // Do not fabricate profit from revenue. Profit/COGS remains the accounting
-        // controller's responsibility until FIFO costing is location-native.
         $payload['report_dashboard']['original']['report'] = $report;
 
         $lastSales = Sale::with(['client', 'branch', 'warehouse'])
@@ -142,6 +141,45 @@ class OperationalDashboardController extends DashboardController
             $payload['payments']['original']['payment_received'] = collect($payload['payments']['original']['days'])
                 ->map(fn ($day) => (float) ($byDay[$day] ?? 0))->all();
         }
+
+        // Owner/audit breakdowns. These use the exact same operational scope as the
+        // headline totals, so cashier and branch totals reconcile with the dashboard.
+        $cashierQuery = clone $base;
+        $payload['sales_by_cashier'] = $cashierQuery
+            ->leftJoin('users', 'sales.user_id', '=', 'users.id')
+            ->selectRaw("sales.user_id as user_id, COALESCE(users.username, '—') as cashier_name")
+            ->selectRaw('COUNT(sales.id) as invoices')
+            ->selectRaw('COALESCE(SUM(sales.GrandTotal),0) as total_sales')
+            ->selectRaw('COALESCE(SUM(sales.paid_amount),0) as paid_amount')
+            ->groupBy('sales.user_id', 'users.username')
+            ->orderByDesc('total_sales')
+            ->get()
+            ->map(fn ($row) => [
+                'user_id' => $row->user_id ? (int) $row->user_id : null,
+                'cashier_name' => (string) $row->cashier_name,
+                'invoices' => (int) $row->invoices,
+                'total_sales' => (float) $row->total_sales,
+                'paid_amount' => (float) $row->paid_amount,
+                'due' => max(0, (float) $row->total_sales - (float) $row->paid_amount),
+            ])->values()->all();
+
+        $branchQuery = clone $base;
+        $payload['sales_by_branch'] = $branchQuery
+            ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
+            ->leftJoin('warehouses', 'sales.warehouse_id', '=', 'warehouses.id')
+            ->selectRaw('sales.branch_id as branch_id')
+            ->selectRaw("COALESCE(branches.name, warehouses.name, '—') as branch_name")
+            ->selectRaw('COUNT(sales.id) as invoices')
+            ->selectRaw('COALESCE(SUM(sales.GrandTotal),0) as total_sales')
+            ->groupBy('sales.branch_id', 'branches.name', 'warehouses.name')
+            ->orderByDesc('total_sales')
+            ->get()
+            ->map(fn ($row) => [
+                'branch_id' => $row->branch_id ? (int) $row->branch_id : null,
+                'branch_name' => (string) $row->branch_name,
+                'invoices' => (int) $row->invoices,
+                'total_sales' => (float) $row->total_sales,
+            ])->values()->all();
 
         $payload['branches'] = $scope->branchesFor($user)->toArray();
         return response()->json($payload);
