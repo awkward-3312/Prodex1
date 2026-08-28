@@ -7,13 +7,12 @@ use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Services\SalesReportingScopeService;
 use Carbon\Carbon;
-use DB;
 use Illuminate\Http\Request;
 
 /**
  * Compatibility wrapper around the existing dashboard. Purchase/warehouse stock
- * widgets remain untouched while every sales-derived widget is recalculated from
- * the modern operational sale identity.
+ * widgets remain untouched while every directly sales-derived widget is
+ * recalculated from the modern operational sale identity.
  */
 class OperationalDashboardController extends DashboardController
 {
@@ -33,7 +32,6 @@ class OperationalDashboardController extends DashboardController
         $scope->applyRecordVisibility($base, $user, 'sales');
         $scope->apply($base, $user, 'sales', $warehouseId, $branchId);
 
-        // Sales chart.
         $days = [];
         $values = [];
         $cursor = Carbon::parse($from);
@@ -50,7 +48,6 @@ class OperationalDashboardController extends DashboardController
         }
         $payload['sales'] = ['original' => ['data' => $values, 'days' => $days]];
 
-        // Top customers in the current month, scoped operationally.
         $customerQuery = Sale::query()
             ->whereNull('sales.deleted_at')
             ->whereBetween('sales.date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
@@ -61,7 +58,6 @@ class OperationalDashboardController extends DashboardController
             ->selectRaw('clients.name as name, COUNT(*) as value')
             ->groupBy('clients.name')->orderByDesc('value')->limit(5)->get()->toArray()];
 
-        // Top products for the year.
         $productQuery = SaleDetail::query()
             ->join('sales', 'sale_details.sale_id', '=', 'sales.id')
             ->join('products', 'sale_details.product_id', '=', 'products.id')
@@ -73,7 +69,6 @@ class OperationalDashboardController extends DashboardController
             ->selectRaw('products.name as name, SUM(sale_details.quantity) as value')
             ->groupBy('products.name')->orderByDesc('value')->limit(5)->get()->toArray()];
 
-        // Sales by payment method.
         $payments = PaymentSale::query()
             ->join('sales', 'payment_sales.sale_id', '=', 'sales.id')
             ->leftJoin('payment_methods', 'payment_sales.payment_method_id', '=', 'payment_methods.id')
@@ -97,25 +92,15 @@ class OperationalDashboardController extends DashboardController
             ];
         })->all();
 
-        // Patch the sale-derived stat cards while preserving purchase, return and
-        // service values produced by the legacy dashboard controller.
         $salesAgg = (clone $base)->selectRaw('COALESCE(SUM(sales.GrandTotal),0) total, COALESCE(SUM(sales.paid_amount),0) paid')->first();
-        $completedTotal = (float) (clone $base)->where('sales.statut', 'completed')->sum('sales.GrandTotal');
         $report = $payload['report_dashboard']['original']['report'] ?? [];
         $report['today_sales'] = (float) ($salesAgg->total ?? 0);
         $report['sales_due'] = (float) ($salesAgg->total ?? 0) - (float) ($salesAgg->paid ?? 0);
         $report['today_invoices'] = (clone $base)->count();
-
-        // Gross profit fallback for modern POS sales. Existing expense/service values
-        // remain part of the legacy calculation when available; this prevents the
-        // card from being forced to zero merely because warehouse_id is NULL.
-        if ($completedTotal > 0 && (float) ($report['today_profit'] ?? 0) == 0.0) {
-            $report['today_profit'] = $completedTotal;
-        }
+        // Do not fabricate profit from revenue. Profit/COGS remains the accounting
+        // controller's responsibility until FIFO costing is location-native.
         $payload['report_dashboard']['original']['report'] = $report;
 
-        // Replace "last sales" with operationally visible rows so owner/restricted
-        // dashboards do not silently drop modern POS sales.
         $lastSales = Sale::with(['client', 'branch', 'warehouse'])
             ->whereNull('sales.deleted_at');
         $scope->applyRecordVisibility($lastSales, $user, 'sales');
@@ -135,8 +120,6 @@ class OperationalDashboardController extends DashboardController
                 ];
             })->values()->all();
 
-        // Payment received series, scoped through the related sale. Keep the parent's
-        // purchase/payment-sent series intact.
         if (isset($payload['payments']['original']['days'])) {
             $received = PaymentSale::query()
                 ->join('sales', 'payment_sales.sale_id', '=', 'sales.id')
