@@ -42,6 +42,7 @@ class NormalizeModernPosSaleRequest
         }
 
         $linesSubtotal = round(collect($details)->sum(fn ($row) => (float) ($row['subtotal'] ?? 0)), 2);
+        $rawTax = collect($details)->sum(fn ($row) => (float) ($row['quantity'] ?? 0) * (float) ($row['taxe'] ?? 0));
         $productSubtotals = collect($details)->map(fn ($row) => [
             'product_id' => (int) $row['product_id'],
             'subtotal' => (float) $row['subtotal'],
@@ -71,11 +72,15 @@ class NormalizeModernPosSaleRequest
         );
         $pointsDiscount = $this->authoritativePointsDiscount($request, max(0, $linesSubtotal - $manualDiscount));
         $shipping = max(0, (float) $request->input('shipping', 0));
-        $grandTotal = round(max(0, $linesSubtotal - $manualDiscount - $pointsDiscount - $promotionDiscount + $shipping), 2);
+        $discountedMerchandise = max(0, $linesSubtotal - $manualDiscount - $pointsDiscount - $promotionDiscount);
+        $grandTotal = round($discountedMerchandise + $shipping, 2);
+        $taxRatio = $linesSubtotal > 0 ? $discountedMerchandise / $linesSubtotal : 0;
+        $headerTax = round($rawTax * $taxRatio, 2);
 
         $request->merge([
             'details' => $details,
             'GrandTotal' => $grandTotal,
+            'TaxNet' => $headerTax,
             'discount_from_points' => $pointsDiscount,
             'promotion_discount' => $promotionDiscount,
             'promotion_subtotal' => $linesSubtotal,
@@ -174,14 +179,29 @@ class NormalizeModernPosSaleRequest
                 $row['pack_multiplier'] = isset($row['pack_multiplier']) && (float) $row['pack_multiplier'] > 0 ? (float) $row['pack_multiplier'] : 1;
             }
 
-            $discount = max(0, (float) ($product->discount ?? 0));
-            $discountMethod = (string) ($product->discount_method ?? '2');
-            $discountAmount = $discount > 0 ? ($discountMethod === '1' ? $unitPrice * $discount / 100 : min($discount, $unitPrice)) : 0.0;
+            // Line discounts are an intentional POS feature. Preserve them, but
+            // validate the resulting effective price against min_price when set.
+            $discount = max(0, (float) ($row['discount'] ?? $product->discount ?? 0));
+            $discountMethod = (string) ($row['discount_Method'] ?? $row['discount_method'] ?? $product->discount_method ?? '2');
+            if (! in_array($discountMethod, ['1', '2'], true)) {
+                throw ValidationException::withMessages(["details.$index.discount_Method" => 'Método de descuento inválido.']);
+            }
+            $discountAmount = $discount > 0
+                ? ($discountMethod === '1' ? $unitPrice * min($discount, 100) / 100 : min($discount, $unitPrice))
+                : 0.0;
             $discounted = max(0, $unitPrice - $discountAmount);
+
+            $minimumBase = (float) ($variant && (float) ($variant->min_price ?? 0) > 0
+                ? $variant->min_price
+                : ($product->min_price ?? 0));
+            $minimumEffective = $this->convertUnitPrice($minimumBase, $unit);
+            if ($minimumEffective > 0 && $discounted + 0.000001 < $minimumEffective) {
+                throw ValidationException::withMessages(["details.$index.discount" => 'El descuento deja el producto por debajo del precio mínimo permitido.']);
+            }
+
+            // Fiscal values come from product master data, not from the browser.
             $taxPercent = max(0, (float) ($product->TaxNet ?? 0));
             $taxMethod = (string) ($product->tax_method ?? '1');
-            // Deliberately matches PosLocationCatalogController semantics so the
-            // server and the currently deployed POS display agree exactly.
             $taxAmount = $taxPercent > 0 ? $discounted * $taxPercent / 100 : 0.0;
             if ($taxMethod === '1') {
                 $netPrice = $discounted;
