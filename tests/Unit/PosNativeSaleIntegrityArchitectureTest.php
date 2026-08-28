@@ -33,12 +33,22 @@ class PosNativeSaleIntegrityArchitectureTest extends TestCase
 
         $this->assertStringContainsString("'Unit_price'", $middleware);
         $this->assertStringContainsString("'tax_percent'", $middleware);
-        $this->assertStringContainsString("'discount_Method'", $middleware);
         $this->assertStringContainsString("'subtotal'", $middleware);
         $this->assertStringContainsString("'GrandTotal'", $middleware);
+        $this->assertStringContainsString("'TaxNet'", $middleware);
         $this->assertStringContainsString('PromotionEngine::class', $middleware);
         $this->assertStringContainsString('authoritativePointsDiscount', $middleware);
         $this->assertStringContainsString('realCompatibilityWarehouseId', $middleware);
+    }
+
+    public function test_legitimate_line_discounts_are_preserved_but_minimum_price_is_enforced(): void
+    {
+        $middleware = file_get_contents(base_path('app/Http/Middleware/NormalizeModernPosSaleRequest.php'));
+
+        $this->assertStringContainsString("\$row['discount'] ?? \$product->discount", $middleware);
+        $this->assertStringContainsString("\$row['discount_Method']", $middleware);
+        $this->assertStringContainsString('El descuento deja el producto por debajo del precio mínimo permitido.', $middleware);
+        $this->assertStringContainsString('Fiscal values come from product master data', $middleware);
     }
 
     public function test_legacy_pos_requests_are_explicitly_left_untouched(): void
