@@ -115,6 +115,14 @@ class User extends Authenticatable
 
     public function hasRecordView()
     {
+        // The tenant owner/admin is the top visibility authority. Keeping this
+        // rule here makes every existing controller/service that relies on
+        // hasRecordView() inherit the same behavior without duplicating scope
+        // exceptions throughout the application.
+        if ((int) $this->role_id === 1) {
+            return true;
+        }
+
         if (isset($this->record_view)) {
             return (bool) $this->record_view;
         }
