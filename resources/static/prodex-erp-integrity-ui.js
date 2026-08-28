@@ -46,8 +46,31 @@
       '.px-unified-notification:hover{background:#f8fafc}.px-unified-notification.unread{background:#f2fbfd}',
       '.px-unified-notification strong{display:block;font-size:12px;color:#202939}.px-unified-notification span{display:block;margin-top:3px;font-size:11px;line-height:1.4;color:#667085}',
       '.px-unified-empty{padding:20px 14px;text-align:center;color:#7a8494;font-size:12px}',
-      '.main-header #notif-dd .badge,.vertical-top-nav #notif-dd .badge{min-width:18px!important;width:auto!important;padding:2px 5px!important}',
-      'body.dark-theme .px-unified-notification{background:#1f2030;color:#e5e7eb;border-color:#34364a}body.dark-theme .px-unified-notification strong,body.dark-theme .px-notification-title{color:#f4f4f5}'
+
+      /* Header controls: keep language, notifications and profile visually aligned. */
+      '.main-header .header-part-right{display:flex!important;align-items:center!important;gap:8px!important}',
+      '.main-header .header-part-right>.dropdown{display:flex!important;align-items:center!important;margin:0!important}',
+      '.main-header #lang-dd .dropdown-toggle,.main-header #notif-dd .dropdown-toggle{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border-radius:10px!important;display:flex!important;align-items:center!important;justify-content:center!important;position:relative!important;overflow:visible!important;box-shadow:none!important}',
+      '.main-header #lang-dd .dropdown-toggle svg,.main-header #notif-dd .dropdown-toggle svg{width:19px!important;height:19px!important;margin:0!important}',
+
+      /* The notification count belongs to the bell, never between neighbouring buttons. */
+      '.main-header #notif-dd{position:relative!important}',
+      '.main-header #notif-dd .badge,.vertical-top-nav #notif-dd .badge{position:absolute!important;top:-6px!important;right:-6px!important;left:auto!important;z-index:4!important;min-width:18px!important;width:auto!important;height:18px!important;padding:0 5px!important;border-radius:999px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:10px!important;font-weight:700!important;line-height:18px!important;white-space:nowrap!important;box-sizing:border-box!important;pointer-events:none!important}',
+      '.main-header #notif-dd .dropdown-menu{right:0!important;left:auto!important;margin-top:10px!important;overflow:hidden!important}',
+      '.main-header #notif-dd .dropdown-scroll{max-height:min(440px,70vh)!important}',
+
+      /* Bootstrap's link-button styles were making the profile control look like a large purple square. */
+      '.main-header #user-dd .user-dropdown-toggle,.main-header #user-dd button.user-dropdown-toggle{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;margin:0!important;border:1px solid #e5e7eb!important;border-radius:10px!important;background:#fff!important;color:#667085!important;display:flex!important;align-items:center!important;justify-content:center!important;box-shadow:none!important;text-decoration:none!important;overflow:hidden!important}',
+      '.main-header #user-dd .user-dropdown-toggle:hover,.main-header #user-dd .user-dropdown-toggle:focus,.main-header #user-dd .user-dropdown-toggle:active{background:#f8fafc!important;border-color:#cfd5dd!important;color:#344054!important;box-shadow:none!important}',
+      '.main-header #user-dd .user-avatar{width:28px!important;height:28px!important;min-width:28px!important;border-radius:50%!important;overflow:hidden!important;margin:0!important;background:#f2f4f7!important}',
+      '.main-header #user-dd .user-avatar img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important;border-radius:50%!important;margin:0!important}',
+      '.main-header #user-dd .dropdown-menu{right:0!important;left:auto!important;margin-top:10px!important}',
+
+      '@media (max-width:575.98px){.main-header .header-part-right{gap:6px!important}.main-header #lang-dd .dropdown-toggle,.main-header #notif-dd .dropdown-toggle,.main-header #user-dd .user-dropdown-toggle{width:36px!important;height:36px!important;min-width:36px!important}.main-header #notif-dd .dropdown-menu{position:fixed!important;top:58px!important;right:12px!important;left:12px!important;width:auto!important;min-width:0!important;max-width:none!important}}',
+
+      'body.dark-theme .px-unified-notification{background:#1f2030;color:#e5e7eb;border-color:#34364a}body.dark-theme .px-unified-notification strong,body.dark-theme .px-notification-title{color:#f4f4f5}',
+      'body.dark-theme .main-header #user-dd .user-dropdown-toggle{background:#1a1a2e!important;border-color:#2d2d44!important;color:#d0d0d0!important}',
+      'body.dark-theme .main-header #user-dd .user-dropdown-toggle:hover{background:#2d2d44!important;border-color:#764ba2!important;color:#fff!important}'
     ].join('');
     document.head.appendChild(s);
   }
