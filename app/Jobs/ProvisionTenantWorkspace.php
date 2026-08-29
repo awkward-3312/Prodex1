@@ -23,9 +23,24 @@ class ProvisionTenantWorkspace implements ShouldQueue
     public int $tries = 1;
     public int $timeout = 2000;
 
+    /**
+     * Whether the tenant database already contained real business data
+     * (users/sales) BEFORE this run started. When true, the destructive
+     * `db:wipe` step is skipped no matter what — this protects admin-provided
+     * (shared-hosting) databases and any tenant that still has live data.
+     */
+    protected bool $tenantDbHadDataBeforeProvision = false;
+
     public function __construct(
         protected string $tenantId,
         protected bool $forceReprovision = false,
+        /**
+         * Allow the destructive `db:wipe` (drop every tenant table) as part of
+         * re-provisioning. Only ever pass true for tenants that are being
+         * repaired from a failed/partial provision — never for an active tenant.
+         * A brand-new (empty) tenant database is wiped regardless of this flag.
+         */
+        protected bool $allowDestructiveWipe = false,
     ) {
         $this->onQueue('default');
     }
@@ -45,6 +60,15 @@ class ProvisionTenantWorkspace implements ShouldQueue
         if ($tenant->status === 'active' && ! $this->forceReprovision) {
             Log::info("ProvisionTenantWorkspace: Tenant {$this->tenantId} already active, skipping.");
             return;
+        }
+
+        // A confirmed FAILED provision legitimately needs a clean slate on retry.
+        // We intentionally do NOT auto-enable for PROVISIONING: callers such as
+        // TenantController::reprovision() flip the status to "provisioning"
+        // *before* dispatching, so that state is ambiguous and must rely on the
+        // explicit $allowDestructiveWipe flag the caller passed in.
+        if ($tenant->status === Tenant::STATUS_FAILED) {
+            $this->allowDestructiveWipe = true;
         }
 
         try {
@@ -120,7 +144,12 @@ class ProvisionTenantWorkspace implements ShouldQueue
             $dbName = $tenant->tenancy_db_name;
             Log::info("ProvisionTenantWorkspace: Using admin-provided DB '{$dbName}' for tenant {$tenant->id}");
 
-            return true; // treat as fresh for seeding
+            // NEVER assume an admin-provided database is empty. If it already
+            // holds business data, mark it so the destructive wipe is skipped
+            // and treat it as "not fresh" for seeding.
+            $this->tenantDbHadDataBeforeProvision = $this->tenantDatabaseHasBusinessData($tenant);
+
+            return ! $this->tenantDbHadDataBeforeProvision;
         }
 
         $dbName = config('tenancy.database.prefix') . $tenant->id . config('tenancy.database.suffix');
@@ -141,17 +170,64 @@ class ProvisionTenantWorkspace implements ShouldQueue
         $tenant->setInternal('tenancy_db_name', $dbName);
         $tenant->save();
 
+        // A pre-existing auto-provisioned database that already holds business
+        // data must also be protected from the wipe (e.g. a re-provision that
+        // races with an in-flight one, or a mislabelled tenant status).
+        if (! $freshlyCreated) {
+            $this->tenantDbHadDataBeforeProvision = $this->tenantDatabaseHasBusinessData($tenant);
+        }
+
         // Verify the tenant can resolve its database
-        Log::info("ProvisionTenantWorkspace: DB name set to '{$dbName}' for tenant {$tenant->id}, freshly created: " . ($freshlyCreated ? 'yes' : 'no'));
+        Log::info("ProvisionTenantWorkspace: DB name set to '{$dbName}' for tenant {$tenant->id}, freshly created: " . ($freshlyCreated ? 'yes' : 'no') . ', has business data: ' . ($this->tenantDbHadDataBeforeProvision ? 'yes' : 'no'));
 
         return $freshlyCreated;
     }
 
+    /**
+     * True when the tenant database already contains real business data.
+     * A bare `migrations` table (left over from a failed provision) does NOT
+     * count — those are safe to wipe; `users`/`sales` rows are not.
+     */
+    protected function tenantDatabaseHasBusinessData(Tenant $tenant): bool
+    {
+        $hasData = false;
+
+        try {
+            $tenant->run(function () use (&$hasData) {
+                foreach (['users', 'sales', 'products'] as $table) {
+                    if (Schema::hasTable($table) && DB::table($table)->limit(1)->exists()) {
+                        $hasData = true;
+                        return;
+                    }
+                }
+            });
+        } catch (\Throwable $e) {
+            // Database not reachable / does not exist yet → nothing to protect.
+            Log::warning("ProvisionTenantWorkspace: could not inspect tenant {$tenant->id} database for existing data: {$e->getMessage()}");
+        }
+
+        return $hasData;
+    }
+
     protected function runMigrations(Tenant $tenant): void
     {
-        $tenant->run(function () {
-            // Drop all existing tables first to handle retries after failed provisioning
-            Artisan::call('db:wipe', ['--force' => true]);
+        $allowWipe = $this->allowDestructiveWipe && ! $this->tenantDbHadDataBeforeProvision;
+
+        $tenant->run(function () use ($allowWipe, $tenant) {
+            // A brand-new tenant DB (no migrations table yet) is always safe to
+            // wipe. Otherwise only wipe when explicitly allowed for a
+            // failed/partial provision AND the DB holds no real business data.
+            $isFreshDatabase = ! Schema::hasTable('migrations');
+
+            if ($isFreshDatabase || $allowWipe) {
+                Artisan::call('db:wipe', ['--force' => true]);
+            } else {
+                Log::warning(
+                    "ProvisionTenantWorkspace: skipping db:wipe for tenant {$tenant->id} "
+                    . '(database is not empty and a destructive wipe is not permitted here); '
+                    . 'running migrate on top of the existing schema instead.'
+                );
+            }
 
             Artisan::call('migrate', [
                 '--path'     => [database_path('migrations/tenant')],

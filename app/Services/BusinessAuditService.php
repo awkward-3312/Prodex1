@@ -45,6 +45,16 @@ class BusinessAuditService
         'refresh_token',
     ];
 
+    /**
+     * Per-database memo of whether business_audit_logs exists, so a POS sale
+     * with several details + payments does not hit information_schema once per
+     * saved model. Keyed by database name so tenant switches inside one worker
+     * process are still correct.
+     *
+     * @var array<string, bool>
+     */
+    private array $auditTableExists = [];
+
     public function record(string $event, Model $model): void
     {
         if (! in_array($event, ['created', 'updated', 'deleted'], true)) {
@@ -57,11 +67,7 @@ class BusinessAuditService
 
         // Tenant migrations may not have run yet. Audit logging must never break
         // the business operation it is observing.
-        try {
-            if (! Schema::hasTable('business_audit_logs')) {
-                return;
-            }
-        } catch (\Throwable) {
+        if (! $this->auditTableIsAvailable()) {
             return;
         }
 
@@ -98,6 +104,21 @@ class BusinessAuditService
             // Audit is deliberately fail-open: a logging problem must not roll
             // back or block a sale, purchase, transfer or other ERP operation.
             report($e);
+        }
+    }
+
+    private function auditTableIsAvailable(): bool
+    {
+        try {
+            $key = (string) DB::connection()->getDatabaseName();
+
+            if (! array_key_exists($key, $this->auditTableExists)) {
+                $this->auditTableExists[$key] = Schema::hasTable('business_audit_logs');
+            }
+
+            return $this->auditTableExists[$key];
+        } catch (\Throwable) {
+            return false;
         }
     }
 

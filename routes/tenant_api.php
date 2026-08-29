@@ -43,12 +43,13 @@ Route::get('/ping', function () {
 
 Route::group([
     'prefix' => 'password',
+    'middleware' => 'throttle:password-email',
 ], function () {
     Route::post('create', 'PasswordResetController@create');
     Route::post('reset', 'PasswordResetController@reset');
 });
 
-Route::post('getAccessToken', 'AuthController@getAccessToken');
+Route::post('getAccessToken', 'AuthController@getAccessToken')->middleware('throttle:login');
 
 Route::get('/get-logo-setting', function () {
     $setting = \App\Models\Setting::first();

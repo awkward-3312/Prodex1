@@ -28,6 +28,14 @@ class Handler extends ExceptionHandler
 
     public function report(Throwable $exception)
     {
+        // Bots and misconfigured DNS constantly hit the server on unknown Host
+        // headers. render() already answers those with a 404 / redirect to the
+        // central URL, so logging every hit as production.ERROR (with a full
+        // stack trace) is pure noise that bloats storage/logs. Drop it here.
+        if ($exception instanceof \Stancl\Tenancy\Exceptions\TenantCouldNotBeIdentifiedException) {
+            return;
+        }
+
         try {
             if ($this->shouldReport($exception)) {
                 $tenantId = null;

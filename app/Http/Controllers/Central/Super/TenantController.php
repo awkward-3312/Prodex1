@@ -932,7 +932,12 @@ class TenantController extends Controller
     }
 
     /**
-     * Re-provision: wipe DB, re-run migrations, re-seed, re-create admin, re-install passport, reconfigure company, copy images.
+     * Re-provision: re-run migrations, re-seed (guarded), re-create admin,
+     * re-install passport, reconfigure company, copy images.
+     *
+     * The destructive `db:wipe` step only runs for tenants that are being
+     * recovered from a failed/partial provision AND whose database holds no
+     * real business data. For an ACTIVE tenant this is a NON-destructive repair.
      */
     public function reprovision(Tenant $tenant): RedirectResponse
     {
@@ -944,6 +949,15 @@ class TenantController extends Controller
         if (empty($creds['database'])) {
             return back()->with('error', 'No database configured for this tenant.');
         }
+
+        // The destructive wipe is only ever appropriate while recovering a
+        // broken provision. Never for a live tenant.
+        $allowDestructiveWipe = in_array($tenant->status, [
+            Tenant::STATUS_FAILED,
+            Tenant::STATUS_PROVISIONING,
+            Tenant::STATUS_PENDING,
+            Tenant::STATUS_REJECTED,
+        ], true);
 
         try {
             $this->attemptDatabaseConnection($creds);
@@ -965,14 +979,14 @@ class TenantController extends Controller
         // This avoids web server gateway timeouts (nginx/apache) that kill the
         // PHP process when migrations + seeding take longer than ~60 seconds.
         $tenantId = $tenant->id;
-        app()->terminating(function () use ($tenantId) {
+        app()->terminating(function () use ($tenantId, $allowDestructiveWipe) {
             // Ensure the browser connection is fully closed before heavy work
             if (function_exists('fastcgi_finish_request')) {
                 fastcgi_finish_request();
             }
 
             try {
-                $job = new ProvisionTenantWorkspace($tenantId, true);
+                $job = new ProvisionTenantWorkspace($tenantId, true, $allowDestructiveWipe);
                 $job->handle();
 
                 // Mirror approve(): once the workspace is live, lift the
@@ -1006,6 +1020,18 @@ class TenantController extends Controller
      */
     public function resetDatabase(Tenant $tenant): RedirectResponse
     {
+        // This drops EVERY tenant table. It is only ever valid while recovering
+        // a broken provision — never against a live workspace. For schema
+        // repairs on an active tenant use "Re-run migrations" (non-destructive).
+        if (! in_array($tenant->status, [
+            Tenant::STATUS_FAILED,
+            Tenant::STATUS_PROVISIONING,
+            Tenant::STATUS_PENDING,
+            Tenant::STATUS_REJECTED,
+        ], true)) {
+            return back()->with('error', 'El reinicio de base de datos está bloqueado para este workspace (estado: "'.$tenant->status.'"). Solo se permite en tenants con provisión fallida/pendiente. Usa "Re-ejecutar migraciones" para reparar el esquema sin borrar datos.');
+        }
+
         if (! $tenant->hasDatabaseCredentials()) {
             return back()->with('error', 'No database credentials configured for this tenant.');
         }

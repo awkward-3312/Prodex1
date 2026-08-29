@@ -144,4 +144,20 @@ return [
 
     'password_timeout' => 10800,
 
+    /*
+    |--------------------------------------------------------------------------
+    | API Token Idle Timeout
+    |--------------------------------------------------------------------------
+    |
+    | Number of minutes an API (Passport) token may sit unused before it is
+    | rejected and the user must sign in again. Enforced by the
+    | EnforceApiTokenTimeout middleware (route alias "token.timeout").
+    |
+    | 0 (default) disables the idle check entirely and preserves the previous
+    | behaviour where tokens only expire at their Passport `expires_at`.
+    |
+    */
+
+    'api_token_idle_timeout' => (int) env('API_TOKEN_IDLE_TIMEOUT', 0),
+
 ];
