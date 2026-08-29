@@ -156,7 +156,7 @@
         <p class="mb-0 mt-2"><small>Después de actualizar <code>.env</code>, ejecute: <code>php artisan config:clear</code></small></p>
       </b-alert>
       
-      <span class="alert alert-danger">{{$t('You_will_find_your_backup_on')}} <strong>/storage/app/public/backup</strong> {{$t('and_save_it_to_your_pc')}}</span>
+      <div class="alert alert-danger mb-3">{{$t('You_will_find_your_backup_on')}} <strong>/storage/app/public/backup</strong> {{$t('and_save_it_to_your_pc')}}</div>
       <vue-good-table
         mode="remote"
         :columns="columns"
