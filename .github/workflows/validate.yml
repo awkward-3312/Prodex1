@@ -211,15 +211,18 @@ jobs:
           test -f public/mix-manifest.json && echo "public/mix-manifest.json: present"
       - name: Configure SSH (deploy key + known_hosts from secrets)
         env:
-          PRODEX_VPS_SSH_KEY: ${{ secrets.PRODEX_VPS_SSH_KEY }}
+          PRODEX_VPS_SSH_KEY_B64: ${{ secrets.PRODEX_VPS_SSH_KEY_B64 }}
           PRODEX_VPS_KNOWN_HOSTS: ${{ secrets.PRODEX_VPS_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "$PRODEX_VPS_SSH_KEY"     > ~/.ssh/deploy_key
+          printf '%s' "$PRODEX_VPS_SSH_KEY_B64" | base64 --decode > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$PRODEX_VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
+      # Stop before any SSH attempt if the decoded private key is not valid.
+      - name: Validate deploy key
+        run: ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null
       # Fails here = authentication / connectivity problem (distinct from rsync).
       - name: SSH connectivity check
         env:
