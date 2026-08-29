@@ -43,7 +43,11 @@ import {
   LifeBuoy, Paperclip,
   CalendarCheck, CalendarClock, Layers, Video, Link, History,
   Megaphone, MessageCircle, ToggleRight,
-  ChefHat, RotateCw
+  ChefHat, RotateCw,
+  ArrowDown, ArrowLeftRight, BookOpen, Boxes, Building2, ChevronUp,
+  FileQuestion, FileX2, FolderOpen, Gift, Hash, LayoutGrid, MapPinPlus,
+  PackageSearch, Percent, Rocket, ScanLine, SearchX, ServerCog, ShieldPlus,
+  Truck, WalletCards, Webhook, ZoomIn
 } from 'lucide-vue';
 
 const REGISTRY = {
@@ -237,6 +241,30 @@ const REGISTRY = {
   'toggle-right': ToggleRight,
   'chef-hat': ChefHat,
   'rotate-cw': RotateCw,
+  'arrow-down': ArrowDown,
+  'arrow-left-right': ArrowLeftRight,
+  'book-open': BookOpen,
+  'boxes': Boxes,
+  'building-2': Building2,
+  'chevron-up': ChevronUp,
+  'file-question': FileQuestion,
+  'file-x-2': FileX2,
+  'folder-open': FolderOpen,
+  'gift': Gift,
+  'hash': Hash,
+  'layout-grid': LayoutGrid,
+  'map-pin-plus': MapPinPlus,
+  'package-search': PackageSearch,
+  'percent': Percent,
+  'rocket': Rocket,
+  'scan-line': ScanLine,
+  'search-x': SearchX,
+  'server-cog': ServerCog,
+  'shield-plus': ShieldPlus,
+  'truck': Truck,
+  'wallet-cards': WalletCards,
+  'webhook': Webhook,
+  'zoom-in': ZoomIn,
 };
 
 export default {
@@ -253,7 +281,18 @@ export default {
       if (typeof console !== 'undefined' && console.warn) {
         console.warn('[LucideIcon] missing icon:', ctx.props.name);
       }
-      return h('span', { class: ['lucide-icon', 'lucide-missing'], attrs: { 'data-name': ctx.props.name } });
+      // Reserve the same box a real icon would occupy so surrounding text/layout
+      // does not shift, and stay faintly visible so a missing name is noticeable.
+      const px = (parseFloat(ctx.props.size) || 18) + 'px';
+      return h('span', {
+        class: ['lucide-icon', 'lucide-missing', ctx.data.class, ctx.data.staticClass].filter(Boolean),
+        style: [
+          { display: 'inline-block', width: px, height: px, verticalAlign: 'middle' },
+          ctx.data.style,
+          ctx.data.staticStyle,
+        ].filter(Boolean),
+        attrs: Object.assign({ 'data-name': ctx.props.name }, ctx.data.attrs),
+      });
     }
     return h(Icon, {
       class: ['lucide-icon', ctx.data.class, ctx.data.staticClass].filter(Boolean),

@@ -56,10 +56,14 @@ export default {
 };
 </script>
 <style scoped>
-/* Layout adjustments for vertical sidebar */
+/* Layout adjustments for vertical sidebar.
+   1024px is the shell breakpoint (see prodex/_breakpoints.scss $px-bp-lg and the
+   matching `window.innerWidth <= 1024` check in VerticalSidebar.vue): at or
+   below it the sidebar becomes an off-canvas overlay, so the content margin
+   drops to 0. Keep the LTR and RTL rules mirrored. */
 .vertical-layout main.with-vertical-sidebar {
   margin-left: 260px;
-  transition: margin-left 0.3s ease;
+  transition: margin 0.3s ease;
 }
 
 .vertical-layout.vertical-collapsed main.with-vertical-sidebar {
@@ -71,20 +75,22 @@ export default {
   /* padding-top removed for flush layout */
 }
 
-/* Mobile & Tablet adjustments */
+/* Tablet & below: sidebar is an overlay, content spans full width */
 @media (max-width: 1024px) {
-  .vertical-layout main.with-vertical-sidebar {
+  .vertical-layout main.with-vertical-sidebar,
+  html[dir="rtl"] .vertical-layout main.with-vertical-sidebar {
     margin-left: 0;
+    margin-right: 0;
   }
 }
 
-/* RTL Support */
+/* RTL: mirror of the LTR rules above */
 html[dir="rtl"] .vertical-layout main.with-vertical-sidebar {
   margin-left: 0;
   margin-right: 260px;
 }
 
 html[dir="rtl"] .vertical-layout.vertical-collapsed main.with-vertical-sidebar {
-  margin-right: 70px;
+  margin-right: 0;
 }
 </style>

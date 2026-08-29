@@ -6,6 +6,8 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/css/master.css">
+    {{-- auth.css sets `font-family: "Inter"`; load the face so the tenant login matches the app. --}}
+    <link rel="stylesheet" href="{{ global_asset('assets_super/css/inter.css') }}">
     <link rel="stylesheet" href="{{ global_asset('css/auth.css') }}">
     <link rel="icon" href="{{ global_asset(upload_path('settings') . '/' . ($app_settings->favicon ?? 'favicon.ico')) }}">
     <title>{{ $app_settings->app_name ?? 'PRODEX' }}</title>

@@ -51,6 +51,24 @@
   --px-transition: 200ms ease;
 
   --px-content-max: 1600px;
+
+  /* Stacking order — one ladder for the whole admin UI.
+     Aligned with Bootstrap 4 (dropdown 1000 / fixed 1030 / modal-backdrop 1040 /
+     modal 1050 / popover 1060 / tooltip 1070). New code MUST use these instead
+     of ad-hoc values; the codebase still has ~25 unscaled literals (1, 9, 20,
+     90, 999, 2055, 2056, 9999, 10000, 10001 …) to migrate onto this ladder. */
+  --px-z-base: 1;
+  --px-z-raised: 10;
+  --px-z-sticky: 100;
+  --px-z-header: 1000;
+  --px-z-sidebar: 1030;
+  --px-z-backdrop: 1040;
+  --px-z-modal: 1050;
+  --px-z-popover: 1060;
+  --px-z-toast: 1070;
+  --px-z-tooltip: 1080;
+  --px-z-overlay: 2100;      /* full-screen, app-blocking overlays */
+  --px-z-overlay-top: 2200;  /* overlay that must sit above another overlay */
 }
 
 // Preserve compatibility with the theme mode already supported by the app.

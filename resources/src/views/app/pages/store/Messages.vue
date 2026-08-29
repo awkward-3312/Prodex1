@@ -251,7 +251,7 @@ export default {
         text: self.$t('Delete_Text'),
         type: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#3085d6',
+        confirmButtonColor: "var(--px-primary)",
         cancelButtonColor: '#d33',
         cancelButtonText: self.$t('Delete_cancelButtonText'),
         confirmButtonText: self.$t('Delete_confirmButtonText')

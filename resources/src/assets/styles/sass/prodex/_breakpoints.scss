@@ -1,0 +1,64 @@
+// PRODEX Design System — canonical breakpoints.
+//
+// The admin UI historically used ~30 different pixel values for media queries
+// (360, 480, 540, 575, 575.98, 576, 600, 640, 700, 768, 767.98, 900, 991,
+// 991.98, 992, 1000, 1024, 1100, 1200, 1280, 1365, 1400 …). New and migrated
+// code should use ONLY the scale below, via the px-media-* mixins.
+//
+// CSS custom properties cannot be read inside @media, so these are Sass values.
+// The `lg` (1024px) value is load-bearing: it is the width at which the shell
+// collapses the vertical sidebar to an off-canvas overlay, in both CSS and the
+// matching JS in VerticalSidebar.vue — do not change it in isolation.
+
+$px-bp-xs:  480px;   // large phone (landscape) / very small tablet
+$px-bp-sm:  640px;   // tablet portrait — narrow
+$px-bp-md:  768px;   // tablet portrait
+$px-bp-lg:  1024px;  // tablet landscape / small laptop — shell sidebar collapse
+$px-bp-xl:  1280px;  // laptop
+$px-bp-2xl: 1440px;  // desktop
+$px-bp-3xl: 1680px;  // large desktop
+
+$px-breakpoints: (
+  "xs":  $px-bp-xs,
+  "sm":  $px-bp-sm,
+  "md":  $px-bp-md,
+  "lg":  $px-bp-lg,
+  "xl":  $px-bp-xl,
+  "2xl": $px-bp-2xl,
+  "3xl": $px-bp-3xl,
+);
+
+// Styles that apply at or below a breakpoint (mobile-first "down" query).
+// The 0.02px nudge prevents an overlap with the paired -up query at the exact px.
+@mixin px-media-down($name) {
+  $max: map-get($px-breakpoints, $name);
+  @if $max == null {
+    @error "px-media-down: unknown breakpoint '#{$name}'. Use one of #{map-keys($px-breakpoints)}.";
+  }
+  @media (max-width: #{$max - 0.02}) {
+    @content;
+  }
+}
+
+// Styles that apply at or above a breakpoint.
+@mixin px-media-up($name) {
+  $min: map-get($px-breakpoints, $name);
+  @if $min == null {
+    @error "px-media-up: unknown breakpoint '#{$name}'. Use one of #{map-keys($px-breakpoints)}.";
+  }
+  @media (min-width: #{$min}) {
+    @content;
+  }
+}
+
+// Styles that apply only between two breakpoints [from, to).
+@mixin px-media-between($from, $to) {
+  $min: map-get($px-breakpoints, $from);
+  $max: map-get($px-breakpoints, $to);
+  @if $min == null or $max == null {
+    @error "px-media-between: unknown breakpoint in ('#{$from}', '#{$to}').";
+  }
+  @media (min-width: #{$min}) and (max-width: #{$max - 0.02}) {
+    @content;
+  }
+}

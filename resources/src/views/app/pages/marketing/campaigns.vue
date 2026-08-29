@@ -186,7 +186,7 @@ export default {
     Send_Campaign(id) {
       this.$swal({
         title: this.$t("Send_Campaign"), text: this.$t("Send_Now") + " ?", type: "warning",
-        showCancelButton: true, confirmButtonColor: "#3085d6", cancelButtonColor: "#d33",
+        showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         confirmButtonText: this.$t("Send_Now")
       }).then(result => {
         if (result.value) {
@@ -203,7 +203,7 @@ export default {
     Remove_Campaign(id) {
       this.$swal({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
-        showCancelButton: true, confirmButtonColor: "#3085d6", cancelButtonColor: "#d33",
+        showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
       }).then(result => {
         if (result.value) {
@@ -220,7 +220,7 @@ export default {
     delete_by_selected() {
       this.$swal({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
-        showCancelButton: true, confirmButtonColor: "#3085d6", cancelButtonColor: "#d33",
+        showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
       }).then(result => {
         if (result.value) {

@@ -7,6 +7,8 @@
     <title>@yield('title', 'Facturación') — {{ config('app.name', 'PRODEX') }}</title>
     <link href="{{ global_asset('assets_super/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ global_asset('assets_super/css/bootstrap-icons.min.css') }}" rel="stylesheet">
+    {{-- billing.css already sets `font-family: 'Inter'`; load the face so it renders (matches the app). --}}
+    <link href="{{ global_asset('assets_super/css/inter.css') }}" rel="stylesheet">
     <link href="{{ global_asset('assets_super/css/billing.css') }}" rel="stylesheet">
     @stack('styles')
 </head>

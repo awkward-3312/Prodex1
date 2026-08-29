@@ -1,7 +1,13 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('productsList')" :folder="$t('Products')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <px-skeleton
+      v-if="isLoading"
+      variant="table"
+      :columns="Array.isArray(columns) ? columns.length : 6"
+      :rows="8"
+      :label="$t('Loading') || 'Cargando…'"
+    />
 
     <div v-else>
       <vue-good-table
@@ -590,7 +596,7 @@ export default {
         text: this.$t("Delete_Text"),
         type: "warning",
         showCancelButton: true,
-        confirmButtonColor: "#3085d6",
+        confirmButtonColor: "var(--px-primary)",
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")
@@ -616,7 +622,7 @@ export default {
         text: this.$t("Are_you_sure_you_want_to_duplicate_this_product"),
         type: "question",
         showCancelButton: true,
-        confirmButtonColor: "#3085d6",
+        confirmButtonColor: "var(--px-primary)",
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Cancel"),
         confirmButtonText: this.$t("Yes")
@@ -634,7 +640,7 @@ export default {
         text: this.$t("Delete_Text"),
         type: "warning",
         showCancelButton: true,
-        confirmButtonColor: "#3085d6",
+        confirmButtonColor: "var(--px-primary)",
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")

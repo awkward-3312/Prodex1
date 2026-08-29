@@ -244,9 +244,18 @@ export default {
 .vertical-top-nav button.dropdown-toggle-no-caret:focus,
 .vertical-top-nav button.dropdown-toggle-no-caret:active {
   background: #f9fafb !important;
-  color: #663399 !important;
-  border-color: #663399 !important;
+  color: var(--primary-color, #663399) !important;
+  border-color: var(--primary-color, #663399) !important;
   box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Keyboard focus keeps a visible ring */
+.vertical-top-nav .dropdown-toggle-no-caret:focus-visible,
+.vertical-top-nav .dropdown-toggle-no-caret.btn:focus-visible,
+.vertical-top-nav button.dropdown-toggle-no-caret:focus-visible {
+  box-shadow: 0 0 0 3px var(--primary-color-soft, rgba(102, 51, 153, 0.25)) !important;
+  border-color: var(--primary-color, #663399) !important;
   outline: none !important;
 }
 
@@ -367,7 +376,7 @@ body.dark-theme .vertical-top-nav .dropdown-menu {
 }
 
 .menu-toggle:hover div {
-  background: #663399;
+  background: var(--primary-color, #663399);
 }
 
 .menu-toggle:focus,
@@ -389,7 +398,7 @@ body.dark-theme .vertical-top-nav .dropdown-menu {
   padding: 8px 16px;
   border-radius: 8px;
   background: #fff;
-  color: #663399;
+  color: var(--primary-color, #663399);
   border: 1px solid #e5e7eb;
   transition: all 0.3s;
   box-shadow: none;
@@ -401,9 +410,14 @@ body.dark-theme .vertical-top-nav .dropdown-menu {
 .btn-primary:not(:disabled):not(.disabled):active,
 .btn-primary:not(:disabled):not(.disabled).active {
   background: #f9fafb !important;
-  color: #663399 !important;
-  border-color: #663399 !important;
+  color: var(--primary-color, #663399) !important;
+  border-color: var(--primary-color, #663399) !important;
   box-shadow: none !important;
+  outline: none !important;
+}
+
+.btn-primary:focus-visible {
+  box-shadow: 0 0 0 3px var(--primary-color-soft, rgba(102, 51, 153, 0.25)) !important;
   outline: none !important;
 }
 
@@ -431,11 +445,11 @@ body.dark-theme .vertical-top-nav .dropdown-menu {
 
 .nav-icon-btn:hover {
   background: #f9fafb;
-  color: #663399;
-  border-color: #663399;
+  color: var(--primary-color, #663399);
+  border-color: var(--primary-color, #663399);
 }
 
-.nav-icon-btn:focus,
+.nav-icon-btn:focus:not(:focus-visible),
 .nav-icon-btn:active {
   outline: none !important;
   box-shadow: none !important;
@@ -443,6 +457,8 @@ body.dark-theme .vertical-top-nav .dropdown-menu {
 
 .nav-icon-btn:focus-visible {
   outline: none !important;
+  box-shadow: 0 0 0 3px var(--primary-color-soft, rgba(102, 51, 153, 0.25)) !important;
+  border-color: var(--primary-color, #663399);
 }
 
 .badge-container {
@@ -564,13 +580,13 @@ body.dark-theme .vertical-top-nav .dropdown-menu {
 }
 
 .notif-content a {
-  color: #663399;
+  color: var(--primary-color, #663399);
   text-decoration: none;
   display: block;
 }
 
 .notif-content a:hover {
-  color: #5a2a80;
+  color: var(--primary-color-darker, #5a2a80);
 }
 
 .user-dropdown-menu {
@@ -594,7 +610,7 @@ body.dark-theme .vertical-top-nav .dropdown-menu {
 
 .dropdown-item:hover {
   background: #f5f5f5;
-  color: #663399;
+  color: var(--primary-color, #663399);
 }
 
 /* RTL Support */
@@ -758,7 +774,7 @@ body.dark-theme .dropdown-item:hover {
     justify-content: center;
     gap: 0;
     background: #fff;
-    color: #663399;
+    color: var(--primary-color, #663399);
     border: 1px solid #e5e7eb;
   }
 
@@ -766,8 +782,8 @@ body.dark-theme .dropdown-item:hover {
   .nav-right .btn.btn-primary:focus,
   .nav-right .btn.btn-primary:active {
     background: #f9fafb;
-    color: #663399;
-    border-color: #663399;
+    color: var(--primary-color, #663399);
+    border-color: var(--primary-color, #663399);
     box-shadow: none;
   }
 

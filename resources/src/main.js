@@ -75,6 +75,8 @@ import ExcelExport from "./components/ExcelExport.vue";
 Vue.component('vue-excel-xlsx', ExcelExport);
 import LucideIcon from "./components/LucideIcon.vue";
 Vue.component('lucide-icon', LucideIcon);
+import PxSkeleton from "./components/PxSkeleton.vue";
+Vue.component('px-skeleton', PxSkeleton);
 import SerialNumbersField from "./components/SerialNumbersField.vue";
 Vue.component('serial-numbers-field', SerialNumbersField);
 

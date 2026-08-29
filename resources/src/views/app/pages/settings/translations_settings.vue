@@ -219,7 +219,7 @@ methods: {
     text: this.$t("Delete_Text"),
     icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: "#3085d6",
+    confirmButtonColor: "var(--px-primary)",
     cancelButtonColor: "#d33",
     cancelButtonText: this.$t("Delete_cancelButtonText"),
     confirmButtonText: this.$t("Delete_confirmButtonText"),

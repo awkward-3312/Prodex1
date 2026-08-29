@@ -476,7 +476,7 @@ export default {
         text: this.$t("DeleteMessage"),
         type: "warning",
         showCancelButton: true,
-        confirmButtonColor: "#3085d6",
+        confirmButtonColor: "var(--px-primary)",
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Cancel"),
         confirmButtonText: this.$t("Delete")

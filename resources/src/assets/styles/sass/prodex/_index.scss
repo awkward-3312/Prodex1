@@ -2,6 +2,7 @@
 // Imported after the legacy global theme so administrative screens can use
 // the shared visual language without changing application logic.
 @import "tokens";
+@import "breakpoints";
 @import "foundation";
 @import "interactions";
 @import "modal_overrides";

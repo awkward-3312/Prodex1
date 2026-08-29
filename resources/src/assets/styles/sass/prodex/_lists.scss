@@ -51,6 +51,13 @@
     box-shadow: none !important;
   }
 
+  // A wide table scrolls inside its own box at every width, so it can never push
+  // the page layout or create a horizontal scrollbar on <body>.
+  .vgt-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .vgt-global-search.vgt-clearfix {
     min-height: 72px;
     margin: 0;

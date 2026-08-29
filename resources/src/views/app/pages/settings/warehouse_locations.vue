@@ -301,7 +301,7 @@ export default {
         showCancelButton: true,
         confirmButtonText: this.$t("Yes_delete_it"),
         cancelButtonText: this.$t("No_cancel"),
-        confirmButtonColor: "#3085d6",
+        confirmButtonColor: "var(--px-primary)",
         cancelButtonColor: "#d33"
       }).then(result => {
         if (!result.value) return;

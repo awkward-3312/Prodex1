@@ -3238,7 +3238,10 @@ async function Check_Token(to, from, next) {
         .then(response => response.data);
 
     if (!res.success) {
-        next("/app/sessions/signIn");
+        // "/app/sessions/signIn" is not a registered SPA route; send the user to
+        // the real (Blade) login page instead of a dead route.
+        next(false);
+        if (typeof window !== "undefined") window.location.replace("/login");
     } else {
         return next();
     }
