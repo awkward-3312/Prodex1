@@ -3136,6 +3136,23 @@ const baseRoutes = [
     }
 ];
 
+// -----------------------------------------------------------------------------
+// px-next Design System Playground — DEVELOPMENT ONLY.
+// Spliced in before the "*" catch-all so it resolves. The `if` is statically
+// false in a production build (`process.env.NODE_ENV` is inlined by webpack),
+// so the branch — and its dynamic import — is dropped: no route, no chunk.
+// Isolated: this is the only change to the real router for Fase A.
+// -----------------------------------------------------------------------------
+if (process.env.NODE_ENV !== "production") {
+    const wildcardIndex = baseRoutes.findIndex(r => r.path === "*");
+    baseRoutes.splice(wildcardIndex === -1 ? baseRoutes.length : wildcardIndex, 0, {
+        path: "/app/_ui",
+        name: "px_next_playground",
+        component: () =>
+            import(/* webpackChunkName: "px-next-playground" */ "./views/app/_ui/index.vue")
+    });
+}
+
 const router = new Router({
     mode: "history",
     linkActiveClass: "open",

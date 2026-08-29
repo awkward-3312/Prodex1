@@ -1,0 +1,191 @@
+// =============================================================================
+// PRODEX · px-next · design tokens  ("Panel de operación")
+// -----------------------------------------------------------------------------
+// Fase A playground only. EVERYTHING here is scoped under `.px-next` so it can
+// never leak into the live admin. No global selectors, no element resets
+// outside the scope, no `!important`.
+//
+// Principles (approved):
+//   · light enterprise SaaS · data is the protagonist · light surfaces
+//   · structure by hairlines · shadows reserved for floating elements
+//   · ONE tenant accent (--primary-color) · ERP density · tabular numerals
+//   · functional motion only
+// =============================================================================
+
+.px-next {
+  // ---------------------------------------------------------------------------
+  // Neutrals — cool-tinted light. Layered, never flat white everywhere.
+  // ---------------------------------------------------------------------------
+  --pxn-bg:            #f5f6f8;   // page ground behind the app surface
+  --pxn-surface:       #ffffff;   // elevated app surface / cards / table body
+  --pxn-surface-2:     #f1f3f6;   // muted fill: table header, inset panels
+  --pxn-surface-3:     #e9ecf1;   // sunken: track, disabled field
+  --pxn-surface-hover: #f7f8fa;   // row / list hover tint
+
+  --pxn-border:          rgba(18, 24, 40, 0.09);  // hairline (default structure)
+  --pxn-border-strong:   rgba(18, 24, 40, 0.16);  // emphasised divider
+  --pxn-border-control:  rgba(18, 24, 40, 0.22);  // input / select outline
+  --pxn-border-inverse:  rgba(255, 255, 255, 0.12);
+
+  // Ink
+  --pxn-ink:          #161b24;   // primary text + display numerals
+  --pxn-ink-2:        #57606f;   // secondary text / labels
+  --pxn-ink-3:        #838d9b;   // captions / meta / placeholder
+  --pxn-ink-disabled: #aeb4be;
+  --pxn-ink-inverse:  #ffffff;
+
+  // ---------------------------------------------------------------------------
+  // Tenant primary — driven by the app's runtime `--primary-color`.
+  // Tints/shades are computed from it with color-mix so any tenant hue works.
+  // Fallback keeps the playground legible if the runtime var is absent.
+  // ---------------------------------------------------------------------------
+  --pxn-primary:          var(--primary-color, #6d28d9);
+  --pxn-primary-contrast: #ffffff;
+
+  --pxn-primary-hover:  color-mix(in srgb, var(--pxn-primary) 86%, #000);
+  --pxn-primary-active: color-mix(in srgb, var(--pxn-primary) 74%, #000);
+  --pxn-primary-border: color-mix(in srgb, var(--pxn-primary) 34%, #fff);
+  --pxn-primary-soft:   color-mix(in srgb, var(--pxn-primary) 12%, #fff);
+  --pxn-primary-softer: color-mix(in srgb, var(--pxn-primary)  7%, #fff);
+  --pxn-primary-ink:    color-mix(in srgb, var(--pxn-primary) 72%, #000);
+
+  --pxn-focus-ring:     color-mix(in srgb, var(--pxn-primary) 42%, transparent);
+  --pxn-selected-bg:    color-mix(in srgb, var(--pxn-primary)  9%, #fff);
+  --pxn-selected-border:color-mix(in srgb, var(--pxn-primary) 40%, #fff);
+
+  // ---------------------------------------------------------------------------
+  // Semantic — STATUS ONLY. Fixed, never tenant-driven. Not for decoration.
+  // Every pill using these also carries an icon + text label (never colour-only).
+  // ---------------------------------------------------------------------------
+  --pxn-success:        #1a7f4b;
+  --pxn-success-ink:    #12603a;
+  --pxn-success-soft:   #e6f4ec;
+  --pxn-success-border: #b9e0c9;
+
+  --pxn-warning:        #9a6700;
+  --pxn-warning-ink:    #7a5200;
+  --pxn-warning-soft:   #fbf0d8;
+  --pxn-warning-border: #ecd39d;
+
+  --pxn-danger:         #b42318;
+  --pxn-danger-ink:     #8f1c13;
+  --pxn-danger-soft:    #fbeae8;
+  --pxn-danger-border:  #f1c1bb;
+
+  --pxn-info:           #175cd3;
+  --pxn-info-ink:       #12489f;
+  --pxn-info-soft:      #e8f0fc;
+  --pxn-info-border:    #bfd6f5;
+
+  --pxn-neutral:        #57606f;
+  --pxn-neutral-ink:    #3f4756;
+  --pxn-neutral-soft:   #eef0f3;
+  --pxn-neutral-border: #d7dbe2;
+
+  // ---------------------------------------------------------------------------
+  // Entity-tag palette — AUXILIARY. Low saturation. Deliberately distinct from
+  // the tenant primary AND from semantic status colours. For categorías, tipos
+  // de documento, centros de costo, etc. Meaning is carried by the label (+ a
+  // dot / glyph), never by hue alone. All *-ink values clear AA on *-soft.
+  // ---------------------------------------------------------------------------
+  --pxn-tag-slate:        #5b6472;  --pxn-tag-slate-soft:  #eef0f3;  --pxn-tag-slate-ink:  #3d4552;
+  --pxn-tag-indigo:       #5a5bb0;  --pxn-tag-indigo-soft: #eeeef8;  --pxn-tag-indigo-ink: #40418c;
+  --pxn-tag-teal:         #37817d;  --pxn-tag-teal-soft:   #e7f2f1;  --pxn-tag-teal-ink:   #235f5c;
+  --pxn-tag-plum:         #8a5a83;  --pxn-tag-plum-soft:   #f4ecf3;  --pxn-tag-plum-ink:   #6a3f64;
+  --pxn-tag-clay:         #98684f;  --pxn-tag-clay-soft:   #f3ece7;  --pxn-tag-clay-ink:   #764c37;
+  --pxn-tag-moss:         #5f7a3f;  --pxn-tag-moss-soft:   #eef2e6;  --pxn-tag-moss-ink:   #465c2c;
+
+  // ---------------------------------------------------------------------------
+  // Spacing — 4px base
+  // ---------------------------------------------------------------------------
+  --pxn-space-1: 2px;
+  --pxn-space-2: 4px;
+  --pxn-space-3: 6px;
+  --pxn-space-4: 8px;
+  --pxn-space-5: 12px;
+  --pxn-space-6: 16px;
+  --pxn-space-7: 20px;
+  --pxn-space-8: 24px;
+  --pxn-space-9: 32px;
+  --pxn-space-10: 40px;
+  --pxn-space-11: 48px;
+  --pxn-space-12: 64px;
+
+  // ---------------------------------------------------------------------------
+  // Radius
+  // ---------------------------------------------------------------------------
+  --pxn-radius-xs:   4px;
+  --pxn-radius-sm:   6px;
+  --pxn-radius-md:   8px;   // controls
+  --pxn-radius-lg:   12px;  // cards
+  --pxn-radius-xl:   16px;  // shell containers
+  --pxn-radius-pill: 999px;
+
+  // ---------------------------------------------------------------------------
+  // Shadow — FLOATING ELEMENTS ONLY. Static cards use a hairline border, never
+  // a shadow. `--pxn-shadow-card-hover` is for interactive cards on :hover.
+  // ---------------------------------------------------------------------------
+  --pxn-shadow-menu:  0 1px 2px rgba(16, 24, 40, 0.08), 0 8px 24px rgba(16, 24, 40, 0.10);
+  --pxn-shadow-modal: 0 8px 16px rgba(16, 24, 40, 0.10), 0 24px 48px rgba(16, 24, 40, 0.16);
+  --pxn-shadow-card-hover: 0 1px 2px rgba(16, 24, 40, 0.06), 0 4px 12px rgba(16, 24, 40, 0.08);
+  --pxn-shadow-popover: 0 1px 2px rgba(16, 24, 40, 0.08), 0 6px 16px rgba(16, 24, 40, 0.12);
+
+  // ---------------------------------------------------------------------------
+  // Motion — functional only. Reduced-motion zeroes these (see _base.scss).
+  // ---------------------------------------------------------------------------
+  --pxn-ease:      cubic-bezier(0.2, 0.8, 0.2, 1);
+  --pxn-ease-out:  cubic-bezier(0, 0, 0.2, 1);
+  --pxn-ease-in:   cubic-bezier(0.4, 0, 1, 1);
+  --pxn-dur-1: 120ms;   // hover / tint / small state
+  --pxn-dur-2: 180ms;   // menu / tab indicator / popover
+  --pxn-dur-3: 240ms;   // modal / larger surface
+
+  // ---------------------------------------------------------------------------
+  // Data plane — table density (approved: 42–44 standard / ~36 compact)
+  // ---------------------------------------------------------------------------
+  --pxn-row-h:          44px;
+  --pxn-row-h-compact:  36px;
+  --pxn-cell-px:        12px;
+  --pxn-cell-px-first:  16px;
+
+  // Control heights
+  --pxn-control-h-sm: 32px;
+  --pxn-control-h-md: 38px;
+  --pxn-control-h-lg: 44px;
+
+  // ---------------------------------------------------------------------------
+  // Typography
+  //   --pxn-font-sans is swapped per candidate via [data-pxn-type] (see
+  //   _typography.scss). Default here is the current lean: IBM Plex Sans.
+  // ---------------------------------------------------------------------------
+  --pxn-font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --pxn-font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --pxn-fs-display: 28px;  // page title
+  --pxn-fs-kpi:     30px;  // KPI figure
+  --pxn-fs-h1:      20px;
+  --pxn-fs-h2:      16px;
+  --pxn-fs-h3:      14px;
+  --pxn-fs-body:    13px;  // dense enterprise base
+  --pxn-fs-sm:      12px;
+  --pxn-fs-xs:      11px;
+
+  --pxn-lh-tight:  1.15;
+  --pxn-lh-snug:   1.35;
+  --pxn-lh-normal: 1.5;
+
+  --pxn-fw-regular:  400;
+  --pxn-fw-medium:   500;
+  --pxn-fw-semibold: 600;
+  --pxn-fw-bold:     700;
+
+  // Numeric cells opt into tabular + lining figures via this custom prop.
+  --pxn-num-feats: "tnum" 1, "lnum" 1, "cv05" 1;
+
+  --pxn-z-base: 1;
+  --pxn-z-sticky: 20;
+  --pxn-z-menu: 1000;
+  --pxn-z-popover: 1010;
+  --pxn-z-modal: 1050;
+  --pxn-z-toast: 1080;
+}

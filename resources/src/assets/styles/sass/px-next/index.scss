@@ -1,0 +1,51 @@
+// =============================================================================
+// PRODEX · px-next entrypoint
+// -----------------------------------------------------------------------------
+// Imported ONLY by resources/src/views/app/_ui/index.vue — never by the app's
+// global stylesheet. Everything it produces is scoped under `.px-next`, so it
+// cannot affect any real screen. Fase A / development only.
+// =============================================================================
+
+@import "typography"; // @font-face + [data-pxn-type] candidate switch (has global @font-face by necessity)
+@import "tokens";     // .px-next { --pxn-* }
+@import "base";       // scoped base + focus + reduced-motion + --px-* bridge
+
+// Playground-only layout helpers (still scoped).
+.px-next {
+  &.pxn-doc {
+    min-height: 100vh;
+    background: var(--pxn-bg);
+    color: var(--pxn-ink);
+  }
+
+  .pxn-stack   { display: flex; flex-direction: column; }
+  .pxn-stack-4 { gap: var(--pxn-space-4); }
+  .pxn-stack-5 { gap: var(--pxn-space-5); }
+  .pxn-stack-6 { gap: var(--pxn-space-6); }
+  .pxn-stack-8 { gap: var(--pxn-space-8); }
+  .pxn-row     { display: flex; align-items: center; }
+  .pxn-wrap    { flex-wrap: wrap; }
+  .pxn-gap-3   { gap: var(--pxn-space-3); }
+  .pxn-gap-4   { gap: var(--pxn-space-4); }
+  .pxn-gap-5   { gap: var(--pxn-space-5); }
+  .pxn-gap-6   { gap: var(--pxn-space-6); }
+
+  .pxn-grid    { display: grid; gap: var(--pxn-space-6); }
+  .pxn-grid-2  { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pxn-grid-3  { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pxn-grid-4  { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pxn-grid-auto { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+
+  @media (max-width: 1024px) {
+    .pxn-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pxn-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 680px) {
+    .pxn-grid-2, .pxn-grid-3, .pxn-grid-4 { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .pxn-muted    { color: var(--pxn-ink-3); }
+  .pxn-fs-sm    { font-size: var(--pxn-fs-sm); }
+  .pxn-fs-xs    { font-size: var(--pxn-fs-xs); }
+  .pxn-divider  { height: 1px; background: var(--pxn-border); border: 0; margin: 0; }
+}

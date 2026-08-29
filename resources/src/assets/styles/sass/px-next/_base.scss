@@ -1,0 +1,116 @@
+// =============================================================================
+// PRODEX · px-next · base
+// -----------------------------------------------------------------------------
+// Scoped base styles. Everything lives under `.px-next` — no global element
+// selectors, no reset that escapes the scope.
+// =============================================================================
+
+.px-next {
+  box-sizing: border-box;
+  font-family: var(--pxn-font-sans);
+  font-size: var(--pxn-fs-body);
+  line-height: var(--pxn-lh-normal);
+  color: var(--pxn-ink);
+  background: var(--pxn-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: inherit;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reused component bridge — the existing PxSkeleton.vue reads the *old*
+  // `--px-*` names. Alias them to px-next values so it adopts this palette with
+  // zero component changes. (Scoped: only inside .px-next.)
+  // ---------------------------------------------------------------------------
+  --px-surface: var(--pxn-surface);
+  --px-surface-muted: var(--pxn-surface-2);
+  --px-border: var(--pxn-border);
+  --px-radius-sm: var(--pxn-radius-sm);
+  --px-radius-lg: var(--pxn-radius-lg);
+  --px-control-height: var(--pxn-control-h-md);
+
+  // ---------------------------------------------------------------------------
+  // Typographic primitives
+  // ---------------------------------------------------------------------------
+  h1, h2, h3, h4, p, ul, ol, figure {
+    margin: 0;
+  }
+
+  a {
+    color: var(--pxn-primary-ink);
+    text-decoration: none;
+    border-radius: 2px;
+  }
+  a:hover { text-decoration: underline; }
+
+  code, kbd, samp, .pxn-mono {
+    font-family: var(--pxn-font-mono);
+    font-size: 0.92em;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  // Numeric cells / figures: tabular lining figures, aligned.
+  .pxn-num {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: var(--pxn-num-feats);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Focus — always visible, always the tenant accent, never a bare outline.
+  // ---------------------------------------------------------------------------
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--pxn-primary);
+    outline-offset: 2px;
+    border-radius: var(--pxn-radius-xs);
+  }
+  // Controls that render their own ring use this shadow instead.
+  .pxn-ring:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--pxn-focus-ring);
+  }
+
+  // Text selection: a faint tenant tint, selected text keeps its own colour
+  // (recolouring it read as a "designed" highlight and looked heavier than a
+  // selection should). Primary stays reserved for actions and active state.
+  ::selection {
+    background: color-mix(in srgb, var(--pxn-primary) 18%, transparent);
+    color: inherit;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scrollbars inside data regions — thin, unobtrusive.
+  // ---------------------------------------------------------------------------
+  .pxn-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--pxn-border-strong) transparent;
+  }
+  .pxn-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+  .pxn-scroll::-webkit-scrollbar-thumb {
+    background: var(--pxn-border-strong);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  .pxn-scroll::-webkit-scrollbar-thumb:hover { background: var(--pxn-ink-3); }
+}
+
+// ---------------------------------------------------------------------------
+// Motion is functional. When the user asks for less, remove it entirely —
+// state is still conveyed by colour, position and text, never by movement.
+// ---------------------------------------------------------------------------
+@media (prefers-reduced-motion: reduce) {
+  .px-next *,
+  .px-next *::before,
+  .px-next *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
