@@ -228,8 +228,10 @@ jobs:
         env:
           PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
           PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
+          PRODEX_VPS_PORT: ${{ secrets.PRODEX_VPS_PORT }}
         run: |
           ssh -i ~/.ssh/deploy_key \
+            -p "$PRODEX_VPS_PORT" \
             -o StrictHostKeyChecking=yes \
             -o BatchMode=yes \
             -o ConnectTimeout=15 \
@@ -239,25 +241,28 @@ jobs:
         env:
           PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
           PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
+          PRODEX_VPS_PORT: ${{ secrets.PRODEX_VPS_PORT }}
         run: |
           rsync -rlvz --checksum --delete \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15" \
+            -e "ssh -p $PRODEX_VPS_PORT -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15" \
             public/js/ "${PRODEX_VPS_USER}@${PRODEX_VPS_HOST}:/var/www/prodex/public/js/"
       - name: Deploy public/css (no --delete, keeps manual CSS such as master.css)
         env:
           PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
           PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
+          PRODEX_VPS_PORT: ${{ secrets.PRODEX_VPS_PORT }}
         run: |
           rsync -rlvz --checksum \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15" \
+            -e "ssh -p $PRODEX_VPS_PORT -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15" \
             public/css/ "${PRODEX_VPS_USER}@${PRODEX_VPS_HOST}:/var/www/prodex/public/css/"
       - name: Deploy public/mix-manifest.json
         env:
           PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
           PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
+          PRODEX_VPS_PORT: ${{ secrets.PRODEX_VPS_PORT }}
         run: |
           rsync -vz --checksum \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15" \
+            -e "ssh -p $PRODEX_VPS_PORT -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15" \
             public/mix-manifest.json "${PRODEX_VPS_USER}@${PRODEX_VPS_HOST}:/var/www/prodex/public/mix-manifest.json"
       - name: Remove SSH credentials
         if: always()
