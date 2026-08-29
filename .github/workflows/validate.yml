@@ -176,6 +176,19 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=8192
         run: npm run production
+      # Publish the built assets once so deploy-frontend can consume them
+      # without rebuilding. Only when a deploy will actually run.
+      - name: Upload built frontend assets
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-assets
+          path: |
+            public/js
+            public/css
+            public/mix-manifest.json
+          if-no-files-found: error
+          retention-days: 3
 
   deploy-frontend:
     name: Deploy frontend assets to VPS
@@ -185,34 +198,47 @@ jobs:
     # ...and only on a real push to main (never on pull requests or manual dispatch).
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      # No checkout, no npm, no build here — just the artifact produced by frontend-build.
+      - name: Download built frontend assets
+        uses: actions/download-artifact@v4
         with:
-          node-version: '20'
-          cache: npm
-      - name: Install frontend dependencies
-        run: npm ci
-      - name: Production build
+          name: frontend-assets
+          path: public
+      - name: List assets to deploy
+        run: |
+          echo "public/js:";  ls -la public/js  | head -40
+          echo "public/css:"; ls -la public/css | head -40
+          test -f public/mix-manifest.json && echo "public/mix-manifest.json: present"
+      - name: Configure SSH (deploy key + known_hosts from secrets)
         env:
-          NODE_OPTIONS: --max-old-space-size=8192
-        run: npm run production
-      - name: Prepare SSH
-        env:
-          PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
           PRODEX_VPS_SSH_KEY: ${{ secrets.PRODEX_VPS_SSH_KEY }}
+          PRODEX_VPS_KNOWN_HOSTS: ${{ secrets.PRODEX_VPS_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$PRODEX_VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 700 ~/.ssh
+          printf '%s\n' "$PRODEX_VPS_SSH_KEY"     > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -T 15 "$PRODEX_VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          printf '%s\n' "$PRODEX_VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      # Fails here = authentication / connectivity problem (distinct from rsync).
+      - name: SSH connectivity check
+        env:
+          PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
+          PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            "${PRODEX_VPS_USER}@${PRODEX_VPS_HOST}" \
+            'echo "SSH OK"; test -d /var/www/prodex/public/js && test -d /var/www/prodex/public/css && echo "target dirs present"'
       - name: Deploy public/js (mirror with --delete)
         env:
           PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
           PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
         run: |
           rsync -rlvz --checksum --delete \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes" \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15" \
             public/js/ "${PRODEX_VPS_USER}@${PRODEX_VPS_HOST}:/var/www/prodex/public/js/"
       - name: Deploy public/css (no --delete, keeps manual CSS such as master.css)
         env:
@@ -220,7 +246,7 @@ jobs:
           PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
         run: |
           rsync -rlvz --checksum \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes" \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15" \
             public/css/ "${PRODEX_VPS_USER}@${PRODEX_VPS_HOST}:/var/www/prodex/public/css/"
       - name: Deploy public/mix-manifest.json
         env:
@@ -228,8 +254,8 @@ jobs:
           PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
         run: |
           rsync -vz --checksum \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes" \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15" \
             public/mix-manifest.json "${PRODEX_VPS_USER}@${PRODEX_VPS_HOST}:/var/www/prodex/public/mix-manifest.json"
-      - name: Remove SSH key
+      - name: Remove SSH credentials
         if: always()
-        run: rm -f ~/.ssh/deploy_key
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts
