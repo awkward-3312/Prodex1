@@ -176,3 +176,60 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=8192
         run: npm run production
+
+  deploy-frontend:
+    name: Deploy frontend assets to VPS
+    runs-on: ubuntu-latest
+    # Runs only after tests + build succeed...
+    needs: [ php-tests, frontend-build ]
+    # ...and only on a real push to main (never on pull requests or manual dispatch).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Production build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: npm run production
+      - name: Prepare SSH
+        env:
+          PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
+          PRODEX_VPS_SSH_KEY: ${{ secrets.PRODEX_VPS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$PRODEX_VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -T 15 "$PRODEX_VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Deploy public/js (mirror with --delete)
+        env:
+          PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
+          PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
+        run: |
+          rsync -rlvz --checksum --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes" \
+            public/js/ "${PRODEX_VPS_USER}@${PRODEX_VPS_HOST}:/var/www/prodex/public/js/"
+      - name: Deploy public/css (no --delete, keeps manual CSS such as master.css)
+        env:
+          PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
+          PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
+        run: |
+          rsync -rlvz --checksum \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes" \
+            public/css/ "${PRODEX_VPS_USER}@${PRODEX_VPS_HOST}:/var/www/prodex/public/css/"
+      - name: Deploy public/mix-manifest.json
+        env:
+          PRODEX_VPS_HOST: ${{ secrets.PRODEX_VPS_HOST }}
+          PRODEX_VPS_USER: ${{ secrets.PRODEX_VPS_USER }}
+        run: |
+          rsync -vz --checksum \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes" \
+            public/mix-manifest.json "${PRODEX_VPS_USER}@${PRODEX_VPS_HOST}:/var/www/prodex/public/mix-manifest.json"
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
