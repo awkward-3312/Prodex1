@@ -159,12 +159,14 @@ import FeedbackSection from "./sections/FeedbackSection.vue";
 import ChartSection from "./sections/ChartSection.vue";
 import IconographySection from "./sections/IconographySection.vue";
 import ShellSection from "./sections/ShellSection.vue";
+import ModuleMapSection from "./sections/ModuleMapSection.vue";
 
 export default {
   name: "PxNextPlayground",
   components: {
     TokensSection, TypeSection, PrimitivesSection, DataDisplaySection, TableSection,
-    NavigationSection, FeedbackSection, ChartSection, IconographySection, ShellSection
+    NavigationSection, FeedbackSection, ChartSection, IconographySection, ShellSection,
+    ModuleMapSection
   },
   data() {
     return {
@@ -194,7 +196,8 @@ export default {
         { id: "feedback", label: "Feedback y vacíos", icon: "message-square", component: "FeedbackSection" },
         { id: "chart", label: "Marco de gráfico", icon: "bar-chart-3", component: "ChartSection" },
         { id: "iconography", label: "Iconografía", icon: "puzzle", component: "IconographySection" },
-        { id: "shell", label: "Shell (hipótesis)", icon: "layout-dashboard", component: "ShellSection" }
+        { id: "shell", label: "Shell (hipótesis)", icon: "layout-dashboard", component: "ShellSection" },
+        { id: "modulemap", label: "B0 · Mapa de navegación", icon: "arrow-right-left", component: "ModuleMapSection" }
       ]
     };
   },
