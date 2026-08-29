@@ -133,14 +133,14 @@ Route::middleware(['web', 'auth.central'])->prefix('update')->name('platform.upd
 // ------------------------------------------------------------------\\
 // Central (super admin) login — no auth required
 Route::get('/super/login', [\App\Http\Controllers\Central\CentralLoginController::class, 'showLoginForm'])->name('central.login');
-Route::post('/super/login', [\App\Http\Controllers\Central\CentralLoginController::class, 'login'])->name('central.login.submit')->middleware('throttle:login');
+Route::post('/super/login', [\App\Http\Controllers\Central\CentralLoginController::class, 'login'])->name('central.login.submit');
 Route::post('/super/logout', [\App\Http\Controllers\Central\CentralLoginController::class, 'logout'])->name('central.logout');
 
 // Super admin password reset
 Route::get('/super/forgot-password', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'showForgotForm'])->name('central.password.request');
-Route::post('/super/forgot-password', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'sendResetLink'])->name('central.password.email')->middleware('throttle:password-email');
+Route::post('/super/forgot-password', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'sendResetLink'])->name('central.password.email');
 Route::get('/super/reset-password/{token}', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'showResetForm'])->name('central.password.reset');
-Route::post('/super/reset-password', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'resetPassword'])->name('central.password.update')->middleware('throttle:password-email');
+Route::post('/super/reset-password', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'resetPassword'])->name('central.password.update');
 
 // ------------------------------------------------------------------\\
 // Payment gateway webhooks (no auth, no CSRF — verified by signature)
