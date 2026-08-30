@@ -9,9 +9,9 @@
         v-if="isOpen"
         ref="panel"
         class="pxn-menu__panel pxn-scroll"
-        :class="`is-${align}`"
+        :class="{ 'is-up': dropUp }"
         role="menu"
-        @keydown.esc="close"
+        @keydown.esc.stop="close"
         @keydown.down.prevent="move(1)"
         @keydown.up.prevent="move(-1)"
       >
@@ -41,8 +41,12 @@
 
 <script>
 // Floating action menu (used by PxKebab and any "more actions" trigger).
-// Floating → it gets a shadow. Opens with a short scale+fade+rise; reduced
-// motion drops the movement (see _base.scss global override).
+// El panel va en position:fixed anclado al trigger con getBoundingClientRect()
+// —mismo patrón robusto que PxSelect— para que NUNCA lo recorte el overflow de
+// un ancestro (p. ej. el scroll de PxTable). Sin portal: el nodo sigue viviendo
+// en el subárbol del componente, así que click-outside / foco / teclado siguen
+// funcionando igual. Flip vertical + clamp al viewport + reposición en
+// scroll/resize.
 export default {
   name: "PxMenu",
   directives: {
@@ -56,14 +60,18 @@ export default {
   },
   props: {
     items: { type: Array, required: true }, // [{ label, icon?, hint?, tone?, disabled? } | { divider:true } | { header:'…' }]
-    align: { type: String, default: "end" } // start | end
+    align: { type: String, default: "end" } // start | end — borde del panel que se alinea con el trigger
   },
-  data() { return { isOpen: false }; },
+  data() { return { isOpen: false, dropUp: false }; },
+  beforeDestroy() { this.teardownListeners(); },
   methods: {
     toggle() { this.isOpen ? this.close() : this.open(); },
     open() {
+      if (this.isOpen) return;
       this.isOpen = true;
       this.$nextTick(() => {
+        this.position();
+        this.setupListeners();
         const first = (this.$refs.item || []).find(b => !b.disabled);
         if (first) first.focus();
       });
@@ -71,6 +79,8 @@ export default {
     close() {
       if (!this.isOpen) return;
       this.isOpen = false;
+      this.dropUp = false;
+      this.teardownListeners();
       const t = this.$refs.trigger;
       if (t && t.firstElementChild) t.firstElementChild.focus();
     },
@@ -85,6 +95,68 @@ export default {
       if (item.disabled) return;
       this.$emit("select", item);
       this.close();
+    },
+
+    // ---- posicionamiento fixed anclado al trigger --------------------------
+    setupListeners() {
+      this._onScroll = () => this.schedulePosition();
+      this._onResize = () => this.schedulePosition();
+      window.addEventListener("scroll", this._onScroll, true);
+      window.addEventListener("resize", this._onResize);
+    },
+    teardownListeners() {
+      if (this._onScroll) window.removeEventListener("scroll", this._onScroll, true);
+      if (this._onResize) window.removeEventListener("resize", this._onResize);
+      this._onScroll = this._onResize = null;
+      if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
+    },
+    schedulePosition() {
+      if (this._raf) return;
+      this._raf = requestAnimationFrame(() => { this._raf = null; this.position(); });
+    },
+    position() {
+      const trigger = this.$refs.trigger;
+      const panel = this.$refs.panel;
+      if (!trigger || !panel) return;
+
+      const tr = trigger.getBoundingClientRect();
+      const vw = document.documentElement.clientWidth;
+      const vh = window.innerHeight;
+      const GAP = 6;
+      const MARGIN = 8;
+
+      // Ancho: natural (min 200 vía CSS), nunca más que el viewport. offsetWidth
+      // ignora el transform de la transición de entrada.
+      panel.style.maxWidth = `${Math.round(vw - MARGIN * 2)}px`;
+      panel.style.width = "";
+      const panelW = Math.min(panel.offsetWidth, vw - MARGIN * 2);
+
+      // Borde horizontal según `align`; luego clamp al viewport.
+      let left = this.align === "start" ? tr.left : tr.right - panelW;
+      if (left + panelW > vw - MARGIN) left = vw - MARGIN - panelW;
+      if (left < MARGIN) left = MARGIN;
+
+      const spaceBelow = vh - tr.bottom - GAP - MARGIN;
+      const spaceAbove = tr.top - GAP - MARGIN;
+      panel.style.maxHeight = "";
+      const natH = panel.scrollHeight;
+
+      let top;
+      let maxH;
+      if (natH <= spaceBelow || spaceBelow >= spaceAbove) {
+        this.dropUp = false;
+        top = tr.bottom + GAP;
+        maxH = Math.max(120, spaceBelow);
+      } else {
+        this.dropUp = true;
+        maxH = Math.max(120, spaceAbove);
+        top = tr.top - GAP - Math.min(natH, maxH);
+      }
+
+      panel.style.left = `${Math.round(left)}px`;
+      panel.style.top = `${Math.round(top)}px`;
+      panel.style.width = `${Math.round(panelW)}px`;
+      panel.style.maxHeight = `${Math.round(maxH)}px`;
     }
   }
 };
@@ -94,20 +166,18 @@ export default {
 .pxn-menu { position: relative; display: inline-flex; }
 .pxn-menu__trigger { display: inline-flex; }
 .pxn-menu__panel {
-  position: absolute;
-  top: calc(100% + 6px);
+  position: fixed;
+  left: 0;
+  top: 0;
   min-width: 200px;
-  max-height: 320px;
-  overflow-y: auto;
   padding: var(--pxn-space-3);
   background: var(--pxn-surface);
   border: 1px solid var(--pxn-border);
   border-radius: var(--pxn-radius-md);
   box-shadow: var(--pxn-shadow-menu);
-  z-index: var(--pxn-z-menu);
+  z-index: var(--pxn-z-dropdown, 1200);
+  overflow-y: auto;
 }
-.pxn-menu__panel.is-end { right: 0; }
-.pxn-menu__panel.is-start { left: 0; }
 
 .pxn-menu__item {
   display: flex;
@@ -145,4 +215,6 @@ export default {
 .pxn-menu-pop-enter-active { transition: opacity var(--pxn-dur-2) var(--pxn-ease-out), transform var(--pxn-dur-2) var(--pxn-ease-out); }
 .pxn-menu-pop-leave-active { transition: opacity var(--pxn-dur-1) var(--pxn-ease-in), transform var(--pxn-dur-1) var(--pxn-ease-in); }
 .pxn-menu-pop-enter, .pxn-menu-pop-leave-to { opacity: 0; transform: translateY(-4px) scale(0.98); }
+.pxn-menu__panel.is-up.pxn-menu-pop-enter,
+.pxn-menu__panel.is-up.pxn-menu-pop-leave-to { transform: translateY(4px) scale(0.98); }
 </style>
