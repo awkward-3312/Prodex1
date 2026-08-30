@@ -3047,11 +3047,21 @@ const baseRoutes = [
                             )
                     },
                     {
+                        // C3.18 — Dashboard / Reporte por almacén px-next.
                         name: "warehouse_report",
                         path: "warehouse_report",
                         component: () =>
                             import(
                                 /* webpackChunkName: "warehouse_report" */
+                                "./views/app/reports/next/warehouse/index.vue"
+                            )
+                    },
+                    {
+                        name: "warehouse_report_classic",
+                        path: "warehouse_report-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "warehouse_report_classic" */
                                 "./views/app/pages/reports/warehouse_report"
                             )
                     },
@@ -3203,39 +3213,73 @@ const baseRoutes = [
                             )
                     },
                     {
+                        // C3.19 — Detalle completo de existencias de un producto px-next.
                         name: "detail_stock_report",
                         path: "detail_stock/:id",
                         component: () =>
                             import(
                                 /* webpackChunkName: "detail_stock_report" */
+                                "./views/app/reports/next/detail-stock/index.vue"
+                            )
+                    },
+                    {
+                        name: "detail_stock_report_classic",
+                        path: "detail_stock-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "detail_stock_report_classic" */
                                 "./views/app/pages/reports/detail_stock_report"
                             )
                     },
 
-                    // Serial / IMEI reports
+                    // Serial / IMEI reports — C3.20–C3.23 px-next
                     {
                         name: "serial_available_report",
                         path: "serial_available_report",
                         component: () =>
-                            import(/* webpackChunkName: "serial_available_report" */ "./views/app/pages/reports/Serial_Available_Report")
+                            import(/* webpackChunkName: "serial_available_report" */ "./views/app/reports/next/serials/available.vue")
+                    },
+                    {
+                        name: "serial_available_report_classic",
+                        path: "serial_available_report-classic",
+                        component: () =>
+                            import(/* webpackChunkName: "serial_available_report_classic" */ "./views/app/pages/reports/Serial_Available_Report")
                     },
                     {
                         name: "serial_sold_report",
                         path: "serial_sold_report",
                         component: () =>
-                            import(/* webpackChunkName: "serial_sold_report" */ "./views/app/pages/reports/Serial_Sold_Report")
+                            import(/* webpackChunkName: "serial_sold_report" */ "./views/app/reports/next/serials/sold.vue")
+                    },
+                    {
+                        name: "serial_sold_report_classic",
+                        path: "serial_sold_report-classic",
+                        component: () =>
+                            import(/* webpackChunkName: "serial_sold_report_classic" */ "./views/app/pages/reports/Serial_Sold_Report")
                     },
                     {
                         name: "serial_movement_report",
                         path: "serial_movement_report",
                         component: () =>
-                            import(/* webpackChunkName: "serial_movement_report" */ "./views/app/pages/reports/Serial_Movement_Report")
+                            import(/* webpackChunkName: "serial_movement_report" */ "./views/app/reports/next/serials/movements.vue")
+                    },
+                    {
+                        name: "serial_movement_report_classic",
+                        path: "serial_movement_report-classic",
+                        component: () =>
+                            import(/* webpackChunkName: "serial_movement_report_classic" */ "./views/app/pages/reports/Serial_Movement_Report")
                     },
                     {
                         name: "serial_inventory_report",
                         path: "serial_inventory_report",
                         component: () =>
-                            import(/* webpackChunkName: "serial_inventory_report" */ "./views/app/pages/reports/Serial_Inventory_Report")
+                            import(/* webpackChunkName: "serial_inventory_report" */ "./views/app/reports/next/serials/inventory.vue")
+                    },
+                    {
+                        name: "serial_inventory_report_classic",
+                        path: "serial_inventory_report-classic",
+                        component: () =>
+                            import(/* webpackChunkName: "serial_inventory_report_classic" */ "./views/app/pages/reports/Serial_Inventory_Report")
                     },
 
                     {
@@ -3794,6 +3838,33 @@ if (process.env.NODE_ENV !== "production") {
             children: [
                 { path: "", name: "px_next_batch_register_preview", component: () => import(/* webpackChunkName: "px-next-batch-register" */ "./views/app/reports/next/batch-register/index.vue") },
                 { path: ":id", name: "px_next_batch_history_preview", component: () => import(/* webpackChunkName: "px-next-batch-history" */ "./views/app/reports/next/batch-history/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.18 — Reporte por almacén px-next (alias dev-only).
+            path: "/app/_ui/reportes/almacen",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_warehouse_report_preview", component: () => import(/* webpackChunkName: "px-next-warehouse-report" */ "./views/app/reports/next/warehouse/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.19 — Detalle completo de existencias px-next (alias dev-only).
+            path: "/app/_ui/reportes/existencias-detalle",
+            component: () => import("./views/app"),
+            children: [
+                { path: ":id", name: "px_next_detail_stock_report_preview", component: () => import(/* webpackChunkName: "px-next-detail-stock" */ "./views/app/reports/next/detail-stock/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.20–C3.23 — Reportes de seriales px-next (alias dev-only).
+            path: "/app/_ui/reportes/seriales",
+            component: () => import("./views/app"),
+            children: [
+                { path: "disponibles", name: "px_next_serial_available_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-available" */ "./views/app/reports/next/serials/available.vue") },
+                { path: "vendidos", name: "px_next_serial_sold_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-sold" */ "./views/app/reports/next/serials/sold.vue") },
+                { path: "inventario", name: "px_next_serial_inventory_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-inventory" */ "./views/app/reports/next/serials/inventory.vue") },
+                { path: "movimientos", name: "px_next_serial_movement_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-movements" */ "./views/app/reports/next/serials/movements.vue") }
             ]
         }
     );
