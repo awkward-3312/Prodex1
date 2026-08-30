@@ -169,11 +169,26 @@ const baseRoutes = [
                             )
                     },
                     {
+                        // Fase C2B — Edición px-next adoptada. Conserva el name
+                        // "edit_product" para que todos los $router.push({name})
+                        // existentes sigan funcionando. La vista anterior
+                        // (Edit_product.vue) queda intacta en
+                        // /app/products/edit-classic/:id para rollback por URL.
                         path: "edit/:id",
                         name: "edit_product",
                         component: () =>
                             import(
-                                /* webpackChunkName: "edit_product" */ "./views/app/pages/products/Edit_product"
+                                /* webpackChunkName: "edit_product" */ "./views/app/products/next/edit/index.vue"
+                            )
+                    },
+                    {
+                        // Rollback inmediato por URL. Misma capa/auth/permisos.
+                        // No aparece en la navegación.
+                        path: "edit-classic/:id",
+                        name: "edit_product_classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "edit_product_classic" */ "./views/app/pages/products/Edit_product"
                             )
                     },
                     {
@@ -3234,6 +3249,23 @@ if (process.env.NODE_ENV !== "production") {
                     component: () =>
                         import(
                             /* webpackChunkName: "px-next-product-detail" */ "./views/app/products/next/detail/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C2B — alias dev-only al componente permanente. La ruta real
+            // es /app/products/edit/:id; este alias mantiene el atajo del
+            // playground.
+            path: "/app/_ui/producto/:id/edicion",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_product_edit_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-product-edit" */ "./views/app/products/next/edit/index.vue"
                         )
                 }
             ]
