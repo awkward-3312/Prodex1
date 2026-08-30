@@ -343,31 +343,38 @@ const baseRoutes = [
                     ),
                 redirect: "/app/adjustments/list",
                 children: [
+                    // Fase C3.1 — Ajustes de inventario px-next adoptados. Se
+                    // conservan los name (index/store/edit/detail_adjustment)
+                    // para que todos los $router.push({name}) sigan funcionando.
+                    // Las vistas legacy quedan intactas en /app/adjustments/*-classic
+                    // para rollback por URL.
                     {
                         name: "index_adjustment",
                         path: "list",
                         component: () =>
                             import(
                                 /* webpackChunkName: "index_adjustment" */
-                                "./views/app/pages/adjustment/index_Adjustment"
+                                "./views/app/inventory/next/adjustments/list.vue"
                             )
                     },
                     {
                         name: "store_adjustment",
                         path: "store",
+                        props: { mode: "create" },
                         component: () =>
                             import(
                                 /* webpackChunkName: "store_adjustment" */
-                                "./views/app/pages/adjustment/Create_Adjustment"
+                                "./views/app/inventory/next/adjustments/form.vue"
                             )
                     },
                     {
                         name: "edit_adjustment",
                         path: "edit/:id",
+                        props: { mode: "edit" },
                         component: () =>
                             import(
                                 /* webpackChunkName: "edit_adjustment" */
-                                "./views/app/pages/adjustment/Edit_Adjustment"
+                                "./views/app/inventory/next/adjustments/form.vue"
                             )
                     },
                     {
@@ -376,6 +383,44 @@ const baseRoutes = [
                         component: () =>
                             import(
                                 /* webpackChunkName: "detail_adjustment" */
+                                "./views/app/inventory/next/adjustments/detail.vue"
+                            )
+                    },
+                    // Rollback inmediato por URL. Misma capa/auth/permisos.
+                    // No aparecen en la navegación.
+                    {
+                        name: "index_adjustment_classic",
+                        path: "list-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "index_adjustment_classic" */
+                                "./views/app/pages/adjustment/index_Adjustment"
+                            )
+                    },
+                    {
+                        name: "store_adjustment_classic",
+                        path: "store-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "store_adjustment_classic" */
+                                "./views/app/pages/adjustment/Create_Adjustment"
+                            )
+                    },
+                    {
+                        name: "edit_adjustment_classic",
+                        path: "edit-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "edit_adjustment_classic" */
+                                "./views/app/pages/adjustment/Edit_Adjustment"
+                            )
+                    },
+                    {
+                        name: "detail_adjustment_classic",
+                        path: "detail-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "detail_adjustment_classic" */
                                 "./views/app/pages/adjustment/Detail_Adjustment"
                             )
                     }
@@ -3298,6 +3343,48 @@ if (process.env.NODE_ENV !== "production") {
                     component: () =>
                         import(
                             /* webpackChunkName: "px-next-product-create" */ "./views/app/products/next/create/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.1 — Ajustes de inventario px-next (preview dev-only). Las
+            // rutas reales /app/adjustments/* siguen sirviendo la vista legacy.
+            path: "/app/_ui/inventario/ajustes",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_adjustment_list_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-adjustments" */ "./views/app/inventory/next/adjustments/list.vue"
+                        )
+                },
+                {
+                    path: "nuevo",
+                    name: "px_next_adjustment_create_preview",
+                    props: { mode: "create" },
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-adjustment-form" */ "./views/app/inventory/next/adjustments/form.vue"
+                        )
+                },
+                {
+                    path: ":id/editar",
+                    name: "px_next_adjustment_edit_preview",
+                    props: { mode: "edit" },
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-adjustment-form" */ "./views/app/inventory/next/adjustments/form.vue"
+                        )
+                },
+                {
+                    path: ":id/detalle",
+                    name: "px_next_adjustment_detail_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-adjustment-detail" */ "./views/app/inventory/next/adjustments/detail.vue"
                         )
                 }
             ]
