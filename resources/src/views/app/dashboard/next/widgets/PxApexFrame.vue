@@ -22,7 +22,8 @@
 
 <script>
 import VueApexCharts from "vue-apexcharts";
-import { PxChartFrame, PxEmptyState } from "@/components/px-next";
+import PxChartFrame from "@/components/px-next/PxChartFrame.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 // ApexCharts re-estilado a los tokens px-next (color, tipografía, motion).
 // Se conserva la librería de charts del proyecto; sólo cambia el estilo.

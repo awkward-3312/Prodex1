@@ -20,11 +20,23 @@ const baseRoutes = [
 
         children: [
             {
+                // Fase C0 — Dashboard px-next adoptado. La vista anterior
+                // (dashboard.vue) sigue intacta en /app/dashboard/legacy.
                 path: "/app/dashboard",
                 name: "dashboard",
                 component: () =>
                     import(
-                        /* webpackChunkName: "dashboard" */ "./views/app/dashboard/dashboard"
+                        /* webpackChunkName: "dashboard" */ "./views/app/dashboard/next/index.vue"
+                    )
+            },
+            {
+                // Rollback inmediato por URL. Misma capa/auth (hijo de views/app).
+                // No aparece en la navegación.
+                path: "/app/dashboard/legacy",
+                name: "dashboard_legacy",
+                component: () =>
+                    import(
+                        /* webpackChunkName: "dashboard-legacy" */ "./views/app/dashboard/dashboard"
                     )
             },
             {
@@ -3154,9 +3166,10 @@ if (process.env.NODE_ENV !== "production") {
                 import(/* webpackChunkName: "px-next-playground" */ "./views/app/_ui/index.vue")
         },
         {
-            // Fase B1 — Dashboard real (candidato experimental en preview).
-            // Renderiza dentro del shell actual (layout views/app). No sustituye
-            // /app/dashboard ni toca dashboard.vue.
+            // Fase C0 — el Dashboard px-next ya vive en su ubicación definitiva
+            // (views/app/dashboard/next) y sirve la ruta real /app/dashboard.
+            // Este alias dev-only se conserva para seguir iterando el DS; apunta
+            // al MISMO componente para evitar divergencia.
             path: "/app/_ui/dashboard",
             component: () => import("./views/app"),
             children: [
@@ -3164,7 +3177,7 @@ if (process.env.NODE_ENV !== "production") {
                     path: "",
                     name: "px_next_dashboard_preview",
                     component: () =>
-                        import(/* webpackChunkName: "px-next-dashboard" */ "./views/app/_ui/dashboard/index.vue")
+                        import(/* webpackChunkName: "px-next-dashboard-dev" */ "./views/app/dashboard/next/index.vue")
                 }
             ]
         },

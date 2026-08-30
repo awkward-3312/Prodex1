@@ -176,6 +176,19 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=8192
         run: npm run production
+      # Fase C0 safety net: the px-next playground and every /app/_ui preview
+      # must stay out of the production bundle (they live behind
+      # `process.env.NODE_ENV !== "production"` in the router and should be
+      # dead-code-eliminated). Fail the build if any marker leaks into public/js.
+      - name: Assert playground / _ui previews are NOT in the production bundle
+        run: |
+          set -e
+          markers='views/app/_ui|app/_ui/index|px-next-playground|px_next_playground|px-next-products|px_next_products_preview|px_next_dashboard_preview|px-next-dashboard-dev|ModuleMapSection|PxShellMock'
+          if grep -REl "$markers" public/js/ ; then
+            echo "::error::Playground / _ui preview code leaked into the production bundle (see files above)."
+            exit 1
+          fi
+          echo "OK — no playground / _ui markers in public/js/"
       # Publish the built assets once so deploy-frontend can consume them
       # without rebuilding. Only when a deploy will actually run.
       - name: Upload built frontend assets

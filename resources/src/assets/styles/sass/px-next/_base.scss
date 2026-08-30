@@ -98,6 +98,15 @@
     border-radius: 999px;
   }
   .pxn-scroll::-webkit-scrollbar-thumb:hover { background: var(--pxn-ink-3); }
+
+  // ---------------------------------------------------------------------------
+  // Text utilities used by real screens (moved here from index.scss so they
+  // ship in the production bundle, not just the playground).
+  // ---------------------------------------------------------------------------
+  .pxn-muted   { color: var(--pxn-ink-3); }
+  .pxn-fs-sm   { font-size: var(--pxn-fs-sm); }
+  .pxn-fs-xs   { font-size: var(--pxn-fs-xs); }
+  .pxn-divider { height: 1px; background: var(--pxn-border); border: 0; margin: 0; }
 }
 
 // ---------------------------------------------------------------------------

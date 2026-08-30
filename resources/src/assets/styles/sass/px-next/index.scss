@@ -1,16 +1,18 @@
 // =============================================================================
-// PRODEX · px-next entrypoint
+// PRODEX · px-next PLAYGROUND entrypoint
 // -----------------------------------------------------------------------------
-// Imported ONLY by resources/src/views/app/_ui/index.vue — never by the app's
-// global stylesheet. Everything it produces is scoped under `.px-next`, so it
-// cannot affect any real screen. Fase A / development only.
+// Imported ONLY by resources/src/views/app/_ui/index.vue — never by a real
+// screen. Everything it produces is scoped under `.px-next`. Dev-only: the
+// dev route lives behind `process.env.NODE_ENV !== "production"`, so this
+// stylesheet is dead-code-eliminated from the production bundle.
+//
+// Real screens import ./production.scss instead (typography + tokens + base).
+// This file = production.scss + the playground-only layout helpers below.
 // =============================================================================
 
-@import "typography"; // @font-face + [data-pxn-type] candidate switch (has global @font-face by necessity)
-@import "tokens";     // .px-next { --pxn-* }
-@import "base";       // scoped base + focus + reduced-motion + --px-* bridge
+@import "production"; // typography (@font-face) + tokens + scoped base + utilities
 
-// Playground-only layout helpers (still scoped).
+// Playground-only layout helpers (still scoped, never shipped).
 .px-next {
   &.pxn-doc {
     min-height: 100vh;
@@ -43,9 +45,6 @@
   @media (max-width: 680px) {
     .pxn-grid-2, .pxn-grid-3, .pxn-grid-4 { grid-template-columns: minmax(0, 1fr); }
   }
-
-  .pxn-muted    { color: var(--pxn-ink-3); }
-  .pxn-fs-sm    { font-size: var(--pxn-fs-sm); }
-  .pxn-fs-xs    { font-size: var(--pxn-fs-xs); }
-  .pxn-divider  { height: 1px; background: var(--pxn-border); border: 0; margin: 0; }
+  // .pxn-muted / .pxn-fs-sm / .pxn-fs-xs / .pxn-divider now live in _base.scss
+  // so they ship with production.scss too.
 }

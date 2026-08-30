@@ -1,30 +1,14 @@
 <template>
-  <div class="px-next pxn-doc pxb1" :style="fontOverride">
-    <!--
-      ============================================================================
-      DIRECTION CONTRACT · px-next · "Panel de operación" — B1 Dashboard preview
-      references: 3 provided dashboards · mode: Operate · seed: brief-pinned
-      ----------------------------------------------------------------------------
-      THESIS: the operator opens the app and reads the state of the business in
-        one screen — money in, money out, what's owed, what it's worth, what
-        just happened. Real endpoint (/api/dashboard_data), real numbers.
-        Information parity with the current dashboard, NOT layout parity.
-      OWN-WORLD: layered light neutrals, hairline structure, one tenant accent
-        (--primary-color) for figures-that-matter and active state; charts
-        restyled to px-next tokens (ApexCharts kept). Tabular lining figures.
-      STORY: scan KPI row → read the sales trend → check recent activity and
-        what needs attention (stock alerts, dues). Filter by branch/warehouse
-        and date range; everything recomputes.
-      FIRST VIEWPORT: page header with branch + range; a row of KPI figures
-        rendered immediately (no count-up); the sales trend chart as the anchor.
-      FORM: operational panel. #1 of the pinned brief.
-      FINISH: unreviewed and undocumented is unfinished; this build ends with the
-        finish review, the verdict, DESIGN.md, and every shipping raster carrying
-        its provenance.
-      ============================================================================
-    -->
-
-    <!-- permiso: mismo gate y fallback que el dashboard actual -->
+  <!--
+    px-next · Panel de operación — Dashboard.
+    Consume el endpoint real GET /api/dashboard_data (+ get_Settings_data para el
+    rango y la fuente por defecto). Paridad de información con el dashboard
+    anterior (disponible en /app/dashboard/legacy), no paridad de layout.
+    Adoptado en Fase C0. La iteración del design system se hace en el playground
+    dev-only (guarded por NODE_ENV).
+  -->
+  <div class="px-next pxb1" :style="fontOverride">
+    <!-- permiso: mismo gate y fallback que el dashboard anterior -->
     <div v-if="!hasDashboardPermission" class="pxb1__denied">
       <px-empty-state
         icon="lock"
@@ -38,9 +22,6 @@
         :title="tt('dashboard', 'Panel')"
         :breadcrumbs="[{ label: tt('dashboard', 'Panel') }]"
       >
-        <template #title-badge>
-          <px-badge tone="info" icon="sparkles">Preview B1</px-badge>
-        </template>
         <template #meta>
           <span><lucide-icon name="warehouse" :size="13" /> {{ activeWarehouseLabel }}</span>
           <span><lucide-icon name="calendar" :size="13" /> {{ prettyRange }}</span>
@@ -230,22 +211,23 @@
         </div>
       </div>
       </template>
-
-      <p class="pxb1__note">
-        <lucide-icon name="sparkles" :size="13" />
-        Candidato experimental de <code>/app/_ui/dashboard</code>. No reemplaza <code>/app/dashboard</code>.
-        Datos reales de <code>/api/dashboard_data</code> · paridad de información, no de layout.
-      </p>
     </template>
   </div>
 </template>
 
 <script>
 import { mapGetters } from "vuex";
-import {
-  PxPageHeader, PxBadge, PxSelect, PxButton, PxAlert, PxCard, PxStat,
-  PxTable, PxEntityCell, PxEmptyState
-} from "@/components/px-next";
+// Imports directos de cada primitive (no del barril) para el bundle de producción.
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxSelect from "@/components/px-next/PxSelect.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxEntityCell from "@/components/px-next/PxEntityCell.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 import PxApexFrame from "./widgets/PxApexFrame.vue";
 import { adaptDashboard } from "./adapter";
 import { makeFormatters } from "./format";
@@ -544,7 +526,7 @@ export default {
 };
 </script>
 
-<style lang="scss" src="@/assets/styles/sass/px-next/index.scss"></style>
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
 <style lang="scss" scoped>
 .pxb1 { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-11); }
@@ -658,13 +640,4 @@ export default {
 
 .pxb1__due { color: var(--pxn-warning-ink); font-weight: var(--pxn-fw-semibold); }
 .pxb1__low { color: var(--pxn-danger-ink); font-weight: var(--pxn-fw-semibold); }
-
-.pxb1__note {
-  display: block;
-  margin-top: var(--pxn-space-9); padding-top: var(--pxn-space-5);
-  border-top: 1px solid var(--pxn-border);
-  font-size: var(--pxn-fs-xs); line-height: var(--pxn-lh-normal); color: var(--pxn-ink-3);
-}
-.pxb1__note code { font-size: 0.92em; white-space: nowrap; }
-.pxb1__note :deep(svg) { vertical-align: -2px; margin-right: var(--pxn-space-2); }
 </style>
