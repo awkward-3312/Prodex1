@@ -90,6 +90,18 @@
     return /\/transfers(?:\/\d+)?$/i.test(u.pathname);
   }
 
+  // Only rewrite SHARED endpoints (get_Products_by_warehouse, show_product_data,
+  // batches_for_transfer) to the location-aware transfer API while the SPA is
+  // actually inside /app/transfers/*. Vue Router (history mode) keeps
+  // window.location.pathname in sync on client-side navigation, so this is
+  // evaluated per-request and works when moving between modules without reload.
+  // Never intercept those generic endpoints from Adjustments, Damages, POS,
+  // Purchases, Sales or anywhere else.
+  function inTransfersContext() {
+    var p = (window.location && window.location.pathname) || '';
+    return /^\/app\/transfers(?:\/|$)/i.test(p);
+  }
+
   function rewriteMutation(config) {
     var payload = dataObject(config);
     if (!payload || !payload.transfer) return config;
@@ -117,26 +129,28 @@
     axios.interceptors.request.use(function (config) {
       if (!config || (config.meta && config.meta.prodexTransferLocation)) return config;
 
-      var list = productListMatch(config);
-      var detail = productDetailMatch(config);
-      var batch = batchMatch(config);
+      if (inTransfersContext()) {
+        var list = productListMatch(config);
+        var detail = productDetailMatch(config);
+        var batch = batchMatch(config);
 
-      if (list) {
-        syncDestinations(list[1]);
-        config.url = 'transfer-location/' + list[1] + '/products';
-        config.meta = Object.assign({}, config.meta || {}, { prodexTransferLocation: true, skipErrorRedirect: true });
-        return config;
-      }
-      if (detail) {
-        var variant = detail[2] && !['null', 'undefined', ''].includes(String(detail[2])) ? Number(detail[2]) : 0;
-        config.url = 'transfer-location/' + detail[3] + '/products/' + detail[1] + (variant > 0 ? '?product_variant_id=' + variant : '');
-        config.meta = Object.assign({}, config.meta || {}, { prodexTransferLocation: true, skipErrorRedirect: true });
-        return config;
-      }
-      if (batch) {
-        config.url = 'transfer-location/' + batch[2] + '/batches/' + batch[1] + '/' + batch[3];
-        config.meta = Object.assign({}, config.meta || {}, { prodexTransferLocation: true, skipErrorRedirect: true });
-        return config;
+        if (list) {
+          syncDestinations(list[1]);
+          config.url = 'transfer-location/' + list[1] + '/products';
+          config.meta = Object.assign({}, config.meta || {}, { prodexTransferLocation: true, skipErrorRedirect: true });
+          return config;
+        }
+        if (detail) {
+          var variant = detail[2] && !['null', 'undefined', ''].includes(String(detail[2])) ? Number(detail[2]) : 0;
+          config.url = 'transfer-location/' + detail[3] + '/products/' + detail[1] + (variant > 0 ? '?product_variant_id=' + variant : '');
+          config.meta = Object.assign({}, config.meta || {}, { prodexTransferLocation: true, skipErrorRedirect: true });
+          return config;
+        }
+        if (batch) {
+          config.url = 'transfer-location/' + batch[2] + '/batches/' + batch[1] + '/' + batch[3];
+          config.meta = Object.assign({}, config.meta || {}, { prodexTransferLocation: true, skipErrorRedirect: true });
+          return config;
+        }
       }
 
       if (transferMutation(config)) {
@@ -257,7 +271,9 @@
 
   function boot() {
     installAxios();
-    loadOptions(false);
+    // transfer-location/options is fetched lazily — only when the SPA is inside
+    // /app/transfers/* (via the create/edit form response interceptor, or a
+    // transfer mutation). Never fetched globally at startup.
     var observer = new MutationObserver(relabel);
     try { observer.observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
     relabel();
