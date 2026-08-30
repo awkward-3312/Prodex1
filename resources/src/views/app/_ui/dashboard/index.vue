@@ -80,7 +80,7 @@
       <div class="pxb1__kpis">
         <px-card v-for="c in kpiCards" :key="c.key">
           <px-skeleton v-if="loading" variant="lines" :rows="3" />
-          <px-stat v-else :label="c.label" :value="c.value" :sub="c.sub" :icon="c.icon" />
+          <px-stat v-else :label="c.label" :value="c.text" :value-title="c.title" :sub="c.sub" :icon="c.icon" />
         </px-card>
       </div>
 
@@ -91,17 +91,9 @@
             <lucide-icon name="boxes" :size="15" />
             <span>Valorización de inventario</span>
           </div>
-          <div class="pxb1__valuation-item">
-            <dt>A costo</dt>
-            <dd class="pxn-num">{{ loading ? '—' : money(sv.byCost) }}</dd>
-          </div>
-          <div class="pxb1__valuation-item">
-            <dt>A precio de venta</dt>
-            <dd class="pxn-num">{{ loading ? '—' : money(sv.byRetail) }}</dd>
-          </div>
-          <div class="pxb1__valuation-item">
-            <dt>A mayoreo</dt>
-            <dd class="pxn-num">{{ loading ? '—' : money(sv.byWholesale) }}</dd>
+          <div v-for="row in valuationRows" :key="row.label" class="pxb1__valuation-item">
+            <dt>{{ row.label }}</dt>
+            <dd class="pxn-num" :title="loading ? null : row.title">{{ loading ? '—' : row.text }}</dd>
           </div>
         </div>
       </px-card>
@@ -360,20 +352,29 @@ export default {
     },
     k() { return this.adapted ? this.adapted.kpis : {}; },
     sv() { return this.adapted ? this.adapted.stockValue : {}; },
+    valuationRows() {
+      const sv = this.sv;
+      return [
+        { label: "A costo", ...this.kpiMoney(sv.byCost) },
+        { label: "A precio de venta", ...this.kpiMoney(sv.byRetail) },
+        { label: "A mayoreo", ...this.kpiMoney(sv.byWholesale) }
+      ];
+    },
     kpiCards() {
       const k = this.k;
+      const m = v => this.kpiMoney(v);
       return [
         { key: "sales", label: "Total ventas", icon: "trending-up",
-          value: this.money(k.sales), sub: `${this.number(k.invoices)} facturas` },
+          ...m(k.sales), sub: `${this.number(k.invoices)} facturas` },
         { key: "purch", label: "Total compras", icon: "shopping-cart",
-          value: this.money(k.purchases), sub: k.returnPurch ? `Devoluciones ${this.money(k.returnPurch)}` : null },
+          ...m(k.purchases), sub: k.returnPurch ? `Devoluciones ${this.money(k.returnPurch)}` : null },
         { key: "sdue", label: "Por cobrar", icon: "coins",
-          value: this.money(k.salesDue), sub: k.purchaseDue ? `Por pagar ${this.money(k.purchaseDue)}` : null },
+          ...m(k.salesDue), sub: k.purchaseDue ? `Por pagar ${this.money(k.purchaseDue)}` : null },
         { key: "profit", label: "Utilidad", icon: "percent",
-          value: this.money(k.profit),
+          ...m(k.profit),
           sub: k.sales ? `Margen ${this.number(k.sales ? (k.profit / k.sales) * 100 : 0, 1)} %` : null },
         { key: "stock", label: "Inventario a costo", icon: "boxes",
-          value: this.money(this.sv.byCost), sub: `Valorización a venta y mayoreo abajo` }
+          ...m(this.sv.byCost), sub: `Valorización a venta y mayoreo abajo` }
       ];
     },
 
@@ -457,6 +458,14 @@ export default {
     },
     money(v) { return this.fmt.money(v, 2); },
     number(v, d = 0) { return this.fmt.number(v, d); },
+    // Para cifras destacadas: a partir de ~1 M se muestra compacto y localizado
+    // ("L 1,6 M"); el valor exacto viaja en `title`. Debajo, importe íntegro.
+    kpiMoney(v) {
+      const full = this.fmt.money(v, 2);
+      const n = Number(v);
+      const text = Number.isFinite(n) && Math.abs(n) >= 1e6 ? this.fmt.compactMoney(v) : full;
+      return { text, title: full };
+    },
     payTone(s) { return (PAY[s] || {}).tone || "neutral"; },
     payIcon(s) { return (PAY[s] || {}).icon || "circle"; },
     payLabel(s) { return (PAY[s] || {}).label || (s || "—"); },
@@ -599,10 +608,14 @@ export default {
 }
 .pxb1__valuation-item {
   padding: var(--pxn-space-5) var(--pxn-space-7);
+  min-width: 0;
 }
 .pxb1__valuation-item + .pxb1__valuation-item { border-left: 1px solid var(--pxn-border); }
 .pxb1__valuation-item dt { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
-.pxb1__valuation-item dd { margin: 2px 0 0; font-size: var(--pxn-fs-h3); font-weight: var(--pxn-fw-bold); color: var(--pxn-ink); }
+.pxb1__valuation-item dd {
+  margin: 2px 0 0; font-size: var(--pxn-fs-h3); font-weight: var(--pxn-fw-bold); color: var(--pxn-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 @media (max-width: 720px) {
   .pxb1__valuation-grid { grid-template-columns: 1fr 1fr; }
   .pxb1__valuation-head { grid-column: 1 / -1; border-right: 0; border-bottom: 1px solid var(--pxn-border); }

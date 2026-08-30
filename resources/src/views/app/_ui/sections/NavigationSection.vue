@@ -63,10 +63,10 @@
     <px-modal v-model="showForm" title="Ajustar existencias" subtitle="Acetaminofén 500 mg · caja 100 tab" size="md">
       <div class="nv-form">
         <px-field label="Ubicación">
-          <template #default="{ id }"><px-select :id="id" :options="['Piso de venta', 'Bodega interna', 'Cuarentena']" value="Piso de venta" /></template>
+          <template #default="{ id }"><px-select :id="id" v-model="navUbicacion" :options="['Piso de venta', 'Bodega interna', 'Cuarentena']" /></template>
         </px-field>
         <px-field label="Tipo de ajuste">
-          <template #default="{ id }"><px-select :id="id" :options="['Entrada', 'Salida', 'Merma', 'Recuento']" value="Recuento" /></template>
+          <template #default="{ id }"><px-select :id="id" v-model="navAjuste" :options="['Entrada', 'Salida', 'Merma', 'Recuento']" /></template>
         </px-field>
         <px-field label="Cantidad" required>
           <template #default="{ id }"><px-input :id="id" numeric inputmode="numeric" value="1240" /></template>
@@ -105,6 +105,8 @@ export default {
       lastAction: "",
       showForm: false,
       showConfirm: false,
+      navUbicacion: "Piso de venta",
+      navAjuste: "Recuento",
       tabsLine: [
         { value: "todas", label: "Todas", count: 1284 },
         { value: "activas", label: "Activas", count: 1190 },

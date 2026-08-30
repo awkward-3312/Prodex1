@@ -214,4 +214,6 @@
   --pxn-z-popover: 1010;
   --pxn-z-modal: 1050;
   --pxn-z-toast: 1080;
+  // El popup del select va por encima del modal (puede abrirse dentro de uno).
+  --pxn-z-dropdown: 1200;
 }

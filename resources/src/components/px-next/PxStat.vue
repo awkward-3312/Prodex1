@@ -1,11 +1,11 @@
 <template>
-  <div class="pxn-stat" :class="{ 'pxn-stat--bordered': bordered }">
+  <div class="pxn-stat" :class="{ 'pxn-stat--bordered': bordered }" role="group" :aria-label="ariaLabel">
     <div class="pxn-stat__top">
       <span class="pxn-stat__label">{{ label }}</span>
       <lucide-icon v-if="icon" :name="icon" :size="15" class="pxn-stat__icon" />
     </div>
-    <div class="pxn-stat__value pxn-num">
-      <span v-if="prefix" class="pxn-stat__affix">{{ prefix }}</span>{{ value }}<span v-if="suffix" class="pxn-stat__affix">{{ suffix }}</span>
+    <div class="pxn-stat__value pxn-num" :title="fullValue">
+      <span v-if="prefix" class="pxn-stat__affix">{{ prefix }}</span><span class="pxn-stat__num">{{ value }}</span><span v-if="suffix" class="pxn-stat__affix">{{ suffix }}</span>
     </div>
     <div v-if="delta || sub" class="pxn-stat__foot">
       <span
@@ -30,6 +30,10 @@ export default {
   props: {
     label: { type: String, required: true },
     value: { type: [String, Number], required: true },
+    // Valor exacto completo. `value` puede venir compactado ("L 1,6 M") para
+    // que no desborde la card; `valueTitle` conserva la cifra íntegra para el
+    // tooltip y el lector de pantalla.
+    valueTitle: { type: [String, Number], default: null },
     prefix: { type: String, default: null },
     suffix: { type: String, default: null },
     delta: { type: String, default: null },
@@ -41,6 +45,13 @@ export default {
   computed: {
     deltaIcon() {
       return this.deltaTone === "up" ? "trending-up" : this.deltaTone === "down" ? "trending-down" : "minus";
+    },
+    fullValue() {
+      const v = this.valueTitle != null ? this.valueTitle : this.value;
+      return `${this.prefix || ""}${v}${this.suffix || ""}`.trim();
+    },
+    ariaLabel() {
+      return [this.label, this.fullValue].filter(Boolean).join(": ") + (this.sub ? `. ${this.sub}` : "");
     }
   }
 };
@@ -62,13 +73,21 @@ export default {
 }
 .pxn-stat__icon { color: var(--pxn-ink-3); flex: none; }
 .pxn-stat__value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.12em;
+  min-width: 0;
+  max-width: 100%;
   font-size: var(--pxn-fs-kpi);
   font-weight: var(--pxn-fw-bold);
   line-height: var(--pxn-lh-tight);
   color: var(--pxn-ink);
   letter-spacing: -0.02em;
 }
-.pxn-stat__affix { font-size: 0.62em; font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink-2); }
+// La cifra nunca desborda la card: si aun compactada no cabe, se recorta con
+// ellipsis y el valor íntegro queda en title + aria-label. Sin bajar el cuerpo.
+.pxn-stat__num { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pxn-stat__affix { flex: none; font-size: 0.62em; font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink-2); }
 .pxn-stat__foot { display: flex; align-items: center; gap: var(--pxn-space-4); flex-wrap: wrap; }
 .pxn-stat__delta {
   display: inline-flex;

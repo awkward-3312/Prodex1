@@ -3167,6 +3167,20 @@ if (process.env.NODE_ENV !== "production") {
                         import(/* webpackChunkName: "px-next-dashboard" */ "./views/app/_ui/dashboard/index.vue")
                 }
             ]
+        },
+        {
+            // Fase B2 — Productos / listado real (candidato experimental en preview).
+            // Mismo shell. No sustituye /app/products ni toca index_products.vue.
+            path: "/app/_ui/productos",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_products_preview",
+                    component: () =>
+                        import(/* webpackChunkName: "px-next-products" */ "./views/app/_ui/productos/index.vue")
+                }
+            ]
         }
     );
 }
