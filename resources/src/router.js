@@ -161,11 +161,26 @@ const baseRoutes = [
                             import(/* webpackChunkName: "import_products_update" */ "./views/app/pages/products/Import_products_update.vue"),
                         },
                     {
+                        // Fase C2C — Creación px-next adoptada. Conserva el name
+                        // "store_product" para que todos los $router.push({name})
+                        // existentes (incl. ?duplicate=:id) sigan funcionando. La
+                        // vista anterior (Add_product.vue) queda intacta en
+                        // /app/products/store-classic para rollback por URL.
                         path: "store",
                         name: "store_product",
                         component: () =>
                             import(
-                                /* webpackChunkName: "store_product" */ "./views/app/pages/products/Add_product"
+                                /* webpackChunkName: "store_product" */ "./views/app/products/next/create/index.vue"
+                            )
+                    },
+                    {
+                        // Rollback inmediato por URL. Misma capa/auth/permisos.
+                        // No aparece en la navegación.
+                        path: "store-classic",
+                        name: "store_product_classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "store_product_classic" */ "./views/app/pages/products/Add_product"
                             )
                     },
                     {
@@ -3266,6 +3281,23 @@ if (process.env.NODE_ENV !== "production") {
                     component: () =>
                         import(
                             /* webpackChunkName: "px-next-product-edit" */ "./views/app/products/next/edit/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C2C — alias dev-only al componente permanente. La ruta real
+            // es /app/products/store; este alias mantiene el atajo del
+            // playground. Acepta ?duplicate=:id igual que el legacy.
+            path: "/app/_ui/producto/nuevo",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_product_create_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-product-create" */ "./views/app/products/next/create/index.vue"
                         )
                 }
             ]
