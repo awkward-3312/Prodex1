@@ -96,6 +96,32 @@
   --pxn-tag-moss:         #5f7a3f;  --pxn-tag-moss-soft:   #eef2e6;  --pxn-tag-moss-ink:   #465c2c;
 
   // ---------------------------------------------------------------------------
+  // Data visualisation — CATEGORICAL RAMP for charts. Separate from the
+  // semantic status colours (never reuse success/warning/danger/info to encode
+  // a data category). Slot 1 is the tenant accent so "the series that matters"
+  // always carries the brand; slots 2–8 are mid-saturation hues chosen to stay
+  // mutually distinct AND legible next to ANY of the three common tenant
+  // primaries (violet / teal / blue). Each ≥ 3:1 against --pxn-surface.
+  // ---------------------------------------------------------------------------
+  --pxn-chart-1: var(--pxn-primary);
+  --pxn-chart-2: #3d4859;   // slate
+  --pxn-chart-3: #2e7d5b;   // green
+  --pxn-chart-4: #b9761c;   // amber
+  --pxn-chart-5: #b23a5b;   // rose
+  --pxn-chart-6: #6a7f2e;   // olive
+  --pxn-chart-7: #8a5a44;   // clay
+  --pxn-chart-8: #b0568f;   // orchid
+
+  // A deliberately subordinate grey for a comparison/baseline series plotted
+  // next to the accent one (e.g. Compras behind Ventas).
+  --pxn-chart-muted: #8a93a3;
+
+  // Chart chrome
+  --pxn-chart-grid:  rgba(18, 24, 40, 0.08);
+  --pxn-chart-axis:  rgba(18, 24, 40, 0.14);
+  --pxn-chart-label: var(--pxn-ink-3);
+
+  // ---------------------------------------------------------------------------
   // Spacing — 4px base
   // ---------------------------------------------------------------------------
   --pxn-space-1: 2px;

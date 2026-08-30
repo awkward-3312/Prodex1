@@ -3145,12 +3145,30 @@ const baseRoutes = [
 // -----------------------------------------------------------------------------
 if (process.env.NODE_ENV !== "production") {
     const wildcardIndex = baseRoutes.findIndex(r => r.path === "*");
-    baseRoutes.splice(wildcardIndex === -1 ? baseRoutes.length : wildcardIndex, 0, {
-        path: "/app/_ui",
-        name: "px_next_playground",
-        component: () =>
-            import(/* webpackChunkName: "px-next-playground" */ "./views/app/_ui/index.vue")
-    });
+    const at = wildcardIndex === -1 ? baseRoutes.length : wildcardIndex;
+    baseRoutes.splice(at, 0,
+        {
+            path: "/app/_ui",
+            name: "px_next_playground",
+            component: () =>
+                import(/* webpackChunkName: "px-next-playground" */ "./views/app/_ui/index.vue")
+        },
+        {
+            // Fase B1 — Dashboard real (candidato experimental en preview).
+            // Renderiza dentro del shell actual (layout views/app). No sustituye
+            // /app/dashboard ni toca dashboard.vue.
+            path: "/app/_ui/dashboard",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_dashboard_preview",
+                    component: () =>
+                        import(/* webpackChunkName: "px-next-dashboard" */ "./views/app/_ui/dashboard/index.vue")
+                }
+            ]
+        }
+    );
 }
 
 const router = new Router({

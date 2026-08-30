@@ -9,9 +9,14 @@
     </figcaption>
 
     <div v-if="legend.length" class="pxn-chartframe__legend">
-      <span v-for="l in legend" :key="l.label" class="pxn-chartframe__legenditem">
+      <span
+        v-for="l in legend"
+        :key="l.label"
+        class="pxn-chartframe__legenditem"
+        :title="l.label"
+      >
         <span class="pxn-chartframe__swatch" :style="{ background: l.color || 'var(--pxn-primary)' }"></span>
-        {{ l.label }}
+        <span class="pxn-chartframe__legendlabel">{{ l.label }}</span>
       </span>
     </div>
 
@@ -55,9 +60,21 @@ export default {
 .pxn-chartframe__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--pxn-space-5); }
 .pxn-chartframe__title { font-size: var(--pxn-fs-h3); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
 .pxn-chartframe__unit { margin-left: var(--pxn-space-3); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
-.pxn-chartframe__legend { display: flex; flex-wrap: wrap; gap: var(--pxn-space-5); margin-top: var(--pxn-space-4); }
-.pxn-chartframe__legenditem { display: inline-flex; align-items: center; gap: var(--pxn-space-3); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-2); }
-.pxn-chartframe__swatch { width: 10px; height: 10px; border-radius: 3px; }
+.pxn-chartframe__legend {
+  display: flex; flex-wrap: wrap;
+  gap: var(--pxn-space-3) var(--pxn-space-5); margin-top: var(--pxn-space-4);
+  max-height: 5.4em; overflow-y: auto;    // ~3 filas; el resto hace scroll, no rompe el layout
+  overscroll-behavior: contain;
+}
+.pxn-chartframe__legenditem {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  min-width: 0; max-width: 100%;
+  font-size: var(--pxn-fs-xs); color: var(--pxn-ink-2);
+}
+.pxn-chartframe__legendlabel {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pxn-chartframe__swatch { flex: none; width: 10px; height: 10px; border-radius: 3px; }
 .pxn-chartframe__plot { margin-top: var(--pxn-space-5); }
 .pxn-chartframe__placeholder {
   height: 100%;
