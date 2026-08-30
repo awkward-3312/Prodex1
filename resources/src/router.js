@@ -345,12 +345,13 @@ const baseRoutes = [
                     ),
                 redirect: "/app/serial_numbers/list",
                 children: [
+                    // C3.6 — Números de serie px-next. Route names conservados.
                     {
                         name: "index_serial_numbers",
                         path: "list",
                         component: () =>
                             import(
-                                /* webpackChunkName: "serial_numbers_list" */ "./views/app/pages/serial_numbers/list"
+                                /* webpackChunkName: "serial_numbers_list" */ "./views/app/inventory/next/serial-numbers/list.vue"
                             )
                     },
                     {
@@ -358,7 +359,24 @@ const baseRoutes = [
                         path: "detail/:id",
                         component: () =>
                             import(
-                                /* webpackChunkName: "serial_numbers_detail" */ "./views/app/pages/serial_numbers/detail"
+                                /* webpackChunkName: "serial_numbers_detail" */ "./views/app/inventory/next/serial-numbers/detail.vue"
+                            )
+                    },
+                    // Rollback inmediato por URL. Legacy intacto.
+                    {
+                        name: "index_serial_numbers_classic",
+                        path: "list-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "serial_numbers_list_classic" */ "./views/app/pages/serial_numbers/list"
+                            )
+                    },
+                    {
+                        name: "detail_serial_number_classic",
+                        path: "detail-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "serial_numbers_detail_classic" */ "./views/app/pages/serial_numbers/detail"
                             )
                     }
                 ]
@@ -2464,13 +2482,21 @@ const baseRoutes = [
                             )
                     },
 
-                    // Warehouses
+                    // Warehouses — C3.7 px-next
                     {
                         name: "Warehouses",
                         path: "Warehouses",
                         component: () =>
                             import(
-                                /* webpackChunkName: "Warehouses" */ "./views/app/pages/settings/warehouses"
+                                /* webpackChunkName: "Warehouses" */ "./views/app/settings/next/warehouses/index.vue"
+                            )
+                    },
+                    {
+                        name: "Warehouses_classic",
+                        path: "Warehouses-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Warehouses_classic" */ "./views/app/pages/settings/warehouses"
                             )
                     },
 
@@ -2484,13 +2510,21 @@ const baseRoutes = [
                             )
                     },
 
-                    // Warehouse Locations (Rack/Location)
+                    // Warehouse Locations (Rack/Location) — C3.8 px-next
                     {
                         name: "Warehouse_Locations",
                         path: "Warehouse_Locations",
                         component: () =>
                             import(
-                                /* webpackChunkName: "Warehouse_Locations" */ "./views/app/pages/settings/warehouse_locations"
+                                /* webpackChunkName: "Warehouse_Locations" */ "./views/app/settings/next/warehouse-locations/index.vue"
+                            )
+                    },
+                    {
+                        name: "Warehouse_Locations_classic",
+                        path: "Warehouse_Locations-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Warehouse_Locations_classic" */ "./views/app/pages/settings/warehouse_locations"
                             )
                     },
 
@@ -2667,11 +2701,21 @@ const baseRoutes = [
                     },
 
                       {
+                        // C3.11 — Reporte de stock muerto px-next.
                         name: "dead_stock_report",
                         path: "dead_stock_report",
                         component: () =>
                             import(
                                 /* webpackChunkName: "Dead_Stock_Report" */
+                                "./views/app/reports/next/dead-stock/index.vue"
+                            )
+                    },
+                    {
+                        name: "dead_stock_report_classic",
+                        path: "dead_stock_report-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Dead_Stock_Report_classic" */
                                 "./views/app/pages/reports/Dead_Stock_Report"
                             )
                     },
@@ -2911,11 +2955,21 @@ const baseRoutes = [
                     },
 
                     {
+                        // C3.10 — Reporte de stock negativo px-next.
                         name: "negative_stock_report",
                         path: "negative_stock_report",
                         component: () =>
                             import(
                                 /* webpackChunkName: "negative_stock_report" */
+                                "./views/app/reports/next/negative-stock/index.vue"
+                            )
+                    },
+                    {
+                        name: "negative_stock_report_classic",
+                        path: "negative_stock_report-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "negative_stock_report_classic" */
                                 "./views/app/pages/reports/Negative_Stock_Report"
                             )
                     },
@@ -3067,11 +3121,22 @@ const baseRoutes = [
                     },
 
                     {
+                        // C3.9 — Reporte de existencias px-next (lista). El detalle
+                        // drill-down (detail_stock_report, 7 pestañas) sigue en legacy.
                         name: "stock_report",
                         path: "stock_report",
                         component: () =>
                             import(
                                 /* webpackChunkName: "stock_report" */
+                                "./views/app/reports/next/stock/index.vue"
+                            )
+                    },
+                    {
+                        name: "stock_report_classic",
+                        path: "stock_report-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "stock_report_classic" */
                                 "./views/app/pages/reports/stock_report"
                             )
                     },
@@ -3525,6 +3590,104 @@ if (process.env.NODE_ENV !== "production") {
                     component: () =>
                         import(
                             /* webpackChunkName: "px-next-batches" */ "./views/app/inventory/next/batches/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.6 — Números de serie px-next (alias dev-only).
+            path: "/app/_ui/inventario/seriales",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_serial_list_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-serials" */ "./views/app/inventory/next/serial-numbers/list.vue"
+                        )
+                },
+                {
+                    path: ":id",
+                    name: "px_next_serial_detail_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-serial-detail" */ "./views/app/inventory/next/serial-numbers/detail.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.7 — Almacenes px-next (alias dev-only).
+            path: "/app/_ui/config/almacenes",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_warehouses_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-warehouses" */ "./views/app/settings/next/warehouses/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.8 — Ubicaciones internas px-next (alias dev-only).
+            path: "/app/_ui/config/ubicaciones",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_warehouse_locations_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-warehouse-locations" */ "./views/app/settings/next/warehouse-locations/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.9 — Reporte de existencias px-next (alias dev-only).
+            path: "/app/_ui/reportes/existencias",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_stock_report_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-stock-report" */ "./views/app/reports/next/stock/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.10 — Reporte de stock negativo px-next (alias dev-only).
+            path: "/app/_ui/reportes/stock-negativo",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_negative_stock_report_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-negative-stock" */ "./views/app/reports/next/negative-stock/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.11 — Reporte de stock muerto px-next (alias dev-only).
+            path: "/app/_ui/reportes/stock-muerto",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_dead_stock_report_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-dead-stock" */ "./views/app/reports/next/dead-stock/index.vue"
                         )
                 }
             ]
