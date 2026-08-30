@@ -128,11 +128,24 @@ const baseRoutes = [
                 redirect: "app/products/list",
                 children: [
                     {
+                        // Fase C1 — Listado px-next adoptado. El listado anterior
+                        // (index_products.vue) sigue intacto en
+                        // /app/products/list-classic para rollback por URL.
                         name: "index_products",
                         path: "list",
                         component: () =>
                             import(
-                                /* webpackChunkName: "index_products" */ "./views/app/pages/products/index_products"
+                                /* webpackChunkName: "index_products" */ "./views/app/products/next/index.vue"
+                            )
+                    },
+                    {
+                        // Rollback inmediato por URL. Misma capa/auth/permisos.
+                        // No aparece en la navegación.
+                        name: "index_products_classic",
+                        path: "list-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "index_products_classic" */ "./views/app/pages/products/index_products"
                             )
                     },
                     {
@@ -3182,8 +3195,8 @@ if (process.env.NODE_ENV !== "production") {
             ]
         },
         {
-            // Fase B2 — Productos / listado real (candidato experimental en preview).
-            // Mismo shell. No sustituye /app/products ni toca index_products.vue.
+            // Fase C1 — alias dev-only al componente permanente. La ruta real es
+            // /app/products/list; este alias mantiene el atajo del playground.
             path: "/app/_ui/productos",
             component: () => import("./views/app"),
             children: [
@@ -3191,7 +3204,7 @@ if (process.env.NODE_ENV !== "production") {
                     path: "",
                     name: "px_next_products_preview",
                     component: () =>
-                        import(/* webpackChunkName: "px-next-products" */ "./views/app/_ui/productos/index.vue")
+                        import(/* webpackChunkName: "px-next-products" */ "./views/app/products/next/index.vue")
                 }
             ]
         }

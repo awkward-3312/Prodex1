@@ -1,24 +1,15 @@
 <template>
-  <div class="px-next pxn-doc pxp" :class="{ 'pxn-doc--compact': density === 'compact' }">
+  <div class="px-next pxp" :class="{ 'pxp--compact': density === 'compact' }">
     <!--
-      ============================================================================
-      DIRECTION CONTRACT · px-next · "Panel de operación" — B2 Productos (listado)
-      references: /app/products (index_products.vue) · mode: Operate · seed: brief
-      ----------------------------------------------------------------------------
-      THESIS: encontrar y reconocer un producto rápido. La identidad (miniatura +
-        nombre + SKU) manda; categoría/marca son metadata; costo/precio/stock se
-        leen alineados; el estado es un badge. Endpoint real (/api/products),
-        paginación/orden/filtros/búsqueda 100% en servidor.
-      OWN-WORLD: tabla ERP densa px-next, hairlines, un acento del tenant, cifras
-        tabulares, primera columna fija al hacer scroll horizontal.
-      STORY: buscar → (afinar en Filtros) → escanear → abrir/editar un producto
-        (cambio de contexto a la pantalla real) o seleccionar varios para una
-        acción en bloque.
-      FIRST VIEWPORT: cabecera + buscador + total; la tabla con las primeras
-        filas; densidad cómoda por defecto.
-      FORM: listado operativo. #2 del brief fijado (tras el dashboard).
-      FINISH: sin revisar/documentar = sin terminar.
-      ============================================================================
+      Fase C1 — Listado de productos px-next adoptado en /app/products/list.
+      El listado anterior (index_products.vue) sigue intacto en
+      /app/products/list-classic para rollback inmediato por URL.
+      Paridad funcional con el listado clásico: ver / editar / crear / duplicar /
+      importar / exportar (Excel + PDF) / eliminar individual / eliminación
+      múltiple, cada una con su permiso. Sin endpoints nuevos, sin cambios de
+      backend: búsqueda, filtros, orden y paginación 100% en el servidor
+      (GET /api/products); mutaciones contra DELETE /api/products/{id} y
+      POST /api/products/delete/by_selection.
     -->
 
     <div v-if="!can('products_view')" class="pxp__denied">
@@ -31,9 +22,6 @@
 
     <template v-else>
       <px-page-header title="Productos" :breadcrumbs="[{ label: 'Inventario' }, { label: 'Productos' }]">
-        <template #title-badge>
-          <px-badge tone="info" icon="sparkles">Preview B2</px-badge>
-        </template>
         <template #meta>
           <span><lucide-icon name="package" :size="13" /> {{ formatInt(total) }} productos</span>
           <span v-if="activeFilterCount"><lucide-icon name="filter" :size="13" /> {{ activeFilterCount }} filtro(s) activo(s)</span>
@@ -67,12 +55,14 @@
             icon="download"
             @click="goImport"
           >Importar</px-button>
-          <px-button
-            variant="secondary"
-            size="sm"
-            icon="file-spreadsheet"
-            @click="exportXlsx(exportData(rows), 'productos')"
-          >Exportar</px-button>
+
+          <px-menu :items="exportMenu" align="end" @select="onExport">
+            <template #trigger>
+              <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">
+                Exportar
+              </px-button>
+            </template>
+          </px-menu>
         </template>
       </px-toolbar>
 
@@ -219,33 +209,40 @@
         @apply="applyFilters"
       />
 
-      <px-modal v-model="deleteModal.open" :title="deleteModal.title" size="sm">
-        <p class="pxp__delcopy">{{ deleteModal.body }}</p>
-        <px-alert tone="info" bare class="pxp__delnote">
-          Vista previa B2: la eliminación <strong>no se ejecuta</strong>. Este paso solo valida el menú y la confirmación.
+      <px-modal v-model="confirm.open" :title="confirm.title" size="sm" :persistent="confirm.busy">
+        <p class="pxp__delcopy">{{ confirm.body }}</p>
+        <px-alert v-if="confirm.tone === 'danger'" tone="warning" bare class="pxp__delnote">
+          Esta acción no se puede deshacer.
         </px-alert>
         <template #footer="{ close }">
           <span class="pxp__bulk-sep" />
-          <px-button variant="secondary" @click="close">Cancelar</px-button>
-          <px-button variant="danger" icon="trash-2" @click="confirmDeleteNoop(close)">Entiendo, continuar</px-button>
+          <px-button variant="secondary" :disabled="confirm.busy" @click="close">Cancelar</px-button>
+          <px-button
+            :variant="confirm.tone === 'danger' ? 'danger' : 'primary'"
+            :icon="confirm.icon"
+            :loading="confirm.busy"
+            @click="runConfirm(close)"
+          >{{ confirm.cta }}</px-button>
         </template>
       </px-modal>
-
-      <p class="pxp__note">
-        <lucide-icon name="sparkles" :size="13" />
-        Candidato experimental de <code>/app/_ui/productos</code>. No reemplaza <code>/app/products</code>.
-        Datos reales de <code>/api/products</code> · búsqueda, filtros, orden y paginación en el servidor.
-      </p>
     </template>
   </div>
 </template>
 
 <script>
 import { mapGetters } from "vuex";
-import {
-  PxPageHeader, PxBadge, PxButton, PxToolbar, PxTable, PxTag, PxKebab,
-  PxPagination, PxAlert, PxEmptyState, PxModal
-} from "@/components/px-next";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxTag from "@/components/px-next/PxTag.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
 import * as XLSX from "xlsx";
 import PxProductCell from "./widgets/PxProductCell.vue";
 import ProductFilterPanel from "./widgets/ProductFilterPanel.vue";
@@ -257,10 +254,16 @@ const EMPTY_FILTERS = { code: "", name: "", category: "", brand: "", warehouse: 
 // key de columna px-next  ->  campo real de ordenación del backend
 const SORT_MAP = { product: "name", cost: "cost", price: "price", category: "category_id", brand: "brand_id" };
 
+const EMPTY_CONFIRM = {
+  open: false, busy: false, mode: null, id: null,
+  title: "", body: "", cta: "", icon: "", tone: "danger"
+};
+
 export default {
-  name: "PxNextProductsPreview",
+  name: "ProductsListNext",
+  metaInfo: { title: "Productos" },
   components: {
-    PxPageHeader, PxBadge, PxButton, PxToolbar, PxTable, PxTag, PxKebab,
+    PxPageHeader, PxButton, PxToolbar, PxMenu, PxTable, PxTag, PxBadge, PxKebab,
     PxPagination, PxAlert, PxEmptyState, PxModal, PxProductCell, ProductFilterPanel
   },
   data() {
@@ -279,7 +282,7 @@ export default {
       density: "comfortable",
       selectedIds: [],
       filtersOpen: false,
-      deleteModal: { open: false, title: "", body: "", mode: null, id: null },
+      confirm: { ...EMPTY_CONFIRM },
       densityViews: [
         { value: "comfortable", icon: "rows-2", label: "Densidad cómoda" },
         { value: "compact", icon: "menu", label: "Densidad compacta" }
@@ -315,6 +318,12 @@ export default {
         currency: this.currentUser && this.currentUser.currency,
         store: this.$store
       });
+    },
+    exportMenu() {
+      return [
+        { key: "xlsx", label: "Excel (.xlsx)", icon: "file-spreadsheet" },
+        { key: "pdf", label: "PDF", icon: "file-text" }
+      ];
     },
     sortColKey() {
       const found = Object.keys(SORT_MAP).find(k => SORT_MAP[k] === this.sort.field);
@@ -365,6 +374,9 @@ export default {
       const o = (opts || []).find(x => String(x.value) === String(value));
       return o ? o.label : value;
     },
+    toast(variant, msg, title) {
+      if (this.$bvToast) this.$bvToast.toast(msg, { title: title || "Productos", variant, solid: true });
+    },
 
     // ---- fetch server-side, con guarda de carrera + abort ------------------
     async fetch() {
@@ -401,7 +413,7 @@ export default {
         this.rows = adapted.rows;
         this.total = adapted.total;
         this.meta = { categories: adapted.categories, brands: adapted.brands, warehouses: adapted.warehouses };
-        // si la página quedó fuera de rango (p. ej. tras filtrar), reencuadra
+        // si la página quedó fuera de rango (p. ej. tras filtrar/eliminar), reencuadra
         const lastPage = Math.max(1, Math.ceil(this.total / this.limit));
         if (this.page > lastPage) { this.page = lastPage; return this.fetch(); }
         this.selectedIds = this.selectedIds.filter(id => this.rows.some(r => r.id === id));
@@ -479,6 +491,7 @@ export default {
       const items = [];
       if (this.can("products_view")) items.push({ key: "view", label: "Ver detalle", icon: "eye" });
       if (this.can("products_edit")) items.push({ key: "edit", label: "Editar", icon: "pencil" });
+      if (this.can("products_add")) items.push({ key: "duplicate", label: "Duplicar", icon: "copy" });
       if (this.can("products_delete")) {
         if (items.length) items.push({ divider: true });
         items.push({ key: "delete", label: "Eliminar", icon: "trash-2", tone: "danger" });
@@ -489,35 +502,74 @@ export default {
       if (!item) return;
       if (item.key === "view") return this.openView(row.id);
       if (item.key === "edit") return this.openEdit(row.id);
+      if (item.key === "duplicate") return this.askDuplicate(row);
       if (item.key === "delete") return this.askDeleteRow(row);
     },
+
+    // ---- confirmaciones ---------------------------------------------------
     askDeleteRow(row) {
-      this.deleteModal = {
-        open: true,
-        mode: "row",
-        id: row.id,
+      this.confirm = {
+        ...EMPTY_CONFIRM,
+        open: true, mode: "row", id: row.id,
         title: "Eliminar producto",
-        body: `Se eliminaría «${row.name}» (${row.code}).`
+        body: `Se eliminará «${row.name}» (${row.code}).`,
+        cta: "Eliminar", icon: "trash-2", tone: "danger"
       };
     },
     askDeleteSelection() {
-      this.deleteModal = {
-        open: true,
-        mode: "selection",
-        id: null,
+      this.confirm = {
+        ...EMPTY_CONFIRM,
+        open: true, mode: "selection", id: null,
         title: "Eliminar selección",
-        body: `Se eliminarían ${this.selectedIds.length} producto(s) seleccionado(s).`
+        body: `Se eliminarán ${this.selectedIds.length} producto(s) seleccionado(s).`,
+        cta: "Eliminar", icon: "trash-2", tone: "danger"
       };
     },
-    confirmDeleteNoop(close) {
-      close();
-      this.$bvToast && this.$bvToast.toast(
-        "Vista previa B2: no se ejecutó ningún borrado.",
-        { title: "Acción no ejecutada", variant: "info", solid: true }
-      );
+    askDuplicate(row) {
+      this.confirm = {
+        ...EMPTY_CONFIRM,
+        open: true, mode: "duplicate", id: row.id,
+        title: "Duplicar producto",
+        body: `Se abrirá el formulario de alta con los datos de «${row.name}» precargados.`,
+        cta: "Duplicar", icon: "copy", tone: "primary"
+      };
+    },
+    async runConfirm(close) {
+      const c = this.confirm;
+      if (c.busy) return;
+
+      if (c.mode === "duplicate") {
+        close();
+        this.$router.push({ name: "store_product", query: { duplicate: c.id } });
+        return;
+      }
+
+      this.confirm.busy = true;
+      try {
+        if (c.mode === "row") {
+          await window.axios.delete("products/" + c.id);
+        } else if (c.mode === "selection") {
+          await window.axios.post("products/delete/by_selection", { selectedIds: this.selectedIds });
+        }
+        this.confirm = { ...EMPTY_CONFIRM };
+        this.selectedIds = [];
+        this.toast("success", "Se eliminó correctamente.", "Productos");
+        this.fetch();
+      } catch (e) {
+        this.confirm.busy = false;
+        const msg =
+          (e && e.response && e.response.data && (e.response.data.message || e.response.data.error)) ||
+          (e && e.message) || "No se pudo completar la eliminación.";
+        this.toast("danger", msg, "No se eliminó");
+      }
     },
 
     // ---- exportación cliente (solo lectura, sin backend) ----------------
+    onExport(item) {
+      if (!item) return;
+      if (item.key === "xlsx") return this.exportXlsx(this.exportData(this.rows), "productos");
+      if (item.key === "pdf") return this.exportPdf(this.rows);
+    },
     exportData(list) {
       return (list || []).map(r => ({
         code: r.code,
@@ -534,7 +586,7 @@ export default {
     },
     exportXlsx(rows, fileName) {
       if (!rows || !rows.length) {
-        this.$bvToast && this.$bvToast.toast("No hay filas para exportar.", { title: "Exportar", variant: "info", solid: true });
+        this.toast("info", "No hay filas para exportar.", "Exportar");
         return;
       }
       try {
@@ -548,14 +600,61 @@ export default {
         XLSX.utils.book_append_sheet(wb, ws, "productos");
         XLSX.writeFile(wb, `${fileName}.xlsx`);
       } catch (e) {
-        this.$bvToast && this.$bvToast.toast("No se pudo generar el archivo.", { title: "Exportar", variant: "danger", solid: true });
+        this.toast("danger", "No se pudo generar el archivo.", "Exportar");
+      }
+    },
+    async exportPdf(list) {
+      const data = this.exportData(list);
+      if (!data.length) {
+        this.toast("info", "No hay filas para exportar.", "Exportar");
+        return;
+      }
+      try {
+        const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+          import(/* webpackChunkName: "jspdf" */ "jspdf"),
+          import(/* webpackChunkName: "jspdf" */ "jspdf-autotable")
+        ]);
+        const pdf = new jsPDF("p", "pt");
+        const headers = ["Tipo", "Nombre", "Código", "Categoría", "Costo", "Precio", "Unidad", "Existencias"];
+        const body = data.map(p => [p.type, p.name, p.code, p.category, p.cost, p.price, p.unit, p.stock]);
+        const marginX = 40;
+
+        autoTable(pdf, {
+          head: [headers],
+          body,
+          startY: 90,
+          theme: "striped",
+          margin: { left: marginX, right: marginX },
+          styles: { fontSize: 9, cellPadding: 4, halign: "left", textColor: 33 },
+          headStyles: { fontStyle: "bold", fillColor: [63, 81, 181], textColor: 255 },
+          alternateRowStyles: { fillColor: [245, 247, 250] },
+          columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 7: { halign: "right" } },
+          didDrawPage: d => {
+            const pageW = pdf.internal.pageSize.getWidth();
+            const pageH = pdf.internal.pageSize.getHeight();
+            pdf.setFillColor(63, 81, 181);
+            pdf.rect(0, 0, pageW, 56, "F");
+            pdf.setTextColor(255);
+            pdf.setFont(undefined, "bold");
+            pdf.setFontSize(16);
+            pdf.text("Listado de productos", marginX, 36);
+            pdf.setTextColor(33);
+            pdf.setFont(undefined, "normal");
+            pdf.setFontSize(8);
+            const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
+            pdf.text(pn, pageW - marginX, pageH - 14, { align: "right" });
+          }
+        });
+        pdf.save("Listado_de_productos.pdf");
+      } catch (e) {
+        this.toast("danger", "No se pudo generar el PDF.", "Exportar");
       }
     }
   }
 };
 </script>
 
-<style lang="scss" src="@/assets/styles/sass/px-next/index.scss"></style>
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
 <style lang="scss" scoped>
 .pxp { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-11); }
@@ -563,13 +662,6 @@ export default {
 .pxp__denied { padding: var(--pxn-space-12) 0; }
 .pxp__alert { margin-top: var(--pxn-space-5); }
 .pxp__pad { padding: var(--pxn-space-6) 0; }
-.pxp__note {
-  display: block; margin-top: var(--pxn-space-9); padding-top: var(--pxn-space-5);
-  border-top: 1px solid var(--pxn-border);
-  font-size: var(--pxn-fs-xs); line-height: var(--pxn-lh-normal); color: var(--pxn-ink-3);
-}
-.pxp__note code { font-size: 0.92em; white-space: nowrap; }
-.pxp__note :deep(svg) { vertical-align: -2px; margin-right: var(--pxn-space-2); }
 
 .pxp__refreshing { display: inline-flex; align-items: center; gap: var(--pxn-space-3); color: var(--pxn-ink-3); }
 .pxp__spin, .pxp__bulk .pxp__spin {
