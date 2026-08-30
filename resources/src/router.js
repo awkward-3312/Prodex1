@@ -177,11 +177,24 @@ const baseRoutes = [
                             )
                     },
                     {
+                        // Fase C2A — Detalle px-next adoptado. La vista anterior
+                        // (Detail_Product.vue) sigue intacta en
+                        // /app/products/detail-classic/:id para rollback por URL.
                         path: "detail/:id",
                         name: "detail_product",
                         component: () =>
                             import(
-                                /* webpackChunkName: "detail_product" */ "./views/app/pages/products/Detail_Product"
+                                /* webpackChunkName: "detail_product" */ "./views/app/products/next/detail/index.vue"
+                            )
+                    },
+                    {
+                        // Rollback inmediato por URL. Misma capa/auth/permisos.
+                        // No aparece en la navegación.
+                        path: "detail-classic/:id",
+                        name: "detail_product_classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "detail_product_classic" */ "./views/app/pages/products/Detail_Product"
                             )
                     },
 
@@ -3205,6 +3218,23 @@ if (process.env.NODE_ENV !== "production") {
                     name: "px_next_products_preview",
                     component: () =>
                         import(/* webpackChunkName: "px-next-products" */ "./views/app/products/next/index.vue")
+                }
+            ]
+        },
+        {
+            // Fase C2A — alias dev-only al componente permanente. La ruta real
+            // es /app/products/detail/:id; este alias mantiene el atajo del
+            // playground.
+            path: "/app/_ui/producto/:id/detalle",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_product_detail_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-product-detail" */ "./views/app/products/next/detail/index.vue"
+                        )
                 }
             ]
         }
