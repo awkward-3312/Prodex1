@@ -11,4 +11,13 @@ mix.js('resources/src/main.js', 'public').js('resources/src/login.js', 'public')
     .copy('resources/static/prodex-damage-location-ui.js', 'public/js/prodex-damage-location-ui.js').copy('resources/static/prodex-inventory-visibility.js', 'public/js/prodex-inventory-visibility.js').copy('resources/static/prodex-inventory-native-menu.js', 'public/js/prodex-inventory-native-menu.js')
     .copy('resources/static/prodex-pos-location-ui.js', 'public/js/prodex-pos-location-ui.js').copy('resources/static/prodex-pos-location-catalog.js', 'public/js/prodex-pos-location-catalog.js').copy('resources/static/prodex-pos-location-offline.js', 'public/js/prodex-pos-location-offline.js').copy('resources/static/prodex-pos-operational-lock.js', 'public/js/prodex-pos-operational-lock.js').copy('resources/static/prodex-pos-optional-cash-drawer.js', 'public/js/prodex-pos-optional-cash-drawer.js').copy('resources/static/prodex-pos-location-delta-safety.js', 'public/js/prodex-pos-location-delta-safety.js').copy('resources/static/prodex-erp-integrity-ui.js', 'public/js/prodex-erp-integrity-ui.js').vue();
 
+// Fase C0: ship ONLY the self-hosted IBM Plex woff2 (px-next) inside public/js/,
+// which the deploy-frontend workflow already mirrors to the VPS — no workflow or
+// Nginx change. Scoped copy of just these files; _typography.scss references
+// them by the stable absolute URL /js/bundle/fonts/px-next/<name>.woff2 (webpack
+// leaves an absolute url() untouched, so it does NOT re-emit or hash them).
+// Mix's global font pipeline is UNCHANGED: Bootstrap Icons and every other
+// Mix-processed font keep their current path (public/fonts/…).
+mix.copyDirectory('resources/src/assets/styles/sass/px-next/fonts', 'public/js/bundle/fonts/px-next');
+
 mix.webpackConfig({ resolve:{alias:{'@':__dirname+'/resources/src'}}, stats:{children:true}, output:{filename:'js/[name].min.js',chunkFilename:'js/bundle/[name].[hash].js'}, module:{rules:[{test:/\.scss$/,use:[{loader:'sass-loader',options:{sassOptions:{quietDeps:true,silenceDeprecations:['legacy-js-api','import','global-builtin','color-functions','slash-div']}}}]}]}, plugins:[new MomentLocalesPlugin(),new CleanWebpackPlugin({cleanOnceBeforeBuildPatterns:['./js/*']})] });

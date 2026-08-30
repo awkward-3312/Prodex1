@@ -25,3 +25,8 @@ yarn-error.log
 composer.phar
 documentation.zip
 engine
+
+# Local-only working files (contain env details / temp credentials / tool output)
+/FASE-A-LOCAL-NOTES.md
+/.impeccable/
+/.playwright-mcp/

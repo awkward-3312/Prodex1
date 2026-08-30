@@ -20,11 +20,23 @@ const baseRoutes = [
 
         children: [
             {
+                // Fase C0 — Dashboard px-next adoptado. La vista anterior
+                // (dashboard.vue) sigue intacta en /app/dashboard/legacy.
                 path: "/app/dashboard",
                 name: "dashboard",
                 component: () =>
                     import(
-                        /* webpackChunkName: "dashboard" */ "./views/app/dashboard/dashboard"
+                        /* webpackChunkName: "dashboard" */ "./views/app/dashboard/next/index.vue"
+                    )
+            },
+            {
+                // Rollback inmediato por URL. Misma capa/auth (hijo de views/app).
+                // No aparece en la navegación.
+                path: "/app/dashboard/legacy",
+                name: "dashboard_legacy",
+                component: () =>
+                    import(
+                        /* webpackChunkName: "dashboard-legacy" */ "./views/app/dashboard/dashboard"
                     )
             },
             {
@@ -3135,6 +3147,56 @@ const baseRoutes = [
             )
     }
 ];
+
+// -----------------------------------------------------------------------------
+// px-next Design System Playground — DEVELOPMENT ONLY.
+// Spliced in before the "*" catch-all so it resolves. The `if` is statically
+// false in a production build (`process.env.NODE_ENV` is inlined by webpack),
+// so the branch — and its dynamic import — is dropped: no route, no chunk.
+// Isolated: this is the only change to the real router for Fase A.
+// -----------------------------------------------------------------------------
+if (process.env.NODE_ENV !== "production") {
+    const wildcardIndex = baseRoutes.findIndex(r => r.path === "*");
+    const at = wildcardIndex === -1 ? baseRoutes.length : wildcardIndex;
+    baseRoutes.splice(at, 0,
+        {
+            path: "/app/_ui",
+            name: "px_next_playground",
+            component: () =>
+                import(/* webpackChunkName: "px-next-playground" */ "./views/app/_ui/index.vue")
+        },
+        {
+            // Fase C0 — el Dashboard px-next ya vive en su ubicación definitiva
+            // (views/app/dashboard/next) y sirve la ruta real /app/dashboard.
+            // Este alias dev-only se conserva para seguir iterando el DS; apunta
+            // al MISMO componente para evitar divergencia.
+            path: "/app/_ui/dashboard",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_dashboard_preview",
+                    component: () =>
+                        import(/* webpackChunkName: "px-next-dashboard-dev" */ "./views/app/dashboard/next/index.vue")
+                }
+            ]
+        },
+        {
+            // Fase B2 — Productos / listado real (candidato experimental en preview).
+            // Mismo shell. No sustituye /app/products ni toca index_products.vue.
+            path: "/app/_ui/productos",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_products_preview",
+                    component: () =>
+                        import(/* webpackChunkName: "px-next-products" */ "./views/app/_ui/productos/index.vue")
+                }
+            ]
+        }
+    );
+}
 
 const router = new Router({
     mode: "history",

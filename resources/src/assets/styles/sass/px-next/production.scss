@@ -1,0 +1,18 @@
+// =============================================================================
+// PRODEX · px-next · PRODUCTION entrypoint
+// -----------------------------------------------------------------------------
+// The px-next stylesheet that real, shipped screens import. It carries ONLY the
+// design-system foundation — everything scoped under `.px-next`:
+//   · typography  (@font-face for IBM Plex Sans/Mono, self-hosted OFL-1.1)
+//   · tokens      (.px-next { --pxn-* })
+//   · base        (scoped reset, focus, reduced-motion, text utilities,
+//                  --px-* bridge for the reused PxSkeleton)
+//
+// It does NOT include the playground layout helpers (`.pxn-doc`, `.pxn-stack*`,
+// `.pxn-grid*`, …) — those live in index.scss and are only imported by
+// resources/src/views/app/_ui/index.vue, which is dev-only.
+// =============================================================================
+
+@import "typography";
+@import "tokens";
+@import "base";
