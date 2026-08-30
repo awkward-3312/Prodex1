@@ -2731,43 +2731,85 @@ const baseRoutes = [
                     },
 
                     {
+                        // C3.17a — Registro de lotes px-next.
                         name: "batch_register_report",
                         path: "batch_register_report",
                         component: () =>
                             import(
                                 /* webpackChunkName: "Batch_Register_Report" */
+                                "./views/app/reports/next/batch-register/index.vue"
+                            )
+                    },
+                    {
+                        name: "batch_register_report_classic",
+                        path: "batch_register_report-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Batch_Register_Report_classic" */
                                 "./views/app/pages/reports/Batch_Register_Report"
                             )
                     },
                     {
+                        // C3.17b — Historial de lote px-next.
                         name: "batch_history_report",
                         path: "batch_history_report/:id",
                         component: () =>
                             import(
                                 /* webpackChunkName: "Batch_History_Report" */
+                                "./views/app/reports/next/batch-history/index.vue"
+                            )
+                    },
+                    {
+                        name: "batch_history_report_classic",
+                        path: "batch_history_report-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Batch_History_Report_classic" */
                                 "./views/app/pages/reports/Batch_History_Report"
                             )
                     },
 
                     {
+                        // C3.13 — Antigüedad de inventario px-next.
                         name: "stock_aging_report",
                         path: "stock_aging_report",
                         component: () =>
                             import(
                             /* webpackChunkName: "Stock_Aging_Report" */
+                            "./views/app/reports/next/stock-aging/index.vue"
+                            )
+                    },
+                    {
+                        name: "stock_aging_report_classic",
+                        path: "stock_aging_report-classic",
+                        component: () =>
+                            import(
+                            /* webpackChunkName: "Stock_Aging_Report_classic" */
                             "./views/app/pages/reports/Stock_Aging_Report"
                             )
                     },
 
                     {
+                        // C3.14 — Reporte de traslados de stock px-next (solo reporte).
                         name: "stock_transfer_report",
                         path: "stock_transfer_report",
-                        component: () => import(/* webpackChunkName:"Stock_Transfer_Report" */ "./views/app/pages/reports/Stock_Transfer_Report")
+                        component: () => import(/* webpackChunkName:"Stock_Transfer_Report" */ "./views/app/reports/next/stock-transfer/index.vue")
+                    },
+                    {
+                        name: "stock_transfer_report_classic",
+                        path: "stock_transfer_report-classic",
+                        component: () => import(/* webpackChunkName:"Stock_Transfer_Report_classic" */ "./views/app/pages/reports/Stock_Transfer_Report")
                     },
 
                     {
+                        // C3.15 — Reporte de ajustes px-next.
                         name: "stock_adjustment_report",
                         path: "stock_adjustment_report",
+                        component: () => import("./views/app/reports/next/stock-adjustment/index.vue")
+                    },
+                    {
+                        name: "stock_adjustment_report_classic",
+                        path: "stock_adjustment_report-classic",
                         component: () => import("./views/app/pages/reports/Stock_Adjustment_Report")
                     },
 
@@ -2894,21 +2936,41 @@ const baseRoutes = [
                     },
 
                     {
+                        // C3.16a — Valoración de inventario · RESUMEN px-next.
                         name: "inventory_valuation_summary",
                         path: "inventory_valuation_summary",
                         component: () =>
                             import(
                                 /* webpackChunkName: "inventory_valuation_summary" */
+                                "./views/app/reports/next/valuation-summary/index.vue"
+                            )
+                    },
+                    {
+                        name: "inventory_valuation_summary_classic",
+                        path: "inventory_valuation_summary-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "inventory_valuation_summary_classic" */
                                 "./views/app/pages/reports/inventory_valuation_summary"
                             )
                     },
 
                     {
+                        // C3.16b — Valoración de inventario · DETALLE px-next.
                         name: "stock_inventory_valuation",
                         path: "stock_inventory_valuation",
                         component: () =>
                             import(
                                 /* webpackChunkName: "stock_inventory_valuation" */
+                                "./views/app/reports/next/valuation-detail/index.vue"
+                            )
+                    },
+                    {
+                        name: "stock_inventory_valuation_classic",
+                        path: "stock_inventory_valuation-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "stock_inventory_valuation_classic" */
                                 "./views/app/pages/reports/stock_inventory_valuation"
                             )
                     },
@@ -3690,6 +3752,48 @@ if (process.env.NODE_ENV !== "production") {
                             /* webpackChunkName: "px-next-dead-stock" */ "./views/app/reports/next/dead-stock/index.vue"
                         )
                 }
+            ]
+        },
+        {
+            // Fase C3.13 — Antigüedad de inventario px-next (alias dev-only).
+            path: "/app/_ui/reportes/antiguedad",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_stock_aging_preview", component: () => import(/* webpackChunkName: "px-next-stock-aging" */ "./views/app/reports/next/stock-aging/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.14 — Reporte de traslados de stock px-next (alias dev-only).
+            path: "/app/_ui/reportes/traslados",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_stock_transfer_report_preview", component: () => import(/* webpackChunkName: "px-next-stock-transfer" */ "./views/app/reports/next/stock-transfer/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.15 — Reporte de ajustes px-next (alias dev-only).
+            path: "/app/_ui/reportes/ajustes",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_stock_adjustment_report_preview", component: () => import(/* webpackChunkName: "px-next-stock-adjustment" */ "./views/app/reports/next/stock-adjustment/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.16 — Valoración de inventario px-next (alias dev-only).
+            path: "/app/_ui/reportes/valoracion",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_valuation_summary_preview", component: () => import(/* webpackChunkName: "px-next-valuation-summary" */ "./views/app/reports/next/valuation-summary/index.vue") },
+                { path: "detalle", name: "px_next_valuation_detail_preview", component: () => import(/* webpackChunkName: "px-next-valuation-detail" */ "./views/app/reports/next/valuation-detail/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.17 — Reportes de lotes px-next (alias dev-only).
+            path: "/app/_ui/reportes/lotes",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_batch_register_preview", component: () => import(/* webpackChunkName: "px-next-batch-register" */ "./views/app/reports/next/batch-register/index.vue") },
+                { path: ":id", name: "px_next_batch_history_preview", component: () => import(/* webpackChunkName: "px-next-batch-history" */ "./views/app/reports/next/batch-history/index.vue") }
             ]
         }
     );
