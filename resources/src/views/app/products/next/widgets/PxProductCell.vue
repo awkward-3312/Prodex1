@@ -46,7 +46,7 @@ export default {
 /* ancho acotado: la tabla usa table-layout:auto, así que sin un límite duro el
    nombre sin cortes ensancharía la columna y empujaría al resto fuera de vista. */
 .pxp-cell { display: flex; align-items: center; gap: var(--pxn-space-4); width: 248px; max-width: 248px; }
-.pxn-doc--compact .pxp-cell { width: 208px; max-width: 208px; }
+.pxp--compact .pxp-cell { width: 208px; max-width: 208px; }
 
 .pxp-cell__thumb {
   flex: none;
@@ -71,5 +71,5 @@ export default {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.pxn-doc--compact .pxp-cell__thumb { width: 32px; height: 32px; }
+.pxp--compact .pxp-cell__thumb { width: 32px; height: 32px; }
 </style>

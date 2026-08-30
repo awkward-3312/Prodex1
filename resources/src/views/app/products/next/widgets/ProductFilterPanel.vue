@@ -48,7 +48,11 @@
 </template>
 
 <script>
-import { PxModal, PxField, PxInput, PxSelect, PxButton } from "@/components/px-next";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxSelect from "@/components/px-next/PxSelect.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
 
 const EMPTY = { code: "", name: "", category: "", brand: "", warehouse: "", status: "" };
 
