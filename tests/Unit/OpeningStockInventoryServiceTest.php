@@ -41,6 +41,15 @@ class OpeningStockInventoryServiceTest extends TestCase
             $t->softDeletes();
         });
 
+        Schema::create('product_variants', function ($t) {
+            $t->increments('id');
+            $t->integer('product_id');
+            $t->string('name')->nullable();
+            $t->string('code')->nullable();
+            $t->timestamps();
+            $t->softDeletes();
+        });
+
         Schema::create('product_warehouse', function ($t) {
             $t->increments('id');
             $t->integer('product_id');
@@ -122,6 +131,14 @@ class OpeningStockInventoryServiceTest extends TestCase
         ], $flags));
     }
 
+    private function variant(int $id, int $productId, ?string $deletedAt = null): void
+    {
+        DB::table('product_variants')->insert([
+            'id' => $id, 'product_id' => $productId, 'name' => 'V'.$id, 'code' => 'V'.$id,
+            'deleted_at' => $deletedAt, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
     private function warehouseWithDefault(string $type = 'storage', bool $quarantine = false, bool $active = true, ?int $wrongWarehouse = null): array
     {
         $wh = Warehouse::create(['name' => 'CD']);
@@ -156,6 +173,13 @@ class OpeningStockInventoryServiceTest extends TestCase
             ->where('reference_type', OpeningStockInventoryService::REFERENCE_TYPE)->get();
     }
 
+    /** El servicio EXIGE transacción de negocio: todos los tests lo llaman así. */
+    private function apply(int $wh, int $product, ?int $variant, float $qty, array $ctx = []): void
+    {
+        DB::transaction(fn () => app(OpeningStockInventoryService::class)
+            ->applyOpeningStock($wh, $product, $variant, $qty, $ctx));
+    }
+
     // ---- L1..L12 -------------------------------------------------------------
 
     /** L1 — caso exacto Iphone X nuevo: simple, default MAIN, opening=100. */
@@ -164,7 +188,7 @@ class OpeningStockInventoryServiceTest extends TestCase
         [$wh, $main] = $this->warehouseWithDefault();
         $this->product(8);
 
-        app(OpeningStockInventoryService::class)->applyOpeningStock($wh, 8, null, 100, ['source' => 'product_create']);
+        $this->apply($wh, 8, null, 100, ['source' => 'product_create']);
 
         $this->assertSame(100.0, $this->pw($wh, 8));
         $this->assertSame(100.0, $this->loc($main, 8));
@@ -189,10 +213,11 @@ class OpeningStockInventoryServiceTest extends TestCase
     {
         [$wh, $main] = $this->warehouseWithDefault();
         $this->product(8);
-        $svc = app(OpeningStockInventoryService::class);
+        $this->variant(901, 8);
+        $this->variant(902, 8);
 
-        $svc->applyOpeningStock($wh, 8, 901, 7);
-        $svc->applyOpeningStock($wh, 8, 902, 3);
+        $this->apply($wh, 8, 901, 7);
+        $this->apply($wh, 8, 902, 3);
 
         $this->assertSame(7.0, $this->pw($wh, 8, 901));
         $this->assertSame(3.0, $this->pw($wh, 8, 902));
@@ -273,7 +298,7 @@ class OpeningStockInventoryServiceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         try {
-            app(OpeningStockInventoryService::class)->applyOpeningStock($wh, 8, null, 1);
+            $this->apply($wh, 8, null, 1);
         } finally {
             $this->assertSame(0.0, $this->pw($wh, 8));
             $this->assertSame(0.0, $this->loc($main, 8));
@@ -290,7 +315,7 @@ class OpeningStockInventoryServiceTest extends TestCase
         $this->product(8, ['is_batch_tracked' => true]);
 
         try {
-            app(OpeningStockInventoryService::class)->applyOpeningStock($wh, 8, null, 0);
+            $this->apply($wh, 8, null, 0);
             $this->fail('qty 0 no es stock inicial');
         } catch (ValidationException $e) {
             $this->assertStringContainsString('mayor que cero', $e->getMessage());
@@ -320,7 +345,7 @@ class OpeningStockInventoryServiceTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        app(OpeningStockInventoryService::class)->applyOpeningStock($wh, 8, null, 10, ['source' => 'import_single']);
+        $this->apply($wh, 8, null, 10, ['source' => 'import_single']);
 
         $this->assertSame(50.0, $this->pw($wh, 8));
         $this->assertSame(50.0, $this->loc($main, 8));
@@ -334,6 +359,8 @@ class OpeningStockInventoryServiceTest extends TestCase
     {
         [$wh, $main] = $this->warehouseWithDefault();
         $this->product(8);
+        $this->variant(901, 8);
+        $this->variant(902, 8);
         foreach ([901 => 5.0, 902 => 12.0] as $variant => $start) {
             DB::table('product_warehouse')->insert([
                 'product_id' => 8, 'warehouse_id' => $wh, 'product_variant_id' => $variant,
@@ -351,9 +378,8 @@ class OpeningStockInventoryServiceTest extends TestCase
             ]);
         }
 
-        $svc = app(OpeningStockInventoryService::class);
-        $svc->applyOpeningStock($wh, 8, 901, 10, ['source' => 'import_variants']);
-        $svc->applyOpeningStock($wh, 8, 902, 3, ['source' => 'import_variants']);
+        $this->apply($wh, 8, 901, 10, ['source' => 'import_variants']);
+        $this->apply($wh, 8, 902, 3, ['source' => 'import_variants']);
 
         $this->assertSame(15.0, $this->pw($wh, 8, 901));
         $this->assertSame(15.0, $this->loc($main, 8, 901));
@@ -393,7 +419,7 @@ class OpeningStockInventoryServiceTest extends TestCase
             'created_at' => '2026-08-25 00:00:00', 'updated_at' => '2026-08-25 00:00:00',
         ]);
 
-        app(OpeningStockInventoryService::class)->applyOpeningStock($wh, 6, null, 10, ['source' => 'import_single']);
+        $this->apply($wh, 6, null, 10, ['source' => 'import_single']);
 
         $this->assertSame(98.0, $this->pw($wh, 6));
         $this->assertSame(70.0, $this->loc($main, 6));
@@ -421,7 +447,7 @@ class OpeningStockInventoryServiceTest extends TestCase
             'status' => 'healthy', 'mismatch_count' => 0, 'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        app(OpeningStockInventoryService::class)->applyOpeningStock($wh, 8, null, 10);
+        $this->apply($wh, 8, null, 10);
 
         $this->assertSame(10.0, $this->pw($wh, 8));
         $this->assertSame(10.0, $this->loc($main, 8)); // NO 20
@@ -459,5 +485,106 @@ class OpeningStockInventoryServiceTest extends TestCase
         $this->assertSame(0.0, $this->pw($wh, 8));                     // legacy revertido
         $this->assertSame(0.0, $this->loc($main, 8));                  // location intacta
         $this->assertSame(0, InventoryLocationMovement::count());      // 0 movimientos
+    }
+
+    // ---- Iteración 2: soft-delete, locks de filas padre, contrato de transacción ----
+
+    /** M1 — existe una fila product_warehouse SOFT-DELETED: se crea una NUEVA activa, no se resucita. */
+    public function test_m1_soft_deleted_product_warehouse_is_not_resurrected(): void
+    {
+        [$wh, $main] = $this->warehouseWithDefault();
+        $this->product(8);
+        $deletedId = DB::table('product_warehouse')->insertGetId([
+            'product_id' => 8, 'warehouse_id' => $wh, 'product_variant_id' => null,
+            'qte' => 50, 'manage_stock' => 1, 'deleted_at' => '2026-08-01 00:00:00',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->apply($wh, 8, null, 10, ['source' => 'import_single']);
+
+        // la fila borrada sigue borrada e intacta.
+        $old = DB::table('product_warehouse')->where('id', $deletedId)->first();
+        $this->assertNotNull($old->deleted_at);
+        $this->assertSame(50.0, (float) $old->qte);
+
+        // hay UNA fila activa nueva a qte = 10.
+        $active = DB::table('product_warehouse')->where('warehouse_id', $wh)->where('product_id', 8)
+            ->whereNull('deleted_at')->get();
+        $this->assertCount(1, $active);
+        $this->assertNotSame($deletedId, (int) $active[0]->id);
+        $this->assertSame(10.0, (float) $active[0]->qte);
+
+        $this->assertSame(10.0, $this->loc($main, 8));
+        $prov = app(InventoryProvenanceAuditService::class)->auditWarehouse($wh);
+        $this->assertSame('RECONCILED', collect($prov['keys'])->firstWhere('product_id', 8)['classification']);
+        $plan = app(LegacyInventoryReconciliationService::class)->planIncremental($wh);
+        $this->assertSame(0, $plan['add_count']);
+        $this->assertSame(0, $plan['manual_review_count']);
+    }
+
+    /** M2 — dos filas product_warehouse ACTIVAS para la misma clave => abort total. */
+    public function test_m2_multiple_active_product_warehouse_rows_abort(): void
+    {
+        [$wh, $main] = $this->warehouseWithDefault();
+        $this->product(8);
+        foreach ([30.0, 15.0] as $q) {
+            DB::table('product_warehouse')->insert([
+                'product_id' => 8, 'warehouse_id' => $wh, 'product_variant_id' => null,
+                'qte' => $q, 'manage_stock' => 1, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        try {
+            $this->apply($wh, 8, null, 10);
+            $this->fail('dos filas activas para la misma clave debían abortar');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('filas product_warehouse ACTIVAS para la misma clave', $e->getMessage());
+        }
+
+        $this->assertSame([30.0, 15.0], DB::table('product_warehouse')->where('warehouse_id', $wh)
+            ->where('product_id', 8)->orderBy('id')->pluck('qte')->map(fn ($q) => (float) $q)->all());
+        $this->assertSame(0.0, $this->loc($main, 8));
+        $this->assertSame(0, InventoryLocationMovement::count());
+    }
+
+    /** M5 — variante inválida (de otro producto / borrada / inexistente) => abort total. */
+    public function test_m5_invalid_variant_aborts(): void
+    {
+        [$wh, $main] = $this->warehouseWithDefault();
+        $this->product(8);
+        $this->product(9);
+        $this->variant(700, 9);            // pertenece a OTRO producto
+        $this->variant(701, 8, '2026-08-01 00:00:00'); // borrada
+
+        foreach ([999, 700, 701] as $badVariant) {
+            try {
+                $this->apply($wh, 8, $badVariant, 5);
+                $this->fail("variante {$badVariant} debía abortar");
+            } catch (ValidationException $e) {
+                $this->assertStringContainsString('no pertenece al producto 8', $e->getMessage());
+            }
+        }
+        $this->assertSame(0.0, (float) DB::table('product_warehouse')->where('warehouse_id', $wh)->sum('qte'));
+        $this->assertSame(0, InventoryLocationMovement::count());
+    }
+
+    /** M6 — llamar al servicio FUERA de una transacción => rechazo inmediato, 0 cambios. */
+    public function test_m6_outside_transaction_is_rejected(): void
+    {
+        [$wh, $main] = $this->warehouseWithDefault();
+        $this->product(8);
+
+        $this->assertSame(0, DB::transactionLevel());
+        try {
+            app(OpeningStockInventoryService::class)->applyOpeningStock($wh, 8, null, 10);
+            $this->fail('el servicio no debía ejecutarse fuera de una transacción');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('dentro de una transacción de negocio', $e->getMessage());
+        }
+
+        $this->assertSame(0.0, $this->pw($wh, 8));
+        $this->assertSame(0, DB::table('product_warehouse')->count());
+        $this->assertSame(0.0, $this->loc($main, 8));
+        $this->assertSame(0, InventoryLocationMovement::count());
     }
 }
