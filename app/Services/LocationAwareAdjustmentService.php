@@ -5,9 +5,7 @@ namespace App\Services;
 /**
  * Ajustes location-aware (PR #81). Fachada explícita sobre
  * LocationAwareStockDocumentService. Trabaja DENTRO de la transacción del
- * controller. Nunca toca product_warehouse.
- *
- * @param  array<int,array{product_id:int,product_variant_id:?int,quantity:float,type:string,product_type?:string,detail_id?:int}>  $lines
+ * controller. Nunca escribe product_warehouse.
  */
 class LocationAwareAdjustmentService
 {
@@ -15,19 +13,30 @@ class LocationAwareAdjustmentService
     {
     }
 
-    /** @return array{location: \App\Models\InventoryLocation, lines: array} */
-    public function validateRequest(int $warehouseId, ?int $locationId, array $lines): array
+    /** Valida + bloquea DENTRO de la transacción del controller. */
+    public function validateAndLock(int $warehouseId, ?int $locationId, array $lines, array $extraProductIds = []): array
     {
-        return $this->engine->validateRequest($warehouseId, $locationId, $lines, requireType: true);
+        return $this->engine->validateAndLock($warehouseId, $locationId, $lines, requireType: true, extraProductIds: $extraProductIds);
     }
 
-    public function apply(int $adjustmentId, int $warehouseId, int $locationId, array $lines, string $source): void
+    /** Efectos EXPANDIDOS del documento (componentes de combo incluidos). */
+    public function buildSnapshot(array $linesWithDetailIds): array
     {
-        $this->engine->applyAdjustment($adjustmentId, $warehouseId, $locationId, $lines, $source);
+        return $this->engine->buildAdjustmentSnapshot($linesWithDetailIds);
     }
 
-    public function reverse(int $adjustmentId, int $warehouseId, int $locationId, array $lines, string $source): void
+    public function normalizeSnapshot($raw): array
     {
-        $this->engine->reverseAdjustment($adjustmentId, $warehouseId, $locationId, $lines, $source);
+        return $this->engine->normalizeSnapshot($raw);
+    }
+
+    public function applySnapshot(array $effects, int $adjustmentId, int $warehouseId, int $locationId, string $source): void
+    {
+        $this->engine->applySnapshot($effects, LocationAwareStockDocumentService::REF_ADJUSTMENT, $adjustmentId, $warehouseId, $locationId, $source);
+    }
+
+    public function reverseSnapshot(array $effects, int $adjustmentId, int $warehouseId, int $locationId, string $source): void
+    {
+        $this->engine->reverseSnapshot($effects, LocationAwareStockDocumentService::REF_ADJUSTMENT_REVERSAL, $adjustmentId, $warehouseId, $locationId, $source);
     }
 }

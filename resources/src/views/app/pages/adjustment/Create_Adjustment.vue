@@ -616,22 +616,13 @@ export default {
     Selected_Warehouse(value) {
       this.search_input= '';
       this.product_filter = [];
-      // #81 — al cambiar de almacén se limpia la ubicación y se recargan las
-      // ubicaciones activas del almacén (el backend PRESELECCIONA la default apta).
+      // #81 — al cambiar de almacén se limpia la ubicación y el catálogo; se
+      // recargan las ubicaciones activas del almacén (el backend PRESELECCIONA
+      // la default apta y con ella se carga el catálogo POR UBICACIÓN).
       this.adjustment.inventory_location_id = "";
       this.inventory_locations = [];
+      this.products = [];
       this.Load_Inventory_Locations(value);
-      this.Get_Products_By_Warehouse(value);
-
-      // Pharmacy: refresh batch availability on existing batch-tracked lines.
-      if (Array.isArray(this.details)) {
-        for (const d of this.details) {
-          if (d && d.is_batch_tracked) {
-            this.$set(d, "batches", []);
-            this.fetch_batches_for_detail(d);
-          }
-        }
-      }
     },
 
     //-------- #81 · Inventory locations of the selected warehouse ----------\\
@@ -650,29 +641,34 @@ export default {
         .catch(() => { this.inventory_locations = []; });
     },
 
-    // Al cambiar de ubicación, el stock actual mostrado debe recalcularse para
-    // esa ubicación. Deuda #81: el catálogo/CurrentStock aún vienen del agregado
-    // de almacén; el hook queda listo para conectarse al endpoint por ubicación.
-    Selected_Inventory_Location() {
+    // #81 · BLOCKER 3 — el catálogo y el CurrentStock del flujo location-aware
+    // vienen de inventory_location_stocks de LA ubicación seleccionada. NUNCA
+    // se usa Get_Products_By_Warehouse (agregado de almacén) en este modo.
+    Selected_Inventory_Location(value) {
       this.search_input = '';
       this.product_filter = [];
+      const locationId = value || this.adjustment.inventory_location_id;
+      this.Load_Location_Catalog(locationId);
     },
 
-   //------------------------------------ Get Products By Warehouse -------------------------\\
-
-    Get_Products_By_Warehouse(id) {
-      // Start the progress bar.
-        NProgress.start();
-        NProgress.set(0.1);
+    Load_Location_Catalog(locationId) {
+      if (!locationId) { this.products = []; return; }
+      NProgress.start(); NProgress.set(0.1);
       axios
-        .get("get_Products_by_warehouse/" + id + "?stock=" + 0 + "&product_service=" + 0 + "&product_combo=" + 1)
-         .then(response => {
-            this.products = response.data;
-             NProgress.done();
-
-            })
-          .catch(error => {
-          });
+        .get("adjustments_location_catalog/" + locationId)
+        .then(response => {
+          const rows = (response.data && response.data.products) || [];
+          // CurrentStock del formulario = available_quantity de la ubicación.
+          this.products = rows.map(p => ({
+            ...p,
+            qte: p.available_quantity,
+            current: p.available_quantity,
+            CurrentStock: p.available_quantity,
+            stock_source: p.stock_source
+          }));
+          NProgress.done();
+        })
+        .catch(() => { this.products = []; NProgress.done(); });
     },
 
     //----------------------------------------- Add Product To list -------------------------\\

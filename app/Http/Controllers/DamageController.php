@@ -15,6 +15,8 @@ use App\Models\Warehouse;
 use App\Services\BatchService;
 use App\Services\LocationAwareDamageService;
 use App\utils\helpers;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use ArPHP\I18N\Arabic;
 use Carbon\Carbon;
 use DB;
@@ -111,124 +113,17 @@ class DamageController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'create', Damage::class);
 
-        // (#81) Flujo location-aware: inventory_location_id explícita => NO se
-        // toca product_warehouse.
-        if ($request->filled('inventory_location_id')) {
-            return $this->storeLocationAware($request);
+        // (#81 · BLOCKER 1) TODO Damage NUEVO es location-aware: exige
+        // inventory_location_id explícita. Sin ella => 422, 0 escrituras.
+        if (! $request->filled('inventory_location_id')) {
+            throw ValidationException::withMessages([
+                'inventory_location_id' => 'Debes seleccionar una ubicación de inventario: los daños nuevos se registran por ubicación.',
+            ]);
         }
 
-        $productionRules = [
-            'warehouse_id' => 'required',
-            'details' => 'required',
-        ];
-        $request->validate($productionRules, [
-            'warehouse_id.required' => 'Warehouse is required',
-        ]);
-
-        \DB::transaction(function () use ($request) {
-            $order = new Damage;
-            $order->date = $request->date;
-            $order->time = now()->toTimeString();
-            $order->Ref = $this->getNumberOrder();
-            $order->warehouse_id = $request->warehouse_id;
-            $order->notes = $request->notes;
-            $order->items = count($request['details']);
-            $order->user_id = Auth::user()->id;
-            $order->save();
-
-            $data = $request['details'];
-            $persistedDetails = [];
-            foreach ($data as $key => $value) {
-                $persistedDetails[$key] = DamageDetail::create([
-                    'damage_id' => $order->id,
-                    'quantity' => $value['quantity'],
-                    'product_id' => $value['product_id'],
-                    'product_variant_id' => $value['product_variant_id'] ?? null,
-                ]);
-
-                // Always subtract for damage
-                if (! empty($value['product_variant_id'])) {
-                    $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                        ->where('warehouse_id', $order->warehouse_id)
-                        ->where('product_id', $value['product_id'])
-                        ->where('product_variant_id', $value['product_variant_id'])
-                        ->first();
-
-                    if ($product_warehouse) {
-                        $product_warehouse->qte -= $value['quantity'];
-                        if ($product_warehouse->qte < 0) {
-                            $product_warehouse->qte = 0;
-                        }
-                        $product_warehouse->save();
-                    }
-                } else {
-                    $product_detail = Product::where('deleted_at', '=', null)
-                        ->where('id', $value['product_id'])
-                        ->first();
-
-                    if ($product_detail && $product_detail->type == 'is_single') {
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->first();
-
-                        if ($product_warehouse) {
-                            $product_warehouse->qte -= $value['quantity'];
-                            if ($product_warehouse->qte < 0) {
-                                $product_warehouse->qte = 0;
-                            }
-                            $product_warehouse->save();
-                        }
-                    } elseif ($product_detail && $product_detail->type == 'is_combo') {
-                        $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
-
-                        foreach ($combined_products as $combined_product) {
-                            $qty_combined = $combined_product->quantity * $value['quantity'];
-
-                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $order->warehouse_id)
-                                ->where('product_id', $combined_product->combined_product_id)
-                                ->first();
-
-                            if ($product_warehouse) {
-                                $product_warehouse->qte -= $qty_combined;
-                                if ($product_warehouse->qte < 0) {
-                                    $product_warehouse->qte = 0;
-                                }
-                                $product_warehouse->save();
-                            }
-                        }
-
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->first();
-
-                        if ($product_warehouse) {
-                            $product_warehouse->qte -= $value['quantity'];
-                            if ($product_warehouse->qte < 0) {
-                                $product_warehouse->qte = 0;
-                            }
-                            $product_warehouse->save();
-                        }
-                    }
-                }
-            }
-
-            // Pharmacy: debit user-picked batches alongside the warehouse-stock change
-            // we just made above so the per-batch ledger stays consistent.
-            $batchService = app(BatchService::class);
-            if ($batchService->isSupported()) {
-                $batchService->applyForDamageWithAutoFallback(
-                    $order,
-                    array_values($data),
-                    $persistedDetails
-                );
-            }
-        }, 10);
-
-        return response()->json(['success' => true]);
+        return $this->storeLocationAware($request);
     }
+
 
     public function show($id)
     {
@@ -559,19 +454,23 @@ class DamageController extends BaseController
         abort_unless(in_array($warehouseId, $ids, true), 403, 'No tienes acceso a este almacén.');
     }
 
-    /** Ubicaciones de inventario ACTIVAS del almacén — select obligatorio del flujo location-aware. */
+    // (BLOCKER 6) usado por Create Y Edit: autoriza create OR update.
+    private function authorizeLocationRead(Request $request): void
+    {
+        $u = $request->user('api');
+        abort_unless(
+            $u && (Gate::forUser($u)->allows('create', Damage::class) || Gate::forUser($u)->allows('update', Damage::class)),
+            403,
+            'No tienes permiso para consultar ubicaciones de inventario de daños.'
+        );
+    }
+
+    /** Ubicaciones de inventario ACTIVAS del almacén (incluye cuarentena). */
     public function inventoryLocationsForWarehouse(Request $request, $warehouseId)
     {
-        $this->authorizeForUser($request->user('api'), 'create', Damage::class);
+        $this->authorizeLocationRead($request);
         $warehouseId = (int) $warehouseId;
-
-        $user = auth()->user();
-        if (! ($user && $user->is_all_warehouses)) {
-            $ids = UserWarehouse::where('user_id', $user->id ?? 0)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
-            if (! in_array($warehouseId, $ids, true)) {
-                return response()->json(['locations' => [], 'default_inventory_location_id' => null]);
-            }
-        }
+        $this->assertWarehouseAccess($warehouseId);
 
         $locations = \App\Models\InventoryLocation::whereNull('deleted_at')
             ->where('warehouse_id', $warehouseId)
@@ -588,6 +487,24 @@ class DamageController extends BaseController
         ]);
     }
 
+    /** (BLOCKER 3) Catálogo por UBICACIÓN. available = physical - reserved. Incluye 0. */
+    public function inventoryLocationCatalog(Request $request, $locationId)
+    {
+        $this->authorizeLocationRead($request);
+        $locationId = (int) $locationId;
+
+        $location = \App\Models\InventoryLocation::whereNull('deleted_at')->whereKey($locationId)->first();
+        abort_if(! $location, 404, 'La ubicación de inventario no existe.');
+        $this->assertWarehouseAccess((int) $location->warehouse_id);
+
+        return response()->json(app(\App\Services\LocationCatalogReadService::class)->forLocation($locationId));
+    }
+
+    private function locationAwareLines(Request $request): array
+    {
+        return array_values($request->input('details', []));
+    }
+
     private function storeLocationAware(Request $request)
     {
         $request->validate([
@@ -599,11 +516,12 @@ class DamageController extends BaseController
         $warehouseId = (int) $request->warehouse_id;
         $locationId = (int) $request->inventory_location_id;
         $this->assertWarehouseAccess($warehouseId);
-
         $svc = app(LocationAwareDamageService::class);
-        $validated = $svc->validateRequest($warehouseId, $locationId, array_values($request->input('details', [])));
+        $lines = $this->locationAwareLines($request);
 
-        \DB::transaction(function () use ($request, $warehouseId, $locationId, $validated, $svc) {
+        \DB::transaction(function () use ($request, $warehouseId, $locationId, $lines, $svc) {
+            $validated = $svc->validateAndLock($warehouseId, $locationId, $lines);
+
             $order = new Damage;
             $order->date = $request->date;
             $order->time = now()->toTimeString();
@@ -615,18 +533,18 @@ class DamageController extends BaseController
             $order->user_id = Auth::id();
             $order->save();
 
-            $lines = [];
+            $withDetailIds = [];
             foreach ($validated['lines'] as $ln) {
-                $detail = DamageDetail::create([
-                    'damage_id' => $order->id,
-                    'quantity' => $ln['quantity'],
-                    'product_id' => $ln['product_id'],
-                    'product_variant_id' => $ln['product_variant_id'],
+                $d = DamageDetail::create([
+                    'damage_id' => $order->id, 'quantity' => $ln['quantity'],
+                    'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'],
                 ]);
-                $lines[] = $ln + ['detail_id' => $detail->id];
+                $withDetailIds[] = $ln + ['detail_id' => $d->id];
             }
 
-            $svc->apply($order->id, $warehouseId, $locationId, $lines, 'create');
+            $snapshot = $svc->buildSnapshot($withDetailIds);
+            $order->update(['inventory_effect_snapshot' => $snapshot]);
+            $svc->applySnapshot($snapshot, $order->id, $warehouseId, $locationId, 'create');
         }, 10);
 
         return response()->json(['success' => true]);
@@ -644,35 +562,39 @@ class DamageController extends BaseController
         $newLocationId = (int) $request->inventory_location_id;
         $this->assertWarehouseAccess((int) $current->warehouse_id);
         $this->assertWarehouseAccess($newWarehouseId);
-
-        $engine = app(\App\Services\LocationAwareStockDocumentService::class);
         $svc = app(LocationAwareDamageService::class);
-        $validated = $svc->validateRequest($newWarehouseId, $newLocationId, array_values($request->input('details', [])));
+        $lines = $this->locationAwareLines($request);
 
-        \DB::transaction(function () use ($request, $current, $newWarehouseId, $newLocationId, $validated, $svc, $engine) {
-            $oldDetails = DamageDetail::where('damage_id', $current->id)->get();
-            $svc->reverse(
-                $current->id, (int) $current->warehouse_id, (int) $current->inventory_location_id,
-                $engine->hydrateLines($oldDetails), 'update'
-            );
+        \DB::transaction(function () use ($request, $current, $newWarehouseId, $newLocationId, $lines, $svc) {
+            $locked = Damage::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            if ($locked->inventory_location_id === null) {
+                throw ValidationException::withMessages(['damage' => 'Registro legacy: usa la ruta histórica.']);
+            }
+            $oldSnapshot = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            DamageDetail::where('damage_id', $locked->id)->lockForUpdate()->get();
 
-            DamageDetail::where('damage_id', $current->id)->delete();
-            $lines = [];
+            $extra = array_values(array_unique(array_map(fn ($e) => (int) $e['product_id'], $oldSnapshot)));
+            $validated = $svc->validateAndLock($newWarehouseId, $newLocationId, $lines, $extra);
+
+            $svc->reverseSnapshot($oldSnapshot, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'update');
+
+            DamageDetail::where('damage_id', $locked->id)->delete();
+            $withDetailIds = [];
             foreach ($validated['lines'] as $ln) {
-                $detail = DamageDetail::create([
-                    'damage_id' => $current->id,
-                    'quantity' => $ln['quantity'],
-                    'product_id' => $ln['product_id'],
-                    'product_variant_id' => $ln['product_variant_id'],
+                $d = DamageDetail::create([
+                    'damage_id' => $locked->id, 'quantity' => $ln['quantity'],
+                    'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'],
                 ]);
-                $lines[] = $ln + ['detail_id' => $detail->id];
+                $withDetailIds[] = $ln + ['detail_id' => $d->id];
             }
 
-            $svc->apply($current->id, $newWarehouseId, $newLocationId, $lines, 'update');
+            $newSnapshot = $svc->buildSnapshot($withDetailIds);
+            $svc->applySnapshot($newSnapshot, $locked->id, $newWarehouseId, $newLocationId, 'update');
 
-            $current->update([
+            $locked->update([
                 'warehouse_id' => $newWarehouseId,
                 'inventory_location_id' => $newLocationId,
+                'inventory_effect_snapshot' => $newSnapshot,
                 'notes' => $request->notes,
                 'date' => $request->date,
                 'items' => count($validated['lines']),
@@ -685,16 +607,19 @@ class DamageController extends BaseController
     private function destroyLocationAware(Request $request, Damage $current)
     {
         $this->assertWarehouseAccess((int) $current->warehouse_id);
-        $engine = app(\App\Services\LocationAwareStockDocumentService::class);
+        $svc = app(LocationAwareDamageService::class);
 
-        \DB::transaction(function () use ($current, $engine) {
-            $details = DamageDetail::where('damage_id', $current->id)->get();
-            app(LocationAwareDamageService::class)->reverse(
-                $current->id, (int) $current->warehouse_id, (int) $current->inventory_location_id,
-                $engine->hydrateLines($details), 'destroy'
-            );
-            $current->details()->delete();
-            $current->update(['deleted_at' => Carbon::now()]);
+        \DB::transaction(function () use ($current, $svc) {
+            $locked = Damage::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            if ($locked->inventory_location_id === null) {
+                throw ValidationException::withMessages(['damage' => 'Registro legacy: usa la ruta histórica.']);
+            }
+            $snapshot = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            DamageDetail::where('damage_id', $locked->id)->lockForUpdate()->get();
+
+            $svc->reverseSnapshot($snapshot, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'destroy');
+            $locked->details()->delete();
+            $locked->update(['deleted_at' => Carbon::now()]);
         }, 10);
 
         return response()->json(['success' => true], 200);

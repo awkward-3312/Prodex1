@@ -9,7 +9,8 @@ class Adjustment extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'date', 'Ref', 'user_id', 'warehouse_id', 'inventory_location_id', 'time',
+        'date', 'Ref', 'user_id', 'warehouse_id', 'inventory_location_id',
+        'inventory_effect_snapshot', 'time',
         'items', 'notes', 'created_at', 'updated_at', 'deleted_at',
     ];
 
@@ -18,6 +19,8 @@ class Adjustment extends Model
         'warehouse_id' => 'integer',
         // NULL => registro legacy; NOT NULL => flujo location-aware (#81).
         'inventory_location_id' => 'integer',
+        // Plan físico EXACTO ya expandido aplicado en el create (para reversa).
+        'inventory_effect_snapshot' => 'array',
     ];
 
     public function user()

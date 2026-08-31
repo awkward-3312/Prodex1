@@ -879,6 +879,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::get('batches_for_adjustment/{product_id}/{warehouse_id}/{variant_id?}', 'AdjustmentController@batches_for_adjustment');
     // #81 — ubicaciones de inventario del almacén para el flujo location-aware.
     Route::get('adjustments_inventory_locations/{warehouse_id}', 'AdjustmentController@inventoryLocationsForWarehouse');
+    Route::get('adjustments_location_catalog/{location_id}', 'AdjustmentController@inventoryLocationCatalog');
 
     // ------------------------------- Damages --------------------------\\
     // ------------------------------------------------------------------\\
@@ -889,6 +890,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::get('batches_for_damage/{product_id}/{warehouse_id}/{variant_id?}', 'DamageController@batches_for_damage');
     // #81 — ubicaciones de inventario del almacén para el flujo location-aware.
     Route::get('damages_inventory_locations/{warehouse_id}', 'DamageController@inventoryLocationsForWarehouse');
+    Route::get('damages_location_catalog/{location_id}', 'DamageController@inventoryLocationCatalog');
 
     // ------------------------------- Transfers (feature-gated) --------------------------\\
     Route::middleware('tenant.feature:transfers')->group(function () {

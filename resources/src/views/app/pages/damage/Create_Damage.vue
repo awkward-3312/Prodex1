@@ -404,16 +404,8 @@ export default {
       this.product_filter = [];
       this.damage.inventory_location_id = "";
       this.inventory_locations = [];
+      this.products = [];
       this.Load_Inventory_Locations(value);
-      this.Get_Products_By_Warehouse(value);
-      if (Array.isArray(this.details)) {
-        for (const d of this.details) {
-          if (d && d.is_batch_tracked) {
-            this.$set(d, "batches", []);
-            this.fetch_batches_for_detail(d);
-          }
-        }
-      }
     },
     Load_Inventory_Locations(id) {
       if (!id) return;
@@ -428,14 +420,29 @@ export default {
         })
         .catch(() => { this.inventory_locations = []; });
     },
-    // Deuda #81: el CurrentStock aún viene del agregado de almacén; hook listo
-    // para conectarse al endpoint de stock por ubicación.
-    Selected_Inventory_Location() { this.search_input = ''; this.product_filter = []; },
-    Get_Products_By_Warehouse(id) {
+    // #81 · BLOCKER 3 — catálogo + CurrentStock desde inventory_location_stocks
+    // de LA ubicación. Nunca Get_Products_By_Warehouse en este modo.
+    Selected_Inventory_Location(value) {
+      this.search_input = '';
+      this.product_filter = [];
+      this.Load_Location_Catalog(value || this.damage.inventory_location_id);
+    },
+    Load_Location_Catalog(locationId) {
+      if (!locationId) { this.products = []; return; }
       NProgress.start(); NProgress.set(0.1);
-      axios.get("get_Products_by_warehouse/" + id + "?stock=" + 0 + "&product_service=" + 0 + "&product_combo=" + 1)
-        .then(response => { this.products = response.data; NProgress.done(); })
-        .catch(() => {});
+      axios.get("damages_location_catalog/" + locationId)
+        .then(response => {
+          const rows = (response.data && response.data.products) || [];
+          this.products = rows.map(p => ({
+            ...p,
+            qte: p.available_quantity,
+            current: p.available_quantity,
+            CurrentStock: p.available_quantity,
+            stock_source: p.stock_source
+          }));
+          NProgress.done();
+        })
+        .catch(() => { this.products = []; NProgress.done(); });
     },
     add_product() {
       if (this.details.length > 0) { this.detail_order_id(); }

@@ -5,10 +5,8 @@ namespace App\Services;
 /**
  * Daños location-aware (PR #81). Fachada explícita sobre
  * LocationAwareStockDocumentService. Trabaja DENTRO de la transacción del
- * controller. Nunca toca product_warehouse; nunca hace clamp a 0 (InventoryService
- * rechaza negativos y consumo de reservado).
- *
- * @param  array<int,array{product_id:int,product_variant_id:?int,quantity:float,product_type?:string,detail_id?:int}>  $lines
+ * controller. Nunca escribe product_warehouse; nunca hace clamp a 0
+ * (InventoryService rechaza negativos y consumo de reservado).
  */
 class LocationAwareDamageService
 {
@@ -16,19 +14,28 @@ class LocationAwareDamageService
     {
     }
 
-    /** @return array{location: \App\Models\InventoryLocation, lines: array} */
-    public function validateRequest(int $warehouseId, ?int $locationId, array $lines): array
+    public function validateAndLock(int $warehouseId, ?int $locationId, array $lines, array $extraProductIds = []): array
     {
-        return $this->engine->validateRequest($warehouseId, $locationId, $lines, requireType: false);
+        return $this->engine->validateAndLock($warehouseId, $locationId, $lines, requireType: false, extraProductIds: $extraProductIds);
     }
 
-    public function apply(int $damageId, int $warehouseId, int $locationId, array $lines, string $source): void
+    public function buildSnapshot(array $linesWithDetailIds): array
     {
-        $this->engine->applyDamage($damageId, $warehouseId, $locationId, $lines, $source);
+        return $this->engine->buildDamageSnapshot($linesWithDetailIds);
     }
 
-    public function reverse(int $damageId, int $warehouseId, int $locationId, array $lines, string $source): void
+    public function normalizeSnapshot($raw): array
     {
-        $this->engine->reverseDamage($damageId, $warehouseId, $locationId, $lines, $source);
+        return $this->engine->normalizeSnapshot($raw);
+    }
+
+    public function applySnapshot(array $effects, int $damageId, int $warehouseId, int $locationId, string $source): void
+    {
+        $this->engine->applySnapshot($effects, LocationAwareStockDocumentService::REF_DAMAGE, $damageId, $warehouseId, $locationId, $source);
+    }
+
+    public function reverseSnapshot(array $effects, int $damageId, int $warehouseId, int $locationId, string $source): void
+    {
+        $this->engine->reverseSnapshot($effects, LocationAwareStockDocumentService::REF_DAMAGE_REVERSAL, $damageId, $warehouseId, $locationId, $source);
     }
 }

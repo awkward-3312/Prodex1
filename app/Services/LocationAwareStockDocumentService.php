@@ -2,10 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\CombinedProduct;
 use App\Models\InventoryLocation;
-use App\Models\Product;
-use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -18,12 +15,21 @@ use Illuminate\Validation\ValidationException;
  * exclusivamente vía InventoryService increase / decrease (deltas de negocio) —
  * jamás escribe la tabla legacy ni dispara el mirror dual-write.
  *
- * Los movimientos generados son LOCATION-NATIVE: sus reference_type
- * (Adjustment / AdjustmentReversal / Damage / DamageReversal) NO se añaden a
+ * SNAPSHOT DE EFECTOS (BLOCKER 2): CREATE construye y persiste el PLAN FÍSICO
+ * EXACTO ya EXPANDIDO (componentes de combo incluidos) en
+ * {adjustments,damages}.inventory_effect_snapshot. UPDATE/DESTROY revierten ESE
+ * snapshot histórico — NUNCA vuelven a consultar CombinedProduct — de modo que
+ * cambiar la composición de un combo no rompe la reversibilidad.
+ *
+ * BLOCKER 4/5: validateAndLock() se ejecuta DENTRO de la transacción del caller
+ * con un orden de locks determinístico (Warehouse -> InventoryLocation ->
+ * Products ASC -> ProductVariants ASC -> CombinedProduct). Los flags
+ * is_batch_tracked / is_imei / deleted_at / type se leen de filas BLOQUEADAS.
+ *
+ * Los movimientos son LOCATION-NATIVE: reference_type Adjustment /
+ * AdjustmentReversal / Damage / DamageReversal NO se añaden a
  * InventoryProvenanceAuditService::RECONCILIATION_REFS — cuentan en
  * post_baseline_native_net.
- *
- * DEBE ejecutarse dentro de la transacción del controller (transactionLevel>0).
  */
 class LocationAwareStockDocumentService
 {
@@ -34,19 +40,22 @@ class LocationAwareStockDocumentService
 
     private const EPS = 0.0005;
 
-    // ---- Validación de request location-aware ---------------------------------
+    // ===== Validación + locks (DENTRO de la transacción del caller) ==========
 
     /**
-     * Valida un request location-aware ANTES de crear header/details/movements.
-     *
-     * @param  array<int,array{product_id:int,product_variant_id:?int,quantity:mixed,type?:string}>  $lines
-     * @return array{location: InventoryLocation, lines: array<int,array{product_id:int,product_variant_id:?int,quantity:float,type:?string,product_type:string}>}
+     * @param  array<int,array{product_id:mixed,product_variant_id?:mixed,quantity:mixed,type?:mixed}>  $lines
+     * @param  int[]  $extraProductIds  ids extra a bloquear (p. ej. los del snapshot viejo en update)
+     * @return array{location: InventoryLocation, lines: array<int,array{product_id:int,product_variant_id:?int,quantity:float,type:?string,product_type:string,components:array<int,array{product_id:int,quantity:float}>}>}
      *
      * @throws ValidationException
      */
-    public function validateRequest(int $warehouseId, ?int $locationId, array $lines, bool $requireType): array
+    public function validateAndLock(int $warehouseId, ?int $locationId, array $lines, bool $requireType, array $extraProductIds = []): array
     {
-        $warehouse = DB::table('warehouses')->where('id', $warehouseId)->whereNull('deleted_at')->first();
+        $this->assertInTransaction();
+
+        // 2. Warehouse (bloqueado, no borrado).
+        $warehouse = DB::table('warehouses')->where('id', $warehouseId)->whereNull('deleted_at')
+            ->lockForUpdate()->first();
         if (! $warehouse) {
             throw ValidationException::withMessages(['warehouse_id' => 'El almacén no existe o está eliminado.']);
         }
@@ -57,7 +66,8 @@ class LocationAwareStockDocumentService
             ]);
         }
 
-        $location = InventoryLocation::whereKey($locationId)->first();
+        // 3. InventoryLocation (bloqueada). Debe seguir apta DENTRO de la tx.
+        $location = InventoryLocation::whereKey($locationId)->lockForUpdate()->first();
         if (! $location || $location->deleted_at !== null || ! (bool) $location->is_active) {
             throw ValidationException::withMessages([
                 'inventory_location_id' => 'La ubicación de inventario no existe, está inactiva o fue eliminada.',
@@ -73,19 +83,71 @@ class LocationAwareStockDocumentService
             throw ValidationException::withMessages(['details' => 'El documento no tiene líneas.']);
         }
 
-        // Recolectar todos los product_id referenciados, incl. componentes de combo.
+        // Recolectar ids de línea + extra.
+        $lineProductIds = array_map(fn ($l) => (int) ($l['product_id'] ?? 0), $lines);
+        $lineVariantIds = [];
+        foreach ($lines as $l) {
+            $v = $l['product_variant_id'] ?? null;
+            if ($v !== null && $v !== '' && (int) $v > 0) $lineVariantIds[] = (int) $v;
+        }
+
+        // 4. Products ASC (bloqueados) — incl. extra ids del snapshot viejo.
+        $allProductIds = array_values(array_unique(array_filter(array_merge(
+            $lineProductIds, array_map('intval', $extraProductIds)
+        ))));
+        sort($allProductIds);
+        $products = $allProductIds
+            ? DB::table('products')->whereIn('id', $allProductIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id')
+            : collect();
+
+        // Combos de las LÍNEAS: bloquear también sus componentes (Products) y las
+        // filas CombinedProduct.
+        $comboIds = [];
+        foreach ($lines as $l) {
+            $p = $products->get((int) ($l['product_id'] ?? 0));
+            if ($p && $p->type === 'is_combo') $comboIds[] = (int) $p->id;
+        }
+        $comboComponentsByCombo = [];
+        if ($comboIds) {
+            sort($comboIds);
+            $rows = DB::table('combined_products')->whereIn('product_id', $comboIds)
+                ->orderBy('product_id')->orderBy('combined_product_id')->lockForUpdate()->get();
+            $componentIds = $rows->pluck('combined_product_id')->map(fn ($i) => (int) $i)->unique()->values()->all();
+            sort($componentIds);
+            $missingComponentIds = array_values(array_diff($componentIds, $products->keys()->all()));
+            if ($missingComponentIds) {
+                $more = DB::table('products')->whereIn('id', $missingComponentIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                foreach ($more as $id => $row) $products->put($id, $row);
+            }
+            foreach ($rows as $r) {
+                $comboComponentsByCombo[(int) $r->product_id][] = [
+                    'product_id' => (int) $r->combined_product_id,
+                    'quantity' => round((float) $r->quantity, 3),
+                ];
+            }
+        }
+
+        // 5. ProductVariants ASC (bloqueadas).
+        $variants = collect();
+        if ($lineVariantIds && Schema::hasTable('product_variants')) {
+            $ids = array_values(array_unique($lineVariantIds));
+            sort($ids);
+            $variants = DB::table('product_variants')->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        }
+
+        // Validar cada línea contra las filas BLOQUEADAS.
         $normalized = [];
-        $allProductIds = [];
+        $trackedTargets = [];
         foreach ($lines as $i => $line) {
             $pid = (int) ($line['product_id'] ?? 0);
-            $vid = isset($line['product_variant_id']) && $line['product_variant_id'] !== null && $line['product_variant_id'] !== ''
+            $vid = isset($line['product_variant_id']) && $line['product_variant_id'] !== null && $line['product_variant_id'] !== '' && (int) $line['product_variant_id'] > 0
                 ? (int) $line['product_variant_id'] : null;
             $qty = round((float) ($line['quantity'] ?? 0), 3);
             $type = isset($line['type']) ? (string) $line['type'] : null;
 
-            $product = Product::whereNull('deleted_at')->whereKey($pid)->first();
-            if (! $product) {
-                throw ValidationException::withMessages(["details.$i.product_id" => "El producto de la línea ".($i + 1)." no existe."]);
+            $product = $products->get($pid);
+            if (! $product || $product->deleted_at !== null) {
+                throw ValidationException::withMessages(["details.$i.product_id" => 'El producto de la línea '.($i + 1).' no existe o fue eliminado.']);
             }
             if ($qty <= self::EPS) {
                 throw ValidationException::withMessages(["details.$i.quantity" => 'La cantidad debe ser mayor que cero.']);
@@ -94,19 +156,21 @@ class LocationAwareStockDocumentService
                 throw ValidationException::withMessages(["details.$i.type" => "El tipo de la línea ".($i + 1)." debe ser 'add' o 'sub'."]);
             }
             if ($vid !== null) {
-                $variant = ProductVariant::whereNull('deleted_at')->whereKey($vid)->first();
-                if (! $variant || (int) $variant->product_id !== $pid) {
+                $variant = $variants->get($vid);
+                if (! $variant || $variant->deleted_at !== null || (int) $variant->product_id !== $pid) {
                     throw ValidationException::withMessages([
-                        "details.$i.product_variant_id" => 'La variante no existe o no pertenece al producto.',
+                        "details.$i.product_variant_id" => 'La variante no existe, fue eliminada o no pertenece al producto.',
                     ]);
                 }
             }
 
-            $allProductIds[] = $pid;
-            if ($product->type === 'is_combo') {
-                foreach ($this->comboComponents($pid) as $component) {
-                    $allProductIds[] = (int) $component->combined_product_id;
-                }
+            $components = ($product->type === 'is_combo') ? ($comboComponentsByCombo[$pid] ?? []) : [];
+
+            // Flags desde filas BLOQUEADAS — producto + componentes.
+            $trackedTargets[] = $product;
+            foreach ($components as $c) {
+                $cp = $products->get((int) $c['product_id']);
+                if ($cp) $trackedTargets[] = $cp;
             }
 
             $normalized[] = [
@@ -115,171 +179,166 @@ class LocationAwareStockDocumentService
                 'quantity' => $qty,
                 'type' => $type,
                 'product_type' => (string) $product->type,
+                'components' => $components,
             ];
         }
 
-        // (M) Rechazar TODO el request si CUALQUIER producto (o componente) es
-        // batch-tracked o IMEI. Sin fallback silencioso a product_warehouse.
-        $tracked = $this->trackedProductIds(array_values(array_unique($allProductIds)));
-        if ($tracked) {
+        // (M) Rechazar TODO el request si CUALQUIER producto/componente es tracked.
+        $hasBatch = Schema::hasColumn('products', 'is_batch_tracked');
+        $hasImei = Schema::hasColumn('products', 'is_imei');
+        $trackedIds = [];
+        foreach ($trackedTargets as $p) {
+            if (($hasBatch && (int) ($p->is_batch_tracked ?? 0) === 1) || ($hasImei && (int) ($p->is_imei ?? 0) === 1)) {
+                $trackedIds[(int) $p->id] = true;
+            }
+        }
+        if ($trackedIds) {
             throw ValidationException::withMessages([
                 'details' => 'Los ajustes/daños por ubicación de productos con lote o serie/IMEI se habilitarán mediante el flujo artifact-aware. '
-                    .'Productos afectados: '.implode(', ', $tracked).'.',
+                    .'Productos afectados: '.implode(', ', array_keys($trackedIds)).'.',
             ]);
         }
 
         return ['location' => $location, 'lines' => $normalized];
     }
 
-    // ---- Ajustes ------------------------------------------------------------
-
-    public function applyAdjustment(int $adjustmentId, int $warehouseId, int $locationId, array $lines, string $source): void
-    {
-        $this->assertInTransaction();
-        $this->applyEffects(
-            $this->adjustmentEffects($lines, reverse: false),
-            self::REF_ADJUSTMENT, $adjustmentId, $warehouseId, $locationId, $source
-        );
-    }
-
-    public function reverseAdjustment(int $adjustmentId, int $warehouseId, int $locationId, array $lines, string $source): void
-    {
-        $this->assertInTransaction();
-        $this->applyEffects(
-            $this->adjustmentEffects($lines, reverse: true),
-            self::REF_ADJUSTMENT_REVERSAL, $adjustmentId, $warehouseId, $locationId, $source
-        );
-    }
-
-    // ---- Daños ------------------------------------------------------------
-
-    public function applyDamage(int $damageId, int $warehouseId, int $locationId, array $lines, string $source): void
-    {
-        $this->assertInTransaction();
-        $this->applyEffects(
-            $this->damageEffects($lines, reverse: false),
-            self::REF_DAMAGE, $damageId, $warehouseId, $locationId, $source
-        );
-    }
-
-    public function reverseDamage(int $damageId, int $warehouseId, int $locationId, array $lines, string $source): void
-    {
-        $this->assertInTransaction();
-        $this->applyEffects(
-            $this->damageEffects($lines, reverse: true),
-            self::REF_DAMAGE_REVERSAL, $damageId, $warehouseId, $locationId, $source
-        );
-    }
-
-    // ---- Semántica de efectos --------------------------------------------
+    // ===== Construcción de snapshot (efectos EXPANDIDOS) ====================
 
     /**
-     * (G) Semántica EXACTA de ajuste:
-     *   simple/variant add  => +qty         | sub  => -qty
-     *   combo       add  => componentes -(comp.qty*qty), combo +qty
-     *               sub  => componentes +(comp.qty*qty), combo -qty
-     * reverse = negar cada delta.
+     * (G) Ajuste: simple/variant add=>+qty / sub=>-qty; combo add => componentes
+     * -(comp*qty), combo +qty; sub => inversa. Devuelve efectos ya expandidos.
+     *
+     * @param  array<int,array{product_id:int,product_variant_id:?int,quantity:float,type:string,product_type:string,components:array,detail_id?:int}>  $lines
+     * @return array<int,array{product_id:int,variant_id:?int,delta:float,role:string,combo_parent_id:?int,action:string,detail_id:?int}>
      */
-    private function adjustmentEffects(array $lines, bool $reverse): array
+    public function buildAdjustmentSnapshot(array $lines): array
     {
         $effects = [];
         foreach ($lines as $line) {
             $pid = (int) $line['product_id'];
-            $vid = $line['product_variant_id'];
-            $qty = (float) $line['quantity'];
+            $vid = $line['product_variant_id'] !== null ? (int) $line['product_variant_id'] : null;
+            $qty = round((float) $line['quantity'], 3);
             $isAdd = ($line['type'] ?? 'add') === 'add';
             $sign = $isAdd ? 1.0 : -1.0;
-            $ptype = $line['product_type'] ?? 'is_single';
             $detailId = $line['detail_id'] ?? null;
+            $action = $isAdd ? 'add' : 'sub';
 
-            if ($ptype === 'is_combo') {
-                foreach ($this->comboComponents($pid) as $component) {
-                    $effects[] = $this->effect(
-                        (int) $component->combined_product_id, null,
-                        -$sign * (float) $component->quantity * $qty,
-                        $detailId, $pid, 'combo_component', $isAdd ? 'add' : 'sub'
-                    );
+            if (($line['product_type'] ?? 'is_single') === 'is_combo') {
+                foreach ($line['components'] as $c) {
+                    $effects[] = $this->effect((int) $c['product_id'], null, -$sign * (float) $c['quantity'] * $qty, 'combo_component', $pid, $action, $detailId);
                 }
-                $effects[] = $this->effect($pid, null, $sign * $qty, $detailId, null, 'combo_parent', $isAdd ? 'add' : 'sub');
+                $effects[] = $this->effect($pid, null, $sign * $qty, 'combo_parent', null, $action, $detailId);
             } else {
-                $effects[] = $this->effect($pid, $vid, $sign * $qty, $detailId, null, 'line', $isAdd ? 'add' : 'sub');
+                $effects[] = $this->effect($pid, $vid, $sign * $qty, 'line', null, $action, $detailId);
             }
         }
 
-        return $reverse ? $this->negate($effects) : $effects;
+        return $effects;
     }
 
     /**
-     * (H) Semántica EXACTA de daño (siempre salida física):
-     *   simple/variant => -qty
-     *   combo          => componentes -(comp.qty*qty), combo -qty
-     * reverse = negar cada delta (increase de lo que el daño disminuyó).
+     * (H) Daño: simple/variant => -qty; combo => componentes -(comp*qty) y combo
+     * -qty. Devuelve efectos ya expandidos.
      */
-    private function damageEffects(array $lines, bool $reverse): array
+    public function buildDamageSnapshot(array $lines): array
     {
         $effects = [];
         foreach ($lines as $line) {
             $pid = (int) $line['product_id'];
-            $vid = $line['product_variant_id'];
-            $qty = (float) $line['quantity'];
-            $ptype = $line['product_type'] ?? 'is_single';
+            $vid = $line['product_variant_id'] !== null ? (int) $line['product_variant_id'] : null;
+            $qty = round((float) $line['quantity'], 3);
             $detailId = $line['detail_id'] ?? null;
 
-            if ($ptype === 'is_combo') {
-                foreach ($this->comboComponents($pid) as $component) {
-                    $effects[] = $this->effect(
-                        (int) $component->combined_product_id, null,
-                        -(float) $component->quantity * $qty,
-                        $detailId, $pid, 'combo_component', 'damage'
-                    );
+            if (($line['product_type'] ?? 'is_single') === 'is_combo') {
+                foreach ($line['components'] as $c) {
+                    $effects[] = $this->effect((int) $c['product_id'], null, -(float) $c['quantity'] * $qty, 'combo_component', $pid, 'damage', $detailId);
                 }
-                $effects[] = $this->effect($pid, null, -$qty, $detailId, null, 'combo_parent', 'damage');
+                $effects[] = $this->effect($pid, null, -$qty, 'combo_parent', null, 'damage', $detailId);
             } else {
-                $effects[] = $this->effect($pid, $vid, -$qty, $detailId, null, 'line', 'damage');
+                $effects[] = $this->effect($pid, $vid, -$qty, 'line', null, 'damage', $detailId);
             }
         }
 
-        return $reverse ? $this->negate($effects) : $effects;
+        return $effects;
     }
 
-    private function effect(int $productId, ?int $variantId, float $delta, $detailId, $comboParentId, string $role, string $action): array
+    private function effect(int $productId, ?int $variantId, float $delta, string $role, ?int $comboParentId, string $action, $detailId): array
     {
         return [
             'product_id' => $productId,
             'variant_id' => $variantId,
-            'variant_key' => (int) ($variantId ?: 0),
             'delta' => round($delta, 3),
-            'detail_id' => $detailId,
-            'combo_parent_id' => $comboParentId,
             'role' => $role,
+            'combo_parent_id' => $comboParentId,
             'action' => $action,
+            'detail_id' => $detailId !== null ? (int) $detailId : null,
         ];
     }
 
-    private function negate(array $effects): array
+    /**
+     * Normaliza un snapshot persistido (JSON string o array). FAIL CLOSED si un
+     * documento location-aware no lo tiene o está corrupto.
+     */
+    public function normalizeSnapshot($raw): array
     {
-        return array_map(function ($e) {
-            $e['delta'] = round(-$e['delta'], 3);
+        if (is_string($raw) && $raw !== '') {
+            $raw = json_decode($raw, true);
+        }
+        if (! is_array($raw) || $raw === []) {
+            throw ValidationException::withMessages([
+                'inventory_effect_snapshot' => 'El documento location-aware no tiene un snapshot de efectos válido; no se revierte reconstruyendo la composición actual.',
+            ]);
+        }
+        $out = [];
+        foreach ($raw as $e) {
+            if (! isset($e['product_id']) || ! array_key_exists('delta', $e)) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'Snapshot de efectos corrupto.']);
+            }
+            $out[] = [
+                'product_id' => (int) $e['product_id'],
+                'variant_id' => isset($e['variant_id']) && $e['variant_id'] !== null ? (int) $e['variant_id'] : null,
+                'delta' => round((float) $e['delta'], 3),
+                'role' => (string) ($e['role'] ?? 'line'),
+                'combo_parent_id' => isset($e['combo_parent_id']) && $e['combo_parent_id'] !== null ? (int) $e['combo_parent_id'] : null,
+                'action' => (string) ($e['action'] ?? 'add'),
+                'detail_id' => isset($e['detail_id']) && $e['detail_id'] !== null ? (int) $e['detail_id'] : null,
+            ];
+        }
+
+        return $out;
+    }
+
+    // ===== Aplicación física ================================================
+
+    public function applySnapshot(array $effects, string $referenceType, int $referenceId, int $warehouseId, int $locationId, string $source): void
+    {
+        $this->applyEffects($effects, false, $referenceType, $referenceId, $warehouseId, $locationId, $source);
+    }
+
+    /** Revierte EXACTAMENTE el snapshot dado (negando cada delta). */
+    public function reverseSnapshot(array $effects, string $referenceType, int $referenceId, int $warehouseId, int $locationId, string $source): void
+    {
+        $this->applyEffects($effects, true, $referenceType, $referenceId, $warehouseId, $locationId, $source);
+    }
+
+    private function applyEffects(array $effects, bool $reverse, string $referenceType, int $referenceId, int $warehouseId, int $locationId, string $source): void
+    {
+        $this->assertInTransaction();
+
+        $effects = array_map(function ($e) use ($reverse) {
+            $e['delta'] = round($reverse ? -$e['delta'] : $e['delta'], 3);
+            $e['variant_key'] = (int) ($e['variant_id'] ?? 0);
 
             return $e;
         }, $effects);
-    }
-
-    // ---- Aplicación física ----------------------------------------------
-
-    /**
-     * Ordena determinísticamente por (product_id, variant_key) para reducir
-     * deadlocks y aplica cada efecto vía InventoryService. Un fallo en cualquier
-     * decremento => ValidationException => rollback total (transacción del caller).
-     */
-    private function applyEffects(array $effects, string $referenceType, int $referenceId, int $warehouseId, int $locationId, string $source): void
-    {
         $effects = array_values(array_filter($effects, fn ($e) => abs($e['delta']) > self::EPS));
-        usort($effects, function ($a, $b) {
-            return [$a['product_id'], $a['variant_key']] <=> [$b['product_id'], $b['variant_key']];
-        });
 
+        // Orden determinístico por (product_id, variant_key) — menos deadlocks.
+        usort($effects, fn ($a, $b) => [$a['product_id'], $a['variant_key']] <=> [$b['product_id'], $b['variant_key']]);
+
+        $documentType = in_array($referenceType, [self::REF_DAMAGE, self::REF_DAMAGE_REVERSAL], true) ? 'damage' : 'adjustment';
         $inventory = app(InventoryService::class);
+
         foreach ($effects as $e) {
             $qty = abs($e['delta']);
             $direction = $e['delta'] > 0 ? 'increase' : 'decrease';
@@ -291,56 +350,26 @@ class LocationAwareStockDocumentService
                 'metadata' => [
                     'warehouse_id' => $warehouseId,
                     'inventory_location_id' => $locationId,
-                    'document_type' => in_array($referenceType, [self::REF_DAMAGE, self::REF_DAMAGE_REVERSAL], true) ? 'damage' : 'adjustment',
+                    'document_type' => $documentType,
                     'document_id' => $referenceId,
-                    'detail_id' => $e['detail_id'],
+                    'detail_id' => $e['detail_id'] ?? null,
                     'product_id' => $e['product_id'],
-                    'variant_id' => $e['variant_id'],
+                    'variant_id' => $e['variant_id'] ?? null,
                     'direction' => $direction,
-                    'action' => $e['action'],
-                    'role' => $e['role'],
-                    'combo_parent_id' => $e['combo_parent_id'],
+                    'action' => $e['action'] ?? null,
+                    'role' => $e['role'] ?? 'line',
+                    'combo_parent_id' => $e['combo_parent_id'] ?? null,
                     'source' => $source,
                 ],
             ];
 
             if ($e['delta'] > 0) {
-                $inventory->increase($locationId, $e['product_id'], $qty, $e['variant_id'], $context);
+                $inventory->increase($locationId, $e['product_id'], $qty, $e['variant_id'] ?? null, $context);
             } else {
-                $inventory->decrease($locationId, $e['product_id'], $qty, $e['variant_id'], $context);
+                $inventory->decrease($locationId, $e['product_id'], $qty, $e['variant_id'] ?? null, $context);
             }
         }
     }
-
-    /**
-     * Reconstruye las líneas (con product_type y detail_id) a partir de filas de
-     * detalle persistidas — para revertir un documento location-aware existente.
-     *
-     * @param  iterable  $details  filas AdjustmentDetail / DamageDetail
-     * @return array<int,array{product_id:int,product_variant_id:?int,quantity:float,type:?string,product_type:string,detail_id:int}>
-     */
-    public function hydrateLines(iterable $details): array
-    {
-        $out = [];
-        foreach ($details as $d) {
-            $pid = (int) $d->product_id;
-            // Sin filtro de soft-delete: un producto borrado tras crear el
-            // documento debe poder revertirse igual.
-            $type = DB::table('products')->where('id', $pid)->value('type') ?? 'is_single';
-            $out[] = [
-                'product_id' => $pid,
-                'product_variant_id' => $d->product_variant_id ? (int) $d->product_variant_id : null,
-                'quantity' => round((float) $d->quantity, 3),
-                'type' => isset($d->type) ? ($d->type ?: null) : null,
-                'product_type' => (string) $type,
-                'detail_id' => (int) $d->id,
-            ];
-        }
-
-        return $out;
-    }
-
-    // ---- helpers ------------------------------------------------------------
 
     private function assertInTransaction(): void
     {
@@ -349,30 +378,5 @@ class LocationAwareStockDocumentService
                 'inventory' => 'LocationAwareStockDocumentService debe ejecutarse dentro de la transacción del documento.',
             ]);
         }
-    }
-
-    /** @return \Illuminate\Support\Collection<int,object{combined_product_id:int,quantity:float}> */
-    private function comboComponents(int $comboProductId)
-    {
-        return CombinedProduct::where('product_id', $comboProductId)->get(['combined_product_id', 'quantity']);
-    }
-
-    /** IDs (de $productIds) batch-tracked o IMEI. Schema-guarded. */
-    private function trackedProductIds(array $productIds): array
-    {
-        if (! $productIds || ! Schema::hasTable('products')) return [];
-
-        $hasBatch = Schema::hasColumn('products', 'is_batch_tracked');
-        $hasImei = Schema::hasColumn('products', 'is_imei');
-        if (! $hasBatch && ! $hasImei) return [];
-
-        return DB::table('products')
-            ->whereIn('id', $productIds)
-            ->whereNull('deleted_at')
-            ->where(function ($q) use ($hasBatch, $hasImei) {
-                if ($hasBatch) $q->orWhere('is_batch_tracked', 1);
-                if ($hasImei) $q->orWhere('is_imei', 1);
-            })
-            ->pluck('id')->map(fn ($id) => (int) $id)->all();
     }
 }

@@ -397,6 +397,13 @@ export default {
     Submit_Damage() { this.$refs.Edit_damage.validate().then(success => { if (!success) { this.makeToast("danger", this.$t("Please_fill_the_form_correctly"), this.$t("Failed")); } else { this.Update_Damage(); } }); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
     makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    Load_Location_Catalog(locationId) {
+      if (!locationId) { this.products = []; return; }
+      axios.get("damages_location_catalog/" + locationId).then(response => {
+        const rows = (response.data && response.data.products) || [];
+        this.products = rows.map(p => ({ ...p, qte: p.available_quantity, current: p.available_quantity, CurrentStock: p.available_quantity, stock_source: p.stock_source }));
+      }).catch(() => { this.products = []; });
+    },
     Get_Products_By_Warehouse(id) { NProgress.start(); NProgress.set(0.1); axios.get("get_Products_by_warehouse/" + id + "?stock=" + 0 + "&product_service=" + 0 + "&product_combo=" + 1).then(response => { this.products = response.data; NProgress.done(); }).catch(() => {}); },
     add_product() {
       if (this.details.length > 0) { this.detail_order_id(); }
@@ -604,14 +611,16 @@ export default {
       axios.get(`damages/${id}/edit`).then(response => {
         this.damage = response.data.damage;
         this.record_is_location_aware = !!(this.damage && this.damage.inventory_location_id);
+        this.details = response.data.details;
+        this.warehouses = response.data.warehouses;
         if (this.record_is_location_aware) {
           axios.get("damages_inventory_locations/" + this.damage.warehouse_id)
             .then(r => { this.inventory_locations = (r.data && r.data.locations) || []; })
             .catch(() => { this.inventory_locations = []; });
+          this.Load_Location_Catalog(this.damage.inventory_location_id);
+        } else {
+          this.Get_Products_By_Warehouse(this.damage.warehouse_id);
         }
-        this.details = response.data.details;
-        this.warehouses = response.data.warehouses;
-        this.Get_Products_By_Warehouse(this.damage.warehouse_id);
         // Pharmacy: hydrate available batches for preloaded batch-tracked lines.
         if (Array.isArray(this.details)) {
           for (const d of this.details) {

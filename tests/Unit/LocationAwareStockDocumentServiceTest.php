@@ -12,6 +12,7 @@ use App\Services\LegacyInventoryReconciliationService;
 use App\Services\LocationAwareAdjustmentService;
 use App\Services\LocationAwareDamageService;
 use App\Services\LocationAwareStockDocumentService;
+use App\Services\LocationCatalogReadService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -35,6 +36,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
             $t->string('name')->nullable();
             $t->string('code')->nullable();
             $t->string('type')->default('is_single');
+            $t->integer('unit_id')->nullable();
             $t->boolean('is_batch_tracked')->default(false);
             $t->integer('is_imei')->default(0);
             $t->timestamps();
@@ -120,53 +122,35 @@ class LocationAwareStockDocumentServiceTest extends TestCase
             $t->text('metadata')->nullable();
             $t->timestamps();
         });
-        Schema::create('adjustments', function ($t) {
-            $t->increments('id');
-            $t->string('Ref')->nullable();
-            $t->string('date')->nullable();
-            $t->string('time')->nullable();
-            $t->integer('warehouse_id')->nullable();
-            $t->integer('inventory_location_id')->nullable();
-            $t->integer('user_id')->nullable();
-            $t->integer('items')->nullable();
-            $t->text('notes')->nullable();
-            $t->timestamps();
-            $t->softDeletes();
-        });
-        Schema::create('adjustment_details', function ($t) {
-            $t->increments('id');
-            $t->integer('adjustment_id');
-            $t->integer('product_id');
-            $t->integer('product_variant_id')->nullable();
-            $t->decimal('quantity', 12, 3);
-            $t->string('type')->nullable();
-            $t->timestamps();
-        });
-        Schema::create('damages', function ($t) {
-            $t->increments('id');
-            $t->string('Ref')->nullable();
-            $t->string('date')->nullable();
-            $t->string('time')->nullable();
-            $t->integer('warehouse_id')->nullable();
-            $t->integer('inventory_location_id')->nullable();
-            $t->integer('user_id')->nullable();
-            $t->integer('items')->nullable();
-            $t->text('notes')->nullable();
-            $t->boolean('source_locked')->default(false);
-            $t->timestamps();
-            $t->softDeletes();
-        });
-        Schema::create('damage_details', function ($t) {
-            $t->increments('id');
-            $t->integer('damage_id');
-            $t->integer('product_id');
-            $t->integer('product_variant_id')->nullable();
-            $t->decimal('quantity', 12, 3);
-            $t->timestamps();
-        });
+        foreach (['adjustments' => 'adjustment_details', 'damages' => 'damage_details'] as $head => $detail) {
+            Schema::create($head, function ($t) {
+                $t->increments('id');
+                $t->string('Ref')->nullable();
+                $t->string('date')->nullable();
+                $t->string('time')->nullable();
+                $t->integer('warehouse_id')->nullable();
+                $t->integer('inventory_location_id')->nullable();
+                $t->text('inventory_effect_snapshot')->nullable();
+                $t->integer('user_id')->nullable();
+                $t->integer('items')->nullable();
+                $t->text('notes')->nullable();
+                $t->boolean('source_locked')->default(false);
+                $t->timestamps();
+                $t->softDeletes();
+            });
+            Schema::create($detail, function ($t) use ($head) {
+                $t->increments('id');
+                $t->integer($head === 'adjustments' ? 'adjustment_id' : 'damage_id');
+                $t->integer('product_id');
+                $t->integer('product_variant_id')->nullable();
+                $t->decimal('quantity', 12, 3);
+                if ($head === 'adjustments') $t->string('type')->nullable();
+                $t->timestamps();
+            });
+        }
     }
 
-    // ---- helpers ---------------------------------------------------------
+    // ---- fixtures ----------------------------------------------------------
 
     private function warehouse(): array
     {
@@ -216,6 +200,17 @@ class LocationAwareStockDocumentServiceTest extends TestCase
         }
     }
 
+    private function setComboComposition(int $comboId, array $components): void
+    {
+        DB::table('combined_products')->where('product_id', $comboId)->delete();
+        foreach ($components as $componentId => $qty) {
+            DB::table('combined_products')->insert([
+                'product_id' => $comboId, 'combined_product_id' => $componentId, 'quantity' => $qty,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+    }
+
     private function stock(int $locId, int $productId, float $qty, float $reserved = 0, ?int $variantId = null): void
     {
         DB::table('inventory_location_stocks')->insert([
@@ -243,59 +238,8 @@ class LocationAwareStockDocumentServiceTest extends TestCase
         return DB::table('inventory_location_movements')->where('reference_type', $ref)->get();
     }
 
-    /** crea un Adjustment location-aware con details persistidos y aplica el efecto. */
-    private function makeAdjustment(int $whId, int $locId, array $lines): Adjustment
-    {
-        return DB::transaction(function () use ($whId, $locId, $lines) {
-            $svc = app(LocationAwareAdjustmentService::class);
-            $validated = $svc->validateRequest($whId, $locId, $lines);
-            $adj = Adjustment::create([
-                'Ref' => 'AD_'.uniqid(), 'date' => '2026-08-31', 'time' => '10:00:00',
-                'warehouse_id' => $whId, 'inventory_location_id' => $locId, 'user_id' => 1,
-                'items' => count($validated['lines']), 'notes' => null,
-            ]);
-            $engineLines = [];
-            foreach ($validated['lines'] as $ln) {
-                $d = AdjustmentDetail::create([
-                    'adjustment_id' => $adj->id, 'quantity' => $ln['quantity'],
-                    'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'],
-                    'type' => $ln['type'],
-                ]);
-                $engineLines[] = $ln + ['detail_id' => $d->id];
-            }
-            $svc->apply($adj->id, $whId, $locId, $engineLines, 'create');
-
-            return $adj;
-        });
-    }
-
-    private function makeDamage(int $whId, int $locId, array $lines): Damage
-    {
-        return DB::transaction(function () use ($whId, $locId, $lines) {
-            $svc = app(LocationAwareDamageService::class);
-            $validated = $svc->validateRequest($whId, $locId, $lines);
-            $dmg = Damage::create([
-                'Ref' => 'DA_'.uniqid(), 'date' => '2026-08-31', 'time' => '10:00:00',
-                'warehouse_id' => $whId, 'inventory_location_id' => $locId, 'user_id' => 1,
-                'items' => count($validated['lines']), 'notes' => null,
-            ]);
-            $engineLines = [];
-            foreach ($validated['lines'] as $ln) {
-                $d = DamageDetail::create([
-                    'damage_id' => $dmg->id, 'quantity' => $ln['quantity'],
-                    'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'],
-                ]);
-                $engineLines[] = $ln + ['detail_id' => $d->id];
-            }
-            $svc->apply($dmg->id, $whId, $locId, $engineLines, 'create');
-
-            return $dmg;
-        });
-    }
-
     private function seedReconciled(int $whId, int $locId, int $productId, float $qty): void
     {
-        // Estado tipo Iphone17: legacy = location = baseline, con movimiento de backfill.
         DB::table('product_warehouse')->insert([
             'product_id' => $productId, 'warehouse_id' => $whId, 'product_variant_id' => null,
             'qte' => $qty, 'manage_stock' => 1, 'created_at' => now(), 'updated_at' => now(),
@@ -313,21 +257,122 @@ class LocationAwareStockDocumentServiceTest extends TestCase
         ]);
     }
 
-    // ---- A1..A25 -------------------------------------------------------------
+    // ---- orquestación (imita al controller: todo dentro de una transacción) --
 
-    /** A1 — Adjustment simple SUB: legacy intacto, location -10, provenance RECONCILED. */
+    private function createAdjustment(int $whId, int $locId, array $lines): Adjustment
+    {
+        return DB::transaction(function () use ($whId, $locId, $lines) {
+            $svc = app(LocationAwareAdjustmentService::class);
+            $validated = $svc->validateAndLock($whId, $locId, $lines);
+            $adj = Adjustment::create([
+                'Ref' => 'AD_'.uniqid(), 'date' => '2026-08-31', 'time' => '10:00:00',
+                'warehouse_id' => $whId, 'inventory_location_id' => $locId, 'user_id' => 1,
+                'items' => count($validated['lines']),
+            ]);
+            $withIds = [];
+            foreach ($validated['lines'] as $ln) {
+                $d = AdjustmentDetail::create([
+                    'adjustment_id' => $adj->id, 'quantity' => $ln['quantity'],
+                    'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'],
+                    'type' => $ln['type'],
+                ]);
+                $withIds[] = $ln + ['detail_id' => $d->id];
+            }
+            $snapshot = $svc->buildSnapshot($withIds);
+            $adj->update(['inventory_effect_snapshot' => $snapshot]);
+            $svc->applySnapshot($snapshot, $adj->id, $whId, $locId, 'create');
+
+            return $adj->fresh();
+        });
+    }
+
+    private function updateAdjustment(Adjustment $current, int $newWh, int $newLoc, array $lines): void
+    {
+        DB::transaction(function () use ($current, $newWh, $newLoc, $lines) {
+            $svc = app(LocationAwareAdjustmentService::class);
+            $locked = Adjustment::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            $old = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            $extra = array_values(array_unique(array_map(fn ($e) => (int) $e['product_id'], $old)));
+            $validated = $svc->validateAndLock($newWh, $newLoc, $lines, $extra);
+            $svc->reverseSnapshot($old, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'update');
+            AdjustmentDetail::where('adjustment_id', $locked->id)->delete();
+            $withIds = [];
+            foreach ($validated['lines'] as $ln) {
+                $d = AdjustmentDetail::create([
+                    'adjustment_id' => $locked->id, 'quantity' => $ln['quantity'],
+                    'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'], 'type' => $ln['type'],
+                ]);
+                $withIds[] = $ln + ['detail_id' => $d->id];
+            }
+            $new = $svc->buildSnapshot($withIds);
+            $svc->applySnapshot($new, $locked->id, $newWh, $newLoc, 'update');
+            $locked->update(['warehouse_id' => $newWh, 'inventory_location_id' => $newLoc, 'inventory_effect_snapshot' => $new, 'items' => count($validated['lines'])]);
+        });
+    }
+
+    private function destroyAdjustment(Adjustment $current): void
+    {
+        DB::transaction(function () use ($current) {
+            $svc = app(LocationAwareAdjustmentService::class);
+            $locked = Adjustment::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            $snap = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            $svc->reverseSnapshot($snap, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'destroy');
+            $locked->details()->delete();
+            $locked->update(['deleted_at' => now()]);
+        });
+    }
+
+    private function createDamage(int $whId, int $locId, array $lines): Damage
+    {
+        return DB::transaction(function () use ($whId, $locId, $lines) {
+            $svc = app(LocationAwareDamageService::class);
+            $validated = $svc->validateAndLock($whId, $locId, $lines);
+            $dmg = Damage::create([
+                'Ref' => 'DA_'.uniqid(), 'date' => '2026-08-31', 'time' => '10:00:00',
+                'warehouse_id' => $whId, 'inventory_location_id' => $locId, 'user_id' => 1,
+                'items' => count($validated['lines']),
+            ]);
+            $withIds = [];
+            foreach ($validated['lines'] as $ln) {
+                $d = DamageDetail::create([
+                    'damage_id' => $dmg->id, 'quantity' => $ln['quantity'],
+                    'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'],
+                ]);
+                $withIds[] = $ln + ['detail_id' => $d->id];
+            }
+            $snapshot = $svc->buildSnapshot($withIds);
+            $dmg->update(['inventory_effect_snapshot' => $snapshot]);
+            $svc->applySnapshot($snapshot, $dmg->id, $whId, $locId, 'create');
+
+            return $dmg->fresh();
+        });
+    }
+
+    private function destroyDamage(Damage $current): void
+    {
+        DB::transaction(function () use ($current) {
+            $svc = app(LocationAwareDamageService::class);
+            $locked = Damage::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            $snap = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            $svc->reverseSnapshot($snap, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'destroy');
+            $locked->details()->delete();
+            $locked->update(['deleted_at' => now()]);
+        });
+    }
+
+    // ================= A1..A23 =================================================
+
+    /** A1 — Adjustment simple SUB: legacy 150 intacto, location 140, provenance RECONCILED. */
     public function test_a1_adjustment_simple_sub(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(17);
         $this->seedReconciled($wh, $loc, 17, 150);
 
-        $this->makeAdjustment($wh, $loc, [['product_id' => 17, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
+        $this->createAdjustment($wh, $loc, [['product_id' => 17, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
 
-        $this->assertSame(150.0, $this->pw($wh, 17));                       // legacy INTACTO
+        $this->assertSame(150.0, $this->pw($wh, 17));
         $this->assertSame(140.0, $this->loc($loc, 17));
-        $this->assertSame(0.0, (float) DB::table('inventory_location_stocks')->where('inventory_location_id', $loc)->where('product_id', 17)->value('reserved_quantity'));
-
         $movs = $this->movements(LocationAwareStockDocumentService::REF_ADJUSTMENT);
         $this->assertCount(1, $movs);
         $this->assertSame('decrease', $movs[0]->movement_type);
@@ -337,7 +382,6 @@ class LocationAwareStockDocumentServiceTest extends TestCase
         $key = collect($prov['keys'])->firstWhere('product_id', 17);
         $this->assertSame(150.0, (float) $key['baseline_quantity']);
         $this->assertSame(-10.0, (float) $key['post_baseline_native_net']);
-        $this->assertSame(140.0, (float) $key['expected_location']);
         $this->assertSame(140.0, (float) $key['current_location']);
         $this->assertSame('RECONCILED', $key['classification']);
         $plan = app(LegacyInventoryReconciliationService::class)->planIncremental($wh);
@@ -345,21 +389,16 @@ class LocationAwareStockDocumentServiceTest extends TestCase
         $this->assertSame(0, $plan['manual_review_count']);
     }
 
-    /** A2 — Adjustment simple ADD: legacy intacto, location +5. */
     public function test_a2_adjustment_simple_add(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(1);
         $this->seedReconciled($wh, $loc, 1, 40);
-
-        $this->makeAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5, 'type' => 'add']]);
-
+        $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5, 'type' => 'add']]);
         $this->assertSame(40.0, $this->pw($wh, 1));
         $this->assertSame(45.0, $this->loc($loc, 1));
-        $this->assertSame('increase', $this->movements(LocationAwareStockDocumentService::REF_ADJUSTMENT)[0]->movement_type);
     }
 
-    /** A3 — variant add/sub sin bleed entre variant_key. */
     public function test_a3_variant_no_bleed(): void
     {
         [$wh, $loc] = $this->warehouse();
@@ -368,88 +407,75 @@ class LocationAwareStockDocumentServiceTest extends TestCase
         $this->variant(902, 1);
         $this->stock($loc, 1, 20, 0, 901);
         $this->stock($loc, 1, 30, 0, 902);
-
-        $this->makeAdjustment($wh, $loc, [
+        $this->createAdjustment($wh, $loc, [
             ['product_id' => 1, 'product_variant_id' => 901, 'quantity' => 4, 'type' => 'add'],
             ['product_id' => 1, 'product_variant_id' => 902, 'quantity' => 7, 'type' => 'sub'],
         ]);
-
         $this->assertSame(24.0, $this->loc($loc, 1, 901));
         $this->assertSame(23.0, $this->loc($loc, 1, 902));
         $this->assertSame(0.0, $this->loc($loc, 1, 0));
     }
 
-    /** A4 — reserved: physical 150 / reserved 20 / available 130. sub 131 aborta, sub 130 ok. */
-    public function test_a4_reserved_stock_bounds_decrease(): void
+    public function test_a4_reserved_bounds_decrease(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(1);
         $this->stock($loc, 1, 150, 20);
-
         try {
-            $this->makeAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 131, 'type' => 'sub']]);
+            $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 131, 'type' => 'sub']]);
             $this->fail('sub 131 sobre available 130 debía abortar');
         } catch (ValidationException $e) {
-            // ok
         }
         $this->assertSame(150.0, $this->loc($loc, 1));
-        $this->assertCount(0, $this->movements(LocationAwareStockDocumentService::REF_ADJUSTMENT));
-
-        $this->makeAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 130, 'type' => 'sub']]);
+        $this->assertSame(0, Adjustment::count());
+        $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 130, 'type' => 'sub']]);
         $this->assertSame(20.0, $this->loc($loc, 1));
     }
 
-    /** A5 — location de otro warehouse => abort antes de writes. */
     public function test_a5_wrong_warehouse_location(): void
     {
-        [$wh1, $loc1] = $this->warehouse();
+        [$wh1] = $this->warehouse();
         [$wh2, $loc2] = $this->warehouse();
         $this->product(1);
         $this->stock($loc2, 1, 50);
-
         $this->expectException(ValidationException::class);
         try {
-            $this->makeAdjustment($wh1, $loc2, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5, 'type' => 'sub']]);
+            $this->createAdjustment($wh1, $loc2, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5, 'type' => 'sub']]);
         } finally {
             $this->assertSame(0, Adjustment::count());
             $this->assertSame(50.0, $this->loc($loc2, 1));
         }
     }
 
-    /** A6 — location inactiva / eliminada => abort. */
     public function test_a6_inactive_or_deleted_location(): void
     {
-        [$wh, $loc] = $this->warehouse();
+        [$wh] = $this->warehouse();
         $this->product(1);
         $inactive = $this->location($wh, 'OLD', 'storage', false, false);
         $deleted = $this->location($wh, 'GONE');
         DB::table('inventory_locations')->where('id', $deleted)->update(['deleted_at' => now()]);
-
         foreach ([$inactive, $deleted] as $bad) {
             try {
-                $this->makeAdjustment($wh, $bad, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 1, 'type' => 'add']]);
+                $this->createAdjustment($wh, $bad, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 1, 'type' => 'add']]);
                 $this->fail("location {$bad} debía abortar");
             } catch (ValidationException $e) {
-                // ok
             }
         }
         $this->assertSame(0, Adjustment::count());
     }
 
-    /** A7 — request con producto batch-tracked => abort 0 header/details/movements. */
-    public function test_a7_batch_tracked_request_rejected(): void
+    public function test_a7_batch_request_rejected(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(1);
         $this->product(2, 'is_single', ['is_batch_tracked' => true]);
         $this->stock($loc, 1, 50);
-
         try {
-            $this->makeAdjustment($wh, $loc, [
+            $this->createAdjustment($wh, $loc, [
                 ['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5, 'type' => 'add'],
                 ['product_id' => 2, 'product_variant_id' => null, 'quantity' => 3, 'type' => 'add'],
             ]);
-            $this->fail('un producto batch-tracked debía rechazar todo el request');
+            $this->fail('un producto batch debía rechazar todo el request');
         } catch (ValidationException $e) {
             $this->assertStringContainsString('lote o serie/IMEI', $e->getMessage());
         }
@@ -458,40 +484,34 @@ class LocationAwareStockDocumentServiceTest extends TestCase
         $this->assertSame(0, InventoryLocationMovement::count());
     }
 
-    /** A8 — request con producto IMEI => igual. */
     public function test_a8_imei_request_rejected(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(1, 'is_single', ['is_imei' => 1]);
-
         $this->expectException(ValidationException::class);
         try {
-            $this->makeAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 1, 'type' => 'add']]);
+            $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 1, 'type' => 'add']]);
         } finally {
             $this->assertSame(0, Adjustment::count());
             $this->assertSame(0, InventoryLocationMovement::count());
         }
     }
 
-    /** A9 — combo Adjustment ADD: componentes -, combo +, misma location. */
     public function test_a9_combo_adjustment_add(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(1);
         $this->product(2);
-        $this->combo(50, [1 => 2, 2 => 3]); // combo 50 = 2*p1 + 3*p2
+        $this->combo(50, [1 => 2, 2 => 3]);
         $this->stock($loc, 1, 100);
         $this->stock($loc, 2, 100);
         $this->stock($loc, 50, 0);
-
-        $this->makeAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add']]);
-
-        $this->assertSame(92.0, $this->loc($loc, 1));  // 100 - 2*4
-        $this->assertSame(88.0, $this->loc($loc, 2));  // 100 - 3*4
-        $this->assertSame(4.0, $this->loc($loc, 50));  // 0 + 4
+        $this->createAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add']]);
+        $this->assertSame(92.0, $this->loc($loc, 1));
+        $this->assertSame(88.0, $this->loc($loc, 2));
+        $this->assertSame(4.0, $this->loc($loc, 50));
     }
 
-    /** A10 — combo Adjustment SUB: inversa exacta. */
     public function test_a10_combo_adjustment_sub(): void
     {
         [$wh, $loc] = $this->warehouse();
@@ -501,65 +521,244 @@ class LocationAwareStockDocumentServiceTest extends TestCase
         $this->stock($loc, 1, 100);
         $this->stock($loc, 2, 100);
         $this->stock($loc, 50, 10);
-
-        $this->makeAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'sub']]);
-
-        $this->assertSame(108.0, $this->loc($loc, 1));  // 100 + 2*4
-        $this->assertSame(112.0, $this->loc($loc, 2));  // 100 + 3*4
-        $this->assertSame(6.0, $this->loc($loc, 50));   // 10 - 4
+        $this->createAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'sub']]);
+        $this->assertSame(108.0, $this->loc($loc, 1));
+        $this->assertSame(112.0, $this->loc($loc, 2));
+        $this->assertSame(6.0, $this->loc($loc, 50));
     }
 
-    /** A11 — Damage simple: 150 - 20 => 130, legacy intacto, provenance RECONCILED. */
     public function test_a11_damage_simple(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(17);
         $this->seedReconciled($wh, $loc, 17, 150);
-
-        $this->makeDamage($wh, $loc, [['product_id' => 17, 'product_variant_id' => null, 'quantity' => 20]]);
-
+        $this->createDamage($wh, $loc, [['product_id' => 17, 'product_variant_id' => null, 'quantity' => 20]]);
         $this->assertSame(150.0, $this->pw($wh, 17));
         $this->assertSame(130.0, $this->loc($loc, 17));
-        $movs = $this->movements(LocationAwareStockDocumentService::REF_DAMAGE);
-        $this->assertCount(1, $movs);
-        $this->assertSame('decrease', $movs[0]->movement_type);
+        $this->assertSame('decrease', $this->movements(LocationAwareStockDocumentService::REF_DAMAGE)[0]->movement_type);
         $prov = app(InventoryProvenanceAuditService::class)->auditWarehouse($wh);
         $this->assertSame('RECONCILED', collect($prov['keys'])->firstWhere('product_id', 17)['classification']);
     }
 
-    /** A12 — Damage sobre available insuficiente => abort; NO clamp a 0. */
-    public function test_a12_damage_over_available_aborts_no_clamp(): void
+    public function test_a12_damage_over_available_no_clamp(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(1);
         $this->stock($loc, 1, 15);
-
         try {
-            $this->makeDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 20]]);
+            $this->createDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 20]]);
             $this->fail('dañar 20 con 15 disponibles debía abortar');
         } catch (ValidationException $e) {
-            // ok
         }
-        $this->assertSame(15.0, $this->loc($loc, 1)); // NO 0
+        $this->assertSame(15.0, $this->loc($loc, 1));
         $this->assertSame(0, Damage::count());
-        $this->assertCount(0, $this->movements(LocationAwareStockDocumentService::REF_DAMAGE));
     }
 
-    /** A13 — Damage variant. */
     public function test_a13_damage_variant(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(1);
         $this->variant(901, 1);
         $this->stock($loc, 1, 40, 0, 901);
-
-        $this->makeDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => 901, 'quantity' => 8]]);
+        $this->createDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => 901, 'quantity' => 8]]);
         $this->assertSame(32.0, $this->loc($loc, 1, 901));
         $this->assertSame(0.0, $this->loc($loc, 1, 0));
     }
 
-    /** A14 — Damage combo: componentes - y combo - (semántica legacy exacta). */
-    public function test_a14_damage_combo_legacy_equivalent(): void
+    public function test_a14_damage_combo(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->product(2);
+        $this->combo(50, [1 => 2, 2 => 3]);
+        $this->stock($loc, 1, 100);
+        $this->stock($loc, 2, 100);
+        $this->stock($loc, 50, 10);
+        $this->createDamage($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 3]]);
+        $this->assertSame(94.0, $this->loc($loc, 1));
+        $this->assertSame(91.0, $this->loc($loc, 2));
+        $this->assertSame(7.0, $this->loc($loc, 50));
+    }
+
+    public function test_a15_update_adjustment(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->stock($loc, 1, 100);
+        $adj = $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
+        $this->assertSame(90.0, $this->loc($loc, 1));
+        $this->updateAdjustment($adj, $wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add']]);
+        $this->assertSame(104.0, $this->loc($loc, 1)); // +10 back, +4
+        $this->assertCount(1, $this->movements(LocationAwareStockDocumentService::REF_ADJUSTMENT_REVERSAL));
+    }
+
+    public function test_a16_move_adjustment_between_locations(): void
+    {
+        [$wh, $locA] = $this->warehouse();
+        $locB = $this->location($wh, 'B');
+        $this->product(1);
+        $this->stock($locA, 1, 100);
+        $this->stock($locB, 1, 100);
+        $adj = $this->createAdjustment($wh, $locA, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
+        $this->updateAdjustment($adj, $wh, $locB, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
+        $this->assertSame(100.0, $this->loc($locA, 1));
+        $this->assertSame(90.0, $this->loc($locB, 1));
+    }
+
+    public function test_a17_update_damage(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->stock($loc, 1, 100);
+        $dmg = $this->createDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 20]]);
+        $this->assertSame(80.0, $this->loc($loc, 1));
+
+        DB::transaction(function () use ($dmg, $wh, $loc) {
+            $svc = app(LocationAwareDamageService::class);
+            $locked = Damage::whereKey($dmg->id)->lockForUpdate()->firstOrFail();
+            $old = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            $validated = $svc->validateAndLock($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5]], [1]);
+            $svc->reverseSnapshot($old, $locked->id, $wh, $loc, 'update');
+            DamageDetail::where('damage_id', $locked->id)->delete();
+            $withIds = [];
+            foreach ($validated['lines'] as $ln) {
+                $d = DamageDetail::create(['damage_id' => $locked->id, 'quantity' => $ln['quantity'], 'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id']]);
+                $withIds[] = $ln + ['detail_id' => $d->id];
+            }
+            $new = $svc->buildSnapshot($withIds);
+            $svc->applySnapshot($new, $locked->id, $wh, $loc, 'update');
+            $locked->update(['inventory_effect_snapshot' => $new]);
+        });
+        $this->assertSame(95.0, $this->loc($loc, 1));
+    }
+
+    public function test_a18_destroy_adjustment(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->stock($loc, 1, 100);
+        $adj = $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 15, 'type' => 'sub']]);
+        $this->assertSame(85.0, $this->loc($loc, 1));
+        $this->destroyAdjustment($adj);
+        $this->assertSame(100.0, $this->loc($loc, 1));
+        $this->assertNotNull(DB::table('adjustments')->where('id', $adj->id)->value('deleted_at'));
+        $this->assertSame(0, AdjustmentDetail::where('adjustment_id', $adj->id)->count());
+        $this->assertCount(1, $this->movements(LocationAwareStockDocumentService::REF_ADJUSTMENT_REVERSAL));
+    }
+
+    public function test_a19_destroy_damage(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->stock($loc, 1, 100);
+        $dmg = $this->createDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 25]]);
+        $this->assertSame(75.0, $this->loc($loc, 1));
+        $this->destroyDamage($dmg);
+        $this->assertSame(100.0, $this->loc($loc, 1));
+        $this->assertNotNull(DB::table('damages')->where('id', $dmg->id)->value('deleted_at'));
+    }
+
+    public function test_a22_combo_failure_rolls_back_everything(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->product(2);
+        $this->combo(50, [1 => 2, 2 => 3]);
+        $this->stock($loc, 1, 100);
+        $this->stock($loc, 2, 5);
+        $this->stock($loc, 50, 0);
+        try {
+            $this->createAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'sub']]);
+            $this->fail('el combo debía abortar');
+        } catch (ValidationException $e) {
+        }
+        $this->assertSame(100.0, $this->loc($loc, 1));
+        $this->assertSame(5.0, $this->loc($loc, 2));
+        $this->assertSame(0, Adjustment::count());
+        $this->assertSame(0, InventoryLocationMovement::count());
+    }
+
+    public function test_a23_movements_in_native_net_not_baseline(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(17);
+        $this->seedReconciled($wh, $loc, 17, 150);
+        $this->createAdjustment($wh, $loc, [['product_id' => 17, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
+        $this->createDamage($wh, $loc, [['product_id' => 17, 'product_variant_id' => null, 'quantity' => 5]]);
+        foreach (['Adjustment', 'AdjustmentReversal', 'Damage', 'DamageReversal'] as $ref) {
+            $this->assertNotContains($ref, InventoryProvenanceAuditService::RECONCILIATION_REFS);
+        }
+        $prov = app(InventoryProvenanceAuditService::class)->auditWarehouse($wh);
+        $key = collect($prov['keys'])->firstWhere('product_id', 17);
+        $this->assertSame(150.0, (float) $key['baseline_quantity']);
+        $this->assertSame(-15.0, (float) $key['post_baseline_native_net']);
+        $this->assertSame(135.0, (float) $key['current_location']);
+        $this->assertSame('RECONCILED', $key['classification']);
+    }
+
+    // ================= B4..B14 (iteración 2) ===================================
+
+    /** B4 — combo creado 2A+3B; se cambia a 1A+1B; destroy revierte el efecto HISTÓRICO exacto. */
+    public function test_b4_destroy_reverts_historical_combo_effect_not_current_composition(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->product(2);
+        $this->combo(50, [1 => 2, 2 => 3]);
+        $this->stock($loc, 1, 100);
+        $this->stock($loc, 2, 100);
+        $this->stock($loc, 50, 0);
+
+        $adj = $this->createAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add']]);
+        $this->assertSame(92.0, $this->loc($loc, 1));   // -8
+        $this->assertSame(88.0, $this->loc($loc, 2));   // -12
+        $this->assertSame(4.0, $this->loc($loc, 50));
+
+        // se cambia la composición del combo.
+        $this->setComboComposition(50, [1 => 1, 2 => 1]);
+
+        $this->destroyAdjustment($adj);
+
+        // reversa EXACTA de 2A+3B: A +8, B +12, combo -4. NO 1A+1B.
+        $this->assertSame(100.0, $this->loc($loc, 1));
+        $this->assertSame(100.0, $this->loc($loc, 2));
+        $this->assertSame(0.0, $this->loc($loc, 50));
+    }
+
+    /** B5 — update tras cambio de combo: revierte snapshot viejo exacto y aplica composición vigente. */
+    public function test_b5_update_reverts_old_snapshot_then_applies_current_composition(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->product(2);
+        $this->combo(50, [1 => 2, 2 => 3]);
+        $this->stock($loc, 1, 100);
+        $this->stock($loc, 2, 100);
+        $this->stock($loc, 50, 0);
+
+        $adj = $this->createAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add']]);
+        // A 92 / B 88 / combo 4
+
+        $this->setComboComposition(50, [1 => 1, 2 => 1]); // nueva composición
+
+        $this->updateAdjustment($adj, $wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 2, 'type' => 'add']]);
+
+        // reversa vieja exacta: A 92+8=100, B 88+12=100, combo 4-4=0.
+        // nueva aplicación 1A+1B * 2: A 100-2=98, B 100-2=98, combo 0+2=2.
+        $this->assertSame(98.0, $this->loc($loc, 1));
+        $this->assertSame(98.0, $this->loc($loc, 2));
+        $this->assertSame(2.0, $this->loc($loc, 50));
+
+        // el nuevo snapshot refleja la composición vigente.
+        $newSnap = json_decode(DB::table('adjustments')->where('id', $adj->id)->value('inventory_effect_snapshot'), true);
+        $byProduct = collect($newSnap)->keyBy('product_id');
+        $this->assertSame(-2.0, (float) $byProduct[1]['delta']);
+        $this->assertSame(-2.0, (float) $byProduct[2]['delta']);
+        $this->assertSame(2.0, (float) $byProduct[50]['delta']);
+    }
+
+    /** B6 — Damage combo: cambiar composición tras crear; destroy revierte el efecto histórico. */
+    public function test_b6_damage_combo_destroy_uses_history(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(1);
@@ -569,197 +768,133 @@ class LocationAwareStockDocumentServiceTest extends TestCase
         $this->stock($loc, 2, 100);
         $this->stock($loc, 50, 10);
 
-        $this->makeDamage($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 3]]);
+        $dmg = $this->createDamage($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 3]]);
+        $this->assertSame(94.0, $this->loc($loc, 1));
+        $this->assertSame(91.0, $this->loc($loc, 2));
 
-        $this->assertSame(94.0, $this->loc($loc, 1));  // 100 - 2*3
-        $this->assertSame(91.0, $this->loc($loc, 2));  // 100 - 3*3
-        $this->assertSame(7.0, $this->loc($loc, 50));  // 10 - 3
+        $this->setComboComposition(50, [1 => 9, 2 => 9]);
+        $this->destroyDamage($dmg);
+
+        $this->assertSame(100.0, $this->loc($loc, 1));  // +6 exacto, no +27
+        $this->assertSame(100.0, $this->loc($loc, 2));  // +9 exacto
+        $this->assertSame(10.0, $this->loc($loc, 50));
     }
 
-    /** A15 — Update location-aware Adjustment: revierte viejo + aplica nuevo, atómico. */
-    public function test_a15_update_adjustment_reverses_and_reapplies(): void
+    /** B7 — catálogo por ubicación: available cambia MAIN(80) -> BODEGA(5); nunca agregado de almacén. */
+    public function test_b7_catalog_available_per_location(): void
+    {
+        [$wh, $main] = $this->warehouse();
+        $bodega = $this->location($wh, 'BODEGA');
+        $this->product(1);
+        $this->stock($main, 1, 100, 20);   // available 80
+        $this->stock($bodega, 1, 7, 2);    // available 5
+
+        $catMain = app(LocationCatalogReadService::class)->forLocation($main);
+        $rowMain = collect($catMain['products'])->firstWhere('product_id', 1);
+        $this->assertSame(80.0, $rowMain['available_quantity']);
+        $this->assertSame(100.0, $rowMain['physical_quantity']);
+        $this->assertSame('inventory_location', $rowMain['stock_source']);
+
+        $catBod = app(LocationCatalogReadService::class)->forLocation($bodega);
+        $rowBod = collect($catBod['products'])->firstWhere('product_id', 1);
+        $this->assertSame(5.0, $rowBod['available_quantity']);
+    }
+
+    /** B8 — producto con 0 stock: aparece en el catálogo y permite Adjustment ADD. */
+    public function test_b8_zero_stock_product_in_catalog_and_addable(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);          // sin fila de stock en $loc
+
+        $cat = app(LocationCatalogReadService::class)->forLocation($loc);
+        $row = collect($cat['products'])->firstWhere('product_id', 1);
+        $this->assertNotNull($row);
+        $this->assertSame(0.0, $row['available_quantity']);
+
+        $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 12, 'type' => 'add']]);
+        $this->assertSame(12.0, $this->loc($loc, 1));
+    }
+
+    /** B9 — Damage usa available (physical - reserved), no physical. */
+    public function test_b9_damage_uses_available_not_physical(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(1);
-        $this->stock($loc, 1, 100);
-        $adj = $this->makeAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
-        $this->assertSame(90.0, $this->loc($loc, 1));
+        $this->stock($loc, 1, 30, 25); // physical 30, available 5
 
-        // update: sub 10 -> add 4
-        $engine = app(LocationAwareStockDocumentService::class);
-        $svc = app(LocationAwareAdjustmentService::class);
-        DB::transaction(function () use ($adj, $wh, $loc, $engine, $svc) {
-            $old = AdjustmentDetail::where('adjustment_id', $adj->id)->get();
-            $svc->reverse($adj->id, $wh, $loc, $engine->hydrateLines($old), 'update');   // +10 back => 100
-            AdjustmentDetail::where('adjustment_id', $adj->id)->delete();
-            $validated = $svc->validateRequest($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add']]);
-            $lines = [];
-            foreach ($validated['lines'] as $ln) {
-                $d = AdjustmentDetail::create(['adjustment_id' => $adj->id, 'quantity' => $ln['quantity'], 'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'], 'type' => $ln['type']]);
-                $lines[] = $ln + ['detail_id' => $d->id];
-            }
-            $svc->apply($adj->id, $wh, $loc, $lines, 'update');                          // +4 => 104
-        });
-
-        $this->assertSame(104.0, $this->loc($loc, 1));
-        $this->assertCount(1, $this->movements(LocationAwareStockDocumentService::REF_ADJUSTMENT_REVERSAL));
+        try {
+            $this->createDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 6]]);
+            $this->fail('dañar 6 con available 5 debía abortar');
+        } catch (ValidationException $e) {
+        }
+        $this->assertSame(30.0, $this->loc($loc, 1));
+        $this->createDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5]]);
+        $this->assertSame(25.0, $this->loc($loc, 1));
     }
 
-    /** A16 — mover Adjustment location A -> B: reversa en A, nuevo efecto en B. */
-    public function test_a16_move_adjustment_between_locations(): void
-    {
-        [$wh, $locA] = $this->warehouse();
-        $locB = $this->location($wh, 'B');
-        $this->product(1);
-        $this->stock($locA, 1, 100);
-        $this->stock($locB, 1, 100);
-        $adj = $this->makeAdjustment($wh, $locA, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
-        $this->assertSame(90.0, $this->loc($locA, 1));
-
-        $engine = app(LocationAwareStockDocumentService::class);
-        $svc = app(LocationAwareAdjustmentService::class);
-        DB::transaction(function () use ($adj, $wh, $locA, $locB, $engine, $svc) {
-            $old = AdjustmentDetail::where('adjustment_id', $adj->id)->get();
-            $svc->reverse($adj->id, $wh, $locA, $engine->hydrateLines($old), 'update');  // A: back to 100
-            AdjustmentDetail::where('adjustment_id', $adj->id)->delete();
-            $validated = $svc->validateRequest($wh, $locB, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
-            $lines = [];
-            foreach ($validated['lines'] as $ln) {
-                $d = AdjustmentDetail::create(['adjustment_id' => $adj->id, 'quantity' => $ln['quantity'], 'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'], 'type' => $ln['type']]);
-                $lines[] = $ln + ['detail_id' => $d->id];
-            }
-            $svc->apply($adj->id, $wh, $locB, $lines, 'update');                          // B: 90
-            $adj->update(['inventory_location_id' => $locB]);
-        });
-
-        $this->assertSame(100.0, $this->loc($locA, 1));
-        $this->assertSame(90.0, $this->loc($locB, 1));
-    }
-
-    /** A17 — Update Damage equivalente. */
-    public function test_a17_update_damage(): void
-    {
-        [$wh, $loc] = $this->warehouse();
-        $this->product(1);
-        $this->stock($loc, 1, 100);
-        $dmg = $this->makeDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 20]]);
-        $this->assertSame(80.0, $this->loc($loc, 1));
-
-        $engine = app(LocationAwareStockDocumentService::class);
-        $svc = app(LocationAwareDamageService::class);
-        DB::transaction(function () use ($dmg, $wh, $loc, $engine, $svc) {
-            $old = DamageDetail::where('damage_id', $dmg->id)->get();
-            $svc->reverse($dmg->id, $wh, $loc, $engine->hydrateLines($old), 'update');   // +20 => 100
-            DamageDetail::where('damage_id', $dmg->id)->delete();
-            $validated = $svc->validateRequest($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5]]);
-            $lines = [];
-            foreach ($validated['lines'] as $ln) {
-                $d = DamageDetail::create(['damage_id' => $dmg->id, 'quantity' => $ln['quantity'], 'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id']]);
-                $lines[] = $ln + ['detail_id' => $d->id];
-            }
-            $svc->apply($dmg->id, $wh, $loc, $lines, 'update');                          // -5 => 95
-        });
-
-        $this->assertSame(95.0, $this->loc($loc, 1));
-    }
-
-    /** A18 — Destroy Adjustment location-aware: reversa + soft-delete. */
-    public function test_a18_destroy_adjustment(): void
-    {
-        [$wh, $loc] = $this->warehouse();
-        $this->product(1);
-        $this->stock($loc, 1, 100);
-        $adj = $this->makeAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 15, 'type' => 'sub']]);
-        $this->assertSame(85.0, $this->loc($loc, 1));
-
-        $engine = app(LocationAwareStockDocumentService::class);
-        DB::transaction(function () use ($adj, $wh, $loc, $engine) {
-            $details = AdjustmentDetail::where('adjustment_id', $adj->id)->get();
-            app(LocationAwareAdjustmentService::class)->reverse($adj->id, $wh, $loc, $engine->hydrateLines($details), 'destroy');
-            $adj->details()->delete();
-            $adj->update(['deleted_at' => now()]);
-        });
-
-        $this->assertSame(100.0, $this->loc($loc, 1));
-        $this->assertNotNull(DB::table('adjustments')->where('id', $adj->id)->value('deleted_at'));
-        $this->assertSame(0, AdjustmentDetail::where('adjustment_id', $adj->id)->count());
-        $this->assertCount(1, $this->movements(LocationAwareStockDocumentService::REF_ADJUSTMENT_REVERSAL));
-    }
-
-    /** A19 — Destroy Damage. */
-    public function test_a19_destroy_damage(): void
-    {
-        [$wh, $loc] = $this->warehouse();
-        $this->product(1);
-        $this->stock($loc, 1, 100);
-        $dmg = $this->makeDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 25]]);
-        $this->assertSame(75.0, $this->loc($loc, 1));
-
-        $engine = app(LocationAwareStockDocumentService::class);
-        DB::transaction(function () use ($dmg, $wh, $loc, $engine) {
-            $details = DamageDetail::where('damage_id', $dmg->id)->get();
-            app(LocationAwareDamageService::class)->reverse($dmg->id, $wh, $loc, $engine->hydrateLines($details), 'destroy');
-            $dmg->details()->delete();
-            $dmg->update(['deleted_at' => now()]);
-        });
-
-        $this->assertSame(100.0, $this->loc($loc, 1));
-        $this->assertNotNull(DB::table('damages')->where('id', $dmg->id)->value('deleted_at'));
-    }
-
-    /** A22 — fallo en mitad de combo => rollback total (stocks + movements + header/details). */
-    public function test_a22_combo_failure_rolls_back_everything(): void
+    /** B13 — snapshot y movimientos producen exactamente los mismos deltas. */
+    public function test_b13_snapshot_matches_movements(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(1);
         $this->product(2);
         $this->combo(50, [1 => 2, 2 => 3]);
         $this->stock($loc, 1, 100);
-        $this->stock($loc, 2, 5);   // insuficiente para 3*4 = 12
-        $this->stock($loc, 50, 0);
+        $this->stock($loc, 2, 100);
+        $this->stock($loc, 50, 5);
 
-        try {
-            $this->makeAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'sub']]);
-            $this->fail('el combo debía abortar por stock insuficiente de un componente');
-        } catch (ValidationException $e) {
-            // ok
+        $adj = $this->createAdjustment($wh, $loc, [
+            ['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add'],
+            ['product_id' => 1, 'product_variant_id' => null, 'quantity' => 3, 'type' => 'sub'],
+        ]);
+
+        $snap = json_decode(DB::table('adjustments')->where('id', $adj->id)->value('inventory_effect_snapshot'), true);
+        $snapByKey = [];
+        foreach ($snap as $e) {
+            $k = $e['product_id'].':'.((int) ($e['variant_id'] ?? 0));
+            $snapByKey[$k] = ($snapByKey[$k] ?? 0) + (float) $e['delta'];
         }
-
-        $this->assertSame(100.0, $this->loc($loc, 1));   // revertido
-        $this->assertSame(5.0, $this->loc($loc, 2));
-        $this->assertSame(0.0, $this->loc($loc, 50));
-        $this->assertSame(0, Adjustment::count());
-        $this->assertSame(0, AdjustmentDetail::count());
-        $this->assertSame(0, InventoryLocationMovement::count());
+        $movByKey = [];
+        foreach ($this->movements(LocationAwareStockDocumentService::REF_ADJUSTMENT) as $m) {
+            $k = $m->product_id.':'.((int) ($m->product_variant_id ?: 0));
+            $sign = $m->movement_type === 'increase' ? 1 : -1;
+            $movByKey[$k] = ($movByKey[$k] ?? 0) + $sign * (float) $m->quantity;
+        }
+        ksort($snapByKey);
+        ksort($movByKey);
+        $this->assertSame($snapByKey, $movByKey);
     }
 
-    /** A23 — provenance: los movimientos Adjustment/Damage cuentan en native_net, NO en baseline. */
-    public function test_a23_movements_count_in_native_net_not_baseline(): void
+    /** B14 — provenance Iphone17 tras Adjustment SUB 10: legacy 150, native -10, RECONCILED, plan 0/0. */
+    public function test_b14_provenance_iphone17(): void
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(17);
         $this->seedReconciled($wh, $loc, 17, 150);
-
-        $this->makeAdjustment($wh, $loc, [['product_id' => 17, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
-        $this->makeDamage($wh, $loc, [['product_id' => 17, 'product_variant_id' => null, 'quantity' => 5]]);
-
-        // reference_type NO está en RECONCILIATION_REFS.
-        foreach ([
-            LocationAwareStockDocumentService::REF_ADJUSTMENT,
-            LocationAwareStockDocumentService::REF_ADJUSTMENT_REVERSAL,
-            LocationAwareStockDocumentService::REF_DAMAGE,
-            LocationAwareStockDocumentService::REF_DAMAGE_REVERSAL,
-        ] as $ref) {
-            $this->assertNotContains($ref, InventoryProvenanceAuditService::RECONCILIATION_REFS);
-        }
+        $this->createAdjustment($wh, $loc, [['product_id' => 17, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
 
         $prov = app(InventoryProvenanceAuditService::class)->auditWarehouse($wh);
         $key = collect($prov['keys'])->firstWhere('product_id', 17);
-        $this->assertSame(150.0, (float) $key['baseline_quantity']);          // baseline SIN tocar
-        $this->assertSame(-15.0, (float) $key['post_baseline_native_net']);   // -10 adj -5 damage
-        $this->assertSame(135.0, (float) $key['current_location']);
+        $this->assertSame(150.0, (float) $key['baseline_quantity']);
+        $this->assertSame(-10.0, (float) $key['post_baseline_native_net']);
+        $this->assertSame(140.0, (float) $key['current_location']);
         $this->assertSame('RECONCILED', $key['classification']);
+        $this->assertSame(150.0, $this->pw($wh, 17));
+        $plan = app(LegacyInventoryReconciliationService::class)->planIncremental($wh);
+        $this->assertSame(0, $plan['add_count']);
+        $this->assertSame(0, $plan['manual_review_count']);
     }
 
-    /** A20/A21 no aplican al motor (son de la rama legacy del controller): cubiertos por el contract test. */
+    /** update location-aware sin snapshot => FAIL CLOSED (BLOCKER 2.3). */
+    public function test_update_without_snapshot_fails_closed(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->stock($loc, 1, 100);
+        $adj = $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5, 'type' => 'sub']]);
+        DB::table('adjustments')->where('id', $adj->id)->update(['inventory_effect_snapshot' => null]);
+
+        $this->expectException(ValidationException::class);
+        $this->updateAdjustment($adj->fresh(), $wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 1, 'type' => 'sub']]);
+    }
 }

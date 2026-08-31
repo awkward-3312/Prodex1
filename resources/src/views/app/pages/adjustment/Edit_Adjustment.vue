@@ -618,6 +618,18 @@ export default {
       });
     },
 
+    // #81 · BLOCKER 3 — catálogo + CurrentStock por ubicación (registros
+    // location-aware). available = physical - reserved.
+    Load_Location_Catalog(locationId) {
+      if (!locationId) { this.products = []; return; }
+      axios.get("adjustments_location_catalog/" + locationId)
+        .then(response => {
+          const rows = (response.data && response.data.products) || [];
+          this.products = rows.map(p => ({ ...p, qte: p.available_quantity, current: p.available_quantity, CurrentStock: p.available_quantity, stock_source: p.stock_source }));
+        })
+        .catch(() => { this.products = []; });
+    },
+
      //------------------------------------ Get Products By Warehouse -------------------------\\
 
     Get_Products_By_Warehouse(id) {
@@ -1029,14 +1041,17 @@ export default {
           this.adjustment = response.data.adjustment;
           this.details = response.data.details;
           this.warehouses = response.data.warehouses;
-          // #81 — registro location-aware: mostrar y cargar el select de ubicación.
+          // #81 — registro location-aware: select de ubicación + catálogo POR
+          // UBICACIÓN. Registro legacy: catálogo histórico por almacén.
           this.record_is_location_aware = !!(this.adjustment && this.adjustment.inventory_location_id);
           if (this.record_is_location_aware) {
             axios.get("adjustments_inventory_locations/" + this.adjustment.warehouse_id)
               .then(r => { this.inventory_locations = (r.data && r.data.locations) || []; })
               .catch(() => { this.inventory_locations = []; });
+            this.Load_Location_Catalog(this.adjustment.inventory_location_id);
+          } else {
+            this.Get_Products_By_Warehouse(this.adjustment.warehouse_id);
           }
-          this.Get_Products_By_Warehouse(this.adjustment.warehouse_id);
           // Pharmacy: hydrate available_batches for any preloaded batch-tracked lines so
           // the picker dropdown has options when the user opens the edit page.
           if (Array.isArray(this.details)) {

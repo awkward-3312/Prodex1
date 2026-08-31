@@ -21,6 +21,8 @@ use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use PDF;
 
 class AdjustmentController extends BaseController
@@ -122,226 +124,18 @@ class AdjustmentController extends BaseController
 
         $this->authorizeForUser($request->user('api'), 'create', Adjustment::class);
 
-        // (#81) Flujo location-aware: el request trae inventory_location_id
-        // explícita => NO se toca product_warehouse.
-        if ($request->filled('inventory_location_id')) {
-            return $this->storeLocationAware($request);
+        // (#81 · BLOCKER 1) TODO Adjustment NUEVO es location-aware: exige
+        // inventory_location_id explícita. Sin ella => 422, 0 escrituras. La
+        // ruta legacy de abajo ya NO se usa para crear documentos nuevos
+        // (queda sólo para update/destroy de históricos con inventory_location_id NULL).
+        if (! $request->filled('inventory_location_id')) {
+            throw ValidationException::withMessages([
+                'inventory_location_id' => 'Debes seleccionar una ubicación de inventario: los ajustes nuevos se registran por ubicación.',
+            ]);
         }
 
-        // define validation rules
-        $productionRules = [
-            'warehouse_id' => 'required',
-        ];
+        return $this->storeLocationAware($request);
 
-        // if type prod, add validation for materiels array
-        $productionRules['details'] = [
-            'required',
-            function ($attribute, $value, $fail) use ($request) {
-
-                $products_data = $request['details'];
-
-                foreach ($products_data as $key => $value) {
-
-                    $product_detail = Product::where('deleted_at', '=', null)
-                        ->where('id', $value['product_id'])
-                        ->first();
-
-                    if ($product_detail->type == 'is_combo') {
-
-                        $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
-
-                        foreach ($combined_products as $combined_product) {
-
-                            $total_stock = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $request->warehouse_id)
-                                ->where('product_id', $combined_product->combined_product_id)
-                                ->first();
-
-                            $unit_qty = $combined_product->quantity;
-
-                            if ($unit_qty * $value['quantity'] > $total_stock->qte) {
-                                $fail('stock insuffisant pour le produit '.' '.$product_detail->name);
-
-                                return;
-                            }
-
-                        }
-
-                    }
-
-                }
-
-            },
-        ];
-
-        // validate the request data
-        $validatedData = $request->validate($productionRules, [
-            'warehouse_id.required' => 'Warehouse is required',
-        ]);
-
-        \DB::transaction(function () use ($request) {
-            $order = new Adjustment;
-            $order->date = $request->date;
-            $order->time = now()->toTimeString();
-            $order->Ref = $this->getNumberOrder();
-            $order->warehouse_id = $request->warehouse_id;
-            $order->notes = $request->notes;
-            $order->items = count($request['details']);
-            $order->user_id = Auth::user()->id;
-            $order->save();
-
-            $data = $request['details'];
-            $persistedDetails = [];
-            $i = 0;
-            foreach ($data as $key => $value) {
-                $persistedDetails[$key] = AdjustmentDetail::create([
-                    'adjustment_id' => $order->id,
-                    'quantity' => $value['quantity'],
-                    'product_id' => $value['product_id'],
-                    'product_variant_id' => $value['product_variant_id'],
-                    'type' => $value['type'],
-                ]);
-
-                if ($value['type'] == 'add') {
-                    if ($value['product_variant_id'] !== null) {
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->where('product_variant_id', $value['product_variant_id'])
-                            ->first();
-
-                        if ($product_warehouse) {
-                            $product_warehouse->qte += $value['quantity'];
-                            $product_warehouse->save();
-                        }
-
-                    } else {
-                        $product_detail = Product::where('deleted_at', '=', null)
-                            ->where('id', $value['product_id'])
-                            ->first();
-
-                        if ($product_detail->type == 'is_single') {
-
-                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $order->warehouse_id)
-                                ->where('product_id', $value['product_id'])
-                                ->first();
-
-                            if ($product_warehouse) {
-                                $product_warehouse->qte += $value['quantity'];
-                                $product_warehouse->save();
-                            }
-                        } elseif ($product_detail->type == 'is_combo') {
-
-                            $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
-
-                            foreach ($combined_products as $combined_product) {
-
-                                $qty_combined = $combined_product->quantity * $value['quantity'];
-
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                    ->where('warehouse_id', $order->warehouse_id)
-                                    ->where('product_id', $combined_product->combined_product_id)
-                                    ->first();
-
-                                if ($product_warehouse) {
-                                    $product_warehouse->qte -= $qty_combined;
-                                    $product_warehouse->save();
-                                }
-
-                            }
-
-                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $order->warehouse_id)
-                                ->where('product_id', $value['product_id'])
-                                ->first();
-
-                            if ($product_warehouse) {
-                                $product_warehouse->qte += $value['quantity'];
-                                $product_warehouse->save();
-                            }
-
-                        }
-                    }
-                } else {
-
-                    if ($value['product_variant_id'] !== null) {
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->where('product_variant_id', $value['product_variant_id'])
-                            ->first();
-
-                        if ($product_warehouse) {
-                            $product_warehouse->qte -= $value['quantity'];
-                            $product_warehouse->save();
-                        }
-
-                    } else {
-
-                        $product_detail = Product::where('deleted_at', '=', null)
-                            ->where('id', $value['product_id'])
-                            ->first();
-
-                        if ($product_detail->type == 'is_single') {
-
-                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $order->warehouse_id)
-                                ->where('product_id', $value['product_id'])
-                                ->first();
-
-                            if ($product_warehouse) {
-                                $product_warehouse->qte -= $value['quantity'];
-                                $product_warehouse->save();
-                            }
-                        } elseif ($product_detail->type == 'is_combo') {
-
-                            $combined_products = CombinedProduct::where('product_id', $value['product_id'])->with('product')->get();
-
-                            foreach ($combined_products as $combined_product) {
-
-                                $qty_combined = $combined_product->quantity * $value['quantity'];
-
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                    ->where('warehouse_id', $order->warehouse_id)
-                                    ->where('product_id', $combined_product->combined_product_id)
-                                    ->first();
-
-                                if ($product_warehouse) {
-                                    $product_warehouse->qte += $qty_combined;
-                                    $product_warehouse->save();
-                                }
-
-                            }
-
-                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $order->warehouse_id)
-                                ->where('product_id', $value['product_id'])
-                                ->first();
-
-                            if ($product_warehouse) {
-                                $product_warehouse->qte -= $value['quantity'];
-                                $product_warehouse->save();
-                            }
-
-                        }
-                    }
-                }
-            }
-
-            // Pharmacy: apply per-batch movements alongside the warehouse-stock changes
-            // we just made above so the per-batch ledger stays in sync.
-            $batchService = app(BatchService::class);
-            if ($batchService->isSupported()) {
-                $batchService->applyForAdjustmentWithAutoFallback(
-                    $order,
-                    array_values($data),
-                    $persistedDetails
-                );
-            }
-        }, 10);
-
-        return response()->json(['success' => true]);
     }
 
     // ------------ function show -----------\\
@@ -932,9 +726,11 @@ class AdjustmentController extends BaseController
     }
 
     // ================= #81 · Ajustes LOCATION-AWARE =====================
-    // inventory_location_id explícita en el registro => los movimientos viven
-    // en inventory_location_stocks / inventory_location_movements vía
-    // InventoryService; NUNCA se toca product_warehouse ni BatchService.
+    // El flujo NUEVO exige inventory_location_id; los movimientos viven en
+    // inventory_location_stocks / inventory_location_movements vía InventoryService.
+    // NUNCA se toca product_warehouse ni BatchService. La rama legacy (abajo,
+    // sin inventory_location_id almacenado) sólo aplica a UPDATE/DESTROY de
+    // registros históricos.
 
     private function assertWarehouseAccess(int $warehouseId): void
     {
@@ -946,23 +742,26 @@ class AdjustmentController extends BaseController
         abort_unless(in_array($warehouseId, $ids, true), 403, 'No tienes acceso a este almacén.');
     }
 
+    // (BLOCKER 6) Este endpoint lo usan Create Y Edit: autoriza create OR update.
+    private function authorizeLocationRead(Request $request): void
+    {
+        $u = $request->user('api');
+        abort_unless(
+            $u && (Gate::forUser($u)->allows('create', Adjustment::class) || Gate::forUser($u)->allows('update', Adjustment::class)),
+            403,
+            'No tienes permiso para consultar ubicaciones de inventario de ajustes.'
+        );
+    }
+
     /**
-     * Ubicaciones de inventario ACTIVAS del almacén — para el select obligatorio
-     * "Ubicación de inventario" de Create/Edit Adjustment y Damage. Incluye
-     * cuarentena (es una ubicación física legítima).
+     * Ubicaciones de inventario ACTIVAS del almacén — select obligatorio
+     * "Ubicación de inventario" de Create/Edit Adjustment. Incluye cuarentena.
      */
     public function inventoryLocationsForWarehouse(Request $request, $warehouseId)
     {
-        $this->authorizeForUser($request->user('api'), 'create', Adjustment::class);
+        $this->authorizeLocationRead($request);
         $warehouseId = (int) $warehouseId;
-
-        $user = auth()->user();
-        if (! ($user && $user->is_all_warehouses)) {
-            $ids = UserWarehouse::where('user_id', $user->id ?? 0)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
-            if (! in_array($warehouseId, $ids, true)) {
-                return response()->json(['locations' => [], 'default_inventory_location_id' => null]);
-            }
-        }
+        $this->assertWarehouseAccess($warehouseId);
 
         $locations = \App\Models\InventoryLocation::whereNull('deleted_at')
             ->where('warehouse_id', $warehouseId)
@@ -971,13 +770,34 @@ class AdjustmentController extends BaseController
             ->get(['id', 'code', 'name', 'type', 'is_quarantine']);
 
         $default = \App\Models\Warehouse::whereNull('deleted_at')->whereKey($warehouseId)->value('default_inventory_location_id');
-        // La default sólo se PRESELECCIONA en frontend si es apta (storage, no cuarentena, activa).
         $defaultEligible = $default && $locations->firstWhere(fn ($l) => (int) $l->id === (int) $default && $l->type === 'storage' && ! $l->is_quarantine);
 
         return response()->json([
             'locations' => $locations,
             'default_inventory_location_id' => $defaultEligible ? (int) $default : null,
         ]);
+    }
+
+    /**
+     * (BLOCKER 3) Catálogo de productos con stock POR UBICACIÓN para el flujo
+     * location-aware. available = physical - reserved. Incluye productos a 0
+     * (Adjustment ADD puede crear existencia desde cero).
+     */
+    public function inventoryLocationCatalog(Request $request, $locationId)
+    {
+        $this->authorizeLocationRead($request);
+        $locationId = (int) $locationId;
+
+        $location = \App\Models\InventoryLocation::whereNull('deleted_at')->whereKey($locationId)->first();
+        abort_if(! $location, 404, 'La ubicación de inventario no existe.');
+        $this->assertWarehouseAccess((int) $location->warehouse_id);
+
+        return response()->json(app(\App\Services\LocationCatalogReadService::class)->forLocation($locationId));
+    }
+
+    private function locationAwareLines(Request $request): array
+    {
+        return array_values($request->input('details', []));
     }
 
     private function storeLocationAware(Request $request)
@@ -991,11 +811,13 @@ class AdjustmentController extends BaseController
         $warehouseId = (int) $request->warehouse_id;
         $locationId = (int) $request->inventory_location_id;
         $this->assertWarehouseAccess($warehouseId);
-
         $svc = app(LocationAwareAdjustmentService::class);
-        $validated = $svc->validateRequest($warehouseId, $locationId, array_values($request->input('details', [])));
+        $lines = $this->locationAwareLines($request);
 
-        \DB::transaction(function () use ($request, $warehouseId, $locationId, $validated, $svc) {
+        \DB::transaction(function () use ($request, $warehouseId, $locationId, $lines, $svc) {
+            // (BLOCKER 4) validación write-critical + locks DENTRO de la transacción.
+            $validated = $svc->validateAndLock($warehouseId, $locationId, $lines);
+
             $order = new Adjustment;
             $order->date = $request->date;
             $order->time = now()->toTimeString();
@@ -1007,19 +829,20 @@ class AdjustmentController extends BaseController
             $order->user_id = Auth::id();
             $order->save();
 
-            $lines = [];
+            $withDetailIds = [];
             foreach ($validated['lines'] as $ln) {
-                $detail = AdjustmentDetail::create([
-                    'adjustment_id' => $order->id,
-                    'quantity' => $ln['quantity'],
-                    'product_id' => $ln['product_id'],
-                    'product_variant_id' => $ln['product_variant_id'],
+                $d = AdjustmentDetail::create([
+                    'adjustment_id' => $order->id, 'quantity' => $ln['quantity'],
+                    'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'],
                     'type' => $ln['type'],
                 ]);
-                $lines[] = $ln + ['detail_id' => $detail->id];
+                $withDetailIds[] = $ln + ['detail_id' => $d->id];
             }
 
-            $svc->apply($order->id, $warehouseId, $locationId, $lines, 'create');
+            // (BLOCKER 2) snapshot EXACTO ya expandido -> se persiste y se aplica ESE.
+            $snapshot = $svc->buildSnapshot($withDetailIds);
+            $order->update(['inventory_effect_snapshot' => $snapshot]);
+            $svc->applySnapshot($snapshot, $order->id, $warehouseId, $locationId, 'create');
         }, 10);
 
         return response()->json(['success' => true]);
@@ -1037,39 +860,45 @@ class AdjustmentController extends BaseController
         $newLocationId = (int) $request->inventory_location_id;
         $this->assertWarehouseAccess((int) $current->warehouse_id);
         $this->assertWarehouseAccess($newWarehouseId);
-
-        $engine = app(\App\Services\LocationAwareStockDocumentService::class);
         $svc = app(LocationAwareAdjustmentService::class);
-        $validated = $svc->validateRequest($newWarehouseId, $newLocationId, array_values($request->input('details', [])));
+        $lines = $this->locationAwareLines($request);
 
-        \DB::transaction(function () use ($request, $current, $newWarehouseId, $newLocationId, $validated, $svc, $engine) {
-            // 1) revertir el efecto viejo con ubicación / warehouse / detalles ORIGINALES.
-            $oldDetails = AdjustmentDetail::where('adjustment_id', $current->id)->get();
-            $svc->reverse(
-                $current->id, (int) $current->warehouse_id, (int) $current->inventory_location_id,
-                $engine->hydrateLines($oldDetails), 'update'
-            );
+        \DB::transaction(function () use ($request, $current, $newWarehouseId, $newLocationId, $lines, $svc) {
+            // (BLOCKER 5) el documento se relee y bloquea DENTRO de la transacción.
+            $locked = Adjustment::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            if ($locked->inventory_location_id === null) {
+                throw ValidationException::withMessages(['adjustment' => 'Registro legacy: usa la ruta histórica.']);
+            }
+            // (BLOCKER 2.3) FAIL CLOSED si no hay snapshot.
+            $oldSnapshot = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            AdjustmentDetail::where('adjustment_id', $locked->id)->lockForUpdate()->get();
+
+            $extra = array_values(array_unique(array_map(fn ($e) => (int) $e['product_id'], $oldSnapshot)));
+            $validated = $svc->validateAndLock($newWarehouseId, $newLocationId, $lines, $extra);
+
+            // 1) revertir EXACTAMENTE el snapshot viejo (ubicación/warehouse ORIGINALES).
+            $svc->reverseSnapshot($oldSnapshot, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'update');
 
             // 2) reemplazar detalles.
-            AdjustmentDetail::where('adjustment_id', $current->id)->delete();
-            $lines = [];
+            AdjustmentDetail::where('adjustment_id', $locked->id)->delete();
+            $withDetailIds = [];
             foreach ($validated['lines'] as $ln) {
-                $detail = AdjustmentDetail::create([
-                    'adjustment_id' => $current->id,
-                    'quantity' => $ln['quantity'],
-                    'product_id' => $ln['product_id'],
-                    'product_variant_id' => $ln['product_variant_id'],
+                $d = AdjustmentDetail::create([
+                    'adjustment_id' => $locked->id, 'quantity' => $ln['quantity'],
+                    'product_id' => $ln['product_id'], 'product_variant_id' => $ln['product_variant_id'],
                     'type' => $ln['type'],
                 ]);
-                $lines[] = $ln + ['detail_id' => $detail->id];
+                $withDetailIds[] = $ln + ['detail_id' => $d->id];
             }
 
-            // 3) aplicar el efecto nuevo en la ubicación nueva.
-            $svc->apply($current->id, $newWarehouseId, $newLocationId, $lines, 'update');
+            // 3) construir + aplicar el snapshot NUEVO (composición vigente).
+            $newSnapshot = $svc->buildSnapshot($withDetailIds);
+            $svc->applySnapshot($newSnapshot, $locked->id, $newWarehouseId, $newLocationId, 'update');
 
-            $current->update([
+            $locked->update([
                 'warehouse_id' => $newWarehouseId,
                 'inventory_location_id' => $newLocationId,
+                'inventory_effect_snapshot' => $newSnapshot,
                 'notes' => $request->notes,
                 'date' => $request->date,
                 'items' => count($validated['lines']),
@@ -1082,16 +911,19 @@ class AdjustmentController extends BaseController
     private function destroyLocationAware(Request $request, Adjustment $current)
     {
         $this->assertWarehouseAccess((int) $current->warehouse_id);
-        $engine = app(\App\Services\LocationAwareStockDocumentService::class);
+        $svc = app(LocationAwareAdjustmentService::class);
 
-        \DB::transaction(function () use ($current, $engine) {
-            $details = AdjustmentDetail::where('adjustment_id', $current->id)->get();
-            app(LocationAwareAdjustmentService::class)->reverse(
-                $current->id, (int) $current->warehouse_id, (int) $current->inventory_location_id,
-                $engine->hydrateLines($details), 'destroy'
-            );
-            $current->details()->delete();
-            $current->update(['deleted_at' => Carbon::now()]);
+        \DB::transaction(function () use ($current, $svc) {
+            $locked = Adjustment::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            if ($locked->inventory_location_id === null) {
+                throw ValidationException::withMessages(['adjustment' => 'Registro legacy: usa la ruta histórica.']);
+            }
+            $snapshot = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            AdjustmentDetail::where('adjustment_id', $locked->id)->lockForUpdate()->get();
+
+            $svc->reverseSnapshot($snapshot, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'destroy');
+            $locked->details()->delete();
+            $locked->update(['deleted_at' => Carbon::now()]);
         }, 10);
 
         return response()->json(['success' => true], 200);
