@@ -49,6 +49,8 @@ class InventoryProvenanceAuditServiceTest extends TestCase
             $t->integer('to_inventory_location_id')->nullable();
             $t->decimal('quantity', 14, 3);
             $t->string('reference_type')->nullable();
+            $t->string('reference_id')->nullable();
+            $t->text('metadata')->nullable();
             $t->timestamps();
         });
         Schema::create('product_warehouse', function ($t) {
@@ -108,13 +110,14 @@ class InventoryProvenanceAuditServiceTest extends TestCase
         ]);
     }
 
-    private function movement(string $type, int $productId, float $qty, string $ref, string $at, bool $out = true, ?int $variantId = null): void
+    private function movement(string $type, int $productId, float $qty, string $ref, string $at, bool $out = true, ?int $variantId = null, ?array $metadata = null): void
     {
         DB::table('inventory_location_movements')->insert([
             'movement_type' => $type, 'product_id' => $productId, 'product_variant_id' => $variantId,
             'from_inventory_location_id' => $out ? $this->main : null,
             'to_inventory_location_id' => $out ? null : $this->main,
             'quantity' => $qty, 'reference_type' => $ref,
+            'metadata' => $metadata ? json_encode($metadata) : null,
             'created_at' => $at, 'updated_at' => $at,
         ]);
     }
@@ -174,19 +177,105 @@ class InventoryProvenanceAuditServiceTest extends TestCase
         $this->assertFalse($row['baselined']);
     }
 
-    /** Caso 4: legacy +100 tras baseline CON movimiento location equivalente +100 => MIRRORED. */
-    public function test_case4_legacy_increase_with_matching_location_movement_is_mirrored(): void
+    private function auditRow(int $productId): array
+    {
+        return $this->keyFor(app(InventoryProvenanceAuditService::class)->auditWarehouse($this->wh), $productId);
+    }
+
+    /**
+     * G1 — falsa coincidencia de cantidad: opening stock legacy-only +10 y
+     * Purchase location-native independiente +10. NUNCA MIRRORED por coincidencia
+     * agregada; la alerta NO desaparece.
+     */
+    public function test_G1_quantity_coincidence_is_not_mirrored(): void
     {
         $this->baseline('2026-08-22 18:11:46');
         $this->locations();
-        $this->legacy(9, 150); // baseline 50 + compra 100
-        $this->stock(9, 150);
-        $this->backfillMovement(9, 50, '2026-08-22 18:01:44');
-        $this->movement('increase', 9, 100, 'Purchase', '2026-08-25 09:00:00', out: false);
+        $this->legacy(9, 110); // baseline 100 + opening stock legacy +10
+        $this->stock(9, 110);  // 100 baseline + Purchase location +10
+        $this->backfillMovement(9, 100, '2026-08-22 18:01:44');
+        $this->movement('increase', 9, 10, 'Purchase', '2026-08-25 09:00:00', out: false);
 
-        $row = $this->keyFor(app(InventoryProvenanceAuditService::class)->auditWarehouse($this->wh), 9);
+        $row = $this->auditRow(9);
+        $this->assertNotSame('MIRRORED', $row['classification']);
+        $this->assertSame('UNKNOWN_REVIEW', $row['classification']); // conservador
+        $this->assertSame(0.0, $row['post_baseline_mirror_net']);
+    }
+
+    /** G2 — mirror real dual_write: legacy +10 con legacy_shadow_sync +10 asociado => MIRRORED. */
+    public function test_G2_real_dual_write_mirror(): void
+    {
+        $this->baseline('2026-08-22 18:11:46');
+        $this->locations();
+        $this->legacy(9, 110);
+        $this->stock(9, 110);
+        $this->backfillMovement(9, 100, '2026-08-22 18:01:44');
+        $this->movement('increase', 9, 10, 'legacy_shadow_sync', '2026-08-25 09:00:00', out: false);
+
+        $row = $this->auditRow(9);
         $this->assertSame('MIRRORED', $row['classification']);
-        $this->assertSame(0.0, $row['legacy_only_pending_quantity']);
+        $this->assertSame(10.0, $row['post_baseline_mirror_net']);
+        $this->assertSame(0.0, $row['post_baseline_native_net']);
+    }
+
+    /** G3 — dos eventos distintos con mismo reference_type/cantidad => NO MIRRORED. */
+    public function test_G3_same_ref_type_different_events_is_not_mirrored(): void
+    {
+        $this->baseline('2026-08-22 18:11:46');
+        $this->locations();
+        $this->legacy(9, 105); // legacy Adjustment +5 (id=10) sobre baseline 100
+        $this->stock(9, 105);  // location Adjustment +5 (id=11) — evento distinto
+        $this->backfillMovement(9, 100, '2026-08-22 18:01:44');
+        $this->movement('increase', 9, 5, 'Adjustment', '2026-08-25 09:00:00', out: false, metadata: ['adjustment_id' => 11]);
+
+        $this->assertSame('UNKNOWN_REVIEW', $this->auditRow(9)['classification']);
+    }
+
+    /** G4 — mismo evento: enlace explícito por metadata => MIRRORED. */
+    public function test_G4_explicit_event_link_is_mirrored(): void
+    {
+        $this->baseline('2026-08-22 18:11:46');
+        $this->locations();
+        $this->legacy(9, 105); // legacy Adjustment +5 id=10
+        $this->stock(9, 105);
+        $this->backfillMovement(9, 100, '2026-08-22 18:01:44');
+        $this->movement('increase', 9, 5, 'Adjustment', '2026-08-25 09:00:00', out: false, metadata: [
+            'mirrors_legacy' => true, 'legacy_reference_type' => 'Adjustment', 'legacy_reference_id' => '10',
+        ]);
+
+        $row = $this->auditRow(9);
+        $this->assertSame('MIRRORED', $row['classification']);
+        $this->assertSame(5.0, $row['post_baseline_mirror_net']);
+    }
+
+    /** G5 — cantidad parcial: legacy Purchase +10, mirror probado +6 => resto +4 pendiente. */
+    public function test_G5_partial_mirror_leaves_remainder_pending(): void
+    {
+        $this->baseline('2026-08-22 18:11:46');
+        $this->locations();
+        $this->legacy(9, 110); // +10 legacy
+        $this->stock(9, 106);  // sólo +6 llegó a la ubicación (mirror probado)
+        $this->backfillMovement(9, 100, '2026-08-22 18:01:44');
+        $this->movement('increase', 9, 6, 'legacy_shadow_sync', '2026-08-25 09:00:00', out: false);
+
+        $row = $this->auditRow(9);
+        $this->assertSame('LEGACY_ONLY_PENDING', $row['classification']); // NUNCA MIRRORED completo
+        $this->assertSame(4.0, $row['legacy_only_pending_quantity']);     // el resto
+    }
+
+    /** G6 — múltiples eventos: legacy A+5 y B+5, sólo mirror A +5 => resto +5 pendiente, no todo MIRRORED. */
+    public function test_G6_multiple_events_only_proven_part_is_mirrored(): void
+    {
+        $this->baseline('2026-08-22 18:11:46');
+        $this->locations();
+        $this->legacy(9, 110); // A +5 + B +5
+        $this->stock(9, 105);  // sólo mirror A +5
+        $this->backfillMovement(9, 100, '2026-08-22 18:01:44');
+        $this->movement('increase', 9, 5, 'legacy_shadow_sync', '2026-08-25 09:00:00', out: false);
+
+        $row = $this->auditRow(9);
+        $this->assertSame('LEGACY_ONLY_PENDING', $row['classification']);
+        $this->assertSame(5.0, $row['legacy_only_pending_quantity']); // B, no repartido arbitrariamente
     }
 
     /** Caso 5: drift inexplicado (stock cambió sin movimiento) => UNKNOWN_REVIEW, nunca ADD. */

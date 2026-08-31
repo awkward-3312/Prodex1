@@ -162,6 +162,23 @@ class InventoryCompatibilityService
             ->count('inventory_location_id');
     }
 
+    /** ¿El producto lleva control de lote o serie/IMEI? */
+    private function productIsArtifactTracked(int $productId): bool
+    {
+        if (! Schema::hasTable('products')) return false;
+
+        $hasBatch = Schema::hasColumn('products', 'is_batch_tracked');
+        $hasImei = Schema::hasColumn('products', 'is_imei');
+        if (! $hasBatch && ! $hasImei) return false;
+
+        $row = DB::table('products')->where('id', $productId)->whereNull('deleted_at')
+            ->first(array_merge($hasBatch ? ['is_batch_tracked'] : [], $hasImei ? ['is_imei'] : []));
+        if (! $row) return false;
+
+        return ($hasBatch && (int) ($row->is_batch_tracked ?? 0) === 1)
+            || ($hasImei && (int) ($row->is_imei ?? 0) === 1);
+    }
+
     /**
      * El destino registrado en el state debe SEGUIR siendo apto en runtime:
      * pertenece al almacén, activo, no borrado, tipo 'storage', no cuarentena, y
@@ -234,6 +251,19 @@ class InventoryCompatibilityService
                 // dual_write). Si no, rehúsa — markMismatch lo registra.
                 $this->assertTargetStillEligible($warehouseId, (int) $lockedState->inventory_location_id);
 
+                // ARTIFACT SAFETY runtime: adjustTo() no mantiene
+                // product_batch_location_stocks ni product_serials. Si ESTE
+                // producto es batch-tracked / IMEI, se rehúsa (markMismatch, 0
+                // adjustTo) aunque el almacén haya quedado en dual_write por un
+                // estado antiguo.
+                if ($this->productIsArtifactTracked($productId)) {
+                    throw ValidationException::withMessages([
+                        'inventory_transition' => 'Dual-write detenido: el producto es batch-tracked o IMEI; el mirror single-target sólo ajusta '
+                            .'inventory_location_stocks.quantity y NO mantiene product_batch_location_stocks / product_serials. '
+                            .'Requiere un mirror artifact-aware (pendiente).',
+                    ]);
+                }
+
                 $target = $this->legacyQuantity($warehouseId, $productId, $variantId);
                 if ($target < 0) {
                     throw ValidationException::withMessages([
@@ -256,13 +286,35 @@ class InventoryCompatibilityService
                     ]);
                 }
 
+                // GUARD PROVENANCE: adjustTo(MAIN, legacyTotal) sólo es correcto si
+                // NO hay movimientos location-native INDEPENDIENTES DEL MIRROR
+                // posteriores al baseline para esta clave. Los movimientos del
+                // propio mirror dual_write (legacy_shadow_sync) NO cuentan — de lo
+                // contrario dual_write se autobloquearía tras la primera escritura.
+                // Si hay net NATIVO != 0 (Iphone15: TransferDispatch -28), el
+                // mirror recrearía stock ya movido → se REHÚSA. markMismatch lo
+                // registra.
+                $provKey = $this->provenanceKey($warehouseId, $productId, $variantId);
+                $nativeNet = $provKey ? (float) ($provKey['post_baseline_native_net'] ?? $provKey['post_baseline_location_net'] ?? 0.0) : 0.0;
+                if (abs($nativeNet) > 0.0005) {
+                    throw ValidationException::withMessages([
+                        'inventory_transition' => 'Dual-write detenido: existen movimientos location-native independientes del mirror posteriores al baseline para este producto/variante '
+                            .'(net nativo '.round($nativeNet, 3).'). El mirror single-target recrearía stock ya movido. '
+                            .'Requiere el mirror delta-based (pendiente).',
+                    ]);
+                }
+
                 if (abs($target - $current) < 0.0005) {
                     return;
                 }
 
                 $syncContext = [
                     'user_id' => $context['user_id'] ?? null,
-                    'reference_type' => $context['reference_type'] ?? 'legacy_shadow_sync',
+                    // El movimiento del mirror SIEMPRE se marca como
+                    // legacy_shadow_sync para que el auditor por provenance lo
+                    // reconozca como espejo de una escritura legacy (no como una
+                    // operación location-native). El origen real va en metadata.
+                    'reference_type' => 'legacy_shadow_sync',
                     'reference_id' => isset($context['reference_id']) ? (string) $context['reference_id'] : null,
                     'idempotency_key' => $context['idempotency_key'] ?? null,
                     'notes' => $context['notes'] ?? 'Sincronización exacta desde product_warehouse durante transición.',
@@ -270,6 +322,7 @@ class InventoryCompatibilityService
                         'legacy_warehouse_id' => $warehouseId,
                         'transition_mode' => InventoryTransitionState::MODE_DUAL_WRITE,
                         'legacy_target_quantity' => $target,
+                        'origin_reference_type' => $context['reference_type'] ?? null,
                     ]),
                 ];
 
@@ -287,14 +340,21 @@ class InventoryCompatibilityService
         }
     }
 
+    /**
+     * Comparación por PROVENANCE — ÚNICA definición de mismatch, coherente con
+     * audit(). `matches` = la clave está RECONCILED o MIRRORED (NO
+     * LEGACY_ONLY_PENDING ni UNKNOWN_REVIEW). Un gap legacy/location explicado por
+     * TransferDispatch posterior al baseline NO es mismatch.
+     */
     public function compareKey(int $warehouseId, int $productId, ?int $variantId = null): array
     {
         $legacy = $this->legacyQuantity($warehouseId, $productId, $variantId);
-        $shadow = $this->shadowQuantity($warehouseId, $productId, $variantId);
-        $matches = $shadow !== null && abs($legacy - $shadow) < 0.0005;
+        $key = $this->provenanceKey($warehouseId, $productId, $variantId);
+        $classification = $key['classification'] ?? ($legacy <= 0.0005 ? 'RECONCILED' : 'UNKNOWN_REVIEW');
+        $matches = in_array($classification, ['RECONCILED', 'MIRRORED'], true);
 
         if (! $matches) {
-            $this->markMismatch($warehouseId, 'Diferencia detectada entre product_warehouse e inventario por ubicación.');
+            $this->markMismatch($warehouseId, 'Provenance: clasificación '.$classification.' para producto '.$productId.'.');
         }
 
         return [
@@ -302,9 +362,43 @@ class InventoryCompatibilityService
             'product_id' => $productId,
             'product_variant_id' => $variantId,
             'legacy_quantity' => $legacy,
-            'location_quantity' => $shadow,
+            'location_quantity' => $key['current_location'] ?? $this->shadowQuantity($warehouseId, $productId, $variantId),
+            'classification' => $classification,
+            'snapshot_drift' => $key['snapshot_drift'] ?? null,
             'matches' => $matches,
         ];
+    }
+
+    /**
+     * Comparación de SNAPSHOT crudo — SÓLO diagnóstico, NUNCA marca mismatch.
+     * legacy_now vs agregado por ubicación del almacén (sin interpretación).
+     */
+    public function snapshotCompareKey(int $warehouseId, int $productId, ?int $variantId = null): array
+    {
+        $legacy = $this->legacyQuantity($warehouseId, $productId, $variantId);
+        $location = $this->warehouseAggregateQuantity($warehouseId, $productId, $variantId);
+
+        return [
+            'warehouse_id' => $warehouseId,
+            'product_id' => $productId,
+            'product_variant_id' => $variantId,
+            'legacy_quantity' => $legacy,
+            'location_quantity' => $location,
+            'snapshot_equal' => abs($legacy - $location) < 0.0005,
+        ];
+    }
+
+    /** Fila de provenance para un product+variant del almacén (o null). */
+    private function provenanceKey(int $warehouseId, int $productId, ?int $variantId = null): ?array
+    {
+        $vk = (int) ($variantId ?: 0);
+        foreach (app(InventoryProvenanceAuditService::class)->auditWarehouse($warehouseId)['keys'] as $row) {
+            if ((int) $row['product_id'] === $productId
+                && (int) ($row['product_variant_id'] ?: 0) === $vk) {
+                return $row;
+            }
+        }
+        return null;
     }
 
     private function enableMode(int $warehouseId, string $mode): InventoryTransitionState
@@ -317,42 +411,64 @@ class InventoryCompatibilityService
         }
 
         $audit = $this->audit($warehouseId);
-        if (! $audit['is_reconciled']) {
+        // provenance_reconciled: sin LEGACY_ONLY_PENDING / UNKNOWN_REVIEW / negativos.
+        if (! ($audit['provenance_reconciled'] ?? $audit['is_reconciled'] ?? false)) {
             throw ValidationException::withMessages([
-                'inventory_transition' => 'El almacén debe reconciliar exactamente antes de activar el modo de transición solicitado.',
+                'inventory_transition' => 'El almacén debe estar provenance-reconciled (sin LEGACY_ONLY_PENDING ni UNKNOWN_REVIEW) antes de activar el modo solicitado.',
             ]);
         }
 
-        // is_reconciled es sólo paridad cuantitativa warehouse-wide. Un modo de
-        // transición necesita además una ubicación destino APTA (storage, activa,
-        // no cuarentena, del almacén).
+        // provenance_reconciled NO basta: un modo de transición necesita además
+        // una ubicación destino APTA (storage, activa, no cuarentena, del almacén).
         if (! ($audit['has_target_location'] ?? false)) {
             throw ValidationException::withMessages([
                 'inventory_transition' => 'El almacén no tiene una ubicación destino apta (storage, activa, no cuarentena) por defecto; no puede activarse un modo de transición que requiere ubicación destino.',
             ]);
         }
 
-        // dual_write ESCRIBE en la ubicación destino vía mirror single-target.
-        // Sólo es seguro si TODO el inventario location-native del almacén vive
-        // ya en esa ubicación destino. En cualquier otro caso (stock en MAIN 0 +
-        // STORAGE2 100, o MAIN 70 + QUARANTINE 30, …) queda bloqueado hasta el
-        // hardening del mirror multi-ubicación (PR posterior).
-        if ($mode === InventoryTransitionState::MODE_DUAL_WRITE && ! ($audit['target_holds_all_stock'] ?? false)) {
-            throw ValidationException::withMessages([
-                'inventory_transition' => 'dual_write requiere que TODO el inventario por ubicación del almacén esté en la ubicación destino (single-target). '
-                    .'Stock fuera del destino: '.($audit['stock_outside_target_quantity'] ?? 0).'. '
-                    .'Requiere el hardening del mirror multi-ubicación (PR posterior).',
-            ]);
+        if ($mode === InventoryTransitionState::MODE_DUAL_WRITE) {
+            // 1) single-target: todo el stock por ubicación en la destino.
+            if (! ($audit['target_holds_all_stock'] ?? false)) {
+                throw ValidationException::withMessages([
+                    'inventory_transition' => 'dual_write requiere que TODO el inventario por ubicación del almacén esté en la ubicación destino (single-target). '
+                        .'Stock fuera del destino: '.($audit['stock_outside_target_quantity'] ?? 0).'. '
+                        .'Requiere el hardening del mirror multi-ubicación (PR posterior).',
+                ]);
+            }
+            // 2) PARIDAD SNAPSHOT EXACTA legacy/location por product+variant. Sin
+            //    reverse-mirror (location→legacy), cualquier movimiento
+            //    location-native posterior al baseline (p. ej. TransferDispatch)
+            //    haría que el mirror single-target recreara stock ya movido.
+            if (! ($audit['snapshot_equal'] ?? false)) {
+                throw ValidationException::withMessages([
+                    'inventory_transition' => 'dual_write requiere paridad actual legacy/location; existen movimientos location-native posteriores al baseline. '
+                        .'Claves sin paridad: '.count($audit['snapshot_unequal_keys'] ?? []).'.',
+                ]);
+            }
+            // 3) ARTIFACT SAFETY: el mirror single-target no mantiene
+            //    product_batch_location_stocks ni product_serials. Se rechaza si
+            //    hay productos batch-tracked / IMEI con inventario real.
+            if (($audit['has_tracked_inventory'] ?? false)) {
+                throw ValidationException::withMessages([
+                    'inventory_transition' => 'dual_write no está soportado mientras el almacén tenga inventario de productos batch-tracked o IMEI ('
+                        .count($audit['tracked_inventory_product_ids'] ?? []).'). El mirror single-target no mantiene lotes/seriales. '
+                        .'Requiere un mirror artifact-aware (PR posterior).',
+                ]);
+            }
         }
 
         $state = $this->state($warehouseId);
+        // last_reconciled_at (baseline provenance) NO se toca al activar un modo:
+        // activar shadow_compare / dual_write NO es un rebaseline. El baseline
+        // real es el momento del backfill físico (movimientos
+        // legacy_product_warehouse_backfill) o un rebaseline explícito futuro.
+        // Reescribirlo aquí borraría el historial entre el baseline original y hoy.
         $state->forceFill([
             'inventory_location_id' => $audit['inventory_location_id'],
             'mode' => $mode,
             'status' => 'healthy',
             'mismatch_count' => 0,
             'shadow_enabled_at' => $state->shadow_enabled_at ?: now(),
-            'last_reconciled_at' => now(),
         ])->save();
 
         return $state->fresh();
