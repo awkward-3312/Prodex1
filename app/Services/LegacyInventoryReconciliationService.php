@@ -39,6 +39,8 @@ class LegacyInventoryReconciliationService
 
         $negative = array_values(array_filter($legacy, fn ($row) => $row['quantity'] < 0));
         $trackedProducts = $this->batchOrSerialTrackedProducts($legacy);
+        $mainHasStock = $location !== null
+            && InventoryLocationStock::where('inventory_location_id', $location->id)->exists();
 
         return [
             'warehouse_id' => $warehouse->id,
@@ -56,7 +58,81 @@ class LegacyInventoryReconciliationService
             'batch_or_serial_products' => $trackedProducts,
             'differences' => $differences,
             'is_reconciled' => empty($negative) && empty($differences) && $location !== null,
-            'is_backfillable' => empty($negative) && empty($trackedProducts),
+            // Whole-warehouse backfill (backfillWarehouse) only works from an EMPTY
+            // MAIN. Once MAIN already holds stock — e.g. a warehouse in
+            // shadow_compare that was backfilled once and then diverged via legacy
+            // opening stock — the divergence must be closed with the incremental
+            // plan (planIncremental), never with backfillWarehouse.
+            'main_location_has_stock' => $mainHasStock,
+            // Whole-warehouse backfillWarehouse() is safe only from an empty (or
+            // not-yet-created) MAIN, with no negatives and no batch/serial rows.
+            'is_backfillable' => empty($negative) && empty($trackedProducts) && ! $mainHasStock,
+            'needs_incremental' => $mainHasStock && ! empty($differences),
+        ];
+    }
+
+    /**
+     * READ-ONLY. Per-product plan to close an existing divergence on a warehouse
+     * whose MAIN already holds stock. delta = legacy_authoritative - location.
+     *
+     * action:
+     *   ADD           delta > 0, producto simple, sin reservado, sin tránsito de
+     *                 salida desde MAIN, sin lote/serie  → seguro sumar el delta.
+     *   MANUAL_REVIEW delta < 0 (nunca se descuenta en automático), o hay
+     *                 reservado / tránsito / lote / serie / negativos legacy.
+     *
+     * No escribe nada. No decide por sí solo aplicar: es insumo para revisión.
+     */
+    public function planIncremental(int $warehouseId): array
+    {
+        $warehouse = $this->warehouse($warehouseId);
+        $location = $this->existingDefaultLocation($warehouse);
+        $legacy = $this->legacyMap($warehouseId);
+        $locationMap = $location ? $this->locationMap($location->id) : [];
+        $tracked = collect($this->batchOrSerialTrackedProducts($legacy))->keyBy('product_id');
+        $reserved = $location ? $this->reservedMap($location->id) : [];
+        $outbound = $location ? $this->outboundInTransitMap($location->id) : [];
+
+        $keys = array_values(array_unique(array_merge(array_keys($legacy), array_keys($locationMap))));
+        sort($keys);
+
+        $plan = [];
+        foreach ($keys as $key) {
+            [$productId, $variantKey] = array_map('intval', explode(':', $key));
+            $legacyQty = $this->decimal($legacy[$key]['quantity'] ?? 0.0);
+            $locationQty = $this->decimal($locationMap[$key]['quantity'] ?? 0.0);
+            $delta = $this->decimal($legacyQty - $locationQty);
+            if ($this->same($delta, 0.0)) continue;
+
+            $reasons = [];
+            if ($delta < 0) $reasons[] = 'delta_negativo';
+            if ($legacyQty < 0) $reasons[] = 'legacy_negativo';
+            if (isset($tracked[$productId])) $reasons[] = 'lote_o_serie';
+            if (($reserved[$key] ?? 0.0) > 0.0005) $reasons[] = 'reservado';
+            if (($outbound[$key] ?? 0.0) > 0.0005) $reasons[] = 'transito_salida';
+
+            $plan[] = [
+                'product_id' => $productId,
+                'product_variant_id' => $variantKey > 0 ? $variantKey : null,
+                'legacy' => $legacyQty,
+                'location' => $locationQty,
+                'delta' => $delta,
+                'action' => empty($reasons) ? 'ADD' : 'MANUAL_REVIEW',
+                'reasons' => $reasons,
+            ];
+        }
+
+        $addable = array_values(array_filter($plan, fn ($r) => $r['action'] === 'ADD'));
+        $review = array_values(array_filter($plan, fn ($r) => $r['action'] === 'MANUAL_REVIEW'));
+
+        return [
+            'warehouse_id' => $warehouse->id,
+            'warehouse_name' => $warehouse->name,
+            'inventory_location_id' => $location?->id,
+            'plan' => $plan,
+            'add_count' => count($addable),
+            'manual_review_count' => count($review),
+            'add_total_delta' => $this->decimal(array_sum(array_column($addable, 'delta'))),
         ];
     }
 
@@ -90,7 +166,7 @@ class LegacyInventoryReconciliationService
 
             if (InventoryLocationStock::where('inventory_location_id', $location->id)->exists()) {
                 throw ValidationException::withMessages([
-                    'inventory_location_id' => 'La ubicación destino ya contiene inventario y no coincide con el legado. Se requiere revisión antes de continuar.',
+                    'inventory_location_id' => 'La ubicación MAIN ya contiene inventario por ubicación. El backfill de almacén completo sólo opera desde una MAIN vacía; para cerrar una divergencia existente usa el plan incremental (planIncremental / prodex:inventory-reconcile --plan), nunca este backfill.',
                 ]);
             }
 
@@ -241,6 +317,49 @@ class LegacyInventoryReconciliationService
                 'variant_key' => (int) $row->variant_key,
                 'quantity' => $this->decimal((float) $row->quantity),
             ];
+        }
+        return $map;
+    }
+
+    private function reservedMap(int $locationId): array
+    {
+        $map = [];
+        foreach (InventoryLocationStock::where('inventory_location_id', $locationId)->get() as $row) {
+            $map[$this->key((int) $row->product_id, (int) $row->variant_key)] = $this->decimal((float) $row->reserved_quantity);
+        }
+        return $map;
+    }
+
+    /**
+     * Outbound not-yet-received transfer quantity leaving this location, keyed the
+     * same way as legacyMap/locationMap (product:variant_key).
+     */
+    private function outboundInTransitMap(int $locationId): array
+    {
+        if (! Schema::hasTable('transfers') || ! Schema::hasTable('transfer_details')) return [];
+
+        $accounted = Schema::hasTable('transfer_receipt_items')
+            ? DB::table('transfer_receipt_items')
+                ->select('transfer_detail_id', DB::raw('SUM(quantity_good + quantity_defective + quantity_missing) as acc'))
+                ->groupBy('transfer_detail_id')
+            : null;
+
+        $q = DB::table('transfer_details as td')
+            ->join('transfers as t', 't.id', '=', 'td.transfer_id')
+            ->where('t.from_inventory_location_id', $locationId)
+            ->whereIn('t.logistics_status', ['in_transit', 'partially_received'])
+            ->whereNull('t.deleted_at');
+
+        if ($accounted) {
+            $q->leftJoinSub($accounted, 'ri', fn ($j) => $j->on('ri.transfer_detail_id', '=', 'td.id'))
+                ->selectRaw('td.product_id, COALESCE(td.product_variant_id,0) as variant_key, SUM(td.quantity - COALESCE(ri.acc,0)) as qty');
+        } else {
+            $q->selectRaw('td.product_id, COALESCE(td.product_variant_id,0) as variant_key, SUM(td.quantity) as qty');
+        }
+
+        $map = [];
+        foreach ($q->groupBy('td.product_id', DB::raw('COALESCE(td.product_variant_id,0)'))->get() as $row) {
+            $map[$this->key((int) $row->product_id, (int) $row->variant_key)] = $this->decimal((float) $row->qty);
         }
         return $map;
     }

@@ -136,11 +136,82 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $this->legacy($warehouse->id, 10, null, 5);
         $this->product(10);
 
-        $result = app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+        $service = app(LegacyInventoryReconciliationService::class);
 
+        $before = $service->auditWarehouse($warehouse->id);
+        $this->assertTrue($before['is_backfillable']);
+        $this->assertFalse($before['main_location_has_stock']);
+
+        $result = $service->backfillWarehouse($warehouse->id);
         $this->assertTrue($result['is_reconciled']);
-        $this->assertTrue($result['is_backfillable']);
         $this->assertEmpty($result['batch_or_serial_products']);
+        // Tras poblar MAIN ya no es candidato a backfill de almacén completo.
+        $this->assertTrue($result['main_location_has_stock']);
+        $this->assertFalse($result['is_backfillable']);
+    }
+
+    public function test_plan_incremental_adds_delta_for_partially_diverged_warehouse(): void
+    {
+        // Escenario prueba02: MAIN ya reconciliada, luego opening stock legacy.
+        $warehouse = Warehouse::create(['name' => 'Centro de Distribución']);
+        $this->legacy($warehouse->id, 6, null, 60);
+        $this->legacy($warehouse->id, 7, null, 78);
+        $this->product(6); $this->product(7);
+        $service = app(LegacyInventoryReconciliationService::class);
+        $service->backfillWarehouse($warehouse->id); // MAIN: 6→60, 7→78
+
+        // Divergencia posterior sólo en legacy.
+        DB::table('product_warehouse')->where('warehouse_id', $warehouse->id)->where('product_id', 6)->update(['qte' => 88]);
+        DB::table('product_warehouse')->where('warehouse_id', $warehouse->id)->where('product_id', 7)->update(['qte' => 90]);
+        $this->legacy($warehouse->id, 8, null, 100); $this->product(8); // nuevo, 0 en MAIN
+
+        $audit = $service->auditWarehouse($warehouse->id);
+        $this->assertTrue($audit['main_location_has_stock']);
+        $this->assertTrue($audit['needs_incremental']);
+        $this->assertFalse($audit['is_backfillable']);
+
+        // El backfill de almacén completo ahora se rechaza y remite al plan.
+        try {
+            $service->backfillWarehouse($warehouse->id);
+            $this->fail('backfillWarehouse debía rechazar MAIN no vacía');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('plan incremental', $e->getMessage());
+        }
+
+        $plan = $service->planIncremental($warehouse->id);
+        $rows = collect($plan['plan'])->keyBy('product_id');
+        $this->assertSame(28.0, $rows[6]['delta']);
+        $this->assertSame(12.0, $rows[7]['delta']);
+        $this->assertSame(100.0, $rows[8]['delta']);
+        $this->assertSame('ADD', $rows[6]['action']);
+        $this->assertSame('ADD', $rows[7]['action']);
+        $this->assertSame('ADD', $rows[8]['action']);
+        $this->assertSame(3, $plan['add_count']);
+        $this->assertSame(0, $plan['manual_review_count']);
+        $this->assertSame(140.0, $plan['add_total_delta']);
+    }
+
+    public function test_plan_incremental_flags_negative_delta_and_reserved_as_manual_review(): void
+    {
+        $warehouse = Warehouse::create(['name' => 'CD Principal']);
+        $this->legacy($warehouse->id, 10, null, 40);
+        $this->legacy($warehouse->id, 11, null, 5);
+        $this->product(10); $this->product(11);
+        $service = app(LegacyInventoryReconciliationService::class);
+        $service->backfillWarehouse($warehouse->id); // MAIN: 10→40, 11→5
+
+        // 10: legacy baja por debajo de la ubicación → delta negativo.
+        DB::table('product_warehouse')->where('warehouse_id', $warehouse->id)->where('product_id', 10)->update(['qte' => 30]);
+        // 11: legacy sube (+7) pero la ubicación tiene reservado.
+        DB::table('product_warehouse')->where('warehouse_id', $warehouse->id)->where('product_id', 11)->update(['qte' => 12]);
+        $loc = Warehouse::find($warehouse->id)->default_inventory_location_id;
+        DB::table('inventory_location_stocks')->where('inventory_location_id', $loc)->where('product_id', 11)->update(['reserved_quantity' => 2]);
+
+        $plan = collect($service->planIncremental($warehouse->id)['plan'])->keyBy('product_id');
+        $this->assertSame('MANUAL_REVIEW', $plan[10]['action']);
+        $this->assertContains('delta_negativo', $plan[10]['reasons']);
+        $this->assertSame('MANUAL_REVIEW', $plan[11]['action']);
+        $this->assertContains('reservado', $plan[11]['reasons']);
     }
 
     private function product(int $id, array $overrides = []): void

@@ -13,9 +13,10 @@ class ProdexInventoryReconcile extends Command
     protected $signature = 'prodex:inventory-reconcile
         {--tenants=* : Tenant IDs to inspect. Defaults to all tenants.}
         {--warehouse= : Optional warehouse/CD ID inside each selected tenant.}
-        {--apply : Create default CD locations and backfill legacy product_warehouse quantities.}';
+        {--plan : READ-ONLY. Print the per-product incremental reconciliation plan (delta = legacy - location) for warehouses whose MAIN already holds stock.}
+        {--apply : Create default CD locations and backfill legacy product_warehouse quantities (only from an EMPTY MAIN).}';
 
-    protected $description = 'Audit or safely backfill legacy warehouse stock into the new inventory-location engine.';
+    protected $description = 'Audit, plan (read-only) or safely backfill legacy warehouse stock into the new inventory-location engine.';
 
     public function handle(): int
     {
@@ -30,6 +31,11 @@ class ProdexInventoryReconcile extends Command
         }
 
         $apply = (bool) $this->option('apply');
+        $plan = (bool) $this->option('plan');
+        if ($apply && $plan) {
+            $this->error('Usa --plan (sólo lectura) o --apply, no ambos.');
+            return self::FAILURE;
+        }
         $warehouseFilter = $this->option('warehouse');
         $summary = ['tenants' => $tenants->count(), 'warehouses' => 0, 'reconciled' => 0, 'differences' => 0, 'failed' => 0];
 
@@ -58,6 +64,24 @@ class ProdexInventoryReconcile extends Command
                 foreach ($warehouseIds as $warehouseId) {
                     $summary['warehouses']++;
                     try {
+                        if ($plan) {
+                            $p = $service->planIncremental($warehouseId);
+                            $this->line(sprintf(
+                                '  Warehouse/CD %d (%s): plan incremental → ADD %d (delta %.3f) | MANUAL_REVIEW %d',
+                                $warehouseId, $p['warehouse_name'], $p['add_count'], $p['add_total_delta'], $p['manual_review_count']
+                            ));
+                            foreach ($p['plan'] as $r) {
+                                $this->line(sprintf(
+                                    '    prod %d / var %s | legacy %.3f | location %.3f | delta %+.3f | %s%s',
+                                    $r['product_id'], $r['product_variant_id'] ?? 'simple',
+                                    $r['legacy'], $r['location'], $r['delta'], $r['action'],
+                                    $r['reasons'] ? ' ('.implode(',', $r['reasons']).')' : ''
+                                ));
+                            }
+                            if ($p['manual_review_count'] > 0) $summary['differences']++;
+                            continue;
+                        }
+
                         $result = $apply
                             ? $service->backfillWarehouse($warehouseId)
                             : $service->auditWarehouse($warehouseId);
@@ -119,7 +143,9 @@ class ProdexInventoryReconcile extends Command
             $summary['failed']
         ));
 
-        if (! $apply) {
+        if ($plan) {
+            $this->comment('Modo plan: sólo lectura, no se modificó inventario. ADD = seguro sumar el delta; MANUAL_REVIEW = requiere revisión.');
+        } elseif (! $apply) {
             $this->comment('Modo auditoría: no se modificó inventario. Usa --apply únicamente después de revisar el resultado.');
         }
 

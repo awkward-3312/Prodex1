@@ -38,8 +38,11 @@ class InventoryLegacyDivergenceContractTest extends TestCase
             "'company_available' => round(\$rows->where('is_quarantine', false)->sum('available'), 3)",
             $src
         );
-        // legacy_pending sólo cuando NO hay ninguna fila por ubicación.
-        $this->assertStringContainsString('$legacyQty > 0 && $rows->isEmpty()', $src);
+        // Divergencia = legado - físico por ubicación (cubre "nunca reconciliado"
+        // Y "reconciliado y luego divergido"), nunca sólo "cero filas".
+        $this->assertStringContainsString('$legacyTotal - $locationPhysical', $src);
+        $this->assertStringContainsString("'location_physical_total' =>", $src);
+        $this->assertStringNotContainsString('$rows->isEmpty()', $src);
     }
 
     public function test_inventory_visibility_widget_explains_pending_reconciliation(): void
@@ -59,7 +62,7 @@ class InventoryLegacyDivergenceContractTest extends TestCase
 
         // Nueva forma de respuesta { products, legacy_pending }.
         $this->assertStringContainsString("'products' => \$rows,", $src);
-        $this->assertStringContainsString("'legacy_pending' => \$this->legacyPendingForLocation(\$location, \$stocks)", $src);
+        $this->assertStringContainsString("'legacy_pending' => \$this->legacyPendingForLocation(\$location)", $src);
 
         // El catálogo operable sigue leyendo SOLO inventory_location_stocks.
         $this->assertStringContainsString(
@@ -68,12 +71,13 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         );
         $this->assertStringContainsString("->where('quantity', '>', 0)", $src);
 
-        // legacy_pending es de sólo lectura: parte de product_warehouse del
-        // almacén dueño, excluye lo que ya es location-native y nunca se fusiona
+        // legacy_pending es de sólo lectura: compara SUM(product_warehouse) del
+        // almacén dueño con SUM(inventory_location_stocks) de la ubicación y
+        // devuelve pending_quantity = legado - ubicación (> 0). Nunca se fusiona
         // con $rows.
         $this->assertStringContainsString('private function legacyPendingForLocation(', $src);
         $this->assertStringContainsString("->where('pw.warehouse_id', \$location->warehouse_id)", $src);
-        $this->assertStringContainsString('whereNotIn(\'pw.product_id\', $alreadyNative)', $src);
+        $this->assertStringContainsString("'pending_quantity' => \$pending", $src);
         $this->assertStringContainsString("havingRaw('SUM(pw.qte) > 0')", $src);
     }
 
@@ -83,7 +87,8 @@ class InventoryLegacyDivergenceContractTest extends TestCase
 
         $this->assertStringContainsString('legacyPending', $vue);
         $this->assertStringContainsString('d.legacy_pending', $vue);
-        $this->assertStringContainsString('inventario heredado del almacén de origen', $vue);
+        $this->assertStringContainsString('Divergencia de inventario pendiente', $vue);
+        $this->assertStringContainsString('pending.pending_quantity', $vue);
         // Sigue existiendo el fallback "Producto no encontrado" para el caso real.
         $this->assertStringContainsString('"Producto no encontrado."', $vue);
         // Compatibilidad con la forma antigua (array plano).
@@ -110,5 +115,32 @@ class InventoryLegacyDivergenceContractTest extends TestCase
 
         $this->assertStringContainsString("\$result['batch_or_serial_products']", $src);
         $this->assertStringContainsString('lote o serie/IMEI', $src);
+    }
+
+    public function test_reconcile_command_has_read_only_plan_flag_separate_from_apply(): void
+    {
+        $src = $this->read('app/Console/Commands/ProdexInventoryReconcile.php');
+
+        $this->assertStringContainsString('--plan', $src);
+        $this->assertStringContainsString('planIncremental($warehouseId)', $src);
+        // --plan y --apply son mutuamente excluyentes.
+        $this->assertStringContainsString("Usa --plan (sólo lectura) o --apply, no ambos.", $src);
+    }
+
+    public function test_whole_warehouse_backfill_refuses_non_empty_main_and_points_to_incremental(): void
+    {
+        $src = $this->read('app/Services/LegacyInventoryReconciliationService.php');
+
+        $this->assertStringContainsString('public function planIncremental(', $src);
+        $this->assertStringContainsString("'main_location_has_stock' =>", $src);
+        $this->assertStringContainsString("'needs_incremental' =>", $src);
+        // El backfill de almacén completo sólo opera desde MAIN vacía y remite al
+        // plan incremental cuando ya hay stock.
+        $this->assertStringContainsString('planIncremental / prodex:inventory-reconcile --plan', $src);
+        // delta negativo nunca se descuenta en automático.
+        $this->assertStringContainsString("if (\$delta < 0) \$reasons[] = 'delta_negativo';", $src);
+        $this->assertStringContainsString("\$reasons[] = 'lote_o_serie';", $src);
+        $this->assertStringContainsString("\$reasons[] = 'reservado';", $src);
+        $this->assertStringContainsString("\$reasons[] = 'transito_salida';", $src);
     }
 }

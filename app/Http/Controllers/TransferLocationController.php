@@ -93,7 +93,7 @@ class TransferLocationController extends BaseController
         if ($stocks->isEmpty()) {
             return response()->json([
                 'products' => [],
-                'legacy_pending' => $this->legacyPendingForLocation($location, collect()),
+                'legacy_pending' => $this->legacyPendingForLocation($location),
             ]);
         }
 
@@ -134,48 +134,63 @@ class TransferLocationController extends BaseController
 
         return response()->json([
             'products' => $rows,
-            // Products the origin's legacy warehouse still holds in product_warehouse
-            // but that were never reconciled into the location engine. They are NOT
-            // added to the usable catalogue — a location transfer must move real
-            // location-native stock — but the form can now say WHY they are missing
-            // instead of "Producto no encontrado".
-            'legacy_pending' => $this->legacyPendingForLocation($location, $stocks),
+            // Productos del almacén dueño del origen cuyo total legado
+            // (product_warehouse) supera el total físico por ubicación en ESTA
+            // ubicación: divergencia pendiente de reconciliar. Cubre tanto
+            // "nunca reconciliado" (físico 0 → no aparece en el catálogo) como
+            // "reconciliado y luego divergido por opening stock / compras".
+            // SÓLO LECTURA: nunca entra al catálogo operable — un traslado por
+            // ubicación sólo puede mover stock location-native real.
+            'legacy_pending' => $this->legacyPendingForLocation($location),
         ]);
     }
 
     /**
-     * Codes/names that exist in the origin warehouse's legacy product_warehouse
-     * ledger with qty > 0 but have no location-native stock row at this location.
-     * Read-only, informational; never makes them transferable.
+     * Divergencia pendiente por producto en la ubicación de origen:
+     * SUM(product_warehouse.qte) del almacén dueño  vs  SUM(inventory_location_stocks.quantity)
+     * de la ubicación. Devuelve los productos con legado > ubicación. Read-only,
+     * informativo; nunca los hace transferibles.
      */
-    private function legacyPendingForLocation(InventoryLocation $location, $locationStocks): array
+    private function legacyPendingForLocation(InventoryLocation $location): array
     {
         if (! $location->warehouse_id || ! Schema::hasTable('product_warehouse')) {
             return [];
         }
 
-        $alreadyNative = collect($locationStocks)->pluck('product_id')->map(fn ($id) => (int) $id)->unique()->all();
-
-        $rows = DB::table('product_warehouse as pw')
+        $legacy = DB::table('product_warehouse as pw')
             ->join('products as p', 'p.id', '=', 'pw.product_id')
             ->where('pw.warehouse_id', $location->warehouse_id)
             ->whereNull('pw.deleted_at')
             ->whereNull('p.deleted_at')
             ->where('p.type', '!=', 'is_service')
-            ->when($alreadyNative, fn ($q) => $q->whereNotIn('pw.product_id', $alreadyNative))
             ->groupBy('pw.product_id', 'p.code', 'p.name')
             ->havingRaw('SUM(pw.qte) > 0')
             ->selectRaw('pw.product_id, p.code, p.name, SUM(pw.qte) as qty')
-            ->orderByDesc('qty')
-            ->limit(200)
             ->get();
 
-        return $rows->map(fn ($row) => [
-            'product_id' => (int) $row->product_id,
-            'code' => (string) $row->code,
-            'name' => (string) $row->name,
-            'legacy_quantity' => round((float) $row->qty, 3),
-        ])->all();
+        if ($legacy->isEmpty()) return [];
+
+        $locationQty = DB::table('inventory_location_stocks')
+            ->where('inventory_location_id', $location->id)
+            ->whereIn('product_id', $legacy->pluck('product_id')->all())
+            ->groupBy('product_id')
+            ->selectRaw('product_id, SUM(quantity) as qty')
+            ->pluck('qty', 'product_id');
+
+        return $legacy->map(function ($row) use ($locationQty) {
+            $legacyQty = round((float) $row->qty, 3);
+            $locQty = round((float) ($locationQty[$row->product_id] ?? 0), 3);
+            $pending = round($legacyQty - $locQty, 3);
+            if ($pending <= 0.0005) return null;
+            return [
+                'product_id' => (int) $row->product_id,
+                'code' => (string) $row->code,
+                'name' => (string) $row->name,
+                'legacy_quantity' => $legacyQty,
+                'location_quantity' => $locQty,
+                'pending_quantity' => $pending,
+            ];
+        })->filter()->sortByDesc('pending_quantity')->take(200)->values()->all();
     }
 
     public function product(Request $request, int $locationId, int $productId)
