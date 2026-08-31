@@ -48,6 +48,8 @@ class LegacyInventoryReconciliationService
         $warehouseHasLocationStock = ! empty($warehouseLocations);
         $mainHasStock = $target !== null
             && InventoryLocationStock::where('inventory_location_id', $target->id)->exists();
+        $isReconciled = empty($negative) && empty($differences);
+        $stockedLocationCount = $this->stockedLocationCount($warehouseId);
 
         return [
             'warehouse_id' => $warehouse->id,
@@ -65,11 +67,22 @@ class LegacyInventoryReconciliationService
             // would leave them half-migrated. They must be reported, never auto-run.
             'batch_or_serial_products' => $trackedProducts,
             'differences' => $differences,
-            // Reconciliado = legacy del almacén coincide con el AGREGADO de todas
-            // sus ubicaciones (no sólo MAIN).
-            'is_reconciled' => empty($negative) && empty($differences),
+            // Reconciliado = PARIDAD CUANTITATIVA warehouse-wide: legacy del
+            // almacén coincide con el AGREGADO de todas sus ubicaciones. NO
+            // implica que exista una MAIN por defecto.
+            'is_reconciled' => $isReconciled,
+            // has_target_location = existe una MAIN activa por defecto, destino
+            // válido para rutas legacy que necesitan ubicación. Distinto de
+            // is_reconciled. transition_ready exige AMBAS.
+            'has_target_location' => $target !== null,
+            'transition_ready' => $isReconciled && $target !== null,
             'main_location_has_stock' => $mainHasStock,
             'warehouse_has_location_stock' => $warehouseHasLocationStock,
+            // Nº de ubicaciones activas del almacén con quantity > 0. > 1 => el
+            // mirror single-MAIN de dual_write no es seguro (ver
+            // InventoryCompatibilityService).
+            'stocked_location_count' => $stockedLocationCount,
+            'is_single_location' => $stockedLocationCount <= 1,
             // Whole-warehouse backfillWarehouse() sólo es seguro desde un almacén
             // SIN NINGUNA ubicación con stock (init desde cero). Si ya hay stock
             // location-native en cualquier ubicación, la divergencia se cierra con
@@ -348,6 +361,18 @@ class LegacyInventoryReconciliationService
             ->where('is_active', true)
             ->where('warehouse_id', $warehouseId)
             ->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    /** Nº de ubicaciones activas del almacén con quantity > 0. */
+    private function stockedLocationCount(int $warehouseId): int
+    {
+        $ids = $this->warehouseLocationIds($warehouseId);
+        if (! $ids) return 0;
+
+        return (int) InventoryLocationStock::whereIn('inventory_location_id', $ids)
+            ->where('quantity', '>', 0)
+            ->distinct()
+            ->count('inventory_location_id');
     }
 
     /**

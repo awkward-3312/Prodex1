@@ -49,51 +49,52 @@ class InventoryVisibilityController extends Controller
 
         $productIds = $products->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        // Divergencia legado ↔ motor por ubicación, calculada POR ALMACÉN y
-        // sumada sólo por el lado positivo — nunca se compensa un almacén con
-        // exceso legado contra otro con exceso por ubicación, ni se mezcla stock
-        // branch-native (inventory_locations.warehouse_id NULL) con el
-        // product_warehouse de un CD.
+        // Divergencia legado ↔ motor por ubicación. Unidad mínima de comparación:
+        //   (warehouse_id, product_id, variant_key)   — variant_key 0 = simple.
+        // NUNCA se compensa: ni entre almacenes, ni entre variantes del mismo
+        // producto, ni con stock branch-native (inventory_locations.warehouse_id
+        // NULL). Roll-up al producto sólo para presentación.
         //
-        //   pending(producto) = Σ_almacén  max( legacyWarehouse − locationWarehouse , 0 )
+        //   pending(producto) = Σ_(almacén, variante)  max( legacyWhVar − locationWhVar , 0 )
         //
-        // donde locationWarehouse = SUM(inventory_location_stocks.quantity) de
-        // TODAS las inventory_locations activas de ese almacén (MAIN + cuarentena
-        // + devoluciones + …), no sólo la default.
-        $legacyByWh = [];      // [product_id][warehouse_id] => qty
+        // donde locationWhVar = SUM(inventory_location_stocks.quantity) de TODAS
+        // las inventory_locations activas del almacén para esa variante.
+        $legacyByWhVar = [];   // [product_id][warehouse_id][variant_key] => qty
         $legacyTotals = [];    // [product_id] => Σ qty (para mostrar)
         if (Schema::hasTable('product_warehouse')) {
             foreach (DB::table('product_warehouse')
                 ->whereIn('product_id', $productIds)
                 ->whereNull('deleted_at')
-                ->groupBy('product_id', 'warehouse_id')
-                ->selectRaw('product_id, warehouse_id, SUM(qte) as quantity')
+                ->groupBy('product_id', 'warehouse_id', DB::raw('COALESCE(product_variant_id, 0)'))
+                ->selectRaw('product_id, warehouse_id, COALESCE(product_variant_id, 0) as vk, SUM(qte) as quantity')
                 ->get() as $row) {
                 $pid = (int) $row->product_id;
-                $legacyByWh[$pid][(int) $row->warehouse_id] = round((float) $row->quantity, 3);
+                $legacyByWhVar[$pid][(int) $row->warehouse_id][(int) $row->vk] = round((float) $row->quantity, 3);
                 $legacyTotals[$pid] = round(($legacyTotals[$pid] ?? 0) + (float) $row->quantity, 3);
             }
         }
 
-        $locationByWh = []; // [product_id][warehouse_id] => physical qty (warehouse-owned locations only)
+        $locationByWhVar = []; // [product_id][warehouse_id][variant_key] => physical qty (warehouse-owned locations only)
         foreach (DB::table('inventory_location_stocks as s')
             ->join('inventory_locations as il', 'il.id', '=', 's.inventory_location_id')
             ->whereIn('s.product_id', $productIds)
             ->whereNotNull('il.warehouse_id')
             ->whereNull('il.deleted_at')
             ->where('il.is_active', 1)
-            ->groupBy('s.product_id', 'il.warehouse_id')
-            ->selectRaw('s.product_id, il.warehouse_id, SUM(s.quantity) as quantity')
+            ->groupBy('s.product_id', 'il.warehouse_id', 's.variant_key')
+            ->selectRaw('s.product_id, il.warehouse_id, s.variant_key as vk, SUM(s.quantity) as quantity')
             ->get() as $row) {
-            $locationByWh[(int) $row->product_id][(int) $row->warehouse_id] = round((float) $row->quantity, 3);
+            $locationByWhVar[(int) $row->product_id][(int) $row->warehouse_id][(int) $row->vk] = round((float) $row->quantity, 3);
         }
 
         $legacyPendingByProduct = [];
-        foreach ($legacyByWh as $pid => $byWh) {
+        foreach ($legacyByWhVar as $pid => $byWh) {
             $pending = 0.0;
-            foreach ($byWh as $whId => $legacyQty) {
-                $locQty = $locationByWh[$pid][$whId] ?? 0.0;
-                $pending += max(0, round($legacyQty - $locQty, 3));
+            foreach ($byWh as $whId => $byVar) {
+                foreach ($byVar as $vk => $legacyQty) {
+                    $locQty = $locationByWhVar[$pid][$whId][$vk] ?? 0.0;
+                    $pending += max(0, round($legacyQty - $locQty, 3));
+                }
             }
             $legacyPendingByProduct[$pid] = round($pending, 3);
         }

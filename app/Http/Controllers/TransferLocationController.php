@@ -146,7 +146,9 @@ class TransferLocationController extends BaseController
     }
 
     /**
-     * Señal de sólo lectura para el buscador de traslados. Por producto del
+     * Señal de sólo lectura para el buscador de traslados. Unidad mínima:
+     *   (product_id, variant_key)   — variant_key 0 = simple.
+     * NUNCA compensa variantes entre sí. Por cada (producto, variante) del
      * almacén dueño del origen compara:
      *   legacy_quantity            = SUM(product_warehouse.qte) del almacén
      *   warehouse_location_quantity = SUM(inventory_location_stocks.quantity) de
@@ -154,11 +156,10 @@ class TransferLocationController extends BaseController
      *   selected_location_quantity  = lo mismo pero sólo en la ubicación elegida
      *
      * kind:
-     *   'divergence'     warehouse_location_quantity < legacy_quantity  → hay
-     *                    stock legado sin reconciliar (pending_quantity > 0).
-     *   'other_location' el almacén está reconciliado para ese producto pero la
-     *                    ubicación elegida no lo tiene: está en otra ubicación
-     *                    del mismo almacén. NO es divergencia.
+     *   'divergence'     warehouse_location_quantity < legacy_quantity.
+     *   'other_location' el almacén está reconciliado para esa clave pero la
+     *                    ubicación elegida no la tiene (vive en otra ubicación
+     *                    del mismo almacén). NO es divergencia.
      *
      * Nunca hace transferible nada: es sólo para el mensaje del formulario.
      */
@@ -170,41 +171,48 @@ class TransferLocationController extends BaseController
 
         $legacy = DB::table('product_warehouse as pw')
             ->join('products as p', 'p.id', '=', 'pw.product_id')
+            ->leftJoin('product_variants as pv', 'pv.id', '=', 'pw.product_variant_id')
             ->where('pw.warehouse_id', $location->warehouse_id)
             ->whereNull('pw.deleted_at')
             ->whereNull('p.deleted_at')
             ->where('p.type', '!=', 'is_service')
-            ->groupBy('pw.product_id', 'p.code', 'p.name')
+            ->groupBy('pw.product_id', 'pw.product_variant_id', 'p.code', 'p.name', 'pv.code', 'pv.name')
             ->havingRaw('SUM(pw.qte) > 0')
-            ->selectRaw('pw.product_id, p.code, p.name, SUM(pw.qte) as qty')
+            ->selectRaw('pw.product_id, pw.product_variant_id, p.code as p_code, p.name as p_name, pv.code as v_code, pv.name as v_name, SUM(pw.qte) as qty')
             ->get();
 
         if ($legacy->isEmpty()) return [];
 
-        $productIds = $legacy->pluck('product_id')->all();
+        $productIds = $legacy->pluck('product_id')->unique()->all();
+        $key = fn ($productId, $variantKey) => ((int) $productId).':'.((int) $variantKey);
 
-        // Agregado físico de TODAS las ubicaciones activas del almacén.
+        // Agregado físico por (product_id, variant_key) sobre TODAS las
+        // ubicaciones activas del almacén.
         $warehouseLocQty = DB::table('inventory_location_stocks as s')
             ->join('inventory_locations as il', 'il.id', '=', 's.inventory_location_id')
             ->where('il.warehouse_id', $location->warehouse_id)
             ->whereNull('il.deleted_at')
             ->where('il.is_active', 1)
             ->whereIn('s.product_id', $productIds)
-            ->groupBy('s.product_id')
-            ->selectRaw('s.product_id, SUM(s.quantity) as qty')
-            ->pluck('qty', 's.product_id');
+            ->groupBy('s.product_id', 's.variant_key')
+            ->selectRaw('s.product_id, s.variant_key, SUM(s.quantity) as qty')
+            ->get()
+            ->mapWithKeys(fn ($r) => [$key($r->product_id, $r->variant_key) => round((float) $r->qty, 3)]);
 
         $selectedLocQty = DB::table('inventory_location_stocks')
             ->where('inventory_location_id', $location->id)
             ->whereIn('product_id', $productIds)
-            ->groupBy('product_id')
-            ->selectRaw('product_id, SUM(quantity) as qty')
-            ->pluck('qty', 'product_id');
+            ->groupBy('product_id', 'variant_key')
+            ->selectRaw('product_id, variant_key, SUM(quantity) as qty')
+            ->get()
+            ->mapWithKeys(fn ($r) => [$key($r->product_id, $r->variant_key) => round((float) $r->qty, 3)]);
 
-        return $legacy->map(function ($row) use ($warehouseLocQty, $selectedLocQty) {
+        return $legacy->map(function ($row) use ($warehouseLocQty, $selectedLocQty, $key) {
+            $variantKey = (int) ($row->product_variant_id ?: 0);
+            $k = $key($row->product_id, $variantKey);
             $legacyQty = round((float) $row->qty, 3);
-            $whQty = round((float) ($warehouseLocQty[$row->product_id] ?? 0), 3);
-            $selQty = round((float) ($selectedLocQty[$row->product_id] ?? 0), 3);
+            $whQty = round((float) ($warehouseLocQty[$k] ?? 0), 3);
+            $selQty = round((float) ($selectedLocQty[$k] ?? 0), 3);
             $pending = round($legacyQty - $whQty, 3);
 
             if ($pending > 0.0005) {
@@ -215,10 +223,14 @@ class TransferLocationController extends BaseController
                 return null;                // reconciliado y presente aquí → ya está en el catálogo
             }
 
+            $code = $row->v_code ?: $row->p_code;
+            $name = $row->v_code ? '['.$row->v_name.'] '.$row->p_name : $row->p_name;
+
             return [
                 'product_id' => (int) $row->product_id,
-                'code' => (string) $row->code,
-                'name' => (string) $row->name,
+                'product_variant_id' => $variantKey > 0 ? $variantKey : null,
+                'code' => (string) $code,
+                'name' => (string) $name,
                 'legacy_quantity' => $legacyQty,
                 'warehouse_location_quantity' => $whQty,
                 'selected_location_quantity' => $selQty,

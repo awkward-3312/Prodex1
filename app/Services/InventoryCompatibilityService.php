@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\InventoryTransitionState;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -78,11 +79,9 @@ class InventoryCompatibilityService
                 ]);
             }
 
-            return app(InventoryService::class)->quantity(
-                (int) $state->inventory_location_id,
-                $productId,
-                $variantId
-            );
+            // Equivalente al antiguo total product_warehouse del ALMACÉN: agregado
+            // de TODAS sus ubicaciones activas, no sólo la MAIN.
+            return $this->warehouseAggregateQuantity($warehouseId, $productId, $variantId);
         }
 
         return $this->legacyQuantity($warehouseId, $productId, $variantId);
@@ -109,11 +108,49 @@ class InventoryCompatibilityService
             return null;
         }
 
-        return app(InventoryService::class)->quantity(
-            (int) $state->inventory_location_id,
-            $productId,
-            $variantId
-        );
+        // Comparación shadow a nivel ALMACÉN: agregado de todas sus ubicaciones
+        // activas por product+variant, NO sólo la MAIN. Así legacy 100 vs
+        // (MAIN 70 + QUARANTINE 30) coincide.
+        return $this->warehouseAggregateQuantity($warehouseId, $productId, $variantId);
+    }
+
+    /**
+     * SUM(inventory_location_stocks.quantity) sobre TODAS las inventory_locations
+     * activas del almacén, para el product+variant dado (variant_key 0 = simple).
+     */
+    public function warehouseAggregateQuantity(int $warehouseId, int $productId, ?int $variantId = null): float
+    {
+        $ids = $this->warehouseLocationIds($warehouseId);
+        if (! $ids) return 0.0;
+
+        return round((float) DB::table('inventory_location_stocks')
+            ->whereIn('inventory_location_id', $ids)
+            ->where('product_id', $productId)
+            ->where('variant_key', (int) ($variantId ?: 0))
+            ->sum('quantity'), 3);
+    }
+
+    private function warehouseLocationIds(int $warehouseId): array
+    {
+        if (! Schema::hasTable('inventory_locations')) return [];
+
+        return DB::table('inventory_locations')
+            ->whereNull('deleted_at')
+            ->where('is_active', 1)
+            ->where('warehouse_id', $warehouseId)
+            ->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    private function stockedLocationCount(int $warehouseId): int
+    {
+        $ids = $this->warehouseLocationIds($warehouseId);
+        if (! $ids) return 0;
+
+        return (int) DB::table('inventory_location_stocks')
+            ->whereIn('inventory_location_id', $ids)
+            ->where('quantity', '>', 0)
+            ->distinct()
+            ->count('inventory_location_id');
     }
 
     /**
@@ -123,6 +160,13 @@ class InventoryCompatibilityService
      * In dual_write mode the new engine is set to the resulting legacy snapshot,
      * rather than repeating the legacy arithmetic. This makes gradual migration
      * safer across old controllers that use different increment/decrement styles.
+     *
+     * LÍMITE CONOCIDO (multi-ubicación): este mirror escribe el total legacy del
+     * ALMACÉN en la MAIN con adjustTo(). Sólo es correcto cuando la MAIN es la
+     * única ubicación con stock de ese product+variant. Si otra ubicación activa
+     * también tiene stock de esa clave, adjustTo(MAIN, total) inflaría el
+     * agregado del almacén — en ese caso se REHÚSA y se marca mismatch, sin
+     * escribir. El hardening del mirror multi-ubicación es un PR posterior.
      */
     public function mirrorLegacySnapshot(
         int $warehouseId,
@@ -157,6 +201,19 @@ class InventoryCompatibilityService
 
                 $inventory = app(InventoryService::class);
                 $current = $inventory->quantity((int) $lockedState->inventory_location_id, $productId, $variantId);
+
+                // Rehúsa si el product+variant tiene stock fuera de la MAIN: el
+                // adjustTo(MAIN, target) de abajo sólo mantiene el agregado
+                // correcto cuando la MAIN es el único contenedor de esa clave.
+                $warehouseAggregate = $this->warehouseAggregateQuantity($warehouseId, $productId, $variantId);
+                if (abs($warehouseAggregate - $current) > 0.0005) {
+                    throw ValidationException::withMessages([
+                        'inventory_transition' => 'Dual-write detenido: el producto/variante tiene inventario por ubicación fuera de MAIN. '
+                            .'El mirror single-MAIN no puede sincronizarlo sin inflar el agregado del almacén. '
+                            .'Requiere el hardening del mirror multi-ubicación (PR posterior).',
+                    ]);
+                }
+
                 if (abs($target - $current) < 0.0005) {
                     return;
                 }
@@ -221,6 +278,24 @@ class InventoryCompatibilityService
         if (! $audit['is_reconciled']) {
             throw ValidationException::withMessages([
                 'inventory_transition' => 'El almacén debe reconciliar exactamente antes de activar el modo de transición solicitado.',
+            ]);
+        }
+
+        // is_reconciled es sólo paridad cuantitativa warehouse-wide. Un modo de
+        // transición necesita además una MAIN activa por defecto como destino.
+        if (! ($audit['has_target_location'] ?? false)) {
+            throw ValidationException::withMessages([
+                'inventory_transition' => 'El almacén no tiene una ubicación MAIN activa por defecto; no puede activarse un modo de transición que requiere ubicación destino.',
+            ]);
+        }
+
+        // dual_write ESCRIBE en la MAIN vía mirror single-MAIN. No es seguro
+        // mientras el almacén tenga inventario en más de una ubicación activa:
+        // bloqueado hasta el hardening del mirror multi-ubicación (PR posterior).
+        if ($mode === InventoryTransitionState::MODE_DUAL_WRITE && (int) ($audit['stocked_location_count'] ?? 0) > 1) {
+            throw ValidationException::withMessages([
+                'inventory_transition' => 'dual_write no está soportado para almacenes con inventario en múltiples ubicaciones. '
+                    .'Requiere el hardening del mirror multi-ubicación (PR posterior).',
             ]);
         }
 

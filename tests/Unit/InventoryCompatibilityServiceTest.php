@@ -192,6 +192,115 @@ class InventoryCompatibilityServiceTest extends TestCase
         $this->assertSame(6.0, $service->shadowQuantity($warehouse->id, 10));
     }
 
+    // ---- Blocker 2: transición single-MAIN vs almacén multi-ubicación --------
+
+    /**
+     * TEST OBLIGATORIO: legacy 100 = MAIN 70 + QUARANTINE 30.
+     * audit => reconciled. compareKey => agregado del almacén (100), no MAIN (70).
+     */
+    public function test_compare_uses_warehouse_aggregate_not_only_main(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id); // MAIN 100
+        $service = app(InventoryCompatibilityService::class);
+        $main = (int) DB::table('warehouses')->where('id', $warehouse->id)->value('default_inventory_location_id');
+
+        // Repartir: MAIN 70 + QUARANTINE 30 (agregado sigue 100).
+        DB::table('inventory_location_stocks')->where('inventory_location_id', $main)->where('product_id', 10)->update(['quantity' => 70]);
+        $quar = $this->addLocation($warehouse->id, 'QUARANTINE');
+        $this->addLocStock($quar, 10, 30);
+
+        $audit = $service->audit($warehouse->id);
+        $this->assertTrue($audit['is_reconciled']);
+        $this->assertSame(2, $audit['stocked_location_count']);
+        $this->assertFalse($audit['is_single_location']);
+
+        $this->assertSame(100.0, $service->shadowQuantity($warehouse->id, 10)); // agregado, no 70
+        $this->assertTrue($service->compareKey($warehouse->id, 10)['matches']);
+    }
+
+    /** enableDualWrite se bloquea si el almacén tiene stock en >1 ubicación. */
+    public function test_dual_write_blocked_for_multi_location_warehouse(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+        $service = app(InventoryCompatibilityService::class);
+        $main = (int) DB::table('warehouses')->where('id', $warehouse->id)->value('default_inventory_location_id');
+        DB::table('inventory_location_stocks')->where('inventory_location_id', $main)->where('product_id', 10)->update(['quantity' => 70]);
+        $this->addLocStock($this->addLocation($warehouse->id, 'QUAR'), 10, 30);
+
+        $this->expectException(ValidationException::class);
+        $service->enableDualWrite($warehouse->id);
+    }
+
+    /** enableMode exige una MAIN destino aunque is_reconciled sea true. */
+    public function test_enable_mode_requires_a_target_main_even_when_reconciled(): void
+    {
+        $warehouse = $this->warehouse();
+        // Sin legacy y sin ubicaciones: is_reconciled vacuamente true, pero sin MAIN.
+        $service = app(InventoryCompatibilityService::class);
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($warehouse->id);
+        $this->assertTrue($audit['is_reconciled']);
+        $this->assertFalse($audit['has_target_location']);
+        $this->assertFalse($audit['transition_ready']);
+
+        $this->expectException(ValidationException::class);
+        $service->enableShadowCompare($warehouse->id);
+    }
+
+    /**
+     * Un mirror futuro NUNCA puede convertir (MAIN 70 + QUAR 30) en MAIN 110:
+     * mirrorLegacySnapshot rehúsa y marca mismatch, sin escribir.
+     */
+    public function test_mirror_refuses_when_stock_lives_outside_main(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+        $service = app(InventoryCompatibilityService::class);
+        $service->enableDualWrite($warehouse->id); // permitido: 1 sola ubicación en este punto
+        $main = (int) DB::table('warehouses')->where('id', $warehouse->id)->value('default_inventory_location_id');
+
+        // Después aparece QUARANTINE con 30 (MAIN baja a 70).
+        DB::table('inventory_location_stocks')->where('inventory_location_id', $main)->where('product_id', 10)->update(['quantity' => 70]);
+        $this->addLocStock($this->addLocation($warehouse->id, 'QUAR'), 10, 30);
+
+        // El legacy sube a 110.
+        DB::table('product_warehouse')->where('warehouse_id', $warehouse->id)->where('product_id', 10)->update(['qte' => 110]);
+
+        try {
+            $service->mirrorLegacySnapshot($warehouse->id, 10);
+            $this->fail('mirrorLegacySnapshot debía rehusar con stock fuera de MAIN');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('fuera de MAIN', $e->getMessage());
+        }
+
+        // MAIN no cambió (sigue 70), agregado sigue 100, estado en mismatch.
+        $this->assertSame(70.0, (float) DB::table('inventory_location_stocks')
+            ->where('inventory_location_id', $main)->where('product_id', 10)->value('quantity'));
+        $this->assertSame(100.0, $service->warehouseAggregateQuantity($warehouse->id, 10));
+        $this->assertSame('mismatch', $service->state($warehouse->id)->status);
+    }
+
+    private function addLocation(int $warehouseId, string $code): int
+    {
+        return (int) DB::table('inventory_locations')->insertGetId([
+            'warehouse_id' => $warehouseId, 'branch_id' => null, 'code' => $code, 'name' => $code,
+            'type' => 'storage', 'is_active' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    private function addLocStock(int $locationId, int $productId, float $qty, ?int $variantId = null): void
+    {
+        DB::table('inventory_location_stocks')->insert([
+            'inventory_location_id' => $locationId, 'product_id' => $productId, 'product_variant_id' => $variantId,
+            'variant_key' => (int) ($variantId ?: 0), 'quantity' => $qty, 'reserved_quantity' => 0,
+            'manage_stock' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
     private function warehouse(): Warehouse
     {
         return Warehouse::create(['name' => 'CD Principal']);

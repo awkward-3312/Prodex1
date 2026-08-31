@@ -34,7 +34,9 @@ class InventoryDivergenceGranularityControllerTest extends TestCase
             $t->increments('id');
             $t->integer('product_id');
             $t->string('name')->nullable();
+            $t->string('code')->nullable();
             $t->timestamps();
+            $t->softDeletes();
         });
         Schema::create('warehouses', function ($t) {
             $t->increments('id');
@@ -91,11 +93,19 @@ class InventoryDivergenceGranularityControllerTest extends TestCase
         ]);
     }
 
-    private function legacy(int $productId, int $warehouseId, float $qty): void
+    private function legacy(int $productId, int $warehouseId, float $qty, ?int $variantId = null): void
     {
         DB::table('product_warehouse')->insert([
-            'product_id' => $productId, 'warehouse_id' => $warehouseId, 'product_variant_id' => null,
+            'product_id' => $productId, 'warehouse_id' => $warehouseId, 'product_variant_id' => $variantId,
             'qte' => $qty, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    private function variant(int $id, int $productId, string $code, string $name): void
+    {
+        DB::table('product_variants')->insert([
+            'id' => $id, 'product_id' => $productId, 'code' => $code, 'name' => $name,
+            'created_at' => now(), 'updated_at' => now(),
         ]);
     }
 
@@ -107,13 +117,96 @@ class InventoryDivergenceGranularityControllerTest extends TestCase
         ]);
     }
 
-    private function stock(int $locationId, int $productId, float $qty): void
+    private function stock(int $locationId, int $productId, float $qty, ?int $variantId = null): void
     {
         DB::table('inventory_location_stocks')->insert([
-            'inventory_location_id' => $locationId, 'product_id' => $productId, 'product_variant_id' => null,
-            'variant_key' => 0, 'quantity' => $qty, 'reserved_quantity' => 0,
+            'inventory_location_id' => $locationId, 'product_id' => $productId, 'product_variant_id' => $variantId,
+            'variant_key' => (int) ($variantId ?: 0), 'quantity' => $qty, 'reserved_quantity' => 0,
             'created_at' => now(), 'updated_at' => now(),
         ]);
+    }
+
+    // ---- Blocker 1: variantes no se compensan entre sí ---------------------
+
+    /**
+     * Caso A: VAR A legacy 50 / location 30 (+20) ; VAR B legacy 20 / location 40 (-20).
+     * A nivel producto legacy 70 / location 70, pero pending debe ser 20, NO 0.
+     */
+    public function test_caseA_visibility_does_not_net_across_variants(): void
+    {
+        $this->product(1, 'IPH', 'iPhone');
+        $this->variant(900, 1, 'IPH-A', 'A');
+        $this->variant(901, 1, 'IPH-B', 'B');
+        DB::table('warehouses')->insert(['id' => 1, 'name' => 'CD1', 'created_at' => now(), 'updated_at' => now()]);
+        $this->legacy(1, 1, 50, 900);
+        $this->legacy(1, 1, 20, 901);
+        $l = $this->loc(1, 'MAIN');
+        $this->stock($l, 1, 30, 900);
+        $this->stock($l, 1, 40, 901);
+
+        $p = collect($this->search('IPH')['products'])->firstWhere('id', 1);
+        $this->assertTrue($p['legacy_pending']);
+        $this->assertEquals(20.0, $p['legacy_pending_quantity']); // no 0
+    }
+
+    /** Caso B: VAR A 50/50 ; VAR B 20/20 => pending 0. */
+    public function test_caseB_visibility_variant_parity_is_pending_zero(): void
+    {
+        $this->product(1, 'IPH', 'iPhone');
+        $this->variant(900, 1, 'IPH-A', 'A');
+        $this->variant(901, 1, 'IPH-B', 'B');
+        DB::table('warehouses')->insert(['id' => 1, 'name' => 'CD1', 'created_at' => now(), 'updated_at' => now()]);
+        $this->legacy(1, 1, 50, 900);
+        $this->legacy(1, 1, 20, 901);
+        $l = $this->loc(1, 'MAIN');
+        $this->stock($l, 1, 50, 900);
+        $this->stock($l, 1, 20, 901);
+
+        $p = collect($this->search('IPH')['products'])->firstWhere('id', 1);
+        $this->assertFalse($p['legacy_pending']);
+        $this->assertEquals(0.0, $p['legacy_pending_quantity']);
+    }
+
+    /**
+     * Caso C: VAR A está en STORAGE2 pero no en MAIN. Buscar el código de VAR A
+     * desde MAIN => kind=other_location, NO divergence.
+     */
+    public function test_caseC_transfer_search_variant_in_other_location(): void
+    {
+        $this->product(1, 'IPH', 'iPhone');
+        $this->variant(900, 1, 'IPH-A', 'A');
+        DB::table('warehouses')->insert(['id' => 1, 'name' => 'CD1', 'created_at' => now(), 'updated_at' => now()]);
+        $this->legacy(1, 1, 40, 900);
+        $main = $this->loc(1, 'MAIN');
+        $st2 = $this->loc(1, 'STORAGE2');
+        $this->stock($st2, 1, 40, 900); // toda la variante A en STORAGE2
+
+        $pending = $this->legacyPendingForLocation(InventoryLocation::findOrFail($main));
+        $this->assertCount(1, $pending);
+        $this->assertSame(900, $pending[0]['product_variant_id']);
+        $this->assertSame('IPH-A', $pending[0]['code']);
+        $this->assertSame('other_location', $pending[0]['kind']);
+        $this->assertSame(0.0, $pending[0]['pending_quantity']);
+        $this->assertSame(40.0, $pending[0]['warehouse_location_quantity']);
+    }
+
+    /** Y si la variante A de verdad diverge (legacy 40 / warehouse-locations 25) => divergence. */
+    public function test_transfer_search_variant_real_divergence(): void
+    {
+        $this->product(1, 'IPH', 'iPhone');
+        $this->variant(900, 1, 'IPH-A', 'A');
+        DB::table('warehouses')->insert(['id' => 1, 'name' => 'CD1', 'created_at' => now(), 'updated_at' => now()]);
+        $this->legacy(1, 1, 40, 900);
+        $main = $this->loc(1, 'MAIN');
+        $st2 = $this->loc(1, 'STORAGE2');
+        $this->stock($main, 1, 15, 900);
+        $this->stock($st2, 1, 10, 900); // agregado 25 < legacy 40
+
+        $pending = $this->legacyPendingForLocation(InventoryLocation::findOrFail($main));
+        $this->assertSame('divergence', $pending[0]['kind']);
+        $this->assertSame(15.0, $pending[0]['pending_quantity']);
+        $this->assertSame(25.0, $pending[0]['warehouse_location_quantity']);
+        $this->assertSame(15.0, $pending[0]['selected_location_quantity']);
     }
 
     /**

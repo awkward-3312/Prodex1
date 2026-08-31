@@ -28,12 +28,18 @@ class InventoryLegacyDivergenceContractTest extends TestCase
     {
         $src = $this->read('app/Http/Controllers/InventoryVisibilityController.php');
 
-        // Lee el legado por ALMACÉN, no global.
-        $this->assertStringContainsString("->groupBy('product_id', 'warehouse_id')", $src);
+        // Lee el legado por (ALMACÉN, VARIANTE), no global ni por producto.
+        $this->assertStringContainsString(
+            "->groupBy('product_id', 'warehouse_id', DB::raw('COALESCE(product_variant_id, 0)'))",
+            $src
+        );
+        $this->assertStringContainsString("->groupBy('s.product_id', 'il.warehouse_id', 's.variant_key')", $src);
         // Compara contra el agregado location-native de ubicaciones de ALMACÉN
         // (warehouse_id NOT NULL), nunca branch-native.
         $this->assertStringContainsString("->whereNotNull('il.warehouse_id')", $src);
-        // Suma sólo el lado positivo por almacén — sin compensación entre almacenes.
+        // Suma sólo el lado positivo por (almacén, variante) — sin compensación
+        // entre almacenes NI entre variantes.
+        $this->assertStringContainsString('foreach ($byVar as $vk => $legacyQty)', $src);
         $this->assertStringContainsString('max(0, round($legacyQty - $locQty, 3))', $src);
         // Expone la señal informativa.
         $this->assertStringContainsString("'legacy_pending' =>", $src);
@@ -72,12 +78,15 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         );
         $this->assertStringContainsString("->where('quantity', '>', 0)", $src);
 
-        // legacy_pending es de sólo lectura: compara legado del almacén contra el
-        // AGREGADO de TODAS sus ubicaciones activas, y distingue 'divergence' de
-        // 'other_location'. Nunca se fusiona con $rows.
+        // legacy_pending es de sólo lectura, VARIANT-AWARE (nunca compensa
+        // variantes), compara legado del almacén contra el AGREGADO de todas sus
+        // ubicaciones activas, y distingue 'divergence' de 'other_location'.
         $this->assertStringContainsString('private function legacyPendingForLocation(', $src);
         $this->assertStringContainsString("->where('pw.warehouse_id', \$location->warehouse_id)", $src);
         $this->assertStringContainsString("->where('il.warehouse_id', \$location->warehouse_id)", $src);
+        $this->assertStringContainsString("->groupBy('s.product_id', 's.variant_key')", $src);
+        $this->assertStringContainsString("'product_variant_id' => \$variantKey > 0 ? \$variantKey : null", $src);
+        $this->assertStringContainsString('$row->v_code ?: $row->p_code', $src);
         $this->assertStringContainsString("\$kind = 'divergence'", $src);
         $this->assertStringContainsString("\$kind = 'other_location'", $src);
         $this->assertStringContainsString("havingRaw('SUM(pw.qte) > 0')", $src);
@@ -157,5 +166,33 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         $this->assertStringContainsString("'other_locations_quantity' =>", $src);
         $this->assertStringContainsString("'warehouse_location_quantity' =>", $src);
         $this->assertStringContainsString("'target_inventory_location_id' =>", $src);
+    }
+
+    public function test_audit_separates_reconciled_from_transition_ready(): void
+    {
+        $src = $this->read('app/Services/LegacyInventoryReconciliationService.php');
+
+        // is_reconciled = paridad cuantitativa; has_target_location = existe MAIN;
+        // transition_ready = ambas; y el conteo de ubicaciones con stock.
+        $this->assertStringContainsString("'has_target_location' => \$target !== null", $src);
+        $this->assertStringContainsString("'transition_ready' => \$isReconciled && \$target !== null", $src);
+        $this->assertStringContainsString("'stocked_location_count' =>", $src);
+        $this->assertStringContainsString("'is_single_location' =>", $src);
+    }
+
+    public function test_transition_service_is_warehouse_aggregate_aware_not_single_main(): void
+    {
+        $src = $this->read('app/Services/InventoryCompatibilityService.php');
+
+        // shadow / read comparan contra el agregado del almacén, no sólo MAIN.
+        $this->assertStringContainsString('public function warehouseAggregateQuantity(', $src);
+        $this->assertStringContainsString('return $this->warehouseAggregateQuantity($warehouseId, $productId, $variantId);', $src);
+        // enableMode exige MAIN destino y bloquea dual_write multi-ubicación.
+        $this->assertStringContainsString("! (\$audit['has_target_location'] ?? false)", $src);
+        $this->assertStringContainsString("(int) (\$audit['stocked_location_count'] ?? 0) > 1", $src);
+        $this->assertStringContainsString('dual_write no está soportado para almacenes con inventario en múltiples ubicaciones', $src);
+        // mirrorLegacySnapshot rehúsa si hay stock fuera de MAIN.
+        $this->assertStringContainsString('abs($warehouseAggregate - $current) > 0.0005', $src);
+        $this->assertStringContainsString('fuera de MAIN', $src);
     }
 }
