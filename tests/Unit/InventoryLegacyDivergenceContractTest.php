@@ -242,9 +242,17 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         $this->assertStringContainsString("! (\$audit['provenance_reconciled'] ?? \$audit['is_reconciled'] ?? false)", $compat);
         $this->assertStringContainsString("! (\$audit['snapshot_equal'] ?? false)", $compat);
         $this->assertStringContainsString('dual_write requiere paridad actual legacy/location; existen movimientos location-native posteriores al baseline.', $compat);
-        // mirrorLegacySnapshot: guard provenance — rehúsa si post_baseline_location_net != 0.
-        $this->assertStringContainsString("abs((float) (\$provKey['post_baseline_location_net'] ?? 0.0)) > 0.0005", $compat);
+        // mirrorLegacySnapshot: guard usa el net NATIVO (independiente del mirror),
+        // NO todos los movimientos — si no, dual_write se autobloquearía.
+        $this->assertStringContainsString("\$provKey['post_baseline_native_net']", $compat);
+        $this->assertStringContainsString('if (abs($nativeNet) > 0.0005) {', $compat);
         $this->assertStringContainsString('El mirror single-target recrearía stock ya movido', $compat);
+        // provenance separa los netos: location (todos) / mirror / native.
+        $prov = $this->read('app/Services/InventoryProvenanceAuditService.php');
+        $this->assertStringContainsString("public const DUAL_WRITE_MIRROR_REFS = [", $prov);
+        $this->assertStringContainsString("'post_baseline_mirror_net' => \$nDwMirror", $prov);
+        $this->assertStringContainsString("'post_baseline_native_net' => \$nNative", $prov);
+        $this->assertStringContainsString('$nNative = round($n - $nDwMirror, 3);', $prov);
         // compareKey: definición ÚNICA de mismatch = provenance (RECONCILED|MIRRORED).
         $this->assertStringContainsString("in_array(\$classification, ['RECONCILED', 'MIRRORED'], true)", $compat);
         $this->assertStringContainsString('public function snapshotCompareKey(', $compat);

@@ -257,16 +257,19 @@ class InventoryCompatibilityService
                 }
 
                 // GUARD PROVENANCE: adjustTo(MAIN, legacyTotal) sólo es correcto si
-                // NO hay movimientos location-native posteriores al baseline para
-                // esta clave. Si los hay (Iphone15: TransferDispatch -28), el
-                // mirror aplicaría legacy - current = legacy_delta - net_location y
-                // RECREARÍA las unidades ya movidas. Se REHÚSA (no se intenta
-                // corregir el mirror en este hotfix). markMismatch lo registra.
+                // NO hay movimientos location-native INDEPENDIENTES DEL MIRROR
+                // posteriores al baseline para esta clave. Los movimientos del
+                // propio mirror dual_write (legacy_shadow_sync) NO cuentan — de lo
+                // contrario dual_write se autobloquearía tras la primera escritura.
+                // Si hay net NATIVO != 0 (Iphone15: TransferDispatch -28), el
+                // mirror recrearía stock ya movido → se REHÚSA. markMismatch lo
+                // registra.
                 $provKey = $this->provenanceKey($warehouseId, $productId, $variantId);
-                if ($provKey && abs((float) ($provKey['post_baseline_location_net'] ?? 0.0)) > 0.0005) {
+                $nativeNet = $provKey ? (float) ($provKey['post_baseline_native_net'] ?? $provKey['post_baseline_location_net'] ?? 0.0) : 0.0;
+                if (abs($nativeNet) > 0.0005) {
                     throw ValidationException::withMessages([
-                        'inventory_transition' => 'Dual-write detenido: existen movimientos location-native posteriores al baseline para este producto/variante '
-                            .'(net '.round((float) $provKey['post_baseline_location_net'], 3).'). El mirror single-target recrearía stock ya movido. '
+                        'inventory_transition' => 'Dual-write detenido: existen movimientos location-native independientes del mirror posteriores al baseline para este producto/variante '
+                            .'(net nativo '.round($nativeNet, 3).'). El mirror single-target recrearía stock ya movido. '
                             .'Requiere el mirror delta-based (pendiente).',
                     ]);
                 }

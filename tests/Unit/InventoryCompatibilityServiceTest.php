@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\InventoryTransitionState;
 use App\Models\Warehouse;
 use App\Services\InventoryCompatibilityService;
+use App\Services\InventoryProvenanceAuditService;
 use App\Services\LegacyInventoryReconciliationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -487,7 +488,7 @@ class InventoryCompatibilityServiceTest extends TestCase
             app(InventoryCompatibilityService::class)->mirrorLegacySnapshot($wh->id, 10);
             $this->fail('mirrorLegacySnapshot debía rehusar con movimientos location-native posteriores al baseline');
         } catch (ValidationException $e) {
-            $this->assertStringContainsString('location-native posteriores al baseline', $e->getMessage());
+            $this->assertStringContainsString('net nativo', $e->getMessage());
         }
 
         // MAIN sigue 60 — jamás 88.
@@ -534,6 +535,100 @@ class InventoryCompatibilityServiceTest extends TestCase
             '2026-08-22 18:11:46',
             (string) DB::table('inventory_transition_states')->where('warehouse_id', $wh->id)->value('last_reconciled_at')
         );
+    }
+
+    // ---- F7-F10: el guard NO debe autobloquear tras el primer mirror ---------
+
+    /** Simula el saved-hook de product_warehouse: escribe qte y dispara el mirror. */
+    private function legacyWriteAndMirror(int $whId, int $productId, float $newQte): void
+    {
+        DB::table('product_warehouse')->where('warehouse_id', $whId)->where('product_id', $productId)->update(['qte' => $newQte]);
+        app(InventoryCompatibilityService::class)->mirrorLegacySnapshot($whId, $productId);
+    }
+
+    private function dualWriteWarehouse(int $legacyStart): array
+    {
+        $wh = $this->warehouse();
+        $this->legacy($wh->id, 10, $legacyStart);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($wh->id); // baseline: MAIN = $legacyStart
+        app(InventoryCompatibilityService::class)->enableDualWrite($wh->id);
+        $main = (int) DB::table('warehouses')->where('id', $wh->id)->value('default_inventory_location_id');
+        return [$wh, $main];
+    }
+
+    private function mainQty(int $main, int $productId = 10): float
+    {
+        return (float) DB::table('inventory_location_stocks')->where('inventory_location_id', $main)->where('product_id', $productId)->value('quantity');
+    }
+
+    /** F7: dos escrituras dual_write consecutivas — sin excepción, MAIN sigue el legacy. */
+    public function test_F7_two_consecutive_dual_write_mirrors(): void
+    {
+        [$wh, $main] = $this->dualWriteWarehouse(100);
+
+        $this->legacyWriteAndMirror($wh->id, 10, 110);
+        $this->assertSame(110.0, $this->mainQty($main));
+
+        $this->legacyWriteAndMirror($wh->id, 10, 115); // NO debe autobloquearse
+        $this->assertSame(115.0, $this->mainQty($main));
+
+        $svc = app(InventoryCompatibilityService::class);
+        $this->assertSame('healthy', $svc->state($wh->id)->status);
+        $row = collect(app(InventoryProvenanceAuditService::class)->auditWarehouse($wh->id)['keys'])->firstWhere('product_id', 10);
+        $this->assertSame(15.0, $row['post_baseline_mirror_net']);
+        $this->assertSame(0.0, $row['post_baseline_native_net']);
+    }
+
+    /** F8: dos decrementos mirrored consecutivos — permitido. */
+    public function test_F8_two_consecutive_mirrored_decrements(): void
+    {
+        [$wh, $main] = $this->dualWriteWarehouse(100);
+
+        $this->legacyWriteAndMirror($wh->id, 10, 90);
+        $this->assertSame(90.0, $this->mainQty($main));
+        $this->legacyWriteAndMirror($wh->id, 10, 80);
+        $this->assertSame(80.0, $this->mainQty($main));
+
+        $row = collect(app(InventoryProvenanceAuditService::class)->auditWarehouse($wh->id)['keys'])->firstWhere('product_id', 10);
+        $this->assertSame(0.0, $row['post_baseline_native_net']);
+    }
+
+    /** F9: mirror OK, luego TransferDispatch nativo => el siguiente mirror RECHAZA; MAIN queda 105. */
+    public function test_F9_native_movement_after_mirror_blocks_next_mirror(): void
+    {
+        [$wh, $main] = $this->dualWriteWarehouse(100);
+
+        $this->legacyWriteAndMirror($wh->id, 10, 110);
+        $this->assertSame(110.0, $this->mainQty($main));
+
+        // TransferDispatch location-native −5 (independiente del mirror).
+        $this->movement('decrease', 10, 5, 'TransferDispatch', $main, null, now()->addMinute()->toDateTimeString());
+        DB::table('inventory_location_stocks')->where('inventory_location_id', $main)->where('product_id', 10)->update(['quantity' => 105]);
+
+        try {
+            $this->legacyWriteAndMirror($wh->id, 10, 115);
+            $this->fail('el mirror debía rehusar tras un movimiento location-native independiente');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('net nativo', $e->getMessage());
+        }
+
+        $this->assertSame(105.0, $this->mainQty($main)); // jamás 115
+        $this->assertSame('mismatch', app(InventoryCompatibilityService::class)->state($wh->id)->status);
+    }
+
+    /** F10: reentrar a dual_write con snapshots iguales NO queda bloqueado por el histórico legacy_shadow_sync. */
+    public function test_F10_reenable_dual_write_still_mirrors(): void
+    {
+        [$wh, $main] = $this->dualWriteWarehouse(100);
+        $this->legacyWriteAndMirror($wh->id, 10, 110); // MAIN 110 / legacy 110, un legacy_shadow_sync +10
+
+        $svc = app(InventoryCompatibilityService::class);
+        $svc->returnToLegacyOnly($wh->id);
+        $state = $svc->enableDualWrite($wh->id); // snapshots iguales (110/110) => permitido
+        $this->assertSame(InventoryTransitionState::MODE_DUAL_WRITE, $state->mode);
+
+        $this->legacyWriteAndMirror($wh->id, 10, 115); // debe poder mirrorearse
+        $this->assertSame(115.0, $this->mainQty($main));
     }
 
     private function warehouse(): Warehouse
