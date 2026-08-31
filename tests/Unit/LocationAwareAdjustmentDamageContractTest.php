@@ -165,7 +165,8 @@ class LocationAwareAdjustmentDamageContractTest extends TestCase
             foreach (['updateLocationAware', 'destroyLocationAware'] as $method) {
                 $pos = strpos($src, "private function $method(");
                 $body = substr($src, $pos, 2200);
-                $this->assertStringContainsString("\$locked = $model::whereKey(\$current->id)->lockForUpdate()->firstOrFail();", $body, "$ctrl::$method");
+                // (C7) sólo bloquea filas NO eliminadas.
+                $this->assertStringContainsString("\$locked = $model::whereKey(\$current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();", $body, "$ctrl::$method");
                 // los details también se bloquean antes de revertir.
                 $this->assertMatchesRegularExpression('/Detail::where\([^)]+\)->lockForUpdate\(\)->get\(\);/', $body, "$ctrl::$method: lock de details");
             }
@@ -188,6 +189,104 @@ class LocationAwareAdjustmentDamageContractTest extends TestCase
             }
             // el warehouse scope NO se debilita.
             $this->assertStringContainsString('$this->assertWarehouseAccess(', $src);
+        }
+    }
+
+    // ===== Iteración 3 (C1..C12) =========================================
+
+    public function test_c1_edit_exposes_inventory_location_id_and_location_aware_current(): void
+    {
+        foreach (['AdjustmentController' => 'adjustment', 'DamageController' => 'damage'] as $ctrl => $var) {
+            $src = $this->read("app/Http/Controllers/$ctrl.php");
+            // C1: la respuesta de edit() incluye inventory_location_id del registro.
+            $this->assertStringContainsString("\$$var".'[\'inventory_location_id\'] = $'.($var === 'adjustment' ? 'Adjustment_data' : 'Damage_data').'->inventory_location_id !== null', $src, "$ctrl: edit debe exponer inventory_location_id");
+            // C5: current de detalles location-aware = available de inventory_location_stocks.
+            $this->assertStringContainsString('private function locationAwareAvailable(int $locationId, int $productId, ?int $variantId): float', $src);
+            $this->assertStringContainsString("\$row->quantity - (float) \$row->reserved_quantity", $src);
+            $this->assertStringContainsString('$locationAware', $src);
+        }
+    }
+
+    public function test_c6_auth_parity_before_location_aware_branch(): void
+    {
+        foreach (['AdjustmentController', 'DamageController'] as $ctrl) {
+            $src = $this->read("app/Http/Controllers/$ctrl.php");
+            $this->assertStringContainsString('private function assertCanModifyDocument(Request $request', $src);
+            $this->assertStringContainsString("\$this->authorizeForUser(\$request->user('api'), 'check_record', \$doc);", $src);
+            $this->assertStringContainsString('warehouse restriction', $src);
+            // update: la parada de auth precede al branch location-aware.
+            $updatePos = strpos($src, 'public function update(');
+            $seg = substr($src, $updatePos, 1600);
+            $denied = strpos($seg, 'if ($denied = $this->assertCanModifyDocument(');
+            $branch = strpos($seg, 'return $this->updateLocationAware(');
+            $this->assertNotFalse($denied, "$ctrl update");
+            $this->assertNotFalse($branch, "$ctrl update");
+            $this->assertLessThan($branch, $denied, "$ctrl: auth parity antes de updateLocationAware");
+            // destroy: idem.
+            $destroyPos = strpos($src, 'public function destroy(');
+            $seg2 = substr($src, $destroyPos, 900);
+            $denied2 = strpos($seg2, 'if ($denied = $this->assertCanModifyDocument(');
+            $branch2 = strpos($seg2, 'return $this->destroyLocationAware(');
+            $this->assertNotFalse($denied2, "$ctrl destroy");
+            $this->assertLessThan($branch2, $denied2, "$ctrl: auth parity antes de destroyLocationAware");
+        }
+    }
+
+    public function test_c7_no_update_destroy_of_deleted_document(): void
+    {
+        foreach (['AdjustmentController' => 'Adjustment', 'DamageController' => 'Damage'] as $ctrl => $model) {
+            $src = $this->read("app/Http/Controllers/$ctrl.php");
+            // preload público sólo registros no eliminados.
+            $this->assertStringContainsString("\$preload = $model::whereNull('deleted_at')->findOrFail(\$id);", $src);
+            // update: findOrFail whereNull('deleted_at').
+            $this->assertStringContainsString("$model::whereNull('deleted_at')->findOrFail(\$id);", $src);
+            // dentro de la tx: sólo bloquea filas no eliminadas.
+            $this->assertStringContainsString("$model::whereKey(\$current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();", $src);
+        }
+    }
+
+    public function test_c8_schema_health_requires_effect_snapshot(): void
+    {
+        $health = $this->read('app/Services/TenantSchemaHealthService.php');
+        $this->assertStringContainsString("requireColumns(\$schema, \$missing, 'adjustments', ['inventory_location_id', 'inventory_effect_snapshot'])", $health);
+        $this->assertStringContainsString("requireColumns(\$schema, \$missing, 'damages', ['inventory_location_id', 'inventory_effect_snapshot'])", $health);
+    }
+
+    public function test_c9_catalog_endpoint_only_active_non_deleted_location(): void
+    {
+        foreach (['AdjustmentController', 'DamageController'] as $ctrl) {
+            $src = $this->read("app/Http/Controllers/$ctrl.php");
+            $pos = strpos($src, 'function inventoryLocationCatalog(');
+            $body = substr($src, $pos, 700);
+            $this->assertStringContainsString("whereNull('deleted_at')", $body);
+            $this->assertStringContainsString("->where('is_active', 1)", $body);
+            $this->assertStringContainsString('está inactiva', $body);
+        }
+    }
+
+    public function test_c3_c4_edit_forms_location_aware_catalog_wiring(): void
+    {
+        foreach ([
+            'resources/src/views/app/pages/adjustment/Edit_Adjustment.vue' => 'adjustment',
+            'resources/src/views/app/pages/damage/Edit_Damage.vue' => 'damage',
+        ] as $form => $var) {
+            $src = $this->read($form);
+            // C3: el select de ubicación tiene @input y su handler recarga el catálogo.
+            $this->assertStringContainsString('@input="Selected_Inventory_Location"', $src, "$form: @input en el select de ubicación");
+            $this->assertMatchesRegularExpression('/Selected_Inventory_Location\s*\([^)]*\)\s*\{[^}]*Load_Location_Catalog/s', $src, "$form: handler recarga catálogo");
+            // C4: Selected_Warehouse en branch location-aware NO usa warehouse aggregate.
+            $swPos = strpos($src, 'Selected_Warehouse(value) {');
+            $seg = substr($src, $swPos, 1400);
+            $this->assertStringContainsString('if (this.record_is_location_aware) {', $seg, "$form: Selected_Warehouse branch location-aware");
+            // dentro del branch location-aware: carga las ubicaciones del nuevo warehouse, no Get_Products_By_Warehouse.
+            $branchStart = strpos($seg, 'if (this.record_is_location_aware) {');
+            $elseStart = strpos($seg, '} else {', $branchStart);
+            $laBranch = substr($seg, $branchStart, $elseStart - $branchStart);
+            $this->assertStringNotContainsString('Get_Products_By_Warehouse', $laBranch, "$form: branch location-aware sin warehouse aggregate");
+            $this->assertStringContainsString('_inventory_locations/', $laBranch);
+            $this->assertStringContainsString('Load_Location_Catalog', $laBranch);
+            // la rama legacy SÍ puede seguir usando Get_Products_By_Warehouse.
+            $this->assertStringContainsString('this.Get_Products_By_Warehouse(value);', $seg);
         }
     }
 

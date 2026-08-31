@@ -191,9 +191,11 @@ class TenantSchemaHealthService
         if ($schema->hasTable('product_serials')) $this->requireColumns($schema, $missing, 'product_serials', ['inventory_location_id']);
         if ($schema->hasTable('product_serial_movements')) $this->requireColumns($schema, $missing, 'product_serial_movements', ['from_inventory_location_id', 'to_inventory_location_id']);
 
-        // #81 — Ajustes / Daños location-aware (NULL = registro legacy).
-        if ($schema->hasTable('adjustments')) $this->requireColumns($schema, $missing, 'adjustments', ['inventory_location_id']);
-        if ($schema->hasTable('damages')) $this->requireColumns($schema, $missing, 'damages', ['inventory_location_id']);
+        // #81 — Ajustes / Daños location-aware (NULL = legacy). El snapshot de
+        // efectos es obligatorio: sin él un registro location-aware no se puede
+        // revertir de forma segura (FAIL CLOSED en update/destroy).
+        if ($schema->hasTable('adjustments')) $this->requireColumns($schema, $missing, 'adjustments', ['inventory_location_id', 'inventory_effect_snapshot']);
+        if ($schema->hasTable('damages')) $this->requireColumns($schema, $missing, 'damages', ['inventory_location_id', 'inventory_effect_snapshot']);
 
         return $missing;
     }

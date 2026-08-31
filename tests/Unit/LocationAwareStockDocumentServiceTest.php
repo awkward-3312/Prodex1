@@ -290,7 +290,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
     {
         DB::transaction(function () use ($current, $newWh, $newLoc, $lines) {
             $svc = app(LocationAwareAdjustmentService::class);
-            $locked = Adjustment::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            $locked = Adjustment::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             $old = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
             $extra = array_values(array_unique(array_map(fn ($e) => (int) $e['product_id'], $old)));
             $validated = $svc->validateAndLock($newWh, $newLoc, $lines, $extra);
@@ -314,7 +314,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
     {
         DB::transaction(function () use ($current) {
             $svc = app(LocationAwareAdjustmentService::class);
-            $locked = Adjustment::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            $locked = Adjustment::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             $snap = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
             $svc->reverseSnapshot($snap, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'destroy');
             $locked->details()->delete();
@@ -352,7 +352,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
     {
         DB::transaction(function () use ($current) {
             $svc = app(LocationAwareDamageService::class);
-            $locked = Damage::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            $locked = Damage::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             $snap = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
             $svc->reverseSnapshot($snap, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'destroy');
             $locked->details()->delete();
@@ -615,7 +615,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
 
         DB::transaction(function () use ($dmg, $wh, $loc) {
             $svc = app(LocationAwareDamageService::class);
-            $locked = Damage::whereKey($dmg->id)->lockForUpdate()->firstOrFail();
+            $locked = Damage::whereKey($dmg->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             $old = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
             $validated = $svc->validateAndLock($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5]], [1]);
             $svc->reverseSnapshot($old, $locked->id, $wh, $loc, 'update');
@@ -883,6 +883,76 @@ class LocationAwareStockDocumentServiceTest extends TestCase
         $plan = app(LegacyInventoryReconciliationService::class)->planIncremental($wh);
         $this->assertSame(0, $plan['add_count']);
         $this->assertSame(0, $plan['manual_review_count']);
+    }
+
+    // ================= C2/C7/C10/C13 (iteración 3) ============================
+
+    /** C2/C13 — el catálogo devuelve aliases compatibles con el autocomplete. */
+    public function test_c2_catalog_rows_have_autocomplete_compat_aliases(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(7);
+        $this->product(8, 'is_single');
+        $this->variant(901, 8);
+        $this->stock($loc, 7, 100, 10);
+
+        $cat = app(LocationCatalogReadService::class)->forLocation($loc);
+        $simple = collect($cat['products'])->firstWhere('product_id', 7);
+        $this->assertSame(7, $simple['id']);                 // id === product_id
+        $this->assertSame(7, $simple['product_id']);
+        $this->assertSame($simple['code'], $simple['barcode']); // barcode === code
+        $this->assertArrayHasKey('name', $simple);
+        $this->assertArrayHasKey('product_type', $simple);
+        $this->assertSame(90.0, $simple['available_quantity']);
+
+        // Para variante: id sigue siendo el PRODUCT id; la variante va aparte.
+        $variantRow = collect($cat['products'])->first(fn ($r) => $r['product_id'] === 8 && $r['product_variant_id'] === 901);
+        $this->assertNotNull($variantRow);
+        $this->assertSame(8, $variantRow['id']);
+        $this->assertSame(901, $variantRow['product_variant_id']);
+    }
+
+    /** C7/C9 — double destroy: el 2º no mueve stock (documento ya eliminado). */
+    public function test_c7_double_destroy_does_not_reverse_twice(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->stock($loc, 1, 100);
+        $dmg = $this->createDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 20]]);
+        $this->assertSame(80.0, $this->loc($loc, 1));
+
+        $this->destroyDamage($dmg);
+        $this->assertSame(100.0, $this->loc($loc, 1));
+        $revCount = $this->movements(LocationAwareStockDocumentService::REF_DAMAGE_REVERSAL)->count();
+
+        // segundo destroy: whereNull('deleted_at')->lockForUpdate()->firstOrFail() => 404.
+        try {
+            $this->destroyDamage($dmg->fresh());
+            $this->fail('el 2º destroy debía rechazar (documento eliminado)');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        }
+        $this->assertSame(100.0, $this->loc($loc, 1));   // NO segundo +20
+        $this->assertSame($revCount, $this->movements(LocationAwareStockDocumentService::REF_DAMAGE_REVERSAL)->count());
+    }
+
+    /** C10 — update sobre documento ya eliminado => rechazo, 0 movimientos. */
+    public function test_c10_update_on_deleted_document_is_rejected(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->stock($loc, 1, 100);
+        $adj = $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5, 'type' => 'sub']]);
+        $this->destroyAdjustment($adj);
+        $this->assertSame(100.0, $this->loc($loc, 1));
+        $movCount = InventoryLocationMovement::count();
+
+        try {
+            $this->updateAdjustment($adj->fresh(), $wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 3, 'type' => 'sub']]);
+            $this->fail('update sobre documento eliminado debía rechazar');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        }
+        $this->assertSame(100.0, $this->loc($loc, 1));
+        $this->assertSame($movCount, InventoryLocationMovement::count());
     }
 
     /** update location-aware sin snapshot => FAIL CLOSED (BLOCKER 2.3). */

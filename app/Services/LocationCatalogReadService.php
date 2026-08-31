@@ -102,6 +102,7 @@ class LocationCatalogReadService
         $reserved = $stock['reserved'] ?? 0.0;
 
         return [
+            // Canónicos.
             'product_id' => $productId,
             'product_variant_id' => $variantId,
             'code' => $code,
@@ -114,6 +115,11 @@ class LocationCatalogReadService
             'reserved_quantity' => $reserved,
             'available_quantity' => round($physical - $reserved, 3),
             'stock_source' => 'inventory_location',
+            // (#81 · C2) aliases de compatibilidad con el autocomplete existente
+            // (product.barcode / result.id / Get_Product_Details(result.id)).
+            // id === product_id (también para variantes); barcode === code.
+            'id' => $productId,
+            'barcode' => $code,
         ];
     }
 }

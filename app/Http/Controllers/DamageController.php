@@ -138,14 +138,19 @@ class DamageController extends BaseController
         // New way: Check user's record_view field (user-level boolean)
         // Backward compatibility: If record_view is null, fall back to role permission check
         $view_records = $user->hasRecordView();
-        $current_damage = Damage::findOrFail($id);
+        $current_damage = Damage::whereNull('deleted_at')->findOrFail($id);
 
         if (! $view_records) {
             $this->authorizeForUser($request->user('api'), 'check_record', $current_damage);
         }
 
-        // (#81) Registro location-aware => reversa + re-aplicación location-native.
+        // (#81 · C6/C7) location-aware, respetando warehouse scope y sólo si no
+        // está eliminado (check_record ya se ejecutó arriba).
         if ($current_damage->inventory_location_id !== null) {
+            if ($denied = $this->assertCanModifyDocument($request, $current_damage)) {
+                return $denied;
+            }
+
             return $this->updateLocationAware($request, $current_damage);
         }
 
@@ -352,8 +357,12 @@ class DamageController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'delete', Damage::class);
 
-        $preload = Damage::findOrFail($id);
+        $preload = Damage::whereNull('deleted_at')->findOrFail($id);
         if ($preload->inventory_location_id !== null) {
+            if ($denied = $this->assertCanModifyDocument($request, $preload)) {
+                return $denied;
+            }
+
             return $this->destroyLocationAware($request, $preload);
         }
 
@@ -444,6 +453,35 @@ class DamageController extends BaseController
 
     // ================= #81 · Daños LOCATION-AWARE =====================
 
+    /** (#81 · C5) available (physical - reserved) de inventory_location_stocks. */
+    private function locationAwareAvailable(int $locationId, int $productId, ?int $variantId): float
+    {
+        $row = \DB::table('inventory_location_stocks')
+            ->where('inventory_location_id', $locationId)
+            ->where('product_id', $productId)
+            ->where('variant_key', (int) ($variantId ?: 0))
+            ->first();
+
+        return $row ? round((float) $row->quantity - (float) $row->reserved_quantity, 3) : 0.0;
+    }
+
+    // (#81 · C6) warehouse scope + check_record antes del branch location-aware.
+    private function assertCanModifyDocument(Request $request, Damage $doc)
+    {
+        $user = Auth::user();
+        if (! $user->is_all_warehouses) {
+            $ids = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
+            if (empty($doc->warehouse_id) || ! in_array((int) $doc->warehouse_id, $ids, true)) {
+                return response()->json(['success' => false, 'message' => 'You are not allowed to access this record (warehouse restriction).'], 403);
+            }
+        }
+        if (! $user->hasRecordView()) {
+            $this->authorizeForUser($request->user('api'), 'check_record', $doc);
+        }
+
+        return null;
+    }
+
     private function assertWarehouseAccess(int $warehouseId): void
     {
         $user = auth()->user();
@@ -493,8 +531,8 @@ class DamageController extends BaseController
         $this->authorizeLocationRead($request);
         $locationId = (int) $locationId;
 
-        $location = \App\Models\InventoryLocation::whereNull('deleted_at')->whereKey($locationId)->first();
-        abort_if(! $location, 404, 'La ubicación de inventario no existe.');
+        $location = \App\Models\InventoryLocation::whereNull('deleted_at')->where('is_active', 1)->whereKey($locationId)->first();
+        abort_if(! $location, 404, 'La ubicación de inventario no existe o está inactiva.');
         $this->assertWarehouseAccess((int) $location->warehouse_id);
 
         return response()->json(app(\App\Services\LocationCatalogReadService::class)->forLocation($locationId));
@@ -566,7 +604,7 @@ class DamageController extends BaseController
         $lines = $this->locationAwareLines($request);
 
         \DB::transaction(function () use ($request, $current, $newWarehouseId, $newLocationId, $lines, $svc) {
-            $locked = Damage::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            $locked = Damage::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             if ($locked->inventory_location_id === null) {
                 throw ValidationException::withMessages(['damage' => 'Registro legacy: usa la ruta histórica.']);
             }
@@ -610,7 +648,7 @@ class DamageController extends BaseController
         $svc = app(LocationAwareDamageService::class);
 
         \DB::transaction(function () use ($current, $svc) {
-            $locked = Damage::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            $locked = Damage::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             if ($locked->inventory_location_id === null) {
                 throw ValidationException::withMessages(['damage' => 'Registro legacy: usa la ruta histórica.']);
             }
@@ -672,6 +710,9 @@ class DamageController extends BaseController
 
         $damage['notes'] = $Damage_data->notes;
         $damage['date'] = $Damage_data->date;
+        // (#81 · C1) NULL => legacy; NOT NULL => location-aware.
+        $damage['inventory_location_id'] = $Damage_data->inventory_location_id !== null ? (int) $Damage_data->inventory_location_id : null;
+        $locationAware = $damage['inventory_location_id'] !== null;
 
         $batchesByDetail = app(BatchService::class)->batchesForDamageDetails($Damage_data['details']);
 
@@ -694,10 +735,12 @@ class DamageController extends BaseController
                 $data['product_variant_id'] = $detail->product_variant_id;
                 $data['code'] = $productsVariants->code;
                 $data['name'] = '['.$productsVariants->name.']'.$detail['product']['name'];
-                $data['current'] = $item_product ? $item_product->qte : 0;
+                $data['current'] = $locationAware
+                    ? $this->locationAwareAvailable((int) $damage['inventory_location_id'], (int) $detail->product_id, $detail->product_variant_id ? (int) $detail->product_variant_id : null)
+                    : ($item_product ? $item_product->qte : 0);
                 $data['type'] = 'sub';
                 $data['unit'] = $detail['product']['unit']->ShortName;
-                $data['del'] = $item_product ? 0 : 1;
+                $data['del'] = ($locationAware || $item_product) ? 0 : 1;
                 $data['product_type'] = $detail['product']['type'] ?? 'is_single';
             } else {
                 $item_product = product_warehouse::where('product_id', $detail->product_id)
@@ -713,10 +756,12 @@ class DamageController extends BaseController
                 $data['product_variant_id'] = null;
                 $data['code'] = $detail['product']['code'];
                 $data['name'] = $detail['product']['name'];
-                $data['current'] = $item_product ? $item_product->qte : 0;
+                $data['current'] = $locationAware
+                    ? $this->locationAwareAvailable((int) $damage['inventory_location_id'], (int) $detail->product_id, null)
+                    : ($item_product ? $item_product->qte : 0);
                 $data['type'] = 'sub';
                 $data['unit'] = $detail['product']['unit']->ShortName;
-                $data['del'] = $item_product ? 0 : 1;
+                $data['del'] = ($locationAware || $item_product) ? 0 : 1;
                 $data['product_type'] = $detail['product']['type'] ?? 'is_single';
             }
 

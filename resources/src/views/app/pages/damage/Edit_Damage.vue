@@ -41,6 +41,7 @@
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
                         :disabled="details.length > 0"
+                        @input="Selected_Inventory_Location"
                         v-model="damage.inventory_location_id"
                         :reduce="label => label.value"
                         :placeholder="$t('Choose_Inventory_Location')"
@@ -397,6 +398,12 @@ export default {
     Submit_Damage() { this.$refs.Edit_damage.validate().then(success => { if (!success) { this.makeToast("danger", this.$t("Please_fill_the_form_correctly"), this.$t("Failed")); } else { this.Update_Damage(); } }); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
     makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    // (#81 · C3) al cambiar de ubicación se recarga el catálogo POR UBICACIÓN.
+    Selected_Inventory_Location(value) {
+      this.search_input = '';
+      this.product_filter = [];
+      this.Load_Location_Catalog(value || this.damage.inventory_location_id);
+    },
     Load_Location_Catalog(locationId) {
       if (!locationId) { this.products = []; return; }
       axios.get("damages_location_catalog/" + locationId).then(response => {
@@ -581,7 +588,24 @@ export default {
     Selected_Warehouse(value) {
       this.search_input= '';
       this.product_filter = [];
-      this.Get_Products_By_Warehouse(value);
+      if (this.record_is_location_aware) {
+        // (#81 · C4) documento location-aware: nunca warehouse aggregate.
+        this.damage.inventory_location_id = "";
+        this.inventory_locations = [];
+        this.products = [];
+        if (value) {
+          axios.get("damages_inventory_locations/" + value).then(r => {
+            this.inventory_locations = (r.data && r.data.locations) || [];
+            const def = r.data && r.data.default_inventory_location_id;
+            if (def && this.details.length === 0) {
+              this.damage.inventory_location_id = def;
+              this.Load_Location_Catalog(def);
+            }
+          }).catch(() => { this.inventory_locations = []; });
+        }
+      } else {
+        this.Get_Products_By_Warehouse(value);
+      }
       if (Array.isArray(this.details)) {
         for (const d of this.details) {
           if (d && d.is_batch_tracked) {

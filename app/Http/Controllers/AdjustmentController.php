@@ -156,11 +156,16 @@ class AdjustmentController extends BaseController
         // New way: Check user's record_view field (user-level boolean)
         // Backward compatibility: If record_view is null, fall back to role permission check
         $view_records = $user->hasRecordView();
-        $current_adjustment = Adjustment::findOrFail($id);
+        $current_adjustment = Adjustment::whereNull('deleted_at')->findOrFail($id);
 
-        // (#81) Registro location-aware => reversa + re-aplicación location-native.
-        // Registro legacy (inventory_location_id NULL) => lógica histórica intacta.
+        // (#81 · C6/C7) Registro location-aware => reversa + re-aplicación
+        // location-native, PERO respetando la autorización histórica
+        // (warehouse scope + check_record) y sólo si no está eliminado.
         if ($current_adjustment->inventory_location_id !== null) {
+            if ($denied = $this->assertCanModifyDocument($request, $current_adjustment)) {
+                return $denied;
+            }
+
             return $this->updateLocationAware($request, $current_adjustment);
         }
 
@@ -536,8 +541,12 @@ class AdjustmentController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'delete', Adjustment::class);
 
-        $preload = Adjustment::findOrFail($id);
+        $preload = Adjustment::whereNull('deleted_at')->findOrFail($id);
         if ($preload->inventory_location_id !== null) {
+            if ($denied = $this->assertCanModifyDocument($request, $preload)) {
+                return $denied;
+            }
+
             return $this->destroyLocationAware($request, $preload);
         }
 
@@ -732,6 +741,37 @@ class AdjustmentController extends BaseController
     // sin inventory_location_id almacenado) sólo aplica a UPDATE/DESTROY de
     // registros históricos.
 
+    /** (#81 · C5) available (physical - reserved) de una fila inventory_location_stocks. */
+    private function locationAwareAvailable(int $locationId, int $productId, ?int $variantId): float
+    {
+        $row = \DB::table('inventory_location_stocks')
+            ->where('inventory_location_id', $locationId)
+            ->where('product_id', $productId)
+            ->where('variant_key', (int) ($variantId ?: 0))
+            ->first();
+
+        return $row ? round((float) $row->quantity - (float) $row->reserved_quantity, 3) : 0.0;
+    }
+
+    // (#81 · C6) Paridad de autorización histórica antes del branch location-aware:
+    // warehouse scope + check_record (record_view). Devuelve una Response 403 o
+    // lanza; null si todo OK.
+    private function assertCanModifyDocument(Request $request, Adjustment $doc)
+    {
+        $user = Auth::user();
+        if (! $user->is_all_warehouses) {
+            $ids = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
+            if (empty($doc->warehouse_id) || ! in_array((int) $doc->warehouse_id, $ids, true)) {
+                return response()->json(['success' => false, 'message' => 'You are not allowed to access this record (warehouse restriction).'], 403);
+            }
+        }
+        if (! $user->hasRecordView()) {
+            $this->authorizeForUser($request->user('api'), 'check_record', $doc);
+        }
+
+        return null;
+    }
+
     private function assertWarehouseAccess(int $warehouseId): void
     {
         $user = auth()->user();
@@ -788,8 +828,12 @@ class AdjustmentController extends BaseController
         $this->authorizeLocationRead($request);
         $locationId = (int) $locationId;
 
-        $location = \App\Models\InventoryLocation::whereNull('deleted_at')->whereKey($locationId)->first();
-        abort_if(! $location, 404, 'La ubicación de inventario no existe.');
+        // (#81 · C9) sólo catálogo de una ubicación ACTIVA y no eliminada.
+        $location = \App\Models\InventoryLocation::whereNull('deleted_at')
+            ->where('is_active', 1)
+            ->whereKey($locationId)
+            ->first();
+        abort_if(! $location, 404, 'La ubicación de inventario no existe o está inactiva.');
         $this->assertWarehouseAccess((int) $location->warehouse_id);
 
         return response()->json(app(\App\Services\LocationCatalogReadService::class)->forLocation($locationId));
@@ -865,7 +909,7 @@ class AdjustmentController extends BaseController
 
         \DB::transaction(function () use ($request, $current, $newWarehouseId, $newLocationId, $lines, $svc) {
             // (BLOCKER 5) el documento se relee y bloquea DENTRO de la transacción.
-            $locked = Adjustment::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            $locked = Adjustment::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             if ($locked->inventory_location_id === null) {
                 throw ValidationException::withMessages(['adjustment' => 'Registro legacy: usa la ruta histórica.']);
             }
@@ -914,7 +958,7 @@ class AdjustmentController extends BaseController
         $svc = app(LocationAwareAdjustmentService::class);
 
         \DB::transaction(function () use ($current, $svc) {
-            $locked = Adjustment::whereKey($current->id)->lockForUpdate()->firstOrFail();
+            $locked = Adjustment::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             if ($locked->inventory_location_id === null) {
                 throw ValidationException::withMessages(['adjustment' => 'Registro legacy: usa la ruta histórica.']);
             }
@@ -1060,6 +1104,11 @@ class AdjustmentController extends BaseController
 
         $adjustment['notes'] = $Adjustment_data->notes;
         $adjustment['date'] = $Adjustment_data->date;
+        // (#81 · C1) NULL => histórico legacy; NOT NULL => location-aware.
+        $adjustment['inventory_location_id'] = $Adjustment_data->inventory_location_id !== null
+            ? (int) $Adjustment_data->inventory_location_id
+            : null;
+        $locationAware = $adjustment['inventory_location_id'] !== null;
 
         $batchesByDetail = app(BatchService::class)->batchesForAdjustmentDetails($Adjustment_data['details']);
 
@@ -1083,10 +1132,14 @@ class AdjustmentController extends BaseController
                 $data['product_variant_id'] = $detail->product_variant_id;
                 $data['code'] = $productsVariants->code;
                 $data['name'] = '['.$productsVariants->name.']'.$detail['product']['name'];
-                $data['current'] = $item_product ? $item_product->qte : 0;
+                // (#81 · C5) location-aware => current = available de la ubicación
+                // del documento; legacy => product_warehouse.qte.
+                $data['current'] = $locationAware
+                    ? $this->locationAwareAvailable((int) $adjustment['inventory_location_id'], (int) $detail->product_id, $detail->product_variant_id ? (int) $detail->product_variant_id : null)
+                    : ($item_product ? $item_product->qte : 0);
                 $data['type'] = $detail->type;
                 $data['unit'] = $detail['product']['unit']->ShortName;
-                $item_product ? $data['del'] = 0 : $data['del'] = 1;
+                $data['del'] = ($locationAware || $item_product) ? 0 : 1;
 
             } else {
                 $item_product = product_warehouse::where('product_id', $detail->product_id)
@@ -1102,10 +1155,12 @@ class AdjustmentController extends BaseController
                 $data['product_variant_id'] = null;
                 $data['code'] = $detail['product']['code'];
                 $data['name'] = $detail['product']['name'];
-                $data['current'] = $item_product ? $item_product->qte : 0;
+                $data['current'] = $locationAware
+                    ? $this->locationAwareAvailable((int) $adjustment['inventory_location_id'], (int) $detail->product_id, null)
+                    : ($item_product ? $item_product->qte : 0);
                 $data['type'] = $detail->type;
                 $data['unit'] = $detail['product']['unit']->ShortName;
-                $item_product ? $data['del'] = 0 : $data['del'] = 1;
+                $data['del'] = ($locationAware || $item_product) ? 0 : 1;
             }
 
             $data['is_batch_tracked'] = (bool) ($detail['product']['is_batch_tracked'] ?? false);
