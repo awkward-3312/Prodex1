@@ -162,6 +162,23 @@ class InventoryCompatibilityService
             ->count('inventory_location_id');
     }
 
+    /** ¿El producto lleva control de lote o serie/IMEI? */
+    private function productIsArtifactTracked(int $productId): bool
+    {
+        if (! Schema::hasTable('products')) return false;
+
+        $hasBatch = Schema::hasColumn('products', 'is_batch_tracked');
+        $hasImei = Schema::hasColumn('products', 'is_imei');
+        if (! $hasBatch && ! $hasImei) return false;
+
+        $row = DB::table('products')->where('id', $productId)->whereNull('deleted_at')
+            ->first(array_merge($hasBatch ? ['is_batch_tracked'] : [], $hasImei ? ['is_imei'] : []));
+        if (! $row) return false;
+
+        return ($hasBatch && (int) ($row->is_batch_tracked ?? 0) === 1)
+            || ($hasImei && (int) ($row->is_imei ?? 0) === 1);
+    }
+
     /**
      * El destino registrado en el state debe SEGUIR siendo apto en runtime:
      * pertenece al almacén, activo, no borrado, tipo 'storage', no cuarentena, y
@@ -233,6 +250,19 @@ class InventoryCompatibilityService
                 // runtime (por si alguien cambió la configuración tras activar
                 // dual_write). Si no, rehúsa — markMismatch lo registra.
                 $this->assertTargetStillEligible($warehouseId, (int) $lockedState->inventory_location_id);
+
+                // ARTIFACT SAFETY runtime: adjustTo() no mantiene
+                // product_batch_location_stocks ni product_serials. Si ESTE
+                // producto es batch-tracked / IMEI, se rehúsa (markMismatch, 0
+                // adjustTo) aunque el almacén haya quedado en dual_write por un
+                // estado antiguo.
+                if ($this->productIsArtifactTracked($productId)) {
+                    throw ValidationException::withMessages([
+                        'inventory_transition' => 'Dual-write detenido: el producto es batch-tracked o IMEI; el mirror single-target sólo ajusta '
+                            .'inventory_location_stocks.quantity y NO mantiene product_batch_location_stocks / product_serials. '
+                            .'Requiere un mirror artifact-aware (pendiente).',
+                    ]);
+                }
 
                 $target = $this->legacyQuantity($warehouseId, $productId, $variantId);
                 if ($target < 0) {
@@ -413,6 +443,16 @@ class InventoryCompatibilityService
                 throw ValidationException::withMessages([
                     'inventory_transition' => 'dual_write requiere paridad actual legacy/location; existen movimientos location-native posteriores al baseline. '
                         .'Claves sin paridad: '.count($audit['snapshot_unequal_keys'] ?? []).'.',
+                ]);
+            }
+            // 3) ARTIFACT SAFETY: el mirror single-target no mantiene
+            //    product_batch_location_stocks ni product_serials. Se rechaza si
+            //    hay productos batch-tracked / IMEI con inventario real.
+            if (($audit['has_tracked_inventory'] ?? false)) {
+                throw ValidationException::withMessages([
+                    'inventory_transition' => 'dual_write no está soportado mientras el almacén tenga inventario de productos batch-tracked o IMEI ('
+                        .count($audit['tracked_inventory_product_ids'] ?? []).'). El mirror single-target no mantiene lotes/seriales. '
+                        .'Requiere un mirror artifact-aware (PR posterior).',
                 ]);
             }
         }

@@ -269,4 +269,39 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         // El movimiento del mirror siempre se marca legacy_shadow_sync.
         $this->assertStringContainsString("'reference_type' => 'legacy_shadow_sync',", $compat);
     }
+
+    public function test_dual_write_rejects_batch_tracked_or_imei_inventory(): void
+    {
+        // El mirror single-target usa InventoryService::adjustTo(), que ajusta
+        // inventory_location_stocks.quantity pero NO mantiene
+        // product_batch_location_stocks ni product_serials. Hasta que exista un
+        // mirror artifact-aware, dual_write se rechaza para esos almacenes.
+        $audit = $this->read('app/Services/LegacyInventoryReconciliationService.php');
+        $this->assertStringContainsString("'has_tracked_inventory' => \$hasTrackedInventory", $audit);
+        $this->assertStringContainsString("'dual_write_artifact_safe' => ! \$hasTrackedInventory", $audit);
+        $this->assertStringContainsString("'tracked_inventory_product_ids' => array_keys(\$trackedIdsWithInventory)", $audit);
+        // dual_write_compatible incorpora la condición.
+        $this->assertStringContainsString('&& $snapshotEqual && ! $hasTrackedInventory', $audit);
+        // "Inventario relevante" = legacy o location > EPS (no bloquea por un
+        // producto tracked sin existencia real).
+        $this->assertStringContainsString("(float) \$r['legacy_now'] > 0.0005 || (float) \$r['current_location'] > 0.0005", $audit);
+        $this->assertStringContainsString('private function trackedProductIds(array $productIds): array', $audit);
+        $this->assertStringContainsString("if (\$hasBatch) \$query->orWhere('is_batch_tracked', 1);", $audit);
+        $this->assertStringContainsString("if (\$hasImei) \$query->orWhere('is_imei', 1);", $audit);
+
+        $compat = $this->read('app/Services/InventoryCompatibilityService.php');
+        // enableMode: MODE_DUAL_WRITE rechaza has_tracked_inventory.
+        $this->assertStringContainsString("if ((\$audit['has_tracked_inventory'] ?? false)) {", $compat);
+        $this->assertStringContainsString('dual_write no está soportado mientras el almacén tenga inventario de productos batch-tracked o IMEI', $compat);
+        // Guard runtime en mirrorLegacySnapshot: si ESTE producto es tracked,
+        // throw + markMismatch, 0 adjustTo.
+        $this->assertStringContainsString('if ($this->productIsArtifactTracked($productId)) {', $compat);
+        $this->assertStringContainsString('Dual-write detenido: el producto es batch-tracked o IMEI;', $compat);
+        $this->assertStringContainsString('private function productIsArtifactTracked(int $productId): bool', $compat);
+        // El guard corre ANTES de calcular el target / adjustTo.
+        $this->assertMatchesRegularExpression(
+            '/productIsArtifactTracked\(\$productId\)\).*\$target = \$this->legacyQuantity\(/s',
+            $compat
+        );
+    }
 }

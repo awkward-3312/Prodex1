@@ -76,6 +76,26 @@ class LegacyInventoryReconciliationService
         }
         $snapshotEqual = empty($snapshotUnequalKeys);
 
+        // ARTIFACT SAFETY — el mirror dual_write usa InventoryService::adjustTo(),
+        // que ajusta inventory_location_stocks.quantity pero NO mantiene
+        // product_batch_location_stocks ni product_serials. Un producto
+        // batch-tracked / IMEI con inventario REAL (legacy o location > EPS)
+        // terminaría con quantity != Σ lotes/seriales. Hasta que exista un mirror
+        // artifact-aware, dual_write se rechaza para esos almacenes.
+        $trackedIdsWithInventory = [];
+        $trackedProductIds = $this->trackedProductIds(array_map(
+            fn ($r) => (int) $r['product_id'],
+            $provenance['keys']
+        ));
+        foreach ($provenance['keys'] as $r) {
+            $pid = (int) $r['product_id'];
+            if (! in_array($pid, $trackedProductIds, true)) continue;
+            if ((float) $r['legacy_now'] > 0.0005 || (float) $r['current_location'] > 0.0005) {
+                $trackedIdsWithInventory[$pid] = true;
+            }
+        }
+        $hasTrackedInventory = ! empty($trackedIdsWithInventory);
+
         $locationTotal = $this->decimal(array_sum(array_column($warehouseLocations, 'quantity')));
         $targetTotal = $target !== null
             ? $this->decimal((float) InventoryLocationStock::where('inventory_location_id', $target->id)->sum('quantity'))
@@ -122,8 +142,13 @@ class LegacyInventoryReconciliationService
             // activa, no cuarentena, del almacén). Distinto de is_reconciled.
             'has_target_location' => $target !== null,
             'transition_ready' => $isReconciled && $target !== null,
+            // Productos batch-tracked / IMEI con inventario real (legacy o
+            // location > EPS). El mirror single-target NO mantiene lotes/seriales.
+            'has_tracked_inventory' => $hasTrackedInventory,
+            'tracked_inventory_product_ids' => array_keys($trackedIdsWithInventory),
+            'dual_write_artifact_safe' => ! $hasTrackedInventory,
             // dual_write sólo es seguro con TODAS estas condiciones.
-            'dual_write_compatible' => $isReconciled && $target !== null && $targetHoldsAllStock && $snapshotEqual,
+            'dual_write_compatible' => $isReconciled && $target !== null && $targetHoldsAllStock && $snapshotEqual && ! $hasTrackedInventory,
             'main_location_has_stock' => $mainHasStock,
             'warehouse_has_location_stock' => $warehouseHasLocationStock,
             // Cuánto stock location-native vive FUERA de la ubicación destino.
@@ -452,6 +477,28 @@ class LegacyInventoryReconciliationService
             'is_batch_tracked' => $hasBatch ? (bool) $row->is_batch_tracked : false,
             'is_imei' => $hasImei ? (bool) $row->is_imei : false,
         ])->all();
+    }
+
+    /** IDs de $productIds que son batch-tracked o IMEI. */
+    private function trackedProductIds(array $productIds): array
+    {
+        if (! Schema::hasTable('products')) return [];
+
+        $hasBatch = Schema::hasColumn('products', 'is_batch_tracked');
+        $hasImei = Schema::hasColumn('products', 'is_imei');
+        if (! $hasBatch && ! $hasImei) return [];
+
+        $productIds = array_values(array_unique(array_map('intval', $productIds)));
+        if (! $productIds) return [];
+
+        return DB::table('products')
+            ->whereIn('id', $productIds)
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($hasBatch, $hasImei) {
+                if ($hasBatch) $query->orWhere('is_batch_tracked', 1);
+                if ($hasImei) $query->orWhere('is_imei', 1);
+            })
+            ->pluck('id')->map(fn ($id) => (int) $id)->all();
     }
 
     private function locationMap(int $locationId): array

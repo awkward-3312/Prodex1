@@ -102,6 +102,25 @@ class InventoryCompatibilityServiceTest extends TestCase
             $table->timestamps();
             $table->softDeletes();
         });
+
+        Schema::create('products', function ($table) {
+            $table->increments('id');
+            $table->string('name')->nullable();
+            $table->string('type')->default('is_single');
+            $table->boolean('is_batch_tracked')->default(false);
+            $table->integer('is_imei')->default(0);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+    }
+
+    private function product(int $id, array $overrides = []): void
+    {
+        DB::table('products')->insert(array_merge([
+            'id' => $id, 'name' => 'P'.$id, 'type' => 'is_single',
+            'is_batch_tracked' => false, 'is_imei' => 0,
+            'created_at' => now(), 'updated_at' => now(),
+        ], $overrides));
     }
 
     public function test_legacy_only_reads_product_warehouse_without_requiring_shadow_stock(): void
@@ -629,6 +648,114 @@ class InventoryCompatibilityServiceTest extends TestCase
 
         $this->legacyWriteAndMirror($wh->id, 10, 115); // debe poder mirrorearse
         $this->assertSame(115.0, $this->mainQty($main));
+    }
+
+    // ---- H1-H5: dual_write NO soportado para batch-tracked / IMEI -----------
+
+    /**
+     * Baseline armado a mano (backfillWarehouse rechaza productos tracked):
+     * legacy = location = $qty, con movimiento de backfill y transition state.
+     */
+    private function trackedWarehouse(int $productId, float $qty, array $flags): array
+    {
+        $wh = $this->warehouse();
+        $this->product($productId, $flags);
+        $this->legacy($wh->id, $productId, $qty);
+        $main = $this->addLocation($wh->id, 'MAIN');
+        DB::table('warehouses')->where('id', $wh->id)->update(['default_inventory_location_id' => $main]);
+        $this->addLocStock($main, $productId, $qty);
+        DB::table('inventory_transition_states')->insert([
+            'warehouse_id' => $wh->id, 'inventory_location_id' => $main,
+            'mode' => 'legacy_only', 'status' => 'pending', 'mismatch_count' => 0,
+            'last_reconciled_at' => '2026-08-22 00:00:00', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->movement('increase', $productId, $qty, 'legacy_product_warehouse_backfill', null, $main, '2026-08-21 23:00:00');
+        return [$wh, $main];
+    }
+
+    /** H1: batch-tracked, legacy100/location100, snapshot_equal, single-target => enableDualWrite RECHAZADO. */
+    public function test_H1_dual_write_rejected_for_batch_tracked(): void
+    {
+        [$wh] = $this->trackedWarehouse(10, 100, ['is_batch_tracked' => true]);
+
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($wh->id);
+        $this->assertTrue($audit['provenance_reconciled']);
+        $this->assertTrue($audit['snapshot_equal']);
+        $this->assertTrue($audit['target_holds_all_stock']);
+        $this->assertTrue($audit['has_tracked_inventory']);
+        $this->assertFalse($audit['dual_write_artifact_safe']);
+        $this->assertFalse($audit['dual_write_compatible']);
+
+        try {
+            app(InventoryCompatibilityService::class)->enableDualWrite($wh->id);
+            $this->fail('enableDualWrite debía rechazar por inventario batch-tracked');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('batch-tracked o IMEI', $e->getMessage());
+        }
+    }
+
+    /** H2: IMEI/serial, legacy1/location1 => enableDualWrite RECHAZADO. */
+    public function test_H2_dual_write_rejected_for_imei(): void
+    {
+        [$wh] = $this->trackedWarehouse(10, 1, ['is_imei' => 1]);
+        $this->expectException(ValidationException::class);
+        app(InventoryCompatibilityService::class)->enableDualWrite($wh->id);
+    }
+
+    /** H3: dual_write ya activo por estado antiguo + producto batch-tracked => mirror rehúsa, 0 cambios. */
+    public function test_H3_mirror_rejects_tracked_product_and_makes_no_change(): void
+    {
+        [$wh, $main] = $this->trackedWarehouse(10, 100, ['is_batch_tracked' => true]);
+        // Forzar dual_write "por estado antiguo" (saltándose enableMode).
+        DB::table('inventory_transition_states')->where('warehouse_id', $wh->id)->update([
+            'mode' => 'dual_write', 'status' => 'healthy', 'inventory_location_id' => $main,
+        ]);
+
+        $movesBefore = DB::table('inventory_location_movements')->count();
+
+        try {
+            $this->legacyWriteAndMirror($wh->id, 10, 110);
+            $this->fail('mirrorLegacySnapshot debía rehusar un producto batch-tracked');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('batch-tracked o IMEI', $e->getMessage());
+        }
+
+        $this->assertSame(100.0, $this->mainQty($main));                 // sin cambio
+        $this->assertSame($movesBefore, DB::table('inventory_location_movements')->count()); // 0 movimiento nuevo
+        $this->assertSame('mismatch', app(InventoryCompatibilityService::class)->state($wh->id)->status);
+    }
+
+    /** H4: producto simple no tracked => dual_write sigue permitido (F3 revisitado). */
+    public function test_H4_simple_product_dual_write_still_works(): void
+    {
+        $wh = $this->warehouse();
+        $this->product(10); // simple, sin flags
+        $this->legacy($wh->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($wh->id);
+
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($wh->id);
+        $this->assertFalse($audit['has_tracked_inventory']);
+        $this->assertTrue($audit['dual_write_compatible']);
+
+        $state = app(InventoryCompatibilityService::class)->enableDualWrite($wh->id);
+        $this->assertSame(InventoryTransitionState::MODE_DUAL_WRITE, $state->mode);
+    }
+
+    /** H5: producto marcado tracked pero SIN existencia legacy/location => NO bloquea el almacén. */
+    public function test_H5_tracked_product_without_inventory_does_not_block(): void
+    {
+        $wh = $this->warehouse();
+        $this->product(10);                                   // simple con stock
+        $this->product(11, ['is_batch_tracked' => true]);     // tracked SIN existencia
+        $this->legacy($wh->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($wh->id);
+
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($wh->id);
+        $this->assertFalse($audit['has_tracked_inventory']); // 11 no tiene legacy ni location
+        $this->assertTrue($audit['dual_write_compatible']);
+
+        $state = app(InventoryCompatibilityService::class)->enableDualWrite($wh->id);
+        $this->assertSame(InventoryTransitionState::MODE_DUAL_WRITE, $state->mode);
     }
 
     private function warehouse(): Warehouse
