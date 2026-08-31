@@ -384,11 +384,13 @@ export default {
     }
   },
   created() {
+    if (!this.canReceiveOrView) return;
     if (this.transferId) this.loadOne();
     else this.loadInbox();
   },
   watch: {
     "$route.params.id"() {
+      if (!this.canReceiveOrView) return;
       if (this.transferId) this.loadOne();
       else this.loadInbox();
     }

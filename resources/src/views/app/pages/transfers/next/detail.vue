@@ -302,7 +302,7 @@ export default {
     }
   },
   created() {
-    this.fetch();
+    if (this.can("transfer_view")) this.fetch();
   },
   watch: {
     "$route.params.id"() {
@@ -364,7 +364,7 @@ export default {
       this.loadError = null;
       NProgress.start(); NProgress.set(0.1);
       window.axios
-        .get(`transfers/${id}`)
+        .get(`transfers/${id}`, { meta: { skipErrorRedirect: true } })
         .then(response => {
           const data = response.data || {};
           this.transfer = data.transfer || {};
@@ -440,7 +440,7 @@ export default {
       if (!id) return;
       NProgress.start(); NProgress.set(0.1);
       window.axios
-        .get(`transfer_pdf/${id}`, { responseType: "blob", headers: { "Content-Type": "application/json" } })
+        .get(`transfer_pdf/${id}`, { responseType: "blob", headers: { "Content-Type": "application/json" }, meta: { skipErrorRedirect: true } })
         .then(response => {
           const url = window.URL.createObjectURL(new Blob([response.data]));
           const link = document.createElement("a");

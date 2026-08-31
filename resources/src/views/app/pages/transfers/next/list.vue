@@ -275,7 +275,10 @@ export default {
     }
   },
   created() {
-    this.fetch(true);
+    // Sin permiso de lectura: mostrar el estado "sin permiso" del propio
+    // componente; no disparar la petición (evita que un 403 lleve la SPA a
+    // not_authorize).
+    if (this.can("transfer_view")) this.fetch(true);
   },
   methods: {
     can(p) {
@@ -349,7 +352,7 @@ export default {
         "&search=" + encodeURIComponent(this.search || "") +
         "&limit=" + this.limit;
       window.axios
-        .get(qs)
+        .get(qs, { meta: { skipErrorRedirect: true } })
         .then(response => {
           this.transfers = response.data.transfers || [];
           this.warehouses = response.data.warehouses || this.warehouses;
@@ -436,7 +439,7 @@ export default {
     downloadRowPdf(row) {
       NProgress.start(); NProgress.set(0.1);
       window.axios
-        .get("transfer_pdf/" + row.id, { responseType: "blob", headers: { "Content-Type": "application/json" } })
+        .get("transfer_pdf/" + row.id, { responseType: "blob", headers: { "Content-Type": "application/json" }, meta: { skipErrorRedirect: true } })
         .then(response => {
           const url = window.URL.createObjectURL(new Blob([response.data]));
           const link = document.createElement("a");
