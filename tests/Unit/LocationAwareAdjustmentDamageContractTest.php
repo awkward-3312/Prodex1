@@ -413,4 +413,175 @@ class LocationAwareAdjustmentDamageContractTest extends TestCase
             $this->assertStringContainsString('available_quantity', $src, "$file: CurrentStock = available de la ubicación");
         }
     }
+
+    // ===== HOTFIX px-next (PX1..PX12) ===================================
+    //
+    // El bug de producción: los formularios activos son los px-next
+    // (inventory/next/{adjustments,damages}/form.vue), NO los Vue legacy que
+    // cubrían A25/C3/C4. Estos tests fijan el contrato location-aware sobre
+    // los px-next reales.
+
+    private const PXA = 'resources/src/views/app/inventory/next/adjustments/form.vue';
+    private const PXD = 'resources/src/views/app/inventory/next/damages/form.vue';
+
+    public function test_px1_router_store_adjustment_points_to_px_next_form(): void
+    {
+        $router = $this->read('resources/src/router.js');
+        $pos = strpos($router, 'name: "store_adjustment"');
+        $this->assertNotFalse($pos, 'router: falta la ruta store_adjustment');
+        $seg = substr($router, $pos, 400);
+        $this->assertStringContainsString('inventory/next/adjustments/form.vue', $seg, 'store_adjustment debe cargar el form px-next');
+        $this->assertStringContainsString('props: { mode: "create" }', $seg);
+    }
+
+    public function test_px2_router_store_damage_points_to_px_next_form(): void
+    {
+        $router = $this->read('resources/src/router.js');
+        $pos = strpos($router, 'name: "store_damage"');
+        $this->assertNotFalse($pos, 'router: falta la ruta store_damage');
+        $seg = substr($router, $pos, 400);
+        $this->assertStringContainsString('inventory/next/damages/form.vue', $seg, 'store_damage debe cargar el form px-next');
+        $this->assertStringContainsString('props: { mode: "create" }', $seg);
+    }
+
+    public function test_px3_adjustment_px_next_has_inventory_location_id_in_state_and_payload(): void
+    {
+        $src = $this->read(self::PXA);
+        // estado
+        $this->assertStringContainsString('inventory_locations: []', $src, 'px-next adj: data.inventory_locations');
+        $this->assertStringContainsString('record_is_location_aware: this.mode !== "edit"', $src, 'px-next adj: create siempre location-aware');
+        $this->assertMatchesRegularExpression('/adjustment:\s*\{[^}]*inventory_location_id:\s*""/s', $src, 'px-next adj: adjustment.inventory_location_id en el estado');
+        // payload del submit
+        $this->assertStringContainsString('inventory_location_id: this.record_is_location_aware ? this.adjustment.inventory_location_id : null', $src, 'px-next adj: payload envía inventory_location_id');
+        // el template lo pide como obligatorio y bloqueado mientras haya líneas.
+        $this->assertStringContainsString('name="Ubicación de inventario"', $src);
+        $this->assertStringContainsString(':disabled="details.length > 0 || !adjustment.warehouse_id"', $src);
+        $this->assertStringContainsString('v-model="adjustment.inventory_location_id"', $src);
+    }
+
+    public function test_px4_damage_px_next_has_inventory_location_id_in_state_and_payload(): void
+    {
+        $src = $this->read(self::PXD);
+        $this->assertStringContainsString('inventory_locations: []', $src, 'px-next dmg: data.inventory_locations');
+        $this->assertStringContainsString('record_is_location_aware: this.mode !== "edit"', $src, 'px-next dmg: create siempre location-aware');
+        $this->assertMatchesRegularExpression('/damage:\s*\{[^}]*inventory_location_id:\s*""/s', $src, 'px-next dmg: damage.inventory_location_id en el estado');
+        $this->assertStringContainsString('inventory_location_id: this.record_is_location_aware ? this.damage.inventory_location_id : null', $src, 'px-next dmg: payload envía inventory_location_id');
+        $this->assertStringContainsString('name="Ubicación de inventario"', $src);
+        $this->assertStringContainsString(':disabled="details.length > 0 || !damage.warehouse_id"', $src);
+        $this->assertStringContainsString('v-model="damage.inventory_location_id"', $src);
+    }
+
+    public function test_px5_adjustment_px_next_uses_location_endpoints(): void
+    {
+        $src = $this->read(self::PXA);
+        $this->assertStringContainsString('"adjustments_inventory_locations/" + id', $src);
+        $this->assertStringContainsString('"adjustments_location_catalog/" + locationId', $src);
+        // el select recarga el catálogo al cambiar de ubicación.
+        $this->assertStringContainsString('@input="onInventoryLocationChange"', $src);
+        $this->assertMatchesRegularExpression('/onInventoryLocationChange\s*\([^)]*\)\s*\{[^}]*loadLocationCatalog/s', $src);
+    }
+
+    public function test_px6_damage_px_next_uses_location_endpoints(): void
+    {
+        $src = $this->read(self::PXD);
+        $this->assertStringContainsString('"damages_inventory_locations/" + id', $src);
+        $this->assertStringContainsString('"damages_location_catalog/" + locationId', $src);
+        $this->assertStringContainsString('@input="onInventoryLocationChange"', $src);
+        $this->assertMatchesRegularExpression('/onInventoryLocationChange\s*\([^)]*\)\s*\{[^}]*loadLocationCatalog/s', $src);
+    }
+
+    public function test_px7_create_location_aware_does_not_call_warehouse_aggregate(): void
+    {
+        foreach ([self::PXA, self::PXD] as $form) {
+            $src = $this->read($form);
+            $pos = strpos($src, 'onWarehouseChange(value) {');
+            $this->assertNotFalse($pos, "$form: onWarehouseChange");
+            $seg = substr($src, $pos, 1100);
+            $branchStart = strpos($seg, 'if (this.record_is_location_aware) {');
+            $this->assertNotFalse($branchStart, "$form: branch location-aware en onWarehouseChange");
+            $elseStart = strpos($seg, '} else {', $branchStart);
+            $this->assertNotFalse($elseStart, "$form: else legacy en onWarehouseChange");
+            $laBranch = substr($seg, $branchStart, $elseStart - $branchStart);
+            // en modo location-aware NO se consulta el agregado de almacén.
+            $this->assertStringNotContainsString('getProductsByWarehouse', $laBranch, "$form: branch location-aware sin warehouse aggregate");
+            $this->assertStringNotContainsString('get_Products_by_warehouse', $laBranch, "$form: branch location-aware sin endpoint de almacén");
+            $this->assertStringContainsString('this.loadInventoryLocations(value);', $laBranch, "$form: branch location-aware carga ubicaciones");
+            // la rama legacy SÍ conserva el catálogo por almacén.
+            $this->assertStringContainsString('this.getProductsByWarehouse(value);', $seg, "$form: rama legacy conserva warehouse aggregate");
+        }
+    }
+
+    public function test_px8_current_stock_is_mapped_from_available_quantity(): void
+    {
+        foreach ([self::PXA, self::PXD] as $form) {
+            $src = $this->read($form);
+            $pos = strpos($src, 'loadLocationCatalog(locationId) {');
+            $this->assertNotFalse($pos, "$form: loadLocationCatalog");
+            $body = substr($src, $pos, 900);
+            $this->assertStringContainsString('qte: p.available_quantity', $body, "$form: qte = available_quantity");
+            $this->assertStringContainsString('current: p.available_quantity', $body, "$form: current = available_quantity");
+            $this->assertStringContainsString('CurrentStock: p.available_quantity', $body, "$form: CurrentStock = available_quantity");
+        }
+    }
+
+    public function test_px9_edit_location_aware_uses_stored_inventory_location_id(): void
+    {
+        foreach ([self::PXA => 'adjustment', self::PXD => 'damage'] as $form => $var) {
+            $src = $this->read($form);
+            $pos = strpos($src, 'loadElements() {');
+            $this->assertNotFalse($pos, "$form: loadElements");
+            $body = substr($src, $pos, 2600);
+            $this->assertStringContainsString("this.record_is_location_aware = !!(this.$var && this.$var.inventory_location_id);", $body, "$form: discriminador desde el valor almacenado");
+            $this->assertStringContainsString("this.loadLocationCatalog(this.$var.inventory_location_id);", $body, "$form: catálogo con la ubicación almacenada");
+            $this->assertStringContainsString("this.loadInventoryLocations(this.$var.warehouse_id, false);", $body, "$form: lista de ubicaciones sin re-preseleccionar");
+        }
+    }
+
+    public function test_px10_edit_legacy_keeps_warehouse_catalog(): void
+    {
+        foreach ([self::PXA => 'adjustment', self::PXD => 'damage'] as $form => $var) {
+            $src = $this->read($form);
+            $pos = strpos($src, 'loadElements() {');
+            $body = substr($src, $pos, 2600);
+            $laPos = strpos($body, 'if (this.record_is_location_aware) {');
+            $elsePos = strpos($body, '} else {', $laPos);
+            $this->assertNotFalse($elsePos, "$form: rama legacy en loadElements");
+            $legacyBranch = substr($body, $elsePos, 220);
+            $this->assertStringContainsString("this.getProductsByWarehouse(this.$var.warehouse_id);", $legacyBranch, "$form: edit legacy conserva catálogo por almacén");
+        }
+    }
+
+    public function test_px11_tracked_product_not_added_in_location_aware_mode(): void
+    {
+        foreach ([self::PXA => 'ajustes', self::PXD => 'daños'] as $form => $word) {
+            $src = $this->read($form);
+            $pos = strpos($src, 'pickProduct(result) {');
+            $this->assertNotFalse($pos, "$form: pickProduct");
+            $body = substr($src, $pos, 1400);
+            $this->assertStringContainsString('if (this.record_is_location_aware && (result.is_batch_tracked === true || result.is_imei === true)) {', $body, "$form: guard tracked en modo location-aware");
+            $this->assertStringContainsString("Los $word por ubicación de productos con lote o serie/IMEI todavía requieren el flujo especializado.", $body, "$form: mensaje claro");
+            // guard antes de construir la línea.
+            $guardPos = strpos($body, 'result.is_batch_tracked === true');
+            $linePos = strpos($body, 'const line = {');
+            $this->assertNotFalse($linePos, "$form: construcción de línea");
+            $this->assertLessThan($linePos, $guardPos, "$form: el guard precede a la creación de la línea");
+        }
+    }
+
+    public function test_px12_catch_surfaces_real_validation_message(): void
+    {
+        foreach ([self::PXA, self::PXD] as $form) {
+            $src = $this->read($form);
+            // el catch ya no muestra sólo el genérico.
+            $this->assertStringContainsString('this.makeToast("danger", this.extractSubmitError(error), "Error");', $src, "$form: catch usa extractSubmitError");
+            $pos = strpos($src, 'extractSubmitError(error) {');
+            $this->assertNotFalse($pos, "$form: helper extractSubmitError");
+            $body = substr($src, $pos, 1300);
+            $this->assertStringContainsString('data.errors', $body, "$form: prioriza errores de validación");
+            $this->assertStringContainsString('data.message', $body, "$form: usa message de Laravel");
+            // el genérico queda SÓLO como fallback final.
+            $this->assertStringContainsString('return "Datos inválidos.";', $body, "$form: fallback final");
+            $this->assertMatchesRegularExpression('/data\.message[^;]*;\s*[^}]*\}\s*return "Datos inválidos\.";/s', $body, "$form: 'Datos inválidos.' sólo tras intentar el mensaje real");
+        }
+    }
 }

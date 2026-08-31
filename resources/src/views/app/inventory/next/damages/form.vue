@@ -55,6 +55,29 @@
                       :options="warehouses.map(w => ({ label: w.name, value: w.id }))"
                     />
                   </v-field>
+                  <!-- #81 · px-next hotfix — en «crear» TODO daño es location-aware:
+                       la ubicación es obligatoria y fija el catálogo / el stock. -->
+                  <v-field
+                    v-if="record_is_location_aware"
+                    name="Ubicación de inventario"
+                    label="Ubicación de inventario"
+                    required
+                    :rules="{ required: true }"
+                    v-slot="{ invalid, id }"
+                  >
+                    <vs-px
+                      :input-id="id"
+                      :invalid="invalid"
+                      :disabled="details.length > 0 || !damage.warehouse_id"
+                      v-model="damage.inventory_location_id"
+                      @input="onInventoryLocationChange"
+                      :reduce="o => o.value"
+                      placeholder="Elegir ubicación"
+                      :options="inventory_locations.map(l => ({ label: l.name + ' · ' + locationTypeLabel(l.type), value: l.id }))"
+                    />
+                  </v-field>
+                </div>
+                <div class="pxdmgf__row2">
                   <v-field name="Fecha" label="Fecha" required :rules="{ required: true }" v-slot="{ invalid, id }">
                     <px-input :id="id" type="date" v-model="damage.date" :invalid="invalid" />
                   </v-field>
@@ -171,6 +194,7 @@
                 <px-card title="Resumen" class="pxdmgf__summary">
                   <dl class="pxdmgf__summary-dl">
                     <div><dt>Almacén</dt><dd>{{ warehouseName || '—' }}</dd></div>
+                    <div v-if="record_is_location_aware"><dt>Ubicación</dt><dd>{{ locationName || '—' }}</dd></div>
                     <div><dt>Fecha</dt><dd>{{ damage.date || '—' }}</dd></div>
                     <div><dt>Líneas</dt><dd class="pxn-num">{{ activeLines.length }}</dd></div>
                     <div><dt>Total a descontar</dt><dd class="pxn-num pxdmgf__neg">- {{ totalSub }}</dd></div>
@@ -178,7 +202,7 @@
                 </px-card>
                 <px-alert tone="info" bare class="pxdmgf__tip">
                   <lucide-icon name="info" :size="13" />
-                  Un daño no tiene coste; solo resta la cantidad indicada del stock del almacén elegido.
+                  {{ stockScopeTip }}
                 </px-alert>
               </div>
             </aside>
@@ -249,11 +273,16 @@ export default {
       warehouses: [],
       products: [],
       details: [],
+      inventory_locations: [],
+      // #81 · px-next hotfix — en «crear» TODO documento es location-aware; en
+      // «editar» depende del inventory_location_id almacenado (loadElements lo fija).
+      record_is_location_aware: this.mode !== "edit",
       damage: {
         id: "",
         Ref: "",
         notes: "",
         warehouse_id: "",
+        inventory_location_id: "",
         date: this.mode === "edit" ? "" : new Date().toISOString().slice(0, 10)
       }
     };
@@ -280,6 +309,17 @@ export default {
     warehouseName() {
       const w = this.warehouses.find(x => String(x.id) === String(this.damage.warehouse_id));
       return w ? w.name : (this.damage.warehouse || "");
+    },
+    locationName() {
+      const l = (this.inventory_locations || []).find(
+        x => String(x.id) === String(this.damage.inventory_location_id)
+      );
+      return l ? l.name : "";
+    },
+    stockScopeTip() {
+      return this.record_is_location_aware
+        ? "Un daño no tiene coste; solo resta la cantidad indicada del stock de la ubicación elegida."
+        : "Un daño no tiene coste; solo resta la cantidad indicada del stock del almacén elegido.";
     },
     activeLines() {
       return (this.details || []).filter(d => d && d.del !== 1);
@@ -385,7 +425,17 @@ export default {
             this.damage = response.data.damage;
             this.details = response.data.details || [];
             this.warehouses = response.data.warehouses || [];
-            this.getProductsByWarehouse(this.damage.warehouse_id);
+            // #81 · px-next hotfix — registro location-aware (edit() devuelve
+            // inventory_location_id != null) => selector de ubicación + catálogo
+            // POR UBICACIÓN con la ubicación almacenada. Registro histórico
+            // (inventory_location_id NULL) => catálogo legacy por almacén.
+            this.record_is_location_aware = !!(this.damage && this.damage.inventory_location_id);
+            if (this.record_is_location_aware) {
+              this.loadInventoryLocations(this.damage.warehouse_id, false);
+              this.loadLocationCatalog(this.damage.inventory_location_id);
+            } else {
+              this.getProductsByWarehouse(this.damage.warehouse_id);
+            }
             for (const d of this.details) {
               if (d && d.is_batch_tracked) this.fetchBatchesForDetail(d);
             }
@@ -419,7 +469,19 @@ export default {
     onWarehouseChange(value) {
       this.search_input = "";
       this.product_filter = [];
-      this.getProductsByWarehouse(value);
+      if (this.record_is_location_aware) {
+        // #81 · px-next hotfix — el catálogo y el stock vienen de la ubicación.
+        // Al cambiar de almacén se limpia la ubicación, el catálogo y la
+        // búsqueda; se recargan las ubicaciones activas y el backend
+        // preselecciona la default apta (que dispara la carga del catálogo).
+        // NUNCA se consulta el agregado por almacén en este modo.
+        this.damage.inventory_location_id = "";
+        this.inventory_locations = [];
+        this.products = [];
+        this.loadInventoryLocations(value);
+      } else {
+        this.getProductsByWarehouse(value);
+      }
       if (Array.isArray(this.details)) {
         for (const d of this.details) {
           if (d && d.is_batch_tracked) {
@@ -429,6 +491,63 @@ export default {
           }
         }
       }
+    },
+
+    //-------- #81 · px-next — ubicaciones activas del almacén seleccionado -----
+    loadInventoryLocations(id, preselect = true) {
+      if (!id) return;
+      window.axios
+        .get("damages_inventory_locations/" + id)
+        .then(response => {
+          this.inventory_locations = (response.data && response.data.locations) || [];
+          const def = response.data && response.data.default_inventory_location_id;
+          if (preselect && def && this.details.length === 0) {
+            this.damage.inventory_location_id = def;
+            this.onInventoryLocationChange(def);
+          }
+        })
+        .catch(() => { this.inventory_locations = []; });
+    },
+
+    //-------- #81 · px-next — catálogo y CurrentStock POR UBICACIÓN ------------
+    onInventoryLocationChange(value) {
+      this.search_input = "";
+      this.product_filter = [];
+      this.loadLocationCatalog(value || this.damage.inventory_location_id);
+    },
+
+    loadLocationCatalog(locationId) {
+      if (!locationId) { this.products = []; return; }
+      NProgress.start(); NProgress.set(0.1);
+      window.axios
+        .get("damages_location_catalog/" + locationId)
+        .then(response => {
+          const rows = (response.data && response.data.products) || [];
+          // CurrentStock del formulario = available_quantity de LA UBICACIÓN
+          // (inventory_location_stocks), nunca el agregado de product_warehouse.
+          this.products = rows.map(p => ({
+            ...p,
+            qte: p.available_quantity,
+            current: p.available_quantity,
+            CurrentStock: p.available_quantity,
+            stock_source: p.stock_source
+          }));
+          NProgress.done();
+        })
+        .catch(() => { this.products = []; NProgress.done(); });
+    },
+
+    locationTypeLabel(type) {
+      const map = {
+        storage: "Almacenaje",
+        picking: "Picking",
+        receiving: "Recepción",
+        shipping: "Expedición",
+        quarantine: "Cuarentena",
+        returns: "Devoluciones",
+        transit: "Tránsito"
+      };
+      return map[type] || (type || "");
     },
     getProductsByWarehouse(id) {
       if (!id) return;
@@ -477,6 +596,20 @@ export default {
         this.product_filter = [];
         return;
       }
+      // #81 · px-next hotfix — en modo location-aware, los productos con lote o
+      // serie/IMEI todavía requieren el flujo especializado y el backend #81 los
+      // rechaza. NO añadir la línea (sin fallback silencioso a BatchService).
+      if (this.record_is_location_aware && (result.is_batch_tracked === true || result.is_imei === true)) {
+        this.makeToast(
+          "warning",
+          "Los daños por ubicación de productos con lote o serie/IMEI todavía requieren el flujo especializado.",
+          "Aviso"
+        );
+        this.search_input = "";
+        if (this.$refs.ac) this.$refs.ac.value = "";
+        this.product_filter = [];
+        return;
+      }
       const line = {
         id: this.isEdit ? 0 : "",
         code: result.code,
@@ -486,6 +619,7 @@ export default {
         product_id: "",
         detail_id: "",
         product_variant_id: result.product_variant_id,
+        product_type: result.product_type,
         unit: "",
         type: "sub", // Daños: siempre resta
         is_batch_tracked: false
@@ -635,10 +769,17 @@ export default {
           return;
         }
         if (!this.verifiedForm()) return;
+        if (this.record_is_location_aware && !this.damage.inventory_location_id) {
+          this.makeToast("warning", "Selecciona una ubicación de inventario.", "Aviso");
+          return;
+        }
         this.submitting = true;
         NProgress.start(); NProgress.set(0.1);
         const payload = {
           warehouse_id: this.damage.warehouse_id,
+          // #81 — el flujo location-aware exige ubicación explícita; los
+          // documentos históricos legacy (edit) se guardan sin ubicación.
+          inventory_location_id: this.record_is_location_aware ? this.damage.inventory_location_id : null,
           date: this.damage.date,
           notes: this.damage.notes,
           details: this.buildSubmitDetails()
@@ -656,11 +797,30 @@ export default {
           .catch(error => {
             NProgress.done();
             this.submitting = false;
-            const details = error && error.errors && error.errors.details;
-            if (details && details.length) this.makeToast("danger", details[0], "Error");
-            else this.makeToast("danger", "Datos inválidos.", "Error");
+            this.makeToast("danger", this.extractSubmitError(error), "Error");
           });
       });
+    },
+
+    // #81 · px-next hotfix — no ocultar 422 reales de Laravel tras un genérico.
+    // El interceptor de axios rechaza con el cuerpo de la respuesta, así que
+    // `error` suele ser ya response.data ({ message, errors: { campo: [msg] } }).
+    extractSubmitError(error) {
+      const data = (error && error.response && error.response.data) ? error.response.data : error;
+      if (data && typeof data === "object") {
+        if (Array.isArray(data.details) && data.details.length) return String(data.details[0]);
+        if (data.errors && typeof data.errors === "object") {
+          if (Array.isArray(data.errors.details) && data.errors.details.length) return String(data.errors.details[0]);
+          for (const key of Object.keys(data.errors)) {
+            const val = data.errors[key];
+            if (Array.isArray(val) && val.length) return String(val[0]);
+            if (typeof val === "string" && val) return val;
+          }
+        }
+        if (typeof data.message === "string" && data.message) return data.message;
+        if (typeof data.error === "string" && data.error) return data.error;
+      }
+      return "Datos inválidos.";
     }
   }
 };
