@@ -609,6 +609,9 @@ class DamageController extends BaseController
                 throw ValidationException::withMessages(['damage' => 'Registro legacy: usa la ruta histórica.']);
             }
             $oldSnapshot = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            // (D6) el snapshot VIEJO debe ser artifact-safe ANTES de cualquier reversa,
+            // aunque el producto ya no aparezca en el request nuevo.
+            $svc->assertSnapshotArtifactSafeAndLock($oldSnapshot);
             DamageDetail::where('damage_id', $locked->id)->lockForUpdate()->get();
 
             $extra = array_values(array_unique(array_map(fn ($e) => (int) $e['product_id'], $oldSnapshot)));
@@ -653,6 +656,8 @@ class DamageController extends BaseController
                 throw ValidationException::withMessages(['damage' => 'Registro legacy: usa la ruta histórica.']);
             }
             $snapshot = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            // (D7) artifact-safe guard ANTES de bloquear details / revertir.
+            $svc->assertSnapshotArtifactSafeAndLock($snapshot);
             DamageDetail::where('damage_id', $locked->id)->lockForUpdate()->get();
 
             $svc->reverseSnapshot($snapshot, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'destroy');

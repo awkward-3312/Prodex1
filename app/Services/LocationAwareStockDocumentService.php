@@ -40,6 +40,9 @@ class LocationAwareStockDocumentService
 
     private const EPS = 0.0005;
 
+    /** (D1) Sólo tipos con inventario físico entran al flujo location-aware. */
+    public const INVENTORIABLE_TYPES = ['is_single', 'is_variant', 'is_combo'];
+
     // ===== Validación + locks (DENTRO de la transacción del caller) ==========
 
     /**
@@ -149,11 +152,28 @@ class LocationAwareStockDocumentService
             if (! $product || $product->deleted_at !== null) {
                 throw ValidationException::withMessages(["details.$i.product_id" => 'El producto de la línea '.($i + 1).' no existe o fue eliminado.']);
             }
+            // (D1) sólo productos inventariables.
+            if (! in_array((string) $product->type, self::INVENTORIABLE_TYPES, true)) {
+                throw ValidationException::withMessages([
+                    "details.$i.product_id" => 'El producto de la línea '.($i + 1).' no es inventariable (tipo: '.($product->type ?: 'desconocido').').',
+                ]);
+            }
             if ($qty <= self::EPS) {
                 throw ValidationException::withMessages(["details.$i.quantity" => 'La cantidad debe ser mayor que cero.']);
             }
             if ($requireType && ! in_array($type, ['add', 'sub'], true)) {
                 throw ValidationException::withMessages(["details.$i.type" => "El tipo de la línea ".($i + 1)." debe ser 'add' o 'sub'."]);
+            }
+            // (D2) invariante producto/variante.
+            if ((string) $product->type === 'is_variant' && $vid === null) {
+                throw ValidationException::withMessages([
+                    "details.$i.product_variant_id" => 'El producto de la línea '.($i + 1).' es de variantes: falta product_variant_id.',
+                ]);
+            }
+            if (in_array((string) $product->type, ['is_single', 'is_combo'], true) && $vid !== null) {
+                throw ValidationException::withMessages([
+                    "details.$i.product_variant_id" => 'El producto de la línea '.($i + 1).' no admite variante.',
+                ]);
             }
             if ($vid !== null) {
                 $variant = $variants->get($vid);
@@ -166,11 +186,41 @@ class LocationAwareStockDocumentService
 
             $components = ($product->type === 'is_combo') ? ($comboComponentsByCombo[$pid] ?? []) : [];
 
-            // Flags desde filas BLOQUEADAS — producto + componentes.
+            // (D3/D4/D7) Validar CADA componente ANTES de continuar. Nunca se
+            // ignora en silencio un componente inexistente ni se genera un
+            // snapshot con product_id inválido.
+            if ((string) $product->type === 'is_combo' && empty($components)) {
+                throw ValidationException::withMessages([
+                    "details.$i.product_id" => 'El combo de la línea '.($i + 1).' no tiene componentes.',
+                ]);
+            }
             $trackedTargets[] = $product;
             foreach ($components as $c) {
-                $cp = $products->get((int) $c['product_id']);
-                if ($cp) $trackedTargets[] = $cp;
+                $cid = (int) $c['product_id'];
+                $cp = $products->get($cid);
+                if (! $cp || $cp->deleted_at !== null) {
+                    throw ValidationException::withMessages([
+                        "details.$i.product_id" => 'El combo de la línea '.($i + 1).' tiene un componente ('.$cid.') inexistente o eliminado.',
+                    ]);
+                }
+                if (! in_array((string) $cp->type, self::INVENTORIABLE_TYPES, true)) {
+                    throw ValidationException::withMessages([
+                        "details.$i.product_id" => 'El combo de la línea '.($i + 1).' tiene un componente ('.$cid.') no inventariable.',
+                    ]);
+                }
+                // CombinedProduct no representa variante específica: un componente
+                // is_variant no puede mutarse quantity-only sin inventar variant_key.
+                if ((string) $cp->type === 'is_variant') {
+                    throw ValidationException::withMessages([
+                        "details.$i.product_id" => 'El combo de la línea '.($i + 1).' tiene un componente de variantes ('.$cid.'), no soportado por el flujo location-aware.',
+                    ]);
+                }
+                if ((float) $c['quantity'] <= self::EPS) {
+                    throw ValidationException::withMessages([
+                        "details.$i.product_id" => 'El combo de la línea '.($i + 1).' tiene un componente ('.$cid.') con cantidad no positiva.',
+                    ]);
+                }
+                $trackedTargets[] = $cp;
             }
 
             $normalized[] = [
@@ -306,6 +356,60 @@ class LocationAwareStockDocumentService
         }
 
         return $out;
+    }
+
+    /**
+     * (D5/D6/D7) Guard histórico: un snapshot creado sobre productos NO tracked
+     * no puede revertirse quantity-only si algún producto AHORA es batch-tracked
+     * o IMEI. Se ejecuta DENTRO de la transacción y ANTES de reverseSnapshot().
+     *
+     * - lock Products del snapshot en orden ASC;
+     * - (D8) NO exige whereNull('deleted_at'): un producto normal soft-deleted
+     *   tras el documento debe poder revertirse;
+     * - si un product_id del snapshot está HARD-MISSING (sin fila) => FAIL CLOSED;
+     * - si cualquiera es tracked ahora => FAIL CLOSED. 0 stock / 0 movimientos.
+     *
+     * @throws ValidationException
+     */
+    public function assertSnapshotArtifactSafeAndLock(array $snapshot): void
+    {
+        $this->assertInTransaction();
+
+        $ids = array_values(array_unique(array_map(fn ($e) => (int) $e['product_id'], $snapshot)));
+        sort($ids);
+        if (! $ids) return;
+
+        $rows = DB::table('products')->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+
+        $hasBatch = Schema::hasColumn('products', 'is_batch_tracked');
+        $hasImei = Schema::hasColumn('products', 'is_imei');
+
+        $missing = [];
+        $nowTracked = [];
+        foreach ($ids as $id) {
+            $p = $rows->get($id);
+            if (! $p) {
+                $missing[] = $id;
+
+                continue;
+            }
+            if (($hasBatch && (int) ($p->is_batch_tracked ?? 0) === 1) || ($hasImei && (int) ($p->is_imei ?? 0) === 1)) {
+                $nowTracked[] = $id;
+            }
+        }
+
+        if ($missing) {
+            throw ValidationException::withMessages([
+                'inventory_effect_snapshot' => 'No se puede revertir el documento: productos del snapshot ya no existen ('.implode(', ', $missing).'). '
+                    .'FAIL CLOSED — requiere revisión manual.',
+            ]);
+        }
+        if ($nowTracked) {
+            throw ValidationException::withMessages([
+                'inventory_effect_snapshot' => 'No se puede revertir el documento con una operación quantity-only: los productos '
+                    .implode(', ', $nowTracked).' ahora llevan control de lote o serie/IMEI. Requiere el flujo artifact-aware.',
+            ]);
+        }
     }
 
     // ===== Aplicación física ================================================

@@ -29,6 +29,12 @@ class LocationAwareDamageService
         return $this->engine->normalizeSnapshot($raw);
     }
 
+    /** (#81 · D5) FAIL CLOSED si algún producto del snapshot ahora es batch/IMEI. */
+    public function assertSnapshotArtifactSafeAndLock(array $snapshot): void
+    {
+        $this->engine->assertSnapshotArtifactSafeAndLock($snapshot);
+    }
+
     public function applySnapshot(array $effects, int $damageId, int $warehouseId, int $locationId, string $source): void
     {
         $this->engine->applySnapshot($effects, LocationAwareStockDocumentService::REF_DAMAGE, $damageId, $warehouseId, $locationId, $source);

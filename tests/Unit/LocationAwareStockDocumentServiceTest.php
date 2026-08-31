@@ -292,6 +292,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
             $svc = app(LocationAwareAdjustmentService::class);
             $locked = Adjustment::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             $old = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            $svc->assertSnapshotArtifactSafeAndLock($old);
             $extra = array_values(array_unique(array_map(fn ($e) => (int) $e['product_id'], $old)));
             $validated = $svc->validateAndLock($newWh, $newLoc, $lines, $extra);
             $svc->reverseSnapshot($old, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'update');
@@ -316,6 +317,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
             $svc = app(LocationAwareAdjustmentService::class);
             $locked = Adjustment::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             $snap = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            $svc->assertSnapshotArtifactSafeAndLock($snap);
             $svc->reverseSnapshot($snap, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'destroy');
             $locked->details()->delete();
             $locked->update(['deleted_at' => now()]);
@@ -354,6 +356,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
             $svc = app(LocationAwareDamageService::class);
             $locked = Damage::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             $snap = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            $svc->assertSnapshotArtifactSafeAndLock($snap);
             $svc->reverseSnapshot($snap, $locked->id, (int) $locked->warehouse_id, (int) $locked->inventory_location_id, 'destroy');
             $locked->details()->delete();
             $locked->update(['deleted_at' => now()]);
@@ -402,7 +405,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
     public function test_a3_variant_no_bleed(): void
     {
         [$wh, $loc] = $this->warehouse();
-        $this->product(1);
+        $this->product(1, 'is_variant');
         $this->variant(901, 1);
         $this->variant(902, 1);
         $this->stock($loc, 1, 20, 0, 901);
@@ -557,7 +560,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
     public function test_a13_damage_variant(): void
     {
         [$wh, $loc] = $this->warehouse();
-        $this->product(1);
+        $this->product(1, 'is_variant');
         $this->variant(901, 1);
         $this->stock($loc, 1, 40, 0, 901);
         $this->createDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => 901, 'quantity' => 8]]);
@@ -617,6 +620,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
             $svc = app(LocationAwareDamageService::class);
             $locked = Damage::whereKey($dmg->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
             $old = $svc->normalizeSnapshot($locked->inventory_effect_snapshot);
+            $svc->assertSnapshotArtifactSafeAndLock($old);
             $validated = $svc->validateAndLock($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5]], [1]);
             $svc->reverseSnapshot($old, $locked->id, $wh, $loc, 'update');
             DamageDetail::where('damage_id', $locked->id)->delete();
@@ -892,7 +896,7 @@ class LocationAwareStockDocumentServiceTest extends TestCase
     {
         [$wh, $loc] = $this->warehouse();
         $this->product(7);
-        $this->product(8, 'is_single');
+        $this->product(8, 'is_variant');
         $this->variant(901, 8);
         $this->stock($loc, 7, 100, 10);
 
@@ -966,5 +970,236 @@ class LocationAwareStockDocumentServiceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $this->updateAdjustment($adj->fresh(), $wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 1, 'type' => 'sub']]);
+    }
+
+    // ================= D1..D13 (iteración 4 — integridad backend) =============
+
+    /** D1 — request directo con producto is_service => rechazo, 0 escrituras. */
+    public function test_d1_service_product_is_rejected(): void
+    {
+        foreach (['adjustment' => 51, 'damage' => 52] as $kind => $pid) {
+            [$wh, $loc] = $this->warehouse();
+            $this->product($pid, 'is_service');
+            $line = ['product_id' => $pid, 'product_variant_id' => null, 'quantity' => 10] + ($kind === 'adjustment' ? ['type' => 'add'] : []);
+            try {
+                $kind === 'adjustment' ? $this->createAdjustment($wh, $loc, [$line]) : $this->createDamage($wh, $loc, [$line]);
+                $this->fail("$kind con is_service debía rechazar");
+            } catch (ValidationException $e) {
+                $this->assertStringContainsString('no es inventariable', $e->getMessage());
+            }
+            $this->assertSame(0, DB::table($kind === 'adjustment' ? 'adjustments' : 'damages')->count());
+            $this->assertSame(0.0, (float) (DB::table('inventory_location_stocks')->where('product_id', $pid)->value('quantity') ?? 0));
+            $this->assertSame(0, InventoryLocationMovement::count());
+        }
+    }
+
+    /** D2 — is_variant sin product_variant_id => rechazo (no variant_key 0 fantasma). */
+    public function test_d2_variant_product_requires_variant_id(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1, 'is_variant');
+        $this->variant(901, 1);
+        try {
+            $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 5, 'type' => 'add']]);
+            $this->fail('is_variant sin variante debía rechazar');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('falta product_variant_id', $e->getMessage());
+        }
+        $this->assertSame(0, DB::table('inventory_location_stocks')->where('product_id', 1)->where('variant_key', 0)->count());
+        $this->assertSame(0, InventoryLocationMovement::count());
+    }
+
+    /** D2b — is_single / is_combo con variante arbitraria => rechazo. */
+    public function test_d2b_single_or_combo_with_variant_is_rejected(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->variant(999, 1);
+        try {
+            $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => 999, 'quantity' => 3, 'type' => 'add']]);
+            $this->fail('is_single con variante debía rechazar');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('no admite variante', $e->getMessage());
+        }
+        $this->assertSame(0, InventoryLocationMovement::count());
+    }
+
+    /** D5 — combo con componente soft-deleted => rechazo total. */
+    public function test_d5_combo_component_soft_deleted_aborts(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->product(2);
+        $this->combo(50, [1 => 2, 2 => 3]);
+        DB::table('products')->where('id', 2)->update(['deleted_at' => now()]);
+        $this->stock($loc, 1, 100);
+
+        try {
+            $this->createAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add']]);
+            $this->fail('componente eliminado debía abortar');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('inexistente o eliminado', $e->getMessage());
+        }
+        $this->assertSame(0, DB::table('adjustments')->count());
+        $this->assertSame(0, InventoryLocationMovement::count());
+    }
+
+    /** D6 — combo con combined_product_id inexistente => rechazo total. */
+    public function test_d6_combo_component_missing_aborts(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->combo(50, [1 => 2, 777 => 3]); // 777 no existe
+        $this->stock($loc, 1, 100);
+
+        try {
+            $this->createAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add']]);
+            $this->fail('componente inexistente debía abortar');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('inexistente o eliminado', $e->getMessage());
+        }
+        $this->assertSame(0, DB::table('adjustments')->count());
+    }
+
+    /** D7 — combo con componente is_service => rechazo. */
+    public function test_d7_combo_component_service_aborts(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->product(2, 'is_service');
+        $this->combo(50, [1 => 2, 2 => 3]);
+        $this->stock($loc, 1, 100);
+
+        try {
+            $this->createDamage($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 3]]);
+            $this->fail('componente service debía abortar');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('no inventariable', $e->getMessage());
+        }
+        $this->assertSame(0, DB::table('damages')->count());
+    }
+
+    /** D8 — combo component quantity 0 o negativa => rechazo. */
+    public function test_d8_combo_component_non_positive_quantity_aborts(): void
+    {
+        foreach ([[0, 10, 11, 12], [-2, 20, 21, 22]] as [$badQty, $a, $b, $c]) {
+            [$wh, $loc] = $this->warehouse();
+            $this->product($a);
+            $this->product($b);
+            $this->combo($c, [$a => 2, $b => $badQty]);
+            $this->stock($loc, $a, 100);
+            try {
+                $this->createAdjustment($wh, $loc, [['product_id' => $c, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add']]);
+                $this->fail("qty componente $badQty debía abortar");
+            } catch (ValidationException $e) {
+                $this->assertStringContainsString('cantidad no positiva', $e->getMessage());
+            }
+            $this->assertSame(0, InventoryLocationMovement::count());
+        }
+    }
+
+    /** D9 — combo con componente batch/IMEI válido => sigue rechazando por artifact-aware. */
+    public function test_d9_combo_component_tracked_still_rejected(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->product(2, 'is_single', ['is_batch_tracked' => true]);
+        $this->combo(50, [1 => 2, 2 => 3]);
+        $this->stock($loc, 1, 100);
+
+        try {
+            $this->createAdjustment($wh, $loc, [['product_id' => 50, 'product_variant_id' => null, 'quantity' => 4, 'type' => 'add']]);
+            $this->fail('componente batch debía rechazar (artifact-aware)');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('lote o serie/IMEI', $e->getMessage());
+        }
+        $this->assertSame(0, InventoryLocationMovement::count());
+    }
+
+    /** D10 — Adjustment con P normal; P pasa a batch; destroy => FAIL CLOSED. */
+    public function test_d10_destroy_when_snapshot_product_became_tracked_fails_closed(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->stock($loc, 1, 100);
+        $adj = $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 15, 'type' => 'sub']]);
+        $this->assertSame(85.0, $this->loc($loc, 1));
+
+        DB::table('products')->where('id', 1)->update(['is_batch_tracked' => true]);
+
+        try {
+            $this->destroyAdjustment($adj->fresh());
+            $this->fail('destroy de snapshot con producto ahora batch debía FAIL CLOSED');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('ahora llevan control de lote o serie/IMEI', $e->getMessage());
+        }
+        $this->assertSame(85.0, $this->loc($loc, 1));                 // stock intacto
+        $this->assertSame(0, $this->movements(LocationAwareStockDocumentService::REF_ADJUSTMENT_REVERSAL)->count());
+        $this->assertNull(DB::table('adjustments')->where('id', $adj->id)->value('deleted_at')); // doc no eliminado
+    }
+
+    /** D11 — Damage equivalente con IMEI. */
+    public function test_d11_destroy_damage_when_snapshot_product_became_imei(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->stock($loc, 1, 100);
+        $dmg = $this->createDamage($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 20]]);
+        $this->assertSame(80.0, $this->loc($loc, 1));
+
+        DB::table('products')->where('id', 1)->update(['is_imei' => 1]);
+
+        try {
+            $this->destroyDamage($dmg->fresh());
+            $this->fail('destroy debía FAIL CLOSED');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('lote o serie/IMEI', $e->getMessage());
+        }
+        $this->assertSame(80.0, $this->loc($loc, 1));
+        $this->assertSame(0, $this->movements(LocationAwareStockDocumentService::REF_DAMAGE_REVERSAL)->count());
+        $this->assertNull(DB::table('damages')->where('id', $dmg->id)->value('deleted_at'));
+    }
+
+    /** D12 — update: old snapshot P; P ahora batch; new request sólo Q => rechazo ANTES de revertir. */
+    public function test_d12_update_old_snapshot_tracked_aborts_before_reverse(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);   // P
+        $this->product(2);   // Q
+        $this->stock($loc, 1, 100);
+        $this->stock($loc, 2, 100);
+        $adj = $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 10, 'type' => 'sub']]);
+        $this->assertSame(90.0, $this->loc($loc, 1));
+
+        DB::table('products')->where('id', 1)->update(['is_batch_tracked' => true]);
+
+        try {
+            $this->updateAdjustment($adj->fresh(), $wh, $loc, [['product_id' => 2, 'product_variant_id' => null, 'quantity' => 3, 'type' => 'sub']]);
+            $this->fail('update debía FAIL CLOSED por el snapshot viejo (P ahora batch)');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('lote o serie/IMEI', $e->getMessage());
+        }
+        // ninguna reversa/aplicación: P y Q intactos, details/header intactos.
+        $this->assertSame(90.0, $this->loc($loc, 1));
+        $this->assertSame(100.0, $this->loc($loc, 2));
+        $this->assertSame(1, AdjustmentDetail::where('adjustment_id', $adj->id)->count());
+        $this->assertSame(1, AdjustmentDetail::where('adjustment_id', $adj->id)->where('product_id', 1)->count());
+        $this->assertSame(0, $this->movements(LocationAwareStockDocumentService::REF_ADJUSTMENT_REVERSAL)->count());
+    }
+
+    /** D13 — producto del snapshot soft-deleted pero NO tracked => la reversa histórica funciona. */
+    public function test_d13_soft_deleted_non_tracked_product_still_reversible(): void
+    {
+        [$wh, $loc] = $this->warehouse();
+        $this->product(1);
+        $this->stock($loc, 1, 100);
+        $adj = $this->createAdjustment($wh, $loc, [['product_id' => 1, 'product_variant_id' => null, 'quantity' => 20, 'type' => 'sub']]);
+        $this->assertSame(80.0, $this->loc($loc, 1));
+
+        DB::table('products')->where('id', 1)->update(['deleted_at' => now()]); // soft-deleted, NO tracked
+
+        $this->destroyAdjustment($adj->fresh());
+        $this->assertSame(100.0, $this->loc($loc, 1));   // reversa OK
+        $this->assertNotNull(DB::table('adjustments')->where('id', $adj->id)->value('deleted_at'));
     }
 }

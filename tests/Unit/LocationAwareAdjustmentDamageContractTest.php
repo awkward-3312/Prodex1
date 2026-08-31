@@ -290,6 +290,62 @@ class LocationAwareAdjustmentDamageContractTest extends TestCase
         }
     }
 
+    // ===== Iteración 4 (D1..D6) — integridad backend ====================
+
+    public function test_d1_d4_validate_and_lock_integrity_rules(): void
+    {
+        $engine = $this->read('app/Services/LocationAwareStockDocumentService.php');
+        // D1: sólo tipos inventariables.
+        $this->assertStringContainsString("public const INVENTORIABLE_TYPES = ['is_single', 'is_variant', 'is_combo'];", $engine);
+        $this->assertStringContainsString("! in_array((string) \$product->type, self::INVENTORIABLE_TYPES, true)", $engine);
+        $this->assertStringContainsString('no es inventariable', $engine);
+        // D2: invariante producto/variante.
+        $this->assertStringContainsString("(string) \$product->type === 'is_variant' && \$vid === null", $engine);
+        $this->assertStringContainsString("in_array((string) \$product->type, ['is_single', 'is_combo'], true) && \$vid !== null", $engine);
+        // D3/D4: componentes de combo NO se ignoran si faltan; guard batch tras validar.
+        $this->assertStringNotContainsString('if ($cp) $trackedTargets[] = $cp;', $engine);
+        $this->assertStringContainsString('if (! $cp || $cp->deleted_at !== null) {', $engine);
+        $this->assertStringContainsString('inexistente o eliminado', $engine);
+        $this->assertStringContainsString("! in_array((string) \$cp->type, self::INVENTORIABLE_TYPES, true)", $engine);
+        $this->assertStringContainsString("(string) \$cp->type === 'is_variant'", $engine);
+        $this->assertStringContainsString("(float) \$c['quantity'] <= self::EPS", $engine);
+        // el guard batch/IMEI sigue después.
+        $trackedPos = strpos($engine, 'ya no está en RECONCILIATION_REFS') ?: strpos($engine, "'Productos afectados: '");
+        $this->assertStringContainsString('Productos afectados', $engine);
+    }
+
+    public function test_d5_d6_snapshot_artifact_guard_before_reverse(): void
+    {
+        $engine = $this->read('app/Services/LocationAwareStockDocumentService.php');
+        $this->assertStringContainsString('public function assertSnapshotArtifactSafeAndLock(array $snapshot): void', $engine);
+        // lock Products del snapshot ASC, SIN whereNull(deleted_at) (D8).
+        $this->assertStringContainsString("DB::table('products')->whereIn('id', \$ids)->orderBy('id')->lockForUpdate()->get()", $engine);
+        $guardBody = substr($engine, strpos($engine, 'public function assertSnapshotArtifactSafeAndLock('), 1600);
+        $this->assertStringNotContainsString("whereNull('deleted_at')", $guardBody);
+        // hard-missing => FAIL CLOSED; tracked ahora => FAIL CLOSED.
+        $this->assertStringContainsString('ya no existen', $engine);
+        $this->assertStringContainsString('ahora llevan control de lote o serie/IMEI', $engine);
+
+        // update/destroy: el guard corre ANTES de reverseSnapshot.
+        foreach (['AdjustmentController', 'DamageController'] as $ctrl) {
+            $src = $this->read("app/Http/Controllers/$ctrl.php");
+            foreach (['updateLocationAware', 'destroyLocationAware'] as $method) {
+                $pos = strpos($src, "private function $method(");
+                $body = substr($src, $pos, 2600);
+                $guardPos = strpos($body, '$svc->assertSnapshotArtifactSafeAndLock(');
+                $reversePos = strpos($body, '$svc->reverseSnapshot(');
+                $this->assertNotFalse($guardPos, "$ctrl::$method: falta el guard");
+                $this->assertNotFalse($reversePos, "$ctrl::$method: falta reverseSnapshot");
+                $this->assertLessThan($reversePos, $guardPos, "$ctrl::$method: el guard debe preceder a reverseSnapshot");
+                // en update: el guard precede también a validateAndLock del request nuevo.
+                if ($method === 'updateLocationAware') {
+                    $valPos = strpos($body, '$svc->validateAndLock(');
+                    $this->assertLessThan($valPos, $guardPos, "$ctrl::update: guard antes de validateAndLock");
+                }
+            }
+        }
+    }
+
     // ===== A24 — el flujo nuevo no escribe product_warehouse =============
 
     public function test_a24_location_aware_flow_never_writes_product_warehouse(): void
