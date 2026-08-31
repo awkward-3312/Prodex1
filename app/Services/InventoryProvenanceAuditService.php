@@ -22,11 +22,13 @@ use Illuminate\Support\Facades\Schema;
  * global — son por clave (product+variant), nunca un rebaseline del almacén.
  *
  * Categorías de provenance de un movimiento location:
- *   - RECONCILIATION legacy→location: `legacy_product_warehouse_backfill` (baseline
- *     inicial de almacén vacío) y `legacy_product_warehouse_incremental_reconciliation`
- *     (aplicación quirúrgica de una fila LEGACY_ONLY_PENDING validada). Ambos
- *     CUENTAN como baseline_quantity de su clave y NO como net posterior: no son
- *     mirror dual_write ni actividad location-native.
+ *   - RECONCILIATION legacy→location (RECONCILIATION_REFS): `legacy_product_warehouse_backfill`
+ *     (baseline inicial de almacén vacío), `legacy_product_warehouse_incremental_reconciliation`
+ *     (aplicación quirúrgica de una fila LEGACY_ONLY_PENDING validada) y
+ *     `legacy_product_warehouse_opening_stock_sync` (stock inicial sincronizado
+ *     atómicamente). Todos CUENTAN como baseline_quantity de su clave y NO como
+ *     net posterior: no son mirror dual_write ni actividad location-native, y no
+ *     mueven baselineAt() global ni last_reconciled_at.
  *   - MIRROR dual_write: DUAL_WRITE_MIRROR_REFS (ver matchLegacyEventToLocationMovement).
  *   - LOCATION-NATIVE: todo lo demás (dispatch, receipt, POS bridge, ajuste…).
  *
@@ -65,10 +67,20 @@ class InventoryProvenanceAuditService
      */
     public const INCREMENTAL_RECONCILIATION_REF = 'legacy_product_warehouse_incremental_reconciliation';
 
+    /**
+     * Stock inicial (opening stock) sincronizado atómicamente legacy→location por
+     * OpeningStockInventoryService. Misma categoría que backfill / incremental:
+     * suma baseline_quantity de SU clave, queda fuera de post_baseline_native_net
+     * y NO mueve baselineAt() global ni last_reconciled_at. Así la historia
+     * post-baseline de otras claves (p. ej. Iphone15/16) queda intacta.
+     */
+    public const OPENING_STOCK_RECONCILIATION_REF = 'legacy_product_warehouse_opening_stock_sync';
+
     /** Movimientos que reconcilian legacy→location (baseline por clave). */
     public const RECONCILIATION_REFS = [
         self::BACKFILL_REF,
         self::INCREMENTAL_RECONCILIATION_REF,
+        self::OPENING_STOCK_RECONCILIATION_REF,
     ];
 
     /**

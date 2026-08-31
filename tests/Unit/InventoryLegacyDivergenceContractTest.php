@@ -227,6 +227,48 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         $this->assertStringContainsString('NO debe adelantar este', $prov);
     }
 
+    /**
+     * L13 — Stock inicial CENTRALIZADO: los paths conocidos ya NO tienen lógica
+     * independiente que incremente qte sin pasar por OpeningStockInventoryService.
+     */
+    public function test_opening_stock_is_centralized_in_a_single_service(): void
+    {
+        // El servicio dedicado existe y hace la escritura atómica legacy+location.
+        $svc = $this->read('app/Services/OpeningStockInventoryService.php');
+        $this->assertStringContainsString('class OpeningStockInventoryService', $svc);
+        $this->assertStringContainsString("public const REFERENCE_TYPE = 'legacy_product_warehouse_opening_stock_sync';", $svc);
+        $this->assertStringContainsString('public function applyOpeningStock(int $warehouseId, int $productId, ?int $variantId, float $qty, array $context = []): void', $svc);
+        // (C) atómico: increase(delta), nunca adjustTo().
+        $this->assertStringContainsString('app(InventoryService::class)->increase(', $svc);
+        $this->assertStringNotContainsString('->adjustTo(', $svc);
+        // (D) evitar doble mirror: la escritura legacy es saveQuietly().
+        $this->assertStringContainsString('$locked->saveQuietly();', $svc);
+        // (H) sin default apta => abort, nunca legacy-only.
+        $this->assertStringContainsString('El almacén necesita una ubicación principal activa de tipo almacenamiento', $svc);
+        // (4) contrato de ubicación destino.
+        $this->assertStringContainsString('$location->type !== InventoryLocation::TYPE_STORAGE', $svc);
+        $this->assertStringContainsString('$location->is_quarantine', $svc);
+        $this->assertStringContainsString('(int) $location->warehouse_id !== (int) $warehouse->id', $svc);
+        // (G) batch / IMEI con qty>0 => rechazo.
+        $this->assertStringContainsString('El producto lleva control de lote o serie/IMEI', $svc);
+
+        // (E) provenance: el nuevo reference_type es RECONCILIATION legacy→location.
+        $prov = $this->read('app/Services/InventoryProvenanceAuditService.php');
+        $this->assertStringContainsString("public const OPENING_STOCK_RECONCILIATION_REF = 'legacy_product_warehouse_opening_stock_sync';", $prov);
+        $this->assertStringContainsString('self::OPENING_STOCK_RECONCILIATION_REF,', $prov);
+
+        // ProductsController: los 3 paths de stock inicial delegan en el servicio
+        // y NO incrementan qte por su cuenta.
+        $pc = $this->read('app/Http/Controllers/ProductsController.php');
+        $this->assertSame(3, substr_count($pc, '->applyOpeningStock('), 'store + import_single + import_variants');
+        // store: las filas product_warehouse nacen SIEMPRE a 0.
+        $this->assertStringContainsString('// bulk insert (todas a qte = 0)', $pc);
+        $this->assertStringNotContainsString("\$pw->qte = (float) \$pw->qte + (float) \$c['qty'];", $pc);
+        // El Adjustment/COGS virtual se conserva (no mueve stock por sí mismo).
+        $this->assertStringContainsString("'notes' => 'Opening stock (auto)',", $pc);
+        $this->assertStringContainsString("'notes' => 'Opening stock import (auto)',", $pc);
+    }
+
     public function test_whole_warehouse_backfill_refuses_non_empty_main_and_points_to_incremental(): void
     {
         $src = $this->read('app/Services/LegacyInventoryReconciliationService.php');

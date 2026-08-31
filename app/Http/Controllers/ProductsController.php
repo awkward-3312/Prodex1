@@ -763,13 +763,9 @@ class ProductsController extends BaseController
                     $insertRows = [];
 
                     foreach ($warehouseIds as $wid) {
-                        // grab or default
-                        $whData = $payloadWs[$wid] ?? [];
-
-                        $qty = $isSingle
-                        ? (float) ($whData['qte'] ?? 0)
-                        : 0;
-
+                        // Las filas product_warehouse SIEMPRE nacen a 0. El stock
+                        // inicial (>0) se aplica después, de forma atómica en
+                        // legacy + inventory-location, vía OpeningStockInventoryService.
                         if ($isVariant) {
                             foreach ($variants as $variant) {
                                 $insertRows[] = [
@@ -777,7 +773,7 @@ class ProductsController extends BaseController
                                     'warehouse_id' => $wid,
                                     'product_variant_id' => $variant->id,
                                     'manage_stock' => $manage_stock,
-                                    'qte' => $qty,
+                                    'qte' => 0,
                                 ];
                             }
                         } else {
@@ -785,13 +781,35 @@ class ProductsController extends BaseController
                                 'product_id' => $Product->id,
                                 'warehouse_id' => $wid,
                                 'manage_stock' => $manage_stock,
-                                'qte' => $qty,
+                                'qte' => 0,
                             ];
                         }
                     }
 
-                    // bulk insert
+                    // bulk insert (todas a qte = 0)
                     product_warehouse::insert($insertRows);
+
+                    // Stock inicial: UNA sola implementación atómica legacy +
+                    // inventory-location. Si el almacén no tiene ubicación
+                    // principal apta, ABORTA toda la transacción (nunca deja
+                    // product_warehouse > 0 con inventory_location_stocks = 0).
+                    if ($isSingle && $manage_stock && is_array($payloadWs) && ! empty($payloadWs)) {
+                        $openingStock = app(\App\Services\OpeningStockInventoryService::class);
+                        foreach ($warehouseIds as $wid) {
+                            $whData = $payloadWs[$wid] ?? null;
+                            $openingQty = $whData && isset($whData['qte']) ? (float) $whData['qte'] : 0.0;
+                            if ($openingQty <= 0) {
+                                continue;
+                            }
+                            $openingStock->applyOpeningStock(
+                                (int) $wid,
+                                (int) $Product->id,
+                                null,
+                                $openingQty,
+                                ['source' => 'product_create', 'user_id' => Auth::id()]
+                            );
+                        }
+                    }
 
                     // Store default warehouse location (Rack/Location) per warehouse (no stock-by-location)
                     $now = now();
@@ -3830,21 +3848,22 @@ class ProductsController extends BaseController
         // Apply stock + record virtual adjustments (similar to product create "opening stock")
         DB::transaction(function () use ($clean, $existing, $request) {
             $warehouseId = (int) $request->warehouse_id;
+            $openingStock = app(\App\Services\OpeningStockInventoryService::class);
 
-            // 1) Apply stock to product_warehouse
+            // 1) Stock inicial atómico legacy + inventory-location (qty <= 0 se
+            //    ignora: opening stock es sólo cantidad inicial positiva).
             foreach ($clean as $c) {
-                $productId = $existing[$c['code']];
-                $pw = product_warehouse::firstOrNew([
-                    'warehouse_id' => $warehouseId,
-                    'product_id' => $productId,
-                    'product_variant_id' => null,
-                ]);
-                if (! $pw->exists) {
-                    $pw->manage_stock = 1;
-                    $pw->qte = 0;
+                $qty = (float) $c['qty'];
+                if ($qty <= 0) {
+                    continue;
                 }
-                $pw->qte = (float) $pw->qte + (float) $c['qty'];
-                $pw->save();
+                $openingStock->applyOpeningStock(
+                    $warehouseId,
+                    (int) $existing[$c['code']],
+                    null,
+                    $qty,
+                    ['source' => 'import_single', 'user_id' => Auth::id()]
+                );
             }
 
             // 2) Create a lightweight Adjustment with one detail per product
@@ -3977,32 +3996,31 @@ class ProductsController extends BaseController
         DB::transaction(function () use ($clean, $products, $variants, $request) {
             $warehouseId = (int) $request->warehouse_id;
             $detailRows = [];
+            $openingStock = app(\App\Services\OpeningStockInventoryService::class);
 
-            // 1) Apply stock to product_warehouse
+            // 1) Stock inicial atómico legacy + inventory-location, por variante.
             foreach ($clean as $c) {
                 $productId = $products[$c['pcode']];
                 $variantId = $variants->get($c['vcode'])->id;
 
-                $pw = product_warehouse::firstOrNew([
-                    'warehouse_id' => $warehouseId,
+                $qty = (float) $c['qty'];
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $openingStock->applyOpeningStock(
+                    $warehouseId,
+                    (int) $productId,
+                    (int) $variantId,
+                    $qty,
+                    ['source' => 'import_variants', 'user_id' => Auth::id()]
+                );
+
+                $detailRows[] = [
                     'product_id' => $productId,
                     'product_variant_id' => $variantId,
-                ]);
-                if (! $pw->exists) {
-                    $pw->manage_stock = 1;
-                    $pw->qte = 0;
-                }
-                $pw->qte = (float) $pw->qte + (float) $c['qty'];
-                $pw->save();
-
-                $qty = (float) $c['qty'];
-                if ($qty > 0) {
-                    $detailRows[] = [
-                        'product_id' => $productId,
-                        'product_variant_id' => $variantId,
-                        'quantity' => $qty,
-                    ];
-                }
+                    'quantity' => $qty,
+                ];
             }
 
             // 2) Single Adjustment header per import+warehouse, with one detail per variant row
