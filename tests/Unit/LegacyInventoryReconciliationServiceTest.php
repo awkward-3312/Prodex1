@@ -417,6 +417,28 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         ]);
     }
 
+    /** El mapa `expect` tal y como lo construye la CLI a partir del pre-plan. */
+    private function expectFromPlan(array $plan): array
+    {
+        $expect = [];
+        foreach ($plan['plan'] as $r) {
+            $expect[$r['product_id'].':'.((int) ($r['product_variant_id'] ?: 0))] = [
+                'action' => $r['action'],
+                'delta' => $r['delta'],
+                'legacy' => $r['legacy'],
+                'location_before' => $r['warehouse_location_quantity'],
+                'classification' => $r['classification'],
+            ];
+        }
+        return $expect;
+    }
+
+    private function reconMovements(): int
+    {
+        return DB::table('inventory_location_movements')
+            ->where('reference_type', 'legacy_product_warehouse_incremental_reconciliation')->count();
+    }
+
     // ---- Reconciliación incremental segura (--apply-incremental, PR nuevo) ----
 
     /** J1: Iphone X — legacy 100, ubicación 0, LEGACY_ONLY_PENDING 100 => apply => 100, un movimiento, pending 0. */
@@ -495,15 +517,9 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $main = $this->location($wh->id, 'MAIN', true, 'storage');
 
         $svc = app(LegacyInventoryReconciliationService::class);
-        $plan = $svc->planIncremental($wh->id);
-        $expect = [];
-        foreach ($plan['plan'] as $r) {
-            $expect[$r['product_id'].':0'] = [
-                'delta' => $r['delta'], 'legacy' => $r['legacy'],
-                'location_before' => $r['warehouse_location_quantity'], 'classification' => $r['classification'],
-            ];
-        }
+        $expect = $this->expectFromPlan($svc->planIncremental($wh->id));
         $this->assertSame(100.0, $expect['8:0']['delta']);
+        $this->assertSame('ADD', $expect['8:0']['action']);
 
         // legacy cambia por debajo del plan.
         DB::table('product_warehouse')->where('warehouse_id', $wh->id)->where('product_id', 8)->update(['qte' => 120]);
@@ -528,12 +544,7 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $main = $this->location($wh->id, 'MAIN', true, 'storage');
 
         $svc = app(LegacyInventoryReconciliationService::class);
-        $plan = $svc->planIncremental($wh->id);
-        $r = $plan['plan'][0];
-        $expect = ['8:0' => [
-            'delta' => $r['delta'], 'legacy' => $r['legacy'],
-            'location_before' => $r['warehouse_location_quantity'], 'classification' => $r['classification'],
-        ]];
+        $expect = $this->expectFromPlan($svc->planIncremental($wh->id));
 
         // alguien mete existencia en la ubicación antes del apply.
         $this->locStock($main, 8, null, 30);
@@ -755,6 +766,136 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $this->assertSame(0, InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 5)->count());
         $this->assertSame(20.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 7)->value('quantity'));
         $this->assertSame(0, DB::table('inventory_location_movements')->where('reference_type', 'legacy_product_warehouse_incremental_reconciliation')->count());
+    }
+
+    // ---- TOCTOU / concurrencia: snapshot bloqueado + expect de conjunto completo ----
+
+    /** K1: legacy cambia antes del snapshot bloqueado => con expect aborta; sin expect recalcula y aplica el valor NUEVO, jamás el +100 viejo. */
+    public function test_k1_locked_replan_uses_new_legacy_never_stale_delta(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(8);
+        $this->legacy($wh->id, 8, null, 100);
+        $main = $this->location($wh->id, 'MAIN', true, 'storage');
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $expect = $this->expectFromPlan($svc->planIncremental($wh->id));
+        $this->assertSame(100.0, $expect['8:0']['delta']);
+
+        // el legacy sube antes de aplicar.
+        DB::table('product_warehouse')->where('warehouse_id', $wh->id)->where('product_id', 8)->update(['qte' => 130]);
+
+        // con el plan previo: abort, nunca aplica 100.
+        try {
+            $svc->applyIncremental($wh->id, 8, $expect);
+            $this->fail('debía abortar por plan obsoleto');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('plan quedó obsoleto', $e->getMessage());
+        }
+        $this->assertSame(0, $this->reconMovements());
+        $this->assertSame(0, InventoryLocationStock::where('inventory_location_id', $main)->count());
+
+        // sin plan previo: replan bloqueado => aplica el valor NUEVO (130), no 100.
+        $res = $svc->applyIncremental($wh->id, 8);
+        $this->assertSame(130.0, $res['applied_total_delta']);
+        $this->assertSame(130.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 8)->value('quantity'));
+    }
+
+    /** K2: la ubicación cambia (recepción location-native) antes del snapshot bloqueado => el replan bloqueado ve el estado nuevo y aborta; nunca aplica los 100 viejos. */
+    public function test_k2_locked_replan_uses_new_location_state(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(8);
+        $this->legacy($wh->id, 8, null, 100);
+        $main = $this->location($wh->id, 'MAIN', true, 'storage');
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $expect = $this->expectFromPlan($svc->planIncremental($wh->id));
+        $this->assertSame(100.0, $expect['8:0']['delta']);
+
+        // llega existencia location-native (recepción) antes de aplicar: 0 -> 20.
+        $this->locStock($main, 8, null, 20);
+        $this->movement('increase', 8, 20, 'Receipt', null, $main, (string) now());
+
+        // con el plan previo: abort (el replan bloqueado ya no ve un ADD limpio).
+        try {
+            $svc->applyIncremental($wh->id, 8, $expect);
+            $this->fail('debía abortar por estado de ubicación cambiado');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('0 escrituras', $e->getMessage());
+        }
+        $this->assertSame(0, $this->reconMovements());
+        $this->assertSame(20.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 8)->value('quantity'));
+
+        // sin plan previo: el replan bloqueado clasifica UNKNOWN_REVIEW y también
+        // rechaza — jamás aplica los 100 viejos a ciegas.
+        try {
+            $svc->applyIncremental($wh->id, 8);
+            $this->fail('sin plan previo también debía rechazar (UNKNOWN_REVIEW)');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('no es candidato ADD seguro', $e->getMessage());
+        }
+        $this->assertSame(0, $this->reconMovements());
+        $this->assertSame(20.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 8)->value('quantity'));
+    }
+
+    /** K3: pre-plan batch tiene ADD product8; en el replan product8 ya es RECONCILED => ABORT TOTAL, no skip silencioso. */
+    public function test_k3_batch_aborts_when_an_expected_add_key_vanishes(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(5); $this->product(8);
+        $this->legacy($wh->id, 5, null, 50);
+        $this->legacy($wh->id, 8, null, 100);
+        $main = $this->location($wh->id, 'MAIN', true, 'storage');
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $expect = $this->expectFromPlan($svc->planIncremental($wh->id));
+        $this->assertSame('ADD', $expect['5:0']['action']);
+        $this->assertSame('ADD', $expect['8:0']['action']);
+
+        // product8 deja de tener pendiente antes del apply (legacy vuelve a 0).
+        DB::table('product_warehouse')->where('warehouse_id', $wh->id)->where('product_id', 8)->update(['qte' => 0]);
+
+        try {
+            $svc->applyIncremental($wh->id, null, $expect);
+            $this->fail('el batch debía abortar porque el conjunto ADD cambió');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('conjunto de claves ADD ya no coincide', $e->getMessage());
+        }
+
+        // NADA se aplicó, ni siquiera product5 (abort total).
+        $this->assertSame(0, $this->reconMovements());
+        $this->assertSame(0, InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 5)->count());
+    }
+
+    /** K4: pre-plan batch con dos ADD; uno cambia de classification antes del apply => rollback/abort de todo el batch. */
+    public function test_k4_batch_aborts_when_one_key_changes_classification(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(5); $this->product(6);
+        $this->legacy($wh->id, 5, null, 50);
+        $this->legacy($wh->id, 6, null, 80);
+        $main = $this->location($wh->id, 'MAIN', true, 'storage');
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $expect = $this->expectFromPlan($svc->planIncremental($wh->id));
+        $this->assertSame('ADD', $expect['5:0']['action']);
+        $this->assertSame('ADD', $expect['6:0']['action']);
+
+        // product6 pasa de LEGACY_ONLY_PENDING a UNKNOWN_REVIEW: aparece actividad
+        // location-native no explicada.
+        $this->locStock($main, 6, null, 20);
+        $this->movement('increase', 6, 20, 'Receipt', null, $main, (string) now());
+
+        try {
+            $svc->applyIncremental($wh->id, null, $expect);
+            $this->fail('el batch debía abortar porque una clave cambió de classification');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('conjunto de claves ADD ya no coincide', $e->getMessage());
+        }
+
+        $this->assertSame(0, $this->reconMovements());
+        $this->assertSame(0, InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 5)->count());
     }
 
     // ---- Granularidad multi-ubicación (feedback PR #77) --------------------

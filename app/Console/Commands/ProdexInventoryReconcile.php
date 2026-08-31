@@ -118,6 +118,7 @@ class ProdexInventoryReconcile extends Command
                             foreach ($pre['plan'] as $r) {
                                 $k = $r['product_id'].':'.((int) ($r['product_variant_id'] ?: 0));
                                 $expect[$k] = [
+                                    'action' => $r['action'],
                                     'delta' => $r['delta'],
                                     'legacy' => $r['legacy'],
                                     'location_before' => $r['warehouse_location_quantity'],

@@ -157,6 +157,45 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         $this->assertStringContainsString("in_array(\$row['classification'], ['LEGACY_ONLY_PENDING', 'UNKNOWN_REVIEW'], true)", $svc);
     }
 
+    public function test_apply_incremental_locks_calc_sources_before_replan(): void
+    {
+        $svc = $this->read('app/Services/LegacyInventoryReconciliationService.php');
+
+        // K5 (contrato): antes de REPLANIFICAR, applyIncremental toma lockForUpdate
+        // sobre las filas físicas que determinan legacy (X) y location (Y):
+        //   - product_warehouse (writers legacy hacen UPDATE qte);
+        //   - inventory_location_stocks (InventoryService::lockedStock + reserved).
+        // La fila destino product+variant se materializa+bloquea aunque no exista.
+        $this->assertStringContainsString("DB::table('product_warehouse')->where('warehouse_id', \$warehouseId)", $svc);
+        $this->assertStringContainsString('$pwLock->lockForUpdate()->get();', $svc);
+        $this->assertStringContainsString('InventoryLocationStock::whereIn(\'inventory_location_id\', $lockLocationIds)', $svc);
+        $this->assertStringContainsString('$ilsLock->lockForUpdate()->get();', $svc);
+        $this->assertStringContainsString('InventoryLocationStock::firstOrCreate(', $svc);
+
+        // Los locks se toman ANTES de $this->planIncremental() dentro del método.
+        $body = $svc;
+        $applyPos = strpos($body, 'public function applyIncremental(');
+        $this->assertNotFalse($applyPos);
+        $segment = substr($body, $applyPos, 6000);
+        $pwLockPos = strpos($segment, '$pwLock->lockForUpdate()');
+        $ilsLockPos = strpos($segment, '$ilsLock->lockForUpdate()');
+        $replanPos = strpos($segment, '$planNow = $this->planIncremental($warehouseId);');
+        $this->assertNotFalse($pwLockPos);
+        $this->assertNotFalse($ilsLockPos);
+        $this->assertNotFalse($replanPos);
+        $this->assertLessThan($replanPos, $pwLockPos, 'product_warehouse lock debe preceder al replan');
+        $this->assertLessThan($replanPos, $ilsLockPos, 'inventory_location_stocks lock debe preceder al replan');
+
+        // El comentario documenta por qué esos locks serializan a los writers y
+        // la limitación (SQLite en el suite Unit no bloquea de verdad).
+        $this->assertStringContainsString('UPDATE product_warehouse.qte', $svc);
+        $this->assertStringContainsString('DEBITA el stock', $svc);
+
+        // (D) Comparación del CONJUNTO completo de claves ADD esperado vs recalculado.
+        $this->assertStringContainsString('conjunto de claves ADD ya no coincide', $svc);
+        $this->assertStringContainsString('array_keys($expectedAdd) !== array_keys($planNowAdd)', $svc);
+    }
+
     public function test_incremental_reconciliation_ref_is_a_baseline_category_not_native_net(): void
     {
         $prov = $this->read('app/Services/InventoryProvenanceAuditService.php');

@@ -261,27 +261,36 @@ class LegacyInventoryReconciliationService
      *
      * Todo ocurre en UNA transacción:
      *   1. lock del warehouse (+ estado de transición si existe);
-     *   2. se reconstruye provenance DENTRO de la transacción (nunca se confía en
-     *      un plan viejo);
-     *   3. cada fila objetivo debe seguir siendo classification LEGACY_ONLY_PENDING
+     *   2. TOCTOU: lockForUpdate sobre TODAS las filas físicas que sustentan el
+     *      cálculo ANTES de replanificar — product_warehouse (X) e
+     *      inventory_location_stocks / reserved_quantity (Y), en el alcance
+     *      (--product => ese product_id; batch => todo el almacén). La fila
+     *      destino product+variant se materializa+bloquea aunque aún no exista;
+     *   3. se reconstruye provenance DENTRO de la transacción, con los locks ya
+     *      tomados (nunca se confía en un plan viejo);
+     *   4. cada fila objetivo debe seguir siendo classification LEGACY_ONLY_PENDING
      *      con action ADD (destino apto y estable, producto simple, sin
      *      lote/serie/IMEI, sin reservado, sin tránsito de salida, delta > 0, sin
      *      negativos);
-     *   4. si se pasa $expect (plan previo), delta / legacy / location_before /
-     *      classification recalculados deben COINCIDIR exactamente; cualquier
-     *      cambio => ValidationException => rollback total, 0 escrituras;
-     *   5. con $productId explícito, si ESE producto no es un ADD limpio => abort
+     *   5. si se pasa $expect (plan previo): (a) el CONJUNTO de claves ADD del
+     *      pre-plan debe coincidir EXACTO con el recálculo bloqueado — si una
+     *      clave desapareció / cambió de classification / cambió de delta, abort
+     *      total; (b) además delta / legacy / location_before / classification
+     *      de cada fila deben COINCIDIR exactamente; cualquier diferencia =>
+     *      ValidationException => rollback total, 0 escrituras;
+     *   6. con $productId explícito, si ESE producto no es un ADD limpio => abort
      *      total; sin $productId, las filas no seguras van a manual_review sin
-     *      abortar (los ADD limpios se aplican de forma atómica);
-     *   6. increase() idempotente por fingerprint del estado revisado
+     *      abortar (los ADD limpios se aplican de forma atómica en la misma tx);
+     *   7. increase() idempotente por fingerprint del estado revisado
      *      (baseline_at + legacy + location_before + delta), no por
      *      warehouse:product:variant:delta;
-     *   7. postcondición: re-audit; SÓLO las claves aplicadas deben quedar SIN
+     *   8. postcondición: re-audit; SÓLO las claves aplicadas deben quedar SIN
      *      LEGACY_ONLY_PENDING / SIN UNKNOWN_REVIEW y con ubicación = before + delta;
      *      si falla => rollback total.
      *
-     * @param  array<string,array{delta?:float,legacy?:float,location_before?:float,classification?:string}>|null  $expect
-     *         plan previo por "productId:variantKey"; si difiere del recálculo => abort.
+     * @param  array<string,array{action?:string,delta?:float,legacy?:float,location_before?:float,classification?:string}>|null  $expect
+     *         plan previo por "productId:variantKey" (incluye `action`); si el
+     *         conjunto ADD o cualquier fila difiere del recálculo => abort.
      */
     public function applyIncremental(int $warehouseId, ?int $productId = null, ?array $expect = null, ?int $userId = null): array
     {
@@ -297,10 +306,62 @@ class LegacyInventoryReconciliationService
             }
 
             $strict = $productId !== null;
-
-            // (2) Provenance reconstruido AHORA, dentro de la transacción.
-            $planNow = $this->planIncremental($warehouseId);
             $target = $this->eligibleLegacyTargetLocation($warehouse);
+
+            // ---- TOCTOU: congelar las filas físicas que sustentan el cálculo --
+            // Bloquear el Warehouse NO serializa los writers de product_warehouse
+            // ni de inventory_location_stocks. Antes de REPLANIFICAR se toma
+            // lockForUpdate sobre TODAS las filas que determinan legacy (X),
+            // location (Y) y por tanto delta (Z), para que no puedan cambiar
+            // hasta commit/rollback:
+            //   - legacy writers (Transfer/Purchase/Sale/Adjustment/...) hacen
+            //     UPDATE product_warehouse.qte -> chocan con (A.1);
+            //   - InventoryService::lockedStock() hace lockForUpdate de
+            //     inventory_location_stocks antes de mutarla (POS/Transfer/
+            //     SaleReturn bridges incluidos) -> chocan con (A.2);
+            //   - reserved_quantity vive en inventory_location_stocks -> (A.2);
+            //   - TransferWorkflowService::dispatch() DEBITA el stock (product_
+            //     warehouse o InventoryService) ANTES de marcar logistics_status
+            //     = in_transit, así que (A.1)/(A.2) lo bloquean antes de que
+            //     pueda aparecer un tránsito de salida nuevo entre plan y write.
+            $lockLocationIds = $this->warehouseLocationIds($warehouseId);
+
+            // (A.1) product_warehouse: TODAS las filas del alcance (todas las
+            //       variantes, incl. soft-deleted, por si un writer resucita una).
+            if (Schema::hasTable('product_warehouse')) {
+                $pwLock = DB::table('product_warehouse')->where('warehouse_id', $warehouseId);
+                if ($productId !== null) $pwLock->where('product_id', $productId);
+                $pwLock->lockForUpdate()->get();
+            }
+
+            // (A.3) fila destino product+variant: materializar+bloquear aunque
+            //       aún no exista (Iphone X: location 0, sin fila). Sólo alcance
+            //       --product (barato); en batch basta el rango de (A.2).
+            if ($target !== null && $productId !== null && Schema::hasTable('product_warehouse')) {
+                $variantKeys = [0];
+                foreach (DB::table('product_warehouse')
+                    ->where('warehouse_id', $warehouseId)->where('product_id', $productId)
+                    ->get(['product_variant_id']) as $r) {
+                    $variantKeys[] = (int) ($r->product_variant_id ?: 0);
+                }
+                foreach (array_values(array_unique($variantKeys)) as $vk) {
+                    InventoryLocationStock::firstOrCreate(
+                        ['inventory_location_id' => $target->id, 'product_id' => $productId, 'variant_key' => $vk],
+                        ['product_variant_id' => $vk > 0 ? $vk : null, 'quantity' => 0, 'reserved_quantity' => 0, 'manage_stock' => true]
+                    );
+                }
+            }
+
+            // (A.2) inventory_location_stocks: TODAS las filas de las ubicaciones
+            //       activas del almacén dentro del alcance (cantidad + reservado).
+            if ($lockLocationIds) {
+                $ilsLock = InventoryLocationStock::whereIn('inventory_location_id', $lockLocationIds);
+                if ($productId !== null) $ilsLock->where('product_id', $productId);
+                $ilsLock->lockForUpdate()->get();
+            }
+
+            // (2) Provenance reconstruido AHORA, con los locks ya tomados.
+            $planNow = $this->planIncremental($warehouseId);
             $baselineAt = $planNow['baseline_at'];
 
             $rows = $planNow['plan'];
@@ -310,6 +371,34 @@ class LegacyInventoryReconciliationService
                     throw ValidationException::withMessages([
                         'apply_incremental' => "El producto {$productId} no tiene ninguna fila LEGACY_ONLY_PENDING pendiente en el almacén {$warehouseId} "
                             .'(¿ya reconciliado o cambió el estado?). 0 escrituras.',
+                    ]);
+                }
+            }
+
+            // (D) PLAN EXPECT — conjunto COMPLETO. No basta validar cada fila que
+            // sobrevivió: si una clave ADD del pre-plan desapareció / pasó a
+            // RECONCILED / pasó a MANUAL_REVIEW / cambió de delta, el plan
+            // COMPLETO cambió => abortar TODO (nunca skip silencioso).
+            if ($expect !== null) {
+                $expectedAdd = [];
+                foreach ($expect as $k => $e) {
+                    if (($e['action'] ?? null) !== 'ADD') continue;
+                    if ($productId !== null && (int) explode(':', (string) $k)[0] !== $productId) continue;
+                    $expectedAdd[$k] = true;
+                }
+                $planNowAdd = [];
+                foreach ($rows as $r) {
+                    if ($r['action'] === 'ADD' && $r['classification'] === 'LEGACY_ONLY_PENDING') {
+                        $planNowAdd[$r['product_id'].':'.((int) ($r['product_variant_id'] ?: 0))] = true;
+                    }
+                }
+                ksort($expectedAdd);
+                ksort($planNowAdd);
+                if (array_keys($expectedAdd) !== array_keys($planNowAdd)) {
+                    throw ValidationException::withMessages([
+                        'apply_incremental' => 'El plan cambió entre el pre-plan y el recálculo bloqueado: el conjunto de claves ADD ya no coincide '
+                            .'(esperadas: ['.implode(',', array_keys($expectedAdd)).'], recalculadas: ['.implode(',', array_keys($planNowAdd)).']). '
+                            .'Abort total, 0 escrituras.',
                     ]);
                 }
             }
