@@ -154,6 +154,34 @@ class InventoryCompatibilityService
     }
 
     /**
+     * El destino registrado en el state debe SEGUIR siendo apto en runtime:
+     * pertenece al almacén, activo, no borrado, tipo 'storage', no cuarentena, y
+     * sigue siendo la default del almacén. Si alguien cambió la configuración
+     * después de activar dual_write, el mirror rehúsa y markMismatch lo registra;
+     * jamás escribe en una ubicación que dejó de ser apta.
+     */
+    private function assertTargetStillEligible(int $warehouseId, int $locationId): void
+    {
+        $row = DB::table('inventory_locations')->where('id', $locationId)->first();
+        $warehouseDefault = (int) (DB::table('warehouses')->where('id', $warehouseId)->value('default_inventory_location_id') ?? 0);
+
+        $ok = $row
+            && $row->deleted_at === null
+            && (int) $row->warehouse_id === $warehouseId
+            && (int) $row->is_active === 1
+            && $row->type === 'storage'
+            && (int) ($row->is_quarantine ?? 0) === 0
+            && $warehouseDefault === $locationId;
+
+        if (! $ok) {
+            throw ValidationException::withMessages([
+                'inventory_transition' => 'Dual-write detenido: la ubicación destino dejó de ser apta '
+                    .'(debe seguir siendo la default del almacén, tipo storage, activa y no cuarentena).',
+            ]);
+        }
+    }
+
+    /**
      * Called only from legacy write paths that have already committed their
      * product_warehouse mutation inside the current DB transaction.
      *
@@ -191,6 +219,11 @@ class InventoryCompatibilityService
                         'inventory_transition' => 'Dual-write detenido: el almacén no está reconciliado o no tiene ubicación destino.',
                     ]);
                 }
+
+                // La ubicación destino registrada debe SEGUIR siendo apta en
+                // runtime (por si alguien cambió la configuración tras activar
+                // dual_write). Si no, rehúsa — markMismatch lo registra.
+                $this->assertTargetStillEligible($warehouseId, (int) $lockedState->inventory_location_id);
 
                 $target = $this->legacyQuantity($warehouseId, $productId, $variantId);
                 if ($target < 0) {

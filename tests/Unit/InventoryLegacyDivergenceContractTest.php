@@ -179,10 +179,17 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         $this->assertStringContainsString("'stock_outside_target_quantity' => \$stockOutsideTarget", $src);
         $this->assertStringContainsString("'target_holds_all_stock' => \$targetHoldsAllStock", $src);
 
-        // Contrato de destino APTO: storage, no cuarentena.
-        $this->assertStringContainsString('private function eligibleLegacyTargetLocation(Warehouse $warehouse): ?InventoryLocation', $src);
-        $this->assertStringContainsString('if ($default->type !== InventoryLocation::TYPE_STORAGE) return null;', $src);
-        $this->assertStringContainsString('if ($default->is_quarantine) return null;', $src);
+        // Contrato de destino APTO: predicado único reutilizado en todas partes.
+        $this->assertStringContainsString('private function locationIsEligibleTarget(?InventoryLocation $location, int $warehouseId): bool', $src);
+        $this->assertStringContainsString("&& \$location->type === InventoryLocation::TYPE_STORAGE", $src);
+        $this->assertStringContainsString('&& ! $location->is_quarantine', $src);
+        // ensureDefaultLocation NO usa existingDefaultLocation genérico: exige apto,
+        // reutiliza / crea una code=MAIN storage, y rechaza una MAIN incompatible.
+        $this->assertStringContainsString('$eligible = $this->eligibleLegacyTargetLocation($warehouse);', $src);
+        $this->assertStringContainsString('if (! $this->locationIsEligibleTarget($main, $warehouse->id)) {', $src);
+        $this->assertStringContainsString('No se recicla ni se modifica automáticamente: requiere revisión manual.', $src);
+        // Aserción explícita justo antes de escribir.
+        $this->assertStringContainsString('if (! $this->locationIsEligibleTarget($location, $warehouseId)) {', $src);
 
         // planIncremental nunca dice ADD sin destino.
         $this->assertStringContainsString("if (\$target === null && \$delta > 0) \$reasons[] = 'sin_ubicacion_destino';", $src);
@@ -203,5 +210,10 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         // mirrorLegacySnapshot rehúsa si hay stock fuera de MAIN.
         $this->assertStringContainsString('abs($warehouseAggregate - $current) > 0.0005', $src);
         $this->assertStringContainsString('fuera de MAIN', $src);
+        // …y rehúsa si el destino registrado dejó de ser apto en runtime.
+        $this->assertStringContainsString('private function assertTargetStillEligible(int $warehouseId, int $locationId): void', $src);
+        $this->assertStringContainsString('$this->assertTargetStillEligible($warehouseId, (int) $lockedState->inventory_location_id);', $src);
+        $this->assertStringContainsString('$warehouseDefault === $locationId', $src);
+        $this->assertStringContainsString('dejó de ser apta', $src);
     }
 }

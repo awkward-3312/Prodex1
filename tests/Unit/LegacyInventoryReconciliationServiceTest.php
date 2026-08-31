@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\InventoryLocation;
 use App\Models\InventoryLocationStock;
 use App\Models\Warehouse;
 use App\Services\LegacyInventoryReconciliationService;
@@ -481,5 +482,99 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $this->assertSame('ADD', $r['action']);
         $this->assertSame($main, $r['target_inventory_location_id']);
         $this->assertNotContains('sin_ubicacion_destino', $r['reasons']);
+    }
+
+    // ---- backfillWarehouse respeta el contrato de destino apto -------------
+
+    /** A. default QUARANTINE (no MAIN), sin stock, MAIN storage existe => backfill usa MAIN storage. */
+    public function test_backfill_A_uses_existing_storage_main_never_quarantine_default(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(5);
+        $this->legacy($wh->id, 5, null, 100);
+        $quar = $this->location($wh->id, 'CUARENTENA', true, 'quarantine', true); // default = quarantine
+        $main = $this->location($wh->id, 'MAIN', false, 'storage');               // MAIN storage apta
+
+        $result = app(LegacyInventoryReconciliationService::class)->backfillWarehouse($wh->id);
+
+        $this->assertTrue($result['is_reconciled']);
+        $this->assertSame($main, (int) Warehouse::find($wh->id)->default_inventory_location_id);
+        $this->assertSame(100.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 5)->value('quantity'));
+        $this->assertSame(0, InventoryLocationStock::where('inventory_location_id', $quar)->count());
+    }
+
+    /** B. default QUARANTINE, no existe MAIN => crea MAIN storage y usa esa. */
+    public function test_backfill_B_creates_storage_main_when_none_exists(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(5);
+        $this->legacy($wh->id, 5, null, 100);
+        $this->location($wh->id, 'CUARENTENA', true, 'quarantine', true);
+
+        $result = app(LegacyInventoryReconciliationService::class)->backfillWarehouse($wh->id);
+
+        $this->assertTrue($result['is_reconciled']);
+        $created = InventoryLocation::where('warehouse_id', $wh->id)->where('code', 'MAIN')->first();
+        $this->assertNotNull($created);
+        $this->assertSame('storage', $created->type);
+        $this->assertFalse((bool) $created->is_quarantine);
+        $this->assertSame($created->id, (int) Warehouse::find($wh->id)->default_inventory_location_id);
+        $this->assertSame(100.0, (float) InventoryLocationStock::where('inventory_location_id', $created->id)->where('product_id', 5)->value('quantity'));
+    }
+
+    /** C. existe code=MAIN pero es QUARANTINE => --apply rechaza, 0 escrituras. */
+    public function test_backfill_C_rejects_when_code_main_is_quarantine(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(5);
+        $this->legacy($wh->id, 5, null, 100);
+        $this->location($wh->id, 'MAIN', true, 'quarantine', true); // code=MAIN pero inválida
+
+        try {
+            app(LegacyInventoryReconciliationService::class)->backfillWarehouse($wh->id);
+            $this->fail('backfill debía rechazar una MAIN de cuarentena');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('no es un destino apto', $e->getMessage());
+        }
+
+        $this->assertSame(0, InventoryLocationStock::count());
+    }
+
+    /** D. default storage válida => comportamiento existente intacto. */
+    public function test_backfill_D_storage_default_unchanged_behavior(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(5);
+        $this->legacy($wh->id, 5, null, 42);
+        $main = $this->location($wh->id, 'MAIN', true, 'storage');
+
+        $result = app(LegacyInventoryReconciliationService::class)->backfillWarehouse($wh->id);
+
+        $this->assertTrue($result['is_reconciled']);
+        $this->assertTrue($result['backfilled']);
+        $this->assertSame(42.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 5)->value('quantity'));
+    }
+
+    /** E. tras backfill: destino storage/no-cuarentena y location total == legacy exacto. */
+    public function test_backfill_E_target_is_storage_and_totals_match_exactly(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(5); $this->product(6);
+        $this->legacy($wh->id, 5, null, 30);
+        $this->legacy($wh->id, 6, 700, 12);
+        $this->location($wh->id, 'CUARENTENA', true, 'quarantine', true);
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $result = $svc->backfillWarehouse($wh->id);
+
+        $target = InventoryLocation::find($result['inventory_location_id']);
+        $this->assertSame('storage', $target->type);
+        $this->assertFalse((bool) $target->is_quarantine);
+
+        $audit = $svc->auditWarehouse($wh->id);
+        $this->assertSame(42.0, $audit['legacy_total']);
+        $this->assertSame(42.0, $audit['location_total']);
+        $this->assertEmpty($audit['differences']);
+        $this->assertTrue($audit['target_holds_all_stock']);
     }
 }

@@ -284,6 +284,36 @@ class InventoryCompatibilityServiceTest extends TestCase
         $this->assertSame('mismatch', $service->state($warehouse->id)->status);
     }
 
+    /**
+     * Si tras activar dual_write alguien vuelve la ubicación destino a cuarentena
+     * (o le quita el flag de default), el mirror rehúsa y marca mismatch — jamás
+     * escribe en una ubicación que dejó de ser apta.
+     */
+    public function test_mirror_refuses_when_target_stopped_being_eligible(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+        $service = app(InventoryCompatibilityService::class);
+        $service->enableDualWrite($warehouse->id);
+        $main = (int) DB::table('warehouses')->where('id', $warehouse->id)->value('default_inventory_location_id');
+
+        // Config cambiada tras activar dual_write: MAIN pasa a cuarentena.
+        DB::table('inventory_locations')->where('id', $main)->update(['type' => 'quarantine', 'is_quarantine' => 1]);
+        DB::table('product_warehouse')->where('warehouse_id', $warehouse->id)->where('product_id', 10)->update(['qte' => 130]);
+
+        try {
+            $service->mirrorLegacySnapshot($warehouse->id, 10);
+            $this->fail('mirrorLegacySnapshot debía rehusar con destino no apto');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('dejó de ser apta', $e->getMessage());
+        }
+
+        $this->assertSame(100.0, (float) DB::table('inventory_location_stocks')
+            ->where('inventory_location_id', $main)->where('product_id', 10)->value('quantity'));
+        $this->assertSame('mismatch', $service->state($warehouse->id)->status);
+    }
+
     // ---- Blocker: dual_write exige que TODO el stock esté en el destino -------
 
     /** 1. legacy 100 / MAIN 100 / STORAGE2 0  => dual_write permitido. */

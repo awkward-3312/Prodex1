@@ -218,6 +218,14 @@ class LegacyInventoryReconciliationService
                 ]);
             }
 
+            // Aserción explícita antes de escribir: el destino sigue siendo apto.
+            $location = $location->fresh() ?? $location;
+            if (! $this->locationIsEligibleTarget($location, $warehouseId)) {
+                throw ValidationException::withMessages([
+                    'inventory_location_id' => 'La ubicación destino dejó de ser un destino apto (storage activa, no cuarentena, del almacén) antes de escribir. Backfill cancelado.',
+                ]);
+            }
+
             $inventory = app(InventoryService::class);
             foreach ($legacy as $row) {
                 if ($row['quantity'] <= 0) continue;
@@ -265,25 +273,45 @@ class LegacyInventoryReconciliationService
             ->all();
     }
 
+    /**
+     * Devuelve/crea la ubicación destino APTA del almacén y la deja como default.
+     * Respeta el mismo contrato que eligibleLegacyTargetLocation() — nunca
+     * escribe stock legacy en una ubicación de cuarentena / dañados / devoluciones.
+     *
+     *  1. Si la default actual ya es apta (storage activa, no cuarentena) => esa.
+     *  2. Si no, y existe una code=MAIN del almacén APTA => usarla y setearla default.
+     *  3. Si no existe ninguna code=MAIN => crear MAIN storage y setearla default.
+     *  4. Si existe una code=MAIN pero NO es apta (quarantine/damaged/…) => NO se
+     *     recicla ni se modifica: ValidationException (revisión manual).
+     */
     private function ensureDefaultLocation(Warehouse $warehouse): InventoryLocation
     {
-        $existing = $this->existingDefaultLocation($warehouse);
-        if ($existing) return $existing;
+        $eligible = $this->eligibleLegacyTargetLocation($warehouse);
+        if ($eligible) return $eligible;
 
-        $location = InventoryLocation::whereNull('deleted_at')
+        $main = InventoryLocation::whereNull('deleted_at')
             ->where('warehouse_id', $warehouse->id)
             ->where('code', 'MAIN')
             ->first();
 
-        if (! $location) {
-            $location = app(InventoryLocationService::class)->createForWarehouse($warehouse, [
-                'code' => 'MAIN',
-                'name' => 'Inventario principal',
-                'type' => InventoryLocation::TYPE_STORAGE,
-                'is_sellable' => false,
-                'is_active' => true,
-            ]);
+        if ($main) {
+            if (! $this->locationIsEligibleTarget($main, $warehouse->id)) {
+                throw ValidationException::withMessages([
+                    'inventory_location_id' => 'La ubicación MAIN del almacén no es un destino apto para reconciliación legacy '
+                        .'(debe ser tipo storage, activa y no cuarentena). No se recicla ni se modifica automáticamente: requiere revisión manual.',
+                ]);
+            }
+
+            return app(InventoryLocationService::class)->setWarehouseDefault($main);
         }
+
+        $location = app(InventoryLocationService::class)->createForWarehouse($warehouse, [
+            'code' => 'MAIN',
+            'name' => 'Inventario principal',
+            'type' => InventoryLocation::TYPE_STORAGE,
+            'is_sellable' => false,
+            'is_active' => true,
+        ]);
 
         return app(InventoryLocationService::class)->setWarehouseDefault($location);
     }
@@ -312,11 +340,23 @@ class LegacyInventoryReconciliationService
     private function eligibleLegacyTargetLocation(Warehouse $warehouse): ?InventoryLocation
     {
         $default = $this->existingDefaultLocation($warehouse);
-        if (! $default) return null;
-        if ($default->type !== InventoryLocation::TYPE_STORAGE) return null;
-        if ($default->is_quarantine) return null;
 
-        return $default;
+        return $this->locationIsEligibleTarget($default, (int) $warehouse->id) ? $default : null;
+    }
+
+    /**
+     * Predicado único del contrato de destino apto: del almacén, activa, no
+     * borrada, tipo 'storage', no cuarentena. Se usa en auditWarehouse,
+     * planIncremental, ensureDefaultLocation y la aserción previa a increase().
+     */
+    private function locationIsEligibleTarget(?InventoryLocation $location, int $warehouseId): bool
+    {
+        return $location !== null
+            && $location->deleted_at === null
+            && (bool) $location->is_active === true
+            && (int) $location->warehouse_id === $warehouseId
+            && $location->type === InventoryLocation::TYPE_STORAGE
+            && ! $location->is_quarantine;
     }
 
     private function legacyMap(int $warehouseId): array
