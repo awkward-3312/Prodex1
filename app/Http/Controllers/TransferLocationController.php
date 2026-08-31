@@ -14,6 +14,8 @@ use App\Services\BatchLocationService;
 use App\Services\InventoryLocationScopeService;
 use App\Services\TransferBusinessDestinationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class TransferLocationController extends BaseController
@@ -88,7 +90,12 @@ class TransferLocationController extends BaseController
 
         $stocks = InventoryLocationStock::where('inventory_location_id', $location->id)
             ->where('quantity', '>', 0)->get();
-        if ($stocks->isEmpty()) return response()->json([]);
+        if ($stocks->isEmpty()) {
+            return response()->json([
+                'products' => [],
+                'legacy_pending' => $this->legacyPendingForLocation($location),
+            ]);
+        }
 
         $products = Product::with(['unitPurchase', 'variants'])
             ->whereNull('deleted_at')->whereIn('id', $stocks->pluck('product_id')->unique())
@@ -125,7 +132,104 @@ class TransferLocationController extends BaseController
             ];
         }
 
-        return response()->json($rows);
+        return response()->json([
+            'products' => $rows,
+            // Productos del almacén dueño del origen cuyo total legado
+            // (product_warehouse) supera el total físico por ubicación en ESTA
+            // ubicación: divergencia pendiente de reconciliar. Cubre tanto
+            // "nunca reconciliado" (físico 0 → no aparece en el catálogo) como
+            // "reconciliado y luego divergido por opening stock / compras".
+            // SÓLO LECTURA: nunca entra al catálogo operable — un traslado por
+            // ubicación sólo puede mover stock location-native real.
+            'legacy_pending' => $this->legacyPendingForLocation($location),
+        ]);
+    }
+
+    /**
+     * Señal de sólo lectura para el buscador de traslados, BASADA EN PROVENANCE
+     * (InventoryProvenanceAuditService), no en legacy − location.
+     *
+     * kind:
+     *   'legacy_pending'  clave LEGACY_ONLY_PENDING: cantidad legacy sin
+     *                     equivalente location-native (opening stock / no migrado).
+     *   'unknown_review'  clave UNKNOWN_REVIEW: divergencia sin origen verificable.
+     *   'other_location'  clave RECONCILED/MIRRORED presente en el almacén pero
+     *                     NO en la ubicación elegida (vive en otra ubicación del
+     *                     mismo almacén). NO es divergencia.
+     *
+     * Nunca hace transferible nada: es sólo para el mensaje del formulario.
+     */
+    private function legacyPendingForLocation(InventoryLocation $location): array
+    {
+        if (! $location->warehouse_id || ! Schema::hasTable('product_warehouse')) {
+            return [];
+        }
+
+        $audit = app(\App\Services\InventoryProvenanceAuditService::class)
+            ->auditWarehouse((int) $location->warehouse_id);
+
+        $rows = collect($audit['keys'])->filter(
+            fn ($r) => in_array($r['classification'], ['LEGACY_ONLY_PENDING', 'UNKNOWN_REVIEW', 'RECONCILED', 'MIRRORED'], true)
+                && ((float) $r['legacy_now'] > 0.0005)
+        );
+        if ($rows->isEmpty()) return [];
+
+        $productIds = $rows->pluck('product_id')->unique()->all();
+
+        $meta = DB::table('products as p')
+            ->leftJoin('product_variants as pv', function ($j) { $j->on('pv.product_id', '=', 'p.id'); })
+            ->whereIn('p.id', $productIds)
+            ->where('p.type', '!=', 'is_service')
+            ->get(['p.id as pid', 'p.code as p_code', 'p.name as p_name', 'pv.id as vid', 'pv.code as v_code', 'pv.name as v_name']);
+
+        $selectedLocQty = DB::table('inventory_location_stocks')
+            ->where('inventory_location_id', $location->id)
+            ->whereIn('product_id', $productIds)
+            ->groupBy('product_id', 'variant_key')
+            ->selectRaw('product_id, variant_key, SUM(quantity) as qty')
+            ->get()
+            ->mapWithKeys(fn ($r) => [((int) $r->product_id).':'.((int) $r->variant_key) => round((float) $r->qty, 3)]);
+
+        $pByProduct = $meta->groupBy('pid');
+
+        return $rows->map(function ($r) use ($pByProduct, $selectedLocQty) {
+            $productId = (int) $r['product_id'];
+            $variantKey = (int) ($r['product_variant_id'] ?: 0);
+            $legacyNow = round((float) $r['legacy_now'], 3);
+            $whQty = round((float) $r['current_location'], 3);
+            $selQty = round((float) ($selectedLocQty[$productId.':'.$variantKey] ?? 0), 3);
+            $cls = $r['classification'];
+
+            if ($cls === 'LEGACY_ONLY_PENDING') {
+                $kind = 'legacy_pending';
+            } elseif ($cls === 'UNKNOWN_REVIEW') {
+                $kind = 'unknown_review';
+            } elseif ($selQty <= 0.0005 && $whQty > 0.0005) {
+                $kind = 'other_location';
+            } else {
+                return null; // reconciliado y presente aquí → ya está en el catálogo
+            }
+
+            $pm = collect($pByProduct->get($productId) ?? []);
+            if ($pm->isEmpty()) return null; // is_service u otro producto no listable
+            $row = $variantKey > 0 ? ($pm->firstWhere('vid', $variantKey) ?: $pm->first()) : $pm->first();
+            $code = ($variantKey > 0 && $row->v_code) ? $row->v_code : $row->p_code;
+            $name = ($variantKey > 0 && $row->v_code) ? '['.$row->v_name.'] '.$row->p_name : $row->p_name;
+
+            return [
+                'product_id' => $productId,
+                'product_variant_id' => $variantKey > 0 ? $variantKey : null,
+                'code' => (string) $code,
+                'name' => (string) $name,
+                'classification' => $cls,
+                'legacy_quantity' => $legacyNow,
+                'warehouse_location_quantity' => $whQty,
+                'selected_location_quantity' => $selQty,
+                'snapshot_drift' => round((float) $r['snapshot_drift'], 3),
+                'pending_quantity' => round((float) $r['legacy_only_pending_quantity'], 3),
+                'kind' => $kind,
+            ];
+        })->filter()->sortByDesc('pending_quantity')->take(200)->values()->all();
     }
 
     public function product(Request $request, int $locationId, int $productId)

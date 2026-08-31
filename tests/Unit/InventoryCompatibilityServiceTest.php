@@ -192,6 +192,218 @@ class InventoryCompatibilityServiceTest extends TestCase
         $this->assertSame(6.0, $service->shadowQuantity($warehouse->id, 10));
     }
 
+    // ---- Blocker 2: transición single-MAIN vs almacén multi-ubicación --------
+
+    /**
+     * TEST OBLIGATORIO: legacy 100 = MAIN 70 + QUARANTINE 30.
+     * audit => reconciled. compareKey => agregado del almacén (100), no MAIN (70).
+     */
+    public function test_compare_uses_warehouse_aggregate_not_only_main(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id); // MAIN 100
+        $service = app(InventoryCompatibilityService::class);
+        $main = (int) DB::table('warehouses')->where('id', $warehouse->id)->value('default_inventory_location_id');
+
+        // Repartir: MAIN 70 + QUARANTINE 30 (agregado sigue 100).
+        DB::table('inventory_location_stocks')->where('inventory_location_id', $main)->where('product_id', 10)->update(['quantity' => 70]);
+        $quar = $this->addLocation($warehouse->id, 'QUARANTINE');
+        $this->addLocStock($quar, 10, 30);
+
+        $audit = $service->audit($warehouse->id);
+        $this->assertTrue($audit['is_reconciled']);
+        $this->assertSame(2, $audit['stocked_location_count']);
+        $this->assertFalse($audit['is_single_location']);
+
+        $this->assertSame(100.0, $service->shadowQuantity($warehouse->id, 10)); // agregado, no 70
+        $this->assertTrue($service->compareKey($warehouse->id, 10)['matches']);
+    }
+
+    /** enableDualWrite se bloquea si el almacén tiene stock en >1 ubicación. */
+    public function test_dual_write_blocked_for_multi_location_warehouse(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+        $service = app(InventoryCompatibilityService::class);
+        $main = (int) DB::table('warehouses')->where('id', $warehouse->id)->value('default_inventory_location_id');
+        DB::table('inventory_location_stocks')->where('inventory_location_id', $main)->where('product_id', 10)->update(['quantity' => 70]);
+        $this->addLocStock($this->addLocation($warehouse->id, 'QUAR'), 10, 30);
+
+        $this->expectException(ValidationException::class);
+        $service->enableDualWrite($warehouse->id);
+    }
+
+    /** enableMode exige una MAIN destino aunque is_reconciled sea true. */
+    public function test_enable_mode_requires_a_target_main_even_when_reconciled(): void
+    {
+        $warehouse = $this->warehouse();
+        // Sin legacy y sin ubicaciones: is_reconciled vacuamente true, pero sin MAIN.
+        $service = app(InventoryCompatibilityService::class);
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($warehouse->id);
+        $this->assertTrue($audit['is_reconciled']);
+        $this->assertFalse($audit['has_target_location']);
+        $this->assertFalse($audit['transition_ready']);
+
+        $this->expectException(ValidationException::class);
+        $service->enableShadowCompare($warehouse->id);
+    }
+
+    /**
+     * Un mirror futuro NUNCA puede convertir (MAIN 70 + QUAR 30) en MAIN 110:
+     * mirrorLegacySnapshot rehúsa y marca mismatch, sin escribir.
+     */
+    public function test_mirror_refuses_when_stock_lives_outside_main(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+        $service = app(InventoryCompatibilityService::class);
+        $service->enableDualWrite($warehouse->id); // permitido: 1 sola ubicación en este punto
+        $main = (int) DB::table('warehouses')->where('id', $warehouse->id)->value('default_inventory_location_id');
+
+        // Después aparece QUARANTINE con 30 (MAIN baja a 70).
+        DB::table('inventory_location_stocks')->where('inventory_location_id', $main)->where('product_id', 10)->update(['quantity' => 70]);
+        $this->addLocStock($this->addLocation($warehouse->id, 'QUAR'), 10, 30);
+
+        // El legacy sube a 110.
+        DB::table('product_warehouse')->where('warehouse_id', $warehouse->id)->where('product_id', 10)->update(['qte' => 110]);
+
+        try {
+            $service->mirrorLegacySnapshot($warehouse->id, 10);
+            $this->fail('mirrorLegacySnapshot debía rehusar con stock fuera de MAIN');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('fuera de MAIN', $e->getMessage());
+        }
+
+        // MAIN no cambió (sigue 70), agregado sigue 100, estado en mismatch.
+        $this->assertSame(70.0, (float) DB::table('inventory_location_stocks')
+            ->where('inventory_location_id', $main)->where('product_id', 10)->value('quantity'));
+        $this->assertSame(100.0, $service->warehouseAggregateQuantity($warehouse->id, 10));
+        $this->assertSame('mismatch', $service->state($warehouse->id)->status);
+    }
+
+    /**
+     * Si tras activar dual_write alguien vuelve la ubicación destino a cuarentena
+     * (o le quita el flag de default), el mirror rehúsa y marca mismatch — jamás
+     * escribe en una ubicación que dejó de ser apta.
+     */
+    public function test_mirror_refuses_when_target_stopped_being_eligible(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+        $service = app(InventoryCompatibilityService::class);
+        $service->enableDualWrite($warehouse->id);
+        $main = (int) DB::table('warehouses')->where('id', $warehouse->id)->value('default_inventory_location_id');
+
+        // Config cambiada tras activar dual_write: MAIN pasa a cuarentena.
+        DB::table('inventory_locations')->where('id', $main)->update(['type' => 'quarantine', 'is_quarantine' => 1]);
+        DB::table('product_warehouse')->where('warehouse_id', $warehouse->id)->where('product_id', 10)->update(['qte' => 130]);
+
+        try {
+            $service->mirrorLegacySnapshot($warehouse->id, 10);
+            $this->fail('mirrorLegacySnapshot debía rehusar con destino no apto');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('dejó de ser apta', $e->getMessage());
+        }
+
+        $this->assertSame(100.0, (float) DB::table('inventory_location_stocks')
+            ->where('inventory_location_id', $main)->where('product_id', 10)->value('quantity'));
+        $this->assertSame('mismatch', $service->state($warehouse->id)->status);
+    }
+
+    // ---- Blocker: dual_write exige que TODO el stock esté en el destino -------
+
+    /** 1. legacy 100 / MAIN 100 / STORAGE2 0  => dual_write permitido. */
+    public function test_dual_write_allowed_when_target_holds_all_stock(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id); // MAIN 100
+        $st2 = $this->addLocation($warehouse->id, 'STORAGE2');
+        $this->addLocStock($st2, 10, 0); // fila con 0
+
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($warehouse->id);
+        $this->assertTrue($audit['target_holds_all_stock']);
+        $this->assertSame(0.0, $audit['stock_outside_target_quantity']);
+
+        $state = app(InventoryCompatibilityService::class)->enableDualWrite($warehouse->id);
+        $this->assertSame(InventoryTransitionState::MODE_DUAL_WRITE, $state->mode);
+    }
+
+    /** 2. legacy 100 / MAIN 0 / STORAGE2 100 => reconciled pero dual_write RECHAZADO. */
+    public function test_dual_write_rejected_when_all_stock_is_outside_target(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+        $main = (int) DB::table('warehouses')->where('id', $warehouse->id)->value('default_inventory_location_id');
+        DB::table('inventory_location_stocks')->where('inventory_location_id', $main)->where('product_id', 10)->update(['quantity' => 0]);
+        $this->addLocStock($this->addLocation($warehouse->id, 'STORAGE2'), 10, 100);
+
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($warehouse->id);
+        $this->assertTrue($audit['is_reconciled']);              // paridad warehouse-wide 100 == 100
+        $this->assertFalse($audit['target_holds_all_stock']);
+        $this->assertSame(1, $audit['stocked_location_count']);  // sólo STORAGE2 tiene stock
+
+        $this->expectException(ValidationException::class);
+        app(InventoryCompatibilityService::class)->enableDualWrite($warehouse->id);
+    }
+
+    /** 3. legacy 100 / MAIN 70 / QUARANTINE 30 => dual_write RECHAZADO. */
+    public function test_dual_write_rejected_when_stock_split_main_and_quarantine(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+        $main = (int) DB::table('warehouses')->where('id', $warehouse->id)->value('default_inventory_location_id');
+        DB::table('inventory_location_stocks')->where('inventory_location_id', $main)->where('product_id', 10)->update(['quantity' => 70]);
+        $this->addLocStock($this->addLocation($warehouse->id, 'QUAR'), 10, 30);
+
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($warehouse->id);
+        $this->assertFalse($audit['target_holds_all_stock']);
+        $this->assertSame(30.0, $audit['stock_outside_target_quantity']);
+
+        $this->expectException(ValidationException::class);
+        app(InventoryCompatibilityService::class)->enableDualWrite($warehouse->id);
+    }
+
+    /** 4. Almacén vacío reconciliado con MAIN storage válida => dual_write permitido. */
+    public function test_dual_write_allowed_on_empty_reconciled_warehouse_with_valid_target(): void
+    {
+        $warehouse = $this->warehouse();
+        $this->legacy($warehouse->id, 10, 0); // sin stock legacy
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($warehouse->id);
+        $this->assertTrue($audit['is_reconciled']);
+        $this->assertTrue($audit['has_target_location']);
+        $this->assertTrue($audit['target_holds_all_stock']); // 0 stock, destino válido
+
+        $state = app(InventoryCompatibilityService::class)->enableDualWrite($warehouse->id);
+        $this->assertSame(InventoryTransitionState::MODE_DUAL_WRITE, $state->mode);
+    }
+
+    private function addLocation(int $warehouseId, string $code, string $type = 'storage', bool $quarantine = false): int
+    {
+        return (int) DB::table('inventory_locations')->insertGetId([
+            'warehouse_id' => $warehouseId, 'branch_id' => null, 'code' => $code, 'name' => $code,
+            'type' => $type, 'is_quarantine' => $quarantine ? 1 : 0, 'is_active' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    private function addLocStock(int $locationId, int $productId, float $qty, ?int $variantId = null): void
+    {
+        DB::table('inventory_location_stocks')->insert([
+            'inventory_location_id' => $locationId, 'product_id' => $productId, 'product_variant_id' => $variantId,
+            'variant_key' => (int) ($variantId ?: 0), 'quantity' => $qty, 'reserved_quantity' => 0,
+            'manage_stock' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
     private function warehouse(): Warehouse
     {
         return Warehouse::create(['name' => 'CD Principal']);

@@ -49,6 +49,26 @@ class InventoryVisibilityController extends Controller
 
         $productIds = $products->pluck('id')->map(fn ($id) => (int) $id)->all();
 
+        // Divergencia clasificada por PROVENANCE / eventos, no por
+        // legacy − location: tras un baseline operativo esa resta puede ser 100%
+        // movimientos location-native legítimos (dispatch, POS…). Sólo se marca
+        // como "pendiente" la cantidad LEGACY_ONLY_PENDING (legacy sin equivalente
+        // location-native). snapshot_drift se expone SÓLO como diagnóstico.
+        $provenance = app(\App\Services\InventoryProvenanceAuditService::class)
+            ->summaryByProduct($productIds);
+
+        $legacyTotals = []; // sólo para mostrar
+        if (Schema::hasTable('product_warehouse')) {
+            foreach (DB::table('product_warehouse')
+                ->whereIn('product_id', $productIds)
+                ->whereNull('deleted_at')
+                ->groupBy('product_id')
+                ->selectRaw('product_id, SUM(qte) as quantity')
+                ->get() as $row) {
+                $legacyTotals[(int) $row->product_id] = round((float) $row->quantity, 3);
+            }
+        }
+
         $stocks = DB::table('inventory_location_stocks as s')
             ->join('inventory_locations as il', 'il.id', '=', 's.inventory_location_id')
             ->leftJoin('branches as b', 'b.id', '=', 'il.branch_id')
@@ -116,7 +136,7 @@ class InventoryVisibilityController extends Controller
 
         $currentBranchId = $user->default_branch_id ? (int) $user->default_branch_id : null;
 
-        $payload = $products->map(function ($product) use ($stocks, $transit, $currentBranchId) {
+        $payload = $products->map(function ($product) use ($stocks, $transit, $currentBranchId, $legacyTotals, $provenance) {
             $rows = $stocks->where('product_id', $product->id)->values()->map(function ($row) use ($currentBranchId) {
                 $physical = round((float) $row->quantity, 3);
                 $reserved = round((float) $row->reserved_quantity, 3);
@@ -156,6 +176,11 @@ class InventoryVisibilityController extends Controller
                 ];
             });
 
+            $legacyTotal = round((float) ($legacyTotals[$product->id] ?? 0.0), 3);
+            $warehouseLocationPhysical = round((float) $rows->whereNotNull('warehouse_id')->sum('physical'), 3);
+            $prov = $provenance[$product->id] ?? ['legacy_only_pending_quantity' => 0.0, 'snapshot_drift' => 0.0, 'has_unknown_review' => false];
+            $legacyPendingQty = round((float) $prov['legacy_only_pending_quantity'], 3);
+
             return [
                 'id' => (int) $product->id,
                 'name' => $product->name,
@@ -163,6 +188,17 @@ class InventoryVisibilityController extends Controller
                 'locations' => $rows,
                 'in_transit' => $inTransit,
                 'company_available' => round($rows->where('is_quarantine', false)->sum('available'), 3),
+                'legacy_total' => $legacyTotal,
+                'warehouse_location_physical_total' => $warehouseLocationPhysical,
+                // LEGACY_ONLY_PENDING: cantidad legacy SIN equivalente
+                // location-native (opening stock / producto no migrado). NO entra
+                // en company_available.
+                'legacy_pending' => $legacyPendingQty > 0.0005,
+                'legacy_pending_quantity' => $legacyPendingQty,
+                // DIAGNÓSTICO — NO es cantidad pendiente. Puede ser sólo el
+                // registro de operaciones location-native posteriores al baseline.
+                'snapshot_drift' => round((float) $prov['snapshot_drift'], 3),
+                'needs_review' => (bool) $prov['has_unknown_review'],
             ];
         })->values();
 

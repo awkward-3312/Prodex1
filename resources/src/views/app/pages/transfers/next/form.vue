@@ -381,6 +381,7 @@ export default {
       search_input: "",
       product_filter: [],
       products: [],
+      legacyPending: [],
       details: [],
       sources: [],
       destinationGroups: {},
@@ -687,12 +688,16 @@ export default {
       window.axios
         .get(`transfer-location/${locId}/products`, PXTL_META)
         .then(response => {
-          this.products = Array.isArray(response.data) ? response.data : [];
+          const d = response && response.data;
+          // El endpoint devuelve { products, legacy_pending }. Compatibilidad con
+          // la forma antigua (array plano) por si un despliegue va desfasado.
+          this.products = Array.isArray(d) ? d : (d && Array.isArray(d.products) ? d.products : []);
+          this.legacyPending = d && Array.isArray(d.legacy_pending) ? d.legacy_pending : [];
           this.applyUnitFactorFromCatalog();
           this.recalc();
           NProgress.done();
         })
-        .catch(() => { NProgress.done(); this.products = []; });
+        .catch(() => { NProgress.done(); this.products = []; this.legacyPending = []; });
     },
     search() {
       if (this.timer) { clearTimeout(this.timer); this.timer = null; }
@@ -712,7 +717,34 @@ export default {
             (p.code || "").toLowerCase().includes(term) ||
             (p.barcode || "").toLowerCase().includes(term)
           );
-          if (this.product_filter.length <= 0) this.makeToast("warning", "Producto no encontrado.", "Aviso");
+          if (this.product_filter.length <= 0) {
+            const t = this.search_input.toLowerCase();
+            const pending = (this.legacyPending || []).find(p =>
+              (p.code || "").toLowerCase() === t ||
+              (p.name || "").toLowerCase().includes(t)
+            );
+            if (pending && pending.kind === "legacy_pending") {
+              this.makeToast(
+                "warning",
+                `"${pending.name}": ${pending.pending_quantity} unidades provienen de una operación legacy posterior al último baseline y aún no tienen ubicación asignada. No se pueden trasladar hasta reconciliar.`,
+                "Pendiente de ubicación"
+              );
+            } else if (pending && pending.kind === "unknown_review") {
+              this.makeToast(
+                "warning",
+                `"${pending.name}": el stock por ubicación no cuadra con el baseline más los movimientos registrados. Requiere revisión; no se aplica ningún ajuste automático.`,
+                "Requiere revisión"
+              );
+            } else if (pending && pending.kind === "other_location") {
+              this.makeToast(
+                "warning",
+                `"${pending.name}" no tiene existencia por ubicación en el origen seleccionado (está en otra ubicación del mismo almacén).`,
+                "Sin existencia en esta ubicación"
+              );
+            } else {
+              this.makeToast("warning", "Producto no encontrado.", "Aviso");
+            }
+          }
         }
       }, 800);
     },

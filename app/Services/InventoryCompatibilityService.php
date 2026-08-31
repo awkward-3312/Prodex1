@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\InventoryTransitionState;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -29,17 +30,26 @@ class InventoryCompatibilityService
         $result = app(LegacyInventoryReconciliationService::class)->auditWarehouse($warehouseId);
         $state = $this->state($warehouseId);
 
+        // mismatch = SOLO lo que no podemos explicar (UNKNOWN_REVIEW) + negativos.
+        // LEGACY_ONLY_PENDING es "migración pendiente", se cuenta aparte y NO
+        // marca mismatch. El snapshot_drift por operaciones location-native
+        // legítimas NUNCA marca mismatch.
+        $mismatchCount = count($result['unknown_review_rows'] ?? []) + count($result['negative_legacy_rows']);
+
         $state->forceFill([
             'inventory_location_id' => $result['inventory_location_id'],
-            'status' => $result['is_reconciled'] ? 'healthy' : 'mismatch',
-            'mismatch_count' => count($result['differences']) + count($result['negative_legacy_rows']),
+            'status' => $mismatchCount === 0 ? 'healthy' : 'mismatch',
+            'mismatch_count' => $mismatchCount,
             'last_audited_at' => now(),
-            'last_reconciled_at' => $result['is_reconciled'] ? now() : $state->last_reconciled_at,
+            // last_reconciled_at (baseline) sólo se mueve por un backfill/promoción
+            // explícita, NUNCA por una auditoría — mover el baseline aquí borraría
+            // la frontera que separa operaciones location-native legítimas.
             'metadata' => array_merge($state->metadata ?? [], [
                 'legacy_total' => $result['legacy_total'],
                 'location_total' => $result['location_total'],
-                'legacy_rows' => $result['legacy_rows'],
-                'location_rows' => $result['location_rows'],
+                'legacy_only_pending_total' => $result['legacy_only_pending_total'] ?? 0,
+                'snapshot_drift_total' => $result['snapshot_drift_total'] ?? 0,
+                'provenance_counts' => $result['provenance_counts'] ?? [],
             ]),
         ])->save();
 
@@ -78,11 +88,9 @@ class InventoryCompatibilityService
                 ]);
             }
 
-            return app(InventoryService::class)->quantity(
-                (int) $state->inventory_location_id,
-                $productId,
-                $variantId
-            );
+            // Equivalente al antiguo total product_warehouse del ALMACÉN: agregado
+            // de TODAS sus ubicaciones activas, no sólo la MAIN.
+            return $this->warehouseAggregateQuantity($warehouseId, $productId, $variantId);
         }
 
         return $this->legacyQuantity($warehouseId, $productId, $variantId);
@@ -109,11 +117,77 @@ class InventoryCompatibilityService
             return null;
         }
 
-        return app(InventoryService::class)->quantity(
-            (int) $state->inventory_location_id,
-            $productId,
-            $variantId
-        );
+        // Comparación shadow a nivel ALMACÉN: agregado de todas sus ubicaciones
+        // activas por product+variant, NO sólo la MAIN. Así legacy 100 vs
+        // (MAIN 70 + QUARANTINE 30) coincide.
+        return $this->warehouseAggregateQuantity($warehouseId, $productId, $variantId);
+    }
+
+    /**
+     * SUM(inventory_location_stocks.quantity) sobre TODAS las inventory_locations
+     * activas del almacén, para el product+variant dado (variant_key 0 = simple).
+     */
+    public function warehouseAggregateQuantity(int $warehouseId, int $productId, ?int $variantId = null): float
+    {
+        $ids = $this->warehouseLocationIds($warehouseId);
+        if (! $ids) return 0.0;
+
+        return round((float) DB::table('inventory_location_stocks')
+            ->whereIn('inventory_location_id', $ids)
+            ->where('product_id', $productId)
+            ->where('variant_key', (int) ($variantId ?: 0))
+            ->sum('quantity'), 3);
+    }
+
+    private function warehouseLocationIds(int $warehouseId): array
+    {
+        if (! Schema::hasTable('inventory_locations')) return [];
+
+        return DB::table('inventory_locations')
+            ->whereNull('deleted_at')
+            ->where('is_active', 1)
+            ->where('warehouse_id', $warehouseId)
+            ->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    private function stockedLocationCount(int $warehouseId): int
+    {
+        $ids = $this->warehouseLocationIds($warehouseId);
+        if (! $ids) return 0;
+
+        return (int) DB::table('inventory_location_stocks')
+            ->whereIn('inventory_location_id', $ids)
+            ->where('quantity', '>', 0)
+            ->distinct()
+            ->count('inventory_location_id');
+    }
+
+    /**
+     * El destino registrado en el state debe SEGUIR siendo apto en runtime:
+     * pertenece al almacén, activo, no borrado, tipo 'storage', no cuarentena, y
+     * sigue siendo la default del almacén. Si alguien cambió la configuración
+     * después de activar dual_write, el mirror rehúsa y markMismatch lo registra;
+     * jamás escribe en una ubicación que dejó de ser apta.
+     */
+    private function assertTargetStillEligible(int $warehouseId, int $locationId): void
+    {
+        $row = DB::table('inventory_locations')->where('id', $locationId)->first();
+        $warehouseDefault = (int) (DB::table('warehouses')->where('id', $warehouseId)->value('default_inventory_location_id') ?? 0);
+
+        $ok = $row
+            && $row->deleted_at === null
+            && (int) $row->warehouse_id === $warehouseId
+            && (int) $row->is_active === 1
+            && $row->type === 'storage'
+            && (int) ($row->is_quarantine ?? 0) === 0
+            && $warehouseDefault === $locationId;
+
+        if (! $ok) {
+            throw ValidationException::withMessages([
+                'inventory_transition' => 'Dual-write detenido: la ubicación destino dejó de ser apta '
+                    .'(debe seguir siendo la default del almacén, tipo storage, activa y no cuarentena).',
+            ]);
+        }
     }
 
     /**
@@ -123,6 +197,13 @@ class InventoryCompatibilityService
      * In dual_write mode the new engine is set to the resulting legacy snapshot,
      * rather than repeating the legacy arithmetic. This makes gradual migration
      * safer across old controllers that use different increment/decrement styles.
+     *
+     * LÍMITE CONOCIDO (multi-ubicación): este mirror escribe el total legacy del
+     * ALMACÉN en la MAIN con adjustTo(). Sólo es correcto cuando la MAIN es la
+     * única ubicación con stock de ese product+variant. Si otra ubicación activa
+     * también tiene stock de esa clave, adjustTo(MAIN, total) inflaría el
+     * agregado del almacén — en ese caso se REHÚSA y se marca mismatch, sin
+     * escribir. El hardening del mirror multi-ubicación es un PR posterior.
      */
     public function mirrorLegacySnapshot(
         int $warehouseId,
@@ -148,6 +229,11 @@ class InventoryCompatibilityService
                     ]);
                 }
 
+                // La ubicación destino registrada debe SEGUIR siendo apta en
+                // runtime (por si alguien cambió la configuración tras activar
+                // dual_write). Si no, rehúsa — markMismatch lo registra.
+                $this->assertTargetStillEligible($warehouseId, (int) $lockedState->inventory_location_id);
+
                 $target = $this->legacyQuantity($warehouseId, $productId, $variantId);
                 if ($target < 0) {
                     throw ValidationException::withMessages([
@@ -157,6 +243,19 @@ class InventoryCompatibilityService
 
                 $inventory = app(InventoryService::class);
                 $current = $inventory->quantity((int) $lockedState->inventory_location_id, $productId, $variantId);
+
+                // Rehúsa si el product+variant tiene stock fuera de la MAIN: el
+                // adjustTo(MAIN, target) de abajo sólo mantiene el agregado
+                // correcto cuando la MAIN es el único contenedor de esa clave.
+                $warehouseAggregate = $this->warehouseAggregateQuantity($warehouseId, $productId, $variantId);
+                if (abs($warehouseAggregate - $current) > 0.0005) {
+                    throw ValidationException::withMessages([
+                        'inventory_transition' => 'Dual-write detenido: el producto/variante tiene inventario por ubicación fuera de MAIN. '
+                            .'El mirror single-MAIN no puede sincronizarlo sin inflar el agregado del almacén. '
+                            .'Requiere el hardening del mirror multi-ubicación (PR posterior).',
+                    ]);
+                }
+
                 if (abs($target - $current) < 0.0005) {
                     return;
                 }
@@ -221,6 +320,28 @@ class InventoryCompatibilityService
         if (! $audit['is_reconciled']) {
             throw ValidationException::withMessages([
                 'inventory_transition' => 'El almacén debe reconciliar exactamente antes de activar el modo de transición solicitado.',
+            ]);
+        }
+
+        // is_reconciled es sólo paridad cuantitativa warehouse-wide. Un modo de
+        // transición necesita además una ubicación destino APTA (storage, activa,
+        // no cuarentena, del almacén).
+        if (! ($audit['has_target_location'] ?? false)) {
+            throw ValidationException::withMessages([
+                'inventory_transition' => 'El almacén no tiene una ubicación destino apta (storage, activa, no cuarentena) por defecto; no puede activarse un modo de transición que requiere ubicación destino.',
+            ]);
+        }
+
+        // dual_write ESCRIBE en la ubicación destino vía mirror single-target.
+        // Sólo es seguro si TODO el inventario location-native del almacén vive
+        // ya en esa ubicación destino. En cualquier otro caso (stock en MAIN 0 +
+        // STORAGE2 100, o MAIN 70 + QUARANTINE 30, …) queda bloqueado hasta el
+        // hardening del mirror multi-ubicación (PR posterior).
+        if ($mode === InventoryTransitionState::MODE_DUAL_WRITE && ! ($audit['target_holds_all_stock'] ?? false)) {
+            throw ValidationException::withMessages([
+                'inventory_transition' => 'dual_write requiere que TODO el inventario por ubicación del almacén esté en la ubicación destino (single-target). '
+                    .'Stock fuera del destino: '.($audit['stock_outside_target_quantity'] ?? 0).'. '
+                    .'Requiere el hardening del mirror multi-ubicación (PR posterior).',
             ]);
         }
 
