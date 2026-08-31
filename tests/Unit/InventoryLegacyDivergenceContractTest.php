@@ -250,9 +250,16 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         // provenance separa los netos: location (todos) / mirror / native.
         $prov = $this->read('app/Services/InventoryProvenanceAuditService.php');
         $this->assertStringContainsString("public const DUAL_WRITE_MIRROR_REFS = [", $prov);
-        $this->assertStringContainsString("'post_baseline_mirror_net' => \$nDwMirror", $prov);
+        $this->assertStringContainsString("'post_baseline_mirror_net' => \$nMirror", $prov);
         $this->assertStringContainsString("'post_baseline_native_net' => \$nNative", $prov);
-        $this->assertStringContainsString('$nNative = round($n - $nDwMirror, 3);', $prov);
+        $this->assertStringContainsString('$nNative = round($n - $nMirror, 3);', $prov);
+        // MIRRORED se prueba por IDENTIDAD de evento, no por coincidencia de cantidad.
+        $this->assertStringContainsString('public function matchLegacyEventToLocationMovement(', $prov);
+        $this->assertStringContainsString('if ($this->matchLegacyEventToLocationMovement($m)) {', $prov);
+        $this->assertStringNotContainsString('LEGACY_MIRROR_REFS = [', $prov);
+        // Aumento legacy + actividad location-native no-mirror => UNKNOWN_REVIEW,
+        // nunca MIRRORED por agregado.
+        $this->assertStringContainsString('} elseif (abs($nNative) > self::EPS) {', $prov);
         // compareKey: definición ÚNICA de mismatch = provenance (RECONCILED|MIRRORED).
         $this->assertStringContainsString("in_array(\$classification, ['RECONCILED', 'MIRRORED'], true)", $compat);
         $this->assertStringContainsString('public function snapshotCompareKey(', $compat);

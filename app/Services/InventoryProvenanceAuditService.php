@@ -43,28 +43,63 @@ class InventoryProvenanceAuditService
     private const EPS = 0.0005;
 
     /**
-     * reference_type que espejan una operación legacy 1:1 — usado SÓLO para la
-     * clasificación (MIRRORED). NO usar para el safety guard de runtime: algunos
-     * (Purchase/Sale/pos_sale) pueden ser movimientos location-native reales.
-     */
-    private const LEGACY_MIRROR_REFS = [
-        'Purchase', 'purchase', 'PurchaseReturn', 'purchase_return',
-        'Sale', 'sale', 'SaleReturn', 'sale_return',
-        'pos_sale', 'pos_sale_location_bridge',
-        'Adjustment', 'adjustment',
-        'legacy_product_warehouse_model_write', 'legacy_shadow_sync',
-    ];
-
-    /**
      * reference_type generados EXCLUSIVAMENTE por el mirror dual_write
-     * (InventoryCompatibilityService::mirrorLegacySnapshot). Señal inequívoca
-     * para el safety guard de runtime: estos movimientos NO deben bloquear un
-     * mirror posterior.
+     * (InventoryCompatibilityService::mirrorLegacySnapshot). Enlace inequívoco
+     * legacy→location POR DISEÑO: un movimiento con este reference_type SIEMPRE
+     * es el espejo de una escritura legacy. NO existe LEGACY_MIRROR_REFS
+     * ambiguo — Purchase/Sale/Adjustment/pos_sale son operaciones de negocio y
+     * NO prueban provenance por coincidencia de cantidad.
      */
     public const DUAL_WRITE_MIRROR_REFS = [
         'legacy_shadow_sync',
         'legacy_product_warehouse_model_write',
     ];
+
+    /**
+     * ¿El movimiento location es un espejo PROBADO de una escritura legacy?
+     *
+     *  1. reference_type ∈ DUAL_WRITE_MIRROR_REFS  → mirror generado por nosotros.
+     *  2. metadata.transition_mode === 'dual_write' → sello del propio mirror.
+     *  3. Enlace explícito a un evento legacy concreto: metadata.mirrors_legacy
+     *     con legacy_reference_type + legacy_reference_id que igualan al evento
+     *     legacy (para un write path que lo garantice; hoy ninguno de negocio lo
+     *     hace, así que en la práctica sólo cuentan 1 y 2).
+     *
+     * NUNCA por reference_type genérico + signo + cantidad agregada.
+     *
+     * @param  object      $movement  fila de inventory_location_movements (metadata ya decodificada)
+     * @param  array|null  $legacyRef ['type'=>?, 'id'=>?] del evento legacy a correlacionar
+     */
+    public function matchLegacyEventToLocationMovement(object $movement, ?array $legacyRef = null): bool
+    {
+        if (in_array($movement->reference_type ?? null, self::DUAL_WRITE_MIRROR_REFS, true)) {
+            return true;
+        }
+
+        $meta = $this->decodeMeta($movement->metadata ?? null);
+        if (($meta['transition_mode'] ?? null) === 'dual_write') {
+            return true;
+        }
+
+        if (($meta['mirrors_legacy'] ?? null) === true
+            && isset($meta['legacy_reference_type'], $meta['legacy_reference_id'])) {
+            if ($legacyRef === null) return true;
+            return (string) $meta['legacy_reference_type'] === (string) ($legacyRef['type'] ?? '')
+                && (string) $meta['legacy_reference_id'] === (string) ($legacyRef['id'] ?? '');
+        }
+
+        return false;
+    }
+
+    private function decodeMeta($raw): array
+    {
+        if (is_array($raw)) return $raw;
+        if (is_string($raw) && $raw !== '') {
+            $d = json_decode($raw, true);
+            return is_array($d) ? $d : [];
+        }
+        return [];
+    }
 
     public function auditWarehouse(int $warehouseId): array
     {
@@ -72,7 +107,8 @@ class InventoryProvenanceAuditService
         $baselineAt = $this->baselineAt($warehouseId, $locationIds);
 
         $baseline = $this->backfillBaselineMap($locationIds);
-        [$net, $netMirror, $netDualWriteMirror] = $this->postBaselineMovementMaps($locationIds, $baselineAt);
+        // $netMirror = net de movimientos que son mirror PROBADO (no por nombre).
+        [$net, $netMirror] = $this->postBaselineMovementMaps($locationIds, $baselineAt);
         $legacyNow = $this->legacyMap($warehouseId);
         $locationNow = $this->locationMap($locationIds);
 
@@ -96,11 +132,10 @@ class InventoryProvenanceAuditService
             $leg = round((float) ($legacyNow[$k] ?? 0.0), 3);
             $loc = round((float) ($locationNow[$k] ?? 0.0), 3);
             $n = round((float) ($net[$k] ?? 0.0), 3);
+            // net del mirror PROBADO y net "nativo" (todo lo demás: dispatch,
+            // receipt, POS bridge, ajuste location-aware, Purchase de negocio…).
             $nMirror = round((float) ($netMirror[$k] ?? 0.0), 3);
-            // net del mirror dual_write (señal inequívoca) y net "nativo"
-            // (movimientos independientes del mirror: dispatch, receipt, etc.).
-            $nDwMirror = round((float) ($netDualWriteMirror[$k] ?? 0.0), 3);
-            $nNative = round($n - $nDwMirror, 3);
+            $nNative = round($n - $nMirror, 3);
             $expected = round($b + $n, 3);
             $drift = round($loc - $expected, 3);
 
@@ -117,18 +152,27 @@ class InventoryProvenanceAuditService
                     // es 100% operaciones location-native legítimas (dispatch…).
                     $classification = 'RECONCILED';
                 } elseif ($leg > $b + self::EPS) {
+                    // legacy AUMENTÓ desde el baseline.
                     $increase = round($leg - $b, 3);
-                    $mirroredIn = max(0.0, $nMirror);
-                    if (abs($mirroredIn - $increase) <= self::EPS) {
+                    $mirroredIn = max(0.0, $nMirror); // sólo mirror PROBADO
+                    $remaining = round($increase - $mirroredIn, 3);
+                    if (abs($remaining) <= self::EPS) {
                         $classification = 'MIRRORED';
+                    } elseif (abs($nNative) > self::EPS) {
+                        // hay actividad location-native NO-mirror en la ventana:
+                        // no se puede separar el aumento legacy de esa actividad
+                        // con certeza. Coincidencia de cantidad != provenance.
+                        $classification = 'UNKNOWN_REVIEW';
                     } else {
+                        // aumento legacy sin NINGÚN movimiento location que lo
+                        // explique (Iphone X): cantidad legacy sin migrar.
                         $classification = 'LEGACY_ONLY_PENDING';
-                        $pending = round(max(0.0, $increase - $mirroredIn), 3);
+                        $pending = round(max(0.0, $remaining), 3);
                     }
-                } else { // $leg < $b - eps
+                } else { // $leg < $b - eps  — legacy DISMINUYÓ desde el baseline.
                     $decrease = round($b - $leg, 3);
-                    $mirroredOut = abs(min(0.0, $nMirror));
-                    $classification = abs($mirroredOut - $decrease) <= self::EPS ? 'MIRRORED' : 'UNKNOWN_REVIEW';
+                    $mirroredOut = abs(min(0.0, $nMirror)); // sólo mirror PROBADO
+                    $classification = (abs($mirroredOut - $decrease) <= self::EPS) ? 'MIRRORED' : 'UNKNOWN_REVIEW';
                 }
             } else {
                 // Sin baseline: no hay punto de partida verificable.
@@ -166,7 +210,7 @@ class InventoryProvenanceAuditService
                 // expected_location).
                 'post_baseline_location_net' => $n,
                 // Sólo movimientos generados por el mirror dual_write.
-                'post_baseline_mirror_net' => $nDwMirror,
+                'post_baseline_mirror_net' => $nMirror,
                 // location_net − mirror_net = movimientos independientes del
                 // mirror (dispatch, receipt, ajuste location-aware…). ESTA es la
                 // señal del safety guard de runtime.
@@ -295,12 +339,14 @@ class InventoryProvenanceAuditService
     }
 
     /**
-     * @return array{0: array<string,float>, 1: array<string,float>, 2: array<string,float>}
-     *         [net (todos), netMirror (LEGACY_MIRROR_REFS), netDualWriteMirror (DUAL_WRITE_MIRROR_REFS)]
+     * @return array{0: array<string,float>, 1: array<string,float>}
+     *         [net (todos los movimientos posteriores al baseline),
+     *          netMirror (sólo movimientos que son mirror PROBADO — ver
+     *          matchLegacyEventToLocationMovement)]
      */
     private function postBaselineMovementMaps(array $locationIds, ?string $baselineAt): array
     {
-        if (! $locationIds || ! Schema::hasTable('inventory_location_movements')) return [[], [], []];
+        if (! $locationIds || ! Schema::hasTable('inventory_location_movements')) return [[], []];
 
         $query = DB::table('inventory_location_movements')
             ->where('reference_type', '!=', 'legacy_product_warehouse_backfill')
@@ -309,21 +355,19 @@ class InventoryProvenanceAuditService
                 $w->whereIn('from_inventory_location_id', $locationIds)
                   ->orWhereIn('to_inventory_location_id', $locationIds);
             });
-        // Los movimientos de mirror dual_write (legacy_shadow_sync /
-        // legacy_product_warehouse_model_write) SIEMPRE son posteriores al
+        // Los movimientos del mirror dual_write SIEMPRE son posteriores al
         // baseline por definición (sólo existen tras activar dual_write) — se
         // incluyen aunque su timestamp empate con el del backfill.
         if ($baselineAt) {
             $query->where(function ($w) use ($baselineAt) {
                 $w->where('created_at', '>', $baselineAt)
-                  ->orWhereIn('reference_type', ['legacy_shadow_sync', 'legacy_product_warehouse_model_write']);
+                  ->orWhereIn('reference_type', self::DUAL_WRITE_MIRROR_REFS);
             });
         }
 
         $net = [];
         $netMirror = [];
-        $netDualWriteMirror = [];
-        foreach ($query->get(['product_id', 'product_variant_id', 'from_inventory_location_id', 'to_inventory_location_id', 'quantity', 'reference_type']) as $m) {
+        foreach ($query->get(['product_id', 'product_variant_id', 'from_inventory_location_id', 'to_inventory_location_id', 'quantity', 'reference_type', 'metadata']) as $m) {
             $k = ((int) $m->product_id).':'.((int) ($m->product_variant_id ?: 0));
             $qty = round((float) $m->quantity, 3);
             $delta = 0.0;
@@ -331,14 +375,13 @@ class InventoryProvenanceAuditService
             if (in_array((int) $m->from_inventory_location_id, $locationIds, true)) $delta -= $qty;
 
             $net[$k] = round(($net[$k] ?? 0.0) + $delta, 3);
-            if (in_array($m->reference_type, self::LEGACY_MIRROR_REFS, true)) {
+            // MIRROR PROBADO por identidad de evento — nunca por coincidencia de
+            // cantidad ni reference_type de negocio.
+            if ($this->matchLegacyEventToLocationMovement($m)) {
                 $netMirror[$k] = round(($netMirror[$k] ?? 0.0) + $delta, 3);
             }
-            if (in_array($m->reference_type, self::DUAL_WRITE_MIRROR_REFS, true)) {
-                $netDualWriteMirror[$k] = round(($netDualWriteMirror[$k] ?? 0.0) + $delta, 3);
-            }
         }
-        return [$net, $netMirror, $netDualWriteMirror];
+        return [$net, $netMirror];
     }
 
     private function warehouseLocationIds(int $warehouseId): array
