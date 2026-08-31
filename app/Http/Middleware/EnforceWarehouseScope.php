@@ -72,6 +72,11 @@ class EnforceWarehouseScope
         $this->walk($request->all(), function (string $key, $value) use ($protectedKeys, $user, $warehouseScope) {
             if (! in_array($key, $protectedKeys, true)) return;
             if ($value === null || $value === '' || is_array($value) || is_object($value) || ! is_numeric($value)) return;
+            // 0 (and any non-positive) is the app-wide "all / none selected"
+            // sentinel — never a real warehouse. Downstream services already
+            // restrict a limited user to their own scope in that case, so there
+            // is nothing to assert here.
+            if ((int) $value <= 0) return;
             $warehouseScope->assertAccess($user, (int) $value, 'No tienes permiso para operar con la bodega seleccionada.');
         });
 
@@ -87,7 +92,10 @@ class EnforceWarehouseScope
             throw new AuthorizationException('La ubicación de inventario destino no existe o está inactiva.');
         }
 
-        if ($request->isMethod('get') && $request->filled('warehouse_id') && is_numeric($request->query('warehouse_id'))) {
+        if ($request->isMethod('get')
+            && $request->filled('warehouse_id')
+            && is_numeric($request->query('warehouse_id'))
+            && (int) $request->query('warehouse_id') > 0) {
             $warehouseScope->assertAccess($user, (int) $request->query('warehouse_id'), 'No tienes permiso para consultar esa bodega.');
         }
     }
