@@ -16,8 +16,11 @@ class LegacyInventoryReconciliationService
         $warehouse = $this->warehouse($warehouseId);
         $legacy = $this->legacyMap($warehouseId);
 
-        // Target/default MAIN: destino determinista de un eventual delta ADD.
-        $target = $this->existingDefaultLocation($warehouse);
+        // Ubicación destino APTA para reconciliación legacy / dual_write:
+        // pertenece al almacén, activa, no borrada, tipo 'storage', NO cuarentena.
+        // Si la default del almacén no cumple (p. ej. es QUARANTINE/DAMAGED/
+        // RETURNS) => null: sin destino automático.
+        $target = $this->eligibleLegacyTargetLocation($warehouse);
         // Verdad de comparación: agregado físico de TODAS las InventoryLocation
         // activas del almacén (MAIN + QUARANTINE + DAMAGED + RETURNS + …), NO
         // sólo la default. Un almacén con MAIN 70 + QUARANTINE 30 contra legacy
@@ -46,10 +49,19 @@ class LegacyInventoryReconciliationService
         $negative = array_values(array_filter($legacy, fn ($row) => $row['quantity'] < 0));
         $trackedProducts = $this->batchOrSerialTrackedProducts($legacy);
         $warehouseHasLocationStock = ! empty($warehouseLocations);
-        $mainHasStock = $target !== null
-            && InventoryLocationStock::where('inventory_location_id', $target->id)->exists();
         $isReconciled = empty($negative) && empty($differences);
         $stockedLocationCount = $this->stockedLocationCount($warehouseId);
+
+        $locationTotal = $this->decimal(array_sum(array_column($warehouseLocations, 'quantity')));
+        $targetTotal = $target !== null
+            ? $this->decimal((float) InventoryLocationStock::where('inventory_location_id', $target->id)->sum('quantity'))
+            : 0.0;
+        // Stock location-native que NO vive en la ubicación destino apta.
+        $stockOutsideTarget = $this->decimal(max(0, $locationTotal - $targetTotal));
+        // dual_write / mirror single-target sólo es seguro si el destino contiene
+        // TODO el stock location-native del almacén.
+        $targetHoldsAllStock = $target !== null && $stockOutsideTarget <= 0.0005;
+        $mainHasStock = $targetTotal > 0.0005;
 
         return [
             'warehouse_id' => $warehouse->id,
@@ -59,7 +71,7 @@ class LegacyInventoryReconciliationService
             'location_rows' => count($warehouseLocations),
             'legacy_total' => $this->decimal(array_sum(array_column($legacy, 'quantity'))),
             // Total físico location-native del almacén (todas sus ubicaciones).
-            'location_total' => $this->decimal(array_sum(array_column($warehouseLocations, 'quantity'))),
+            'location_total' => $locationTotal,
             'negative_legacy_rows' => $negative,
             // Products whose stock is only meaningful together with a batch or a
             // serial/IMEI location ledger. The quantity backfill below cannot move
@@ -69,18 +81,19 @@ class LegacyInventoryReconciliationService
             'differences' => $differences,
             // Reconciliado = PARIDAD CUANTITATIVA warehouse-wide: legacy del
             // almacén coincide con el AGREGADO de todas sus ubicaciones. NO
-            // implica que exista una MAIN por defecto.
+            // implica que exista un destino apto.
             'is_reconciled' => $isReconciled,
-            // has_target_location = existe una MAIN activa por defecto, destino
-            // válido para rutas legacy que necesitan ubicación. Distinto de
-            // is_reconciled. transition_ready exige AMBAS.
+            // has_target_location = existe una ubicación destino APTA (storage,
+            // activa, no cuarentena, del almacén). Distinto de is_reconciled.
             'has_target_location' => $target !== null,
             'transition_ready' => $isReconciled && $target !== null,
             'main_location_has_stock' => $mainHasStock,
             'warehouse_has_location_stock' => $warehouseHasLocationStock,
-            // Nº de ubicaciones activas del almacén con quantity > 0. > 1 => el
-            // mirror single-MAIN de dual_write no es seguro (ver
-            // InventoryCompatibilityService).
+            // Cuánto stock location-native vive FUERA de la ubicación destino.
+            // dual_write exige que esto sea 0 (single-target).
+            'stock_outside_target_quantity' => $stockOutsideTarget,
+            'target_holds_all_stock' => $targetHoldsAllStock,
+            // Informativo.
             'stocked_location_count' => $stockedLocationCount,
             'is_single_location' => $stockedLocationCount <= 1,
             // Whole-warehouse backfillWarehouse() sólo es seguro desde un almacén
@@ -106,13 +119,14 @@ class LegacyInventoryReconciliationService
      *   MANUAL_REVIEW delta < 0 (nunca se descuenta en automático) o cualquier
      *                 blocker anterior o legacy negativo.
      *
-     * El delta ADD se sumaría a la MAIN (target_inventory_location_id). No escribe
-     * nada. No decide aplicar: es insumo para revisión.
+     * El delta ADD se sumaría a la ubicación destino APTA
+     * (target_inventory_location_id). Si no existe una destino apta, TODA fila
+     * pasa a MANUAL_REVIEW con reason 'sin_ubicacion_destino'. No escribe nada.
      */
     public function planIncremental(int $warehouseId): array
     {
         $warehouse = $this->warehouse($warehouseId);
-        $target = $this->existingDefaultLocation($warehouse);
+        $target = $this->eligibleLegacyTargetLocation($warehouse);
         $legacy = $this->legacyMap($warehouseId);
         $warehouseLocations = $this->warehouseLocationMap($warehouseId);
         $mainMap = $target ? $this->locationMap($target->id) : [];
@@ -135,6 +149,7 @@ class LegacyInventoryReconciliationService
             if ($this->same($delta, 0.0)) continue;
 
             $reasons = [];
+            if ($target === null && $delta > 0) $reasons[] = 'sin_ubicacion_destino';
             if ($delta < 0) $reasons[] = 'delta_negativo';
             if ($legacyQty < 0) $reasons[] = 'legacy_negativo';
             if (isset($tracked[$productId])) $reasons[] = 'lote_o_serie';
@@ -282,6 +297,26 @@ class LegacyInventoryReconciliationService
             ->where('warehouse_id', $warehouse->id)
             ->whereKey($warehouse->default_inventory_location_id)
             ->first();
+    }
+
+    /**
+     * Contrato de ubicación destino APTA para reconciliación legacy genérica y
+     * para dual_write. La default del almacén debe además:
+     *   - pertenecer al almacén, estar activa y no borrada (ya en existingDefaultLocation);
+     *   - ser de tipo 'storage' (NO sales_floor / quarantine / damaged / returns / other);
+     *   - no estar marcada como cuarentena.
+     * No se exige code=MAIN: cualquier default 'storage' apta sirve. Si la default
+     * no cumple (p. ej. es QUARANTINE/DAMAGED/RETURNS) => null: no hay destino
+     * automático y el stock legacy NO se envía a cuarentena/dañados/devoluciones.
+     */
+    private function eligibleLegacyTargetLocation(Warehouse $warehouse): ?InventoryLocation
+    {
+        $default = $this->existingDefaultLocation($warehouse);
+        if (! $default) return null;
+        if ($default->type !== InventoryLocation::TYPE_STORAGE) return null;
+        if ($default->is_quarantine) return null;
+
+        return $default;
     }
 
     private function legacyMap(int $warehouseId): array

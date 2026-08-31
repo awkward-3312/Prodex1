@@ -168,16 +168,25 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         $this->assertStringContainsString("'target_inventory_location_id' =>", $src);
     }
 
-    public function test_audit_separates_reconciled_from_transition_ready(): void
+    public function test_audit_separates_reconciled_from_transition_ready_and_single_target(): void
     {
         $src = $this->read('app/Services/LegacyInventoryReconciliationService.php');
 
-        // is_reconciled = paridad cuantitativa; has_target_location = existe MAIN;
-        // transition_ready = ambas; y el conteo de ubicaciones con stock.
+        // is_reconciled = paridad cuantitativa; has_target_location = destino APTO;
+        // transition_ready = ambas; target_holds_all_stock = single-target.
         $this->assertStringContainsString("'has_target_location' => \$target !== null", $src);
         $this->assertStringContainsString("'transition_ready' => \$isReconciled && \$target !== null", $src);
-        $this->assertStringContainsString("'stocked_location_count' =>", $src);
-        $this->assertStringContainsString("'is_single_location' =>", $src);
+        $this->assertStringContainsString("'stock_outside_target_quantity' => \$stockOutsideTarget", $src);
+        $this->assertStringContainsString("'target_holds_all_stock' => \$targetHoldsAllStock", $src);
+
+        // Contrato de destino APTO: storage, no cuarentena.
+        $this->assertStringContainsString('private function eligibleLegacyTargetLocation(Warehouse $warehouse): ?InventoryLocation', $src);
+        $this->assertStringContainsString('if ($default->type !== InventoryLocation::TYPE_STORAGE) return null;', $src);
+        $this->assertStringContainsString('if ($default->is_quarantine) return null;', $src);
+
+        // planIncremental nunca dice ADD sin destino.
+        $this->assertStringContainsString("if (\$target === null && \$delta > 0) \$reasons[] = 'sin_ubicacion_destino';", $src);
+        $this->assertStringContainsString('$target = $this->eligibleLegacyTargetLocation($warehouse);', $src);
     }
 
     public function test_transition_service_is_warehouse_aggregate_aware_not_single_main(): void
@@ -187,10 +196,10 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         // shadow / read comparan contra el agregado del almacén, no sólo MAIN.
         $this->assertStringContainsString('public function warehouseAggregateQuantity(', $src);
         $this->assertStringContainsString('return $this->warehouseAggregateQuantity($warehouseId, $productId, $variantId);', $src);
-        // enableMode exige MAIN destino y bloquea dual_write multi-ubicación.
+        // enableMode exige destino apto y bloquea dual_write salvo single-target.
         $this->assertStringContainsString("! (\$audit['has_target_location'] ?? false)", $src);
-        $this->assertStringContainsString("(int) (\$audit['stocked_location_count'] ?? 0) > 1", $src);
-        $this->assertStringContainsString('dual_write no está soportado para almacenes con inventario en múltiples ubicaciones', $src);
+        $this->assertStringContainsString("! (\$audit['target_holds_all_stock'] ?? false)", $src);
+        $this->assertStringContainsString('dual_write requiere que TODO el inventario por ubicación del almacén esté en la ubicación destino', $src);
         // mirrorLegacySnapshot rehúsa si hay stock fuera de MAIN.
         $this->assertStringContainsString('abs($warehouseAggregate - $current) > 0.0005', $src);
         $this->assertStringContainsString('fuera de MAIN', $src);

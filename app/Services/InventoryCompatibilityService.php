@@ -282,19 +282,23 @@ class InventoryCompatibilityService
         }
 
         // is_reconciled es sólo paridad cuantitativa warehouse-wide. Un modo de
-        // transición necesita además una MAIN activa por defecto como destino.
+        // transición necesita además una ubicación destino APTA (storage, activa,
+        // no cuarentena, del almacén).
         if (! ($audit['has_target_location'] ?? false)) {
             throw ValidationException::withMessages([
-                'inventory_transition' => 'El almacén no tiene una ubicación MAIN activa por defecto; no puede activarse un modo de transición que requiere ubicación destino.',
+                'inventory_transition' => 'El almacén no tiene una ubicación destino apta (storage, activa, no cuarentena) por defecto; no puede activarse un modo de transición que requiere ubicación destino.',
             ]);
         }
 
-        // dual_write ESCRIBE en la MAIN vía mirror single-MAIN. No es seguro
-        // mientras el almacén tenga inventario en más de una ubicación activa:
-        // bloqueado hasta el hardening del mirror multi-ubicación (PR posterior).
-        if ($mode === InventoryTransitionState::MODE_DUAL_WRITE && (int) ($audit['stocked_location_count'] ?? 0) > 1) {
+        // dual_write ESCRIBE en la ubicación destino vía mirror single-target.
+        // Sólo es seguro si TODO el inventario location-native del almacén vive
+        // ya en esa ubicación destino. En cualquier otro caso (stock en MAIN 0 +
+        // STORAGE2 100, o MAIN 70 + QUARANTINE 30, …) queda bloqueado hasta el
+        // hardening del mirror multi-ubicación (PR posterior).
+        if ($mode === InventoryTransitionState::MODE_DUAL_WRITE && ! ($audit['target_holds_all_stock'] ?? false)) {
             throw ValidationException::withMessages([
-                'inventory_transition' => 'dual_write no está soportado para almacenes con inventario en múltiples ubicaciones. '
+                'inventory_transition' => 'dual_write requiere que TODO el inventario por ubicación del almacén esté en la ubicación destino (single-target). '
+                    .'Stock fuera del destino: '.($audit['stock_outside_target_quantity'] ?? 0).'. '
                     .'Requiere el hardening del mirror multi-ubicación (PR posterior).',
             ]);
         }

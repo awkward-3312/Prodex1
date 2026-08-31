@@ -302,14 +302,15 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         ]);
     }
 
-    private function location(int $warehouseId, string $code, bool $default = false): int
+    private function location(int $warehouseId, string $code, bool $default = false, string $type = 'storage', bool $quarantine = false): int
     {
         $id = DB::table('inventory_locations')->insertGetId([
             'warehouse_id' => $warehouseId,
             'branch_id' => null,
             'code' => $code,
             'name' => $code,
-            'type' => 'storage',
+            'type' => $type,
+            'is_quarantine' => $quarantine ? 1 : 0,
             'is_active' => 1,
             'created_at' => now(),
             'updated_at' => now(),
@@ -411,5 +412,74 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $this->assertSame(901, $plan[0]['product_variant_id']);
         $this->assertSame(40.0, $plan[0]['delta']);
         $this->assertSame('ADD', $plan[0]['action']);
+    }
+
+    // ---- Contrato de ubicación destino apta (feedback PR #77) -------------
+
+    /** 5. delta +100 y sin default => MANUAL_REVIEW(sin_ubicacion_destino), nunca ADD. */
+    public function test_case5_no_target_location_forces_manual_review_never_add(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->legacy($wh->id, 5, null, 100); // sin ninguna inventory_location / default
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $audit = $svc->auditWarehouse($wh->id);
+        $this->assertFalse($audit['has_target_location']);
+        $this->assertFalse($audit['transition_ready']);
+
+        $r = $svc->planIncremental($wh->id)['plan'][0];
+        $this->assertSame(100.0, $r['delta']);
+        $this->assertSame('MANUAL_REVIEW', $r['action']);
+        $this->assertContains('sin_ubicacion_destino', $r['reasons']);
+        $this->assertNull($r['target_inventory_location_id']);
+    }
+
+    /** 6. default = QUARANTINE => no apta como target automático. */
+    public function test_case6b_quarantine_default_is_not_an_eligible_target(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->legacy($wh->id, 5, null, 100);
+        // default apunta a una ubicación de cuarentena.
+        $this->location($wh->id, 'QUAR', true, 'quarantine', true);
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $audit = $svc->auditWarehouse($wh->id);
+        $this->assertFalse($audit['has_target_location']);   // QUARANTINE no cuenta
+        $this->assertNull($audit['inventory_location_id']);
+
+        $r = $svc->planIncremental($wh->id)['plan'][0];
+        $this->assertSame('MANUAL_REVIEW', $r['action']);
+        $this->assertContains('sin_ubicacion_destino', $r['reasons']);
+    }
+
+    /** También damaged / returns quedan excluidas. */
+    public function test_damaged_or_returns_default_is_not_an_eligible_target(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->legacy($wh->id, 5, null, 10);
+        $this->location($wh->id, 'RET', true, 'returns');
+
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($wh->id);
+        $this->assertFalse($audit['has_target_location']);
+    }
+
+    /** 7. default storage activa => target válida (ADD permitido si no hay blockers). */
+    public function test_case7_active_storage_default_is_an_eligible_target(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->legacy($wh->id, 5, null, 100);
+        $main = $this->location($wh->id, 'MAIN', true, 'storage');
+        $this->locStock($main, 5, null, 60); // divergencia +40
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $audit = $svc->auditWarehouse($wh->id);
+        $this->assertTrue($audit['has_target_location']);
+        $this->assertSame($main, $audit['inventory_location_id']);
+
+        $r = $svc->planIncremental($wh->id)['plan'][0];
+        $this->assertSame(40.0, $r['delta']);
+        $this->assertSame('ADD', $r['action']);
+        $this->assertSame($main, $r['target_inventory_location_id']);
+        $this->assertNotContains('sin_ubicacion_destino', $r['reasons']);
     }
 }
