@@ -301,4 +301,115 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
             'deleted_at' => null,
         ]);
     }
+
+    private function location(int $warehouseId, string $code, bool $default = false): int
+    {
+        $id = DB::table('inventory_locations')->insertGetId([
+            'warehouse_id' => $warehouseId,
+            'branch_id' => null,
+            'code' => $code,
+            'name' => $code,
+            'type' => 'storage',
+            'is_active' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        if ($default) DB::table('warehouses')->where('id', $warehouseId)->update(['default_inventory_location_id' => $id]);
+        return (int) $id;
+    }
+
+    private function locStock(int $locationId, int $productId, ?int $variantId, float $qty, float $reserved = 0): void
+    {
+        DB::table('inventory_location_stocks')->insert([
+            'inventory_location_id' => $locationId,
+            'product_id' => $productId,
+            'product_variant_id' => $variantId,
+            'variant_key' => (int) ($variantId ?: 0),
+            'quantity' => $qty,
+            'reserved_quantity' => $reserved,
+            'manage_stock' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    // ---- Granularidad multi-ubicación (feedback PR #77) --------------------
+
+    /** Caso 1: legacy 100 = MAIN 70 + QUARANTINE 30 → reconciliado, plan vacío. */
+    public function test_case1_split_across_locations_is_reconciled_no_plan(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->legacy($wh->id, 5, null, 100);
+        $main = $this->location($wh->id, 'MAIN', true);
+        $quar = $this->location($wh->id, 'QUARANTINE');
+        $this->locStock($main, 5, null, 70);
+        $this->locStock($quar, 5, null, 30);
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $audit = $svc->auditWarehouse($wh->id);
+
+        $this->assertTrue($audit['is_reconciled']);
+        $this->assertSame(100.0, $audit['location_total']);
+        $this->assertEmpty($audit['differences']);
+        $this->assertFalse($audit['needs_incremental']);
+        $this->assertEmpty($svc->planIncremental($wh->id)['plan']);
+    }
+
+    /** Caso 2: legacy 110, MAIN 70 + QUARANTINE 30 → delta +10, ADD a MAIN. */
+    public function test_case2_partial_divergence_across_locations_plans_add_to_main(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->legacy($wh->id, 5, null, 110);
+        $main = $this->location($wh->id, 'MAIN', true);
+        $quar = $this->location($wh->id, 'QUARANTINE');
+        $this->locStock($main, 5, null, 70);
+        $this->locStock($quar, 5, null, 30);
+
+        $plan = app(LegacyInventoryReconciliationService::class)->planIncremental($wh->id);
+        $this->assertCount(1, $plan['plan']);
+        $r = $plan['plan'][0];
+        $this->assertSame(5, $r['product_id']);
+        $this->assertSame(110.0, $r['legacy']);
+        $this->assertSame(70.0, $r['main_quantity']);
+        $this->assertSame(30.0, $r['other_locations_quantity']);
+        $this->assertSame(100.0, $r['warehouse_location_quantity']);
+        $this->assertSame(10.0, $r['delta']);
+        $this->assertSame('ADD', $r['action']);
+        $this->assertSame($main, $r['target_inventory_location_id']);
+    }
+
+    /** Caso 4: como el 2 pero con reservado en QUARANTINE → MANUAL_REVIEW. */
+    public function test_case4_reserved_in_any_location_forces_manual_review(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->legacy($wh->id, 5, null, 110);
+        $main = $this->location($wh->id, 'MAIN', true);
+        $quar = $this->location($wh->id, 'QUARANTINE');
+        $this->locStock($main, 5, null, 70);
+        $this->locStock($quar, 5, null, 30, 2); // reservado en QUARANTINE
+
+        $r = app(LegacyInventoryReconciliationService::class)->planIncremental($wh->id)['plan'][0];
+        $this->assertSame(10.0, $r['delta']);
+        $this->assertSame('MANUAL_REVIEW', $r['action']);
+        $this->assertContains('reservado', $r['reasons']);
+    }
+
+    /** Caso 6: la agregación conserva product_id + variant_key. */
+    public function test_case6_aggregation_is_variant_aware(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->legacy($wh->id, 5, 900, 50); // variante 900
+        $this->legacy($wh->id, 5, 901, 50); // variante 901
+        $main = $this->location($wh->id, 'MAIN', true);
+        $quar = $this->location($wh->id, 'QUARANTINE');
+        $this->locStock($main, 5, 900, 30);
+        $this->locStock($quar, 5, 900, 20); // v900 reconciliada (50)
+        $this->locStock($main, 5, 901, 10); // v901 corta (10 de 50)
+
+        $plan = collect(app(LegacyInventoryReconciliationService::class)->planIncremental($wh->id)['plan']);
+        $this->assertCount(1, $plan); // sólo v901 diverge
+        $this->assertSame(901, $plan[0]['product_variant_id']);
+        $this->assertSame(40.0, $plan[0]['delta']);
+        $this->assertSame('ADD', $plan[0]['action']);
+    }
 }

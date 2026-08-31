@@ -146,10 +146,21 @@ class TransferLocationController extends BaseController
     }
 
     /**
-     * Divergencia pendiente por producto en la ubicación de origen:
-     * SUM(product_warehouse.qte) del almacén dueño  vs  SUM(inventory_location_stocks.quantity)
-     * de la ubicación. Devuelve los productos con legado > ubicación. Read-only,
-     * informativo; nunca los hace transferibles.
+     * Señal de sólo lectura para el buscador de traslados. Por producto del
+     * almacén dueño del origen compara:
+     *   legacy_quantity            = SUM(product_warehouse.qte) del almacén
+     *   warehouse_location_quantity = SUM(inventory_location_stocks.quantity) de
+     *                                 TODAS las ubicaciones activas del almacén
+     *   selected_location_quantity  = lo mismo pero sólo en la ubicación elegida
+     *
+     * kind:
+     *   'divergence'     warehouse_location_quantity < legacy_quantity  → hay
+     *                    stock legado sin reconciliar (pending_quantity > 0).
+     *   'other_location' el almacén está reconciliado para ese producto pero la
+     *                    ubicación elegida no lo tiene: está en otra ubicación
+     *                    del mismo almacén. NO es divergencia.
+     *
+     * Nunca hace transferible nada: es sólo para el mensaje del formulario.
      */
     private function legacyPendingForLocation(InventoryLocation $location): array
     {
@@ -170,25 +181,49 @@ class TransferLocationController extends BaseController
 
         if ($legacy->isEmpty()) return [];
 
-        $locationQty = DB::table('inventory_location_stocks')
+        $productIds = $legacy->pluck('product_id')->all();
+
+        // Agregado físico de TODAS las ubicaciones activas del almacén.
+        $warehouseLocQty = DB::table('inventory_location_stocks as s')
+            ->join('inventory_locations as il', 'il.id', '=', 's.inventory_location_id')
+            ->where('il.warehouse_id', $location->warehouse_id)
+            ->whereNull('il.deleted_at')
+            ->where('il.is_active', 1)
+            ->whereIn('s.product_id', $productIds)
+            ->groupBy('s.product_id')
+            ->selectRaw('s.product_id, SUM(s.quantity) as qty')
+            ->pluck('qty', 's.product_id');
+
+        $selectedLocQty = DB::table('inventory_location_stocks')
             ->where('inventory_location_id', $location->id)
-            ->whereIn('product_id', $legacy->pluck('product_id')->all())
+            ->whereIn('product_id', $productIds)
             ->groupBy('product_id')
             ->selectRaw('product_id, SUM(quantity) as qty')
             ->pluck('qty', 'product_id');
 
-        return $legacy->map(function ($row) use ($locationQty) {
+        return $legacy->map(function ($row) use ($warehouseLocQty, $selectedLocQty) {
             $legacyQty = round((float) $row->qty, 3);
-            $locQty = round((float) ($locationQty[$row->product_id] ?? 0), 3);
-            $pending = round($legacyQty - $locQty, 3);
-            if ($pending <= 0.0005) return null;
+            $whQty = round((float) ($warehouseLocQty[$row->product_id] ?? 0), 3);
+            $selQty = round((float) ($selectedLocQty[$row->product_id] ?? 0), 3);
+            $pending = round($legacyQty - $whQty, 3);
+
+            if ($pending > 0.0005) {
+                $kind = 'divergence';
+            } elseif ($selQty <= 0.0005) {
+                $kind = 'other_location';   // reconciliado, pero vive en otra ubicación del almacén
+            } else {
+                return null;                // reconciliado y presente aquí → ya está en el catálogo
+            }
+
             return [
                 'product_id' => (int) $row->product_id,
                 'code' => (string) $row->code,
                 'name' => (string) $row->name,
                 'legacy_quantity' => $legacyQty,
-                'location_quantity' => $locQty,
-                'pending_quantity' => $pending,
+                'warehouse_location_quantity' => $whQty,
+                'selected_location_quantity' => $selQty,
+                'pending_quantity' => (float) max(0, $pending),
+                'kind' => $kind,
             ];
         })->filter()->sortByDesc('pending_quantity')->take(200)->values()->all();
     }

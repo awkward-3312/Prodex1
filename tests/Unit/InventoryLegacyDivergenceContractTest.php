@@ -28,8 +28,13 @@ class InventoryLegacyDivergenceContractTest extends TestCase
     {
         $src = $this->read('app/Http/Controllers/InventoryVisibilityController.php');
 
-        // Lee el legado.
-        $this->assertStringContainsString("DB::table('product_warehouse')", $src);
+        // Lee el legado por ALMACÉN, no global.
+        $this->assertStringContainsString("->groupBy('product_id', 'warehouse_id')", $src);
+        // Compara contra el agregado location-native de ubicaciones de ALMACÉN
+        // (warehouse_id NOT NULL), nunca branch-native.
+        $this->assertStringContainsString("->whereNotNull('il.warehouse_id')", $src);
+        // Suma sólo el lado positivo por almacén — sin compensación entre almacenes.
+        $this->assertStringContainsString('max(0, round($legacyQty - $locQty, 3))', $src);
         // Expone la señal informativa.
         $this->assertStringContainsString("'legacy_pending' =>", $src);
         $this->assertStringContainsString("'legacy_pending_quantity' =>", $src);
@@ -38,10 +43,6 @@ class InventoryLegacyDivergenceContractTest extends TestCase
             "'company_available' => round(\$rows->where('is_quarantine', false)->sum('available'), 3)",
             $src
         );
-        // Divergencia = legado - físico por ubicación (cubre "nunca reconciliado"
-        // Y "reconciliado y luego divergido"), nunca sólo "cero filas".
-        $this->assertStringContainsString('$legacyTotal - $locationPhysical', $src);
-        $this->assertStringContainsString("'location_physical_total' =>", $src);
         $this->assertStringNotContainsString('$rows->isEmpty()', $src);
     }
 
@@ -71,13 +72,14 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         );
         $this->assertStringContainsString("->where('quantity', '>', 0)", $src);
 
-        // legacy_pending es de sólo lectura: compara SUM(product_warehouse) del
-        // almacén dueño con SUM(inventory_location_stocks) de la ubicación y
-        // devuelve pending_quantity = legado - ubicación (> 0). Nunca se fusiona
-        // con $rows.
+        // legacy_pending es de sólo lectura: compara legado del almacén contra el
+        // AGREGADO de TODAS sus ubicaciones activas, y distingue 'divergence' de
+        // 'other_location'. Nunca se fusiona con $rows.
         $this->assertStringContainsString('private function legacyPendingForLocation(', $src);
         $this->assertStringContainsString("->where('pw.warehouse_id', \$location->warehouse_id)", $src);
-        $this->assertStringContainsString("'pending_quantity' => \$pending", $src);
+        $this->assertStringContainsString("->where('il.warehouse_id', \$location->warehouse_id)", $src);
+        $this->assertStringContainsString("\$kind = 'divergence'", $src);
+        $this->assertStringContainsString("\$kind = 'other_location'", $src);
         $this->assertStringContainsString("havingRaw('SUM(pw.qte) > 0')", $src);
     }
 
@@ -87,8 +89,12 @@ class InventoryLegacyDivergenceContractTest extends TestCase
 
         $this->assertStringContainsString('legacyPending', $vue);
         $this->assertStringContainsString('d.legacy_pending', $vue);
+        // Distingue divergencia real de "está en otra ubicación del almacén".
+        $this->assertStringContainsString('pending.kind === "divergence"', $vue);
+        $this->assertStringContainsString('pending.kind === "other_location"', $vue);
         $this->assertStringContainsString('Divergencia de inventario pendiente', $vue);
-        $this->assertStringContainsString('pending.pending_quantity', $vue);
+        $this->assertStringContainsString('Sin existencia en esta ubicación', $vue);
+        $this->assertStringContainsString('pending.warehouse_location_quantity', $vue);
         // Sigue existiendo el fallback "Producto no encontrado" para el caso real.
         $this->assertStringContainsString('"Producto no encontrado."', $vue);
         // Compatibilidad con la forma antigua (array plano).
@@ -132,15 +138,24 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         $src = $this->read('app/Services/LegacyInventoryReconciliationService.php');
 
         $this->assertStringContainsString('public function planIncremental(', $src);
-        $this->assertStringContainsString("'main_location_has_stock' =>", $src);
+        $this->assertStringContainsString("'warehouse_has_location_stock' =>", $src);
         $this->assertStringContainsString("'needs_incremental' =>", $src);
-        // El backfill de almacén completo sólo opera desde MAIN vacía y remite al
-        // plan incremental cuando ya hay stock.
+        // La verdad de comparación es el AGREGADO del almacén, no una ubicación.
+        $this->assertStringContainsString('private function warehouseLocationMap(int $warehouseId): array', $src);
+        $this->assertStringContainsString('$delta = $this->decimal($legacyQty - $warehouseLocQty);', $src);
+        // El backfill de almacén completo sólo opera desde almacén sin stock y
+        // remite al plan incremental cuando ya hay stock en cualquier ubicación.
         $this->assertStringContainsString('planIncremental / prodex:inventory-reconcile --plan', $src);
+        $this->assertStringContainsString('! empty($this->warehouseLocationMap($warehouseId))', $src);
         // delta negativo nunca se descuenta en automático.
         $this->assertStringContainsString("if (\$delta < 0) \$reasons[] = 'delta_negativo';", $src);
         $this->assertStringContainsString("\$reasons[] = 'lote_o_serie';", $src);
         $this->assertStringContainsString("\$reasons[] = 'reservado';", $src);
         $this->assertStringContainsString("\$reasons[] = 'transito_salida';", $src);
+        // El plan expone dónde vive el stock antes de aplicar nada.
+        $this->assertStringContainsString("'main_quantity' =>", $src);
+        $this->assertStringContainsString("'other_locations_quantity' =>", $src);
+        $this->assertStringContainsString("'warehouse_location_quantity' =>", $src);
+        $this->assertStringContainsString("'target_inventory_location_id' =>", $src);
     }
 }

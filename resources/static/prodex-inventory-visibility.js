@@ -136,8 +136,8 @@
       if (p.legacy_pending) {
         html += '<div class="px-iv-empty"><strong>Divergencia pendiente:</strong> hay ' + fmt(p.legacy_pending_quantity) +
           ' en inventario heredado (por almacén) que aún no está reconciliado al motor por ubicación' +
-          (Number(p.location_physical_total) > 0
-            ? ' (por ubicación: ' + fmt(p.location_physical_total) + ' · heredado: ' + fmt(p.legacy_total) + ')'
+          (Number(p.warehouse_location_physical_total) > 0
+            ? ' (por ubicación en almacenes: ' + fmt(p.warehouse_location_physical_total) + ' · heredado: ' + fmt(p.legacy_total) + ')'
             : '') +
           '. Ese excedente no está disponible para operaciones por ubicación (traslados, POS por ubicación) hasta reconciliar.</div>';
       }

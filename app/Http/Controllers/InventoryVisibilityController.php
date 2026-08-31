@@ -49,26 +49,53 @@ class InventoryVisibilityController extends Controller
 
         $productIds = $products->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        // Legacy warehouse stock (product_warehouse) that has NOT been reconciled
-        // into the location engine. The transition state machine
-        // (InventoryTransitionState) keeps product_warehouse authoritative until a
-        // warehouse is promoted to location_primary; in shadow_compare the
-        // location ledger is a FROZEN snapshot from the last backfill and legacy
-        // mutations after that point (opening stock, purchases, adjustments) never
-        // reach it. So a per-product gap of legacy_total > location_physical_total
-        // means "divergencia pendiente" — surface it instead of presenting the
-        // stale location number (0 OR a short count) as authoritative.
-        $legacyTotals = [];
+        // Divergencia legado ↔ motor por ubicación, calculada POR ALMACÉN y
+        // sumada sólo por el lado positivo — nunca se compensa un almacén con
+        // exceso legado contra otro con exceso por ubicación, ni se mezcla stock
+        // branch-native (inventory_locations.warehouse_id NULL) con el
+        // product_warehouse de un CD.
+        //
+        //   pending(producto) = Σ_almacén  max( legacyWarehouse − locationWarehouse , 0 )
+        //
+        // donde locationWarehouse = SUM(inventory_location_stocks.quantity) de
+        // TODAS las inventory_locations activas de ese almacén (MAIN + cuarentena
+        // + devoluciones + …), no sólo la default.
+        $legacyByWh = [];      // [product_id][warehouse_id] => qty
+        $legacyTotals = [];    // [product_id] => Σ qty (para mostrar)
         if (Schema::hasTable('product_warehouse')) {
-            $legacyRows = DB::table('product_warehouse')
+            foreach (DB::table('product_warehouse')
                 ->whereIn('product_id', $productIds)
                 ->whereNull('deleted_at')
-                ->groupBy('product_id')
-                ->selectRaw('product_id, SUM(qte) as quantity')
-                ->get();
-            foreach ($legacyRows as $row) {
-                $legacyTotals[(int) $row->product_id] = round((float) $row->quantity, 3);
+                ->groupBy('product_id', 'warehouse_id')
+                ->selectRaw('product_id, warehouse_id, SUM(qte) as quantity')
+                ->get() as $row) {
+                $pid = (int) $row->product_id;
+                $legacyByWh[$pid][(int) $row->warehouse_id] = round((float) $row->quantity, 3);
+                $legacyTotals[$pid] = round(($legacyTotals[$pid] ?? 0) + (float) $row->quantity, 3);
             }
+        }
+
+        $locationByWh = []; // [product_id][warehouse_id] => physical qty (warehouse-owned locations only)
+        foreach (DB::table('inventory_location_stocks as s')
+            ->join('inventory_locations as il', 'il.id', '=', 's.inventory_location_id')
+            ->whereIn('s.product_id', $productIds)
+            ->whereNotNull('il.warehouse_id')
+            ->whereNull('il.deleted_at')
+            ->where('il.is_active', 1)
+            ->groupBy('s.product_id', 'il.warehouse_id')
+            ->selectRaw('s.product_id, il.warehouse_id, SUM(s.quantity) as quantity')
+            ->get() as $row) {
+            $locationByWh[(int) $row->product_id][(int) $row->warehouse_id] = round((float) $row->quantity, 3);
+        }
+
+        $legacyPendingByProduct = [];
+        foreach ($legacyByWh as $pid => $byWh) {
+            $pending = 0.0;
+            foreach ($byWh as $whId => $legacyQty) {
+                $locQty = $locationByWh[$pid][$whId] ?? 0.0;
+                $pending += max(0, round($legacyQty - $locQty, 3));
+            }
+            $legacyPendingByProduct[$pid] = round($pending, 3);
         }
 
         $stocks = DB::table('inventory_location_stocks as s')
@@ -138,7 +165,7 @@ class InventoryVisibilityController extends Controller
 
         $currentBranchId = $user->default_branch_id ? (int) $user->default_branch_id : null;
 
-        $payload = $products->map(function ($product) use ($stocks, $transit, $currentBranchId, $legacyTotals) {
+        $payload = $products->map(function ($product) use ($stocks, $transit, $currentBranchId, $legacyTotals, $legacyPendingByProduct) {
             $rows = $stocks->where('product_id', $product->id)->values()->map(function ($row) use ($currentBranchId) {
                 $physical = round((float) $row->quantity, 3);
                 $reserved = round((float) $row->reserved_quantity, 3);
@@ -178,13 +205,12 @@ class InventoryVisibilityController extends Controller
                 ];
             });
 
-            // Divergencia pendiente: cuánto stock legado (product_warehouse) NO
-            // está reflejado en el motor por ubicación. Cubre tanto "nunca
-            // reconciliado" (physical 0) como "reconciliado y luego divergido"
-            // (physical < legado). NO se suma a company_available.
+            // pending = Σ_almacén max(legacyWh − locationWh, 0). NO se compensa
+            // entre almacenes ni con stock branch-native. NO entra en
+            // company_available.
             $legacyTotal = round((float) ($legacyTotals[$product->id] ?? 0.0), 3);
-            $locationPhysical = round((float) $rows->sum('physical'), 3);
-            $legacyPendingQty = round(max(0, $legacyTotal - $locationPhysical), 3);
+            $warehouseLocationPhysical = round((float) $rows->whereNotNull('warehouse_id')->sum('physical'), 3);
+            $legacyPendingQty = round((float) ($legacyPendingByProduct[$product->id] ?? 0.0), 3);
 
             return [
                 'id' => (int) $product->id,
@@ -194,9 +220,10 @@ class InventoryVisibilityController extends Controller
                 'in_transit' => $inTransit,
                 'company_available' => round($rows->where('is_quarantine', false)->sum('available'), 3),
                 'legacy_total' => $legacyTotal,
-                'location_physical_total' => $locationPhysical,
-                // Informational only: legado sin reconciliar. NO es stock
-                // location-native, no entra en company_available.
+                // Total físico location-native en ubicaciones de ALMACÉN (no branch).
+                'warehouse_location_physical_total' => $warehouseLocationPhysical,
+                // Informational only: legado sin reconciliar (suma por almacén,
+                // sólo lado positivo). NO es stock location-native.
                 'legacy_pending' => $legacyPendingQty > 0.0005,
                 'legacy_pending_quantity' => $legacyPendingQty,
             ];

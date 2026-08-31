@@ -723,15 +723,21 @@ export default {
               (p.code || "").toLowerCase() === t ||
               (p.name || "").toLowerCase().includes(t)
             );
-            if (pending) {
-              const nLoc = Number(pending.location_quantity || 0);
-              const detail = nLoc > 0
-                ? `Por ubicación hay ${nLoc} y en inventario heredado ${pending.legacy_quantity}: quedan ${pending.pending_quantity} sin reconciliar.`
+            if (pending && pending.kind === "divergence") {
+              const nWh = Number(pending.warehouse_location_quantity || 0);
+              const detail = nWh > 0
+                ? `Por ubicación en el almacén hay ${nWh} y en inventario heredado ${pending.legacy_quantity}: quedan ${pending.pending_quantity} sin reconciliar.`
                 : `Tiene ${pending.legacy_quantity} en inventario heredado del almacén de origen y 0 por ubicación.`;
               this.makeToast(
                 "warning",
                 `"${pending.name}": ${detail} El excedente no se puede trasladar hasta reconciliar el inventario por ubicación.`,
                 "Divergencia de inventario pendiente"
+              );
+            } else if (pending && pending.kind === "other_location") {
+              this.makeToast(
+                "warning",
+                `"${pending.name}" no tiene existencia por ubicación en el origen seleccionado (está en otra ubicación del mismo almacén).`,
+                "Sin existencia en esta ubicación"
               );
             } else {
               this.makeToast("warning", "Producto no encontrado.", "Aviso");
