@@ -77,6 +77,11 @@ class ProdexInventoryReconcile extends Command
                             $this->warn('    Cantidades negativas detectadas: '.count($result['negative_legacy_rows']));
                         }
 
+                        if (! empty($result['batch_or_serial_products'])) {
+                            $this->warn('    Productos con lote o serie/IMEI (no aptos para backfill automático): '
+                                .count($result['batch_or_serial_products']));
+                        }
+
                         if ($result['is_reconciled']) {
                             $summary['reconciled']++;
                         } else {

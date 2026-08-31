@@ -6,6 +6,7 @@ use App\Models\InventoryLocation;
 use App\Models\InventoryLocationStock;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class LegacyInventoryReconciliationService
@@ -37,6 +38,7 @@ class LegacyInventoryReconciliationService
         }
 
         $negative = array_values(array_filter($legacy, fn ($row) => $row['quantity'] < 0));
+        $trackedProducts = $this->batchOrSerialTrackedProducts($legacy);
 
         return [
             'warehouse_id' => $warehouse->id,
@@ -47,8 +49,14 @@ class LegacyInventoryReconciliationService
             'legacy_total' => $this->decimal(array_sum(array_column($legacy, 'quantity'))),
             'location_total' => $this->decimal(array_sum(array_column($locationMap, 'quantity'))),
             'negative_legacy_rows' => $negative,
+            // Products whose stock is only meaningful together with a batch or a
+            // serial/IMEI location ledger. The quantity backfill below cannot move
+            // product_batch_location_stocks / product_serials, so a plain --apply
+            // would leave them half-migrated. They must be reported, never auto-run.
+            'batch_or_serial_products' => $trackedProducts,
             'differences' => $differences,
             'is_reconciled' => empty($negative) && empty($differences) && $location !== null,
+            'is_backfillable' => empty($negative) && empty($trackedProducts),
         ];
     }
 
@@ -62,6 +70,15 @@ class LegacyInventoryReconciliationService
             if ($negative) {
                 throw ValidationException::withMessages([
                     'legacy_stock' => 'No se puede migrar este almacén/CD porque existen cantidades negativas en product_warehouse.',
+                ]);
+            }
+
+            $tracked = $this->batchOrSerialTrackedProducts($legacy);
+            if ($tracked) {
+                throw ValidationException::withMessages([
+                    'batch_or_serial_stock' => 'Este almacén/CD contiene productos con control de lote o serie/IMEI ('
+                        .count($tracked).'). El backfill de cantidades no migra product_batch_location_stocks ni product_serials, '
+                        .'así que dejaría esos productos a medio migrar. Requiere una migración asistida específica de lotes/seriales.',
                 ]);
             }
 
@@ -178,6 +195,41 @@ class LegacyInventoryReconciliationService
             ];
         }
         return $map;
+    }
+
+    /**
+     * Products in the legacy map that carry a batch or serial/IMEI ledger. The
+     * quantity-only backfill cannot move product_batch_location_stocks nor
+     * product_serials, so these must block an automatic --apply.
+     */
+    private function batchOrSerialTrackedProducts(array $legacy): array
+    {
+        if (! Schema::hasTable('products')) return [];
+
+        $hasBatch = Schema::hasColumn('products', 'is_batch_tracked');
+        $hasImei = Schema::hasColumn('products', 'is_imei');
+        if (! $hasBatch && ! $hasImei) return [];
+
+        $productIds = array_values(array_unique(array_map(
+            fn ($row) => (int) $row['product_id'],
+            $legacy
+        )));
+        if (! $productIds) return [];
+
+        $rows = DB::table('products')
+            ->whereIn('id', $productIds)
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($hasBatch, $hasImei) {
+                if ($hasBatch) $query->orWhere('is_batch_tracked', 1);
+                if ($hasImei) $query->orWhere('is_imei', 1);
+            })
+            ->get(['id', ...($hasBatch ? ['is_batch_tracked'] : []), ...($hasImei ? ['is_imei'] : [])]);
+
+        return $rows->map(fn ($row) => [
+            'product_id' => (int) $row->id,
+            'is_batch_tracked' => $hasBatch ? (bool) $row->is_batch_tracked : false,
+            'is_imei' => $hasImei ? (bool) $row->is_imei : false,
+        ])->all();
     }
 
     private function locationMap(int $locationId): array

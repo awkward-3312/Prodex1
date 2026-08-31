@@ -134,7 +134,13 @@
       var groups = groupStock(p.locations || []);
       var html = '<div class="px-iv-product"><div class="px-iv-product-head"><div><div class="px-iv-product-name">' + esc(p.name) + '</div><div class="px-iv-product-code">' + esc(p.code || 'Sin código') + '</div></div><div class="px-iv-company-total"><strong>' + fmt(p.company_available) + '</strong>disponible en la empresa</div></div>';
       if (!groups.length) {
-        html += '<div class="px-iv-empty">Este producto todavía no tiene existencias por ubicación.</div>';
+        if (p.legacy_pending) {
+          html += '<div class="px-iv-empty">Este producto tiene <strong>' + fmt(p.legacy_pending_quantity) +
+            '</strong> en inventario heredado (por almacén) que aún no se ha reconciliado al motor por ubicación. ' +
+            'No está disponible para operaciones por ubicación (traslados, POS por ubicación) hasta que se reconcilie.</div>';
+        } else {
+          html += '<div class="px-iv-empty">Este producto todavía no tiene existencias por ubicación.</div>';
+        }
       } else {
         groups.forEach(function (g) {
           html += '<div class="px-iv-group ' + (g.current ? 'current' : '') + '"><div class="px-iv-group-title"><span>' + esc(g.name) + (g.current ? '<span class="px-iv-current-badge">MI SUCURSAL</span>' : '') + '</span><span>' + fmt(g.total) + ' disponible</span></div>';

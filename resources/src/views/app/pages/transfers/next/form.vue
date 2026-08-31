@@ -381,6 +381,7 @@ export default {
       search_input: "",
       product_filter: [],
       products: [],
+      legacyPending: [],
       details: [],
       sources: [],
       destinationGroups: {},
@@ -687,12 +688,16 @@ export default {
       window.axios
         .get(`transfer-location/${locId}/products`, PXTL_META)
         .then(response => {
-          this.products = Array.isArray(response.data) ? response.data : [];
+          const d = response && response.data;
+          // El endpoint devuelve { products, legacy_pending }. Compatibilidad con
+          // la forma antigua (array plano) por si un despliegue va desfasado.
+          this.products = Array.isArray(d) ? d : (d && Array.isArray(d.products) ? d.products : []);
+          this.legacyPending = d && Array.isArray(d.legacy_pending) ? d.legacy_pending : [];
           this.applyUnitFactorFromCatalog();
           this.recalc();
           NProgress.done();
         })
-        .catch(() => { NProgress.done(); this.products = []; });
+        .catch(() => { NProgress.done(); this.products = []; this.legacyPending = []; });
     },
     search() {
       if (this.timer) { clearTimeout(this.timer); this.timer = null; }
@@ -712,7 +717,22 @@ export default {
             (p.code || "").toLowerCase().includes(term) ||
             (p.barcode || "").toLowerCase().includes(term)
           );
-          if (this.product_filter.length <= 0) this.makeToast("warning", "Producto no encontrado.", "Aviso");
+          if (this.product_filter.length <= 0) {
+            const t = this.search_input.toLowerCase();
+            const pending = (this.legacyPending || []).find(p =>
+              (p.code || "").toLowerCase() === t ||
+              (p.name || "").toLowerCase().includes(t)
+            );
+            if (pending) {
+              this.makeToast(
+                "warning",
+                `"${pending.name}" tiene ${pending.legacy_quantity} en inventario heredado del almacén de origen, pero aún no está reconciliado al motor por ubicación. No se puede trasladar hasta reconciliarlo.`,
+                "Inventario pendiente de reconciliación"
+              );
+            } else {
+              this.makeToast("warning", "Producto no encontrado.", "Aviso");
+            }
+          }
         }
       }, 800);
     },

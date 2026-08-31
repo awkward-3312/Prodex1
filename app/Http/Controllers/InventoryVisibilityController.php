@@ -49,6 +49,25 @@ class InventoryVisibilityController extends Controller
 
         $productIds = $products->pluck('id')->map(fn ($id) => (int) $id)->all();
 
+        // Legacy warehouse stock that has NOT been reconciled into the location
+        // engine yet. While a warehouse is still legacy-backed (see
+        // InventoryReadService / InventoryTransitionState), an empty location
+        // ledger means "not migrated", NOT "no stock" — surface that difference so
+        // the UI never presents 0 as authoritative for an untouched warehouse.
+        $legacyPending = [];
+        if (Schema::hasTable('product_warehouse')) {
+            $legacyRows = DB::table('product_warehouse')
+                ->whereIn('product_id', $productIds)
+                ->whereNull('deleted_at')
+                ->groupBy('product_id')
+                ->selectRaw('product_id, SUM(qte) as quantity')
+                ->get();
+            foreach ($legacyRows as $row) {
+                $qty = round((float) $row->quantity, 3);
+                if ($qty > 0) $legacyPending[(int) $row->product_id] = $qty;
+            }
+        }
+
         $stocks = DB::table('inventory_location_stocks as s')
             ->join('inventory_locations as il', 'il.id', '=', 's.inventory_location_id')
             ->leftJoin('branches as b', 'b.id', '=', 'il.branch_id')
@@ -116,7 +135,7 @@ class InventoryVisibilityController extends Controller
 
         $currentBranchId = $user->default_branch_id ? (int) $user->default_branch_id : null;
 
-        $payload = $products->map(function ($product) use ($stocks, $transit, $currentBranchId) {
+        $payload = $products->map(function ($product) use ($stocks, $transit, $currentBranchId, $legacyPending) {
             $rows = $stocks->where('product_id', $product->id)->values()->map(function ($row) use ($currentBranchId) {
                 $physical = round((float) $row->quantity, 3);
                 $reserved = round((float) $row->reserved_quantity, 3);
@@ -156,6 +175,9 @@ class InventoryVisibilityController extends Controller
                 ];
             });
 
+            $legacyQty = (float) ($legacyPending[$product->id] ?? 0.0);
+            $legacyUnreconciled = $legacyQty > 0 && $rows->isEmpty();
+
             return [
                 'id' => (int) $product->id,
                 'name' => $product->name,
@@ -163,6 +185,11 @@ class InventoryVisibilityController extends Controller
                 'locations' => $rows,
                 'in_transit' => $inTransit,
                 'company_available' => round($rows->where('is_quarantine', false)->sum('available'), 3),
+                // Informational only: legacy warehouse stock exists but the location
+                // engine has no row for this product yet. NOT added to
+                // company_available — it is not location-native stock.
+                'legacy_pending' => $legacyUnreconciled,
+                'legacy_pending_quantity' => $legacyUnreconciled ? round($legacyQty, 3) : 0.0,
             ];
         })->values();
 

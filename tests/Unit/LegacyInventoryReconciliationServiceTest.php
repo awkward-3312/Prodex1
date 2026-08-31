@@ -86,6 +86,75 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
             $table->timestamps();
             $table->softDeletes();
         });
+
+        Schema::create('products', function ($table) {
+            $table->increments('id');
+            $table->string('name')->nullable();
+            $table->string('code')->nullable();
+            $table->string('type')->default('is_single');
+            $table->boolean('is_batch_tracked')->default(false);
+            $table->integer('is_imei')->default(0);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+    }
+
+    public function test_batch_tracked_product_blocks_backfill_and_is_reported_in_audit(): void
+    {
+        $warehouse = Warehouse::create(['name' => 'CD Principal']);
+        $this->legacy($warehouse->id, 10, null, 5);
+        $this->legacy($warehouse->id, 11, null, 3);
+        $this->product(10, ['is_batch_tracked' => true]);
+        $this->product(11);
+
+        $service = app(LegacyInventoryReconciliationService::class);
+
+        $audit = $service->auditWarehouse($warehouse->id);
+        $this->assertCount(1, $audit['batch_or_serial_products']);
+        $this->assertSame(10, $audit['batch_or_serial_products'][0]['product_id']);
+        $this->assertFalse($audit['is_backfillable']);
+
+        $this->expectException(ValidationException::class);
+        $service->backfillWarehouse($warehouse->id);
+    }
+
+    public function test_serial_imei_product_blocks_backfill(): void
+    {
+        $warehouse = Warehouse::create(['name' => 'CD Principal']);
+        $this->legacy($warehouse->id, 10, null, 5);
+        $this->product(10, ['is_imei' => 1]);
+
+        $this->expectException(ValidationException::class);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+
+        $this->assertSame(0, InventoryLocationStock::count());
+    }
+
+    public function test_plain_products_still_backfill_when_products_table_present(): void
+    {
+        $warehouse = Warehouse::create(['name' => 'CD Principal']);
+        $this->legacy($warehouse->id, 10, null, 5);
+        $this->product(10);
+
+        $result = app(LegacyInventoryReconciliationService::class)->backfillWarehouse($warehouse->id);
+
+        $this->assertTrue($result['is_reconciled']);
+        $this->assertTrue($result['is_backfillable']);
+        $this->assertEmpty($result['batch_or_serial_products']);
+    }
+
+    private function product(int $id, array $overrides = []): void
+    {
+        DB::table('products')->insert(array_merge([
+            'id' => $id,
+            'name' => 'Producto '.$id,
+            'code' => 'P'.$id,
+            'type' => 'is_single',
+            'is_batch_tracked' => false,
+            'is_imei' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ], $overrides));
     }
 
     public function test_backfill_creates_default_cd_location_and_reconciles_exactly(): void

@@ -14,6 +14,8 @@ use App\Services\BatchLocationService;
 use App\Services\InventoryLocationScopeService;
 use App\Services\TransferBusinessDestinationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class TransferLocationController extends BaseController
@@ -88,7 +90,12 @@ class TransferLocationController extends BaseController
 
         $stocks = InventoryLocationStock::where('inventory_location_id', $location->id)
             ->where('quantity', '>', 0)->get();
-        if ($stocks->isEmpty()) return response()->json([]);
+        if ($stocks->isEmpty()) {
+            return response()->json([
+                'products' => [],
+                'legacy_pending' => $this->legacyPendingForLocation($location, collect()),
+            ]);
+        }
 
         $products = Product::with(['unitPurchase', 'variants'])
             ->whereNull('deleted_at')->whereIn('id', $stocks->pluck('product_id')->unique())
@@ -125,7 +132,50 @@ class TransferLocationController extends BaseController
             ];
         }
 
-        return response()->json($rows);
+        return response()->json([
+            'products' => $rows,
+            // Products the origin's legacy warehouse still holds in product_warehouse
+            // but that were never reconciled into the location engine. They are NOT
+            // added to the usable catalogue — a location transfer must move real
+            // location-native stock — but the form can now say WHY they are missing
+            // instead of "Producto no encontrado".
+            'legacy_pending' => $this->legacyPendingForLocation($location, $stocks),
+        ]);
+    }
+
+    /**
+     * Codes/names that exist in the origin warehouse's legacy product_warehouse
+     * ledger with qty > 0 but have no location-native stock row at this location.
+     * Read-only, informational; never makes them transferable.
+     */
+    private function legacyPendingForLocation(InventoryLocation $location, $locationStocks): array
+    {
+        if (! $location->warehouse_id || ! Schema::hasTable('product_warehouse')) {
+            return [];
+        }
+
+        $alreadyNative = collect($locationStocks)->pluck('product_id')->map(fn ($id) => (int) $id)->unique()->all();
+
+        $rows = DB::table('product_warehouse as pw')
+            ->join('products as p', 'p.id', '=', 'pw.product_id')
+            ->where('pw.warehouse_id', $location->warehouse_id)
+            ->whereNull('pw.deleted_at')
+            ->whereNull('p.deleted_at')
+            ->where('p.type', '!=', 'is_service')
+            ->when($alreadyNative, fn ($q) => $q->whereNotIn('pw.product_id', $alreadyNative))
+            ->groupBy('pw.product_id', 'p.code', 'p.name')
+            ->havingRaw('SUM(pw.qte) > 0')
+            ->selectRaw('pw.product_id, p.code, p.name, SUM(pw.qte) as qty')
+            ->orderByDesc('qty')
+            ->limit(200)
+            ->get();
+
+        return $rows->map(fn ($row) => [
+            'product_id' => (int) $row->product_id,
+            'code' => (string) $row->code,
+            'name' => (string) $row->name,
+            'legacy_quantity' => round((float) $row->qty, 3),
+        ])->all();
     }
 
     public function product(Request $request, int $locationId, int $productId)
