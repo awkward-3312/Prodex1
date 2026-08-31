@@ -582,15 +582,16 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $this->assertSame(0.0, $audit['legacy_only_pending_total']);
         $this->assertEmpty($svc->planIncremental($wh->id)['plan']);
 
-        // batch (sin --product): nada que aplicar, sin abortar.
-        $res = $svc->applyIncremental($wh->id, null);
-        $this->assertSame(0, $res['applied_count']);
-        $this->assertSame(0, $res['manual_review_count']);
-
         // quirúrgico (--product=6): rechaza, no es candidato.
         try {
             $svc->applyIncremental($wh->id, 6);
             $this->fail('Iphone15 no debía ser candidato de apply incremental');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('no tiene ninguna fila LEGACY_ONLY_PENDING pendiente', $e->getMessage());
+        }
+        try {
+            $svc->applyIncremental($wh->id, 7);
+            $this->fail('Iphone16 no debía ser candidato de apply incremental');
         } catch (ValidationException $e) {
             $this->assertStringContainsString('no tiene ninguna fila LEGACY_ONLY_PENDING pendiente', $e->getMessage());
         }
@@ -724,8 +725,8 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $this->assertSame(1, DB::table('inventory_location_movements')->where('reference_type', 'legacy_product_warehouse_incremental_reconciliation')->count());
     }
 
-    /** J11b: modo batch (sin --product) — los ADD limpios se aplican, los inseguros van a manual_review sin abortar. */
-    public function test_j11_batch_mode_applies_safe_and_flags_unsafe(): void
+    /** J11b: v1 — la ESCRITURA batch (sin --product) está deshabilitada; --plan (lectura) sigue funcionando. */
+    public function test_j11_batch_write_is_disabled_read_only_plan_still_works(): void
     {
         $wh = Warehouse::create(['name' => 'CD']);
         $this->product(5);
@@ -734,38 +735,23 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $this->legacy($wh->id, 6, null, 50);
         $main = $this->location($wh->id, 'MAIN', true, 'storage');
 
-        $res = app(LegacyInventoryReconciliationService::class)->applyIncremental($wh->id, null);
-
-        $this->assertSame(1, $res['applied_count']);
-        $this->assertSame(1, $res['manual_review_count']);
-        $this->assertSame(6, $res['manual_review'][0]['product_id']);
-        $this->assertSame(100.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 5)->value('quantity'));
-        $this->assertSame(0, InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 6)->count());
-    }
-
-    /** J11c: atomicidad del batch — si una clave falla la postcondición, se revierte TODO (incluida la válida). */
-    public function test_j11_batch_mode_is_atomic_one_postcondition_failure_rolls_back_all(): void
-    {
-        $wh = Warehouse::create(['name' => 'CD']);
-        $this->product(5);
-        $this->product(7);
-        $this->legacy($wh->id, 5, null, 100); // limpio: MAIN vacía
-        $this->legacy($wh->id, 7, null, 100); // 20 fantasma => postcondición fallará
-        $main = $this->location($wh->id, 'MAIN', true, 'storage');
-        $this->locStock($main, 7, null, 20);
-
         $svc = app(LegacyInventoryReconciliationService::class);
+
         try {
             $svc->applyIncremental($wh->id, null);
-            $this->fail('el batch debía abortar por la clave 7');
+            $this->fail('la escritura batch debía estar deshabilitada en v1');
         } catch (ValidationException $e) {
-            $this->assertStringContainsString('postcondición falló', $e->getMessage());
+            $this->assertStringContainsString('requiere --product', $e->getMessage());
         }
 
-        // la clave 5 (válida) también se revirtió: atomicidad.
-        $this->assertSame(0, InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 5)->count());
-        $this->assertSame(20.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 7)->value('quantity'));
-        $this->assertSame(0, DB::table('inventory_location_movements')->where('reference_type', 'legacy_product_warehouse_incremental_reconciliation')->count());
+        // 0 escrituras.
+        $this->assertSame(0, $this->reconMovements());
+        $this->assertSame(0, InventoryLocationStock::count());
+
+        // planIncremental (sólo lectura) sí funciona sin --product.
+        $plan = $svc->planIncremental($wh->id);
+        $this->assertSame(1, $plan['add_count']);         // product5
+        $this->assertSame(1, $plan['manual_review_count']); // product6 (lote_o_serie)
     }
 
     // ---- TOCTOU / concurrencia: snapshot bloqueado + expect de conjunto completo ----
@@ -839,63 +825,187 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $this->assertSame(20.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 8)->value('quantity'));
     }
 
-    /** K3: pre-plan batch tiene ADD product8; en el replan product8 ya es RECONCILED => ABORT TOTAL, no skip silencioso. */
-    public function test_k3_batch_aborts_when_an_expected_add_key_vanishes(): void
+    /** K3: --product; el pre-plan tenía ADD para el producto y en el replan bloqueado pasa a MANUAL_REVIEW (reservado) => ABORT TOTAL por conjunto ADD cambiado. */
+    public function test_k3_aborts_when_expected_add_key_drops_from_add_set(): void
     {
         $wh = Warehouse::create(['name' => 'CD']);
-        $this->product(5); $this->product(8);
-        $this->legacy($wh->id, 5, null, 50);
+        $this->product(8);
         $this->legacy($wh->id, 8, null, 100);
         $main = $this->location($wh->id, 'MAIN', true, 'storage');
 
         $svc = app(LegacyInventoryReconciliationService::class);
         $expect = $this->expectFromPlan($svc->planIncremental($wh->id));
-        $this->assertSame('ADD', $expect['5:0']['action']);
         $this->assertSame('ADD', $expect['8:0']['action']);
 
-        // product8 deja de tener pendiente antes del apply (legacy vuelve a 0).
-        DB::table('product_warehouse')->where('warehouse_id', $wh->id)->where('product_id', 8)->update(['qte' => 0]);
+        // aparece reservado en la ubicación antes del apply => LEGACY_ONLY_PENDING
+        // sigue, pero action pasa a MANUAL_REVIEW: sale del conjunto ADD.
+        $this->locStock($main, 8, null, 0, 5);
 
         try {
-            $svc->applyIncremental($wh->id, null, $expect);
-            $this->fail('el batch debía abortar porque el conjunto ADD cambió');
+            $svc->applyIncremental($wh->id, 8, $expect);
+            $this->fail('debía abortar porque la clave salió del conjunto ADD');
         } catch (ValidationException $e) {
             $this->assertStringContainsString('conjunto de claves ADD ya no coincide', $e->getMessage());
         }
 
-        // NADA se aplicó, ni siquiera product5 (abort total).
         $this->assertSame(0, $this->reconMovements());
-        $this->assertSame(0, InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 5)->count());
+        $this->assertSame(0.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 8)->value('quantity'));
     }
 
-    /** K4: pre-plan batch con dos ADD; uno cambia de classification antes del apply => rollback/abort de todo el batch. */
-    public function test_k4_batch_aborts_when_one_key_changes_classification(): void
+    /** K4: --product; el pre-plan tenía ADD y en el replan bloqueado la clave cambia de classification (LEGACY_ONLY_PENDING -> UNKNOWN_REVIEW) => ABORT TOTAL. */
+    public function test_k4_aborts_when_key_changes_classification(): void
     {
         $wh = Warehouse::create(['name' => 'CD']);
-        $this->product(5); $this->product(6);
-        $this->legacy($wh->id, 5, null, 50);
-        $this->legacy($wh->id, 6, null, 80);
+        $this->product(8);
+        $this->legacy($wh->id, 8, null, 80);
         $main = $this->location($wh->id, 'MAIN', true, 'storage');
 
         $svc = app(LegacyInventoryReconciliationService::class);
         $expect = $this->expectFromPlan($svc->planIncremental($wh->id));
-        $this->assertSame('ADD', $expect['5:0']['action']);
-        $this->assertSame('ADD', $expect['6:0']['action']);
+        $this->assertSame('ADD', $expect['8:0']['action']);
 
-        // product6 pasa de LEGACY_ONLY_PENDING a UNKNOWN_REVIEW: aparece actividad
-        // location-native no explicada.
-        $this->locStock($main, 6, null, 20);
-        $this->movement('increase', 6, 20, 'Receipt', null, $main, (string) now());
+        // actividad location-native no explicada antes del apply: la clave pasa a
+        // UNKNOWN_REVIEW.
+        $this->locStock($main, 8, null, 20);
+        $this->movement('increase', 8, 20, 'Receipt', null, $main, (string) now());
 
         try {
-            $svc->applyIncremental($wh->id, null, $expect);
-            $this->fail('el batch debía abortar porque una clave cambió de classification');
+            $svc->applyIncremental($wh->id, 8, $expect);
+            $this->fail('debía abortar porque la clave cambió de classification');
         } catch (ValidationException $e) {
             $this->assertStringContainsString('conjunto de claves ADD ya no coincide', $e->getMessage());
         }
 
         $this->assertSame(0, $this->reconMovements());
-        $this->assertSame(0, InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 5)->count());
+        $this->assertSame(20.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 8)->value('quantity'));
+    }
+
+    // ---- Iteración 3: materializar+lockear TODAS las filas del producto + --product obligatorio ----
+
+    /** K6: producto sin fila de stock en una ubicación secundaria => apply materializa la fila 0 y la incluye en el conjunto bloqueado. */
+    public function test_k6_materializes_zero_row_in_every_active_location(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(8);
+        $this->legacy($wh->id, 8, null, 100);
+        $main = $this->location($wh->id, 'MAIN', true, 'storage');
+        $loc2 = $this->location($wh->id, 'LOC2', false, 'storage');
+        $loc3 = $this->location($wh->id, 'LOC3', false, 'storage');
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $res = $svc->applyIncremental($wh->id, 8);
+
+        $this->assertSame(1, $res['applied_count']);
+        // MAIN recibe el delta; LOC2/LOC3 quedan materializadas a 0.
+        $this->assertSame(100.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 8)->value('quantity'));
+        $this->assertSame(0.0, (float) InventoryLocationStock::where('inventory_location_id', $loc2)->where('product_id', 8)->value('quantity'));
+        $this->assertSame(0.0, (float) InventoryLocationStock::where('inventory_location_id', $loc3)->where('product_id', 8)->value('quantity'));
+        $this->assertSame(3, InventoryLocationStock::where('product_id', 8)->count());
+    }
+
+    /** K7: la ubicación TARGET pasa a inactive/quarantine entre pre-plan y apply => abort, 0 inventory write. */
+    public function test_k7_target_becomes_ineligible_before_apply_aborts(): void
+    {
+        foreach ([['is_active' => 0], ['is_quarantine' => 1]] as $i => $mutation) {
+            $pid = 30 + $i;
+            $wh = Warehouse::create(['name' => 'CD '.$i]);
+            $this->product($pid);
+            $this->legacy($wh->id, $pid, null, 100);
+            $main = $this->location($wh->id, 'MAIN', true, 'storage');
+
+            $svc = app(LegacyInventoryReconciliationService::class);
+            $expect = $this->expectFromPlan($svc->planIncremental($wh->id));
+            $this->assertSame('ADD', $expect[$pid.':0']['action']);
+
+            // la ubicación destino deja de ser apta.
+            DB::table('inventory_locations')->where('id', $main)->update($mutation);
+
+            try {
+                $svc->applyIncremental($wh->id, $pid, $expect);
+                $this->fail('debía abortar: target dejó de ser apto');
+            } catch (ValidationException $e) {
+                // ok
+            }
+            $this->assertSame(0, $this->reconMovements());
+            $this->assertSame(0.0, (float) (InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', $pid)->value('quantity') ?? 0));
+        }
+    }
+
+    /** K8: el producto pasa a is_batch_tracked / is_imei antes del apply => abort, 0 write. */
+    public function test_k8_product_becomes_tracked_before_apply_aborts(): void
+    {
+        foreach ([['is_batch_tracked' => 1], ['is_imei' => 1]] as $i => $mutation) {
+            $pid = 40 + $i;
+            $wh = Warehouse::create(['name' => 'CD '.$i]);
+            $this->product($pid);
+            $this->legacy($wh->id, $pid, null, 100);
+            $main = $this->location($wh->id, 'MAIN', true, 'storage');
+
+            $svc = app(LegacyInventoryReconciliationService::class);
+            $expect = $this->expectFromPlan($svc->planIncremental($wh->id));
+            $this->assertSame('ADD', $expect[$pid.':0']['action']);
+
+            DB::table('products')->where('id', $pid)->update($mutation);
+
+            try {
+                $svc->applyIncremental($wh->id, $pid, $expect);
+                $this->fail('debía abortar: el producto pasó a batch/IMEI');
+            } catch (ValidationException $e) {
+                // ok
+            }
+            $this->assertSame(0, $this->reconMovements());
+            $this->assertSame(0, InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', $pid)->where('quantity', '>', 0)->count());
+        }
+    }
+
+    /** K9: applyIncremental (escritura) SIN --product => rechazo claro; planIncremental (lectura) sin --product sigue permitido. */
+    public function test_k9_incremental_write_requires_product(): void
+    {
+        $wh = Warehouse::create(['name' => 'CD']);
+        $this->product(8);
+        $this->legacy($wh->id, 8, null, 100);
+        $this->location($wh->id, 'MAIN', true, 'storage');
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+
+        try {
+            $svc->applyIncremental($wh->id, null);
+            $this->fail('la escritura incremental sin --product debía rechazarse');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('requiere --product', $e->getMessage());
+        }
+        $this->assertSame(0, $this->reconMovements());
+
+        // lectura: sin --product sigue funcionando.
+        $this->assertSame(1, $svc->planIncremental($wh->id)['add_count']);
+    }
+
+    /** K10: Iphone X (product8, simple), tres ubicaciones: sólo MAIN recibe +100, las otras quedan 0, provenance final RECONCILED. */
+    public function test_k10_iphone_x_three_locations_only_main_gets_delta_final_reconciled(): void
+    {
+        $wh = Warehouse::create(['name' => 'Centro de Distribución']);
+        $this->product(8);
+        $this->legacy($wh->id, 8, null, 100);
+        $main = $this->location($wh->id, 'MAIN', true, 'storage');
+        $loc2 = $this->location($wh->id, 'LOC2', false, 'storage');
+        $loc3 = $this->location($wh->id, 'LOC3', false, 'storage');
+
+        $svc = app(LegacyInventoryReconciliationService::class);
+        $res = $svc->applyIncremental($wh->id, 8);
+
+        $this->assertSame(1, $res['applied_count']);
+        $this->assertSame(100.0, $res['applied_total_delta']);
+        $this->assertGreaterThan(0, (int) $res['applied'][0]['movement_id']);
+        $this->assertSame(100.0, (float) InventoryLocationStock::where('inventory_location_id', $main)->where('product_id', 8)->value('quantity'));
+        $this->assertSame(0.0, (float) InventoryLocationStock::where('inventory_location_id', $loc2)->where('product_id', 8)->value('quantity'));
+        $this->assertSame(0.0, (float) InventoryLocationStock::where('inventory_location_id', $loc3)->where('product_id', 8)->value('quantity'));
+        $this->assertSame(1, $this->reconMovements());
+
+        $prov = app(\App\Services\InventoryProvenanceAuditService::class)->auditWarehouse($wh->id);
+        $key = collect($prov['keys'])->firstWhere('product_id', 8);
+        $this->assertSame('RECONCILED', $key['classification']);
+        $this->assertSame(0.0, $prov['legacy_only_pending_total']);
+        $this->assertEmpty($svc->planIncremental($wh->id)['plan']);
     }
 
     // ---- Granularidad multi-ubicación (feedback PR #77) --------------------

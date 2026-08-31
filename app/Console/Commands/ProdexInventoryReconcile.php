@@ -16,7 +16,7 @@ class ProdexInventoryReconcile extends Command
         {--product= : Sólo con --apply-incremental: reconcilia quirúrgicamente un único product_id.}
         {--plan : READ-ONLY. Print the provenance-based reconciliation plan: only LEGACY_ONLY_PENDING keys are ADD candidates. snapshot_drift is diagnostic only.}
         {--apply : Create default CD locations and backfill legacy product_warehouse quantities (only from an EMPTY MAIN).}
-        {--apply-incremental : Aplica SÓLO filas LEGACY_ONLY_PENDING validadas (ADD) sumando la cantidad legacy no migrada. Requiere --tenants=<uno> y --warehouse=<id>; admite --product=<id>. Revalida provenance dentro de una transacción y aborta completo si algo cambió. product_warehouse NO se toca.}';
+        {--apply-incremental : Aplica UNA fila LEGACY_ONLY_PENDING validada (ADD) sumando la cantidad legacy no migrada. v1: requiere --tenants=<uno>, --warehouse=<id> y --product=<id> (sólo quirúrgico; el batch se reactivará con locking específico). Revalida provenance dentro de una transacción con lockForUpdate de las fuentes del cálculo y aborta completo si algo cambió. product_warehouse NO se toca.}';
 
     protected $description = 'Audit, plan (read-only) or safely backfill legacy warehouse stock into the new inventory-location engine.';
 
@@ -50,6 +50,13 @@ class ProdexInventoryReconcile extends Command
             }
             if ($warehouseFilter === null || $warehouseFilter === '') {
                 $this->error('--apply-incremental requiere --warehouse=<id>.');
+                return self::FAILURE;
+            }
+            // v1: la escritura incremental es SÓLO quirúrgica. El batch sin
+            // --product volverá con una estrategia de locking específica.
+            if ($productFilter === null || $productFilter === '') {
+                $this->error('--apply-incremental requiere --product=<id> (v1: sólo reconciliación quirúrgica). '
+                    .'El modo batch se reactivará con locking específico. --plan (sólo lectura) sí funciona sin --product.');
                 return self::FAILURE;
             }
         }

@@ -131,6 +131,8 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         $this->assertStringContainsString('--apply-incremental', $cmd);
         $this->assertStringContainsString('--apply-incremental requiere exactamente un --tenants=<tenant>.', $cmd);
         $this->assertStringContainsString('--apply-incremental requiere --warehouse=<id>.', $cmd);
+        // K9: v1 exige --product para ESCRIBIR; --plan (lectura) no.
+        $this->assertStringContainsString('--apply-incremental requiere --product=<id>', $cmd);
         $this->assertStringContainsString('--product sólo aplica junto con --apply-incremental.', $cmd);
         $this->assertStringContainsString('$service->applyIncremental($warehouseId, $pid, $expect)', $cmd);
         // Summary distingue ADD candidates / MANUAL_REVIEW / failures (ya no
@@ -161,30 +163,45 @@ class InventoryLegacyDivergenceContractTest extends TestCase
     {
         $svc = $this->read('app/Services/LegacyInventoryReconciliationService.php');
 
-        // K5 (contrato): antes de REPLANIFICAR, applyIncremental toma lockForUpdate
-        // sobre las filas físicas que determinan legacy (X) y location (Y):
-        //   - product_warehouse (writers legacy hacen UPDATE qte);
-        //   - inventory_location_stocks (InventoryService::lockedStock + reserved).
-        // La fila destino product+variant se materializa+bloquea aunque no exista.
-        $this->assertStringContainsString("DB::table('product_warehouse')->where('warehouse_id', \$warehouseId)", $svc);
-        $this->assertStringContainsString('$pwLock->lockForUpdate()->get();', $svc);
-        $this->assertStringContainsString('InventoryLocationStock::whereIn(\'inventory_location_id\', $lockLocationIds)', $svc);
-        $this->assertStringContainsString('$ilsLock->lockForUpdate()->get();', $svc);
-        $this->assertStringContainsString('InventoryLocationStock::firstOrCreate(', $svc);
+        // (A) K9: la ESCRITURA incremental exige --product en v1. El batch sin
+        // --product no escribe; --plan (lectura) no lo exige.
+        $this->assertStringContainsString('if ($productId === null) {', $svc);
+        $this->assertStringContainsString('apply-incremental (escritura) requiere --product=<id> en v1', $svc);
 
-        // Los locks se toman ANTES de $this->planIncremental() dentro del método.
-        $body = $svc;
-        $applyPos = strpos($body, 'public function applyIncremental(');
-        $this->assertNotFalse($applyPos);
-        $segment = substr($body, $applyPos, 6000);
-        $pwLockPos = strpos($segment, '$pwLock->lockForUpdate()');
-        $ilsLockPos = strpos($segment, '$ilsLock->lockForUpdate()');
-        $replanPos = strpos($segment, '$planNow = $this->planIncremental($warehouseId);');
-        $this->assertNotFalse($pwLockPos);
-        $this->assertNotFalse($ilsLockPos);
+        // (B) K5: antes de REPLANIFICAR, applyIncremental bloquea EXPLÍCITAMENTE
+        // (no vía gap-locks) todas las filas que sustentan/alteran el cálculo:
+        //   B.1 product_warehouse del producto;
+        //   B.2 la fila products (is_batch_tracked / is_imei / deleted_at);
+        //   B.3 la ubicación TARGET;
+        //   B.5 firstOrCreate(0) + lockForUpdate de inventory_location_stocks en
+        //       CADA ubicación activa × variant_key.
+        $this->assertStringContainsString("->where('product_id', \$productId)->lockForUpdate()->get();", $svc);
+        $this->assertStringContainsString("DB::table('products')->where('id', \$productId)->lockForUpdate()->get();", $svc);
+        $this->assertStringContainsString('InventoryLocation::whereKey($target->id)->lockForUpdate()->get();', $svc);
+        $this->assertStringContainsString('InventoryLocationStock::firstOrCreate(', $svc);
+        $this->assertStringContainsString("InventoryLocationStock::whereIn('inventory_location_id', \$activeLocationIds)", $svc);
+
+        // Todos los locks se toman ANTES de $this->planIncremental() en el método.
+        $replanPos = strpos($svc, '$planNow = $this->planIncremental($warehouseId);');
         $this->assertNotFalse($replanPos);
-        $this->assertLessThan($replanPos, $pwLockPos, 'product_warehouse lock debe preceder al replan');
-        $this->assertLessThan($replanPos, $ilsLockPos, 'inventory_location_stocks lock debe preceder al replan');
+        foreach ([
+            "DB::table('products')->where('id', \$productId)->lockForUpdate()",
+            'InventoryLocation::whereKey($target->id)->lockForUpdate()',
+            "->where('product_id', \$productId)->lockForUpdate()->get();",
+            'InventoryLocationStock::firstOrCreate(',
+            "InventoryLocationStock::whereIn('inventory_location_id', \$activeLocationIds)",
+        ] as $needle) {
+            $pos = strpos($svc, $needle);
+            $this->assertNotFalse($pos, "no se encontró: $needle");
+            $this->assertLessThan($replanPos, $pos, "$needle debe preceder al replan");
+        }
+
+        // (C) revalidación del conjunto de ubicaciones activas antes del write.
+        $this->assertStringContainsString('El conjunto de ubicaciones activas del almacén cambió durante el apply', $svc);
+        $this->assertStringContainsString('$activeLocationIdsNow !== $activeLocationIds', $svc);
+        $revalPos = strpos($svc, '$activeLocationIdsNow !== $activeLocationIds');
+        $this->assertNotFalse($revalPos);
+        $this->assertGreaterThan($replanPos, $revalPos, 'la revalidación de ubicaciones va tras el replan');
 
         // El comentario documenta por qué esos locks serializan a los writers y
         // la limitación (SQLite en el suite Unit no bloquea de verdad).

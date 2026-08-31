@@ -259,28 +259,41 @@ class LegacyInventoryReconciliationService
      * ubicación destino apta — nunca adjustTo() del total legacy. product_warehouse
      * NO se toca.
      *
+     * v1: $productId es OBLIGATORIO (reconciliación quirúrgica). El batch sin
+     * --product NO escribe todavía — volverá con una estrategia de locking
+     * específica. planIncremental / --plan (sólo lectura) no lo exige.
+     *
      * Todo ocurre en UNA transacción:
      *   1. lock del warehouse (+ estado de transición si existe);
-     *   2. TOCTOU: lockForUpdate sobre TODAS las filas físicas que sustentan el
-     *      cálculo ANTES de replanificar — product_warehouse (X) e
-     *      inventory_location_stocks / reserved_quantity (Y), en el alcance
-     *      (--product => ese product_id; batch => todo el almacén). La fila
-     *      destino product+variant se materializa+bloquea aunque aún no exista;
+     *   2. TOCTOU (sin depender de gap-locks ni isolation level): antes de
+     *      replanificar se bloquean EXPLÍCITAMENTE todas las filas que pueden
+     *      sustentar o alterar el cálculo del producto —
+     *        (B.1) todas las filas product_warehouse del producto (todas las
+     *              variantes, incl. soft-deleted);
+     *        (B.2) la fila products del producto (is_batch_tracked / is_imei /
+     *              deleted_at);
+     *        (B.3) la ubicación TARGET (no puede volverse inactive / quarantine /
+     *              de otro almacén);
+     *        (B.5) para CADA (ubicación activa del almacén × variant_key del
+     *              producto): firstOrCreate de inventory_location_stocks a 0 si
+     *              no existe, y lockForUpdate de TODAS ellas — no queda ninguna
+     *              ubicación donde el producto pueda insertar una fila nueva sin
+     *              chocar contra el lock. Las filas 0 extra hacen rollback con
+     *              la transacción si algo falla;
      *   3. se reconstruye provenance DENTRO de la transacción, con los locks ya
      *      tomados (nunca se confía en un plan viejo);
-     *   4. cada fila objetivo debe seguir siendo classification LEGACY_ONLY_PENDING
+     *   4. (C) se revalida que el conjunto de ubicaciones activas no cambió
+     *      respecto al usado para materializar/lockear; si cambió => abort;
+     *   5. la fila objetivo debe seguir siendo classification LEGACY_ONLY_PENDING
      *      con action ADD (destino apto y estable, producto simple, sin
      *      lote/serie/IMEI, sin reservado, sin tránsito de salida, delta > 0, sin
-     *      negativos);
-     *   5. si se pasa $expect (plan previo): (a) el CONJUNTO de claves ADD del
+     *      negativos); si no => abort total;
+     *   6. si se pasa $expect (plan previo): (a) el CONJUNTO de claves ADD del
      *      pre-plan debe coincidir EXACTO con el recálculo bloqueado — si una
      *      clave desapareció / cambió de classification / cambió de delta, abort
      *      total; (b) además delta / legacy / location_before / classification
      *      de cada fila deben COINCIDIR exactamente; cualquier diferencia =>
      *      ValidationException => rollback total, 0 escrituras;
-     *   6. con $productId explícito, si ESE producto no es un ADD limpio => abort
-     *      total; sin $productId, las filas no seguras van a manual_review sin
-     *      abortar (los ADD limpios se aplican de forma atómica en la misma tx);
      *   7. increase() idempotente por fingerprint del estado revisado
      *      (baseline_at + legacy + location_before + delta), no por
      *      warehouse:product:variant:delta;
@@ -305,59 +318,93 @@ class LegacyInventoryReconciliationService
                     ->lockForUpdate()->get();
             }
 
-            $strict = $productId !== null;
-            $target = $this->eligibleLegacyTargetLocation($warehouse);
+            // (A) v1: --product es OBLIGATORIO para ESCRIBIR. El batch sin
+            // --product volverá con una estrategia de locking específica; por
+            // ahora la única operación de producción es quirúrgica (un product_id).
+            // planIncremental / --plan (sólo lectura) SÍ funciona sin --product.
+            if ($productId === null) {
+                throw ValidationException::withMessages([
+                    'apply_incremental' => 'apply-incremental (escritura) requiere --product=<id> en v1. El modo batch sin --product '
+                        .'se reactivará con una estrategia de locking específica. planIncremental / --plan (sólo lectura) no lo exige.',
+                ]);
+            }
+            $strict = true;
 
-            // ---- TOCTOU: congelar las filas físicas que sustentan el cálculo --
-            // Bloquear el Warehouse NO serializa los writers de product_warehouse
-            // ni de inventory_location_stocks. Antes de REPLANIFICAR se toma
-            // lockForUpdate sobre TODAS las filas que determinan legacy (X),
-            // location (Y) y por tanto delta (Z), para que no puedan cambiar
-            // hasta commit/rollback:
-            //   - legacy writers (Transfer/Purchase/Sale/Adjustment/...) hacen
-            //     UPDATE product_warehouse.qte -> chocan con (A.1);
+            // ---- TOCTOU: congelar TODA fila física que pueda sustentar/alterar
+            // el cálculo antes de REPLANIFICAR. No se depende de gap-locks ni del
+            // plan de ejecución / isolation level de MySQL: se materializa (0) y
+            // se bloquea explícitamente cada fila candidata.
+            //
+            // Writers serializados (revisado, no asumido):
+            //   - legacy (Transfer/Purchase/Sale/Adjustment/...) cargan la fila
+            //     product_warehouse y ->save() => UPDATE product_warehouse.qte
+            //     WHERE id => espera (B.1) aunque su lectura no fuera locking read;
             //   - InventoryService::lockedStock() hace lockForUpdate de
-            //     inventory_location_stocks antes de mutarla (POS/Transfer/
-            //     SaleReturn bridges incluidos) -> chocan con (A.2);
-            //   - reserved_quantity vive en inventory_location_stocks -> (A.2);
+            //     inventory_location_stocks antes de mutar (POS/Transfer/
+            //     SaleReturn bridges incluidos) => espera (B.5);
+            //   - reserved_quantity vive en inventory_location_stocks => (B.5);
             //   - TransferWorkflowService::dispatch() DEBITA el stock (product_
-            //     warehouse o InventoryService) ANTES de marcar logistics_status
-            //     = in_transit, así que (A.1)/(A.2) lo bloquean antes de que
-            //     pueda aparecer un tránsito de salida nuevo entre plan y write.
-            $lockLocationIds = $this->warehouseLocationIds($warehouseId);
+            //     warehouse vía debitLegacySource con lockForUpdate, o
+            //     InventoryService) ANTES de que syncDispatchState marque
+            //     logistics_status = in_transit; ese débito ya choca con
+            //     (B.1)/(B.5), así que no puede aparecer un tránsito de salida
+            //     nuevo entre plan y write. Un tránsito ya in_transit al
+            //     planificar lo captura outboundInTransitMap => MANUAL_REVIEW.
+            $activeLocationIds = $this->warehouseLocationIds($warehouseId);
+            sort($activeLocationIds);
 
-            // (A.1) product_warehouse: TODAS las filas del alcance (todas las
-            //       variantes, incl. soft-deleted, por si un writer resucita una).
-            if (Schema::hasTable('product_warehouse')) {
-                $pwLock = DB::table('product_warehouse')->where('warehouse_id', $warehouseId);
-                if ($productId !== null) $pwLock->where('product_id', $productId);
-                $pwLock->lockForUpdate()->get();
+            // (B.2) congelar la fila products: is_batch_tracked / is_imei /
+            //       deleted_at deciden si el producto es apto.
+            if (Schema::hasTable('products')) {
+                DB::table('products')->where('id', $productId)->lockForUpdate()->get();
             }
 
-            // (A.3) fila destino product+variant: materializar+bloquear aunque
-            //       aún no exista (Iphone X: location 0, sin fila). Sólo alcance
-            //       --product (barato); en batch basta el rango de (A.2).
-            if ($target !== null && $productId !== null && Schema::hasTable('product_warehouse')) {
-                $variantKeys = [0];
+            $target = $this->eligibleLegacyTargetLocation($warehouse);
+
+            // (B.3) congelar la ubicación TARGET: no puede volverse inactive /
+            //       quarantine / de otro almacén durante el apply.
+            if ($target !== null && Schema::hasTable('inventory_locations')) {
+                InventoryLocation::whereKey($target->id)->lockForUpdate()->get();
+            }
+
+            // (B.1) product_warehouse del producto: TODAS las filas (todas las
+            //       variantes, incl. soft-deleted, por si un writer resucita una).
+            if (Schema::hasTable('product_warehouse')) {
+                DB::table('product_warehouse')->where('warehouse_id', $warehouseId)
+                    ->where('product_id', $productId)->lockForUpdate()->get();
+            }
+
+            // (B.4) variant_keys existentes del producto en product_warehouse
+            //       (+ el simple, 0).
+            $variantKeys = [0];
+            if (Schema::hasTable('product_warehouse')) {
                 foreach (DB::table('product_warehouse')
                     ->where('warehouse_id', $warehouseId)->where('product_id', $productId)
                     ->get(['product_variant_id']) as $r) {
                     $variantKeys[] = (int) ($r->product_variant_id ?: 0);
                 }
-                foreach (array_values(array_unique($variantKeys)) as $vk) {
-                    InventoryLocationStock::firstOrCreate(
-                        ['inventory_location_id' => $target->id, 'product_id' => $productId, 'variant_key' => $vk],
-                        ['product_variant_id' => $vk > 0 ? $vk : null, 'quantity' => 0, 'reserved_quantity' => 0, 'manage_stock' => true]
-                    );
-                }
             }
+            $variantKeys = array_values(array_unique($variantKeys));
 
-            // (A.2) inventory_location_stocks: TODAS las filas de las ubicaciones
-            //       activas del almacén dentro del alcance (cantidad + reservado).
-            if ($lockLocationIds) {
-                $ilsLock = InventoryLocationStock::whereIn('inventory_location_id', $lockLocationIds);
-                if ($productId !== null) $ilsLock->where('product_id', $productId);
-                $ilsLock->lockForUpdate()->get();
+            // (B.5) para CADA (ubicación activa × variant_key): firstOrCreate de
+            //       la fila inventory_location_stocks con quantity=0 si no existe.
+            //       Así NO queda ninguna ubicación del almacén donde el producto
+            //       pueda crear una fila nueva sin chocar contra nuestro lock.
+            //       Las filas 0 extra son aceptables: representan stock cero y
+            //       toda la transacción hace rollback si algo falla.
+            if ($activeLocationIds && Schema::hasTable('inventory_location_stocks')) {
+                foreach ($activeLocationIds as $locId) {
+                    foreach ($variantKeys as $vk) {
+                        InventoryLocationStock::firstOrCreate(
+                            ['inventory_location_id' => $locId, 'product_id' => $productId, 'variant_key' => $vk],
+                            ['product_variant_id' => $vk > 0 ? $vk : null, 'quantity' => 0, 'reserved_quantity' => 0, 'manage_stock' => true]
+                        );
+                    }
+                }
+                // lockForUpdate de TODAS esas filas (ahora todas existen).
+                InventoryLocationStock::whereIn('inventory_location_id', $activeLocationIds)
+                    ->where('product_id', $productId)
+                    ->lockForUpdate()->get();
             }
 
             // (2) Provenance reconstruido AHORA, con los locks ya tomados.
@@ -401,6 +448,20 @@ class LegacyInventoryReconciliationService
                             .'Abort total, 0 escrituras.',
                     ]);
                 }
+            }
+
+            // (C) Revalidar, ya con los locks tomados y justo antes del write, que
+            // el conjunto de ubicaciones activas del almacén NO cambió respecto al
+            // usado para materializar/lockear (B.5). No se maneja creación /
+            // eliminación concurrente de ubicaciones en este PR: si cambió, abort.
+            $activeLocationIdsNow = $this->warehouseLocationIds($warehouseId);
+            sort($activeLocationIdsNow);
+            if ($activeLocationIdsNow !== $activeLocationIds) {
+                throw ValidationException::withMessages([
+                    'apply_incremental' => 'El conjunto de ubicaciones activas del almacén cambió durante el apply '
+                        .'(antes: ['.implode(',', $activeLocationIds).'], ahora: ['.implode(',', $activeLocationIdsNow).']). '
+                        .'Abort, 0 escrituras.',
+                ]);
             }
 
             $inventory = app(InventoryService::class);
