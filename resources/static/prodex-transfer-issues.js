@@ -16,7 +16,16 @@
 
   function api(method, url, data) {
     if (!window.axios) return Promise.reject(new Error('Axios no disponible'));
-    return window.axios({ method: method, url: API + (url || ''), data: data });
+    // Sondas de capacidad en segundo plano: un 403 = "widget no disponible",
+    // nunca debe llevar toda la SPA a not_authorize.
+    return window.axios({
+      method: method, url: API + (url || ''), data: data,
+      meta: { skipErrorRedirect: true, skipInitialLoader: true }
+    });
+  }
+
+  function uiSuppressed() {
+    return !!(window.__pxTransferUiSuppressed && window.__pxTransferUiSuppressed());
   }
 
   function css() {
@@ -45,6 +54,7 @@
   }
 
   function ensureButton() {
+    if (uiSuppressed()) { var b = document.getElementById('px-transfer-issues-btn'); if (b) b.remove(); return; }
     if (!state.allowed || document.getElementById('px-transfer-issues-btn')) return;
     var host = document.querySelector('.main-header .header-part-right.nav-right, .vertical-top-nav .header-part-right.nav-right');
     if (!host) return;
@@ -101,6 +111,7 @@
 
   function overlay(title, body) {
     close();
+    if (uiSuppressed()) return null;
     var wrap = document.createElement('div');
     wrap.id = 'px-ti-overlay';
     wrap.className = 'px-ti-overlay';
@@ -128,6 +139,7 @@
   function renderIssues() {
     var body = '<div class="px-ti-toolbar"><button type="button" class="primary" data-open>Abiertas (' + state.openCount + ')</button><button type="button" data-all>Historial completo</button><button type="button" data-refresh>Actualizar</button></div><div id="px-ti-list"></div>';
     var wrap = overlay('Incidencias de transferencias', body);
+    if (!wrap) return;
     wrap.querySelector('[data-open]').onclick = function () { renderList(true); };
     wrap.querySelector('[data-all]').onclick = function () { renderList(false); };
     wrap.querySelector('[data-refresh]').onclick = function () { refresh(true); };
@@ -172,6 +184,7 @@
       '<label>Referencia</label><input id="px-ti-reference" maxlength="120" placeholder="Ej. AJ-00045, acta, devolución…"><label>Detalle de la resolución</label><textarea id="px-ti-notes" maxlength="3000" placeholder="Explica qué se verificó y cómo se resolvió."></textarea>' +
       '<div class="px-ti-resolve-footer"><button type="button" data-back>Volver</button><button type="button" class="primary" data-save>Guardar resolución</button></div></div>';
     var wrap = overlay('Resolver incidencia', body);
+    if (!wrap) return;
     wrap.querySelector('[data-back]').onclick = renderIssues;
     wrap.querySelector('[data-save]').onclick = function () { submitResolve(issue.id); };
   }

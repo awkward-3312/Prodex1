@@ -90,7 +90,12 @@
     return isNaN(date.getTime()) ? value : date.toLocaleString('es-HN', { dateStyle: 'short', timeStyle: 'medium' });
   }
 
+  function uiSuppressed() {
+    return !!(window.__pxTransferUiSuppressed && window.__pxTransferUiSuppressed());
+  }
+
   function openByReference(ref) {
+    if (uiSuppressed()) return;
     css();
     api('get', '/reference/' + encodeURIComponent(ref)).then(function (response) {
       render(normalize(response));
@@ -101,6 +106,7 @@
 
   function render(data) {
     close();
+    if (uiSuppressed()) return;
     var t = data.transfer || {};
     var actions = data.actions || {};
     var events = data.events || [];
@@ -206,8 +212,13 @@
   }
 
   function enhance() {
+    if (uiSuppressed()) { close(); return; }
     var path = location.pathname || '';
     if (path.indexOf('/app/transfers/list') < 0) return;
+    // Post-cutover el listado px-next (.pxtrl) trae su propio flujo de trabajo
+    // (referencia enlazada al detalle, y aprobar/rechazar/despachar en el
+    // detalle). No superponer el overlay vanilla sobre esa tabla.
+    if (document.querySelector('.pxtrl, [data-px-transfers-next]')) return;
     css();
     var main = document.querySelector('.main-content');
     if (main && !document.getElementById('px-transfer-workflow-hint')) {

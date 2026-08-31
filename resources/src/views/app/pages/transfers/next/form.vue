@@ -511,7 +511,7 @@ export default {
     }
   },
   created() {
-    this.loadElements();
+    if (this.allowed) this.loadElements();
   },
   methods: {
     // Convierte la cantidad de la línea (unidad de compra) a unidad base, con el
