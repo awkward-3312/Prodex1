@@ -192,26 +192,29 @@ class LegacyInventoryReconciliationServiceTest extends TestCase
         $this->assertSame(140.0, $plan['add_total_delta']);
     }
 
-    public function test_plan_incremental_flags_negative_delta_and_reserved_as_manual_review(): void
+    public function test_plan_incremental_legacy_decrease_is_unknown_review_and_reserved_blocks_add(): void
     {
         $warehouse = Warehouse::create(['name' => 'CD Principal']);
         $this->legacy($warehouse->id, 10, null, 40);
         $this->legacy($warehouse->id, 11, null, 5);
         $this->product(10); $this->product(11);
         $service = app(LegacyInventoryReconciliationService::class);
-        $service->backfillWarehouse($warehouse->id); // MAIN: 10→40, 11→5
+        $service->backfillWarehouse($warehouse->id); // baseline: MAIN 10→40, 11→5
 
-        // 10: legacy baja por debajo de la ubicación → delta negativo.
+        // 10: legacy BAJA respecto al baseline sin movimiento location => UNKNOWN_REVIEW,
+        //     nunca se descuenta en automático.
         DB::table('product_warehouse')->where('warehouse_id', $warehouse->id)->where('product_id', 10)->update(['qte' => 30]);
-        // 11: legacy sube (+7) pero la ubicación tiene reservado.
+        // 11: legacy SUBE +7 (opening stock sin espejo) pero la ubicación tiene reservado => ADD bloqueado.
         DB::table('product_warehouse')->where('warehouse_id', $warehouse->id)->where('product_id', 11)->update(['qte' => 12]);
         $loc = Warehouse::find($warehouse->id)->default_inventory_location_id;
         DB::table('inventory_location_stocks')->where('inventory_location_id', $loc)->where('product_id', 11)->update(['reserved_quantity' => 2]);
 
         $plan = collect($service->planIncremental($warehouse->id)['plan'])->keyBy('product_id');
         $this->assertSame('MANUAL_REVIEW', $plan[10]['action']);
-        $this->assertContains('delta_negativo', $plan[10]['reasons']);
+        $this->assertSame('UNKNOWN_REVIEW', $plan[10]['classification']);
+        $this->assertContains('provenance_desconocida', $plan[10]['reasons']);
         $this->assertSame('MANUAL_REVIEW', $plan[11]['action']);
+        $this->assertSame('LEGACY_ONLY_PENDING', $plan[11]['classification']);
         $this->assertContains('reservado', $plan[11]['reasons']);
     }
 

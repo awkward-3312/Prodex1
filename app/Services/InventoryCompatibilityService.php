@@ -30,17 +30,26 @@ class InventoryCompatibilityService
         $result = app(LegacyInventoryReconciliationService::class)->auditWarehouse($warehouseId);
         $state = $this->state($warehouseId);
 
+        // mismatch = SOLO lo que no podemos explicar (UNKNOWN_REVIEW) + negativos.
+        // LEGACY_ONLY_PENDING es "migración pendiente", se cuenta aparte y NO
+        // marca mismatch. El snapshot_drift por operaciones location-native
+        // legítimas NUNCA marca mismatch.
+        $mismatchCount = count($result['unknown_review_rows'] ?? []) + count($result['negative_legacy_rows']);
+
         $state->forceFill([
             'inventory_location_id' => $result['inventory_location_id'],
-            'status' => $result['is_reconciled'] ? 'healthy' : 'mismatch',
-            'mismatch_count' => count($result['differences']) + count($result['negative_legacy_rows']),
+            'status' => $mismatchCount === 0 ? 'healthy' : 'mismatch',
+            'mismatch_count' => $mismatchCount,
             'last_audited_at' => now(),
-            'last_reconciled_at' => $result['is_reconciled'] ? now() : $state->last_reconciled_at,
+            // last_reconciled_at (baseline) sólo se mueve por un backfill/promoción
+            // explícita, NUNCA por una auditoría — mover el baseline aquí borraría
+            // la frontera que separa operaciones location-native legítimas.
             'metadata' => array_merge($state->metadata ?? [], [
                 'legacy_total' => $result['legacy_total'],
                 'location_total' => $result['location_total'],
-                'legacy_rows' => $result['legacy_rows'],
-                'location_rows' => $result['location_rows'],
+                'legacy_only_pending_total' => $result['legacy_only_pending_total'] ?? 0,
+                'snapshot_drift_total' => $result['snapshot_drift_total'] ?? 0,
+                'provenance_counts' => $result['provenance_counts'] ?? [],
             ]),
         ])->save();
 

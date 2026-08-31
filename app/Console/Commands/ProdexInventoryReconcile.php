@@ -13,7 +13,7 @@ class ProdexInventoryReconcile extends Command
     protected $signature = 'prodex:inventory-reconcile
         {--tenants=* : Tenant IDs to inspect. Defaults to all tenants.}
         {--warehouse= : Optional warehouse/CD ID inside each selected tenant.}
-        {--plan : READ-ONLY. Print the per-product incremental reconciliation plan (delta = legacy - location) for warehouses whose MAIN already holds stock.}
+        {--plan : READ-ONLY. Print the provenance-based reconciliation plan: only LEGACY_ONLY_PENDING keys are ADD candidates. snapshot_drift is diagnostic only.}
         {--apply : Create default CD locations and backfill legacy product_warehouse quantities (only from an EMPTY MAIN).}';
 
     protected $description = 'Audit, plan (read-only) or safely backfill legacy warehouse stock into the new inventory-location engine.';
@@ -67,14 +67,15 @@ class ProdexInventoryReconcile extends Command
                         if ($plan) {
                             $p = $service->planIncremental($warehouseId);
                             $this->line(sprintf(
-                                '  Warehouse/CD %d (%s): plan incremental → ADD %d (delta %.3f) | MANUAL_REVIEW %d',
-                                $warehouseId, $p['warehouse_name'], $p['add_count'], $p['add_total_delta'], $p['manual_review_count']
+                                '  Warehouse/CD %d (%s): plan (provenance) → ADD %d (%.3f) | MANUAL_REVIEW %d | baseline %s | snapshot_drift %.3f (diagnóstico)',
+                                $warehouseId, $p['warehouse_name'], $p['add_count'], $p['add_total_delta'], $p['manual_review_count'],
+                                $p['baseline_at'] ?? 'ninguno', $p['snapshot_drift_total']
                             ));
                             foreach ($p['plan'] as $r) {
                                 $this->line(sprintf(
-                                    '    prod %d / var %s | legacy %.3f | location %.3f | delta %+.3f | %s%s',
-                                    $r['product_id'], $r['product_variant_id'] ?? 'simple',
-                                    $r['legacy'], $r['location'], $r['delta'], $r['action'],
+                                    '    prod %d / var %s | %s | legacy %.3f | location %.3f | drift %+.3f | delta %+.3f | %s%s',
+                                    $r['product_id'], $r['product_variant_id'] ?? 'simple', $r['classification'],
+                                    $r['legacy'], $r['warehouse_location_quantity'], $r['snapshot_drift'], $r['delta'], $r['action'],
                                     $r['reasons'] ? ' ('.implode(',', $r['reasons']).')' : ''
                                 ));
                             }

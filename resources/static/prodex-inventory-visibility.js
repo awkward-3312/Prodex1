@@ -134,15 +134,14 @@
       var groups = groupStock(p.locations || []);
       var html = '<div class="px-iv-product"><div class="px-iv-product-head"><div><div class="px-iv-product-name">' + esc(p.name) + '</div><div class="px-iv-product-code">' + esc(p.code || 'Sin código') + '</div></div><div class="px-iv-company-total"><strong>' + fmt(p.company_available) + '</strong>disponible en la empresa</div></div>';
       if (p.legacy_pending) {
-        html += '<div class="px-iv-empty"><strong>Divergencia pendiente:</strong> hay ' + fmt(p.legacy_pending_quantity) +
-          ' en inventario heredado (por almacén) que aún no está reconciliado al motor por ubicación' +
-          (Number(p.warehouse_location_physical_total) > 0
-            ? ' (por ubicación en almacenes: ' + fmt(p.warehouse_location_physical_total) + ' · heredado: ' + fmt(p.legacy_total) + ')'
-            : '') +
-          '. Ese excedente no está disponible para operaciones por ubicación (traslados, POS por ubicación) hasta reconciliar.</div>';
+        html += '<div class="px-iv-empty"><strong>Pendiente de ubicación:</strong> ' + fmt(p.legacy_pending_quantity) +
+          ' unidades provienen de una operación legacy posterior al último baseline y aún no tienen ubicación asignada. ' +
+          'No están disponibles para operaciones por ubicación (traslados, POS por ubicación) hasta reconciliar.</div>';
+      } else if (p.needs_review) {
+        html += '<div class="px-iv-empty"><strong>Requiere revisión:</strong> el stock por ubicación de este producto no cuadra con el baseline más los movimientos registrados. No se aplica ningún ajuste automático.</div>';
       }
       if (!groups.length) {
-        if (!p.legacy_pending) {
+        if (!p.legacy_pending && !p.needs_review) {
           html += '<div class="px-iv-empty">Este producto todavía no tiene existencias por ubicación.</div>';
         }
       } else {

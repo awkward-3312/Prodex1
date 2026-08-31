@@ -27,29 +27,32 @@ class LegacyInventoryReconciliationService
         // 100 está reconciliado.
         $warehouseLocations = $this->warehouseLocationMap($warehouseId);
 
-        $keys = array_values(array_unique(array_merge(array_keys($legacy), array_keys($warehouseLocations))));
-        sort($keys);
+        // Clasificación por PROVENANCE (no por igualdad de snapshot): tras un
+        // baseline operativo, legacy_now - location_now puede ser 100% movimientos
+        // location-native legítimos y NO stock legacy pendiente.
+        $provenance = app(InventoryProvenanceAuditService::class)->auditWarehouse($warehouseId);
+        $unknownReview = array_values(array_filter($provenance['keys'], fn ($r) => $r['classification'] === 'UNKNOWN_REVIEW'));
+        $legacyOnlyPending = array_values(array_filter($provenance['keys'], fn ($r) => $r['classification'] === 'LEGACY_ONLY_PENDING'));
 
-        $differences = [];
-        foreach ($keys as $key) {
-            $legacyQty = $legacy[$key]['quantity'] ?? 0.0;
-            $locationQty = $warehouseLocations[$key]['quantity'] ?? 0.0;
-            if (!$this->same($legacyQty, $locationQty)) {
-                [$productId, $variantKey] = array_map('intval', explode(':', $key));
-                $differences[] = [
-                    'product_id' => $productId,
-                    'product_variant_id' => $variantKey > 0 ? $variantKey : null,
-                    'legacy_quantity' => $legacyQty,
-                    'location_quantity' => $locationQty,
-                    'difference' => $this->decimal($locationQty - $legacyQty),
-                ];
-            }
-        }
+        // "differences" ahora = lo que realmente requiere atención (revisión o
+        // migración pendiente), no cada desalineación de snapshot.
+        $differences = array_map(fn ($r) => [
+            'product_id' => $r['product_id'],
+            'product_variant_id' => $r['product_variant_id'],
+            'classification' => $r['classification'],
+            'legacy_quantity' => $r['legacy_now'],
+            'location_quantity' => $r['current_location'],
+            'snapshot_drift' => $r['snapshot_drift'],
+            'legacy_only_pending_quantity' => $r['legacy_only_pending_quantity'],
+        ], array_merge($unknownReview, $legacyOnlyPending));
 
         $negative = array_values(array_filter($legacy, fn ($row) => $row['quantity'] < 0));
         $trackedProducts = $this->batchOrSerialTrackedProducts($legacy);
         $warehouseHasLocationStock = ! empty($warehouseLocations);
-        $isReconciled = empty($negative) && empty($differences);
+        // Reconciliado = sin negativos, sin UNKNOWN_REVIEW y sin LEGACY_ONLY_PENDING.
+        // El snapshot_drift por operaciones location-native NO cuenta como no
+        // reconciliado.
+        $isReconciled = empty($negative) && empty($unknownReview) && empty($legacyOnlyPending);
         $stockedLocationCount = $this->stockedLocationCount($warehouseId);
 
         $locationTotal = $this->decimal(array_sum(array_column($warehouseLocations, 'quantity')));
@@ -79,9 +82,14 @@ class LegacyInventoryReconciliationService
             // would leave them half-migrated. They must be reported, never auto-run.
             'batch_or_serial_products' => $trackedProducts,
             'differences' => $differences,
-            // Reconciliado = PARIDAD CUANTITATIVA warehouse-wide: legacy del
-            // almacén coincide con el AGREGADO de todas sus ubicaciones. NO
-            // implica que exista un destino apto.
+            // Clasificación event-based.
+            'provenance_counts' => $provenance['counts'],
+            'unknown_review_rows' => $unknownReview,
+            'legacy_only_pending_rows' => $legacyOnlyPending,
+            'legacy_only_pending_total' => $provenance['legacy_only_pending_total'],
+            // Métrica DIAGNÓSTICA: NO es cantidad pendiente de reconciliación.
+            'snapshot_drift_total' => $provenance['snapshot_drift_total'],
+            // Reconciliado = sin negativos, sin UNKNOWN_REVIEW ni LEGACY_ONLY_PENDING.
             'is_reconciled' => $isReconciled,
             // has_target_location = existe una ubicación destino APTA (storage,
             // activa, no cuarentena, del almacén). Distinto de is_reconciled.
@@ -101,27 +109,21 @@ class LegacyInventoryReconciliationService
             // location-native en cualquier ubicación, la divergencia se cierra con
             // el plan incremental, nunca con este backfill.
             'is_backfillable' => empty($negative) && empty($trackedProducts) && ! $warehouseHasLocationStock,
-            'needs_incremental' => $warehouseHasLocationStock && ! empty($differences),
+            'needs_incremental' => $warehouseHasLocationStock && (! empty($legacyOnlyPending) || ! empty($unknownReview)),
         ];
     }
 
     /**
-     * READ-ONLY. Plan por producto/variante para cerrar una divergencia.
+     * READ-ONLY. Plan por producto/variante, BASADO EN PROVENANCE.
      *
-     * delta = legacy_del_almacén  −  AGREGADO físico de TODAS las ubicaciones del
-     * almacén (no sólo MAIN). Así un almacén con MAIN 70 + QUARANTINE 30 vs
-     * legacy 100 da delta 0 y no genera fila.
+     * Sólo las claves clasificadas LEGACY_ONLY_PENDING por
+     * InventoryProvenanceAuditService (cantidad legacy sin equivalente
+     * location-native) son candidatas a ADD. El snapshot_drift por operaciones
+     * location-native legítimas NO genera ADD. UNKNOWN_REVIEW => MANUAL_REVIEW.
      *
-     * action:
-     *   ADD           delta > 0, producto simple, SIN reservado en NINGUNA
-     *                 ubicación del almacén, SIN tránsito de salida desde
-     *                 NINGUNA ubicación del almacén, sin lote/serie.
-     *   MANUAL_REVIEW delta < 0 (nunca se descuenta en automático) o cualquier
-     *                 blocker anterior o legacy negativo.
-     *
-     * El delta ADD se sumaría a la ubicación destino APTA
-     * (target_inventory_location_id). Si no existe una destino apta, TODA fila
-     * pasa a MANUAL_REVIEW con reason 'sin_ubicacion_destino'. No escribe nada.
+     * action ADD sólo si: hay destino apto, producto simple, SIN reservado en
+     * ninguna ubicación del almacén, SIN tránsito de salida, sin lote/serie.
+     * En cualquier otro caso MANUAL_REVIEW. No escribe nada.
      */
     public function planIncremental(int $warehouseId): array
     {
@@ -131,27 +133,27 @@ class LegacyInventoryReconciliationService
         $warehouseLocations = $this->warehouseLocationMap($warehouseId);
         $mainMap = $target ? $this->locationMap($target->id) : [];
         $tracked = collect($this->batchOrSerialTrackedProducts($legacy))->keyBy('product_id');
-        $locationIds = $this->warehouseLocationIds($warehouseId);
-        $outbound = $this->outboundInTransitMap($locationIds);
+        $outbound = $this->outboundInTransitMap($this->warehouseLocationIds($warehouseId));
 
-        $keys = array_values(array_unique(array_merge(array_keys($legacy), array_keys($warehouseLocations))));
-        sort($keys);
+        $provenance = app(InventoryProvenanceAuditService::class)->auditWarehouse($warehouseId);
 
         $plan = [];
-        foreach ($keys as $key) {
-            [$productId, $variantKey] = array_map('intval', explode(':', $key));
-            $legacyQty = $this->decimal($legacy[$key]['quantity'] ?? 0.0);
-            $warehouseLocQty = $this->decimal($warehouseLocations[$key]['quantity'] ?? 0.0);
+        foreach ($provenance['keys'] as $row) {
+            $cls = $row['classification'];
+            if (! in_array($cls, ['LEGACY_ONLY_PENDING', 'UNKNOWN_REVIEW'], true)) continue;
+
+            $productId = (int) $row['product_id'];
+            $variantKey = (int) ($row['product_variant_id'] ?: 0);
+            $key = $productId.':'.$variantKey;
+            $pending = $this->decimal((float) $row['legacy_only_pending_quantity']);
             $mainQty = $this->decimal($mainMap[$key]['quantity'] ?? 0.0);
-            $otherQty = $this->decimal($warehouseLocQty - $mainQty);
+            $warehouseLocQty = $this->decimal($warehouseLocations[$key]['quantity'] ?? 0.0);
             $reservedWh = $this->decimal($warehouseLocations[$key]['reserved'] ?? 0.0);
-            $delta = $this->decimal($legacyQty - $warehouseLocQty);
-            if ($this->same($delta, 0.0)) continue;
 
             $reasons = [];
-            if ($target === null && $delta > 0) $reasons[] = 'sin_ubicacion_destino';
-            if ($delta < 0) $reasons[] = 'delta_negativo';
-            if ($legacyQty < 0) $reasons[] = 'legacy_negativo';
+            if ($cls === 'UNKNOWN_REVIEW') $reasons[] = 'provenance_desconocida';
+            if ($cls === 'LEGACY_ONLY_PENDING' && $pending <= 0.0005) $reasons[] = 'sin_cantidad_pendiente';
+            if ($target === null) $reasons[] = 'sin_ubicacion_destino';
             if (isset($tracked[$productId])) $reasons[] = 'lote_o_serie';
             if ($reservedWh > 0.0005) $reasons[] = 'reservado';
             if (($outbound[$key] ?? 0.0) > 0.0005) $reasons[] = 'transito_salida';
@@ -159,13 +161,17 @@ class LegacyInventoryReconciliationService
             $plan[] = [
                 'product_id' => $productId,
                 'product_variant_id' => $variantKey > 0 ? $variantKey : null,
-                'legacy' => $legacyQty,
+                'classification' => $cls,
+                'legacy' => $this->decimal((float) $row['legacy_now']),
+                'baseline_quantity' => $this->decimal((float) $row['baseline_quantity']),
                 'main_quantity' => $mainQty,
-                'other_locations_quantity' => $otherQty,
+                'other_locations_quantity' => $this->decimal($warehouseLocQty - $mainQty),
                 'warehouse_location_quantity' => $warehouseLocQty,
-                'delta' => $delta,
+                'snapshot_drift' => $this->decimal((float) $row['snapshot_drift']),
+                // delta = cantidad que se sumaría (sólo para ADD).
+                'delta' => $cls === 'LEGACY_ONLY_PENDING' ? $pending : 0.0,
                 'target_inventory_location_id' => $target?->id,
-                'action' => empty($reasons) ? 'ADD' : 'MANUAL_REVIEW',
+                'action' => ($cls === 'LEGACY_ONLY_PENDING' && empty($reasons)) ? 'ADD' : 'MANUAL_REVIEW',
                 'reasons' => $reasons,
             ];
         }
@@ -177,10 +183,13 @@ class LegacyInventoryReconciliationService
             'warehouse_id' => $warehouse->id,
             'warehouse_name' => $warehouse->name,
             'inventory_location_id' => $target?->id,
+            'baseline_at' => $provenance['baseline_at'],
             'plan' => $plan,
             'add_count' => count($addable),
             'manual_review_count' => count($review),
             'add_total_delta' => $this->decimal(array_sum(array_column($addable, 'delta'))),
+            // Diagnóstico: NO es cantidad a aplicar.
+            'snapshot_drift_total' => $provenance['snapshot_drift_total'],
         ];
     }
 

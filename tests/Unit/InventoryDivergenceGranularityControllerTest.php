@@ -203,7 +203,8 @@ class InventoryDivergenceGranularityControllerTest extends TestCase
         $this->stock($st2, 1, 10, 900); // agregado 25 < legacy 40
 
         $pending = $this->legacyPendingForLocation(InventoryLocation::findOrFail($main));
-        $this->assertSame('divergence', $pending[0]['kind']);
+        $this->assertSame('legacy_pending', $pending[0]['kind']);
+        $this->assertSame('LEGACY_ONLY_PENDING', $pending[0]['classification']);
         $this->assertSame(15.0, $pending[0]['pending_quantity']);
         $this->assertSame(25.0, $pending[0]['warehouse_location_quantity']);
         $this->assertSame(15.0, $pending[0]['selected_location_quantity']);
@@ -288,7 +289,8 @@ class InventoryDivergenceGranularityControllerTest extends TestCase
 
         $pending = $this->legacyPendingForLocation(InventoryLocation::findOrFail($main));
 
-        $this->assertSame('divergence', $pending[0]['kind']);
+        $this->assertSame('legacy_pending', $pending[0]['kind']);
+        $this->assertSame('LEGACY_ONLY_PENDING', $pending[0]['classification']);
         $this->assertSame(30.0, $pending[0]['pending_quantity']);
         $this->assertSame(100.0, $pending[0]['warehouse_location_quantity']);
         $this->assertSame(60.0, $pending[0]['selected_location_quantity']);

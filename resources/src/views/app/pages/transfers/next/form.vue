@@ -723,15 +723,17 @@ export default {
               (p.code || "").toLowerCase() === t ||
               (p.name || "").toLowerCase().includes(t)
             );
-            if (pending && pending.kind === "divergence") {
-              const nWh = Number(pending.warehouse_location_quantity || 0);
-              const detail = nWh > 0
-                ? `Por ubicación en el almacén hay ${nWh} y en inventario heredado ${pending.legacy_quantity}: quedan ${pending.pending_quantity} sin reconciliar.`
-                : `Tiene ${pending.legacy_quantity} en inventario heredado del almacén de origen y 0 por ubicación.`;
+            if (pending && pending.kind === "legacy_pending") {
               this.makeToast(
                 "warning",
-                `"${pending.name}": ${detail} El excedente no se puede trasladar hasta reconciliar el inventario por ubicación.`,
-                "Divergencia de inventario pendiente"
+                `"${pending.name}": ${pending.pending_quantity} unidades provienen de una operación legacy posterior al último baseline y aún no tienen ubicación asignada. No se pueden trasladar hasta reconciliar.`,
+                "Pendiente de ubicación"
+              );
+            } else if (pending && pending.kind === "unknown_review") {
+              this.makeToast(
+                "warning",
+                `"${pending.name}": el stock por ubicación no cuadra con el baseline más los movimientos registrados. Requiere revisión; no se aplica ningún ajuste automático.`,
+                "Requiere revisión"
               );
             } else if (pending && pending.kind === "other_location") {
               this.makeToast(

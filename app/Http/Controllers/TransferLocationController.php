@@ -146,20 +146,16 @@ class TransferLocationController extends BaseController
     }
 
     /**
-     * Señal de sólo lectura para el buscador de traslados. Unidad mínima:
-     *   (product_id, variant_key)   — variant_key 0 = simple.
-     * NUNCA compensa variantes entre sí. Por cada (producto, variante) del
-     * almacén dueño del origen compara:
-     *   legacy_quantity            = SUM(product_warehouse.qte) del almacén
-     *   warehouse_location_quantity = SUM(inventory_location_stocks.quantity) de
-     *                                 TODAS las ubicaciones activas del almacén
-     *   selected_location_quantity  = lo mismo pero sólo en la ubicación elegida
+     * Señal de sólo lectura para el buscador de traslados, BASADA EN PROVENANCE
+     * (InventoryProvenanceAuditService), no en legacy − location.
      *
      * kind:
-     *   'divergence'     warehouse_location_quantity < legacy_quantity.
-     *   'other_location' el almacén está reconciliado para esa clave pero la
-     *                    ubicación elegida no la tiene (vive en otra ubicación
-     *                    del mismo almacén). NO es divergencia.
+     *   'legacy_pending'  clave LEGACY_ONLY_PENDING: cantidad legacy sin
+     *                     equivalente location-native (opening stock / no migrado).
+     *   'unknown_review'  clave UNKNOWN_REVIEW: divergencia sin origen verificable.
+     *   'other_location'  clave RECONCILED/MIRRORED presente en el almacén pero
+     *                     NO en la ubicación elegida (vive en otra ubicación del
+     *                     mismo almacén). NO es divergencia.
      *
      * Nunca hace transferible nada: es sólo para el mensaje del formulario.
      */
@@ -169,35 +165,22 @@ class TransferLocationController extends BaseController
             return [];
         }
 
-        $legacy = DB::table('product_warehouse as pw')
-            ->join('products as p', 'p.id', '=', 'pw.product_id')
-            ->leftJoin('product_variants as pv', 'pv.id', '=', 'pw.product_variant_id')
-            ->where('pw.warehouse_id', $location->warehouse_id)
-            ->whereNull('pw.deleted_at')
-            ->whereNull('p.deleted_at')
+        $audit = app(\App\Services\InventoryProvenanceAuditService::class)
+            ->auditWarehouse((int) $location->warehouse_id);
+
+        $rows = collect($audit['keys'])->filter(
+            fn ($r) => in_array($r['classification'], ['LEGACY_ONLY_PENDING', 'UNKNOWN_REVIEW', 'RECONCILED', 'MIRRORED'], true)
+                && ((float) $r['legacy_now'] > 0.0005)
+        );
+        if ($rows->isEmpty()) return [];
+
+        $productIds = $rows->pluck('product_id')->unique()->all();
+
+        $meta = DB::table('products as p')
+            ->leftJoin('product_variants as pv', function ($j) { $j->on('pv.product_id', '=', 'p.id'); })
+            ->whereIn('p.id', $productIds)
             ->where('p.type', '!=', 'is_service')
-            ->groupBy('pw.product_id', 'pw.product_variant_id', 'p.code', 'p.name', 'pv.code', 'pv.name')
-            ->havingRaw('SUM(pw.qte) > 0')
-            ->selectRaw('pw.product_id, pw.product_variant_id, p.code as p_code, p.name as p_name, pv.code as v_code, pv.name as v_name, SUM(pw.qte) as qty')
-            ->get();
-
-        if ($legacy->isEmpty()) return [];
-
-        $productIds = $legacy->pluck('product_id')->unique()->all();
-        $key = fn ($productId, $variantKey) => ((int) $productId).':'.((int) $variantKey);
-
-        // Agregado físico por (product_id, variant_key) sobre TODAS las
-        // ubicaciones activas del almacén.
-        $warehouseLocQty = DB::table('inventory_location_stocks as s')
-            ->join('inventory_locations as il', 'il.id', '=', 's.inventory_location_id')
-            ->where('il.warehouse_id', $location->warehouse_id)
-            ->whereNull('il.deleted_at')
-            ->where('il.is_active', 1)
-            ->whereIn('s.product_id', $productIds)
-            ->groupBy('s.product_id', 's.variant_key')
-            ->selectRaw('s.product_id, s.variant_key, SUM(s.quantity) as qty')
-            ->get()
-            ->mapWithKeys(fn ($r) => [$key($r->product_id, $r->variant_key) => round((float) $r->qty, 3)]);
+            ->get(['p.id as pid', 'p.code as p_code', 'p.name as p_name', 'pv.id as vid', 'pv.code as v_code', 'pv.name as v_name']);
 
         $selectedLocQty = DB::table('inventory_location_stocks')
             ->where('inventory_location_id', $location->id)
@@ -205,36 +188,45 @@ class TransferLocationController extends BaseController
             ->groupBy('product_id', 'variant_key')
             ->selectRaw('product_id, variant_key, SUM(quantity) as qty')
             ->get()
-            ->mapWithKeys(fn ($r) => [$key($r->product_id, $r->variant_key) => round((float) $r->qty, 3)]);
+            ->mapWithKeys(fn ($r) => [((int) $r->product_id).':'.((int) $r->variant_key) => round((float) $r->qty, 3)]);
 
-        return $legacy->map(function ($row) use ($warehouseLocQty, $selectedLocQty, $key) {
-            $variantKey = (int) ($row->product_variant_id ?: 0);
-            $k = $key($row->product_id, $variantKey);
-            $legacyQty = round((float) $row->qty, 3);
-            $whQty = round((float) ($warehouseLocQty[$k] ?? 0), 3);
-            $selQty = round((float) ($selectedLocQty[$k] ?? 0), 3);
-            $pending = round($legacyQty - $whQty, 3);
+        $pByProduct = $meta->groupBy('pid');
 
-            if ($pending > 0.0005) {
-                $kind = 'divergence';
-            } elseif ($selQty <= 0.0005) {
-                $kind = 'other_location';   // reconciliado, pero vive en otra ubicación del almacén
+        return $rows->map(function ($r) use ($pByProduct, $selectedLocQty) {
+            $productId = (int) $r['product_id'];
+            $variantKey = (int) ($r['product_variant_id'] ?: 0);
+            $legacyNow = round((float) $r['legacy_now'], 3);
+            $whQty = round((float) $r['current_location'], 3);
+            $selQty = round((float) ($selectedLocQty[$productId.':'.$variantKey] ?? 0), 3);
+            $cls = $r['classification'];
+
+            if ($cls === 'LEGACY_ONLY_PENDING') {
+                $kind = 'legacy_pending';
+            } elseif ($cls === 'UNKNOWN_REVIEW') {
+                $kind = 'unknown_review';
+            } elseif ($selQty <= 0.0005 && $whQty > 0.0005) {
+                $kind = 'other_location';
             } else {
-                return null;                // reconciliado y presente aquí → ya está en el catálogo
+                return null; // reconciliado y presente aquí → ya está en el catálogo
             }
 
-            $code = $row->v_code ?: $row->p_code;
-            $name = $row->v_code ? '['.$row->v_name.'] '.$row->p_name : $row->p_name;
+            $pm = collect($pByProduct->get($productId) ?? []);
+            if ($pm->isEmpty()) return null; // is_service u otro producto no listable
+            $row = $variantKey > 0 ? ($pm->firstWhere('vid', $variantKey) ?: $pm->first()) : $pm->first();
+            $code = ($variantKey > 0 && $row->v_code) ? $row->v_code : $row->p_code;
+            $name = ($variantKey > 0 && $row->v_code) ? '['.$row->v_name.'] '.$row->p_name : $row->p_name;
 
             return [
-                'product_id' => (int) $row->product_id,
+                'product_id' => $productId,
                 'product_variant_id' => $variantKey > 0 ? $variantKey : null,
                 'code' => (string) $code,
                 'name' => (string) $name,
-                'legacy_quantity' => $legacyQty,
+                'classification' => $cls,
+                'legacy_quantity' => $legacyNow,
                 'warehouse_location_quantity' => $whQty,
                 'selected_location_quantity' => $selQty,
-                'pending_quantity' => (float) max(0, $pending),
+                'snapshot_drift' => round((float) $r['snapshot_drift'], 3),
+                'pending_quantity' => round((float) $r['legacy_only_pending_quantity'], 3),
                 'kind' => $kind,
             ];
         })->filter()->sortByDesc('pending_quantity')->take(200)->values()->all();
