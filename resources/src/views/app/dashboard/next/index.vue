@@ -503,8 +503,13 @@ export default {
       this.loading = true;
       this.error = null;
       try {
+        // warehouseId 0 = "todos" → no enviar el selector (paridad con el
+        // dashboard anterior, que manda warehouse_id vacío). Un warehouse_id
+        // numérico > 0 es una selección real y sí se valida por alcance.
+        const params = { from: this.dateFrom, to: this.dateTo };
+        if (this.warehouseId) params.warehouse_id = this.warehouseId;
         const { data } = await window.axios.get("dashboard_data", {
-          params: { warehouse_id: this.warehouseId, from: this.dateFrom, to: this.dateTo },
+          params,
           meta: { skipInitialLoader: true }
         });
         this.raw = data;
