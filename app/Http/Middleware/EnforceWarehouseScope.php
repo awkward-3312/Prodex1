@@ -72,12 +72,6 @@ class EnforceWarehouseScope
         $this->walk($request->all(), function (string $key, $value) use ($protectedKeys, $user, $warehouseScope) {
             if (! in_array($key, $protectedKeys, true)) return;
             if ($value === null || $value === '' || is_array($value) || is_object($value) || ! is_numeric($value)) return;
-            // `warehouse_id === 0` is the one confirmed "all / none selected"
-            // sentinel (the px-next dashboard sends it; the legacy dashboard sent
-            // an empty string). Only this exact key+value is exempt — negative
-            // values and every other protected key keep their previous scope
-            // check and are still rejected by assertAccess().
-            if ($key === 'warehouse_id' && (int) $value === 0) return;
             $warehouseScope->assertAccess($user, (int) $value, 'No tienes permiso para operar con la bodega seleccionada.');
         });
 
@@ -93,10 +87,7 @@ class EnforceWarehouseScope
             throw new AuthorizationException('La ubicación de inventario destino no existe o está inactiva.');
         }
 
-        if ($request->isMethod('get')
-            && $request->filled('warehouse_id')
-            && is_numeric($request->query('warehouse_id'))
-            && (int) $request->query('warehouse_id') !== 0) {
+        if ($request->isMethod('get') && $request->filled('warehouse_id') && is_numeric($request->query('warehouse_id'))) {
             $warehouseScope->assertAccess($user, (int) $request->query('warehouse_id'), 'No tienes permiso para consultar esa bodega.');
         }
     }

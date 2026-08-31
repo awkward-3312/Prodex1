@@ -15,15 +15,21 @@ use Tests\TestCase;
 /**
  * Regresión: el Dashboard px-next (resources/src/views/app/dashboard/next/index.vue)
  * pedía GET /api/dashboard_data?warehouse_id=0 en su primera carga. Para un
- * usuario no-owner, EnforceWarehouseScope trataba "0" como una bodega real,
- * lanzaba AuthorizationException (403) y el interceptor de axios llevaba toda la
+ * usuario no-owner, EnforceWarehouseScope trata "0" como una bodega real,
+ * lanza AuthorizationException (403) y el interceptor de axios llevaba toda la
  * SPA a not_authorize.
  *
- * El único centinela que se acepta es warehouse_id === 0 (lo que manda el
- * dashboard px-next; el legacy mandaba cadena vacía). NO es una bodega. Cualquier
- * otro valor — incluidos los negativos — y cualquier otra clave protegida
- * (default_warehouse_id, from_warehouse_id, from_warehouse) conservan su
- * comprobación de alcance y siguen siendo rechazados por assertAccess().
+ * El fix es SÓLO de frontend: cuando warehouseId === 0 ("todos") el dashboard
+ * omite el selector (paridad con el dashboard anterior, que mandaba cadena
+ * vacía); un warehouse_id > 0 es una selección real y sí se envía.
+ *
+ * EnforceWarehouseScope se mantiene estricto como en main: la exención de
+ * warehouse_id=0 se revirtió. El P1 de Codex mostró que endpoints como
+ * dead_stock / stockAging tratan warehouse_id=0 como "sin filtro" y no
+ * garantizan el mismo alcance downstream, así que aceptar 0 en el middleware
+ * global abriría riesgo de fuga de datos. Cualquier GET que envíe
+ * warehouse_id=0 explícitamente sigue pasando por assertAccess() y sigue
+ * siendo rechazado; los negativos y los ids reales también.
  */
 class DashboardWarehouseScopeSelectorTest extends TestCase
 {
@@ -54,18 +60,28 @@ class DashboardWarehouseScopeSelectorTest extends TestCase
         );
     }
 
-    public function test_dashboard_data_with_warehouse_id_zero_does_not_assert_scope(): void
+    public function test_dashboard_data_with_warehouse_id_zero_still_asserts_scope_and_is_rejected(): void
     {
+        // El middleware NO tiene excepción para 0: un GET que traiga
+        // warehouse_id=0 explícitamente sigue pasando por assertAccess y es
+        // rechazado para un usuario restringido. (El fix vive en el frontend,
+        // que ya no envía el selector cuando vale 0.)
         $user = $this->user();
         $warehouseScope = Mockery::mock(WarehouseScopeService::class);
-        $warehouseScope->shouldReceive('assertAccess')->never();
+        $warehouseScope->shouldReceive('assertAccess')
+            ->atLeast()->once()
+            ->with($user, 0, Mockery::type('string'))
+            ->andThrow(new AuthorizationException('No tienes permiso para consultar esa bodega.'));
 
+        $this->expectException(AuthorizationException::class);
         $this->invoke($this->makeGet('/api/dashboard_data?warehouse_id=0&from=2026-01-01&to=2026-01-07'), $user, $warehouseScope);
-        $this->addToAssertionCount(1);
     }
 
     public function test_dashboard_data_without_warehouse_id_does_not_assert_scope(): void
     {
+        // Cadena vacía (lo que manda el dashboard tras el fix cuando no hay
+        // selección real): $value === '' corta el walk() y filled() es false
+        // en el bloque GET, así que no hay comprobación de alcance.
         $user = $this->user();
         $warehouseScope = Mockery::mock(WarehouseScopeService::class);
         $warehouseScope->shouldReceive('assertAccess')->never();
@@ -76,7 +92,7 @@ class DashboardWarehouseScopeSelectorTest extends TestCase
 
     public function test_negative_warehouse_id_still_asserts_scope_and_is_rejected(): void
     {
-        // -1 no es el centinela: debe seguir pasando por assertAccess y ser rechazado.
+        // -1 debe seguir pasando por assertAccess y ser rechazado.
         $user = $this->user();
         $warehouseScope = Mockery::mock(WarehouseScopeService::class);
         $warehouseScope->shouldReceive('assertAccess')
@@ -93,7 +109,7 @@ class DashboardWarehouseScopeSelectorTest extends TestCase
         $user = $this->user();
         $warehouseScope = Mockery::mock(WarehouseScopeService::class);
         $warehouseScope->shouldReceive('assertAccess')
-            ->once()
+            ->atLeast()->once()
             ->with($user, 5, Mockery::type('string'))
             ->andThrow(new AuthorizationException('No tienes permiso para consultar esa bodega.'));
 
@@ -106,6 +122,7 @@ class DashboardWarehouseScopeSelectorTest extends TestCase
         $user = $this->user();
         $warehouseScope = Mockery::mock(WarehouseScopeService::class);
         // Un id real (>0) sí se valida por alcance (aquí no lanza => permitido).
+        // Se llama dos veces (walk() + bloque GET), de ahí atLeast()->once().
         $warehouseScope->shouldReceive('assertAccess')->atLeast()->once()->with($user, 5, Mockery::type('string'));
 
         $this->invoke($this->makeGet('/api/dashboard_data?warehouse_id=5'), $user, $warehouseScope);
@@ -117,22 +134,27 @@ class DashboardWarehouseScopeSelectorTest extends TestCase
         $src = file_get_contents(base_path('resources/src/views/app/dashboard/next/index.vue'));
         // No debe volver a mandar warehouse_id: 0 incondicionalmente.
         $this->assertStringNotContainsString('params: { warehouse_id: this.warehouseId, from: this.dateFrom, to: this.dateTo }', $src);
+        // Sólo se adjunta el selector cuando es una selección real (> 0).
         $this->assertStringContainsString('if (this.warehouseId) params.warehouse_id = this.warehouseId;', $src);
     }
 
-    public function test_middleware_exempts_only_the_exact_warehouse_id_zero_sentinel(): void
+    public function test_middleware_has_no_zero_selector_exemption(): void
     {
         $src = file_get_contents(base_path('app/Http/Middleware/EnforceWarehouseScope.php'));
-        // Exención acotada: sólo la clave warehouse_id con valor exactamente 0.
-        $this->assertStringContainsString("if (\$key === 'warehouse_id' && (int) \$value === 0) return;", $src);
-        $this->assertStringContainsString("(int) \$request->query('warehouse_id') !== 0", $src);
-        // No debe haber una exención genérica por <= 0.
+        // El middleware quedó estricto como en main: sin ninguna exención para 0.
+        $this->assertStringNotContainsString("(int) \$value === 0) return;", $src);
+        $this->assertStringNotContainsString("!== 0", $src);
         $this->assertStringNotContainsString('if ((int) $value <= 0) return;', $src);
+        // El bloque GET valida CUALQUIER warehouse_id numérico, incluido 0.
+        $this->assertStringContainsString(
+            "if (\$request->isMethod('get') && \$request->filled('warehouse_id') && is_numeric(\$request->query('warehouse_id'))) {",
+            $src
+        );
     }
 
     /**
      * El fix NO amplía la visibilidad de datos: el dashboard sigue aplicando el
-     * alcance por sucursal/almacén al no-owner (warehouse_id ausente/0 => "todo
+     * alcance por sucursal/almacén al no-owner (warehouse_id ausente => "todo
      * dentro de MI alcance", nunca "todo el tenant").
      */
     public function test_dashboard_still_scopes_data_by_branch_and_warehouse(): void
