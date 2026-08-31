@@ -19,9 +19,11 @@ use Tests\TestCase;
  * lanzaba AuthorizationException (403) y el interceptor de axios llevaba toda la
  * SPA a not_authorize.
  *
- * "0" (y cualquier valor no positivo) es el centinela "todas / ninguna" de toda
- * la app; NO es una bodega. Sólo un warehouse_id > 0 es una selección real y se
- * valida por alcance.
+ * El único centinela que se acepta es warehouse_id === 0 (lo que manda el
+ * dashboard px-next; el legacy mandaba cadena vacía). NO es una bodega. Cualquier
+ * otro valor — incluidos los negativos — y cualquier otra clave protegida
+ * (default_warehouse_id, from_warehouse_id, from_warehouse) conservan su
+ * comprobación de alcance y siguen siendo rechazados por assertAccess().
  */
 class DashboardWarehouseScopeSelectorTest extends TestCase
 {
@@ -72,14 +74,18 @@ class DashboardWarehouseScopeSelectorTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function test_negative_warehouse_id_does_not_assert_scope(): void
+    public function test_negative_warehouse_id_still_asserts_scope_and_is_rejected(): void
     {
+        // -1 no es el centinela: debe seguir pasando por assertAccess y ser rechazado.
         $user = $this->user();
         $warehouseScope = Mockery::mock(WarehouseScopeService::class);
-        $warehouseScope->shouldReceive('assertAccess')->never();
+        $warehouseScope->shouldReceive('assertAccess')
+            ->atLeast()->once()
+            ->with($user, -1, Mockery::type('string'))
+            ->andThrow(new AuthorizationException('No tienes permiso para consultar esa bodega.'));
 
+        $this->expectException(AuthorizationException::class);
         $this->invoke($this->makeGet('/api/dashboard_data?warehouse_id=-1'), $user, $warehouseScope);
-        $this->addToAssertionCount(1);
     }
 
     public function test_real_warehouse_id_still_asserts_scope_and_rejects_when_not_allowed(): void
@@ -114,11 +120,14 @@ class DashboardWarehouseScopeSelectorTest extends TestCase
         $this->assertStringContainsString('if (this.warehouseId) params.warehouse_id = this.warehouseId;', $src);
     }
 
-    public function test_middleware_treats_non_positive_warehouse_selector_as_no_selection(): void
+    public function test_middleware_exempts_only_the_exact_warehouse_id_zero_sentinel(): void
     {
         $src = file_get_contents(base_path('app/Http/Middleware/EnforceWarehouseScope.php'));
-        $this->assertStringContainsString('if ((int) $value <= 0) return;', $src);
-        $this->assertStringContainsString('(int) $request->query(\'warehouse_id\') > 0', $src);
+        // Exención acotada: sólo la clave warehouse_id con valor exactamente 0.
+        $this->assertStringContainsString("if (\$key === 'warehouse_id' && (int) \$value === 0) return;", $src);
+        $this->assertStringContainsString("(int) \$request->query('warehouse_id') !== 0", $src);
+        // No debe haber una exención genérica por <= 0.
+        $this->assertStringNotContainsString('if ((int) $value <= 0) return;', $src);
     }
 
     /**
