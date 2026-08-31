@@ -279,7 +279,16 @@ class InventoryProvenanceAuditService
                 $w->whereIn('from_inventory_location_id', $locationIds)
                   ->orWhereIn('to_inventory_location_id', $locationIds);
             });
-        if ($baselineAt) $query->where('created_at', '>', $baselineAt);
+        // Los movimientos de mirror dual_write (legacy_shadow_sync /
+        // legacy_product_warehouse_model_write) SIEMPRE son posteriores al
+        // baseline por definición (sólo existen tras activar dual_write) — se
+        // incluyen aunque su timestamp empate con el del backfill.
+        if ($baselineAt) {
+            $query->where(function ($w) use ($baselineAt) {
+                $w->where('created_at', '>', $baselineAt)
+                  ->orWhereIn('reference_type', ['legacy_shadow_sync', 'legacy_product_warehouse_model_write']);
+            });
+        }
 
         $net = [];
         $netMirror = [];

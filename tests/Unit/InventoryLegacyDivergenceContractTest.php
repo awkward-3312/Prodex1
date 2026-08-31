@@ -226,4 +226,32 @@ class InventoryLegacyDivergenceContractTest extends TestCase
         $this->assertStringContainsString('$warehouseDefault === $locationId', $src);
         $this->assertStringContainsString('dejó de ser apta', $src);
     }
+
+    public function test_dual_write_requires_snapshot_equality_and_mirror_rejects_drift(): void
+    {
+        $audit = $this->read('app/Services/LegacyInventoryReconciliationService.php');
+        // Dos señales SEPARADAS.
+        $this->assertStringContainsString("'provenance_reconciled' => \$isReconciled", $audit);
+        $this->assertStringContainsString("'snapshot_equal' => \$snapshotEqual", $audit);
+        $this->assertStringContainsString("'dual_write_compatible' =>", $audit);
+        // snapshot_equal = paridad legacy_now vs location actual por clave.
+        $this->assertStringContainsString("abs((float) \$r['legacy_now'] - (float) \$r['current_location']) > 0.0005", $audit);
+
+        $compat = $this->read('app/Services/InventoryCompatibilityService.php');
+        // enableMode: dual_write exige provenance_reconciled + destino + single-target + snapshot_equal.
+        $this->assertStringContainsString("! (\$audit['provenance_reconciled'] ?? \$audit['is_reconciled'] ?? false)", $compat);
+        $this->assertStringContainsString("! (\$audit['snapshot_equal'] ?? false)", $compat);
+        $this->assertStringContainsString('dual_write requiere paridad actual legacy/location; existen movimientos location-native posteriores al baseline.', $compat);
+        // mirrorLegacySnapshot: guard provenance — rehúsa si post_baseline_location_net != 0.
+        $this->assertStringContainsString("abs((float) (\$provKey['post_baseline_location_net'] ?? 0.0)) > 0.0005", $compat);
+        $this->assertStringContainsString('El mirror single-target recrearía stock ya movido', $compat);
+        // compareKey: definición ÚNICA de mismatch = provenance (RECONCILED|MIRRORED).
+        $this->assertStringContainsString("in_array(\$classification, ['RECONCILED', 'MIRRORED'], true)", $compat);
+        $this->assertStringContainsString('public function snapshotCompareKey(', $compat);
+        // enableMode NO reescribe el baseline al activar un modo.
+        $this->assertStringContainsString("last_reconciled_at (baseline provenance) NO se toca al activar un modo", $compat);
+        $this->assertStringNotContainsString("'last_reconciled_at' => now(),", $compat);
+        // El movimiento del mirror siempre se marca legacy_shadow_sync.
+        $this->assertStringContainsString("'reference_type' => 'legacy_shadow_sync',", $compat);
+    }
 }

@@ -55,6 +55,27 @@ class LegacyInventoryReconciliationService
         $isReconciled = empty($negative) && empty($unknownReview) && empty($legacyOnlyPending);
         $stockedLocationCount = $this->stockedLocationCount($warehouseId);
 
+        // SNAPSHOT EQUALITY — señal distinta de provenance_reconciled. Para CADA
+        // (product_id, variant_key): legacy_now == inventario por ubicación actual
+        // del almacén. Iphone15 (legacy 88 / location 60 por TransferDispatch) es
+        // provenance_reconciled PERO NO snapshot_equal. dual_write / el mirror
+        // single-target sólo son seguros con paridad EXACTA (no hay reverse-mirror
+        // location→legacy).
+        $snapshotUnequalKeys = [];
+        foreach ($provenance['keys'] as $r) {
+            if (abs((float) $r['legacy_now'] - (float) $r['current_location']) > 0.0005) {
+                $snapshotUnequalKeys[] = [
+                    'product_id' => $r['product_id'],
+                    'product_variant_id' => $r['product_variant_id'],
+                    'legacy_now' => $r['legacy_now'],
+                    'current_location' => $r['current_location'],
+                    'post_baseline_location_net' => $r['post_baseline_location_net'],
+                    'snapshot_drift' => $r['snapshot_drift'],
+                ];
+            }
+        }
+        $snapshotEqual = empty($snapshotUnequalKeys);
+
         $locationTotal = $this->decimal(array_sum(array_column($warehouseLocations, 'quantity')));
         $targetTotal = $target !== null
             ? $this->decimal((float) InventoryLocationStock::where('inventory_location_id', $target->id)->sum('quantity'))
@@ -89,12 +110,20 @@ class LegacyInventoryReconciliationService
             'legacy_only_pending_total' => $provenance['legacy_only_pending_total'],
             // Métrica DIAGNÓSTICA: NO es cantidad pendiente de reconciliación.
             'snapshot_drift_total' => $provenance['snapshot_drift_total'],
-            // Reconciliado = sin negativos, sin UNKNOWN_REVIEW ni LEGACY_ONLY_PENDING.
+            // provenance_reconciled = sin negativos, sin UNKNOWN_REVIEW ni
+            // LEGACY_ONLY_PENDING. NO implica paridad snapshot legacy/location.
             'is_reconciled' => $isReconciled,
+            'provenance_reconciled' => $isReconciled,
+            // snapshot_equal = legacy_now == inventario por ubicación actual para
+            // TODA clave. Requerido para dual_write / mirror single-target.
+            'snapshot_equal' => $snapshotEqual,
+            'snapshot_unequal_keys' => $snapshotUnequalKeys,
             // has_target_location = existe una ubicación destino APTA (storage,
             // activa, no cuarentena, del almacén). Distinto de is_reconciled.
             'has_target_location' => $target !== null,
             'transition_ready' => $isReconciled && $target !== null,
+            // dual_write sólo es seguro con TODAS estas condiciones.
+            'dual_write_compatible' => $isReconciled && $target !== null && $targetHoldsAllStock && $snapshotEqual,
             'main_location_has_stock' => $mainHasStock,
             'warehouse_has_location_stock' => $warehouseHasLocationStock,
             // Cuánto stock location-native vive FUERA de la ubicación destino.

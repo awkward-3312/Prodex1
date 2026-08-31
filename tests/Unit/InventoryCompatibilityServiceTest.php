@@ -404,6 +404,138 @@ class InventoryCompatibilityServiceTest extends TestCase
         ]);
     }
 
+    // ---- hotfix dual_write / provenance guard (feedback post-merge #77) ------
+
+    /**
+     * Escenario Iphone15/16: baseline 88, TransferDispatch −28 posterior,
+     * legacy_now 88, location_now 60 → provenance RECONCILED PERO enableDualWrite
+     * DEBE rechazarse (no hay paridad snapshot, y no hay reverse-mirror).
+     */
+    private function driftedButProvenanceReconciled(int $legacyNow, int $dispatchOut): array
+    {
+        $wh = $this->warehouse();
+        $this->legacy($wh->id, 10, $legacyNow);
+        $main = $this->addLocation($wh->id, 'MAIN');
+        DB::table('warehouses')->where('id', $wh->id)->update(['default_inventory_location_id' => $main]);
+        $this->addLocStock($main, 10, $legacyNow - $dispatchOut);
+        DB::table('inventory_transition_states')->insert([
+            'warehouse_id' => $wh->id, 'inventory_location_id' => $main,
+            'mode' => 'legacy_only', 'status' => 'pending', 'mismatch_count' => 0,
+            'last_reconciled_at' => '2026-08-22 00:00:00', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->movement('increase', 10, $legacyNow, 'legacy_product_warehouse_backfill', null, $main, '2026-08-21 23:00:00');
+        $this->movement('decrease', 10, $dispatchOut, 'TransferDispatch', $main, null, '2026-08-25 00:00:00');
+        return [$wh, $main];
+    }
+
+    private function movement(string $type, int $productId, float $qty, string $ref, ?int $from, ?int $to, string $at): void
+    {
+        DB::table('inventory_location_movements')->insert([
+            'movement_type' => $type, 'product_id' => $productId, 'product_variant_id' => null,
+            'from_inventory_location_id' => $from, 'to_inventory_location_id' => $to,
+            'quantity' => $qty, 'reference_type' => $ref, 'created_at' => $at, 'updated_at' => $at,
+        ]);
+    }
+
+    /** F1: baseline 88 / legacy 88 / location 60 (dispatch −28) => enableDualWrite RECHAZADO. */
+    public function test_F1_dual_write_rejected_when_snapshot_not_equal_iphone15(): void
+    {
+        [$wh] = $this->driftedButProvenanceReconciled(88, 28);
+        $svc = app(LegacyInventoryReconciliationService::class)->auditWarehouse($wh->id);
+        $this->assertTrue($svc['provenance_reconciled']);
+        $this->assertFalse($svc['snapshot_equal']);
+        $this->assertFalse($svc['dual_write_compatible']);
+
+        try {
+            app(InventoryCompatibilityService::class)->enableDualWrite($wh->id);
+            $this->fail('enableDualWrite debía rechazar por falta de paridad snapshot');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('paridad actual legacy/location', $e->getMessage());
+        }
+    }
+
+    /** F2: baseline 90 / legacy 90 / location 78 (dispatch −12) => rechazado. */
+    public function test_F2_dual_write_rejected_iphone16(): void
+    {
+        [$wh] = $this->driftedButProvenanceReconciled(90, 12);
+        $this->expectException(ValidationException::class);
+        app(InventoryCompatibilityService::class)->enableDualWrite($wh->id);
+    }
+
+    /** F3: legacy 100 / location 100, single-target => dual_write permitido. */
+    public function test_F3_dual_write_allowed_when_snapshot_equal(): void
+    {
+        $wh = $this->warehouse();
+        $this->legacy($wh->id, 10, 100);
+        app(LegacyInventoryReconciliationService::class)->backfillWarehouse($wh->id); // MAIN 100, baseline
+        $audit = app(LegacyInventoryReconciliationService::class)->auditWarehouse($wh->id);
+        $this->assertTrue($audit['snapshot_equal']);
+        $this->assertTrue($audit['dual_write_compatible']);
+
+        $state = app(InventoryCompatibilityService::class)->enableDualWrite($wh->id);
+        $this->assertSame(InventoryTransitionState::MODE_DUAL_WRITE, $state->mode);
+    }
+
+    /** F4: dual_write ya activo por estado viejo + drift => mirror RECHAZA y MAIN NO pasa a 88. */
+    public function test_F4_mirror_rejects_and_never_recreates_moved_stock(): void
+    {
+        [$wh, $main] = $this->driftedButProvenanceReconciled(88, 28);
+        DB::table('inventory_transition_states')->where('warehouse_id', $wh->id)
+            ->update(['mode' => 'dual_write', 'status' => 'healthy']);
+
+        try {
+            app(InventoryCompatibilityService::class)->mirrorLegacySnapshot($wh->id, 10);
+            $this->fail('mirrorLegacySnapshot debía rehusar con movimientos location-native posteriores al baseline');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('location-native posteriores al baseline', $e->getMessage());
+        }
+
+        // MAIN sigue 60 — jamás 88.
+        $this->assertSame(60.0, (float) DB::table('inventory_location_stocks')
+            ->where('inventory_location_id', $main)->where('product_id', 10)->value('quantity'));
+        $this->assertSame('mismatch', app(InventoryCompatibilityService::class)->state($wh->id)->status);
+    }
+
+    /** F5: compareKey con baseline 88 + dispatch −28 + current 60 => NO mismatch falso. */
+    public function test_F5_compare_key_no_false_mismatch_from_snapshot_diff(): void
+    {
+        [$wh] = $this->driftedButProvenanceReconciled(88, 28);
+        $svc = app(InventoryCompatibilityService::class);
+        $res = $svc->compareKey($wh->id, 10);
+        $this->assertTrue($res['matches']);
+        $this->assertSame('RECONCILED', $res['classification']);
+        $this->assertNotSame('mismatch', $svc->state($wh->id)->status);
+
+        // snapshotCompareKey (diagnóstico) SÍ ve la diferencia, pero NO marca mismatch.
+        $snap = $svc->snapshotCompareKey($wh->id, 10);
+        $this->assertFalse($snap['snapshot_equal']);
+        $this->assertSame(88.0, $snap['legacy_quantity']);
+        $this->assertSame(60.0, $snap['location_quantity']);
+    }
+
+    /** F6: activar shadow_compare NO modifica last_reconciled_at histórico. */
+    public function test_F6_enable_shadow_compare_keeps_historic_baseline(): void
+    {
+        $wh = $this->warehouse();
+        $this->legacy($wh->id, 10, 5);
+        $main = $this->addLocation($wh->id, 'MAIN');
+        DB::table('warehouses')->where('id', $wh->id)->update(['default_inventory_location_id' => $main]);
+        $this->addLocStock($main, 10, 5);
+        DB::table('inventory_transition_states')->insert([
+            'warehouse_id' => $wh->id, 'inventory_location_id' => $main,
+            'mode' => 'legacy_only', 'status' => 'pending', 'mismatch_count' => 0,
+            'last_reconciled_at' => '2026-08-22 18:11:46', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->movement('increase', 10, 5, 'legacy_product_warehouse_backfill', null, $main, '2026-08-22 18:01:44');
+
+        app(InventoryCompatibilityService::class)->enableShadowCompare($wh->id);
+
+        $this->assertSame(
+            '2026-08-22 18:11:46',
+            (string) DB::table('inventory_transition_states')->where('warehouse_id', $wh->id)->value('last_reconciled_at')
+        );
+    }
+
     private function warehouse(): Warehouse
     {
         return Warehouse::create(['name' => 'CD Principal']);
