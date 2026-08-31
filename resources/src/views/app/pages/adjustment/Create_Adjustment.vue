@@ -38,6 +38,25 @@
                   </validation-provider>
                 </b-col>
 
+                <!-- inventory location (#81 · obligatorio para el flujo location-aware) -->
+                <b-col md="6" class="mb-3">
+                  <validation-provider name="inventory_location" :rules="{ required: true }">
+                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                      <v-select
+                        :class="{'is-invalid': !!errors.length}"
+                        :state="errors[0] ? false : (valid ? true : null)"
+                        :disabled="details.length > 0 || !adjustment.warehouse_id"
+                        @input="Selected_Inventory_Location"
+                        v-model="adjustment.inventory_location_id"
+                        :reduce="label => label.value"
+                        :placeholder="$t('Choose_Inventory_Location')"
+                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
+                      />
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
                 <!-- date  -->
                 <b-col lg="6" md="6" sm="12">
                   <validation-provider
@@ -349,12 +368,14 @@ export default {
       isLoading: true,
       SubmitProcessing:false,
       warehouses: [],
+      inventory_locations: [],
       products: [],
       details: [],
       adjustment: {
         id: "",
         notes: "",
         warehouse_id: "",
+        inventory_location_id: "",
         date: new Date().toISOString().slice(0, 10)
       },
       product: {
@@ -595,34 +616,59 @@ export default {
     Selected_Warehouse(value) {
       this.search_input= '';
       this.product_filter = [];
-      this.Get_Products_By_Warehouse(value);
-
-      // Pharmacy: refresh batch availability on existing batch-tracked lines.
-      if (Array.isArray(this.details)) {
-        for (const d of this.details) {
-          if (d && d.is_batch_tracked) {
-            this.$set(d, "batches", []);
-            this.fetch_batches_for_detail(d);
-          }
-        }
-      }
+      // #81 — al cambiar de almacén se limpia la ubicación y el catálogo; se
+      // recargan las ubicaciones activas del almacén (el backend PRESELECCIONA
+      // la default apta y con ella se carga el catálogo POR UBICACIÓN).
+      this.adjustment.inventory_location_id = "";
+      this.inventory_locations = [];
+      this.products = [];
+      this.Load_Inventory_Locations(value);
     },
 
-   //------------------------------------ Get Products By Warehouse -------------------------\\
-
-    Get_Products_By_Warehouse(id) {
-      // Start the progress bar.
-        NProgress.start();
-        NProgress.set(0.1);
+    //-------- #81 · Inventory locations of the selected warehouse ----------\\
+    Load_Inventory_Locations(id) {
+      if (!id) return;
       axios
-        .get("get_Products_by_warehouse/" + id + "?stock=" + 0 + "&product_service=" + 0 + "&product_combo=" + 1)
-         .then(response => {
-            this.products = response.data;
-             NProgress.done();
+        .get("adjustments_inventory_locations/" + id)
+        .then(response => {
+          this.inventory_locations = (response.data && response.data.locations) || [];
+          const def = response.data && response.data.default_inventory_location_id;
+          if (def && this.details.length === 0) {
+            this.adjustment.inventory_location_id = def;
+            this.Selected_Inventory_Location(def);
+          }
+        })
+        .catch(() => { this.inventory_locations = []; });
+    },
 
-            })
-          .catch(error => {
-          });
+    // #81 · BLOCKER 3 — el catálogo y el CurrentStock del flujo location-aware
+    // vienen de inventory_location_stocks de LA ubicación seleccionada. NUNCA
+    // se usa Get_Products_By_Warehouse (agregado de almacén) en este modo.
+    Selected_Inventory_Location(value) {
+      this.search_input = '';
+      this.product_filter = [];
+      const locationId = value || this.adjustment.inventory_location_id;
+      this.Load_Location_Catalog(locationId);
+    },
+
+    Load_Location_Catalog(locationId) {
+      if (!locationId) { this.products = []; return; }
+      NProgress.start(); NProgress.set(0.1);
+      axios
+        .get("adjustments_location_catalog/" + locationId)
+        .then(response => {
+          const rows = (response.data && response.data.products) || [];
+          // CurrentStock del formulario = available_quantity de la ubicación.
+          this.products = rows.map(p => ({
+            ...p,
+            qte: p.available_quantity,
+            current: p.available_quantity,
+            CurrentStock: p.available_quantity,
+            stock_source: p.stock_source
+          }));
+          NProgress.done();
+        })
+        .catch(() => { this.products = []; NProgress.done(); });
     },
 
     //----------------------------------------- Add Product To list -------------------------\\
@@ -914,6 +960,8 @@ export default {
         axios
           .post("adjustments", {
             warehouse_id: this.adjustment.warehouse_id,
+            // #81 — el flujo location-aware exige ubicación explícita.
+            inventory_location_id: this.adjustment.inventory_location_id,
             date: this.adjustment.date,
             notes: this.adjustment.notes,
             details: this.buildSubmitDetails()

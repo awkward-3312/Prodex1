@@ -33,6 +33,25 @@
                   </validation-provider>
                 </b-col>
 
+                <!-- inventory location (#81 · obligatorio para el flujo location-aware) -->
+                <b-col md="6" class="mb-3">
+                  <validation-provider name="inventory_location" :rules="{ required: true }">
+                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                      <v-select
+                        :class="{'is-invalid': !!errors.length}"
+                        :state="errors[0] ? false : (valid ? true : null)"
+                        :disabled="details.length > 0 || !damage.warehouse_id"
+                        @input="Selected_Inventory_Location"
+                        v-model="damage.inventory_location_id"
+                        :reduce="label => label.value"
+                        :placeholder="$t('Choose_Inventory_Location')"
+                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
+                      />
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
                 <!-- date  -->
                 <b-col lg="6" md="6" sm="12">
                   <validation-provider name="date" :rules="{ required: true}" v-slot="validationContext">
@@ -260,7 +279,8 @@ export default {
       warehouses: [],
       products: [],
       details: [],
-      damage: { id: "", notes: "", warehouse_id: "", date: new Date().toISOString().slice(0, 10) },
+      inventory_locations: [],
+      damage: { id: "", notes: "", warehouse_id: "", inventory_location_id: "", date: new Date().toISOString().slice(0, 10) },
       product: { id: "", code: "", current: "", quantity: 1, name: "", product_id: "", detail_id: "", product_variant_id: "", unit: "", is_batch_tracked: false, batches: [], available_batches: [], batches_loading: false },
       symbol: ""
     };
@@ -382,21 +402,47 @@ export default {
     Selected_Warehouse(value) {
       this.search_input= '';
       this.product_filter = [];
-      this.Get_Products_By_Warehouse(value);
-      if (Array.isArray(this.details)) {
-        for (const d of this.details) {
-          if (d && d.is_batch_tracked) {
-            this.$set(d, "batches", []);
-            this.fetch_batches_for_detail(d);
-          }
-        }
-      }
+      this.damage.inventory_location_id = "";
+      this.inventory_locations = [];
+      this.products = [];
+      this.Load_Inventory_Locations(value);
     },
-    Get_Products_By_Warehouse(id) {
+    Load_Inventory_Locations(id) {
+      if (!id) return;
+      axios.get("damages_inventory_locations/" + id)
+        .then(response => {
+          this.inventory_locations = (response.data && response.data.locations) || [];
+          const def = response.data && response.data.default_inventory_location_id;
+          if (def && this.details.length === 0) {
+            this.damage.inventory_location_id = def;
+            this.Selected_Inventory_Location(def);
+          }
+        })
+        .catch(() => { this.inventory_locations = []; });
+    },
+    // #81 · BLOCKER 3 — catálogo + CurrentStock desde inventory_location_stocks
+    // de LA ubicación. Nunca Get_Products_By_Warehouse en este modo.
+    Selected_Inventory_Location(value) {
+      this.search_input = '';
+      this.product_filter = [];
+      this.Load_Location_Catalog(value || this.damage.inventory_location_id);
+    },
+    Load_Location_Catalog(locationId) {
+      if (!locationId) { this.products = []; return; }
       NProgress.start(); NProgress.set(0.1);
-      axios.get("get_Products_by_warehouse/" + id + "?stock=" + 0 + "&product_service=" + 0 + "&product_combo=" + 1)
-        .then(response => { this.products = response.data; NProgress.done(); })
-        .catch(() => {});
+      axios.get("damages_location_catalog/" + locationId)
+        .then(response => {
+          const rows = (response.data && response.data.products) || [];
+          this.products = rows.map(p => ({
+            ...p,
+            qte: p.available_quantity,
+            current: p.available_quantity,
+            CurrentStock: p.available_quantity,
+            stock_source: p.stock_source
+          }));
+          NProgress.done();
+        })
+        .catch(() => { this.products = []; NProgress.done(); });
     },
     add_product() {
       if (this.details.length > 0) { this.detail_order_id(); }
@@ -581,7 +627,7 @@ export default {
     Create_Damage() {
       if (this.verifiedForm()) {
         this.SubmitProcessing = true; NProgress.start(); NProgress.set(0.1);
-        axios.post("damages", { warehouse_id: this.damage.warehouse_id, date: this.damage.date, notes: this.damage.notes, details: this.buildSubmitDetails() })
+        axios.post("damages", { warehouse_id: this.damage.warehouse_id, inventory_location_id: this.damage.inventory_location_id, date: this.damage.date, notes: this.damage.notes, details: this.buildSubmitDetails() })
           .then(() => { NProgress.done(); this.SubmitProcessing = false; this.$router.push({ name: "index_damage" }); this.makeToast("success", this.$t("Successfully_Created"), this.$t("Success")); })
           .catch(error => { NProgress.done(); if(error.errors && error.errors.details && error.errors.details.length){ this.makeToast("danger", error.errors.details[0], this.$t("Failed")); } else { this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed")); } this.SubmitProcessing = false; });
       }
