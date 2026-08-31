@@ -12,7 +12,7 @@
       <span class="lbp__count">
         {{ (detail.batches || []).length }} línea(s)
         <template v-if="(detail.batches || []).length">
-          · Total: {{ fmt(batchTotal) }} / {{ fmt(Number(detail.quantity) || 0) }}
+          · Total: {{ fmt(batchTotal) }} / {{ fmt(targetQty) }}
         </template>
       </span>
       <px-button type="button" size="sm" variant="secondary" icon="plus" @click="addRow">Añadir lote</px-button>
@@ -79,7 +79,7 @@
 
     <div v-if="detail.batches && detail.batches.length && mismatch" class="lbp__mismatch">
       <lucide-icon name="info" :size="13" />
-      La suma de los lotes no coincide con la cantidad de la línea ({{ fmt(batchTotal) }} / {{ fmt(Number(detail.quantity) || 0) }}).
+      La suma de los lotes no coincide con la cantidad de la línea ({{ fmt(batchTotal) }} / {{ fmt(targetQty) }}).
     </div>
   </div>
 </template>
@@ -94,17 +94,24 @@ export default {
   components: { PxButton, PxInput, "vs-px": VsPx },
   props: {
     detail: { type: Object, required: true },
-    decimals: { type: Number, default: 2 }
+    decimals: { type: Number, default: 2 },
+    // Cantidad que deben sumar los lotes. Traslados la pasan en unidad BASE
+    // (los lotes se cuentan en base); Ajustes/Daños la omiten y se usa
+    // detail.quantity (esos módulos son 1:1).
+    requiredBase: { type: Number, default: null }
   },
   computed: {
+    targetQty() {
+      return this.requiredBase != null && Number.isFinite(this.requiredBase)
+        ? Number(this.requiredBase)
+        : (Number(this.detail.quantity) || 0);
+    },
     batchTotal() {
       const b = Array.isArray(this.detail.batches) ? this.detail.batches : [];
       return b.reduce((s, x) => s + (Number(x.qty) || 0), 0);
     },
     mismatch() {
-      const total = this.batchTotal;
-      const target = Number(this.detail.quantity) || 0;
-      return Math.abs(total - target) > 0.0001;
+      return Math.abs(this.batchTotal - this.targetQty) > 0.0001;
     }
   },
   methods: {
@@ -120,7 +127,7 @@ export default {
         batch_no: "",
         expiry_date: null,
         qty_available: 0,
-        qty: this.detail.batches.length === 0 ? (Number(this.detail.quantity) || 0) : 0
+        qty: this.detail.batches.length === 0 ? this.targetQty : 0
       });
     },
     removeRow(idx) {

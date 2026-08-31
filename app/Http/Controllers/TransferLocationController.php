@@ -116,6 +116,11 @@ class TransferLocationController extends BaseController
                 'name' => (string) $name,
                 'qte' => round($available, 3),
                 'qte_purchase' => round($this->fromBaseQuantity($available, $unit), 3),
+                // Purchase-unit → base conversion, so a batch picker can require the
+                // exact base quantity the dispatcher validates (see toBaseQuantity()).
+                'purchase_unit_id' => $unit?->id,
+                'unit_operator' => $unit?->operator,
+                'unit_operator_value' => $unit && $unit->operator_value !== null ? (float) $unit->operator_value : null,
                 'inventory_location_id' => (int) $location->id,
             ];
         }
@@ -161,6 +166,10 @@ class TransferLocationController extends BaseController
             'unitPurchase' => $unit?->ShortName ?? '',
             'fix_cost' => $cost,
             'purchase_unit_id' => $unit?->id,
+            // Purchase-unit → base conversion (mirrors TransferLocationDispatchService::
+            // toBaseQuantity) so the batch picker can require the exact base quantity.
+            'unit_operator' => $unit?->operator,
+            'unit_operator_value' => $unit && $unit->operator_value !== null ? (float) $unit->operator_value : null,
             'is_batch_tracked' => (bool) ($product->is_batch_tracked ?? false),
             'warehouse_location' => ['code' => $location->code, 'name' => $location->name],
             'qte' => round($available, 3),

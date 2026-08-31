@@ -108,8 +108,11 @@ class TransferBusinessDestinationServiceTest extends TestCase
         $routes = file_get_contents(base_path('routes/tenant_transfer_overrides.php'));
 
         $this->assertStringContainsString("Route::post('transfers', 'FinalTransferController@store')", $routes);
-        $this->assertStringContainsString("Route::put('transfers/{id}', 'FinalTransferController@update')", $routes);
-        $this->assertStringContainsString("Route::patch('transfers/{id}', 'FinalTransferController@update')", $routes);
+        // The parameter MUST be {transfer} (not {id}) so this later registration
+        // collides with — and overrides — the legacy Route::resource PUT/PATCH URI.
+        // With {id} the URIs differ and the legacy warehouse-based update wins.
+        $this->assertStringContainsString("Route::put('transfers/{transfer}', 'FinalTransferController@update')", $routes);
+        $this->assertStringContainsString("Route::patch('transfers/{transfer}', 'FinalTransferController@update')", $routes);
     }
 
     private function fixture(): array

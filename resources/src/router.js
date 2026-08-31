@@ -554,17 +554,75 @@ const baseRoutes = [
                     ),
                 redirect: "/app/transfers/list",
                 children: [
+                    // C3.24–C3.26 — Cutover LOCAL de Traslados a px-next.
+                    // Las rutas reales conservan sus names (index_transfer /
+                    // store_transfer / edit_transfer / detail_transfer) y ahora
+                    // renderizan las vistas px-next. Los alias *-classic siguen
+                    // apuntando a las vistas legacy para rollback por URL.
                     {
                         name: "index_transfer",
                         path: "list",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-list" */ "./views/app/pages/transfers/next/list.vue"
+                            )
+                    },
+                    {
+                        name: "store_transfer",
+                        path: "store",
+                        props: { mode: "create" },
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-form" */ "./views/app/pages/transfers/next/form.vue"
+                            )
+                    },
+                    {
+                        name: "edit_transfer",
+                        path: "edit/:id",
+                        props: { mode: "edit" },
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-form" */ "./views/app/pages/transfers/next/form.vue"
+                            )
+                    },
+                    {
+                        name: "detail_transfer",
+                        path: "detail/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-detail" */ "./views/app/pages/transfers/next/detail.vue"
+                            )
+                    },
+                    // Bandeja de recepciones px-next — ruta real del módulo
+                    // (además del punto de entrada global del header vanilla).
+                    {
+                        name: "transfer_receptions",
+                        path: "receptions",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-receive" */ "./views/app/pages/transfers/next/receive.vue"
+                            )
+                    },
+                    {
+                        name: "transfer_reception",
+                        path: "receptions/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-receive" */ "./views/app/pages/transfers/next/receive.vue"
+                            )
+                    },
+                    // Alias legacy explícitos para rollback por URL.
+                    {
+                        name: "index_transfer_classic",
+                        path: "list-classic",
                         component: () =>
                             import(
                                 /* webpackChunkName: "index_transfer" */ "./views/app/pages/transfers/index_transfer"
                             )
                     },
                     {
-                        name: "store_transfer",
-                        path: "store",
+                        name: "store_transfer_classic",
+                        path: "store-classic",
                         component: () =>
                             import(
                                 /* webpackChunkName: "store_transfer" */
@@ -572,16 +630,16 @@ const baseRoutes = [
                             )
                     },
                     {
-                        name: "edit_transfer",
-                        path: "edit/:id",
+                        name: "edit_transfer_classic",
+                        path: "edit-classic/:id",
                         component: () =>
                             import(
                                 /* webpackChunkName: "edit_transfer" */ "./views/app/pages/transfers/edit_transfer"
                             )
                     },
                     {
-                        name: "detail_transfer",
-                        path: "detail/:id",
+                        name: "detail_transfer_classic",
+                        path: "detail-classic/:id",
                         component: () =>
                             import(
                                 /* webpackChunkName: "detail_transfer" */ "./views/app/pages/transfers/detail_transfer"
@@ -3865,6 +3923,20 @@ if (process.env.NODE_ENV !== "production") {
                 { path: "vendidos", name: "px_next_serial_sold_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-sold" */ "./views/app/reports/next/serials/sold.vue") },
                 { path: "inventario", name: "px_next_serial_inventory_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-inventory" */ "./views/app/reports/next/serials/inventory.vue") },
                 { path: "movimientos", name: "px_next_serial_movement_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-movements" */ "./views/app/reports/next/serials/movements.vue") }
+            ]
+        },
+        {
+            // Fase C3.24–C3.26 — Traslados px-next: alias dev-only conservados
+            // como referencia tras el cutover. Las rutas reales /app/transfers/*
+            // ya renderizan estas mismas vistas; la bandeja de recepciones vive
+            // en la ruta real /app/transfers/receptions.
+            path: "/app/_ui/traslados",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_transfer_list_preview", component: () => import(/* webpackChunkName: "px-next-transfer-list" */ "./views/app/pages/transfers/next/list.vue") },
+                { path: "nuevo", name: "px_next_transfer_create_preview", component: () => import(/* webpackChunkName: "px-next-transfer-form" */ "./views/app/pages/transfers/next/form.vue"), props: { mode: "create" } },
+                { path: ":id/editar", name: "px_next_transfer_edit_preview", component: () => import(/* webpackChunkName: "px-next-transfer-form" */ "./views/app/pages/transfers/next/form.vue"), props: { mode: "edit" } },
+                { path: ":id", name: "px_next_transfer_detail_preview", component: () => import(/* webpackChunkName: "px-next-transfer-detail" */ "./views/app/pages/transfers/next/detail.vue") }
             ]
         }
     );

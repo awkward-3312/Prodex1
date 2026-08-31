@@ -18,8 +18,14 @@ Route::middleware($transferMiddleware)->group(function () {
     // the modern business rules without maintaining two lifecycle semantics.
     Route::get('transfers', 'FinalTransferController@index');
     Route::post('transfers', 'FinalTransferController@store');
-    Route::put('transfers/{id}', 'FinalTransferController@update');
-    Route::patch('transfers/{id}', 'FinalTransferController@update');
+    // The {transfer} parameter name (not {id}) is deliberate: it collides with the
+    // legacy Route::resource('transfers', 'TransferController') PUT/PATCH URI in
+    // tenant_api.php so this later registration actually overrides it. With {id}
+    // the URIs differ and the resource route wins, sending edits back to the
+    // legacy warehouse-based update. FinalTransferController@update takes the value
+    // positionally into its $id argument, exactly like the legacy controller.
+    Route::put('transfers/{transfer}', 'FinalTransferController@update');
+    Route::patch('transfers/{transfer}', 'FinalTransferController@update');
 
     // Historical transfer list actions still POST to these URIs. Route them to
     // the explicit workflow so approval is authorization only; physical stock
