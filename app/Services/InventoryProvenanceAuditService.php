@@ -17,9 +17,21 @@ use Illuminate\Support\Facades\Schema;
  *
  * Baseline = inventory_transition_states.last_reconciled_at, o si no, el
  * created_at más reciente de los movimientos `legacy_product_warehouse_backfill`.
+ * Los movimientos de reconciliación incremental
+ * (`legacy_product_warehouse_incremental_reconciliation`) NO mueven ese timestamp
+ * global — son por clave (product+variant), nunca un rebaseline del almacén.
+ *
+ * Categorías de provenance de un movimiento location:
+ *   - RECONCILIATION legacy→location: `legacy_product_warehouse_backfill` (baseline
+ *     inicial de almacén vacío) y `legacy_product_warehouse_incremental_reconciliation`
+ *     (aplicación quirúrgica de una fila LEGACY_ONLY_PENDING validada). Ambos
+ *     CUENTAN como baseline_quantity de su clave y NO como net posterior: no son
+ *     mirror dual_write ni actividad location-native.
+ *   - MIRROR dual_write: DUAL_WRITE_MIRROR_REFS (ver matchLegacyEventToLocationMovement).
+ *   - LOCATION-NATIVE: todo lo demás (dispatch, receipt, POS bridge, ajuste…).
  *
  * Por cada (product_id, variant_key) del almacén:
- *   baseline_quantity        = Σ movimientos legacy_product_warehouse_backfill
+ *   baseline_quantity        = Σ movimientos de RECONCILIATION legacy→location
  *   post_baseline_net        = Σ (± quantity) de movimientos posteriores al baseline
  *   expected_location        = baseline_quantity + post_baseline_net
  *   snapshot_drift           = location_now - expected_location   (métrica DIAGNÓSTICA)
@@ -41,6 +53,23 @@ use Illuminate\Support\Facades\Schema;
 class InventoryProvenanceAuditService
 {
     private const EPS = 0.0005;
+
+    /** Baseline inicial: backfill de un almacén vacío. */
+    public const BACKFILL_REF = 'legacy_product_warehouse_backfill';
+
+    /**
+     * Reconciliación incremental quirúrgica: aplica una fila LEGACY_ONLY_PENDING
+     * previamente validada (planIncremental). Igual que BACKFILL_REF, cuenta como
+     * baseline_quantity de SU clave y queda fuera del net posterior — NUNCA es
+     * native_net ni mirror. NO mueve el baseline global del almacén.
+     */
+    public const INCREMENTAL_RECONCILIATION_REF = 'legacy_product_warehouse_incremental_reconciliation';
+
+    /** Movimientos que reconcilian legacy→location (baseline por clave). */
+    public const RECONCILIATION_REFS = [
+        self::BACKFILL_REF,
+        self::INCREMENTAL_RECONCILIATION_REF,
+    ];
 
     /**
      * reference_type generados EXCLUSIVAMENTE por el mirror dual_write
@@ -312,8 +341,11 @@ class InventoryProvenanceAuditService
         }
 
         if ($locationIds && Schema::hasTable('inventory_location_movements')) {
+            // SÓLO el backfill inicial fija el baseline temporal del almacén. La
+            // reconciliación incremental es por clave y NO debe adelantar este
+            // timestamp (borraría la historia post-baseline de otras claves).
             $ts = DB::table('inventory_location_movements')
-                ->where('reference_type', 'legacy_product_warehouse_backfill')
+                ->where('reference_type', self::BACKFILL_REF)
                 ->whereIn('to_inventory_location_id', $locationIds)
                 ->max('created_at');
             if ($ts) return (string) $ts;
@@ -328,7 +360,7 @@ class InventoryProvenanceAuditService
 
         $map = [];
         foreach (DB::table('inventory_location_movements')
-            ->where('reference_type', 'legacy_product_warehouse_backfill')
+            ->whereIn('reference_type', self::RECONCILIATION_REFS)
             ->whereIn('to_inventory_location_id', $locationIds)
             ->groupBy('product_id', DB::raw('COALESCE(product_variant_id, 0)'))
             ->selectRaw('product_id, COALESCE(product_variant_id, 0) as vk, SUM(quantity) as q')
@@ -349,7 +381,11 @@ class InventoryProvenanceAuditService
         if (! $locationIds || ! Schema::hasTable('inventory_location_movements')) return [[], []];
 
         $query = DB::table('inventory_location_movements')
-            ->where('reference_type', '!=', 'legacy_product_warehouse_backfill')
+            // Los movimientos de RECONCILIATION legacy→location (backfill inicial
+            // + reconciliación incremental) son baseline_quantity de su clave,
+            // nunca net posterior: fuera de este cálculo (y por tanto fuera de
+            // native_net, que es lo que arma el safety guard de runtime).
+            ->whereNotIn('reference_type', self::RECONCILIATION_REFS)
             ->whereNotIn('movement_type', ['reserve', 'release'])
             ->where(function ($w) use ($locationIds) {
                 $w->whereIn('from_inventory_location_id', $locationIds)

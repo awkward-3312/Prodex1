@@ -119,8 +119,56 @@ class InventoryLegacyDivergenceContractTest extends TestCase
 
         $this->assertStringContainsString('--plan', $src);
         $this->assertStringContainsString('planIncremental($warehouseId)', $src);
-        // --plan y --apply son mutuamente excluyentes.
-        $this->assertStringContainsString("Usa --plan (sólo lectura) o --apply, no ambos.", $src);
+        // --plan / --apply / --apply-incremental son mutuamente excluyentes.
+        $this->assertStringContainsString("count(array_filter([\$apply, \$plan, \$applyIncremental])) > 1", $src);
+        $this->assertStringContainsString('Usa sólo uno de --plan', $src);
+    }
+
+    public function test_reconcile_command_has_incremental_apply_mode_distinct_from_backfill(): void
+    {
+        $cmd = $this->read('app/Console/Commands/ProdexInventoryReconcile.php');
+        // Operación explícita separada del --apply (backfill de almacén vacío).
+        $this->assertStringContainsString('--apply-incremental', $cmd);
+        $this->assertStringContainsString('--apply-incremental requiere exactamente un --tenants=<tenant>.', $cmd);
+        $this->assertStringContainsString('--apply-incremental requiere --warehouse=<id>.', $cmd);
+        $this->assertStringContainsString('--product sólo aplica junto con --apply-incremental.', $cmd);
+        $this->assertStringContainsString('$service->applyIncremental($warehouseId, $pid, $expect)', $cmd);
+        // Summary distingue ADD candidates / MANUAL_REVIEW / failures (ya no
+        // "0 pending differences" cuando hay ADD).
+        $this->assertStringContainsString('%d ADD candidates, %d MANUAL_REVIEW, %d failures.', $cmd);
+        $this->assertStringContainsString('%d applied, %d MANUAL_REVIEW, %d failures.', $cmd);
+
+        $svc = $this->read('app/Services/LegacyInventoryReconciliationService.php');
+        $this->assertStringContainsString('public function applyIncremental(int $warehouseId, ?int $productId = null, ?array $expect = null, ?int $userId = null): array', $svc);
+        // Revalida provenance DENTRO de la transacción (nunca un plan viejo).
+        $this->assertStringContainsString('$planNow = $this->planIncremental($warehouseId);', $svc);
+        $this->assertStringContainsString('El plan quedó obsoleto para el producto', $svc);
+        // Sólo LEGACY_ONLY_PENDING + ADD; delta > 0; nunca auto-decremento.
+        $this->assertStringContainsString("\$r['action'] !== 'ADD' || \$r['classification'] !== 'LEGACY_ONLY_PENDING'", $svc);
+        $this->assertStringContainsString('nunca se aplica auto-decremento', $svc);
+        // Suma sólo el delta vía InventoryService::increase(), nunca adjustTo().
+        $this->assertStringContainsString('$inventory->increase(', $svc);
+        $this->assertStringNotContainsString('$inventory->adjustTo(', $svc);
+        // Idempotencia por fingerprint del estado revisado, no warehouse:product:variant:delta.
+        $this->assertStringContainsString("'legacy-incremental-reconcile:'.\$warehouseId.':'.\$pid.':'.\$variantKey.':'.\$fingerprint", $svc);
+        $this->assertStringContainsString("'reconciliation_fingerprint' => \$fingerprint", $svc);
+        // Postcondición: re-audit sólo de las claves aplicadas; rollback si falla.
+        $this->assertStringContainsString('La postcondición falló para la clave', $svc);
+        $this->assertStringContainsString("in_array(\$row['classification'], ['LEGACY_ONLY_PENDING', 'UNKNOWN_REVIEW'], true)", $svc);
+    }
+
+    public function test_incremental_reconciliation_ref_is_a_baseline_category_not_native_net(): void
+    {
+        $prov = $this->read('app/Services/InventoryProvenanceAuditService.php');
+        $this->assertStringContainsString("public const INCREMENTAL_RECONCILIATION_REF = 'legacy_product_warehouse_incremental_reconciliation';", $prov);
+        $this->assertStringContainsString('public const RECONCILIATION_REFS = [', $prov);
+        // Cuenta como baseline_quantity de su clave...
+        $this->assertStringContainsString('->whereIn(\'reference_type\', self::RECONCILIATION_REFS)', $prov);
+        // ...y queda FUERA del net posterior (por tanto fuera de native_net).
+        $this->assertStringContainsString('->whereNotIn(\'reference_type\', self::RECONCILIATION_REFS)', $prov);
+        // NO mueve el baseline temporal global del almacén (sólo BACKFILL_REF).
+        $this->assertStringContainsString("->where('reference_type', self::BACKFILL_REF)", $prov);
+        $this->assertStringContainsString('NO debe adelantar este', $prov);
     }
 
     public function test_whole_warehouse_backfill_refuses_non_empty_main_and_points_to_incremental(): void

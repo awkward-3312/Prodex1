@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\InventoryLocation;
+use App\Models\InventoryLocationMovement;
 use App\Models\InventoryLocationStock;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class LegacyInventoryReconciliationService
 {
+    private const EPS = 0.0005;
+
     public function auditWarehouse(int $warehouseId): array
     {
         $warehouse = $this->warehouse($warehouseId);
@@ -245,6 +248,268 @@ class LegacyInventoryReconciliationService
             // Diagnóstico: NO es cantidad a aplicar.
             'snapshot_drift_total' => $provenance['snapshot_drift_total'],
         ];
+    }
+
+    /**
+     * Aplica físicamente filas LEGACY_ONLY_PENDING previamente validadas por
+     * planIncremental(), de forma QUIRÚRGICA y REVALIDADA en el instante del apply.
+     *
+     * NO reutiliza backfillWarehouse() (init de almacén vacío). Suma SÓLO la
+     * cantidad legacy no migrada, vía InventoryService::increase() sobre la
+     * ubicación destino apta — nunca adjustTo() del total legacy. product_warehouse
+     * NO se toca.
+     *
+     * Todo ocurre en UNA transacción:
+     *   1. lock del warehouse (+ estado de transición si existe);
+     *   2. se reconstruye provenance DENTRO de la transacción (nunca se confía en
+     *      un plan viejo);
+     *   3. cada fila objetivo debe seguir siendo classification LEGACY_ONLY_PENDING
+     *      con action ADD (destino apto y estable, producto simple, sin
+     *      lote/serie/IMEI, sin reservado, sin tránsito de salida, delta > 0, sin
+     *      negativos);
+     *   4. si se pasa $expect (plan previo), delta / legacy / location_before /
+     *      classification recalculados deben COINCIDIR exactamente; cualquier
+     *      cambio => ValidationException => rollback total, 0 escrituras;
+     *   5. con $productId explícito, si ESE producto no es un ADD limpio => abort
+     *      total; sin $productId, las filas no seguras van a manual_review sin
+     *      abortar (los ADD limpios se aplican de forma atómica);
+     *   6. increase() idempotente por fingerprint del estado revisado
+     *      (baseline_at + legacy + location_before + delta), no por
+     *      warehouse:product:variant:delta;
+     *   7. postcondición: re-audit; SÓLO las claves aplicadas deben quedar SIN
+     *      LEGACY_ONLY_PENDING / SIN UNKNOWN_REVIEW y con ubicación = before + delta;
+     *      si falla => rollback total.
+     *
+     * @param  array<string,array{delta?:float,legacy?:float,location_before?:float,classification?:string}>|null  $expect
+     *         plan previo por "productId:variantKey"; si difiere del recálculo => abort.
+     */
+    public function applyIncremental(int $warehouseId, ?int $productId = null, ?array $expect = null, ?int $userId = null): array
+    {
+        return DB::transaction(function () use ($warehouseId, $productId, $expect, $userId) {
+            $warehouse = Warehouse::whereNull('deleted_at')->whereKey($warehouseId)->lockForUpdate()->firstOrFail();
+
+            // Lock del estado de transición relevante. NO se modifica: la
+            // reconciliación incremental es por evento/clave, jamás un rebaseline.
+            if (Schema::hasTable('inventory_transition_states')) {
+                DB::table('inventory_transition_states')
+                    ->where('warehouse_id', $warehouseId)
+                    ->lockForUpdate()->get();
+            }
+
+            $strict = $productId !== null;
+
+            // (2) Provenance reconstruido AHORA, dentro de la transacción.
+            $planNow = $this->planIncremental($warehouseId);
+            $target = $this->eligibleLegacyTargetLocation($warehouse);
+            $baselineAt = $planNow['baseline_at'];
+
+            $rows = $planNow['plan'];
+            if ($productId !== null) {
+                $rows = array_values(array_filter($rows, fn ($r) => (int) $r['product_id'] === $productId));
+                if (! $rows) {
+                    throw ValidationException::withMessages([
+                        'apply_incremental' => "El producto {$productId} no tiene ninguna fila LEGACY_ONLY_PENDING pendiente en el almacén {$warehouseId} "
+                            .'(¿ya reconciliado o cambió el estado?). 0 escrituras.',
+                    ]);
+                }
+            }
+
+            $inventory = app(InventoryService::class);
+            $applied = [];
+            $skippedAlreadyApplied = [];
+            $manualReview = [];
+            $appliedKeys = [];
+
+            foreach ($rows as $r) {
+                $pid = (int) $r['product_id'];
+                $variantKey = (int) ($r['product_variant_id'] ?: 0);
+                $key = $pid.':'.$variantKey;
+                $variantId = $variantKey > 0 ? $variantKey : null;
+
+                // (3) Debe ser un ADD limpio (LEGACY_ONLY_PENDING, sin reasons).
+                if ($r['action'] !== 'ADD' || $r['classification'] !== 'LEGACY_ONLY_PENDING') {
+                    if ($strict) {
+                        throw ValidationException::withMessages([
+                            'apply_incremental' => "El producto {$pid} (var ".($variantId ?? 'simple').") no es candidato ADD seguro: {$r['classification']}"
+                                .($r['reasons'] ? ' ('.implode(',', $r['reasons']).')' : '').'. Abort total, 0 escrituras.',
+                        ]);
+                    }
+                    $manualReview[] = [
+                        'product_id' => $pid, 'product_variant_id' => $variantId,
+                        'classification' => $r['classification'], 'reasons' => $r['reasons'],
+                    ];
+                    continue;
+                }
+
+                $delta = $this->decimal((float) $r['delta']);
+                $legacyNow = $this->decimal((float) $r['legacy']);
+                $locationBefore = $this->decimal((float) $r['warehouse_location_quantity']);
+                $targetLocationId = (int) $r['target_inventory_location_id'];
+
+                // (G) Sólo ADD positivo demostrado — nunca auto-decremento.
+                if ($delta <= self::EPS) {
+                    if ($strict) {
+                        throw ValidationException::withMessages([
+                            'apply_incremental' => "El producto {$pid} tiene delta {$delta} <= 0: nunca se aplica auto-decremento. Abort.",
+                        ]);
+                    }
+                    $manualReview[] = [
+                        'product_id' => $pid, 'product_variant_id' => $variantId,
+                        'classification' => $r['classification'], 'reasons' => ['delta_no_positivo'],
+                    ];
+                    continue;
+                }
+
+                // (4) Revalidación contra el plan previo (si se pasó): nunca aplicar
+                //     ciegamente un plan obsoleto.
+                if ($expect !== null) {
+                    $e = $expect[$key] ?? null;
+                    $eLocBefore = $e['location_before'] ?? $e['warehouse_location_quantity'] ?? null;
+                    if ($e === null
+                        || abs(((float) ($e['delta'] ?? INF)) - $delta) > self::EPS
+                        || abs(((float) ($e['legacy'] ?? INF)) - $legacyNow) > self::EPS
+                        || $eLocBefore === null
+                        || abs(((float) $eLocBefore) - $locationBefore) > self::EPS
+                        || (isset($e['classification']) && $e['classification'] !== $r['classification'])) {
+                        throw ValidationException::withMessages([
+                            'apply_incremental' => "El plan quedó obsoleto para el producto {$pid}: el estado (legacy/ubicación/delta/clasificación) "
+                                .'cambió desde que se generó. No se aplica el plan viejo. Vuelve a ejecutar --plan. 0 escrituras.',
+                        ]);
+                    }
+                }
+
+                // (5) Re-aserción dura: destino apto, estable y el mismo del plan.
+                $targetModel = $target?->fresh();
+                if ($target === null
+                    || (int) $target->id !== $targetLocationId
+                    || ! $this->locationIsEligibleTarget($targetModel, $warehouseId)) {
+                    throw ValidationException::withMessages([
+                        'apply_incremental' => "El producto {$pid} no tiene una ubicación destino apta y estable "
+                            .'(storage activa, no cuarentena, del almacén, la misma del plan). Abort.',
+                    ]);
+                }
+
+                // (H) Batch / IMEI: jamás reconciliación quantity-only.
+                if (in_array($pid, $this->trackedProductIds([$pid]), true)) {
+                    if ($strict) {
+                        throw ValidationException::withMessages([
+                            'apply_incremental' => "El producto {$pid} es batch-tracked o IMEI: la reconciliación quantity-only no migra lotes/seriales. "
+                                .'MANUAL_REVIEW. Abort.',
+                        ]);
+                    }
+                    $manualReview[] = [
+                        'product_id' => $pid, 'product_variant_id' => $variantId,
+                        'classification' => $r['classification'], 'reasons' => ['lote_o_serie'],
+                    ];
+                    continue;
+                }
+
+                // (C) Idempotencia por fingerprint del estado revisado — NO por
+                //     warehouse:product:variant:delta (el mismo delta puede repetirse
+                //     legítimamente en el futuro con otro location_before).
+                $fingerprint = sha1((string) json_encode([
+                    'op' => 'legacy_incremental_reconciliation',
+                    'warehouse_id' => $warehouseId,
+                    'product_id' => $pid,
+                    'variant_key' => $variantKey,
+                    'baseline_at' => $baselineAt,
+                    'legacy_quantity' => $legacyNow,
+                    'location_before' => $locationBefore,
+                    'delta' => $delta,
+                ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+                $idempotencyKey = 'legacy-incremental-reconcile:'.$warehouseId.':'.$pid.':'.$variantKey.':'.$fingerprint;
+
+                $existing = InventoryLocationMovement::where('reference_type', InventoryProvenanceAuditService::INCREMENTAL_RECONCILIATION_REF)
+                    ->where('idempotency_key', $idempotencyKey)
+                    ->lockForUpdate()
+                    ->first();
+                if ($existing) {
+                    $skippedAlreadyApplied[] = [
+                        'product_id' => $pid, 'product_variant_id' => $variantId,
+                        'delta' => $delta, 'movement_id' => (int) $existing->id, 'idempotency_key' => $idempotencyKey,
+                    ];
+                    continue;
+                }
+
+                $tenantId = function_exists('tenant') ? (tenant('id') ?? null) : null;
+
+                // (D) increase SÓLO del delta legacy no migrado.
+                $movement = $inventory->increase(
+                    $targetLocationId,
+                    $pid,
+                    $delta,
+                    $variantId,
+                    [
+                        'user_id' => $userId,
+                        'reference_type' => InventoryProvenanceAuditService::INCREMENTAL_RECONCILIATION_REF,
+                        'reference_id' => $warehouseId.':'.$pid.':'.$variantKey,
+                        'idempotency_key' => $idempotencyKey,
+                        'notes' => 'Reconciliación incremental de cantidad legacy no migrada; product_warehouse permanece intacto.',
+                        'metadata' => [
+                            'operation' => 'legacy_incremental_reconciliation',
+                            'tenant' => $tenantId,
+                            'warehouse_id' => $warehouseId,
+                            'product_id' => $pid,
+                            'variant_id' => $variantId,
+                            'legacy_quantity' => $legacyNow,
+                            'location_before' => $locationBefore,
+                            'delta' => $delta,
+                            'baseline_at' => $baselineAt,
+                            'classification_before' => 'LEGACY_ONLY_PENDING',
+                            'reconciliation_fingerprint' => $fingerprint,
+                        ],
+                    ]
+                );
+
+                $appliedKeys[$key] = ['location_before' => $locationBefore, 'delta' => $delta];
+                $applied[] = [
+                    'product_id' => $pid,
+                    'product_variant_id' => $variantId,
+                    'delta' => $delta,
+                    'legacy_quantity' => $legacyNow,
+                    'location_before' => $locationBefore,
+                    'location_after' => $this->decimal($locationBefore + $delta),
+                    'movement_id' => (int) $movement->id,
+                    'idempotency_key' => $idempotencyKey,
+                ];
+            }
+
+            // (E) Postcondición: re-audit; SÓLO sobre las claves realmente aplicadas.
+            if ($appliedKeys) {
+                $after = app(InventoryProvenanceAuditService::class)->auditWarehouse($warehouseId);
+                $afterByKey = [];
+                foreach ($after['keys'] as $row) {
+                    $afterByKey[((int) $row['product_id']).':'.((int) ($row['product_variant_id'] ?: 0))] = $row;
+                }
+                foreach ($appliedKeys as $key => $exp) {
+                    $row = $afterByKey[$key] ?? null;
+                    $expectedLoc = $this->decimal($exp['location_before'] + $exp['delta']);
+                    if ($row === null
+                        || in_array($row['classification'], ['LEGACY_ONLY_PENDING', 'UNKNOWN_REVIEW'], true)
+                        || abs((float) $row['current_location'] - $expectedLoc) > self::EPS) {
+                        throw ValidationException::withMessages([
+                            'apply_incremental' => "La postcondición falló para la clave {$key} (clasificación "
+                                .($row['classification'] ?? 'AUSENTE').', ubicación '.($row['current_location'] ?? 'n/d')
+                                .", esperada {$expectedLoc}). Rollback total.",
+                        ]);
+                    }
+                }
+            }
+
+            return [
+                'warehouse_id' => $warehouse->id,
+                'warehouse_name' => $warehouse->name,
+                'inventory_location_id' => $target?->id,
+                'baseline_at' => $baselineAt,
+                'applied' => $applied,
+                'applied_count' => count($applied),
+                'applied_total_delta' => $this->decimal(array_sum(array_column($applied, 'delta'))),
+                'skipped_already_applied' => $skippedAlreadyApplied,
+                'skipped_already_applied_count' => count($skippedAlreadyApplied),
+                'manual_review' => $manualReview,
+                'manual_review_count' => count($manualReview),
+            ];
+        }, 3);
     }
 
     public function backfillWarehouse(int $warehouseId, ?int $userId = null): array
