@@ -38,6 +38,24 @@
                   </validation-provider>
                 </b-col>
 
+                <!-- inventory location (#81 · sólo para registros location-aware) -->
+                <b-col md="6" class="mb-3" v-if="record_is_location_aware">
+                  <validation-provider name="inventory_location" :rules="{ required: true }">
+                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                      <v-select
+                        :class="{'is-invalid': !!errors.length}"
+                        :state="errors[0] ? false : (valid ? true : null)"
+                        :disabled="details.length > 0"
+                        v-model="adjustment.inventory_location_id"
+                        :reduce="label => label.value"
+                        :placeholder="$t('Choose_Inventory_Location')"
+                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
+                      />
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
                 <!-- date  -->
                 <b-col lg="6" md="6" sm="12">
                   <validation-provider
@@ -359,10 +377,13 @@ export default {
       warehouses: [],
       products: [],
       details: [],
+      inventory_locations: [],
+      record_is_location_aware: false,
       adjustment: {
         id: "",
         notes: "",
         warehouse_id: "",
+        inventory_location_id: "",
         date: ""
       },
       product: {
@@ -925,6 +946,9 @@ export default {
         axios
           .put(`adjustments/${id}`, {
             warehouse_id: this.adjustment.warehouse_id,
+            // #81 — sólo se envía para registros location-aware; para registros
+            // legacy va null y el backend conserva la lógica histórica.
+            inventory_location_id: this.record_is_location_aware ? this.adjustment.inventory_location_id : null,
             date: this.adjustment.date,
             notes: this.adjustment.notes,
             details: this.buildSubmitDetails()
@@ -1005,6 +1029,13 @@ export default {
           this.adjustment = response.data.adjustment;
           this.details = response.data.details;
           this.warehouses = response.data.warehouses;
+          // #81 — registro location-aware: mostrar y cargar el select de ubicación.
+          this.record_is_location_aware = !!(this.adjustment && this.adjustment.inventory_location_id);
+          if (this.record_is_location_aware) {
+            axios.get("adjustments_inventory_locations/" + this.adjustment.warehouse_id)
+              .then(r => { this.inventory_locations = (r.data && r.data.locations) || []; })
+              .catch(() => { this.inventory_locations = []; });
+          }
           this.Get_Products_By_Warehouse(this.adjustment.warehouse_id);
           // Pharmacy: hydrate available_batches for any preloaded batch-tracked lines so
           // the picker dropdown has options when the user opens the edit page.

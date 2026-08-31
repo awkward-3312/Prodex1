@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\UserWarehouse;
 use App\Models\Warehouse;
 use App\Services\BatchService;
+use App\Services\LocationAwareAdjustmentService;
 use App\utils\helpers;
 use ArPHP\I18N\Arabic;
 use Carbon\Carbon;
@@ -120,6 +121,12 @@ class AdjustmentController extends BaseController
     {
 
         $this->authorizeForUser($request->user('api'), 'create', Adjustment::class);
+
+        // (#81) Flujo location-aware: el request trae inventory_location_id
+        // explícita => NO se toca product_warehouse.
+        if ($request->filled('inventory_location_id')) {
+            return $this->storeLocationAware($request);
+        }
 
         // define validation rules
         $productionRules = [
@@ -356,6 +363,12 @@ class AdjustmentController extends BaseController
         // Backward compatibility: If record_view is null, fall back to role permission check
         $view_records = $user->hasRecordView();
         $current_adjustment = Adjustment::findOrFail($id);
+
+        // (#81) Registro location-aware => reversa + re-aplicación location-native.
+        // Registro legacy (inventory_location_id NULL) => lógica histórica intacta.
+        if ($current_adjustment->inventory_location_id !== null) {
+            return $this->updateLocationAware($request, $current_adjustment);
+        }
 
          /**
          * Warehouses restriction
@@ -729,6 +742,11 @@ class AdjustmentController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'delete', Adjustment::class);
 
+        $preload = Adjustment::findOrFail($id);
+        if ($preload->inventory_location_id !== null) {
+            return $this->destroyLocationAware($request, $preload);
+        }
+
         \DB::transaction(function () use ($id, $request) {
             $user = Auth::user();
             // New way: Check user's record_view field (user-level boolean)
@@ -908,6 +926,172 @@ class AdjustmentController extends BaseController
                 'deleted_at' => Carbon::now(),
             ]);
 
+        }, 10);
+
+        return response()->json(['success' => true], 200);
+    }
+
+    // ================= #81 · Ajustes LOCATION-AWARE =====================
+    // inventory_location_id explícita en el registro => los movimientos viven
+    // en inventory_location_stocks / inventory_location_movements vía
+    // InventoryService; NUNCA se toca product_warehouse ni BatchService.
+
+    private function assertWarehouseAccess(int $warehouseId): void
+    {
+        $user = auth()->user();
+        if ($user && $user->is_all_warehouses) {
+            return;
+        }
+        $ids = UserWarehouse::where('user_id', $user->id ?? 0)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
+        abort_unless(in_array($warehouseId, $ids, true), 403, 'No tienes acceso a este almacén.');
+    }
+
+    /**
+     * Ubicaciones de inventario ACTIVAS del almacén — para el select obligatorio
+     * "Ubicación de inventario" de Create/Edit Adjustment y Damage. Incluye
+     * cuarentena (es una ubicación física legítima).
+     */
+    public function inventoryLocationsForWarehouse(Request $request, $warehouseId)
+    {
+        $this->authorizeForUser($request->user('api'), 'create', Adjustment::class);
+        $warehouseId = (int) $warehouseId;
+
+        $user = auth()->user();
+        if (! ($user && $user->is_all_warehouses)) {
+            $ids = UserWarehouse::where('user_id', $user->id ?? 0)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
+            if (! in_array($warehouseId, $ids, true)) {
+                return response()->json(['locations' => [], 'default_inventory_location_id' => null]);
+            }
+        }
+
+        $locations = \App\Models\InventoryLocation::whereNull('deleted_at')
+            ->where('warehouse_id', $warehouseId)
+            ->where('is_active', 1)
+            ->orderBy('code')
+            ->get(['id', 'code', 'name', 'type', 'is_quarantine']);
+
+        $default = \App\Models\Warehouse::whereNull('deleted_at')->whereKey($warehouseId)->value('default_inventory_location_id');
+        // La default sólo se PRESELECCIONA en frontend si es apta (storage, no cuarentena, activa).
+        $defaultEligible = $default && $locations->firstWhere(fn ($l) => (int) $l->id === (int) $default && $l->type === 'storage' && ! $l->is_quarantine);
+
+        return response()->json([
+            'locations' => $locations,
+            'default_inventory_location_id' => $defaultEligible ? (int) $default : null,
+        ]);
+    }
+
+    private function storeLocationAware(Request $request)
+    {
+        $request->validate([
+            'warehouse_id' => 'required|integer',
+            'inventory_location_id' => 'required|integer',
+            'details' => 'required|array|min:1',
+        ]);
+
+        $warehouseId = (int) $request->warehouse_id;
+        $locationId = (int) $request->inventory_location_id;
+        $this->assertWarehouseAccess($warehouseId);
+
+        $svc = app(LocationAwareAdjustmentService::class);
+        $validated = $svc->validateRequest($warehouseId, $locationId, array_values($request->input('details', [])));
+
+        \DB::transaction(function () use ($request, $warehouseId, $locationId, $validated, $svc) {
+            $order = new Adjustment;
+            $order->date = $request->date;
+            $order->time = now()->toTimeString();
+            $order->Ref = $this->getNumberOrder();
+            $order->warehouse_id = $warehouseId;
+            $order->inventory_location_id = $locationId;
+            $order->notes = $request->notes;
+            $order->items = count($validated['lines']);
+            $order->user_id = Auth::id();
+            $order->save();
+
+            $lines = [];
+            foreach ($validated['lines'] as $ln) {
+                $detail = AdjustmentDetail::create([
+                    'adjustment_id' => $order->id,
+                    'quantity' => $ln['quantity'],
+                    'product_id' => $ln['product_id'],
+                    'product_variant_id' => $ln['product_variant_id'],
+                    'type' => $ln['type'],
+                ]);
+                $lines[] = $ln + ['detail_id' => $detail->id];
+            }
+
+            $svc->apply($order->id, $warehouseId, $locationId, $lines, 'create');
+        }, 10);
+
+        return response()->json(['success' => true]);
+    }
+
+    private function updateLocationAware(Request $request, Adjustment $current)
+    {
+        $request->validate([
+            'warehouse_id' => 'required|integer',
+            'inventory_location_id' => 'required|integer',
+            'details' => 'required|array|min:1',
+        ]);
+
+        $newWarehouseId = (int) $request->warehouse_id;
+        $newLocationId = (int) $request->inventory_location_id;
+        $this->assertWarehouseAccess((int) $current->warehouse_id);
+        $this->assertWarehouseAccess($newWarehouseId);
+
+        $engine = app(\App\Services\LocationAwareStockDocumentService::class);
+        $svc = app(LocationAwareAdjustmentService::class);
+        $validated = $svc->validateRequest($newWarehouseId, $newLocationId, array_values($request->input('details', [])));
+
+        \DB::transaction(function () use ($request, $current, $newWarehouseId, $newLocationId, $validated, $svc, $engine) {
+            // 1) revertir el efecto viejo con ubicación / warehouse / detalles ORIGINALES.
+            $oldDetails = AdjustmentDetail::where('adjustment_id', $current->id)->get();
+            $svc->reverse(
+                $current->id, (int) $current->warehouse_id, (int) $current->inventory_location_id,
+                $engine->hydrateLines($oldDetails), 'update'
+            );
+
+            // 2) reemplazar detalles.
+            AdjustmentDetail::where('adjustment_id', $current->id)->delete();
+            $lines = [];
+            foreach ($validated['lines'] as $ln) {
+                $detail = AdjustmentDetail::create([
+                    'adjustment_id' => $current->id,
+                    'quantity' => $ln['quantity'],
+                    'product_id' => $ln['product_id'],
+                    'product_variant_id' => $ln['product_variant_id'],
+                    'type' => $ln['type'],
+                ]);
+                $lines[] = $ln + ['detail_id' => $detail->id];
+            }
+
+            // 3) aplicar el efecto nuevo en la ubicación nueva.
+            $svc->apply($current->id, $newWarehouseId, $newLocationId, $lines, 'update');
+
+            $current->update([
+                'warehouse_id' => $newWarehouseId,
+                'inventory_location_id' => $newLocationId,
+                'notes' => $request->notes,
+                'date' => $request->date,
+                'items' => count($validated['lines']),
+            ]);
+        }, 10);
+
+        return response()->json(['success' => true]);
+    }
+
+    private function destroyLocationAware(Request $request, Adjustment $current)
+    {
+        $this->assertWarehouseAccess((int) $current->warehouse_id);
+        $engine = app(\App\Services\LocationAwareStockDocumentService::class);
+
+        \DB::transaction(function () use ($current, $engine) {
+            $details = AdjustmentDetail::where('adjustment_id', $current->id)->get();
+            app(LocationAwareAdjustmentService::class)->reverse(
+                $current->id, (int) $current->warehouse_id, (int) $current->inventory_location_id,
+                $engine->hydrateLines($details), 'destroy'
+            );
+            $current->details()->delete();
+            $current->update(['deleted_at' => Carbon::now()]);
         }, 10);
 
         return response()->json(['success' => true], 200);

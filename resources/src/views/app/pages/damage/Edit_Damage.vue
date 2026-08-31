@@ -33,6 +33,24 @@
                   </validation-provider>
                 </b-col>
 
+                <!-- inventory location (#81 · sólo para registros location-aware) -->
+                <b-col md="6" class="mb-3" v-if="record_is_location_aware">
+                  <validation-provider name="inventory_location" :rules="{ required: true }">
+                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                      <v-select
+                        :class="{'is-invalid': !!errors.length}"
+                        :state="errors[0] ? false : (valid ? true : null)"
+                        :disabled="details.length > 0"
+                        v-model="damage.inventory_location_id"
+                        :reduce="label => label.value"
+                        :placeholder="$t('Choose_Inventory_Location')"
+                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
+                      />
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
                 <!-- date  -->
                 <b-col lg="6" md="6" sm="12">
                   <validation-provider name="date" :rules="{ required: true}" v-slot="validationContext">
@@ -259,7 +277,9 @@ export default {
       warehouses: [],
       products: [],
       details: [],
-      damage: { id: "", notes: "", warehouse_id: "", date: "" },
+      inventory_locations: [],
+      record_is_location_aware: false,
+      damage: { id: "", notes: "", warehouse_id: "", inventory_location_id: "", date: "" },
       product: { id: "", code: "", current: "", quantity: 1, name: "", product_id: "", detail_id: "", product_variant_id: "", del: "", unit: "", is_batch_tracked: false, batches: [], available_batches: [], batches_loading: false }
     };
   },
@@ -545,7 +565,7 @@ export default {
       if (this.verifiedForm()) {
         this.SubmitProcessing = true; NProgress.start(); NProgress.set(0.1);
         let id = this.$route.params.id;
-        axios.put(`damages/${id}`, { warehouse_id: this.damage.warehouse_id, date: this.damage.date, notes: this.damage.notes, details: this.buildSubmitDetails() })
+        axios.put(`damages/${id}`, { warehouse_id: this.damage.warehouse_id, inventory_location_id: this.record_is_location_aware ? this.damage.inventory_location_id : null, date: this.damage.date, notes: this.damage.notes, details: this.buildSubmitDetails() })
           .then(() => { NProgress.done(); this.SubmitProcessing = false; this.$router.push({ name: "index_damage" }); this.makeToast("success", this.$t("Successfully_Updated"), this.$t("Success")); })
           .catch(() => { NProgress.done(); this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed")); this.SubmitProcessing = false; });
       }
@@ -583,6 +603,12 @@ export default {
       let id = this.$route.params.id;
       axios.get(`damages/${id}/edit`).then(response => {
         this.damage = response.data.damage;
+        this.record_is_location_aware = !!(this.damage && this.damage.inventory_location_id);
+        if (this.record_is_location_aware) {
+          axios.get("damages_inventory_locations/" + this.damage.warehouse_id)
+            .then(r => { this.inventory_locations = (r.data && r.data.locations) || []; })
+            .catch(() => { this.inventory_locations = []; });
+        }
         this.details = response.data.details;
         this.warehouses = response.data.warehouses;
         this.Get_Products_By_Warehouse(this.damage.warehouse_id);

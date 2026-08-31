@@ -10,7 +10,7 @@ class Damage extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'date', 'Ref', 'user_id', 'warehouse_id', 'time',
+        'date', 'Ref', 'user_id', 'warehouse_id', 'inventory_location_id', 'time',
         'items', 'notes', 'source_type', 'source_id', 'transfer_id', 'source_locked',
         'created_at', 'updated_at', 'deleted_at',
     ];
@@ -18,6 +18,8 @@ class Damage extends Model
     protected $casts = [
         'user_id' => 'integer',
         'warehouse_id' => 'integer',
+        // NULL => registro legacy; NOT NULL => flujo location-aware (#81).
+        'inventory_location_id' => 'integer',
         'source_id' => 'integer',
         'transfer_id' => 'integer',
         'source_locked' => 'boolean',

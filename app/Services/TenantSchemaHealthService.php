@@ -50,6 +50,7 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_21_185000_add_inventory_locations_to_transfers.php',
         'database/migrations/tenant/2026_08_21_186000_create_transfer_detail_serials.php',
         'database/migrations/tenant/2026_08_21_187000_create_transfer_batch_issue_allocations.php',
+        'database/migrations/tenant/2026_08_31_000000_add_inventory_location_to_adjustments_and_damages.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -189,6 +190,10 @@ class TenantSchemaHealthService
         }
         if ($schema->hasTable('product_serials')) $this->requireColumns($schema, $missing, 'product_serials', ['inventory_location_id']);
         if ($schema->hasTable('product_serial_movements')) $this->requireColumns($schema, $missing, 'product_serial_movements', ['from_inventory_location_id', 'to_inventory_location_id']);
+
+        // #81 — Ajustes / Daños location-aware (NULL = registro legacy).
+        if ($schema->hasTable('adjustments')) $this->requireColumns($schema, $missing, 'adjustments', ['inventory_location_id']);
+        if ($schema->hasTable('damages')) $this->requireColumns($schema, $missing, 'damages', ['inventory_location_id']);
 
         return $missing;
     }
