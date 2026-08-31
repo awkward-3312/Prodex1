@@ -31,7 +31,7 @@ jobs:
       - name: Run organization scope tests
         run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php tests/Unit/BranchInventoryScopeServiceTest.php tests/Unit/BranchTransferReceivingScopeTest.php
       - name: Run inventory architecture tests
-        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php tests/Unit/InventoryReadServiceTest.php tests/Unit/BatchLocationServiceTest.php tests/Unit/SerialLocationServiceTest.php tests/Unit/InternalInventoryMoveServiceTest.php
+        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php tests/Unit/InventoryReadServiceTest.php tests/Unit/BatchLocationServiceTest.php tests/Unit/SerialLocationServiceTest.php tests/Unit/InternalInventoryMoveServiceTest.php tests/Unit/InventoryProvenanceAuditServiceTest.php tests/Unit/InventoryLegacyDivergenceContractTest.php tests/Unit/OpeningStockInventoryServiceTest.php
       - name: PHP syntax check for SAR files
         run: |
           php -l app/Services/SarFiscalNumberService.php
@@ -134,10 +134,13 @@ jobs:
           php -l app/Services/LegacyInventoryReconciliationService.php
           php -l app/Services/InventoryCompatibilityService.php
           php -l app/Services/InventoryReadService.php
+          php -l app/Services/InventoryProvenanceAuditService.php
+          php -l app/Services/OpeningStockInventoryService.php
           php -l app/Services/BatchLocationService.php
           php -l app/Services/SerialLocationService.php
           php -l app/Services/InternalInventoryMoveService.php
           php -l app/Services/TenantSchemaHealthService.php
+          php -l app/Http/Controllers/ProductsController.php
           php -l app/Console/Commands/ProdexInventoryReconcile.php
           php -l app/Console/Commands/ProdexInventoryTransition.php
           php -l database/migrations/tenant/2026_08_21_150000_create_inventory_locations_foundation.php
