@@ -258,8 +258,18 @@
             });
         }
 
+        var planCards = [].slice.call(document.querySelectorAll("#lpPlans [data-plan-id]"));
+        function highlightPlan(id) {
+            planCards.forEach(function (el) {
+                el.classList.toggle("is-recommended", id != null && String(el.getAttribute("data-plan-id")) === String(id));
+            });
+        }
+
         function render(data) {
             root.setAttribute("data-status", data.recommendation_status);
+
+            // Realce discreto de la card del plan recomendado (sin scroll ni salto).
+            highlightPlan(data.recommendation_status === "ok" && data.recommended ? data.recommended.id : null);
 
             var maxSave = 0;
             (data.plans || []).forEach(function (p) {

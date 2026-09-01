@@ -173,35 +173,11 @@
                         <a class="lp-btn lp-btn--primary w-full mt-5" data-calc-sales href="{{ $salesHref }}" @if($salesExternal) target="_blank" rel="noopener noreferrer" @endif>
                             {{ __('landing_prime.calc_nodata_cta') }}
                         </a>
-                        <a class="lp-btn lp-btn--ghost w-full mt-2" href="#lpCalcPlans">{{ __('landing_prime.calc_see_plans') }}</a>
+                        {{-- La comparación de planes vive en su propia sección, siempre visible. --}}
+                        <a class="lp-btn lp-btn--ghost w-full mt-2" href="#plans">{{ __('landing_prime.calc_see_plans') }}</a>
                     </div>
                 </div>
             </aside>
-
-            {{-- ── Lista de planes reales (fallback; oculta en estado OK) ── --}}
-            <div id="lpCalcPlans" class="lp-calc__plans lg:col-span-2 lp-reveal">
-                @if(!empty($calcPlans))
-                    <h3 class="text-lg font-bold text-slate-950 mb-5 mt-4">{{ __('landing_prime.calc_plans_title') }}</h3>
-                    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        @foreach($calcPlans as $p)
-                            <div class="lp-card lp-card--hover rounded-2xl border border-slate-200 bg-white p-5 flex flex-col">
-                                <p class="font-bold text-slate-950">{{ $p['name'] }}</p>
-                                <p class="mt-2 mb-1">
-                                    @if($p['is_free'])
-                                        <span class="text-2xl font-extrabold text-slate-950">{{ __('landing_prime.calc_free') }}</span>
-                                    @else
-                                        <span class="text-2xl font-extrabold text-slate-950 lp-tnum">{{ $fmtMoney($p['price_monthly']) }}</span><span class="text-sm text-slate-500">{{ __('landing_prime.calc_per_month') }}</span>
-                                    @endif
-                                </p>
-                                <p class="text-xs text-slate-400 mb-4 min-h-[1.25rem]">
-                                    @if($p['yearly_available']){{ __('landing_prime.calc_plan_from') }} {{ $fmtMoney($p['price_yearly']) }} {{ __('landing_prime.calc_per_year') }} · &minus;{{ $p['yearly_savings_percent'] }}%@endif
-                                </p>
-                                <a class="lp-btn lp-btn--ghost w-full mt-auto text-[13px]" href="{{ $p['register_url'] }}">{{ __('landing_prime.calc_plan_cta') }}</a>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
         </div>
     </div>
 </section>

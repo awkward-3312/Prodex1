@@ -25,7 +25,8 @@
 
     $lpFaqs = isset($faqs) ? $faqs->filter(fn ($f) => ($f->is_active ?? true)) : collect();
     $lpTestimonials = isset($testimonials) ? $testimonials->filter(fn ($t) => ($t->is_active ?? true)) : collect();
-    $lpHasHowItWorks = ! empty($howItWorks['is_active']);
+    // "Cómo funciona" en landing-prime se resuelve siempre desde landing_prime.*
+    // (ver esa sección); el CMS $howItWorks alimenta sólo la landing legada.
 
     $lpRegisterUrl = route('central.register');
 @endphp
@@ -299,15 +300,24 @@
     {{-- ═══════════════════════ CALCULADORA ═══════════════════════ --}}
     @include('central.partials.prime.calculator')
 
+    {{-- ═══════════════════════ PLANES (siempre visibles) ═══════════════════════ --}}
+    @include('central.partials.prime.plans')
+
     {{-- ═══════════════════════ MÓDULOS / SOLUCIONES ═══════════════════════ --}}
+    @php
+        // ATÓMICO (ver "cómo funciona"): CMS manda sólo si aporta items reales.
+        $lpModCms = ! empty($features['is_active']) && $features['items']->isNotEmpty();
+        $lpModTitle = $lpModCms ? (optional($features['section'])->section_title ?: __('landing_prime.modules_title')) : __('landing_prime.modules_title');
+        $lpModLead  = $lpModCms ? (optional($features['section'])->section_subtitle ?: __('landing_prime.modules_lead')) : __('landing_prime.modules_lead');
+    @endphp
     <section id="solutions" class="bg-white py-20 sm:py-28 px-5 sm:px-6">
         <div class="max-w-6xl mx-auto">
             <header class="max-w-2xl mb-14 lp-reveal">
-                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 mb-3">{{ optional($features['section'])->section_title ?: __('landing_prime.modules_title') }}</h2>
-                <p class="text-lg text-slate-600">{{ optional($features['section'])->section_subtitle ?: __('landing_prime.modules_lead') }}</p>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 mb-3">{{ $lpModTitle }}</h2>
+                <p class="text-lg text-slate-600">{{ $lpModLead }}</p>
             </header>
 
-            @if(!empty($features['is_active']) && $features['items']->isNotEmpty())
+            @if($lpModCms)
                 {{-- Contenido del CMS --}}
                 <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     @foreach($features['items'] as $feature)
@@ -347,17 +357,26 @@
     @include('central.partials.prime.showcase')
 
     {{-- ═══════════════════════ CÓMO FUNCIONA ═══════════════════════ --}}
+    @php
+        // i18n ATÓMICO — la sección se resuelve SIEMPRE desde landing_prime.*
+        // (deck completo es/en). NO se lee el CMS `landing_how_it_works_*`: ese
+        // contenido es de una sola lengua (columnas base sembradas en inglés por
+        // la migración, y LandingCmsController::howItWorksSectionUpdate escribe
+        // sólo la columna base — no hay ruta de traducción por locale). En un
+        // sitio es-first eso producía encabezado en inglés con items en español.
+        // La landing legada sigue usando ese CMS; landing-prime, no.
+        $lpStepRows = collect([1, 2, 3])->map(fn ($n) => [
+            'title' => __('landing_prime.hiw_step' . $n . '_title'),
+            'desc'  => __('landing_prime.hiw_step' . $n . '_desc'),
+        ]);
+    @endphp
     <section id="how-it-works" class="lp-soft py-20 sm:py-28 px-5 sm:px-6">
         <div class="max-w-5xl mx-auto">
             <header class="max-w-2xl mb-14 lp-reveal">
-                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 mb-3">{{ optional($howItWorks['section'])->section_title ?: __('landing_prime.hiw_title') }}</h2>
-                <p class="text-lg text-slate-600">{{ optional($howItWorks['section'])->section_subtitle ?: __('landing_prime.hiw_lead') }}</p>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 mb-3">{{ __('landing_prime.hiw_title') }}</h2>
+                <p class="text-lg text-slate-600">{{ __('landing_prime.hiw_lead') }}</p>
             </header>
-            @php $lpSteps = ($howItWorks['steps'] ?? collect()); @endphp
             <ol class="grid md:grid-cols-3 gap-x-8 gap-y-10">
-                @php $lpStepRows = $lpSteps->isNotEmpty()
-                    ? $lpSteps->take(3)->map(fn ($s) => ['title' => $s->title, 'desc' => $s->description])->values()
-                    : collect([1, 2, 3])->map(fn ($n) => ['title' => __('landing_prime.hiw_step' . $n . '_title'), 'desc' => __('landing_prime.hiw_step' . $n . '_desc')]); @endphp
                 @foreach($lpStepRows as $i => $row)
                     <li class="relative pl-11 lp-reveal" @if($i) data-delay="{{ $i }}" @endif>
                         <span class="absolute left-0 top-0 w-8 h-8 rounded-full bg-white border border-slate-200 grid place-items-center text-sm font-bold text-indigo-600 lp-tnum">{{ $i + 1 }}</span>

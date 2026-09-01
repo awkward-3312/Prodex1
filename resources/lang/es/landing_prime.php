@@ -105,10 +105,16 @@ return [
     'calc_nodata_cta'    => 'Hablar con ventas',
     'calc_see_plans'     => 'Ver planes disponibles',
 
-    // Lista de planes (fallback)
-    'calc_plans_title'   => 'Planes disponibles',
-    'calc_plan_from'     => 'desde',
-    'calc_plan_cta'      => 'Comenzar prueba gratis',
+    // ── Comparación de planes (sección propia, siempre visible) ──────────
+    'plans_section_title'  => 'Planes para cada etapa de tu negocio',
+    'plans_section_lead'   => 'Compara los planes reales y elige el que cubre tu operación. La calculadora de arriba te sugiere el más ajustado.',
+    'plans_recommended_chip' => 'Recomendado para ti',
+    'plans_includes'       => 'Incluye',
+    'plans_no_limits'      => 'Sin límites de uso',
+    'plans_cta'            => 'Comenzar gratis',
+    'plans_cta_paid'       => 'Elegir plan',
+    'plans_yearly_line'    => 'o :amount/año · ahorra :percent%',
+    'plans_trial_line'     => ':days días de prueba',
 
     // ── Módulos / soluciones ────────────────────────────
     'modules_title'   => 'Cada área de tu negocio, conectada',

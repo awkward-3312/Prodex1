@@ -105,10 +105,16 @@ return [
     'calc_nodata_cta'    => 'Talk to sales',
     'calc_see_plans'     => 'See available plans',
 
-    // Plans list (fallback)
-    'calc_plans_title'   => 'Available plans',
-    'calc_plan_from'     => 'from',
-    'calc_plan_cta'      => 'Start free trial',
+    // ── Plan comparison (own section, always visible) ───────────────────
+    'plans_section_title'  => 'Plans for every stage of your business',
+    'plans_section_lead'   => 'Compare the real plans and pick the one that covers your operation. The calculator above suggests the closest fit.',
+    'plans_recommended_chip' => 'Recommended for you',
+    'plans_includes'       => 'Includes',
+    'plans_no_limits'      => 'No usage limits',
+    'plans_cta'            => 'Start free',
+    'plans_cta_paid'       => 'Choose plan',
+    'plans_yearly_line'    => 'or :amount/yr · save :percent%',
+    'plans_trial_line'     => ':days-day trial',
 
     // ── Modules / solutions ─────────────────────────────
     'modules_title'   => 'Every area of your business, connected',

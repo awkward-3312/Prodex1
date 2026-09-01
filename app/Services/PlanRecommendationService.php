@@ -87,7 +87,9 @@ class PlanRecommendationService
             'recommended'           => null,
             'starting_point'        => null,
             'exceeds'               => false,
-            'plans'                 => $plans->map(fn (Plan $p) => $this->planPayload($p, $cycle, false))->all(),
+            // `plans` alimenta la sección de comparación de planes, que es SIEMPRE
+            // visible: cada plan lleva su detalle real (límites + features).
+            'plans'                 => $plans->map(fn (Plan $p) => $this->planPayload($p, $cycle, true))->all(),
             'sales_url'             => $context['sales_url'] ?? null,
             'register_base_url'     => $context['register_base_url'] ?? $this->registerUrl(null, $cycle),
         ];

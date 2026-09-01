@@ -262,6 +262,26 @@ class PlanRecommendationServiceTest extends TestCase
         $this->assertContains(Plan::AVAILABLE_FEATURES['transfers']['label'], $rec['features']);
     }
 
+    /** La sección de comparación (siempre visible) necesita el detalle en cada plan. */
+    public function test_plans_array_carries_included_and_features_for_the_comparison_section(): void
+    {
+        $plans = $this->plans([
+            ['name' => 'Chico', 'price' => 10, 'limits' => ['max_users' => 2, 'max_products' => 100], 'features' => ['pos']],
+            ['name' => 'Grande', 'price' => 40, 'limits' => ['max_users' => 20, 'max_products' => 5000], 'features' => ['pos', 'hrm']],
+        ]);
+
+        $out = $this->svc->recommend($this->req(u: 1, p: 10), 'monthly', $plans);
+
+        foreach ($out['plans'] as $row) {
+            $this->assertArrayHasKey('included', $row, 'cada plan de la lista lleva límites');
+            $this->assertArrayHasKey('features', $row, 'cada plan de la lista lleva features');
+            $this->assertArrayHasKey('register_url', $row);
+        }
+        $chico = collect($out['plans'])->firstWhere('name', 'Chico');
+        $this->assertSame('2', collect($chico['included'])->firstWhere('key', 'max_users')['display']);
+        $this->assertContains(Plan::AVAILABLE_FEATURES['pos']['label'], $chico['features']);
+    }
+
     public function test_db_backed_recommendation_uses_public_scope(): void
     {
         Plan::query()->getConnection()->table('plans')->insert([

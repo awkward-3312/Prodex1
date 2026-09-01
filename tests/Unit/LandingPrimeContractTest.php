@@ -135,6 +135,7 @@ class LandingPrimeContractTest extends TestCase
         $b = $this->read('resources/views/central/landing-prime.blade.php');
 
         $this->assertStringContainsString("@include('central.partials.prime.calculator')", $b);
+        $this->assertStringContainsString("@include('central.partials.prime.plans')", $b);
         $this->assertStringContainsString("@include('central.partials.prime.showcase')", $b);
 
         foreach ([
@@ -232,11 +233,13 @@ class LandingPrimeContractTest extends TestCase
         $this->assertStringContainsString('calc_contacts_group', $c);   // agrupación SOLO visual
         $this->assertStringNotContainsString('max_contacts', $c);
 
-        // Los 3 estados del resumen + lista de planes real de fallback.
+        // Los 3 estados del resumen.
         $this->assertStringContainsString('lp-calc__state--ok', $c);
         $this->assertStringContainsString('lp-calc__state--custom', $c);
         $this->assertStringContainsString('lp-calc__state--nodata', $c);
-        $this->assertStringContainsString('lp-calc__plans', $c);
+        // La comparación de planes YA NO vive dentro de la calculadora: sección propia.
+        $this->assertStringNotContainsString('lp-calc__plans', $c);
+        $this->assertStringContainsString('href="#plans"', $c);
 
         // Render server-side inicial desde $pricingCalculator (no depende de JS).
         $this->assertStringContainsString('$pricingCalculator', $c);
@@ -350,12 +353,11 @@ class LandingPrimeContractTest extends TestCase
         $this->assertStringContainsString("classList.add('lp-js')", $b);
 
         // reduced-motion respetado, incluido scroll-behavior.
-        $rm = substr($css, strpos($css, 'prefers-reduced-motion'), 600);
-        $this->assertStringContainsString('html.scroll-smooth { scroll-behavior: auto; }', $rm);
+        $this->assertStringContainsString('html.scroll-smooth { scroll-behavior: auto; }', $css);
 
         // El cambio de estado de la calculadora NO produce salto de layout:
         // los tres estados se apilan en la misma celda de grid.
-        $this->assertStringContainsString('.lp-js-calc .lp-calc__card { display: grid; }', $css);
+        $this->assertStringContainsString('.lp-calc.lp-js-calc .lp-calc__card { display: grid; }', $css);
         $this->assertStringContainsString('grid-area: 1 / 1;', $css);
         $this->assertStringContainsString('data-swapping', $js);
         $this->assertStringContainsString('lp-calc__figure', $css);
@@ -381,8 +383,114 @@ class LandingPrimeContractTest extends TestCase
         }
         // El fallback de módulos ya no es un muro de tarjetas idénticas.
         $b = $this->read('resources/views/central/landing-prime.blade.php');
-        $modules = substr($b, strpos($b, 'MÓDULOS / SOLUCIONES'), 2000);
+        $modules = substr($b, strpos($b, 'MÓDULOS / SOLUCIONES'), 2600);
         $this->assertStringContainsString('índice de capacidades, no muro de tarjetas', $modules);
         $this->assertStringNotContainsString('lp-card lp-card--hover rounded-2xl border border-slate-200 bg-white p-6 lp-reveal', $modules);
+    }
+
+    // ── Corrección de bugs de revisión visual (iteración 2) ─────────────
+
+    /** BUG 1: el panel derecho de la calculadora quedaba en blanco. */
+    public function test_calc_state_selectors_target_same_element(): void
+    {
+        $css = $this->read('public/assets_super/css/landing-prime.css');
+        $js = $this->read('public/assets_super/js/landing-prime.js');
+
+        // JS añade lp-js-calc AL MISMO nodo que .lp-calc.
+        $this->assertStringContainsString('root.classList.add("lp-js-calc")', $js);
+
+        // Las reglas que MUESTRAN cada estado se compoundan en el mismo elemento.
+        $this->assertStringContainsString('.lp-calc.lp-js-calc[data-status="ok"]     .lp-calc__state--ok', $css);
+        $this->assertStringContainsString('.lp-calc.lp-js-calc[data-status="custom"] .lp-calc__state--custom', $css);
+        $this->assertStringContainsString('.lp-calc.lp-js-calc[data-status="insufficient_plan_data"] .lp-calc__state--nodata', $css);
+
+        // NUNCA como descendiente (bug: buscaba un .lp-calc dentro de .lp-js-calc).
+        $this->assertDoesNotMatchRegularExpression('/\.lp-js-calc\s+\.lp-calc\[data-status=/', $css);
+    }
+
+    /** BUG 2/3: los planes de pago SIEMPRE visibles, sección propia, cards neutrales. */
+    public function test_plans_section_is_always_visible_and_neutral(): void
+    {
+        $b = $this->read('resources/views/central/landing-prime.blade.php');
+        $p = $this->read('resources/views/central/partials/prime/plans.blade.php');
+        $css = $this->read('public/assets_super/css/landing-prime.css');
+
+        // Sección propia, incluida tras la calculadora, independiente del status.
+        $this->assertStringContainsString("@include('central.partials.prime.plans')", $b);
+        $this->assertStringContainsString('id="plans"', $p);
+        // Ya no se oculta la comparación cuando la recomendación es "ok".
+        $this->assertDoesNotMatchRegularExpression('/data-status="ok"\]\s*\.lp-calc__plans\s*\{\s*display:\s*none/', $css);
+
+        // Renderiza lo que venga de Plan::public() vía el servicio (sin re-consultar).
+        $this->assertStringContainsString("\$c['plans']", $p);
+        $this->assertStringNotContainsString('Plan::public', $p);
+        $this->assertStringNotContainsString('Plan::', $p);
+
+        // Datos REALES condicionados: anual/ahorro/prueba/límites/features sólo si existen.
+        $this->assertStringContainsString("\$p['yearly_available']", $p);
+        $this->assertStringContainsString("\$p['is_trial']", $p);
+        $this->assertStringContainsString("\$p['included']", $p);
+        $this->assertStringContainsString("\$p['features']", $p);
+
+        // Sin "más popular" ni plan destacado arbitrario.
+        $this->assertStringNotContainsString('most_popular', $p);
+        $this->assertStringNotContainsString('Más popular', $p);
+        $this->assertStringNotContainsString('is_featured', $p);
+        $this->assertStringNotContainsString('$i === 1', $p);
+
+        // El realce es por plan_id real (server-side + JS), discreto, sin scroll.
+        $this->assertStringContainsString('data-plan-id="{{ $p[\'id\'] }}"', $p);
+        $this->assertStringContainsString('$recommendedId', $p);
+        $js = $this->read('public/assets_super/js/landing-prime.js');
+        $this->assertStringContainsString('highlightPlan', $js);
+        $this->assertStringNotContainsString('scrollIntoView', $js);
+
+        // Toda clave landing_prime.* usada por el partial existe en ES y EN
+        // (regresión: `plans_no_limits` faltaba y renderizaba el string crudo).
+        $es = require dirname(__DIR__, 2) . '/resources/lang/es/landing_prime.php';
+        $en = require dirname(__DIR__, 2) . '/resources/lang/en/landing_prime.php';
+        preg_match_all('/landing_prime\.([a-z0-9_]+)/', $p, $m);
+        $this->assertNotEmpty($m[1]);
+        foreach (array_unique($m[1]) as $k) {
+            $this->assertArrayHasKey($k, $es, "ES landing_prime.$k (usada en plans.blade.php)");
+            $this->assertArrayHasKey($k, $en, "EN landing_prime.$k (usada en plans.blade.php)");
+        }
+    }
+
+    /** BUG 7: encabezado e items de una sección nunca en idiomas distintos. */
+    public function test_how_it_works_is_locale_coherent_from_translation_deck(): void
+    {
+        $b = $this->read('resources/views/central/landing-prime.blade.php');
+        $this->assertNotFalse(strpos($b, 'CÓMO FUNCIONA'));
+        $how = substr($b, strpos($b, 'CÓMO FUNCIONA'), 1800);
+
+        // "Cómo funciona" NO lee el CMS de una sola lengua (landing_how_it_works_*):
+        // título, lead y pasos salen del deck traducido landing_prime.hiw_* => la
+        // sección entera se resuelve en el locale activo, sin mezclar idiomas.
+        $this->assertMatchesRegularExpression("/<h2[^>]*>\{\{ __\('landing_prime\.hiw_title'\) \}\}<\/h2>/", $how);
+        $this->assertMatchesRegularExpression("/<p[^>]*>\{\{ __\('landing_prime\.hiw_lead'\) \}\}<\/p>/", $how);
+        $this->assertStringContainsString("__('landing_prime.hiw_step' . \$n . '_title')", $how);
+        $this->assertStringNotContainsString('$howItWorks', $how);
+        $this->assertStringNotContainsString('optional($howItWorks', $how);
+
+        // El deck existe y está REALMENTE traducido (no el mismo string ES/EN).
+        $es = require dirname(__DIR__, 2) . '/resources/lang/es/landing_prime.php';
+        $en = require dirname(__DIR__, 2) . '/resources/lang/en/landing_prime.php';
+        foreach ([
+            'hiw_title', 'hiw_lead',
+            'hiw_step1_title', 'hiw_step1_desc',
+            'hiw_step2_title', 'hiw_step2_desc',
+            'hiw_step3_title', 'hiw_step3_desc',
+        ] as $k) {
+            $this->assertArrayHasKey($k, $es, "ES landing_prime.$k");
+            $this->assertArrayHasKey($k, $en, "EN landing_prime.$k");
+            $this->assertNotSame($es[$k], $en[$k], "landing_prime.$k debe estar traducido, no compartido ES/EN");
+        }
+
+        // "Módulos": patrón atómico (todo-CMS o todo-deck).
+        $this->assertStringContainsString('$lpModCms = ! empty($features[\'is_active\']) && $features[\'items\']->isNotEmpty();', $b);
+        $this->assertMatchesRegularExpression('/<h2[^>]*>\{\{ \$lpModTitle \}\}<\/h2>/', $b);
+        $this->assertDoesNotMatchRegularExpression('/<h2[^>]*>\{\{ optional\(\$features/', $b);
+        $this->assertStringContainsString('@if($lpModCms)', $b);
     }
 }
