@@ -43,6 +43,11 @@ final class LandingPageTemplate
             'label_key'       => 'super.landing_templates.v6_label',
             'description_key' => 'super.landing_templates.v6_desc',
         ],
+        'landing-prime' => [
+            'view'            => 'central.landing-prime',
+            'label_key'       => 'super.landing_templates.prime_label',
+            'description_key' => 'super.landing_templates.prime_desc',
+        ],
     ];
 
     /**

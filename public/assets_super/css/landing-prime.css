@@ -1,0 +1,293 @@
+/* ==========================================================================
+   landing-prime — PRODEX página pública (modo claro, SaaS premium)
+   Solo lo que Tailwind (Play CDN) no cubre con comodidad: tokens, sliders,
+   resumen sticky de la calculadora, reveals y utilidades de composición.
+   ========================================================================== */
+
+:root {
+    --lp-ink:        #0F172A;
+    --lp-ink-2:      #334155;
+    --lp-ink-3:      #64748B;
+    --lp-line:       #E7EAF0;
+    --lp-line-soft:  #EEF1F6;
+    --lp-bg:         #FFFFFF;
+    --lp-bg-2:       #F8FAFC;
+    --lp-bg-3:       #FDFDFE;
+    --lp-brand:      #4F46E5;
+    --lp-brand-ink:  #3730A3;
+    --lp-brand-050:  #EEF0FF;
+    --lp-accent:     #2563EB;
+    --lp-teal:       #0D9488;
+    --lp-ok:         #059669;
+    --lp-warn-bg:    #FEF3C7;
+    --lp-warn-ink:   #92400E;
+    --lp-radius:     16px;
+    --lp-radius-sm:  12px;
+    --lp-radius-lg:  22px;
+    --lp-shadow-sm:  0 1px 2px rgba(15, 23, 42, .04), 0 1px 3px rgba(15, 23, 42, .05);
+    --lp-shadow:     0 12px 30px rgba(15, 23, 42, .06);
+    --lp-shadow-lg:  0 24px 55px rgba(15, 23, 42, .10);
+    --lp-nav-h:      68px;
+}
+
+body.landing-prime {
+    background: var(--lp-bg);
+    color: var(--lp-ink);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+}
+
+.landing-prime a { text-decoration: none; }
+.landing-prime ::selection { background: var(--lp-brand-050); }
+.landing-prime .lp-tnum { font-variant-numeric: tabular-nums; }
+
+/* Fondos y gradientes casi imperceptibles ---------------------------------- */
+.lp-soft {
+    background:
+        radial-gradient(60rem 40rem at 12% -8%, rgba(79, 70, 229, .06), transparent 60%),
+        radial-gradient(52rem 38rem at 92% 4%, rgba(37, 99, 235, .05), transparent 55%),
+        var(--lp-bg);
+}
+.lp-grid-bg {
+    background-image:
+        linear-gradient(rgba(148, 163, 184, .09) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, .09) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(60% 55% at 50% 30%, #000 0%, transparent 100%);
+            mask-image: radial-gradient(60% 55% at 50% 30%, #000 0%, transparent 100%);
+}
+.lp-glow { filter: blur(90px); }
+
+/* Sombras suaves reutilizables ------------------------------------------------ */
+.lp-card      { box-shadow: var(--lp-shadow-sm); transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+.lp-card--hover:hover { transform: translateY(-4px); box-shadow: var(--lp-shadow); border-color: rgba(79, 70, 229, .22); }
+.lp-elevate   { box-shadow: var(--lp-shadow-lg); }
+
+/* Ventana / mockup de producto -------------------------------------------------*/
+.lp-window {
+    border: 1px solid var(--lp-line);
+    border-radius: var(--lp-radius-lg);
+    background: #fff;
+    overflow: hidden;
+    box-shadow: var(--lp-shadow-lg);
+}
+.lp-window__bar {
+    height: 42px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 14px;
+    background: var(--lp-bg-2);
+    border-bottom: 1px solid var(--lp-line);
+    font-size: 12px; color: var(--lp-ink-3);
+}
+.lp-window__dot { width: 9px; height: 9px; border-radius: 999px; background: #CBD5E1; flex: none; }
+.lp-window__title { margin-left: 8px; font-weight: 600; }
+
+/* Barra decorativa (sin cifras atribuidas a un negocio real) ---------------- */
+.lp-bars { display: flex; align-items: flex-end; gap: 10px; height: 120px; }
+.lp-bars span {
+    flex: 1; border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, rgba(79, 70, 229, .85), rgba(79, 70, 229, .35));
+}
+.lp-bars span:nth-child(even) { background: linear-gradient(180deg, rgba(37, 99, 235, .7), rgba(37, 99, 235, .28)); }
+
+/* ==========================================================================
+   Calculadora de precios
+   ========================================================================== */
+
+.lp-calc__summary { align-self: start; }
+@media (min-width: 1024px) {
+    .lp-calc__summary--sticky { position: sticky; top: calc(var(--lp-nav-h) + 20px); }
+}
+
+.lp-seg {
+    display: inline-flex; padding: 4px; gap: 4px;
+    background: var(--lp-bg-2); border: 1px solid var(--lp-line);
+    border-radius: 999px;
+}
+.lp-seg__btn {
+    appearance: none; border: 0; cursor: pointer;
+    padding: 8px 18px; border-radius: 999px;
+    font: inherit; font-weight: 600; font-size: 14px;
+    color: var(--lp-ink-3); background: transparent;
+    transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+.lp-seg__btn[aria-pressed="true"] {
+    background: #fff; color: var(--lp-ink);
+    box-shadow: var(--lp-shadow-sm);
+}
+.lp-seg__save {
+    margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+    background: var(--lp-brand); color: #fff;
+    font-size: 11px; font-weight: 700;
+}
+
+/* Slider ------------------------------------------------------------------- */
+.lp-range {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px; border-radius: 999px;
+    background: var(--lp-line);
+    outline: none; margin: 6px 0;
+}
+.lp-range::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; border-radius: 999px;
+    background: #fff; border: 2px solid var(--lp-brand);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, .18);
+    cursor: pointer; transition: transform .12s ease;
+}
+.lp-range::-webkit-slider-thumb:active { transform: scale(1.08); }
+.lp-range::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 999px;
+    background: #fff; border: 2px solid var(--lp-brand);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, .18); cursor: pointer;
+}
+.lp-range:focus-visible { box-shadow: 0 0 0 4px var(--lp-brand-050); }
+.lp-range--track {
+    background:
+        linear-gradient(var(--lp-brand), var(--lp-brand)) 0 / var(--lp-fill, 0%) 100% no-repeat,
+        var(--lp-line);
+}
+
+/* Stepper (móvil / precisión) -------------------------------------------------*/
+.lp-step {
+    display: inline-flex; align-items: center; gap: 2px;
+    border: 1px solid var(--lp-line); border-radius: 999px;
+    background: #fff;
+}
+.lp-step__btn {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    width: 34px; height: 34px; border-radius: 999px;
+    display: grid; place-items: center;
+    color: var(--lp-ink-2); font-size: 18px; line-height: 1;
+}
+.lp-step__btn:hover { background: var(--lp-bg-2); color: var(--lp-ink); }
+.lp-step__val {
+    min-width: 66px; text-align: center;
+    font-weight: 700; font-variant-numeric: tabular-nums;
+    background: transparent; border: 0; color: var(--lp-ink);
+    font-size: 14px; padding: 0 4px;
+}
+.lp-step__val:focus-visible { outline: 2px solid var(--lp-brand); border-radius: 6px; }
+
+.lp-calc__badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 999px;
+    background: var(--lp-brand-050); color: var(--lp-brand-ink);
+    font-size: 12px; font-weight: 700;
+}
+
+/* Estados del resumen: se muestran/ocultan por data-attr ------------------- */
+.lp-calc__state { display: none; }
+.lp-calc[data-status="ok"]     .lp-calc__state--ok     { display: block; }
+.lp-calc[data-status="custom"] .lp-calc__state--custom { display: block; }
+.lp-calc[data-status="insufficient_plan_data"] .lp-calc__state--nodata { display: block; }
+
+/* Lista de planes (fallback) — oculta cuando hay recomendación clara ------- */
+.lp-calc[data-status="ok"] .lp-calc__plans { display: none; }
+
+/* ==========================================================================
+   Showcase con tabs
+   ========================================================================== */
+.lp-tab {
+    appearance: none; border: 1px solid transparent; cursor: pointer;
+    padding: 8px 16px; border-radius: 999px;
+    font: inherit; font-weight: 600; font-size: 14px;
+    color: var(--lp-ink-3); background: transparent;
+    white-space: nowrap;
+    transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.lp-tab:hover { color: var(--lp-ink-2); }
+.lp-tab[aria-selected="true"] {
+    background: #fff; color: var(--lp-brand-ink);
+    border-color: var(--lp-line); box-shadow: var(--lp-shadow-sm);
+}
+.lp-tabpanel[hidden] { display: none; }
+.lp-tabs__scroller { scrollbar-width: none; }
+.lp-tabs__scroller::-webkit-scrollbar { display: none; }
+
+/* ==========================================================================
+   Motion — reveal sutil, respeta prefers-reduced-motion
+   ========================================================================== */
+.lp-reveal {
+    opacity: 0; transform: translateY(14px);
+    transition: opacity .5s ease, transform .5s ease;
+    will-change: opacity, transform;
+}
+.lp-reveal.is-in { opacity: 1; transform: none; }
+.lp-reveal[data-delay="1"] { transition-delay: .06s; }
+.lp-reveal[data-delay="2"] { transition-delay: .12s; }
+.lp-reveal[data-delay="3"] { transition-delay: .18s; }
+
+.lp-float { animation: lp-float 7s ease-in-out infinite; }
+@keyframes lp-float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .landing-prime *,
+    .landing-prime *::before,
+    .landing-prime *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+    }
+    .lp-reveal { opacity: 1; transform: none; }
+}
+
+/* ==========================================================================
+   Navbar
+   ========================================================================== */
+.lp-nav {
+    position: fixed; inset: 0 0 auto 0; z-index: 50;
+    height: var(--lp-nav-h);
+    background: rgba(255, 255, 255, .82);
+    -webkit-backdrop-filter: saturate(180%) blur(10px);
+            backdrop-filter: saturate(180%) blur(10px);
+    border-bottom: 1px solid transparent;
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+.lp-nav.is-scrolled {
+    border-bottom-color: var(--lp-line);
+    box-shadow: 0 1px 0 rgba(15, 23, 42, .02), var(--lp-shadow-sm);
+}
+.lp-nav__link {
+    color: var(--lp-ink-2); font-weight: 500; font-size: 14px;
+    padding: 8px 12px; border-radius: 8px;
+    transition: color .15s ease, background .15s ease;
+}
+.lp-nav__link:hover { color: var(--lp-ink); background: var(--lp-bg-2); }
+
+.lp-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 600; font-size: 14px; line-height: 1;
+    padding: 11px 20px; border-radius: 999px;
+    transition: transform .15s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.lp-btn:active { transform: translateY(1px); }
+.lp-btn--primary { background: var(--lp-ink); color: #fff; box-shadow: var(--lp-shadow); }
+.lp-btn--primary:hover { background: var(--lp-brand); }
+.lp-btn--ghost { background: #fff; color: var(--lp-ink-2); border: 1px solid var(--lp-line); }
+.lp-btn--ghost:hover { border-color: #CBD5E1; background: var(--lp-bg-2); }
+.lp-btn--lg { padding: 14px 26px; font-size: 15px; }
+
+/* Menú móvil */
+.lp-drawer { transition: opacity .2s ease; }
+.lp-drawer[hidden] { display: none; }
+.lp-drawer__panel { transition: transform .26s cubic-bezier(.4, 0, .2, 1); }
+
+/* Botón flotante de ventas (WhatsApp) */
+.lp-fab {
+    position: fixed; z-index: 45; right: 18px; bottom: 18px;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 16px; border-radius: 999px;
+    background: #25D366; color: #fff; font-weight: 700; font-size: 14px;
+    box-shadow: 0 14px 30px rgba(37, 211, 102, .35);
+}
+.lp-fab:hover { filter: brightness(.97); }
+@media (max-width: 640px) { .lp-fab span { display: none; } .lp-fab { padding: 14px; } }
+
+/* Cookie banner */
+.lp-cookie { transition: transform .3s ease, opacity .3s ease; }
+.lp-cookie[data-hidden="true"] { transform: translateY(130%); opacity: 0; pointer-events: none; }

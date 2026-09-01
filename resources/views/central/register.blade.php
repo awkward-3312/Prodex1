@@ -298,15 +298,16 @@
                 <div class="form-group cycle-group" id="billing-cycle-group">
                     <label>{{ __('landing.billing_cycle') }}</label>
                     <div class="cycle-options">
+                        @php $regCycle = old('billing_cycle', request('billing_cycle') === 'yearly' ? 'yearly' : 'monthly'); @endphp
                         <label class="cycle-option">
-                            <input type="radio" name="billing_cycle" value="monthly" class="billing-cycle-radio" {{ old('billing_cycle', 'monthly') === 'monthly' ? 'checked' : '' }}>
+                            <input type="radio" name="billing_cycle" value="monthly" class="billing-cycle-radio" {{ $regCycle === 'monthly' ? 'checked' : '' }}>
                             <div class="cycle-card">
                                 <span class="cycle-name">{{ __('landing.monthly') }}</span>
                                 <span class="cycle-price" id="monthly-price"></span>
                             </div>
                         </label>
                         <label class="cycle-option">
-                            <input type="radio" name="billing_cycle" value="yearly" class="billing-cycle-radio" {{ old('billing_cycle') === 'yearly' ? 'checked' : '' }}>
+                            <input type="radio" name="billing_cycle" value="yearly" class="billing-cycle-radio" {{ $regCycle === 'yearly' ? 'checked' : '' }}>
                             <div class="cycle-card">
                                 <span class="cycle-name">{{ __('landing.yearly') }}</span>
                                 <span class="cycle-price" id="yearly-price"></span>

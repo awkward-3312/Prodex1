@@ -727,6 +727,8 @@ return [
         'v5_desc'          => 'Bright layout with alternating feature rows and timeline.',
         'v6_label'         => 'Agency',
         'v6_desc'          => 'Navy and mint theme with service cards and pricing.',
+        'prime_label'      => 'Prime',
+        'prime_desc'       => 'Premium light-mode SaaS layout with an interactive pricing calculator.',
     ],
 
     // ── CMS Hero ─────────────────────────────────────────
