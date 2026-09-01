@@ -3207,6 +3207,44 @@ if (process.env.NODE_ENV !== "production") {
                         import(/* webpackChunkName: "px-next-products" */ "./views/app/products/next/index.vue")
                 }
             ]
+        },
+        {
+            // Shell px-next NAVEGABLE — prototipo en ruta propia (milestone acotado).
+            // Continúa la maqueta aprobada PxShellMock.vue con navegación real de
+            // los 4 dominios core. Dev-only por ahora (como _ui): sin merge/deploy,
+            // sin riesgo para la navegación real. Promocionable a ruta permanente
+            // (hija de "/") en el siguiente milestone, igual que C0/C1.
+            // NO sustituye largeSidebar/index.vue.
+            path: "/app/shell",
+            component: () =>
+                import(/* webpackChunkName: "px-next-shell" */ "./views/app/shell/index.vue"),
+            children: [
+                { path: "", redirect: "/app/shell/panel" },
+                {
+                    path: "panel",
+                    name: "px_shell_panel",
+                    component: () =>
+                        import(/* webpackChunkName: "dashboard" */ "./views/app/dashboard/next/index.vue")
+                },
+                {
+                    path: "ventas",
+                    name: "px_shell_ventas",
+                    component: () =>
+                        import(/* webpackChunkName: "index_sales" */ "./views/app/pages/sales/index_sale")
+                },
+                {
+                    path: "inventario",
+                    name: "px_shell_inventario",
+                    component: () =>
+                        import(/* webpackChunkName: "px-next-products" */ "./views/app/products/next/index.vue")
+                },
+                {
+                    path: "compras",
+                    name: "px_shell_compras",
+                    component: () =>
+                        import(/* webpackChunkName: "index_purchases" */ "./views/app/pages/purchases/index_purchase")
+                }
+            ]
         }
     );
 }
