@@ -175,26 +175,26 @@
 
 <main id="lp-main" style="padding-top:var(--lp-nav-h)">
 
-    {{-- ═══════════════════════ HERO ═══════════════════════ --}}
+    {{-- ═══════════════════════ HERO — superficie profunda PRODEX ═══════════════════════ --}}
     @if($lpHeroVisible)
-    <section class="lp-soft lp-aurora relative overflow-hidden px-5 sm:px-6 pt-16 sm:pt-24 pb-20 sm:pb-32">
+    <section class="lp-deep lp-hero-deep relative px-5 sm:px-6">
         <div class="max-w-7xl mx-auto grid lg:grid-cols-12 gap-y-14 gap-x-10 lg:gap-x-8 items-center">
             <div class="lg:col-span-5 lp-reveal">
                 <span class="lp-mark mb-6"></span>
-                <p class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-slate-200 shadow-sm text-xs font-semibold text-slate-600 mb-6">
-                    <span class="w-1.5 h-1.5 rounded-full" style="background:linear-gradient(90deg,var(--lp-aurora-1),var(--lp-aurora-3))"></span>
-                    {{ $hero->subtitle ?? __('landing_prime.hero_eyebrow') }}
+                <p class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-slate-200 mb-6">
+                    <span class="w-1.5 h-1.5 rounded-full" style="background:linear-gradient(90deg,var(--lp-aurora-3),#60A5FA)"></span>
+                    {{ __('landing_prime.hero_eyebrow') }}
                 </p>
-                <h1 class="text-[2.6rem] leading-[1.04] sm:text-5xl lg:text-[3.6rem] xl:text-[4rem] font-bold tracking-[-0.035em] text-slate-950 mb-5 text-balance">
-                    {!! $hero->title ?: e(__('landing_prime.hero_title')) !!}
+                <h1 class="text-[2.6rem] leading-[1.04] sm:text-5xl lg:text-[3.6rem] xl:text-[4rem] font-bold tracking-[-0.035em] text-white mb-5 text-balance">
+                    {{ __('landing_prime.hero_title') }}
                 </h1>
-                <p class="text-lg text-slate-600 leading-relaxed max-w-xl mb-8">
-                    {{ $hero->description ?: __('landing_prime.hero_lead') }}
+                <p class="text-lg text-slate-300 leading-relaxed max-w-xl mb-8">
+                    {{ __('landing_prime.hero_lead') }}
                 </p>
                 {{-- CTA comerciales fijas de landing-prime (el CMS sólo puede
                      redirigir la URL, no cambiar el texto por etiquetas de auth). --}}
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <a href="{{ $hero->primary_button_url ?: $lpRegisterUrl }}" class="lp-btn lp-btn--primary lp-btn--lg">
+                    <a href="{{ $hero->primary_button_url ?: $lpRegisterUrl }}" class="lp-btn lp-btn--lg bg-white text-slate-950 hover:bg-slate-100">
                         {{ __('landing_prime.hero_cta') }}
                         <i class="bi bi-arrow-right"></i>
                     </a>
@@ -203,14 +203,14 @@
                     </a>
                 </div>
                 @if($lpTrialPlan)
-                    <p class="mt-4 text-xs font-medium text-slate-500 flex items-center gap-1.5">
-                        <i class="bi bi-check-circle-fill text-emerald-500"></i>
+                    <p class="mt-4 text-xs font-medium text-slate-400 flex items-center gap-1.5">
+                        <i class="bi bi-check-circle-fill text-emerald-400"></i>
                         {{ __('landing_prime.hero_trust', ['days' => $lpTrialDays]) }}
                     </p>
                 @endif
-                <div class="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-slate-500">
+                <div class="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-slate-400">
                     @foreach(['hero_chip_sales', 'hero_chip_stock', 'hero_chip_reports', 'hero_chip_branches'] as $chip)
-                        <span class="flex items-center gap-1.5"><i class="bi bi-check-circle-fill text-emerald-500"></i>{{ __('landing_prime.' . $chip) }}</span>
+                        <span class="flex items-center gap-1.5"><i class="bi bi-check-circle-fill text-emerald-400"></i>{{ __('landing_prime.' . $chip) }}</span>
                     @endforeach
                 </div>
             </div>
@@ -263,11 +263,11 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="hidden lg:flex lp-chip absolute -left-10 xl:-left-16 top-1/2 -translate-y-1/2 w-52 z-10 lp-reveal" data-delay="2">
+                        <div class="hidden lg:flex lp-chip absolute left-2 xl:-left-6 top-[46%] -translate-y-1/2 w-52 z-10 lp-reveal" data-delay="2">
                             <span class="lp-chip__ic"><i class="bi bi-receipt"></i></span>
                             <span><b>{{ __('landing_prime.hero_mock_card_pos') }}</b><span>{{ __('landing_prime.hero_mock_card_pos_desc') }}</span></span>
                         </div>
-                        <div class="hidden lg:flex lp-chip absolute -right-8 xl:-right-14 bottom-10 w-52 z-10 lp-reveal" data-delay="3">
+                        <div class="hidden lg:flex lp-chip absolute -right-4 xl:-right-10 bottom-10 w-52 z-10 lp-reveal" data-delay="3">
                             <span class="lp-chip__ic"><i class="bi bi-box-seam"></i></span>
                             <span><b>{{ __('landing_prime.hero_mock_card_stock') }}</b><span>{{ __('landing_prime.hero_mock_card_stock_desc') }}</span></span>
                         </div>

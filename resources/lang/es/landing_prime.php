@@ -14,9 +14,9 @@ return [
     'skip_to_content' => 'Saltar al contenido',
 
     // ── Hero ────────────────────────────────────────────
-    'hero_eyebrow'   => 'Gestión empresarial en la nube',
-    'hero_title'     => 'Todo tu negocio, en una sola plataforma',
-    'hero_lead'      => 'Ventas, inventario, compras, equipo y reportes conectados. Empieza hoy y opera tu negocio desde cualquier lugar de Centroamérica.',
+    'hero_eyebrow'   => 'ERP + POS para Centroamérica',
+    'hero_title'     => 'Todo tu negocio, bajo control',
+    'hero_lead'      => 'Ventas, inventario, compras y sucursales conectados en tiempo real. Menos caos operativo, mejores decisiones.',
     'hero_cta'       => 'Comenzar prueba gratis',
     'hero_cta_secondary' => 'Hablar con ventas',
     'hero_trust'     => ':days días gratis · Sin tarjeta',

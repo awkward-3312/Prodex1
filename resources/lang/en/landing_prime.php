@@ -14,9 +14,9 @@ return [
     'skip_to_content' => 'Skip to content',
 
     // ── Hero ────────────────────────────────────────────
-    'hero_eyebrow'   => 'Cloud business management',
-    'hero_title'     => 'Your whole business, on one platform',
-    'hero_lead'      => 'Sales, inventory, purchasing, team and reports — connected. Start today and run your business from anywhere in Central America.',
+    'hero_eyebrow'   => 'ERP + POS built for Central America',
+    'hero_title'     => 'Your whole business, under control',
+    'hero_lead'      => 'Sales, inventory, purchasing and branches connected in real time. Less operational chaos, better decisions.',
     'hero_cta'       => 'Start free trial',
     'hero_cta_secondary' => 'Talk to sales',
     'hero_trust'     => ':days days free · No card',

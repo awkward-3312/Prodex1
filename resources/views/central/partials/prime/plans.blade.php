@@ -19,6 +19,22 @@
         $n = (float) $amount;
         return $sym . ' ' . (abs($n - floor($n)) < 0.005 ? number_format($n, 0) : number_format($n, 2));
     };
+
+    // Singular cuando el tope es exactamente 1 ("1 Almacén", no "1 Almacenes").
+    // Las etiquetas llegan en el payload del servicio (ES, estáticas del catálogo).
+    $limitLabel = function (array $it) {
+        if (($it['value'] ?? null) !== 1) {
+            return $it['label'];
+        }
+        return [
+            'Productos'   => 'Producto',
+            'Usuarios'    => 'Usuario',
+            'Almacenes'   => 'Almacén',
+            'Clientes'    => 'Cliente',
+            'Proveedores' => 'Proveedor',
+            'Mensajes de WhatsApp al mes' => 'Mensaje de WhatsApp al mes',
+        ][$it['label']] ?? $it['label'];
+    };
 @endphp
 
 @if($planCount > 0)
@@ -75,7 +91,7 @@
                                     <li><i class="bi bi-check2" aria-hidden="true"></i><span>{{ __('landing_prime.plans_no_limits') }}</span></li>
                                 @endif
                                 @foreach($included as $it)
-                                    <li><i class="bi bi-check2" aria-hidden="true"></i><span><strong>{{ $it['unlimited'] ? __('landing_prime.calc_unlimited') : $it['display'] }}</strong> {{ $it['label'] }}</span></li>
+                                    <li><i class="bi bi-check2" aria-hidden="true"></i><span><strong>{{ $it['unlimited'] ? __('landing_prime.calc_unlimited') : $it['display'] }}</strong> {{ $limitLabel($it) }}</span></li>
                                 @endforeach
                                 @foreach($features as $lf)
                                     <li><i class="bi bi-check2" aria-hidden="true"></i><span>{{ $lf }}</span></li>

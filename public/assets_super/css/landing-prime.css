@@ -171,6 +171,20 @@ body.landing-prime {
 .lp-deep .lp-btn--ghost { background: rgba(255, 255, 255, .06); color: #fff; border-color: rgba(255, 255, 255, .22); }
 .lp-deep .lp-btn--ghost:hover { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .4); }
 
+/* Hero sobre superficie profunda: se extiende bajo el navbar fijo y el
+   contenido baja lo justo. (Sólo el hero; el resto de la página sigue claro.) */
+.lp-hero-deep {
+    margin-top: calc(-1 * var(--lp-nav-h));
+    padding-top: calc(var(--lp-nav-h) + 3rem);
+    padding-bottom: 6rem;
+}
+@media (min-width: 640px) {
+    .lp-hero-deep { padding-top: calc(var(--lp-nav-h) + 4.5rem); padding-bottom: 8rem; }
+}
+/* La UI de producto flota MÁS sobre el fondo oscuro. */
+.lp-deep .lp-window { box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .65), 0 0 0 1px rgba(255, 255, 255, .04); }
+.lp-deep .lp-chip { background: #fff; box-shadow: 0 26px 50px -14px rgba(0, 0, 0, .55); }
+
 /* Motivo recurrente: regla azul→cyan. NO es un eyebrow de texto. */
 .lp-mark {
     display: block; width: 44px; height: 3px; border-radius: 999px;
@@ -252,7 +266,17 @@ body.landing-prime {
     content: ""; width: 18px; height: 2px; border-radius: 999px; flex: none;
     background: linear-gradient(90deg, var(--lp-aurora-1), var(--lp-aurora-3));
 }
-/* Resumen compacto: features acotadas a 4 (server y JS re-render). */
+/* "Tu negocio": controles en 2 columnas cuando hay sitio; 1 en móvil.
+   El label va sobre el stepper para que cada celda sea baja y legible. */
+.lp-calc__fields { display: grid; gap: 1.125rem 1.5rem; }
+@media (min-width: 640px) { .lp-calc__fields { grid-template-columns: 1fr 1fr; } }
+.lp-calc__fields-group { grid-column: 1 / -1; }
+.lp-field__head { flex-wrap: wrap; }
+.lp-field__head > label { flex: 1 1 100%; margin-bottom: .25rem; }
+.lp-field__head .lp-step { align-self: flex-start; }
+
+/* Resumen compacto: límites y features acotados (server y JS re-render). */
+.lp-calc__state--ok [data-calc-included] li:nth-child(n+5),
 .lp-calc__state--ok [data-calc-features] li:nth-child(n+5) { display: none; }
 
 /* El resumen ("Tu PRODEX") pesa más: borde, tinte y elevación aurora. */
@@ -574,15 +598,9 @@ body.landing-prime {
     .lp-step__btn { width: 42px; height: 42px; }
     .lp-tab { padding: 11px 16px; }
 
-    /* Fila etiqueta + stepper de la calculadora: apilan, sin desbordar. */
-    .lp-field > .flex { flex-wrap: wrap; }
-    .lp-field > .flex > label { flex: 1 1 100%; }
-    .lp-field .lp-step { align-self: flex-start; }
+    /* La calculadora ya apila etiqueta/stepper vía .lp-field__head; en móvil
+       sólo estrechamos el valor para que quepa con los botones grandes. */
     .lp-step__val { min-width: 52px; }
-
-    /* Grupos "Clientes y proveedores": sin sangría que empuje el ancho.
-       (prefijo .landing-prime => gana a la utilidad Tailwind .ml-3) */
-    .landing-prime .lp-field.ml-3 { margin-left: 0; }
 
     /* KPIs del mockup: 3 columnas no caben cómodas en 320-360px. */
     .lp-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }

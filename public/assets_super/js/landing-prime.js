@@ -16,6 +16,17 @@
         return sym + " " + body;
     }
 
+    /* Singular cuando el tope es 1 ("1 Almacén", no "1 Almacenes").
+       Etiquetas estáticas ES del catálogo; no altera la lógica de recomendación. */
+    var LIMIT_SINGULAR = {
+        "Productos": "Producto", "Usuarios": "Usuario", "Almacenes": "Almacén",
+        "Clientes": "Cliente", "Proveedores": "Proveedor",
+        "Mensajes de WhatsApp al mes": "Mensaje de WhatsApp al mes"
+    };
+    function singularLabel(it) {
+        return (it && it.value === 1 && LIMIT_SINGULAR[it.label]) ? LIMIT_SINGULAR[it.label] : (it ? it.label : "");
+    }
+
     /* ── Navbar: sombra al hacer scroll ───────────────────────────── */
     var nav = document.getElementById("lpNav");
     if (nav) {
@@ -303,7 +314,7 @@
                     var strong = document.createElement("strong");
                     strong.textContent = it.unlimited ? t.unlimited : it.display;
                     li.appendChild(strong);
-                    li.appendChild(document.createTextNode(" " + it.label));
+                    li.appendChild(document.createTextNode(" " + singularLabel(it)));
                 });
 
                 var feats = plan.features || [];

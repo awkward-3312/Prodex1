@@ -511,10 +511,13 @@ class LandingPrimeContractTest extends TestCase
         $this->assertStringContainsString('.lp-deep::before', $css);
         $this->assertStringContainsString('.lp-mark {', $css);
 
-        // Picos: hero + calculadora llevan aurora; el cierre lleva superficie profunda.
-        $this->assertMatchesRegularExpression('/<section[^>]*class="lp-soft lp-aurora[^"]*"[^>]*>\s*<div class="max-w-7xl/s', $b, 'hero con aurora');
+        // Picos: hero y cierre sobre superficie profunda; la calculadora lleva aurora.
+        $this->assertMatchesRegularExpression('/<section class="lp-deep lp-hero-deep[^"]*"[^>]*>\s*<div class="max-w-7xl/s', $b, 'hero sobre superficie profunda');
+        $this->assertStringContainsString('.lp-hero-deep {', $css, 'hero se extiende bajo el navbar');
         $this->assertStringContainsString('lp-soft lp-aurora', $c, 'calculadora con aurora');
         $this->assertStringContainsString('lp-deep max-w-5xl', $b, 'CTA final con superficie profunda');
+        // El hero es el ÚNICO fondo oscuro del cuerpo además del cierre (no toda la página).
+        $this->assertSame(2, substr_count($b, 'class="lp-deep'), 'sólo hero y CTA final son superficie profunda');
 
         // Motivo gráfico, NO un eyebrow de texto: aparece en pocos puntos clave
         // (hero, "¿Te suena familiar?", CTA), no encima de cada H2 de sección.
@@ -571,12 +574,21 @@ class LandingPrimeContractTest extends TestCase
         }
     }
 
-    /** La calculadora se presenta como "Tu negocio → Tu PRODEX". */
+    /** La calculadora se presenta como "Tu negocio → Tu PRODEX" y es compacta. */
     public function test_calculator_is_framed_as_configuration(): void
     {
-        $c = $this->read('resources/views/central/partials/prime/calculator.blade.php');
+        $c   = $this->read('resources/views/central/partials/prime/calculator.blade.php');
+        $css = $this->read('public/assets_super/css/landing-prime.css');
         $this->assertStringContainsString("__('landing_prime.calc_col_business')", $c);
         $this->assertStringContainsString("__('landing_prime.calc_col_prodex')", $c);
+
+        // "Tu negocio": los controles van en rejilla 2-col (1 en móvil), no en pila.
+        $this->assertStringContainsString('class="lp-calc__fields"', $c);
+        $this->assertStringNotContainsString('<div class="space-y-7">', $c);
+        $this->assertStringNotContainsString('<div class="space-y-5">', $c);
+        $this->assertMatchesRegularExpression('/@media \(min-width: 640px\) \{ \.lp-calc__fields \{ grid-template-columns: 1fr 1fr; \} \}/', $css);
+        // El resumen acota límites y features (no repite todo el plan).
+        $this->assertStringContainsString('[data-calc-included] li:nth-child(n+5),', $css);
 
         // Sigue siendo un recomendador: no promete precio a medida / plan modular.
         foreach (['paga solo por', 'paga sólo por', 'construye tu plan', 'precio personalizado', 'build your plan', 'pay only for'] as $banned) {
@@ -591,6 +603,21 @@ class LandingPrimeContractTest extends TestCase
         }
     }
 
+    /** Plurales: "1 Almacén", no "1 Almacenes" (sólo en las cards de planes). */
+    public function test_plans_singularise_limit_labels_at_one(): void
+    {
+        $p = $this->read('resources/views/central/partials/prime/plans.blade.php');
+        $this->assertStringContainsString('$limitLabel = function (array $it)', $p);
+        $this->assertStringContainsString("'Almacenes'   => 'Almacén'", $p);
+        $this->assertMatchesRegularExpression("/<strong>\{\{[^}]*\}\}<\/strong> \{\{ \\\$limitLabel\(\\\$it\) \}\}/", $p);
+        // Sin cifras/porcentajes hardcodeados para el anual de Profesional.
+        $this->assertStringNotContainsString('11,990', $p);
+        $this->assertStringNotContainsString('11990', $p);
+        $this->assertDoesNotMatchRegularExpression('/17\s?%/', $p);
+        // El anual sólo se pinta si el servicio lo marca disponible.
+        $this->assertStringContainsString("@if(\$p['yearly_available'])", $p);
+    }
+
     /** El overflow horizontal móvil se corrige en el origen (no sólo se oculta). */
     public function test_mobile_has_no_horizontal_overflow_guards(): void
     {
@@ -599,8 +626,8 @@ class LandingPrimeContractTest extends TestCase
         // Guarda global para adornos que sangran (aurora/glow) sin romper sticky.
         $this->assertStringContainsString('.landing-prime { overflow-x: clip; }', $css);
 
-        // Corrección real del origen conocido: fila etiqueta + stepper de #pricing.
-        $this->assertStringContainsString('.lp-field > .flex { flex-wrap: wrap; }', $css);
+        // Corrección real: la fila etiqueta+stepper de #pricing apila (no desborda).
+        $this->assertStringContainsString('.lp-field__head { flex-wrap: wrap; }', $css);
         $this->assertMatchesRegularExpression('/#lpCalc[^{}]*\{\s*min-width:\s*0/', $css);
 
         // Sin animaciones constantes introducidas por esta ronda.

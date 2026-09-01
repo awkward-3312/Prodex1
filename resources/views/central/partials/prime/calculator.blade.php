@@ -37,6 +37,15 @@
 
     $billPeriod = fn ($plan) => ($plan['billed_period'] ?? 'month') === 'year' ? __('landing_prime.calc_per_year') : __('landing_prime.calc_per_month');
     $billNote = fn ($plan) => ($plan['billed_period'] ?? 'month') === 'year' ? __('landing_prime.calc_billed_yearly') : __('landing_prime.calc_billed_monthly');
+
+    // Singular cuando el tope es 1 ("1 Almacén"). Debe coincidir con singularLabel() en landing-prime.js.
+    $singular = fn (array $it) => ($it['value'] ?? null) === 1
+        ? ([
+            'Productos' => 'Producto', 'Usuarios' => 'Usuario', 'Almacenes' => 'Almacén',
+            'Clientes' => 'Cliente', 'Proveedores' => 'Proveedor',
+            'Mensajes de WhatsApp al mes' => 'Mensaje de WhatsApp al mes',
+        ][$it['label']] ?? $it['label'])
+        : $it['label'];
 @endphp
 
 <section id="pricing" class="lp-soft lp-aurora py-16 sm:py-20 px-5 sm:px-6">
@@ -82,13 +91,13 @@
 
                 <p class="text-sm font-semibold text-slate-700 mb-4">{{ __('landing_prime.calc_config_label') }}</p>
 
-                <div class="space-y-5">
+                <div class="lp-calc__fields">
                     @foreach($fields as $f)
                         @if(!empty($f['group']))
-                            <p class="pt-1 text-sm font-semibold text-slate-700">{{ $f['group'] }}</p>
+                            <p class="lp-calc__fields-group text-xs font-semibold uppercase tracking-wide text-slate-400 pt-1">{{ $f['group'] }}</p>
                         @endif
-                        <div class="lp-field {{ in_array($f['dim'], ['max_customers', 'max_suppliers'], true) ? 'ml-3' : '' }}" data-dim="{{ $f['dim'] }}">
-                            <div class="flex items-center justify-between gap-4 mb-1">
+                        <div class="lp-field" data-dim="{{ $f['dim'] }}">
+                            <div class="lp-field__head flex items-center justify-between gap-4 mb-1">
                                 <label class="text-sm text-slate-700" for="lp-range-{{ $f['dim'] }}">
                                     {{ $f['label'] }}
                                     @if($f['hint'])<span class="block text-xs text-slate-400">{{ $f['hint'] }}</span>@endif
@@ -120,10 +129,10 @@
                     {{-- Estado OK --}}
                     <div class="lp-calc__state lp-calc__state--ok">
                         <p class="text-center"><span class="lp-calc__badge" data-calc-badge>{{ __('landing_prime.calc_recommended') }}</span></p>
-                        <div class="lp-calc__figure text-center mt-2.5">
-                            <h3 class="text-xl font-bold text-slate-950" data-calc-name>{{ $planForSummary['name'] ?? '—' }}</h3>
-                            <p class="mt-1.5">
-                                <span class="text-[2rem] sm:text-4xl font-extrabold tracking-tight text-slate-950 lp-tnum" data-calc-amount>{{ $planForSummary ? ($planForSummary['is_free'] ? __('landing_prime.calc_free') : $fmtMoney($planForSummary['billed_amount'])) : '—' }}</span>
+                        <div class="lp-calc__figure text-center mt-2">
+                            <h3 class="text-lg font-bold text-slate-950" data-calc-name>{{ $planForSummary['name'] ?? '—' }}</h3>
+                            <p class="mt-1">
+                                <span class="text-[1.875rem] font-extrabold tracking-tight text-slate-950 lp-tnum" data-calc-amount>{{ $planForSummary ? ($planForSummary['is_free'] ? __('landing_prime.calc_free') : $fmtMoney($planForSummary['billed_amount'])) : '—' }}</span>
                                 <span class="text-slate-500 font-medium" data-calc-period>{{ $planForSummary && !$planForSummary['is_free'] ? $billPeriod($planForSummary) : '' }}</span>
                             </p>
                             <p class="text-xs text-slate-400 mt-1" data-calc-billnote>{{ $planForSummary && !$planForSummary['is_free'] ? $billNote($planForSummary) : '' }}</p>
@@ -133,7 +142,7 @@
                             <p class="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-400 mb-2.5">{{ __('landing_prime.calc_includes') }}</p>
                             <ul class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[0.8125rem] text-slate-700" data-calc-included>
                                 @foreach(($planForSummary['included'] ?? []) as $it)
-                                    <li><strong>{{ $it['unlimited'] ? __('landing_prime.calc_unlimited') : $it['display'] }}</strong> {{ $it['label'] }}</li>
+                                    <li><strong>{{ $it['unlimited'] ? __('landing_prime.calc_unlimited') : $it['display'] }}</strong> {{ $singular($it) }}</li>
                                 @endforeach
                             </ul>
                             @php $summaryFeatures = $planForSummary['features'] ?? []; @endphp
