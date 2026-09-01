@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\PaymentPurchase;
 use App\Models\PaymentPurchaseReturns;
@@ -17,11 +18,13 @@ use App\Models\SaleDetail;
 use App\Models\SaleReturn;
 use App\Models\UserWarehouse;
 use App\Models\Warehouse;
+use App\Services\BranchScopeService;
 use App\Traits\CalculatesCogsAndAverageCost;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
@@ -31,18 +34,70 @@ class DashboardController extends Controller
     public function dashboard_data(Request $request)
     {
         $user_auth = auth()->user();
+
+        // Conjunto COMPLETO de almacenes permitidos al usuario (semántica intacta:
+        // is_all_warehouses => todos; en otro caso, los de user_warehouse).
         if ($user_auth->is_all_warehouses) {
-            $array_warehouses_id = Warehouse::where('deleted_at', '=', null)->pluck('id')->toArray();
-            $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+            $permitted_warehouses_id = Warehouse::where('deleted_at', '=', null)->pluck('id')->toArray();
         } else {
-            $array_warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-            $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $array_warehouses_id)->get(['id', 'name']);
+            $permitted_warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
         }
+        $permitted_warehouses_id = array_values(array_unique(array_map('intval', $permitted_warehouses_id)));
+
+        // -------------------------------------------------------------------
+        // ALCANCE DE SUCURSAL — únicamente "view/analytics scope" del dashboard.
+        // Sólo restringe qué warehouse_id entran en los SELECT de abajo. NO toca
+        // asignación operacional, permisos, default warehouse, ubicación de
+        // movimientos, caja ni POS. Es opcional y aditivo: sin branch_id el
+        // comportamiento es idéntico al anterior.
+        // -------------------------------------------------------------------
+        $array_warehouses_id = $permitted_warehouses_id;
+        $active_branch_id = 0;
+        $branches = [];
+
+        if (Schema::hasTable('branches') && Schema::hasColumn('warehouses', 'branch_id')) {
+            $allowed_branch_ids = app(BranchScopeService::class)->allowedBranchIds($user_auth);
+
+            // Sólo ofrecemos sucursales que además tengan ≥1 almacén permitido.
+            $branch_ids_with_permitted_wh = Warehouse::whereNull('deleted_at')
+                ->whereIn('id', $permitted_warehouses_id ?: [0])
+                ->whereNotNull('branch_id')
+                ->pluck('branch_id')->map(fn ($i) => (int) $i)->unique()->values()->all();
+
+            $visible_branch_ids = array_values(array_intersect($allowed_branch_ids, $branch_ids_with_permitted_wh));
+
+            if ($visible_branch_ids) {
+                $branches = Branch::whereNull('deleted_at')
+                    ->whereIn('id', $visible_branch_ids)
+                    ->orderBy('name')
+                    ->get(['id', 'name']);
+            }
+
+            $requested_branch_id = (int) $request->input('branch_id', 0);
+            if ($requested_branch_id > 0 && in_array($requested_branch_id, $visible_branch_ids, true)) {
+                $active_branch_id = $requested_branch_id;
+                $branch_warehouse_ids = Warehouse::whereNull('deleted_at')
+                    ->where('branch_id', $requested_branch_id)
+                    ->pluck('id')->map(fn ($i) => (int) $i)->all();
+                $array_warehouses_id = array_values(array_intersect($permitted_warehouses_id, $branch_warehouse_ids));
+            }
+        }
+
+        // Opciones de "Almacén" del dashboard: sólo las del alcance activo
+        // (así, con una sucursal seleccionada, el filtro interno de almacén
+        // ya sólo ofrece almacenes de esa sucursal).
+        $warehouses = Warehouse::where('deleted_at', '=', null)
+            ->whereIn('id', $array_warehouses_id ?: [0])
+            ->get(['id', 'name']);
 
         if (empty($request->warehouse_id)) {
             $warehouse_id = 0;
         } else {
-            $warehouse_id = $request->warehouse_id;
+            $warehouse_id = (int) $request->warehouse_id;
+            // Un almacén concreto debe pertenecer al alcance permitido/activo.
+            if (! in_array($warehouse_id, $array_warehouses_id, true)) {
+                $warehouse_id = 0;
+            }
         }
 
         // Sales & Purchases chart: use header date range + warehouse filter
@@ -62,6 +117,8 @@ class DashboardController extends Controller
         $stock_value = $this->StockValue($warehouse_id, $array_warehouses_id);
 
         return response()->json([
+            'branches' => $branches,
+            'active_branch_id' => $active_branch_id,
             'warehouses' => $warehouses,
             'sales' => $dataSales,
             'purchases' => $datapurchases,

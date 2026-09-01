@@ -301,6 +301,9 @@ export default {
   },
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
+    // Alcance de sucursal del shell px-next (0 = todas). Fuera del shell vale 0
+    // y el comportamiento es idéntico al anterior.
+    ...mapGetters("shellScope", ["shellBranchId"]),
     hasDashboardPermission() {
       const p = Array.isArray(this.currentUserPermissions) ? this.currentUserPermissions : [];
       return p.includes("dashboard");
@@ -428,6 +431,14 @@ export default {
     hasDashboardPermission: {
       immediate: true,
       handler(v) { if (v) this.boot(); else this.loading = false; }
+    },
+    // Cambiar de sucursal en el topbar del shell: el filtro interno de "Almacén"
+    // deja de tener sentido (sólo aplica dentro de una sucursal) → se reinicia a
+    // "Todos" y se recalcula todo el dashboard para el nuevo alcance.
+    shellBranchId() {
+      if (!this.hasDashboardPermission) return;
+      this.warehouseId = 0;
+      this.load();
     }
   },
   methods: {
@@ -504,11 +515,24 @@ export default {
       this.error = null;
       try {
         const { data } = await window.axios.get("dashboard_data", {
-          params: { warehouse_id: this.warehouseId, from: this.dateFrom, to: this.dateTo },
+          params: {
+            warehouse_id: this.warehouseId,
+            branch_id: this.shellBranchId || 0,
+            from: this.dateFrom,
+            to: this.dateTo
+          },
           meta: { skipInitialLoader: true }
         });
         this.raw = data;
         this.adapted = adaptDashboard(data);
+        // Publica el catálogo de sucursales visible para el selector del shell
+        // y revalida la selección actual contra él.
+        try {
+          this.$store.dispatch("shellScope/syncBranches", {
+            branches: (data && data.branches) || [],
+            userId: this.currentUser && this.currentUser.id
+          });
+        } catch (e) { /* store del shell no crítico para el dashboard */ }
       } catch (e) {
         this.error =
           (e && e.response && e.response.data && (e.response.data.message || e.response.data.error)) ||
