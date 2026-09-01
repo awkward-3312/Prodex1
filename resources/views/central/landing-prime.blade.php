@@ -562,13 +562,15 @@
             <span class="lp-mark lp-mark--center mb-7"></span>
             <h2 class="text-3xl sm:text-[2.75rem] font-bold tracking-[-0.03em] leading-[1.08] mb-4 text-white text-balance">{{ optional($cta)->title ?: __('landing_prime.cta_title') }}</h2>
             <p class="text-slate-300/90 text-lg max-w-xl mx-auto mb-9">{{ optional($cta)->subtitle ?: __('landing_prime.cta_lead') }}</p>
-            {{-- CTA comerciales fijas (el CMS sólo redirige la URL). --}}
+            {{-- Prioridad CMS → deck: $cta->*_button_text ya resuelve el locale
+                 activo (HasCentralTranslations); si viene vacío, cae al mismo
+                 landing_prime.* traducido. URLs del CMS sin cambio. --}}
             <div class="flex flex-col sm:flex-row gap-3 justify-center">
                 <a href="{{ optional($cta)->button_url ?: $lpRegisterUrl }}" class="lp-btn lp-btn--lg bg-white text-slate-950 hover:bg-slate-100">
-                    {{ __('landing_prime.cta_button') }} <i class="bi bi-arrow-right"></i>
+                    {{ optional($cta)->button_text ?: __('landing_prime.cta_button') }} <i class="bi bi-arrow-right"></i>
                 </a>
                 <a href="{{ $lpSalesHref }}" @if($lpSalesExternal) target="_blank" rel="noopener noreferrer" @endif class="lp-btn lp-btn--lg lp-btn--ghost">
-                    <i class="bi bi-chat-dots"></i> {{ __('landing_prime.cta_sales') }}
+                    <i class="bi bi-chat-dots"></i> {{ optional($cta)->sales_button_text ?: __('landing_prime.cta_sales') }}
                 </a>
             </div>
         </div>

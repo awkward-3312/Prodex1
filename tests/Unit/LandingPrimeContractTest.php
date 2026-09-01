@@ -678,11 +678,19 @@ class LandingPrimeContractTest extends TestCase
         $es  = require dirname(__DIR__, 2) . '/resources/lang/es/landing_prime.php';
         $en  = require dirname(__DIR__, 2) . '/resources/lang/en/landing_prime.php';
 
-        // A) Config dedicado, resuelto por SLUG (no id local, no posición).
+        // A) Config dedicado, resuelto por SLUG (no id local, no posición) y
+        //    con DEFAULT SEGURO: sin slug asumido, sólo vía env explícita.
+        $cfgSrc  = $this->read('config/landing_prime.php');
         $cfgPath = dirname(__DIR__, 2) . '/config/landing_prime.php';
         $this->assertFileExists($cfgPath);
         $cfg = require $cfgPath;
         $this->assertArrayHasKey('featured_plan_slug', $cfg);
+        // El default NO baquea ningún slug (env sin segundo argumento => null).
+        $this->assertMatchesRegularExpression(
+            "/'featured_plan_slug'\s*=>\s*env\('LANDING_PRIME_FEATURED_PLAN_SLUG'\)\s*,/",
+            $cfgSrc
+        );
+        $this->assertStringNotContainsString("'enterprise'", $cfgSrc);
         $this->assertStringContainsString("config('landing_prime.featured_plan_slug')", $p);
         $this->assertStringContainsString("firstWhere('slug', \$featuredSlug)", $p);
         $this->assertStringContainsString('data_get(', $p, 'acceso seguro: si no hay match, null');
@@ -748,5 +756,26 @@ class LandingPrimeContractTest extends TestCase
         $this->assertStringContainsString('class="lp-mark mb-6"', $hero);
         $this->assertStringContainsString('lg:col-span-5', $hero);
         $this->assertStringContainsString('lg:col-span-7', $hero);
+    }
+
+    /** El CTA final vuelve a dar prioridad al CMS en el texto de los botones
+     *  (iteración 8), con landing_prime.* como fallback. URLs y diseño intactos. */
+    public function test_cta_final_button_text_restores_cms_priority(): void
+    {
+        $b = $this->read('resources/views/central/landing-prime.blade.php');
+        $this->assertNotFalse(strpos($b, 'CTA FINAL — cierre de marca'));
+        $cta = substr($b, strpos($b, 'CTA FINAL — cierre de marca'), 1700);
+
+        // Texto de los dos botones: CMS primero, deck como fallback.
+        $this->assertStringContainsString("{{ optional(\$cta)->button_text ?: __('landing_prime.cta_button') }}", $cta);
+        $this->assertStringContainsString("{{ optional(\$cta)->sales_button_text ?: __('landing_prime.cta_sales') }}", $cta);
+        // Ya no se ignora el CMS con texto fijo del deck.
+        $this->assertDoesNotMatchRegularExpression("/>\s*\{\{ __\('landing_prime\.cta_button'\) \}\} <i/", $cta);
+
+        // URLs del CMS sin cambio y diseño del CTA intacto.
+        $this->assertStringContainsString("{{ optional(\$cta)->button_url ?: \$lpRegisterUrl }}", $cta);
+        $this->assertStringContainsString('lp-deep max-w-5xl mx-auto rounded-[2rem]', $cta);
+        $this->assertStringContainsString('lp-btn lp-btn--lg bg-white text-slate-950', $cta);
+        $this->assertStringContainsString('lp-btn lp-btn--lg lp-btn--ghost', $cta);
     }
 }
