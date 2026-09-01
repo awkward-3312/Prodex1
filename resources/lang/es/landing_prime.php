@@ -42,8 +42,22 @@ return [
     'hero_mock_st_sync'       => 'Sincronizado',
     'hero_mock_st_low'        => 'Stock bajo',
 
-    // ── Value bar ───────────────────────────────────────
+    // ── ¿Te suena familiar? (dolores reales, sin métricas) ──────────────
+    'problems_title' => '¿Te suena familiar?',
+    'problems_lead'  => 'Estos son los enredos del día a día que PRODEX pone en orden.',
+    'problem_1' => 'El inventario nunca cuadra con lo que hay en bodega.',
+    'problem_2' => 'Las ventas viven en cuadernos, chats y hojas sueltas.',
+    'problem_3' => 'La información del negocio llega tarde para decidir.',
+    'problem_4' => 'Cada sucursal opera por su lado, sin una vista común.',
+
+    // ── Resultados (barra de valor) ─────────────────────
     'value_headline' => 'Creado para negocios que necesitan más control sin más complejidad.',
+    'outcome_1' => 'Más control',
+    'outcome_2' => 'Menos caos operativo',
+    'outcome_3' => 'Ventas e inventario conectados',
+    'outcome_4' => 'Información centralizada',
+    'outcome_5' => 'Control de sucursales',
+    'outcome_6' => 'Mejores decisiones',
     'value_pos'        => 'Punto de venta',
     'value_inventory'  => 'Inventario',
     'value_purchases'  => 'Compras',
@@ -173,6 +187,9 @@ return [
     // ── Multisucursal / control ─────────────────────────
     'multibranch_title'   => 'Varias sucursales, una sola operación',
     'multibranch_lead'    => 'Consolida la información de todas tus ubicaciones sin perder el detalle de cada una.',
+    'multibranch_col_branch'    => 'Sucursal',
+    'multibranch_col_locations' => 'Ubicaciones',
+    'multibranch_st_transit'    => 'En tránsito',
     'multibranch_point1_title' => 'Multi-almacén y ubicaciones',
     'multibranch_point1_desc'  => 'Stock real por almacén y por ubicación dentro de cada uno.',
     'multibranch_point2_title' => 'Transferencias entre sucursales',

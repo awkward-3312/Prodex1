@@ -42,8 +42,22 @@ return [
     'hero_mock_st_sync'       => 'Synced',
     'hero_mock_st_low'        => 'Low stock',
 
-    // ── Value bar ───────────────────────────────────────
+    // ── Sound familiar? (real headaches, no metrics) ────────────────────
+    'problems_title' => 'Sound familiar?',
+    'problems_lead'  => 'These are the day-to-day tangles that PRODEX puts in order.',
+    'problem_1' => 'Inventory never matches what is actually in the warehouse.',
+    'problem_2' => 'Sales live in notebooks, chats and loose spreadsheets.',
+    'problem_3' => 'Business information arrives too late to act on.',
+    'problem_4' => 'Each branch runs on its own, with no shared view.',
+
+    // ── Outcomes (value bar) ────────────────────────────
     'value_headline' => 'Built for businesses that need more control without more complexity.',
+    'outcome_1' => 'More control',
+    'outcome_2' => 'Less operational chaos',
+    'outcome_3' => 'Sales and inventory connected',
+    'outcome_4' => 'Centralized information',
+    'outcome_5' => 'Branch-level control',
+    'outcome_6' => 'Better decisions',
     'value_pos'        => 'Point of sale',
     'value_inventory'  => 'Inventory',
     'value_purchases'  => 'Purchasing',
@@ -173,6 +187,9 @@ return [
     // ── Multi-branch / control ──────────────────────────
     'multibranch_title'   => 'Several branches, one operation',
     'multibranch_lead'    => 'Consolidate information from every location without losing the detail of each one.',
+    'multibranch_col_branch'    => 'Branch',
+    'multibranch_col_locations' => 'Locations',
+    'multibranch_st_transit'    => 'In transit',
     'multibranch_point1_title' => 'Multi-warehouse and locations',
     'multibranch_point1_desc'  => 'Real stock by warehouse and by location within each one.',
     'multibranch_point2_title' => 'Transfers between branches',

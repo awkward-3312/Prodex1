@@ -39,15 +39,15 @@
     $billNote = fn ($plan) => ($plan['billed_period'] ?? 'month') === 'year' ? __('landing_prime.calc_billed_yearly') : __('landing_prime.calc_billed_monthly');
 @endphp
 
-<section id="pricing" class="lp-soft lp-aurora py-20 sm:py-28 px-5 sm:px-6">
-    <div class="max-w-6xl mx-auto">
-        <header class="max-w-2xl mx-auto text-center mb-12 lp-reveal">
-            <span class="lp-mark lp-mark--center mb-5"></span>
-            <h2 class="text-3xl sm:text-4xl font-bold tracking-[-0.02em] text-slate-950 mb-3">{{ __('landing_prime.calc_title') }}</h2>
-            <p class="text-lg text-slate-600">{{ __('landing_prime.calc_lead') }}</p>
+<section id="pricing" class="lp-soft lp-aurora py-16 sm:py-20 px-5 sm:px-6">
+    <div class="max-w-5xl mx-auto">
+        <header class="max-w-2xl mx-auto text-center mb-10 lp-reveal">
+            <span class="lp-mark lp-mark--center mb-4"></span>
+            <h2 class="text-3xl sm:text-[2.25rem] font-bold tracking-[-0.02em] text-slate-950 mb-3">{{ __('landing_prime.calc_title') }}</h2>
+            <p class="text-slate-600">{{ __('landing_prime.calc_lead') }}</p>
         </header>
 
-        <div id="lpCalc" class="lp-calc grid lg:grid-cols-[1fr_380px] gap-6 lg:gap-10"
+        <div id="lpCalc" class="lp-calc grid lg:grid-cols-[1fr_360px] gap-6 lg:gap-8"
              data-status="{{ $status }}"
              data-endpoint="{{ route('central.pricing.recommend') }}"
              data-currency="{{ $sym }}"
@@ -67,9 +67,9 @@
             {{-- ── TU NEGOCIO — panel de configuración ─────────────────── --}}
             <div class="lp-reveal">
               <p class="lp-calc__col-label">{{ __('landing_prime.calc_col_business') }}</p>
-              <div class="lp-card rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
+              <div class="lp-card rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
                 {{-- Ciclo --}}
-                <div class="flex items-center justify-between flex-wrap gap-3 mb-7">
+                <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
                     <span class="text-sm font-semibold text-slate-700">{{ __('landing_prime.calc_cycle_label') }}</span>
                     <div class="lp-seg" role="group" aria-label="{{ __('landing_prime.calc_cycle_label') }}">
                         <button type="button" class="lp-seg__btn" data-cycle="monthly" aria-pressed="true">{{ __('landing_prime.calc_cycle_monthly') }}</button>
@@ -80,12 +80,12 @@
                     </div>
                 </div>
 
-                <p class="text-sm font-semibold text-slate-700 mb-5">{{ __('landing_prime.calc_config_label') }}</p>
+                <p class="text-sm font-semibold text-slate-700 mb-4">{{ __('landing_prime.calc_config_label') }}</p>
 
-                <div class="space-y-7">
+                <div class="space-y-5">
                     @foreach($fields as $f)
                         @if(!empty($f['group']))
-                            <p class="pt-3 text-sm font-semibold text-slate-700">{{ $f['group'] }}</p>
+                            <p class="pt-1 text-sm font-semibold text-slate-700">{{ $f['group'] }}</p>
                         @endif
                         <div class="lp-field {{ in_array($f['dim'], ['max_customers', 'max_suppliers'], true) ? 'ml-3' : '' }}" data-dim="{{ $f['dim'] }}">
                             <div class="flex items-center justify-between gap-4 mb-1">
@@ -115,29 +115,29 @@
             <aside class="lp-calc__summary lp-calc__summary--sticky lp-reveal" data-delay="1">
                 <p class="lp-calc__col-label">{{ __('landing_prime.calc_col_prodex') }}</p>
                 <p class="sr-only" role="status" aria-live="polite" data-calc-live></p>
-                <div class="lp-calc__card lp-card lp-elevate rounded-2xl border border-slate-200 bg-white p-6">
+                <div class="lp-calc__card lp-card lp-elevate rounded-2xl border border-slate-200 bg-white p-5">
 
                     {{-- Estado OK --}}
                     <div class="lp-calc__state lp-calc__state--ok">
                         <p class="text-center"><span class="lp-calc__badge" data-calc-badge>{{ __('landing_prime.calc_recommended') }}</span></p>
-                        <div class="lp-calc__figure text-center mt-3">
-                            <h3 class="text-2xl font-bold text-slate-950" data-calc-name>{{ $planForSummary['name'] ?? '—' }}</h3>
-                            <p class="mt-2">
-                                <span class="text-4xl font-extrabold tracking-tight text-slate-950 lp-tnum" data-calc-amount>{{ $planForSummary ? ($planForSummary['is_free'] ? __('landing_prime.calc_free') : $fmtMoney($planForSummary['billed_amount'])) : '—' }}</span>
+                        <div class="lp-calc__figure text-center mt-2.5">
+                            <h3 class="text-xl font-bold text-slate-950" data-calc-name>{{ $planForSummary['name'] ?? '—' }}</h3>
+                            <p class="mt-1.5">
+                                <span class="text-[2rem] sm:text-4xl font-extrabold tracking-tight text-slate-950 lp-tnum" data-calc-amount>{{ $planForSummary ? ($planForSummary['is_free'] ? __('landing_prime.calc_free') : $fmtMoney($planForSummary['billed_amount'])) : '—' }}</span>
                                 <span class="text-slate-500 font-medium" data-calc-period>{{ $planForSummary && !$planForSummary['is_free'] ? $billPeriod($planForSummary) : '' }}</span>
                             </p>
                             <p class="text-xs text-slate-400 mt-1" data-calc-billnote>{{ $planForSummary && !$planForSummary['is_free'] ? $billNote($planForSummary) : '' }}</p>
                         </div>
 
-                        <div class="mt-5 pt-5 border-t border-slate-100">
-                            <p class="text-xs font-bold uppercase tracking-wide text-slate-400 mb-3">{{ __('landing_prime.calc_includes') }}</p>
-                            <ul class="space-y-2 text-sm text-slate-700" data-calc-included>
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <p class="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-400 mb-2.5">{{ __('landing_prime.calc_includes') }}</p>
+                            <ul class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[0.8125rem] text-slate-700" data-calc-included>
                                 @foreach(($planForSummary['included'] ?? []) as $it)
                                     <li><strong>{{ $it['unlimited'] ? __('landing_prime.calc_unlimited') : $it['display'] }}</strong> {{ $it['label'] }}</li>
                                 @endforeach
                             </ul>
                             @php $summaryFeatures = $planForSummary['features'] ?? []; @endphp
-                            <ul class="mt-3 space-y-2 text-sm text-slate-600" data-calc-features>
+                            <ul class="mt-2.5 space-y-1 text-[0.8125rem] text-slate-500" data-calc-features>
                                 @forelse($summaryFeatures as $lf)
                                     <li>{{ $lf }}</li>
                                 @empty
@@ -146,14 +146,14 @@
                             </ul>
                         </div>
 
-                        <a class="lp-btn lp-btn--primary w-full mt-5" data-calc-cta href="{{ $planForSummary['register_url'] ?? ($c['register_base_url'] ?? route('central.register')) }}">
+                        <a class="lp-btn lp-btn--primary w-full mt-4" data-calc-cta href="{{ $planForSummary['register_url'] ?? ($c['register_base_url'] ?? route('central.register')) }}">
                             {{ __('landing_prime.calc_cta') }}
                         </a>
                         <p class="text-center text-xs text-slate-400 mt-2" data-calc-trialnote @if(! ($planForSummary['is_trial'] ?? false) || ($planForSummary['trial_days'] ?? 0) < 1) hidden @endif>
                             {{ __('landing_prime.calc_trial_note', ['days' => (int) ($planForSummary['trial_days'] ?? 0)]) }}
                         </p>
 
-                        <p class="text-center text-sm text-slate-500 mt-4 pt-4 border-t border-slate-100">
+                        <p class="text-center text-[0.8125rem] text-slate-500 mt-3 pt-3 border-t border-slate-100">
                             {{ __('landing_prime.calc_custom_q') }}
                             <a class="font-semibold text-indigo-600" data-calc-sales href="{{ $salesHref }}" @if($salesExternal) target="_blank" rel="noopener noreferrer" @endif>{{ __('landing_prime.calc_custom_link') }}</a>
                         </p>

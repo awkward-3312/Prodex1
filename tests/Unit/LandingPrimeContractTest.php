@@ -516,9 +516,59 @@ class LandingPrimeContractTest extends TestCase
         $this->assertStringContainsString('lp-soft lp-aurora', $c, 'calculadora con aurora');
         $this->assertStringContainsString('lp-deep max-w-5xl', $b, 'CTA final con superficie profunda');
 
-        // Motivo gráfico, NO un eyebrow de texto: aparece en los picos, no en cada H2.
-        $this->assertSame(2, substr_count($b, 'class="lp-mark'), 'lp-mark sólo en hero y CTA del blade principal');
+        // Motivo gráfico, NO un eyebrow de texto: aparece en pocos puntos clave
+        // (hero, "¿Te suena familiar?", CTA), no encima de cada H2 de sección.
+        $this->assertSame(3, substr_count($b, 'class="lp-mark'), 'lp-mark contenido a los puntos clave del blade principal');
         $this->assertStringContainsString('lp-mark lp-mark--center', $c, 'lp-mark en la calculadora');
+    }
+
+    /** Personalidad de color por plan: en el borde/icono/precio/CTA, no en toda la card. */
+    public function test_plans_have_per_plan_color_personality(): void
+    {
+        $p   = $this->read('resources/views/central/partials/prime/plans.blade.php');
+        $css = $this->read('public/assets_super/css/landing-prime.css');
+
+        // Clase de tono asignada por POSICIÓN de precio (no por nombre hardcodeado).
+        $this->assertStringContainsString("'lp-plan--c' . min(\$n + 1, 4)", $p);
+        $this->assertStringNotContainsStringIgnoringCase('Emprendedor', $p);
+        $this->assertStringNotContainsStringIgnoringCase('Empresarial', $p);
+        $this->assertStringNotContainsString('most_popular', $p);
+        $this->assertStringNotContainsString('is_featured', $p);
+
+        // El color vive en detalles, no en el fondo de la card.
+        foreach (['--lp-plan-1', '--lp-plan-2', '--lp-plan-3', '--lp-plan-4', '--lp-orange'] as $tok) {
+            $this->assertStringContainsString($tok, $css, $tok);
+        }
+        $this->assertStringContainsString('.lp-plan__amt { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--pc); }', $css);
+        $this->assertStringContainsString('.lp-plan__cta {', $css);
+        // La card NO se pinta entera del color del plan.
+        $this->assertDoesNotMatchRegularExpression('/\.lp-plan(--c\d)?\s*\{[^}]*background:\s*var\(--pc\)/', $css);
+
+        // El realce sigue siendo sólo para el plan recomendado por el servicio.
+        $this->assertStringContainsString('$recommendedId !== null && $recommendedId === $p[\'id\']', $p);
+    }
+
+    /** "¿Te suena familiar?" y mensaje de resultados (sin métricas inventadas). */
+    public function test_problems_and_outcomes_sections(): void
+    {
+        $b  = $this->read('resources/views/central/landing-prime.blade.php');
+        $es = require dirname(__DIR__, 2) . '/resources/lang/es/landing_prime.php';
+        $en = require dirname(__DIR__, 2) . '/resources/lang/en/landing_prime.php';
+
+        $this->assertStringContainsString("__('landing_prime.problems_title')", $b);
+        $this->assertStringContainsString("__('landing_prime.problem_' . (\$i + 1))", $b);
+        // El bloque de resultados reemplaza los chips de nombres de módulos.
+        $this->assertStringContainsString("'outcome_1' => 'bi-sliders'", $b);
+        $this->assertStringNotContainsString("'value_pos' => 'bi-shop-window'", $b);
+
+        foreach (['problems_title', 'problems_lead', 'problem_1', 'problem_4', 'outcome_1', 'outcome_6'] as $k) {
+            $this->assertArrayHasKey($k, $es, "ES $k");
+            $this->assertArrayHasKey($k, $en, "EN $k");
+        }
+        // Sin números en el copy de problemas.
+        foreach (['problem_1', 'problem_2', 'problem_3', 'problem_4'] as $k) {
+            $this->assertDoesNotMatchRegularExpression('/\d/', $es[$k], "ES $k sin cifras");
+        }
     }
 
     /** La calculadora se presenta como "Tu negocio → Tu PRODEX". */

@@ -30,6 +30,12 @@
         </header>
 
         <div id="lpPlans" class="grid gap-5 md:grid-cols-2 {{ $lgCols }}">
+            @php
+                // Personalidad de color por posición de precio (dinámico, sin hardcodear nombres):
+                // 1º cyan · 2º azul · 3º índigo/violeta · 4º+ naranja.
+                $planTone = fn ($n) => 'lp-plan--c' . min($n + 1, 4);
+                $planIcon = ['bi-rocket-takeoff', 'bi-shop', 'bi-buildings', 'bi-diagram-3'];
+            @endphp
             @foreach($calcPlans as $i => $p)
                 @php
                     $includedAll = collect($p['included'] ?? []);
@@ -39,14 +45,15 @@
                     $isPaid = empty($p['is_free']);
                     $hasDetail = $allUnlimited || $included->isNotEmpty() || $features->isNotEmpty();
                 @endphp
-                <article class="lp-plan lp-reveal {{ $recommendedId !== null && $recommendedId === $p['id'] ? 'is-recommended' : '' }}" data-plan-id="{{ $p['id'] }}" @if($i % 2) data-delay="1" @endif>
+                <article class="lp-plan {{ $planTone($i) }} lp-reveal {{ $recommendedId !== null && $recommendedId === $p['id'] ? 'is-recommended' : '' }}" data-plan-id="{{ $p['id'] }}" @if($i % 2) data-delay="1" @endif>
                     <span class="lp-plan__chip">{{ __('landing_prime.plans_recommended_chip') }}</span>
 
+                    <span class="lp-plan__ic" aria-hidden="true"><i class="bi {{ $planIcon[min($i, 3)] }}"></i></span>
                     <p class="lp-plan__name">{{ $p['name'] }}</p>
 
-                    <div class="lp-plan__price mt-2">
+                    <div class="lp-plan__price">
                         @if($p['is_free'])
-                            <span class="lp-plan__amt">{{ __('landing_prime.calc_free') }}</span>
+                            <span class="lp-plan__amt lp-plan__amt--free">{{ __('landing_prime.calc_free') }}</span>
                         @else
                             <span class="lp-plan__amt lp-tnum">{{ $money($p['price_monthly']) }}</span>
                             <span class="lp-plan__per">{{ __('landing_prime.calc_per_month') }}</span>

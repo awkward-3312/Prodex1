@@ -21,6 +21,22 @@
     --lp-aurora-2:   #4F46E5;   /* indigo */
     --lp-aurora-3:   #22D3EE;   /* cyan / turquesa */
     --lp-ink-950:    #0B1220;   /* superficie profunda para el cierre */
+    --lp-navy:       #16233F;   /* confianza — texto/acentos oscuros */
+    --lp-orange:     #E15A00;   /* acento comercial estratégico (AA con blanco) */
+    --lp-orange-050: #FFF2E8;
+    /* Personalidad por plan: icono · borde · precio · CTA · detalles (NO la card entera) */
+    --lp-plan-1:     #0E9CB8;   /* Emprendedor — cyan/turquesa (AA) */
+    --lp-plan-1-050: #E4FAFE;
+    --lp-plan-1-200: #8DDDE9;
+    --lp-plan-2:     #2563EB;   /* Pyme — azul */
+    --lp-plan-2-050: #E8F0FF;
+    --lp-plan-2-200: #A9C4F6;
+    --lp-plan-3:     #6D42E0;   /* Profesional — índigo/violeta */
+    --lp-plan-3-050: #F0EAFE;
+    --lp-plan-3-200: #C4B0F2;
+    --lp-plan-4:     #E15A00;   /* Empresarial — naranja */
+    --lp-plan-4-050: #FFF2E8;
+    --lp-plan-4-200: #F5B78A;
     --lp-ok:         #059669;
     --lp-wa:         #0E7C6B;   /* verde WhatsApp — 5.1:1 con texto blanco (AA) */
     --lp-radius:     16px;
@@ -161,7 +177,16 @@ body.landing-prime {
     background: linear-gradient(90deg, var(--lp-aurora-1), var(--lp-aurora-3));
 }
 .lp-mark--center { margin-inline: auto; }
+.lp-mark--orange { background: linear-gradient(90deg, var(--lp-orange), #F59E42); }
 .lp-deep .lp-mark { background: linear-gradient(90deg, #60A5FA, var(--lp-aurora-3)); }
+
+/* "¿Te suena familiar?" — dolores reales, sin métricas. Icono en tono neutro
+   (el verde se reserva para estados positivos). */
+.lp-problem { display: flex; gap: 12px; align-items: flex-start; }
+.lp-problem__mark {
+    flex: none; margin-top: 3px; font-size: 18px;
+    color: var(--lp-navy); opacity: .5;
+}
 
 /* Chrome de aplicación real: riel + panel */
 .lp-appui { display: grid; grid-template-columns: 52px minmax(0, 1fr); background: #fff; }
@@ -227,6 +252,9 @@ body.landing-prime {
     content: ""; width: 18px; height: 2px; border-radius: 999px; flex: none;
     background: linear-gradient(90deg, var(--lp-aurora-1), var(--lp-aurora-3));
 }
+/* Resumen compacto: features acotadas a 4 (server y JS re-render). */
+.lp-calc__state--ok [data-calc-features] li:nth-child(n+5) { display: none; }
+
 /* El resumen ("Tu PRODEX") pesa más: borde, tinte y elevación aurora. */
 .lp-calc__summary .lp-calc__card {
     border-color: rgba(79, 70, 229, .30);
@@ -351,6 +379,9 @@ body.landing-prime {
    Comparación de planes — SIEMPRE visible, cards neutrales, comparables
    ========================================================================== */
 .lp-plan {
+    --pc: var(--lp-brand);          /* color del plan (se sobreescribe por .lp-plan--c*) */
+    --pc-050: var(--lp-brand-050);
+    --pc-200: #C7CBF6;
     position: relative;
     display: flex; flex-direction: column;
     border: 1px solid var(--lp-line);
@@ -360,21 +391,38 @@ body.landing-prime {
     box-shadow: var(--lp-shadow-sm);
     transition: border-color .2s var(--lp-ease-out), box-shadow .2s var(--lp-ease-out);
 }
+/* Franja de acento superior — el color vive en el borde, no en la card. */
+.lp-plan::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+    border-radius: var(--lp-radius) var(--lp-radius) 0 0;
+    background: var(--pc);
+    opacity: .9;
+}
+.lp-plan--c1 { --pc: var(--lp-plan-1); --pc-050: var(--lp-plan-1-050); --pc-200: var(--lp-plan-1-200); }
+.lp-plan--c2 { --pc: var(--lp-plan-2); --pc-050: var(--lp-plan-2-050); --pc-200: var(--lp-plan-2-200); }
+.lp-plan--c3 { --pc: var(--lp-plan-3); --pc-050: var(--lp-plan-3-050); --pc-200: var(--lp-plan-3-200); }
+.lp-plan--c4 { --pc: var(--lp-plan-4); --pc-050: var(--lp-plan-4-050); --pc-200: var(--lp-plan-4-200); }
+
+.lp-plan__ic {
+    width: 34px; height: 34px; border-radius: 10px; flex: none;
+    display: grid; place-items: center; font-size: 16px;
+    color: var(--pc); background: var(--pc-050);
+    margin-bottom: .875rem;
+}
 .lp-plan__chip {
     position: absolute; top: -0.7rem; left: 1.375rem;
     padding: 3px 10px; border-radius: 999px;
-    background: var(--lp-brand); color: #fff;
+    background: var(--pc); color: #fff;
     font-size: 11px; font-weight: 700; letter-spacing: .01em;
     white-space: nowrap;
     opacity: 0; transform: translateY(3px);
     transition: opacity .2s var(--lp-ease-out), transform .2s var(--lp-ease-out);
     pointer-events: none;
 }
-/* Realce discreto del plan que la calculadora recomienda (por plan_id).
-   Sin cambio de tamaño ni de layout: sólo borde + halo suave + chip. */
+/* Realce del plan que la calculadora recomienda (por plan_id), en SU color. */
 .lp-plan.is-recommended {
-    border-color: var(--lp-brand);
-    box-shadow: 0 0 0 1px var(--lp-brand-050), var(--lp-shadow);
+    border-color: var(--pc);
+    box-shadow: 0 0 0 1px var(--pc), 0 0 0 5px var(--pc-050), var(--lp-shadow-lg);
 }
 .lp-plan.is-recommended .lp-plan__chip { opacity: 1; transform: none; }
 
@@ -382,8 +430,9 @@ body.landing-prime {
     font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em;
     color: var(--lp-ink);
 }
-.lp-plan__price { display: flex; align-items: baseline; gap: 4px; }
-.lp-plan__amt { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--lp-ink); }
+.lp-plan__price { display: flex; align-items: baseline; gap: 4px; margin-top: .375rem; }
+.lp-plan__amt { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--pc); }
+.lp-plan__amt--free { color: var(--lp-ink); }
 .lp-plan__per { font-size: .875rem; color: var(--lp-ink-3); }
 /* Altura reservada aunque no haya anual/prueba => las cifras no saltan. */
 .lp-plan__yearly { font-size: .75rem; color: var(--lp-ink-3); min-height: 1.1rem; }
@@ -394,11 +443,18 @@ body.landing-prime {
 }
 .lp-plan__list { display: flex; flex-direction: column; gap: .5rem; font-size: .8125rem; color: var(--lp-ink-2); }
 .lp-plan__list li { display: flex; align-items: flex-start; gap: .5rem; }
-.lp-plan__list .bi { color: var(--lp-brand); font-size: .875rem; line-height: 1.4; flex: none; }
-/* CTA sobre la misma línea base en toda la fila => comparación limpia.
-   El margen inferior del bloque anterior garantiza separación mínima cuando
-   la card está llena; `margin-top:auto` la empuja al fondo cuando sobra sitio. */
-.lp-plan__cta { margin-top: auto; }
+.lp-plan__list .bi { color: var(--pc); font-size: .875rem; line-height: 1.4; flex: none; }
+/* CTA en el color del plan (contorno para los no destacados, sólido para el recomendado).
+   margin-top:auto alinea la base de todas las cards de la fila. */
+.lp-plan__cta {
+    margin-top: auto;
+    background: #fff; color: var(--pc); font-weight: 600;
+    border: 1px solid var(--lp-line);
+    border-color: var(--pc-200);
+}
+.lp-plan__cta:hover { background: var(--pc-050); border-color: var(--pc); }
+.lp-plan.is-recommended .lp-plan__cta { background: var(--pc); color: #fff; border-color: var(--pc); }
+.lp-plan.is-recommended .lp-plan__cta:hover { filter: brightness(1.06); background: var(--pc); }
 
 /* ==========================================================================
    Showcase con tabs

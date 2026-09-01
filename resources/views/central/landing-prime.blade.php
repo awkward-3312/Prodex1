@@ -191,13 +191,15 @@
                 <p class="text-lg text-slate-600 leading-relaxed max-w-xl mb-8">
                     {{ $hero->description ?: __('landing_prime.hero_lead') }}
                 </p>
+                {{-- CTA comerciales fijas de landing-prime (el CMS sólo puede
+                     redirigir la URL, no cambiar el texto por etiquetas de auth). --}}
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <a href="{{ $hero->primary_button_url ?? $lpRegisterUrl }}" class="lp-btn lp-btn--primary lp-btn--lg">
-                        {{ $hero->primary_button_text ?: __('landing_prime.hero_cta') }}
+                    <a href="{{ $hero->primary_button_url ?: $lpRegisterUrl }}" class="lp-btn lp-btn--primary lp-btn--lg">
+                        {{ __('landing_prime.hero_cta') }}
                         <i class="bi bi-arrow-right"></i>
                     </a>
-                    <a href="{{ $hero->secondary_button_url ?? $lpSalesHref }}" @if($lpSalesExternal && ! $hero->secondary_button_url) target="_blank" rel="noopener noreferrer" @endif class="lp-btn lp-btn--ghost lp-btn--lg">
-                        {{ $hero->secondary_button_text ?: __('landing_prime.hero_cta_secondary') }}
+                    <a href="{{ $hero->secondary_button_url ?: $lpSalesHref }}" @if($lpSalesExternal && ! $hero->secondary_button_url) target="_blank" rel="noopener noreferrer" @endif class="lp-btn lp-btn--ghost lp-btn--lg">
+                        {{ __('landing_prime.hero_cta_secondary') }}
                     </a>
                 </div>
                 @if($lpTrialPlan)
@@ -282,12 +284,31 @@
     </section>
     @endif
 
-    {{-- ═══════════════════════ VALUE BAR ═══════════════════════ --}}
+    {{-- ═══════════════════════ ¿TE SUENA FAMILIAR? ═══════════════════════ --}}
+    <section class="bg-white pt-16 pb-4 sm:pt-24 px-5 sm:px-6">
+        <div class="max-w-5xl mx-auto">
+            <header class="max-w-2xl mb-10 lp-reveal">
+                <span class="lp-mark lp-mark--orange mb-5"></span>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-[-0.02em] text-slate-950 mb-3">{{ __('landing_prime.problems_title') }}</h2>
+                <p class="text-lg text-slate-600">{{ __('landing_prime.problems_lead') }}</p>
+            </header>
+            <div class="grid sm:grid-cols-2 gap-x-10 gap-y-6">
+                @foreach(['bi-clipboard-x', 'bi-journal-x', 'bi-hourglass-split', 'bi-diagram-2'] as $i => $icon)
+                    <div class="lp-problem lp-reveal" @if($i % 2) data-delay="1" @endif>
+                        <i class="bi {{ $icon }} lp-problem__mark" aria-hidden="true"></i>
+                        <p class="text-slate-700 leading-relaxed">{{ __('landing_prime.problem_' . ($i + 1)) }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    {{-- ═══════════════════════ RESULTADOS (antes: value bar) ═══════════════════════ --}}
     <section class="bg-white py-14 px-5 sm:px-6">
         <div class="max-w-5xl mx-auto text-center lp-reveal">
             <p class="text-lg sm:text-xl font-semibold text-slate-800 max-w-2xl mx-auto mb-8">{{ __('landing_prime.value_headline') }}</p>
             <div class="flex flex-wrap justify-center gap-2.5">
-                @foreach(['value_pos' => 'bi-shop-window', 'value_inventory' => 'bi-box-seam', 'value_purchases' => 'bi-truck', 'value_sales' => 'bi-receipt', 'value_reports' => 'bi-graph-up', 'value_hr' => 'bi-people', 'value_branches' => 'bi-buildings', 'value_ecommerce' => 'bi-bag'] as $key => $icon)
+                @foreach(['outcome_1' => 'bi-sliders', 'outcome_2' => 'bi-wind', 'outcome_3' => 'bi-link-45deg', 'outcome_4' => 'bi-database', 'outcome_5' => 'bi-buildings', 'outcome_6' => 'bi-graph-up-arrow'] as $key => $icon)
                     <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-slate-50 text-sm font-medium text-slate-700">
                         <i class="bi {{ $icon }} text-indigo-500"></i>{{ __('landing_prime.' . $key) }}
                     </span>
@@ -417,17 +438,35 @@
             </div>
             <div class="lp-window lp-reveal" data-delay="1">
                 <div class="lp-window__bar"><span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__title">{{ __('landing_prime.value_branches') }}</span></div>
-                <div class="p-6 bg-white grid sm:grid-cols-2 gap-4">
-                    @foreach([1, 2, 3, 4] as $b)
-                        <div class="rounded-xl border border-slate-200 p-4">
-                            <div class="flex items-center gap-2 mb-3">
-                                <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
-                                <span class="h-2.5 rounded bg-slate-100 flex-1"></span>
-                            </div>
-                            <span class="block h-2 rounded bg-slate-100 mb-1.5" style="width:80%"></span>
-                            <span class="block h-2 rounded bg-slate-100" style="width:55%"></span>
+                <div class="lp-appui">
+                    <div class="lp-appui__rail" aria-hidden="true">
+                        <i class="bi bi-buildings is-active"></i>
+                        <i class="bi bi-geo-alt"></i>
+                        <i class="bi bi-box-seam"></i>
+                        <i class="bi bi-arrow-left-right"></i>
+                    </div>
+                    <div class="lp-appui__main">
+                        <div class="lp-appui__topbar">
+                            <i class="bi bi-diagram-3 text-indigo-500"></i><span>{{ __('landing_prime.value_branches') }}</span>
+                            <span class="lp-appui__pin" aria-hidden="true"></span>
                         </div>
-                    @endforeach
+                        <div class="grid grid-cols-[1fr_auto_auto] gap-x-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400 pb-2 border-b border-slate-100">
+                            <span>{{ __('landing_prime.multibranch_col_branch') }}</span>
+                            <span>{{ __('landing_prime.multibranch_col_locations') }}</span>
+                            <span>{{ __('landing_prime.showcase_col_status') }}</span>
+                        </div>
+                        @php $mb = [['3', 'ok', 'hero_mock_st_ok'], ['2', 'info', 'hero_mock_st_sync'], ['4', 'wait', 'multibranch_st_transit'], ['2', 'ok', 'hero_mock_st_ok']]; @endphp
+                        @foreach($mb as $r => [$loc, $tone, $stKey])
+                            <div class="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center py-2.5 border-b border-slate-50">
+                                <span class="flex items-center gap-2">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-none"></span>
+                                    <span class="h-2.5 rounded bg-slate-100" style="width: {{ [64, 78, 52, 70][$r] }}%"></span>
+                                </span>
+                                <span class="text-[11px] font-medium text-slate-500 whitespace-nowrap">{{ $loc }} {{ __('landing_prime.multibranch_col_locations') }}</span>
+                                <span class="lp-pill lp-pill--{{ $tone }}"><i class="bi bi-circle-fill"></i>{{ __('landing_prime.' . $stKey) }}</span>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
             </div>
         </div>
@@ -520,12 +559,13 @@
             <span class="lp-mark lp-mark--center mb-7"></span>
             <h2 class="text-3xl sm:text-[2.75rem] font-bold tracking-[-0.03em] leading-[1.08] mb-4 text-white text-balance">{{ optional($cta)->title ?: __('landing_prime.cta_title') }}</h2>
             <p class="text-slate-300/90 text-lg max-w-xl mx-auto mb-9">{{ optional($cta)->subtitle ?: __('landing_prime.cta_lead') }}</p>
+            {{-- CTA comerciales fijas (el CMS sólo redirige la URL). --}}
             <div class="flex flex-col sm:flex-row gap-3 justify-center">
                 <a href="{{ optional($cta)->button_url ?: $lpRegisterUrl }}" class="lp-btn lp-btn--lg bg-white text-slate-950 hover:bg-slate-100">
-                    {{ optional($cta)->button_text ?: __('landing_prime.cta_button') }} <i class="bi bi-arrow-right"></i>
+                    {{ __('landing_prime.cta_button') }} <i class="bi bi-arrow-right"></i>
                 </a>
                 <a href="{{ $lpSalesHref }}" @if($lpSalesExternal) target="_blank" rel="noopener noreferrer" @endif class="lp-btn lp-btn--lg lp-btn--ghost">
-                    <i class="bi bi-chat-dots"></i> {{ optional($cta)->sales_button_text ?: __('landing_prime.cta_sales') }}
+                    <i class="bi bi-chat-dots"></i> {{ __('landing_prime.cta_sales') }}
                 </a>
             </div>
         </div>
