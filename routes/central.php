@@ -90,6 +90,11 @@ Route::get('/privacy-policy', [\App\Http\Controllers\Central\LandingPageControll
 // Terms & conditions (public)
 Route::get('/terms-conditions', [\App\Http\Controllers\Central\LandingPageController::class, 'termsConditions'])->name('central.terms-conditions');
 
+// Calculadora de precios (landing-prime) — solo lectura de Plan::public().
+Route::get('/pricing/recommend', [\App\Http\Controllers\Central\PricingCalculatorController::class, 'recommend'])
+    ->middleware('throttle:60,1')
+    ->name('central.pricing.recommend');
+
 // ------------------------------------------------------------------\\
 // Tenant registration (central)
 Route::get('/register', [\App\Http\Controllers\Central\TenantRegistrationController::class, 'showRegistrationForm'])->name('central.register');

@@ -653,6 +653,8 @@ return [
         'v5_desc'          => 'Diseño claro con filas de características alternadas y línea de tiempo.',
         'v6_label'         => 'Agencia',
         'v6_desc'          => 'Tema azul marino y menta con tarjetas de servicios y precios.',
+        'prime_label'      => 'Prime',
+        'prime_desc'       => 'Diseño SaaS premium en modo claro con calculadora de precios interactiva.',
     ],
 
     // ── CMS Hero ─────────────────────────────────────────

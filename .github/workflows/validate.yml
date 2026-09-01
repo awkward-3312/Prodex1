@@ -32,6 +32,8 @@ jobs:
         run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php tests/Unit/BranchInventoryScopeServiceTest.php tests/Unit/BranchTransferReceivingScopeTest.php
       - name: Run inventory architecture tests
         run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php tests/Unit/InventoryReadServiceTest.php tests/Unit/BatchLocationServiceTest.php tests/Unit/SerialLocationServiceTest.php tests/Unit/InternalInventoryMoveServiceTest.php tests/Unit/InventoryProvenanceAuditServiceTest.php tests/Unit/InventoryLegacyDivergenceContractTest.php tests/Unit/OpeningStockInventoryServiceTest.php tests/Unit/LocationAwareStockDocumentServiceTest.php tests/Unit/LocationAwareAdjustmentDamageContractTest.php
+      - name: Run public landing (landing-prime) tests
+        run: vendor/bin/phpunit tests/Unit/PlanRecommendationServiceTest.php tests/Unit/LandingPrimeContractTest.php
       - name: PHP syntax check for SAR files
         run: |
           php -l app/Services/SarFiscalNumberService.php
@@ -162,6 +164,15 @@ jobs:
           php -l tests/Unit/BatchLocationServiceTest.php
           php -l tests/Unit/SerialLocationServiceTest.php
           php -l tests/Unit/InternalInventoryMoveServiceTest.php
+      - name: PHP syntax check for public landing (landing-prime) files
+        run: |
+          php -l app/Services/PlanRecommendationService.php
+          php -l app/Support/LandingContact.php
+          php -l app/Http/Controllers/Central/PricingCalculatorController.php
+          php -l app/Http/Controllers/Central/LandingPageController.php
+          php -l app/Support/LandingPageTemplate.php
+          php -l tests/Unit/PlanRecommendationServiceTest.php
+          php -l tests/Unit/LandingPrimeContractTest.php
 
   frontend-build:
     runs-on: ubuntu-latest
@@ -181,6 +192,7 @@ jobs:
           node --check resources/static/prodex-transfer-permission-ui.js
           node --check resources/static/prodex-transfer-issues.js
           node --check resources/static/prodex-organization-navigation.js
+          node --check public/assets_super/js/landing-prime.js
       - name: Production build
         env:
           NODE_OPTIONS: --max-old-space-size=8192
