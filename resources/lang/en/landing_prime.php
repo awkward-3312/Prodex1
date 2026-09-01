@@ -40,7 +40,6 @@ return [
     'hero_mock_row_location'  => 'Location',
 
     // ── Value bar ───────────────────────────────────────
-    'value_eyebrow'  => 'One platform, every operation',
     'value_headline' => 'Built for businesses that need more control without more complexity.',
     'value_pos'        => 'Point of sale',
     'value_inventory'  => 'Inventory',
@@ -52,7 +51,6 @@ return [
     'value_ecommerce'  => 'Ecommerce',
 
     // ── Pricing calculator ──────────────────────────────
-    'calc_eyebrow'   => 'Pricing calculator',
     'calc_title'     => 'Configure PRODEX to fit your business',
     'calc_lead'      => 'Adjust the values and we will show the real plan that covers your operation.',
     'calc_cycle_label'   => 'Billing cycle',
@@ -90,6 +88,11 @@ return [
     'calc_custom_link'   => 'Talk to sales',
     'calc_free'          => 'Free',
 
+    // Screen-reader announcements (aria-live)
+    'calc_live_ok'       => 'Recommended plan: :plan, :amount.',
+    'calc_live_custom'   => 'Your configuration needs a custom plan.',
+    'calc_live_nodata'   => 'We are preparing the recommendation for your configuration.',
+
     // Summary — custom state (no plan fits)
     'calc_custom_title'  => 'You need a custom configuration',
     'calc_custom_lead'   => 'Your operation exceeds the public plans. Our team will put together a tailored proposal.',
@@ -108,7 +111,6 @@ return [
     'calc_plan_cta'      => 'Start free trial',
 
     // ── Modules / solutions ─────────────────────────────
-    'modules_eyebrow' => 'Solutions',
     'modules_title'   => 'Every area of your business, connected',
     'modules_lead'    => 'Turn on what you need today and add modules as you grow.',
     'modules_sales_title'   => 'Sales',
@@ -125,7 +127,6 @@ return [
     'modules_commerce_desc'  => 'Online orders and integrations with WooCommerce, Shopify and QuickBooks.',
 
     // ── Product showcase ────────────────────────────────
-    'showcase_eyebrow' => 'The product',
     'showcase_title'   => 'This is what working with PRODEX looks like',
     'showcase_lead'    => 'A clear interface, built for the day-to-day of the business.',
     'showcase_tab_sales'     => 'Sales',
@@ -149,7 +150,6 @@ return [
     'showcase_placeholder'  => '—',
 
     // ── How it works ────────────────────────────────────
-    'hiw_eyebrow'  => 'How it works',
     'hiw_title'    => 'From zero to operating in three steps',
     'hiw_lead'     => 'No installs, no endless setup.',
     'hiw_step1_title' => 'Create your space',
@@ -160,7 +160,6 @@ return [
     'hiw_step3_desc'  => 'Sell, control stock and review your reports from day one.',
 
     // ── Multi-branch / control ──────────────────────────
-    'multibranch_eyebrow' => 'Business control',
     'multibranch_title'   => 'Several branches, one operation',
     'multibranch_lead'    => 'Consolidate information from every location without losing the detail of each one.',
     'multibranch_point1_title' => 'Multi-warehouse and locations',
@@ -173,7 +172,6 @@ return [
     'multibranch_point4_desc'  => 'Your information lives in its own database, separate from the rest.',
 
     // ── Reports / decisions ─────────────────────────────
-    'reports_eyebrow' => 'Information to decide',
     'reports_title'   => 'Your business numbers, clear',
     'reports_lead'    => 'Sales, inventory, purchasing and margin reports, ready to export.',
     'reports_item1'   => 'Sales by period, branch and product',
@@ -184,11 +182,9 @@ return [
     'reports_chart_caption' => 'Period comparison',
 
     // ── Testimonials (header; items come from the CMS) ──
-    'testimonials_eyebrow' => 'Customers',
     'testimonials_title'   => 'Businesses already running on PRODEX',
 
     // ── FAQ (header; items come from the CMS) ───────────
-    'faq_eyebrow' => 'Frequently asked questions',
 
     // ── Final CTA (fallbacks when the CMS is empty) ─────
     'cta_title'  => 'Start with PRODEX today',

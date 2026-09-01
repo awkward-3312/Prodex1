@@ -300,4 +300,89 @@ class LandingPrimeContractTest extends TestCase
         // landing-three (plantilla de producción) sigue presente e intacta.
         $this->assertFileExists(dirname(__DIR__, 2) . '/resources/views/central/landing-three.blade.php');
     }
+
+    // ── Pase de pulido (Taste / Impeccable / motion) ────────────────────
+
+    public function test_polish_accessibility_and_mobile(): void
+    {
+        $b = $this->read('resources/views/central/landing-prime.blade.php');
+        $css = $this->read('public/assets_super/css/landing-prime.css');
+        $js = $this->read('public/assets_super/js/landing-prime.js');
+
+        // Selector de idioma también DENTRO del drawer móvil (mismo POST /locale).
+        $drawer = substr($b, strpos($b, 'id="lpDrawer"'), 2200);
+        $this->assertStringContainsString("route('central.locale', \$lang->locale)", $drawer, 'idioma en el drawer');
+        $this->assertStringContainsString('__(\'landing.language\')', $drawer);
+
+        // Drawer accesible: role dialog + backdrop con id + manejo de foco/Escape/Tab.
+        $this->assertStringContainsString('role="dialog" aria-modal="true"', $b);
+        $this->assertStringContainsString('id="lpDrawerBackdrop"', $b);
+        $this->assertStringContainsString('backdrop.addEventListener("click", closeDrawer)', $js);
+        $this->assertStringContainsString('lastFocus', $js);              // devuelve el foco al abridor
+        $this->assertStringContainsString('e.shiftKey && document.activeElement === first', $js); // trampa de foco
+
+        // Foco visible coherente en todo lo interactivo.
+        $this->assertStringContainsString(':focus-visible', $css);
+        $this->assertStringContainsString('.lp-btn:focus-visible', $css);
+        $this->assertStringContainsString('--lp-ring', $css);
+
+        // aria-live para anunciar el cambio de recomendación.
+        $cCalc = $this->read('resources/views/central/partials/prime/calculator.blade.php');
+        $this->assertStringContainsString('aria-live="polite" data-calc-live', $cCalc);
+        $this->assertStringContainsString('data-i18n-live-ok', $cCalc);
+    }
+
+    public function test_polish_motion_is_functional_only(): void
+    {
+        $css = $this->read('public/assets_super/css/landing-prime.css');
+        $js = $this->read('public/assets_super/js/landing-prime.js');
+        $b = $this->read('resources/views/central/landing-prime.blade.php');
+
+        // Sin animaciones infinitas / constantes (se retiró lp-float).
+        $this->assertStringNotContainsString('@keyframes lp-float', $css);
+        $this->assertStringNotContainsString('lp-float', $b);
+        $this->assertStringNotContainsString('infinite', $css);
+
+        // Aparición: rápida, ease-out, desde un estado ya visible (no oculta sin JS).
+        $this->assertStringContainsString('--lp-ease-out', $css);
+        $this->assertStringContainsString('.lp-reveal { opacity: 1; transform: none; }', $css);
+        $this->assertStringContainsString('.lp-js .lp-reveal {', $css);
+        $this->assertStringContainsString("classList.add('lp-js')", $b);
+
+        // reduced-motion respetado, incluido scroll-behavior.
+        $rm = substr($css, strpos($css, 'prefers-reduced-motion'), 600);
+        $this->assertStringContainsString('html.scroll-smooth { scroll-behavior: auto; }', $rm);
+
+        // El cambio de estado de la calculadora NO produce salto de layout:
+        // los tres estados se apilan en la misma celda de grid.
+        $this->assertStringContainsString('.lp-js-calc .lp-calc__card { display: grid; }', $css);
+        $this->assertStringContainsString('grid-area: 1 / 1;', $css);
+        $this->assertStringContainsString('data-swapping', $js);
+        $this->assertStringContainsString('lp-calc__figure', $css);
+
+        // Anclas: scroll-margin para no quedar bajo el navbar fijo.
+        $this->assertStringContainsString('scroll-margin-top', $css);
+    }
+
+    public function test_polish_taste_removed_kicker_spam_and_card_wall(): void
+    {
+        foreach ([
+            'resources/views/central/landing-prime.blade.php',
+            'resources/views/central/partials/prime/calculator.blade.php',
+            'resources/views/central/partials/prime/showcase.blade.php',
+        ] as $f) {
+            $src = $this->read($f);
+            // Ya no hay eyebrow/kicker uppercase encima de cada H2 de sección.
+            $this->assertDoesNotMatchRegularExpression(
+                "/uppercase tracking-\[0\.12em\] text-indigo-600[^>]*>\s*\{\{ __\('landing_prime\.[a-z_]*eyebrow'\)/",
+                $src,
+                "$f: kicker de sección"
+            );
+        }
+        // El fallback de módulos ya no es un muro de tarjetas idénticas.
+        $b = $this->read('resources/views/central/landing-prime.blade.php');
+        $modules = substr($b, strpos($b, 'MÓDULOS / SOLUCIONES'), 2000);
+        $this->assertStringContainsString('índice de capacidades, no muro de tarjetas', $modules);
+        $this->assertStringNotContainsString('lp-card lp-card--hover rounded-2xl border border-slate-200 bg-white p-6 lp-reveal', $modules);
+    }
 }

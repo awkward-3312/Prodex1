@@ -58,6 +58,7 @@
     <script src="{{ asset('assets_super/js/iconify-icon.min.js') }}"></script>
     <link href="{{ asset('assets_super/css/bootstrap-icons.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/landing-prime.css') }}" rel="stylesheet">
+    <script>document.documentElement.classList.add('lp-js');</script>
 
     @include('central.partials.landing-font')
 
@@ -133,12 +134,12 @@
 </nav>
 
 {{-- Mobile drawer --}}
-<div id="lpDrawer" class="lp-drawer fixed inset-0 z-[55] lg:hidden" hidden>
-    <div class="absolute inset-0 bg-slate-900/40"></div>
+<div id="lpDrawer" class="lp-drawer fixed inset-0 z-[55] lg:hidden" hidden role="dialog" aria-modal="true" aria-label="{{ __('landing_prime.nav_menu') }}">
+    <div id="lpDrawerBackdrop" class="absolute inset-0 bg-slate-900/40"></div>
     <div id="lpDrawerPanel" class="lp-drawer__panel absolute inset-y-0 right-0 w-[86%] max-w-sm bg-white shadow-2xl flex flex-col" style="transform:translateX(100%)">
         <div class="h-[68px] px-5 flex items-center justify-between border-b border-slate-100">
             <span class="font-bold text-slate-950">{{ $appName }}</span>
-            <button type="button" id="lpMenuClose" class="inline-grid place-items-center w-10 h-10 rounded-lg border border-slate-200 text-slate-700" aria-label="{{ __('landing_prime.nav_close') }}"><i class="bi bi-x-lg"></i></button>
+            <button type="button" id="lpMenuClose" class="inline-grid place-items-center w-11 h-11 rounded-lg border border-slate-200 text-slate-700" aria-label="{{ __('landing_prime.nav_close') }}"><i class="bi bi-x-lg"></i></button>
         </div>
         <nav class="flex-1 overflow-y-auto p-5 flex flex-col gap-1">
             <a href="#product" class="px-3 py-3 rounded-lg text-slate-800 font-medium hover:bg-slate-50">{{ __('landing_prime.nav_product') }}</a>
@@ -148,6 +149,21 @@
                 <a href="#faq" class="px-3 py-3 rounded-lg text-slate-800 font-medium hover:bg-slate-50">{{ __('landing_prime.nav_resources') }}</a>
             @endif
             <a href="{{ $lpSalesHref }}" @if($lpSalesExternal) target="_blank" rel="noopener noreferrer" @endif class="px-3 py-3 rounded-lg text-slate-800 font-medium hover:bg-slate-50">{{ __('landing.talk_to_sales') }}</a>
+
+            @if(isset($languages) && $languages->count() > 1)
+                <p class="px-3 pt-4 pb-1 text-xs font-bold uppercase tracking-wide text-slate-400">{{ __('landing.language') }}</p>
+                <div class="grid grid-cols-2 gap-1.5">
+                    @foreach($languages as $lang)
+                        <form method="POST" action="{{ route('central.locale', $lang->locale) }}">
+                            @csrf
+                            <button type="submit" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-700 border border-slate-200 hover:bg-slate-50 {{ ($currentLocale ?? app()->getLocale()) === $lang->locale ? 'font-semibold text-indigo-600 border-indigo-200' : '' }}">
+                                @if($lang->flag)<img src="{{ asset('flags/' . $lang->flag) }}" alt="" class="w-4 h-4 rounded-sm">@endif
+                                {{ $lang->name }}
+                            </button>
+                        </form>
+                    @endforeach
+                </div>
+            @endif
         </nav>
         <div class="p-5 border-t border-slate-100 flex flex-col gap-2">
             <a href="{{ route('central.login') }}" class="lp-btn lp-btn--ghost w-full">{{ __('landing_prime.nav_login') }}</a>
@@ -235,11 +251,11 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="hidden sm:block absolute -left-6 top-16 w-52 bg-white rounded-xl border border-slate-200 shadow-lg p-3.5 lp-float">
+                        <div class="hidden lg:block absolute -left-7 top-14 w-52 bg-white rounded-xl border border-slate-200 shadow-lg p-3.5">
                             <p class="text-xs font-bold text-slate-950">{{ __('landing_prime.hero_mock_card_pos') }}</p>
                             <p class="text-[11px] text-slate-400">{{ __('landing_prime.hero_mock_card_pos_desc') }}</p>
                         </div>
-                        <div class="hidden sm:block absolute -right-5 bottom-10 w-52 bg-white rounded-xl border border-slate-200 shadow-lg p-3.5 lp-float" style="animation-delay:.8s">
+                        <div class="hidden lg:block absolute -right-6 bottom-8 w-52 bg-white rounded-xl border border-slate-200 shadow-lg p-3.5">
                             <p class="text-xs font-bold text-slate-950">{{ __('landing_prime.hero_mock_card_stock') }}</p>
                             <p class="text-[11px] text-slate-400">{{ __('landing_prime.hero_mock_card_stock_desc') }}</p>
                         </div>
@@ -257,11 +273,10 @@
     @endif
 
     {{-- ═══════════════════════ VALUE BAR ═══════════════════════ --}}
-    <section class="bg-white border-y border-slate-100 py-12 px-5 sm:px-6">
-        <div class="max-w-6xl mx-auto text-center lp-reveal">
-            <p class="text-xs font-bold uppercase tracking-[0.12em] text-indigo-600 mb-3">{{ __('landing_prime.value_eyebrow') }}</p>
+    <section class="bg-white py-14 px-5 sm:px-6">
+        <div class="max-w-5xl mx-auto text-center lp-reveal">
             <p class="text-lg sm:text-xl font-semibold text-slate-800 max-w-2xl mx-auto mb-8">{{ __('landing_prime.value_headline') }}</p>
-            <div class="flex flex-wrap justify-center gap-x-3 gap-y-3">
+            <div class="flex flex-wrap justify-center gap-2.5">
                 @foreach(['value_pos' => 'bi-shop-window', 'value_inventory' => 'bi-box-seam', 'value_purchases' => 'bi-truck', 'value_sales' => 'bi-receipt', 'value_reports' => 'bi-graph-up', 'value_hr' => 'bi-people', 'value_branches' => 'bi-buildings', 'value_ecommerce' => 'bi-bag'] as $key => $icon)
                     <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-slate-50 text-sm font-medium text-slate-700">
                         <i class="bi {{ $icon }} text-indigo-500"></i>{{ __('landing_prime.' . $key) }}
@@ -269,7 +284,7 @@
                 @endforeach
             </div>
             @if(!empty($stats) && $stats->isNotEmpty())
-                <div class="mt-10 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+                <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
                     @foreach($stats as $stat)
                         <div>
                             <div class="text-2xl sm:text-3xl font-extrabold text-slate-950 lp-tnum">{{ $stat->value }}</div>
@@ -285,12 +300,11 @@
     @include('central.partials.prime.calculator')
 
     {{-- ═══════════════════════ MÓDULOS / SOLUCIONES ═══════════════════════ --}}
-    <section id="solutions" class="bg-white border-t border-slate-100 py-20 sm:py-28 px-5 sm:px-6">
+    <section id="solutions" class="bg-white py-20 sm:py-28 px-5 sm:px-6">
         <div class="max-w-6xl mx-auto">
-            <header class="max-w-2xl mx-auto text-center mb-12 lp-reveal">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-indigo-600 mb-3">{{ __('landing_prime.modules_eyebrow') }}</p>
+            <header class="max-w-2xl mb-14 lp-reveal">
                 <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 mb-3">{{ optional($features['section'])->section_title ?: __('landing_prime.modules_title') }}</h2>
-                <p class="text-slate-600">{{ optional($features['section'])->section_subtitle ?: __('landing_prime.modules_lead') }}</p>
+                <p class="text-lg text-slate-600">{{ optional($features['section'])->section_subtitle ?: __('landing_prime.modules_lead') }}</p>
             </header>
 
             @if(!empty($features['is_active']) && $features['items']->isNotEmpty())
@@ -311,17 +325,18 @@
                     @endforeach
                 </div>
             @else
-                {{-- Fallback editorial (módulos verificados en el repositorio) --}}
-                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {{-- Fallback editorial: índice de capacidades, no muro de tarjetas. --}}
+                <div class="grid md:grid-cols-2 gap-x-12 gap-y-10">
                     @foreach([
                         ['sales', 'bi-receipt'], ['inventory', 'bi-box-seam'], ['operations', 'bi-truck'],
                         ['team', 'bi-people'], ['insights', 'bi-graph-up-arrow'], ['commerce', 'bi-bag-check'],
-                    ] as [$m, $icon])
-                        <article class="lp-card lp-card--hover rounded-2xl border border-slate-200 bg-white p-6 lp-reveal">
-                            <div class="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center mb-4"><i class="bi {{ $icon }} text-lg"></i></div>
-                            <h3 class="font-bold text-slate-950 mb-1.5">{{ __('landing_prime.modules_' . $m . '_title') }}</h3>
-                            <p class="text-sm text-slate-600 leading-relaxed">{{ __('landing_prime.modules_' . $m . '_desc') }}</p>
-                        </article>
+                    ] as $i => [$m, $icon])
+                        <div class="lp-idx lp-reveal" @if($i % 2) data-delay="1" @endif>
+                            <h3 class="flex items-center gap-2.5 text-lg font-bold text-slate-950 mb-2">
+                                <i class="bi {{ $icon }} lp-idx__mark"></i>{{ __('landing_prime.modules_' . $m . '_title') }}
+                            </h3>
+                            <p class="text-slate-600 leading-relaxed">{{ __('landing_prime.modules_' . $m . '_desc') }}</p>
+                        </div>
                     @endforeach
                 </div>
             @endif
@@ -332,43 +347,34 @@
     @include('central.partials.prime.showcase')
 
     {{-- ═══════════════════════ CÓMO FUNCIONA ═══════════════════════ --}}
-    <section id="how-it-works" class="lp-soft border-t border-slate-100 py-20 sm:py-28 px-5 sm:px-6">
+    <section id="how-it-works" class="lp-soft py-20 sm:py-28 px-5 sm:px-6">
         <div class="max-w-5xl mx-auto">
-            <header class="max-w-2xl mx-auto text-center mb-12 lp-reveal">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-indigo-600 mb-3">{{ optional($howItWorks['section'])->section_label ?: __('landing_prime.hiw_eyebrow') }}</p>
+            <header class="max-w-2xl mb-14 lp-reveal">
                 <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 mb-3">{{ optional($howItWorks['section'])->section_title ?: __('landing_prime.hiw_title') }}</h2>
-                <p class="text-slate-600">{{ optional($howItWorks['section'])->section_subtitle ?: __('landing_prime.hiw_lead') }}</p>
+                <p class="text-lg text-slate-600">{{ optional($howItWorks['section'])->section_subtitle ?: __('landing_prime.hiw_lead') }}</p>
             </header>
-            <div class="grid md:grid-cols-3 gap-5">
-                @php $lpSteps = $howItWorks['steps'] ?? collect(); @endphp
-                @if($lpSteps->isNotEmpty())
-                    @foreach($lpSteps->take(3) as $i => $step)
-                        <div class="lp-card rounded-2xl border border-slate-200 bg-white p-6 lp-reveal" data-delay="{{ $i + 1 }}">
-                            <span class="text-sm font-bold text-indigo-600">{{ str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT) }}</span>
-                            <h3 class="font-bold text-slate-950 mt-2 mb-1.5">{{ $step->title }}</h3>
-                            <p class="text-sm text-slate-600 leading-relaxed">{{ $step->description }}</p>
-                        </div>
-                    @endforeach
-                @else
-                    @foreach([1, 2, 3] as $n)
-                        <div class="lp-card rounded-2xl border border-slate-200 bg-white p-6 lp-reveal" data-delay="{{ $n }}">
-                            <span class="text-sm font-bold text-indigo-600">{{ str_pad((string) $n, 2, '0', STR_PAD_LEFT) }}</span>
-                            <h3 class="font-bold text-slate-950 mt-2 mb-1.5">{{ __('landing_prime.hiw_step' . $n . '_title') }}</h3>
-                            <p class="text-sm text-slate-600 leading-relaxed">{{ __('landing_prime.hiw_step' . $n . '_desc') }}</p>
-                        </div>
-                    @endforeach
-                @endif
-            </div>
+            @php $lpSteps = ($howItWorks['steps'] ?? collect()); @endphp
+            <ol class="grid md:grid-cols-3 gap-x-8 gap-y-10">
+                @php $lpStepRows = $lpSteps->isNotEmpty()
+                    ? $lpSteps->take(3)->map(fn ($s) => ['title' => $s->title, 'desc' => $s->description])->values()
+                    : collect([1, 2, 3])->map(fn ($n) => ['title' => __('landing_prime.hiw_step' . $n . '_title'), 'desc' => __('landing_prime.hiw_step' . $n . '_desc')]); @endphp
+                @foreach($lpStepRows as $i => $row)
+                    <li class="relative pl-11 lp-reveal" @if($i) data-delay="{{ $i }}" @endif>
+                        <span class="absolute left-0 top-0 w-8 h-8 rounded-full bg-white border border-slate-200 grid place-items-center text-sm font-bold text-indigo-600 lp-tnum">{{ $i + 1 }}</span>
+                        <h3 class="font-bold text-slate-950 mb-1.5">{{ $row['title'] }}</h3>
+                        <p class="text-slate-600 leading-relaxed">{{ $row['desc'] }}</p>
+                    </li>
+                @endforeach
+            </ol>
         </div>
     </section>
 
     {{-- ═══════════════════════ MULTISUCURSAL ═══════════════════════ --}}
-    <section class="bg-white border-t border-slate-100 py-20 sm:py-28 px-5 sm:px-6">
-        <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+    <section class="bg-white py-20 sm:py-28 px-5 sm:px-6">
+        <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div class="lp-reveal">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-indigo-600 mb-3">{{ __('landing_prime.multibranch_eyebrow') }}</p>
                 <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 mb-3">{{ __('landing_prime.multibranch_title') }}</h2>
-                <p class="text-slate-600 mb-8">{{ __('landing_prime.multibranch_lead') }}</p>
+                <p class="text-lg text-slate-600 mb-8">{{ __('landing_prime.multibranch_lead') }}</p>
                 <div class="space-y-5">
                     @foreach([1, 2, 3, 4] as $n)
                         <div class="flex gap-3">
@@ -400,8 +406,8 @@
     </section>
 
     {{-- ═══════════════════════ REPORTES ═══════════════════════ --}}
-    <section class="lp-soft border-t border-slate-100 py-20 sm:py-28 px-5 sm:px-6">
-        <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+    <section class="lp-soft py-20 sm:py-28 px-5 sm:px-6">
+        <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div class="lp-window lp-reveal order-2 lg:order-1">
                 <div class="lp-window__bar"><span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__title">{{ __('landing_prime.reports_window') }}</span></div>
                 <div class="p-6 bg-white">
@@ -414,9 +420,8 @@
                 </div>
             </div>
             <div class="lp-reveal order-1 lg:order-2" data-delay="1">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-indigo-600 mb-3">{{ __('landing_prime.reports_eyebrow') }}</p>
                 <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 mb-3">{{ __('landing_prime.reports_title') }}</h2>
-                <p class="text-slate-600 mb-6">{{ __('landing_prime.reports_lead') }}</p>
+                <p class="text-lg text-slate-600 mb-6">{{ __('landing_prime.reports_lead') }}</p>
                 <ul class="space-y-3">
                     @foreach(['reports_item1', 'reports_item2', 'reports_item3', 'reports_item4'] as $item)
                         <li class="flex items-start gap-2.5 text-sm text-slate-700"><i class="bi bi-check-circle-fill text-emerald-500 mt-0.5"></i>{{ __('landing_prime.' . $item) }}</li>
@@ -428,10 +433,9 @@
 
     {{-- ═══════════════════════ TESTIMONIOS (solo si existen) ═══════════════════════ --}}
     @if($lpTestimonials->isNotEmpty())
-    <section id="testimonials" class="bg-white border-t border-slate-100 py-20 sm:py-28 px-5 sm:px-6">
+    <section id="testimonials" class="bg-white py-20 sm:py-28 px-5 sm:px-6">
         <div class="max-w-6xl mx-auto">
-            <header class="max-w-2xl mx-auto text-center mb-12 lp-reveal">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-indigo-600 mb-3">{{ __('landing_prime.testimonials_eyebrow') }}</p>
+            <header class="max-w-2xl mb-14 lp-reveal">
                 <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950">{{ __('landing_prime.testimonials_title') }}</h2>
             </header>
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -461,20 +465,19 @@
 
     {{-- ═══════════════════════ FAQ (solo si existen) ═══════════════════════ --}}
     @if($lpFaqs->isNotEmpty())
-    <section id="faq" class="lp-soft border-t border-slate-100 py-20 sm:py-28 px-5 sm:px-6">
+    <section id="faq" class="lp-soft py-20 sm:py-28 px-5 sm:px-6">
         <div class="max-w-3xl mx-auto">
-            <header class="text-center mb-10 lp-reveal">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-indigo-600 mb-3">{{ __('landing_prime.faq_eyebrow') }}</p>
+            <header class="mb-10 lp-reveal">
                 <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950">{{ __('landing.faq_title') }}</h2>
             </header>
-            <div class="space-y-3">
+            <div class="divide-y divide-slate-200 border-y border-slate-200">
                 @foreach($lpFaqs as $faq)
-                    <details class="lp-card rounded-xl border border-slate-200 bg-white px-5 py-4 group">
-                        <summary class="flex items-center justify-between gap-4 cursor-pointer font-semibold text-slate-900 list-none">
+                    <details class="group py-1">
+                        <summary class="flex items-center justify-between gap-4 cursor-pointer font-semibold text-slate-900 list-none py-4 rounded-lg">
                             {{ $faq->question }}
-                            <i class="bi bi-plus-lg text-slate-400 group-open:rotate-45 transition-transform"></i>
+                            <i class="bi bi-plus-lg text-slate-400 group-open:rotate-45 transition-transform shrink-0"></i>
                         </summary>
-                        <div class="mt-3 text-sm text-slate-600 leading-relaxed">{!! nl2br(e($faq->answer)) !!}</div>
+                        <div class="pb-4 -mt-1 text-slate-600 leading-relaxed">{!! nl2br(e($faq->answer)) !!}</div>
                     </details>
                 @endforeach
             </div>
@@ -484,9 +487,9 @@
 
     {{-- ═══════════════════════ CTA FINAL ═══════════════════════ --}}
     @if($lpCtaVisible || ! $cta)
-    <section class="bg-white border-t border-slate-100 py-20 sm:py-28 px-5 sm:px-6">
-        <div class="max-w-4xl mx-auto rounded-3xl bg-slate-950 text-white px-6 sm:px-12 py-14 text-center relative overflow-hidden lp-reveal">
-            <div class="absolute -top-20 -right-16 w-72 h-72 rounded-full bg-indigo-500/30 lp-glow" aria-hidden="true"></div>
+    <section class="bg-white py-20 sm:py-28 px-5 sm:px-6">
+        <div class="max-w-4xl mx-auto rounded-3xl bg-slate-950 text-white px-6 sm:px-14 py-16 text-center relative overflow-hidden lp-reveal">
+            <div class="absolute -top-24 -right-20 w-80 h-80 rounded-full bg-indigo-500/25 lp-glow" aria-hidden="true"></div>
             <div class="relative">
                 <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-3">{{ optional($cta)->title ?: __('landing_prime.cta_title') }}</h2>
                 <p class="text-slate-300 max-w-xl mx-auto mb-8">{{ optional($cta)->subtitle ?: __('landing_prime.cta_lead') }}</p>

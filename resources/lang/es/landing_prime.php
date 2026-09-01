@@ -40,7 +40,6 @@ return [
     'hero_mock_row_location'  => 'Ubicación',
 
     // ── Value bar ───────────────────────────────────────
-    'value_eyebrow'  => 'Una plataforma, todas las operaciones',
     'value_headline' => 'Creado para negocios que necesitan más control sin más complejidad.',
     'value_pos'        => 'Punto de venta',
     'value_inventory'  => 'Inventario',
@@ -52,7 +51,6 @@ return [
     'value_ecommerce'  => 'Ecommerce',
 
     // ── Calculadora de precios ──────────────────────────
-    'calc_eyebrow'   => 'Calculadora de precios',
     'calc_title'     => 'Configura PRODEX según las necesidades de tu negocio',
     'calc_lead'      => 'Ajusta los valores y te mostramos el plan real que cubre tu operación.',
     'calc_cycle_label'   => 'Ciclo de facturación',
@@ -90,6 +88,11 @@ return [
     'calc_custom_link'   => 'Hablar con ventas',
     'calc_free'          => 'Gratis',
 
+    // Anuncios para lectores de pantalla (aria-live)
+    'calc_live_ok'       => 'Plan recomendado: :plan, :amount.',
+    'calc_live_custom'   => 'Tu configuración necesita un plan personalizado.',
+    'calc_live_nodata'   => 'Estamos preparando la recomendación para tu configuración.',
+
     // Resumen — estado custom (ningún plan cumple)
     'calc_custom_title'  => 'Necesitas una configuración personalizada',
     'calc_custom_lead'   => 'Tu operación supera los planes públicos. Nuestro equipo arma una propuesta a tu medida.',
@@ -108,7 +111,6 @@ return [
     'calc_plan_cta'      => 'Comenzar prueba gratis',
 
     // ── Módulos / soluciones ────────────────────────────
-    'modules_eyebrow' => 'Soluciones',
     'modules_title'   => 'Cada área de tu negocio, conectada',
     'modules_lead'    => 'Activa lo que necesitas hoy y suma módulos cuando crezcas.',
     'modules_sales_title'   => 'Ventas',
@@ -125,7 +127,6 @@ return [
     'modules_commerce_desc'  => 'Pedidos en línea e integraciones con WooCommerce, Shopify y QuickBooks.',
 
     // ── Product showcase ────────────────────────────────
-    'showcase_eyebrow' => 'El producto',
     'showcase_title'   => 'Así se ve trabajar con PRODEX',
     'showcase_lead'    => 'Interfaz clara, pensada para el día a día del negocio.',
     'showcase_tab_sales'     => 'Ventas',
@@ -149,7 +150,6 @@ return [
     'showcase_placeholder'  => '—',
 
     // ── Cómo funciona ───────────────────────────────────
-    'hiw_eyebrow'  => 'Cómo funciona',
     'hiw_title'    => 'De cero a operando en tres pasos',
     'hiw_lead'     => 'Sin instalaciones ni configuraciones eternas.',
     'hiw_step1_title' => 'Crea tu espacio',
@@ -160,7 +160,6 @@ return [
     'hiw_step3_desc'  => 'Vende, controla el stock y revisa tus reportes desde el primer día.',
 
     // ── Multisucursal / control ─────────────────────────
-    'multibranch_eyebrow' => 'Control empresarial',
     'multibranch_title'   => 'Varias sucursales, una sola operación',
     'multibranch_lead'    => 'Consolida la información de todas tus ubicaciones sin perder el detalle de cada una.',
     'multibranch_point1_title' => 'Multi-almacén y ubicaciones',
@@ -173,7 +172,6 @@ return [
     'multibranch_point4_desc'  => 'Tu información vive en su propia base de datos, separada del resto.',
 
     // ── Reportes / decisiones ───────────────────────────
-    'reports_eyebrow' => 'Información para decidir',
     'reports_title'   => 'Los números de tu negocio, claros',
     'reports_lead'    => 'Reportes de ventas, inventario, compras y márgenes listos para exportar.',
     'reports_item1'   => 'Ventas por período, sucursal y producto',
@@ -184,11 +182,9 @@ return [
     'reports_chart_caption' => 'Comparativo del período',
 
     // ── Testimonios (encabezado; los items vienen del CMS) ──
-    'testimonials_eyebrow' => 'Clientes',
     'testimonials_title'   => 'Negocios que ya operan con PRODEX',
 
     // ── FAQ (encabezado; los items vienen del CMS) ──────
-    'faq_eyebrow' => 'Preguntas frecuentes',
 
     // ── CTA final (fallbacks si el CMS está vacío) ──────
     'cta_title'  => 'Empieza hoy con PRODEX',
