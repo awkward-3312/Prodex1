@@ -181,25 +181,28 @@
         <div class="max-w-7xl mx-auto grid lg:grid-cols-12 gap-y-14 gap-x-10 lg:gap-x-8 items-center">
             <div class="lg:col-span-5 lp-reveal">
                 <span class="lp-mark mb-6"></span>
+                {{-- Prioridad CMS → deck (fallback coherente, sin mezclar idiomas):
+                     $hero->* ya resuelve el locale activo vía HasCentralTranslations
+                     (columna base para el locale por defecto, `translations` json
+                     para el resto); si el campo llega vacío para ese locale, se usa
+                     el mismo landing_prime.* traducido, nunca texto fijo distinto. --}}
                 <p class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-slate-200 mb-6">
                     <span class="w-1.5 h-1.5 rounded-full" style="background:linear-gradient(90deg,var(--lp-aurora-3),#60A5FA)"></span>
-                    {{ __('landing_prime.hero_eyebrow') }}
+                    {{ $hero->subtitle ?: __('landing_prime.hero_eyebrow') }}
                 </p>
                 <h1 class="text-[2.6rem] leading-[1.04] sm:text-5xl lg:text-[3.6rem] xl:text-[4rem] font-bold tracking-[-0.035em] text-white mb-5 text-balance">
-                    {{ __('landing_prime.hero_title') }}
+                    {!! $hero->title ?: e(__('landing_prime.hero_title')) !!}
                 </h1>
                 <p class="text-lg text-slate-300 leading-relaxed max-w-xl mb-8">
-                    {{ __('landing_prime.hero_lead') }}
+                    {{ $hero->description ?: __('landing_prime.hero_lead') }}
                 </p>
-                {{-- CTA comerciales fijas de landing-prime (el CMS sólo puede
-                     redirigir la URL, no cambiar el texto por etiquetas de auth). --}}
                 <div class="flex flex-col sm:flex-row gap-3">
                     <a href="{{ $hero->primary_button_url ?: $lpRegisterUrl }}" class="lp-btn lp-btn--lg bg-white text-slate-950 hover:bg-slate-100">
-                        {{ __('landing_prime.hero_cta') }}
+                        {{ $hero->primary_button_text ?: __('landing_prime.hero_cta') }}
                         <i class="bi bi-arrow-right"></i>
                     </a>
                     <a href="{{ $hero->secondary_button_url ?: $lpSalesHref }}" @if($lpSalesExternal && ! $hero->secondary_button_url) target="_blank" rel="noopener noreferrer" @endif class="lp-btn lp-btn--ghost lp-btn--lg">
-                        {{ __('landing_prime.hero_cta_secondary') }}
+                        {{ $hero->secondary_button_text ?: __('landing_prime.hero_cta_secondary') }}
                     </a>
                 </div>
                 @if($lpTrialPlan)

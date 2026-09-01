@@ -682,4 +682,32 @@ class LandingPrimeContractTest extends TestCase
         $this->assertStringNotContainsString('infinite', $css);
         $this->assertStringNotContainsString('@keyframes lp-float', $css);
     }
+
+    /** El hero vuelve a dar prioridad al CMS, con landing_prime.* como fallback
+     *  coherente por locale (iteración 7) — sin texto fijo que reemplace al CMS. */
+    public function test_hero_restores_cms_priority_with_deck_fallback(): void
+    {
+        $b = $this->read('resources/views/central/landing-prime.blade.php');
+        $this->assertNotFalse(strpos($b, 'HERO — superficie profunda PRODEX'));
+        $hero = substr($b, strpos($b, 'HERO — superficie profunda PRODEX'), 3400);
+
+        // Los 5 campos revisados: CMS primero, landing_prime.* como fallback.
+        $this->assertStringContainsString("{{ \$hero->subtitle ?: __('landing_prime.hero_eyebrow') }}", $hero, 'eyebrow');
+        $this->assertStringContainsString("{!! \$hero->title ?: e(__('landing_prime.hero_title')) !!}", $hero, 'título');
+        $this->assertStringContainsString("{{ \$hero->description ?: __('landing_prime.hero_lead') }}", $hero, 'lead');
+        $this->assertStringContainsString("{{ \$hero->primary_button_text ?: __('landing_prime.hero_cta') }}", $hero, 'CTA principal');
+        $this->assertStringContainsString("{{ \$hero->secondary_button_text ?: __('landing_prime.hero_cta_secondary') }}", $hero, 'CTA secundario');
+
+        // Ya no hay texto de CTA fijo ignorando el CMS (esto es lo que se revierte).
+        $this->assertDoesNotMatchRegularExpression(
+            '/lp-btn--lg bg-white[^>]*>\s*\{\{ __\(\'landing_prime\.hero_cta\'\) \}\}/s',
+            $hero
+        );
+
+        // El diseño visual del hero NO cambia: mismas clases/estructura de siempre.
+        $this->assertStringContainsString('class="lp-deep lp-hero-deep relative px-5 sm:px-6"', $hero);
+        $this->assertStringContainsString('class="lp-mark mb-6"', $hero);
+        $this->assertStringContainsString('lg:col-span-5', $hero);
+        $this->assertStringContainsString('lg:col-span-7', $hero);
+    }
 }
