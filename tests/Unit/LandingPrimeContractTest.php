@@ -439,18 +439,21 @@ class LandingPrimeContractTest extends TestCase
         $this->assertStringNotContainsString('is_featured', $p);
         $this->assertStringNotContainsString('$i === 1', $p);
 
-        // El realce es por plan_id real (server-side + JS), discreto, sin scroll.
+        // El plan destacado es FIJO/comercial (config, server-side). La
+        // calculadora NO toca el badge de esta sección.
         $this->assertStringContainsString('data-plan-id="{{ $p[\'id\'] }}"', $p);
-        $this->assertStringContainsString('$recommendedId', $p);
+        $this->assertStringContainsString("config('landing_prime.featured_plan_slug')", $p);
+        $this->assertStringContainsString('$featuredId', $p);
+        $this->assertStringNotContainsString('$recommendedId', $p);
         $js = $this->read('public/assets_super/js/landing-prime.js');
-        $this->assertStringContainsString('highlightPlan', $js);
+        $this->assertStringNotContainsString('highlightPlan', $js);
         $this->assertStringNotContainsString('scrollIntoView', $js);
 
         // Toda clave landing_prime.* usada por el partial existe en ES y EN
         // (regresión: `plans_no_limits` faltaba y renderizaba el string crudo).
         $es = require dirname(__DIR__, 2) . '/resources/lang/es/landing_prime.php';
         $en = require dirname(__DIR__, 2) . '/resources/lang/en/landing_prime.php';
-        preg_match_all('/landing_prime\.([a-z0-9_]+)/', $p, $m);
+        preg_match_all("/__\('landing_prime\.([a-z0-9_]+)'\)/", $p, $m);
         $this->assertNotEmpty($m[1]);
         foreach (array_unique($m[1]) as $k) {
             $this->assertArrayHasKey($k, $es, "ES landing_prime.$k (usada en plans.blade.php)");
@@ -548,8 +551,8 @@ class LandingPrimeContractTest extends TestCase
         // La card NO se pinta entera del color del plan.
         $this->assertDoesNotMatchRegularExpression('/\.lp-plan(--c\d)?\s*\{[^}]*background:\s*var\(--pc\)/', $css);
 
-        // El realce sigue siendo sólo para el plan recomendado por el servicio.
-        $this->assertStringContainsString('$recommendedId !== null && $recommendedId === $p[\'id\']', $p);
+        // El realce va sólo en la card del plan destacado comercial (fijo).
+        $this->assertStringContainsString('$featuredId !== null && $featuredId === $p[\'id\']', $p);
     }
 
     /** "¿Te suena familiar?" y mensaje de resultados (sin métricas inventadas). */
@@ -663,7 +666,43 @@ class LandingPrimeContractTest extends TestCase
             $this->assertStringContainsString($tok, $css, $tok);
         }
         $this->assertStringContainsString('lp-plan__ic', $p);
-        $this->assertStringContainsString('$recommendedId !== null && $recommendedId === $p[\'id\']', $p);
+        $this->assertStringContainsString('$featuredId !== null && $featuredId === $p[\'id\']', $p);
+    }
+
+    /** El plan destacado de la SECCIÓN de planes es fijo/comercial (config por
+     *  slug), independiente de la calculadora (iteración 8). */
+    public function test_plans_featured_plan_is_fixed_and_config_driven(): void
+    {
+        $p   = $this->read('resources/views/central/partials/prime/plans.blade.php');
+        $js  = $this->read('public/assets_super/js/landing-prime.js');
+        $es  = require dirname(__DIR__, 2) . '/resources/lang/es/landing_prime.php';
+        $en  = require dirname(__DIR__, 2) . '/resources/lang/en/landing_prime.php';
+
+        // A) Config dedicado, resuelto por SLUG (no id local, no posición).
+        $cfgPath = dirname(__DIR__, 2) . '/config/landing_prime.php';
+        $this->assertFileExists($cfgPath);
+        $cfg = require $cfgPath;
+        $this->assertArrayHasKey('featured_plan_slug', $cfg);
+        $this->assertStringContainsString("config('landing_prime.featured_plan_slug')", $p);
+        $this->assertStringContainsString("firstWhere('slug', \$featuredSlug)", $p);
+        $this->assertStringContainsString('data_get(', $p, 'acceso seguro: si no hay match, null');
+        $this->assertDoesNotMatchRegularExpression('/is-recommended.*\$i\s*===\s*1/s', $p, 'no por posición');
+
+        // B) La sección de planes NO deriva su destacado de la calculadora.
+        $this->assertStringNotContainsString("recommendation_status", $p);
+        $this->assertStringNotContainsString("\$c['recommended']", $p);
+        $this->assertStringNotContainsString('highlightPlan', $js);
+
+        // C) Lenguaje separado: chip fijo "Recomendado"; la calculadora ya no
+        //    dice "Plan recomendado" sino un lenguaje de mejor-encaje.
+        $this->assertSame('Recomendado', $es['plans_recommended_chip']);
+        $this->assertSame('Recommended', $en['plans_recommended_chip']);
+        $this->assertStringNotContainsStringIgnoringCase('recomendad', $es['calc_recommended']);
+        $this->assertStringNotContainsStringIgnoringCase('recommend', $en['calc_recommended']);
+        $this->assertStringNotContainsStringIgnoringCase('recomendad', $es['calc_live_ok']);
+
+        // D) Degradación segura: si no hay match, no se destaca ninguna card.
+        $this->assertMatchesRegularExpression('/\$featuredId\s*=\s*\$featuredSlug\s*\?[^;]*:\s*null;/s', $p);
     }
 
     /** El overflow horizontal móvil se corrige en el origen (no sólo se oculta). */

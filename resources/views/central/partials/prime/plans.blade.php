@@ -1,8 +1,9 @@
 {{--
-    Comparación de planes — SIEMPRE visible (no depende de recommendation_status).
-    Fuente: $pricingCalculator['plans'] (PlanRecommendationService, withDetail).
-    Cards NEUTRALES: sin "más popular", sin destacar un plan arbitrario. La
-    calculadora sí realza discretamente el plan recomendado por plan_id (JS).
+    Comparación de planes — SIEMPRE visible; no depende del estado de la
+    calculadora. Fuente de datos: $pricingCalculator['plans']
+    (PlanRecommendationService, withDetail).
+    El plan DESTACADO es una decisión comercial FIJA (config, por slug),
+    totalmente independiente de lo que sugiera la calculadora.
     Sólo se muestra información REAL: precio anual y ahorro sólo si son válidos,
     prueba sólo si es real, límites/features sólo si vienen del servicio.
 --}}
@@ -11,8 +12,14 @@
     $sym = $c['currency_symbol'] ?? ($currencySymbol ?? 'L');
     $calcPlans = $c['plans'] ?? [];
     $planCount = count($calcPlans);
-    // Realce inicial (server-side) del plan que la calculadora ya recomienda.
-    $recommendedId = ($c['recommendation_status'] ?? null) === 'ok' ? ($c['recommended']['id'] ?? null) : null;
+    // Plan destacado COMERCIAL (fijo). NO depende de la calculadora: se define
+    // en config('landing_prime.featured_plan_slug') y se resuelve por SLUG del
+    // plan (identificador estable, no posición ni id local). Si ningún plan
+    // público coincide, no se destaca ninguno (degradación segura).
+    $featuredSlug = config('landing_prime.featured_plan_slug');
+    $featuredId = $featuredSlug
+        ? data_get(collect($calcPlans)->firstWhere('slug', $featuredSlug), 'id')
+        : null;
     $lgCols = $planCount >= 4 ? 'lg:grid-cols-4' : ($planCount === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2');
 
     $money = function ($amount) use ($sym) {
@@ -65,7 +72,7 @@
                     $isPaid = empty($p['is_free']);
                     $hasDetail = $allUnlimited || $included->isNotEmpty() || $features->isNotEmpty();
                 @endphp
-                <article class="lp-plan {{ $planTone($i) }} lp-reveal {{ $recommendedId !== null && $recommendedId === $p['id'] ? 'is-recommended' : '' }}" data-plan-id="{{ $p['id'] }}" @if($i % 2) data-delay="1" @endif>
+                <article class="lp-plan {{ $planTone($i) }} lp-reveal {{ $featuredId !== null && $featuredId === $p['id'] ? 'is-recommended' : '' }}" data-plan-id="{{ $p['id'] }}" @if($i % 2) data-delay="1" @endif>
                     <span class="lp-plan__chip">{{ __('landing_prime.plans_recommended_chip') }}</span>
 
                     <span class="lp-plan__ic" aria-hidden="true"><i class="bi {{ $planIcon[min($i, 3)] }}"></i></span>

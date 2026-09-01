@@ -92,7 +92,7 @@ return [
     'calc_increase'    => 'Increase',
 
     // Summary — OK state
-    'calc_recommended'   => 'Recommended plan',
+    'calc_recommended'   => 'Best option for your business',
     'calc_total'         => 'Total',
     'calc_per_month'     => '/mo',
     'calc_per_year'      => '/yr',
@@ -108,7 +108,7 @@ return [
     'calc_free'          => 'Free',
 
     // Screen-reader announcements (aria-live)
-    'calc_live_ok'       => 'Recommended plan: :plan, :amount.',
+    'calc_live_ok'       => 'Best option for your business: :plan, :amount.',
     'calc_live_custom'   => 'Your configuration needs a custom plan.',
     'calc_live_nodata'   => 'We are preparing the recommendation for your configuration.',
 
@@ -127,7 +127,7 @@ return [
     // ── Plan comparison (own section, always visible) ───────────────────
     'plans_section_title'  => 'Plans for every stage of your business',
     'plans_section_lead'   => 'Compare the real plans and pick the one that covers your operation. The calculator above suggests the closest fit.',
-    'plans_recommended_chip' => 'Recommended for you',
+    'plans_recommended_chip' => 'Recommended',
     'plans_includes'       => 'Includes',
     'plans_no_limits'      => 'No usage limits',
     'plans_cta'            => 'Start free',
