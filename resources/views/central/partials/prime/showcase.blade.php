@@ -49,19 +49,32 @@
                             <span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__dot"></span>
                             <span class="lp-window__title">{{ $tab['window'] }}</span>
                         </div>
-                        <div class="p-5 sm:p-7 bg-white">
-                            <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 text-xs font-semibold uppercase tracking-wide text-slate-400 pb-3 border-b border-slate-100">
-                                <span>{{ __('landing_prime.showcase_col_item') }}</span>
-                                <span>{{ __('landing_prime.showcase_col_detail') }}</span>
-                                <span>{{ __('landing_prime.showcase_col_status') }}</span>
+                        <div class="lp-appui">
+                            <div class="lp-appui__rail" aria-hidden="true">
+                                <i class="bi bi-grid-1x2-fill is-active"></i>
+                                <i class="bi bi-bag"></i>
+                                <i class="bi bi-box-seam"></i>
+                                <i class="bi bi-graph-up"></i>
                             </div>
-                            @foreach($tab['rows'] as $row)
-                                <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 items-center py-3.5 border-b border-slate-50 text-sm last:border-0">
-                                    <span class="font-medium text-slate-800">{{ $row }}</span>
-                                    <span class="text-slate-400">{{ $ph }}</span>
-                                    <span class="inline-block w-2 h-2 rounded-full bg-indigo-400"></span>
+                            <div class="lp-appui__main">
+                                <div class="lp-appui__topbar">
+                                    <i class="bi bi-window-stack text-indigo-500"></i><span>{{ $tab['label'] }}</span>
+                                    <span class="lp-appui__pin" aria-hidden="true"></span>
                                 </div>
-                            @endforeach
+                                <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 text-[11px] font-semibold uppercase tracking-wide text-slate-400 pb-3 border-b border-slate-100">
+                                    <span>{{ __('landing_prime.showcase_col_item') }}</span>
+                                    <span>{{ __('landing_prime.showcase_col_detail') }}</span>
+                                    <span>{{ __('landing_prime.showcase_col_status') }}</span>
+                                </div>
+                                @php $sp = [['ok','hero_mock_st_ok'],['info','hero_mock_st_sync'],['wait','hero_mock_st_low']]; @endphp
+                                @foreach($tab['rows'] as $ri => $row)
+                                    <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 items-center py-3.5 border-b border-slate-50 text-sm last:border-0">
+                                        <span class="font-medium text-slate-800">{{ $row }}</span>
+                                        <span class="text-slate-300">{{ $ph }}</span>
+                                        <span class="lp-pill lp-pill--{{ $sp[$ri % 3][0] }}"><i class="bi bi-circle-fill"></i>{{ __('landing_prime.' . $sp[$ri % 3][1]) }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
                 </div>

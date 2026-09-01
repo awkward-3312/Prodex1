@@ -493,4 +493,68 @@ class LandingPrimeContractTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/<h2[^>]*>\{\{ optional\(\$features/', $b);
         $this->assertStringContainsString('@if($lpModCms)', $b);
     }
+
+    // ── Dirección visual: firma PRODEX + mobile (iteración 3) ───────────
+
+    /** La identidad "aurora" existe y se usa SÓLO en los tres picos. */
+    public function test_prodex_visual_identity_layer(): void
+    {
+        $css = $this->read('public/assets_super/css/landing-prime.css');
+        $b   = $this->read('resources/views/central/landing-prime.blade.php');
+        $c   = $this->read('resources/views/central/partials/prime/calculator.blade.php');
+
+        // Tokens y primitivos de marca.
+        foreach (['--lp-aurora-1', '--lp-aurora-2', '--lp-aurora-3', '--lp-ink-950'] as $tok) {
+            $this->assertStringContainsString($tok, $css, $tok);
+        }
+        $this->assertStringContainsString('.lp-aurora::before', $css);
+        $this->assertStringContainsString('.lp-deep::before', $css);
+        $this->assertStringContainsString('.lp-mark {', $css);
+
+        // Picos: hero + calculadora llevan aurora; el cierre lleva superficie profunda.
+        $this->assertMatchesRegularExpression('/<section[^>]*class="lp-soft lp-aurora[^"]*"[^>]*>\s*<div class="max-w-7xl/s', $b, 'hero con aurora');
+        $this->assertStringContainsString('lp-soft lp-aurora', $c, 'calculadora con aurora');
+        $this->assertStringContainsString('lp-deep max-w-5xl', $b, 'CTA final con superficie profunda');
+
+        // Motivo gráfico, NO un eyebrow de texto: aparece en los picos, no en cada H2.
+        $this->assertSame(2, substr_count($b, 'class="lp-mark'), 'lp-mark sólo en hero y CTA del blade principal');
+        $this->assertStringContainsString('lp-mark lp-mark--center', $c, 'lp-mark en la calculadora');
+    }
+
+    /** La calculadora se presenta como "Tu negocio → Tu PRODEX". */
+    public function test_calculator_is_framed_as_configuration(): void
+    {
+        $c = $this->read('resources/views/central/partials/prime/calculator.blade.php');
+        $this->assertStringContainsString("__('landing_prime.calc_col_business')", $c);
+        $this->assertStringContainsString("__('landing_prime.calc_col_prodex')", $c);
+
+        // Sigue siendo un recomendador: no promete precio a medida / plan modular.
+        foreach (['paga solo por', 'paga sólo por', 'construye tu plan', 'precio personalizado', 'build your plan', 'pay only for'] as $banned) {
+            $this->assertStringNotContainsStringIgnoringCase($banned, $c, $banned);
+        }
+
+        $es = require dirname(__DIR__, 2) . '/resources/lang/es/landing_prime.php';
+        $en = require dirname(__DIR__, 2) . '/resources/lang/en/landing_prime.php';
+        foreach (['calc_col_business', 'calc_col_prodex', 'hero_mock_st_ok', 'hero_mock_st_sync', 'hero_mock_st_low'] as $k) {
+            $this->assertArrayHasKey($k, $es, "ES $k");
+            $this->assertArrayHasKey($k, $en, "EN $k");
+        }
+    }
+
+    /** El overflow horizontal móvil se corrige en el origen (no sólo se oculta). */
+    public function test_mobile_has_no_horizontal_overflow_guards(): void
+    {
+        $css = $this->read('public/assets_super/css/landing-prime.css');
+
+        // Guarda global para adornos que sangran (aurora/glow) sin romper sticky.
+        $this->assertStringContainsString('.landing-prime { overflow-x: clip; }', $css);
+
+        // Corrección real del origen conocido: fila etiqueta + stepper de #pricing.
+        $this->assertStringContainsString('.lp-field > .flex { flex-wrap: wrap; }', $css);
+        $this->assertMatchesRegularExpression('/#lpCalc[^{}]*\{\s*min-width:\s*0/', $css);
+
+        // Sin animaciones constantes introducidas por esta ronda.
+        $this->assertStringNotContainsString('infinite', $css);
+        $this->assertStringNotContainsString('@keyframes lp-float', $css);
+    }
 }

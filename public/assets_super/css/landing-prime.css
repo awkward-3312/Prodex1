@@ -16,6 +16,11 @@
     --lp-brand-ink:  #3730A3;
     --lp-brand-050:  #EEF0FF;
     --lp-accent:     #2563EB;
+    /* Firma visual PRODEX — "aurora" tecnológica. Sólo en puntos de impacto. */
+    --lp-aurora-1:   #1D4ED8;   /* azul profundo */
+    --lp-aurora-2:   #4F46E5;   /* indigo */
+    --lp-aurora-3:   #22D3EE;   /* cyan / turquesa */
+    --lp-ink-950:    #0B1220;   /* superficie profunda para el cierre */
     --lp-ok:         #059669;
     --lp-wa:         #0E7C6B;   /* verde WhatsApp — 5.1:1 con texto blanco (AA) */
     --lp-radius:     16px;
@@ -114,12 +119,125 @@ body.landing-prime {
 .lp-bars span:nth-child(even) { background: linear-gradient(180deg, rgba(37, 99, 235, .62), rgba(37, 99, 235, .24)); }
 
 /* ==========================================================================
+   FIRMA VISUAL PRODEX — aurora, superficie profunda, motivo, chrome de app
+   Se usa SÓLO en los tres picos: hero, calculadora, cierre.
+   ========================================================================== */
+
+/* Aurora suave sobre base clara (hero + calculadora).
+   overflow:clip contiene el ::before sangrado sin crear scroll-container
+   (no rompe el position:sticky del resumen de la calculadora). */
+.lp-aurora { position: relative; isolation: isolate; overflow: clip; }
+.lp-aurora > * { position: relative; z-index: 1; }
+.lp-aurora::before {
+    content: ""; position: absolute; inset: -12% -6% -18% -6%; z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(40rem 26rem at 8% -6%,  rgba(29, 78, 216, .20), transparent 62%),
+        radial-gradient(34rem 22rem at 96% 4%,  rgba(34, 211, 238, .16), transparent 60%),
+        radial-gradient(30rem 22rem at 60% 112%, rgba(79, 70, 229, .12), transparent 60%);
+    filter: blur(40px);
+}
+
+/* Superficie profunda para el cierre de marca */
+.lp-deep {
+    position: relative; isolation: isolate; overflow: hidden;
+    background: var(--lp-ink-950); color: #E6EAF2;
+}
+.lp-deep > * { position: relative; z-index: 1; }
+.lp-deep::before {
+    content: ""; position: absolute; inset: -30%; z-index: 0; pointer-events: none;
+    background:
+        radial-gradient(38rem 26rem at 4% 0%,   rgba(29, 78, 216, .45), transparent 60%),
+        radial-gradient(36rem 24rem at 100% 100%, rgba(34, 211, 238, .28), transparent 58%),
+        radial-gradient(30rem 22rem at 58% 46%, rgba(79, 70, 229, .30), transparent 62%);
+    filter: blur(34px);
+}
+.lp-deep .lp-btn--ghost { background: rgba(255, 255, 255, .06); color: #fff; border-color: rgba(255, 255, 255, .22); }
+.lp-deep .lp-btn--ghost:hover { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .4); }
+
+/* Motivo recurrente: regla azul→cyan. NO es un eyebrow de texto. */
+.lp-mark {
+    display: block; width: 44px; height: 3px; border-radius: 999px;
+    background: linear-gradient(90deg, var(--lp-aurora-1), var(--lp-aurora-3));
+}
+.lp-mark--center { margin-inline: auto; }
+.lp-deep .lp-mark { background: linear-gradient(90deg, #60A5FA, var(--lp-aurora-3)); }
+
+/* Chrome de aplicación real: riel + panel */
+.lp-appui { display: grid; grid-template-columns: 52px minmax(0, 1fr); background: #fff; }
+.lp-appui__rail {
+    display: flex; flex-direction: column; align-items: center; gap: 18px;
+    padding: 16px 0; background: var(--lp-bg-2);
+    border-right: 1px solid var(--lp-line-soft);
+}
+.lp-appui__rail i { font-size: 15px; color: var(--lp-ink-3); }
+.lp-appui__rail i.is-active { color: var(--lp-brand); }
+.lp-appui__main { min-width: 0; padding: 16px 18px 18px; }
+.lp-appui__topbar {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+    font-size: 12px; font-weight: 600; color: var(--lp-ink-2);
+}
+.lp-appui__topbar .lp-appui__pin { margin-left: auto; width: 22px; height: 22px; border-radius: 7px; background: var(--lp-bg-2); }
+
+.lp-kpi { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.lp-kpi > div { border: 1px solid var(--lp-line-soft); border-radius: 12px; padding: 10px 11px; }
+.lp-kpi b { display: block; font-size: 11px; font-weight: 600; letter-spacing: -.01em; color: var(--lp-ink-3); margin-bottom: 8px; }
+.lp-spark { display: flex; align-items: flex-end; gap: 3px; height: 22px; }
+.lp-spark span { flex: 1; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, rgba(79, 70, 229, .75), rgba(34, 211, 238, .32)); }
+
+.lp-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.lp-pill i { font-size: 7px; }
+.lp-pill--ok   { background: rgba(5, 150, 105, .10);  color: #047857; }
+.lp-pill--wait { background: rgba(217, 119, 6, .12);  color: #B45309; }
+.lp-pill--info { background: rgba(29, 78, 216, .10);  color: #1D4ED8; }
+
+/* Tarjetas-evento flotantes del hero (sin cifras). Entrada, no bucle. */
+.lp-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 13px; border-radius: 14px;
+    background: rgba(255, 255, 255, .92);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border: 1px solid var(--lp-line); box-shadow: var(--lp-shadow);
+}
+.lp-chip__ic {
+    width: 28px; height: 28px; border-radius: 9px; flex: none;
+    display: grid; place-items: center; font-size: 14px; color: var(--lp-brand);
+    background: linear-gradient(135deg, rgba(29, 78, 216, .14), rgba(34, 211, 238, .16));
+}
+.lp-chip b { display: block; font-size: 12px; font-weight: 600; letter-spacing: -.01em; color: var(--lp-ink); }
+.lp-chip span { font-size: 11px; color: var(--lp-ink-3); }
+
+/* ==========================================================================
    Calculadora de precios
    ========================================================================== */
 
 .lp-calc__summary { align-self: start; }
 @media (min-width: 1024px) {
     .lp-calc__summary--sticky { position: sticky; top: calc(var(--lp-nav-h) + 20px); }
+}
+
+/* "Tu negocio" / "Tu PRODEX" — encuadra la calculadora como configuración. */
+.lp-calc__col-label {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 11px; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--lp-ink-3);
+    margin-bottom: 14px;
+}
+.lp-calc__col-label::before {
+    content: ""; width: 18px; height: 2px; border-radius: 999px; flex: none;
+    background: linear-gradient(90deg, var(--lp-aurora-1), var(--lp-aurora-3));
+}
+/* El resumen ("Tu PRODEX") pesa más: borde, tinte y elevación aurora. */
+.lp-calc__summary .lp-calc__card {
+    border-color: rgba(79, 70, 229, .30);
+    background:
+        linear-gradient(180deg, rgba(34, 211, 238, .05), rgba(255, 255, 255, 0) 42%),
+        #fff;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .8) inset,
+        0 28px 70px -22px rgba(29, 78, 216, .40),
+        0 8px 24px -12px rgba(29, 78, 216, .18),
+        var(--lp-shadow);
 }
 
 /* Sin JS: la tarjeta fluye normal. Con JS (.lp-js-calc) los tres estados se
@@ -388,8 +506,37 @@ body.landing-prime {
 .lp-cookie { transition: transform .3s var(--lp-ease-out), opacity .3s var(--lp-ease-out); }
 .lp-cookie[data-hidden="true"] { transform: translateY(130%); opacity: 0; pointer-events: none; }
 
-/* Touch targets y layout en pantallas pequeñas ---------------------------- */
+/* ==========================================================================
+   Anti-overflow horizontal + layout en pantallas pequeñas
+   ========================================================================== */
+/* Los adornos (aurora, glow) pueden sangrar; se recortan sin crear scroll
+   ni romper position:sticky. El contenido funcional se arregla abajo. */
+.landing-prime { overflow-x: clip; }
+#lpCalc, #lpCalc > *, .lp-calc__summary, .lp-field, .lp-appui, .lp-appui__main { min-width: 0; }
+
 @media (max-width: 639px) {
     .lp-step__btn { width: 42px; height: 42px; }
     .lp-tab { padding: 11px 16px; }
+
+    /* Fila etiqueta + stepper de la calculadora: apilan, sin desbordar. */
+    .lp-field > .flex { flex-wrap: wrap; }
+    .lp-field > .flex > label { flex: 1 1 100%; }
+    .lp-field .lp-step { align-self: flex-start; }
+    .lp-step__val { min-width: 52px; }
+
+    /* Grupos "Clientes y proveedores": sin sangría que empuje el ancho.
+       (prefijo .landing-prime => gana a la utilidad Tailwind .ml-3) */
+    .landing-prime .lp-field.ml-3 { margin-left: 0; }
+
+    /* KPIs del mockup: 3 columnas no caben cómodas en 320-360px. */
+    .lp-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lp-kpi > div:last-child { grid-column: span 2; }
+
+    /* Chips-evento del hero: dentro del flujo, nunca fuera del viewport. */
+    .lp-chip { width: 100%; }
+
+    /* Tabs del showcase: en móvil ENVUELVEN (2 filas) en vez de scrollear —
+       todas visibles y accesibles, y cero desbordamiento de página. */
+    .landing-prime .lp-tabs__scroller { margin-inline: 0; padding-inline: 0; overflow-x: visible; }
+    #lpShowcaseTabs { flex-wrap: wrap; justify-content: center; }
 }

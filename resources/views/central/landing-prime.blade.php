@@ -177,16 +177,15 @@
 
     {{-- ═══════════════════════ HERO ═══════════════════════ --}}
     @if($lpHeroVisible)
-    <section class="lp-soft relative overflow-hidden px-5 sm:px-6 pt-16 sm:pt-24 pb-16 sm:pb-24">
-        <div class="lp-grid-bg absolute inset-0 pointer-events-none" aria-hidden="true"></div>
-        <div class="absolute -top-24 -right-24 w-[36rem] h-[36rem] rounded-full bg-indigo-300/20 lp-glow pointer-events-none" aria-hidden="true"></div>
-        <div class="relative max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-10 items-center">
-            <div class="lp-reveal">
-                <p class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-indigo-100 shadow-sm text-xs font-semibold text-indigo-700 mb-6">
-                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+    <section class="lp-soft lp-aurora relative overflow-hidden px-5 sm:px-6 pt-16 sm:pt-24 pb-20 sm:pb-32">
+        <div class="max-w-7xl mx-auto grid lg:grid-cols-12 gap-y-14 gap-x-10 lg:gap-x-8 items-center">
+            <div class="lg:col-span-5 lp-reveal">
+                <span class="lp-mark mb-6"></span>
+                <p class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-slate-200 shadow-sm text-xs font-semibold text-slate-600 mb-6">
+                    <span class="w-1.5 h-1.5 rounded-full" style="background:linear-gradient(90deg,var(--lp-aurora-1),var(--lp-aurora-3))"></span>
                     {{ $hero->subtitle ?? __('landing_prime.hero_eyebrow') }}
                 </p>
-                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-[-0.03em] leading-[1.05] text-slate-950 mb-5">
+                <h1 class="text-[2.6rem] leading-[1.04] sm:text-5xl lg:text-[3.6rem] xl:text-[4rem] font-bold tracking-[-0.035em] text-slate-950 mb-5 text-balance">
                     {!! $hero->title ?: e(__('landing_prime.hero_title')) !!}
                 </h1>
                 <p class="text-lg text-slate-600 leading-relaxed max-w-xl mb-8">
@@ -214,51 +213,61 @@
                 </div>
             </div>
 
-            <div class="lp-reveal" data-delay="1">
+            <div class="lg:col-span-7 lp-reveal" data-delay="1">
                 @if($hero->hero_image)
                     <div class="lp-window">
                         <div class="lp-window__bar"><span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__title">{{ __('landing_prime.hero_mock_title') }}</span></div>
                         <img src="{{ asset($hero->hero_image) }}" alt="{{ strip_tags($hero->title ?: $appName) }}" class="w-full h-auto block" decoding="async">
                     </div>
                 @else
-                    {{-- Mockup esquemático: módulos reales, valores neutros, sin cifras comerciales. --}}
-                    <div class="relative">
+                    {{-- Escena de producto: patrones reales del ERP, valores neutros, sin cifras. --}}
+                    <div class="relative lg:px-6">
                         <div class="lp-window">
                             <div class="lp-window__bar">
                                 <span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__dot"></span>
                                 <span class="lp-window__title">{{ __('landing_prime.hero_mock_title') }}</span>
                             </div>
-                            <div class="p-5 bg-white">
-                                <div class="flex gap-2 mb-4 text-[11px] font-semibold">
-                                    @foreach(['hero_mock_nav_sales', 'hero_mock_nav_inventory', 'hero_mock_nav_purchases', 'hero_mock_nav_reports'] as $k => $nav)
-                                        <span class="px-2.5 py-1 rounded-md {{ $k === 0 ? 'bg-indigo-50 text-indigo-700' : 'text-slate-400' }}">{{ __('landing_prime.' . $nav) }}</span>
-                                    @endforeach
+                            <div class="lp-appui">
+                                <div class="lp-appui__rail" aria-hidden="true">
+                                    <i class="bi bi-grid-1x2-fill is-active"></i>
+                                    <i class="bi bi-bag"></i>
+                                    <i class="bi bi-box-seam"></i>
+                                    <i class="bi bi-truck"></i>
+                                    <i class="bi bi-graph-up"></i>
+                                    <i class="bi bi-people"></i>
                                 </div>
-                                <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 text-[11px] font-semibold uppercase tracking-wide text-slate-400 pb-2 border-b border-slate-100">
-                                    <span>{{ __('landing_prime.hero_mock_row_product') }}</span>
-                                    <span>{{ __('landing_prime.hero_mock_row_qty') }}</span>
-                                    <span>{{ __('landing_prime.hero_mock_row_location') }}</span>
-                                </div>
-                                @for($r = 0; $r < 4; $r++)
-                                    <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 items-center py-2.5 border-b border-slate-50">
-                                        <span class="h-2.5 rounded bg-slate-100" style="width: {{ [70, 55, 82, 48][$r] }}%"></span>
-                                        <span class="h-2.5 w-8 rounded bg-slate-100"></span>
-                                        <span class="h-2.5 w-16 rounded bg-slate-100"></span>
+                                <div class="lp-appui__main">
+                                    <div class="lp-appui__topbar">
+                                        <i class="bi bi-buildings text-indigo-500"></i>
+                                        <span>{{ __('landing_prime.hero_mock_title') }}</span>
+                                        <span class="lp-appui__pin" aria-hidden="true"></span>
                                     </div>
-                                @endfor
-                                <div class="mt-4 lp-bars" aria-hidden="true">
-                                    <span style="height:45%"></span><span style="height:68%"></span><span style="height:52%"></span>
-                                    <span style="height:80%"></span><span style="height:60%"></span><span style="height:88%"></span>
+                                    <div class="lp-kpi" aria-hidden="true">
+                                        <div><b>{{ __('landing_prime.value_sales') }}</b><span class="lp-spark"><span style="height:40%"></span><span style="height:62%"></span><span style="height:48%"></span><span style="height:78%"></span><span style="height:66%"></span></span></div>
+                                        <div><b>{{ __('landing_prime.value_inventory') }}</b><span class="lp-spark"><span style="height:70%"></span><span style="height:52%"></span><span style="height:60%"></span><span style="height:44%"></span><span style="height:58%"></span></span></div>
+                                        <div><b>{{ __('landing_prime.value_reports') }}</b><span class="lp-spark"><span style="height:34%"></span><span style="height:58%"></span><span style="height:72%"></span><span style="height:60%"></span><span style="height:84%"></span></span></div>
+                                    </div>
+                                    <div class="grid grid-cols-[1fr_auto] gap-x-4 text-[11px] font-semibold uppercase tracking-wide text-slate-400 pb-2 border-b border-slate-100">
+                                        <span>{{ __('landing_prime.hero_mock_row_product') }}</span>
+                                        <span>{{ __('landing_prime.showcase_col_status') }}</span>
+                                    </div>
+                                    @php $st = [['ok','hero_mock_st_ok'],['wait','hero_mock_st_sync'],['info','hero_mock_st_low'],['ok','hero_mock_st_ok']]; @endphp
+                                    @for($r = 0; $r < 4; $r++)
+                                        <div class="grid grid-cols-[1fr_auto] gap-x-4 items-center py-2.5 border-b border-slate-50">
+                                            <span class="h-2.5 rounded bg-slate-100" style="width: {{ [72, 54, 84, 46][$r] }}%"></span>
+                                            <span class="lp-pill lp-pill--{{ $st[$r][0] }}"><i class="bi bi-circle-fill"></i>{{ __('landing_prime.' . $st[$r][1]) }}</span>
+                                        </div>
+                                    @endfor
                                 </div>
                             </div>
                         </div>
-                        <div class="hidden lg:block absolute -left-7 top-14 w-52 bg-white rounded-xl border border-slate-200 shadow-lg p-3.5">
-                            <p class="text-xs font-bold text-slate-950">{{ __('landing_prime.hero_mock_card_pos') }}</p>
-                            <p class="text-[11px] text-slate-400">{{ __('landing_prime.hero_mock_card_pos_desc') }}</p>
+                        <div class="hidden lg:flex lp-chip absolute -left-10 xl:-left-16 top-1/2 -translate-y-1/2 w-52 z-10 lp-reveal" data-delay="2">
+                            <span class="lp-chip__ic"><i class="bi bi-receipt"></i></span>
+                            <span><b>{{ __('landing_prime.hero_mock_card_pos') }}</b><span>{{ __('landing_prime.hero_mock_card_pos_desc') }}</span></span>
                         </div>
-                        <div class="hidden lg:block absolute -right-6 bottom-8 w-52 bg-white rounded-xl border border-slate-200 shadow-lg p-3.5">
-                            <p class="text-xs font-bold text-slate-950">{{ __('landing_prime.hero_mock_card_stock') }}</p>
-                            <p class="text-[11px] text-slate-400">{{ __('landing_prime.hero_mock_card_stock_desc') }}</p>
+                        <div class="hidden lg:flex lp-chip absolute -right-8 xl:-right-14 bottom-10 w-52 z-10 lp-reveal" data-delay="3">
+                            <span class="lp-chip__ic"><i class="bi bi-box-seam"></i></span>
+                            <span><b>{{ __('landing_prime.hero_mock_card_stock') }}</b><span>{{ __('landing_prime.hero_mock_card_stock_desc') }}</span></span>
                         </div>
                     </div>
                 @endif
@@ -504,22 +513,20 @@
     </section>
     @endif
 
-    {{-- ═══════════════════════ CTA FINAL ═══════════════════════ --}}
+    {{-- ═══════════════════════ CTA FINAL — cierre de marca ═══════════════════════ --}}
     @if($lpCtaVisible || ! $cta)
-    <section class="bg-white py-20 sm:py-28 px-5 sm:px-6">
-        <div class="max-w-4xl mx-auto rounded-3xl bg-slate-950 text-white px-6 sm:px-14 py-16 text-center relative overflow-hidden lp-reveal">
-            <div class="absolute -top-24 -right-20 w-80 h-80 rounded-full bg-indigo-500/25 lp-glow" aria-hidden="true"></div>
-            <div class="relative">
-                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-3">{{ optional($cta)->title ?: __('landing_prime.cta_title') }}</h2>
-                <p class="text-slate-300 max-w-xl mx-auto mb-8">{{ optional($cta)->subtitle ?: __('landing_prime.cta_lead') }}</p>
-                <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                    <a href="{{ optional($cta)->button_url ?: $lpRegisterUrl }}" class="lp-btn lp-btn--lg bg-white text-slate-950 hover:bg-indigo-50">
-                        {{ optional($cta)->button_text ?: __('landing_prime.cta_button') }} <i class="bi bi-arrow-right"></i>
-                    </a>
-                    <a href="{{ $lpSalesHref }}" @if($lpSalesExternal) target="_blank" rel="noopener noreferrer" @endif class="lp-btn lp-btn--lg border border-white/25 text-white hover:bg-white/10">
-                        <i class="bi bi-chat-dots"></i> {{ optional($cta)->sales_button_text ?: __('landing_prime.cta_sales') }}
-                    </a>
-                </div>
+    <section class="bg-white pt-10 pb-20 sm:pt-14 sm:pb-28 px-5 sm:px-6">
+        <div class="lp-deep max-w-5xl mx-auto rounded-[2rem] px-6 sm:px-16 py-20 sm:py-24 text-center lp-reveal">
+            <span class="lp-mark lp-mark--center mb-7"></span>
+            <h2 class="text-3xl sm:text-[2.75rem] font-bold tracking-[-0.03em] leading-[1.08] mb-4 text-white text-balance">{{ optional($cta)->title ?: __('landing_prime.cta_title') }}</h2>
+            <p class="text-slate-300/90 text-lg max-w-xl mx-auto mb-9">{{ optional($cta)->subtitle ?: __('landing_prime.cta_lead') }}</p>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <a href="{{ optional($cta)->button_url ?: $lpRegisterUrl }}" class="lp-btn lp-btn--lg bg-white text-slate-950 hover:bg-slate-100">
+                    {{ optional($cta)->button_text ?: __('landing_prime.cta_button') }} <i class="bi bi-arrow-right"></i>
+                </a>
+                <a href="{{ $lpSalesHref }}" @if($lpSalesExternal) target="_blank" rel="noopener noreferrer" @endif class="lp-btn lp-btn--lg lp-btn--ghost">
+                    <i class="bi bi-chat-dots"></i> {{ optional($cta)->sales_button_text ?: __('landing_prime.cta_sales') }}
+                </a>
             </div>
         </div>
     </section>

@@ -38,6 +38,9 @@ return [
     'hero_mock_row_product'   => 'Producto',
     'hero_mock_row_qty'       => 'Cantidad',
     'hero_mock_row_location'  => 'Ubicación',
+    'hero_mock_st_ok'         => 'Al día',
+    'hero_mock_st_sync'       => 'Sincronizado',
+    'hero_mock_st_low'        => 'Stock bajo',
 
     // ── Value bar ───────────────────────────────────────
     'value_headline' => 'Creado para negocios que necesitan más control sin más complejidad.',
@@ -53,6 +56,8 @@ return [
     // ── Calculadora de precios ──────────────────────────
     'calc_title'     => 'Configura PRODEX según las necesidades de tu negocio',
     'calc_lead'      => 'Ajusta los valores y te mostramos el plan real que cubre tu operación.',
+    'calc_col_business' => 'Tu negocio',
+    'calc_col_prodex'   => 'Tu PRODEX',
     'calc_cycle_label'   => 'Ciclo de facturación',
     'calc_cycle_monthly' => 'Mensual',
     'calc_cycle_yearly'  => 'Anual',

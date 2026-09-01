@@ -39,14 +39,15 @@
     $billNote = fn ($plan) => ($plan['billed_period'] ?? 'month') === 'year' ? __('landing_prime.calc_billed_yearly') : __('landing_prime.calc_billed_monthly');
 @endphp
 
-<section id="pricing" class="lp-soft py-20 sm:py-28 px-5 sm:px-6">
+<section id="pricing" class="lp-soft lp-aurora py-20 sm:py-28 px-5 sm:px-6">
     <div class="max-w-6xl mx-auto">
         <header class="max-w-2xl mx-auto text-center mb-12 lp-reveal">
-            <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 mb-3">{{ __('landing_prime.calc_title') }}</h2>
+            <span class="lp-mark lp-mark--center mb-5"></span>
+            <h2 class="text-3xl sm:text-4xl font-bold tracking-[-0.02em] text-slate-950 mb-3">{{ __('landing_prime.calc_title') }}</h2>
             <p class="text-lg text-slate-600">{{ __('landing_prime.calc_lead') }}</p>
         </header>
 
-        <div id="lpCalc" class="lp-calc grid lg:grid-cols-[1fr_360px] gap-6 lg:gap-8"
+        <div id="lpCalc" class="lp-calc grid lg:grid-cols-[1fr_380px] gap-6 lg:gap-10"
              data-status="{{ $status }}"
              data-endpoint="{{ route('central.pricing.recommend') }}"
              data-currency="{{ $sym }}"
@@ -63,8 +64,10 @@
              data-i18n-live-custom="{{ __('landing_prime.calc_live_custom') }}"
              data-i18n-live-nodata="{{ __('landing_prime.calc_live_nodata') }}">
 
-            {{-- ── Panel de configuración ─────────────────────────────── --}}
-            <div class="lp-card rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 lp-reveal">
+            {{-- ── TU NEGOCIO — panel de configuración ─────────────────── --}}
+            <div class="lp-reveal">
+              <p class="lp-calc__col-label">{{ __('landing_prime.calc_col_business') }}</p>
+              <div class="lp-card rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
                 {{-- Ciclo --}}
                 <div class="flex items-center justify-between flex-wrap gap-3 mb-7">
                     <span class="text-sm font-semibold text-slate-700">{{ __('landing_prime.calc_cycle_label') }}</span>
@@ -105,10 +108,12 @@
                         </div>
                     @endforeach
                 </div>
+              </div>
             </div>
 
-            {{-- ── Resumen ─────────────────────────────────────────────── --}}
+            {{-- ── TU PRODEX — resumen del plan recomendado ────────────── --}}
             <aside class="lp-calc__summary lp-calc__summary--sticky lp-reveal" data-delay="1">
+                <p class="lp-calc__col-label">{{ __('landing_prime.calc_col_prodex') }}</p>
                 <p class="sr-only" role="status" aria-live="polite" data-calc-live></p>
                 <div class="lp-calc__card lp-card lp-elevate rounded-2xl border border-slate-200 bg-white p-6">
 

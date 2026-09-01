@@ -38,6 +38,9 @@ return [
     'hero_mock_row_product'   => 'Product',
     'hero_mock_row_qty'       => 'Qty',
     'hero_mock_row_location'  => 'Location',
+    'hero_mock_st_ok'         => 'On track',
+    'hero_mock_st_sync'       => 'Synced',
+    'hero_mock_st_low'        => 'Low stock',
 
     // ── Value bar ───────────────────────────────────────
     'value_headline' => 'Built for businesses that need more control without more complexity.',
@@ -53,6 +56,8 @@ return [
     // ── Pricing calculator ──────────────────────────────
     'calc_title'     => 'Configure PRODEX to fit your business',
     'calc_lead'      => 'Adjust the values and we will show the real plan that covers your operation.',
+    'calc_col_business' => 'Your business',
+    'calc_col_prodex'   => 'Your PRODEX',
     'calc_cycle_label'   => 'Billing cycle',
     'calc_cycle_monthly' => 'Monthly',
     'calc_cycle_yearly'  => 'Yearly',
