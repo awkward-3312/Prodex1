@@ -415,13 +415,16 @@ body.landing-prime {
     box-shadow: var(--lp-shadow-sm);
     transition: border-color .2s var(--lp-ease-out), box-shadow .2s var(--lp-ease-out);
 }
-/* Franja de acento superior — el color vive en el borde, no en la card. */
+/* Acento corto e inset (no una barra a todo lo ancho tipo progress/focus):
+   alineado con icono/nombre, sin tocar los bordes de la card. */
 .lp-plan::before {
-    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
-    border-radius: var(--lp-radius) var(--lp-radius) 0 0;
+    content: ""; position: absolute; top: .85rem; left: 1.375rem;
+    width: 68px; height: 4px; border-radius: 999px;
     background: var(--pc);
-    opacity: .9;
 }
+/* El recomendado ya tiene borde + halo + chip en su color: el acento se
+   retira para que sea UN solo sistema de énfasis, no señales compitiendo. */
+.lp-plan.is-recommended::before { display: none; }
 .lp-plan--c1 { --pc: var(--lp-plan-1); --pc-050: var(--lp-plan-1-050); --pc-200: var(--lp-plan-1-200); }
 .lp-plan--c2 { --pc: var(--lp-plan-2); --pc-050: var(--lp-plan-2-050); --pc-200: var(--lp-plan-2-200); }
 .lp-plan--c3 { --pc: var(--lp-plan-3); --pc-050: var(--lp-plan-3-050); --pc-200: var(--lp-plan-3-200); }
@@ -458,8 +461,9 @@ body.landing-prime {
 .lp-plan__amt { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--pc); }
 .lp-plan__amt--free { color: var(--lp-ink); }
 .lp-plan__per { font-size: .875rem; color: var(--lp-ink-3); }
-/* Altura reservada aunque no haya anual/prueba => las cifras no saltan. */
-.lp-plan__yearly { font-size: .75rem; color: var(--lp-ink-3); min-height: 1.1rem; }
+/* Altura reservada SIEMPRE (haya o no anual/prueba real) => ninguna card,
+   incluida Profesional mientras su yearly_price sea inválido, se desalinea. */
+.lp-plan__yearly { font-size: .75rem; line-height: 1.4; color: var(--lp-ink-3); min-height: 1.1rem; }
 .lp-plan__detail { border-top: 1px solid var(--lp-line-soft); margin-bottom: 1.5rem; }
 .lp-plan__kicker {
     font-size: .6875rem; font-weight: 700; text-transform: uppercase;

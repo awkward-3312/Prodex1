@@ -132,7 +132,7 @@ return [
     'plans_no_limits'      => 'No usage limits',
     'plans_cta'            => 'Start free',
     'plans_cta_paid'       => 'Choose plan',
-    'plans_yearly_line'    => 'or :amount/yr · save :percent%',
+    'plans_yearly_line'    => 'Annual :amount · save :percent%',
     'plans_trial_line'     => ':days-day trial',
 
     // ── Modules / solutions ─────────────────────────────

@@ -57,7 +57,11 @@
                     $includedAll = collect($p['included'] ?? []);
                     $allUnlimited = $includedAll->isNotEmpty() && $includedAll->every(fn ($it) => ! empty($it['unlimited']));
                     $included = $allUnlimited ? collect() : $includedAll->take(5);
-                    $features = collect($p['features'] ?? [])->take(3);
+                    // Sin inventar nada: cuando el plan no tiene líneas de límites que
+                    // mostrar (todo ilimitado → sólo "Sin límites de uso"), se aprovechan
+                    // más FEATURES REALES del propio servicio para equilibrar la card,
+                    // dentro de un tope razonable. Si no hay tantas, toma las que existan.
+                    $features = collect($p['features'] ?? [])->take($allUnlimited ? 6 : 3);
                     $isPaid = empty($p['is_free']);
                     $hasDetail = $allUnlimited || $included->isNotEmpty() || $features->isNotEmpty();
                 @endphp

@@ -186,6 +186,7 @@ class LandingPrimeContractTest extends TestCase
             'resources/views/central/landing-prime.blade.php',
             'resources/views/central/partials/prime/calculator.blade.php',
             'resources/views/central/partials/prime/showcase.blade.php',
+            'resources/views/central/partials/prime/plans.blade.php',
         ] as $file) {
             $src = $this->read($file);
             // Nada de "$24,580", "L 12,345", "+18.4%", "1,284 productos" hardcodeados.
@@ -616,6 +617,53 @@ class LandingPrimeContractTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/17\s?%/', $p);
         // El anual sólo se pinta si el servicio lo marca disponible.
         $this->assertStringContainsString("@if(\$p['yearly_available'])", $p);
+    }
+
+    /** Polish muy pequeño de las cards de planes (iteración 6): acento inset,
+     *  espacio reservado de la línea anual, copy limpio, balance de Empresarial. */
+    public function test_plans_micro_polish(): void
+    {
+        $p   = $this->read('resources/views/central/partials/prime/plans.blade.php');
+        $css = $this->read('public/assets_super/css/landing-prime.css');
+        $es  = require dirname(__DIR__, 2) . '/resources/lang/es/landing_prime.php';
+        $en  = require dirname(__DIR__, 2) . '/resources/lang/en/landing_prime.php';
+
+        // 1) Línea anual: SIEMPRE presente en el DOM (con o sin contenido real)
+        //    y con altura reservada, para que Profesional no se desalinee.
+        $this->assertStringContainsString('<p class="lp-plan__yearly mt-1">', $p);
+        $this->assertStringContainsString('min-height: 1.1rem', $css);
+        // Sin hardcodear el dato inválido de Profesional en ningún formato.
+        foreach (['11,990', '11990', '11.990'] as $banned) {
+            $this->assertStringNotContainsString($banned, $p, $banned);
+        }
+
+        // 2) Acento superior: corto (60–80px), inset (no toca los bordes de la
+        //    card) y completamente redondeado — no una barra a todo el ancho.
+        $this->assertMatchesRegularExpression(
+            '/\.lp-plan::before \{\s*content: ""; position: absolute; top: [^;]+; left: [^;]+;\s*width: (6[0-9]|7[0-9]|80)px; height: \d+px; border-radius: 999px;/',
+            $css
+        );
+        $this->assertDoesNotMatchRegularExpression('/\.lp-plan::before\s*\{[^}]*inset:\s*0\s+0\s+auto\s+0/', $css);
+        // En el recomendado se retira: badge + borde/halo ya son UN sistema.
+        $this->assertStringContainsString('.lp-plan.is-recommended::before { display: none; }', $css);
+
+        // 3) Copy limpio y equivalente: "Anual L. 2.990 · ahorra 17%", siempre
+        //    con los valores reales que pasa el backend (:amount / :percent).
+        $this->assertSame('Anual :amount · ahorra :percent%', $es['plans_yearly_line']);
+        $this->assertStringContainsString(':amount', $en['plans_yearly_line']);
+        $this->assertStringContainsString(':percent', $en['plans_yearly_line']);
+
+        // 4) Empresarial (o cualquier plan totalmente ilimitado): usa más
+        //    FEATURES REALES del propio payload para equilibrar la card en vez
+        //    de dejar hueco — nunca contenido inventado.
+        $this->assertStringContainsString("collect(\$p['features'] ?? [])->take(\$allUnlimited ? 6 : 3)", $p);
+
+        // 5) Se conserva todo lo demás: color por plan, iconos, CTA, grid.
+        foreach (['--lp-plan-1', '--lp-plan-2', '--lp-plan-3', '--lp-plan-4'] as $tok) {
+            $this->assertStringContainsString($tok, $css, $tok);
+        }
+        $this->assertStringContainsString('lp-plan__ic', $p);
+        $this->assertStringContainsString('$recommendedId !== null && $recommendedId === $p[\'id\']', $p);
     }
 
     /** El overflow horizontal móvil se corrige en el origen (no sólo se oculta). */
