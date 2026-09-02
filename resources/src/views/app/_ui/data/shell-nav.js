@@ -20,7 +20,15 @@
 // No se inventaron rutas, permisos ni módulos.
 // =============================================================================
 
+// Prefijo de las rutas PROTOTIPO dev-only (`/app/shell/*`, registradas sólo si
+// process.env.NODE_ENV !== "production"). NUNCA debe usarse como destino de
+// navegación productiva — en el bundle de producción esas rutas no existen (404).
+// La navegación real del shell usa rutas reales del ERP (ver SHELL_RAIL/SHELL_FOOT).
 export const SHELL_BASE = "/app/shell";
+
+// Ruta PRODUCTIVA del hub de Reportes (child real de /app/reports en router.js).
+// Reemplaza al antiguo destino dev-only /app/shell/reportes.
+export const REPORTS_HUB_ROUTE = "/app/reports/all";
 
 // ---- Catálogo de reportes (fuente única) ----------------------------------
 // Lo consumen: el panel contextual de "Reportes" (sólo las CATEGORÍAS) y el
@@ -102,12 +110,18 @@ const _allReportPerms = SHELL_REPORTS.reduce((a, c) => a.concat(_repCatPerms(c))
 // Panel · Ventas · Inventario · Compras: siempre según permiso (como M1).
 // Finanzas · Reportes · RR. HH.: `gated` — sólo si el plan/permiso habilita ≥1
 // opción real de su panel (B0 §7 / CONDITIONAL_TREATMENT).
+//
+// DESTINO del riel (producción):
+//   · `to`            → ruta REAL fija del ERP (dominios core + Reportes hub).
+//   · `resolveEntry`  → sin `to`: PxShell navega a la PRIMERA opción REAL del
+//                       panel permitida por permiso+plan (dominios gated, donde
+//                       un destino fijo podría estar prohibido para el usuario).
 export const SHELL_RAIL = [
   {
     key: "panel",
     label: "Panel",
     icon: "layout-dashboard",
-    to: SHELL_BASE + "/panel",
+    to: "/app/dashboard",
     always: true,
     panel: null
   },
@@ -115,7 +129,7 @@ export const SHELL_RAIL = [
     key: "ventas",
     label: "Ventas",
     icon: "shopping-cart",
-    to: SHELL_BASE + "/ventas",
+    to: "/app/sales/list",
     anyPerm: ["Sales_view", "Sales_add", "Pos_view", "real_time_sales_counter", "Sale_Returns_view"],
     panel: {
       title: "Ventas",
@@ -123,7 +137,7 @@ export const SHELL_RAIL = [
         {
           title: "Operar",
           items: [
-            { label: "Ventas", icon: "list", to: SHELL_BASE + "/ventas", activeMatch: "/app/sales", anyPerm: ["Sales_view"] },
+            { label: "Ventas", icon: "list", to: "/app/sales/list", activeMatch: "/app/sales", anyPerm: ["Sales_view"] },
             { label: "Nueva venta", icon: "plus", route: "/app/sales/store", anyPerm: ["Sales_add"] },
             { label: "Devoluciones", icon: "corner-up-left", route: "/app/sale_return/list", anyPerm: ["Sale_Returns_view"] },
             { label: "Importar ventas", icon: "download", route: "/app/sales/import_sales", anyPerm: ["Sales_add"] },
@@ -146,7 +160,7 @@ export const SHELL_RAIL = [
     key: "inventario",
     label: "Inventario",
     icon: "boxes",
-    to: SHELL_BASE + "/inventario",
+    to: "/app/products/list",
     anyPerm: ["products_view", "products_add", "product_import", "adjustment_view", "damage_view", "count_stock", "barcode_view", "brand", "unit", "category"],
     panel: {
       title: "Inventario",
@@ -168,7 +182,7 @@ export const SHELL_RAIL = [
         {
           title: "Catálogo",
           items: [
-            { label: "Productos", icon: "package", to: SHELL_BASE + "/inventario", activeMatch: "/app/products", anyPerm: ["products_view"] },
+            { label: "Productos", icon: "package", to: "/app/products/list", activeMatch: "/app/products", anyPerm: ["products_view"] },
             { label: "Categorías", icon: "copy", route: "/app/products/Categories", anyPerm: ["category", "subcategory"] },
             { label: "Marcas", icon: "copy", route: "/app/products/Brands", anyPerm: ["brand"] },
             { label: "Unidades", icon: "copy", route: "/app/products/Units", anyPerm: ["unit"] },
@@ -186,7 +200,7 @@ export const SHELL_RAIL = [
     key: "compras",
     label: "Compras",
     icon: "receipt",
-    to: SHELL_BASE + "/compras",
+    to: "/app/purchases/list",
     anyPerm: ["Purchases_view", "Purchases_add", "Purchase_Returns_view"],
     panel: {
       title: "Compras",
@@ -194,7 +208,7 @@ export const SHELL_RAIL = [
         {
           title: "Operar",
           items: [
-            { label: "Compras", icon: "list", to: SHELL_BASE + "/compras", activeMatch: "/app/purchases", anyPerm: ["Purchases_view"] },
+            { label: "Compras", icon: "list", to: "/app/purchases/list", activeMatch: "/app/purchases", anyPerm: ["Purchases_view"] },
             { label: "Nueva orden de compra", icon: "plus", route: "/app/purchases/store", anyPerm: ["Purchases_add"] },
             { label: "Devoluciones a proveedor", icon: "corner-up-right", route: "/app/purchase_return/list", anyPerm: ["Purchase_Returns_view"] },
             { label: "Importar compras", icon: "download", route: "/app/purchases/import_purchases", anyPerm: ["Purchases_add"] }
@@ -216,7 +230,7 @@ export const SHELL_RAIL = [
     key: "finanzas",
     label: "Finanzas",
     icon: "calculator",
-    to: SHELL_BASE + "/finanzas",
+    resolveEntry: true,
     gated: true,
     plan: "accounting",
     // Dominio visible con acceso real a contabilidad/tesorería. Comisiones es un
@@ -229,12 +243,6 @@ export const SHELL_RAIL = [
     panel: {
       title: "Finanzas",
       groups: [
-        {
-          title: "Resumen",
-          items: [
-            { label: "Panel de Finanzas", icon: "calculator", to: SHELL_BASE + "/finanzas", anyPerm: ["accounting_dashboard", "chart_of_accounts", "journal_entries", "trial_balance", "accounting_profit_loss", "balance_sheet", "accounting_tax_report", "account", "transfer_money", "expense_view", "expense_add", "deposit_view", "deposit_add"] }
-          ]
-        },
         {
           title: "Contabilidad",
           items: [
@@ -286,7 +294,7 @@ export const SHELL_RAIL = [
     key: "reportes",
     label: "Reportes",
     icon: "bar-chart-3",
-    to: SHELL_BASE + "/reportes",
+    to: REPORTS_HUB_ROUTE,
     gated: true,
     // Índice global "Todos los reportes" (B0 D1). Visible si el usuario tiene
     // al menos un permiso de reporte. `anyPerm` = unión de todo el catálogo.
@@ -294,14 +302,14 @@ export const SHELL_RAIL = [
     panel: {
       title: "Reportes",
       // El panel se queda en el nivel superior: Resumen + Categorías. El detalle
-      // (los ~35 reportes reales) vive en el hub `/app/shell/reportes` (con
-      // búsqueda). "Todos los reportes" abre el hub completo; cada categoría lo
-      // abre filtrado por `?cat=<key>` — sin rutas nuevas por categoría.
+      // (los ~35 reportes reales) vive en el hub PRODUCTIVO `/app/reports/all`
+      // (con búsqueda). "Todos los reportes" abre el hub completo; cada categoría
+      // lo abre filtrado por `?cat=<key>` — sin rutas nuevas por categoría.
       groups: [
         {
           title: "Resumen",
           items: [
-            { label: "Todos los reportes", icon: "bar-chart-3", to: SHELL_BASE + "/reportes", catchAllReports: true, anyPerm: _allReportPerms }
+            { label: "Todos los reportes", icon: "bar-chart-3", to: REPORTS_HUB_ROUTE, catchAllReports: true, anyPerm: _allReportPerms }
           ]
         },
         {
@@ -309,7 +317,7 @@ export const SHELL_RAIL = [
           items: SHELL_REPORTS.map(c => ({
             label: c.title,
             icon: c.icon,
-            to: SHELL_BASE + "/reportes",
+            to: REPORTS_HUB_ROUTE,
             query: { cat: c.key },
             anyPerm: _repCatPerms(c)
           }))
@@ -321,19 +329,13 @@ export const SHELL_RAIL = [
     key: "rrhh",
     label: "RR. HH.",
     icon: "id-card",
-    to: SHELL_BASE + "/rrhh",
+    resolveEntry: true,
     gated: true,
     plan: "hrm",
     anyPerm: ["company", "department", "designation", "office_shift", "view_employee", "attendance", "leave", "holiday", "payroll"],
     panel: {
       title: "RR. HH.",
       groups: [
-        {
-          title: "Resumen",
-          items: [
-            { label: "Panel de RR. HH.", icon: "id-card", to: SHELL_BASE + "/rrhh", anyPerm: ["company", "department", "designation", "office_shift", "view_employee", "attendance", "leave", "holiday", "payroll"] }
-          ]
-        },
         {
           title: "Personal",
           items: [
@@ -509,6 +511,27 @@ export function isShellExcluded(path) {
   return SHELL_EXCLUDED_ROUTES.some(x => p === x || p.indexOf(x) === 0);
 }
 
+// Primera opción REAL (`route`) del panel de un dominio permitida por permiso +
+// plan. Data-driven: reutiliza los `panel.groups[].items[]` existentes. Lo usa
+// PxShell para el destino del riel de los dominios `resolveEntry` (Finanzas,
+// RR. HH., Configuración, Más), donde un destino fijo podría estar prohibido para
+// el usuario (p. ej. tener `expense_view` pero no `accounting_dashboard`).
+// `hasAnyPerm(perms)` y `planFeature(key)` = las mismas del gate de Sidebar.vue.
+export function firstAllowedRoute(entry, hasAnyPerm, planFeature) {
+  const groups = (entry && entry.panel && entry.panel.groups) || [];
+  for (let gi = 0; gi < groups.length; gi++) {
+    const items = groups[gi].items || [];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (!it.route) continue; // sólo destinos REALES del ERP
+      if (it.plan && !planFeature(it.plan)) continue;
+      if (!hasAnyPerm(it.anyPerm)) continue;
+      return it.route;
+    }
+  }
+  return null;
+}
+
 // Ruta REAL de un reporte (/app/reports/<x>) → clave de categoría de
 // SHELL_REPORTS (generales | ventas | compras | inventario | finanzas |
 // personas). `null` si el reporte no está catalogado. Fuente única: SHELL_REPORTS.
@@ -530,7 +553,7 @@ export const SHELL_FOOT = [
     key: "config",
     label: "Configuración",
     icon: "settings",
-    to: SHELL_BASE + "/config",
+    resolveEntry: true,
     foot: true,
     gated: true,
     anyPerm: [
@@ -545,12 +568,6 @@ export const SHELL_FOOT = [
     panel: {
       title: "Configuración",
       groups: [
-        {
-          title: "Resumen",
-          items: [
-            { label: "Configuración", icon: "settings", to: SHELL_BASE + "/config", anyPerm: ["setting_system", "appearance_settings", "translations_settings", "currency", "payment_methods", "payment_gateway", "backup", "system_health_view", "warehouse", "cash_drawers_view", "warehouse_locations", "users_view", "permissions_view", "permissions_edit", "login_device_management", "zatca_settings", "quickbooks_settings", "woocommerce_settings", "shopify_settings", "webhooks_view", "pos_settings", "sms_settings", "notification_template", "mail_settings", "users_edit", "users_add"] }
-          ]
-        },
         {
           title: "Sistema",
           items: [
@@ -617,7 +634,7 @@ export const SHELL_FOOT = [
     key: "mas",
     label: "Más herramientas",
     icon: "layout-grid",
-    to: SHELL_BASE + "/mas",
+    resolveEntry: true,
     foot: true,
     gated: true,
     anyPerm: [
@@ -630,12 +647,6 @@ export const SHELL_FOOT = [
     panel: {
       title: "Más herramientas",
       groups: [
-        {
-          title: "Resumen",
-          items: [
-            { label: "Todas las herramientas", icon: "layout-grid", to: SHELL_BASE + "/mas", anyPerm: ["billing_view", "support", "knowledge_base_view", "projects", "tasks", "contracts", "service_jobs", "assets", "bookings", "realestate_properties", "meeting", "subscription_product", "Orders_view", "Store_settings_view", "marketing_dashboard", "whatsapp_settings", "whatsapp_templates", "whatsapp_logs"] }
-          ]
-        },
         {
           title: "Cuenta PRODEX",
           items: [

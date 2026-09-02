@@ -3,7 +3,10 @@
     px-next · Shell funcional (navegable) — "Panel de operación".
     Continúa la maqueta aprobada `PxShellMock.vue` (mismas clases `.pxn-shell__*`,
     mismos tokens `--pxn-*`) pero con navegación REAL:
-      · riel  → <router-link> a /app/shell/<dominio> (4 dominios core cableados)
+      · riel  → <router-link> a rutas REALES del ERP: destino fijo `m.to` (Panel,
+                Ventas, Inventario, Compras, Reportes hub) o `railTarget(m)` que
+                resuelve la primera opción permitida para dominios `resolveEntry`
+                (Finanzas, RR. HH., Configuración, Más). NUNCA a /app/shell/* (dev).
       · panel → items reales filtrados por permiso/plan (mismo mecanismo que Sidebar.vue)
       · topbar→ <top-nav /> real embebido (POS, idioma, notificaciones, usuario,
                 perfil/config/logout intactos — sin reimplementar)
@@ -33,7 +36,7 @@
           <li v-for="m in visibleRail" :key="m.key">
             <router-link
               v-if="!m.pending"
-              :to="m.to"
+              :to="railTarget(m)"
               class="pxn-shell__module pxn-ring"
               :class="{ 'is-active': m.key === activeDomain }"
               :title="m.label"
@@ -60,7 +63,7 @@
           <router-link
             v-for="m in visibleFoot"
             :key="m.key"
-            :to="m.to"
+            :to="railTarget(m)"
             class="pxn-shell__module pxn-ring"
             :class="{ 'is-active': m.key === activeDomain }"
             :title="m.label"
@@ -339,7 +342,7 @@
 <script>
 import { mapGetters, mapActions } from "vuex";
 import TopNav from "@/containers/layouts/largeSidebar/TopNav.vue";
-import { SHELL_RAIL, SHELL_FOOT, resolveShellDomain, resolveReportCategory } from "@/views/app/_ui/data/shell-nav";
+import { SHELL_RAIL, SHELL_FOOT, resolveShellDomain, resolveReportCategory, firstAllowedRoute } from "@/views/app/_ui/data/shell-nav";
 
 export default {
   name: "PxShell",
@@ -570,6 +573,22 @@ export default {
       if (m.gated && !this.railEntryHasContent(m)) return false;
       return true;
     },
+    // Destino REAL del riel para un dominio. `m.to` fijo (Panel, Ventas,
+    // Inventario, Compras, Reportes hub) o, para dominios `resolveEntry`
+    // (Finanzas, RR. HH., Configuración, Más), la PRIMERA opción del panel
+    // permitida por permiso+plan — nunca un destino que pueda estar prohibido.
+    // Fallback ultra-seguro: /app/dashboard (railEntryVisible ya garantiza ≥1
+    // opción usable en dominios gated, así que en la práctica no se alcanza).
+    railTarget(m) {
+      if (m.to) return m.to;
+      return (
+        firstAllowedRoute(
+          m,
+          perms => this.hasAnyPerm(perms),
+          key => this.planFeature(key)
+        ) || "/app/dashboard"
+      );
+    },
     // Rutas reales que un ítem específico del panel activo ya "reclama".
     // Sirve para que el ítem "home" del dominio no robe el estado activo a un
     // hijo más específico durante el cutover (p. ej. Nueva venta vs. Ventas).
@@ -602,7 +621,8 @@ export default {
         return resolveReportCategory(path) === it.query.cat;
       }
 
-      // 3) Ítem con destino INTERNO del shell (/app/shell/<dominio>).
+      // 3) Ítem "home" con destino fijo `it.to` (ruta real: /app/sales/list,
+      //    /app/products/list, /app/purchases/list, /app/reports/all…).
       const onShellPath = path === it.to || path.indexOf(it.to + "/") === 0;
       if (onShellPath) {
         const routeCat = String(this.$route.query.cat || "");
