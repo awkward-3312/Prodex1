@@ -24,6 +24,7 @@ export { default as PxModal } from "./PxModal.vue";
 export { default as PxPageHeader } from "./PxPageHeader.vue";
 export { default as PxPagination } from "./PxPagination.vue";
 export { default as PxSelect } from "./PxSelect.vue";
+export { default as PxShell } from "./PxShell.vue";
 export { default as PxShellMock } from "./PxShellMock.vue";
 export { default as PxStat } from "./PxStat.vue";
 export { default as PxTable } from "./PxTable.vue";

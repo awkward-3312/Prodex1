@@ -3,7 +3,7 @@
     <div v-if="!Loading" class="initial-loader-overlay"><div class="initial-loader-dots"><span></span><span></span><span></span></div></div>
     <router-view v-if="Loading" class="app-fade-in" :class="designSystemRouteClass"></router-view>
     <div v-if="globalSyncActive" class="global-sync-overlay"><div class="global-sync-card"><div class="global-sync-spinner"></div><h3 class="global-sync-title">{{ translatedOrFallback('pos.Syncing_offline_sales', 'Sincronizando ventas sin conexión') }}</h3><p class="global-sync-subtitle">{{ translatedOrFallback('pos.Syncing_offline_sales_help', 'Espera mientras se sincronizan las ventas realizadas sin conexión.') }}</p></div></div>
-    <customizer v-if="show_language && !isPosPage && getCustomizeButtonVisible"></customizer>
+    <customizer v-if="show_language && !isPosPage && getCustomizeButtonVisible && !getPxShellLayout"></customizer>
     <div v-if="limitReachedVisible" class="limit-reached-overlay" @click.self="limitReachedVisible = false"><div class="limit-reached-card"><div class="limit-reached-icon"><svg width="32" height="32" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M5.07 19h13.86c1.5 0 2.47-1.6 1.73-2.88L13.73 4.24c-.74-1.28-2.72-1.28-3.46 0L3.34 16.12C2.6 17.4 3.57 19 5.07 19z"/></svg></div><h3 class="limit-reached-title">Límite del plan alcanzado</h3><p class="limit-reached-message">{{ limitReachedMessage }}</p><div class="limit-reached-actions"><button class="limit-reached-btn-upgrade" @click="goToUpgrade"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 19V5m-7 7 7-7 7 7"/></svg>Mejorar plan</button><button class="limit-reached-btn-dismiss" @click="limitReachedVisible = false">Cerrar</button></div></div></div>
   </div>
 </template>
@@ -12,7 +12,7 @@ import { mapActions, mapGetters } from "vuex";
 export default {
   data() { return { Loading:false, globalSyncActive:false, limitReachedVisible:false, limitReachedMessage:'' }; },
   computed: {
-    ...mapGetters("config", ["getThemeMode", "getCustomizeButtonVisible"]),
+    ...mapGetters("config", ["getThemeMode", "getCustomizeButtonVisible", "getPxShellLayout"]),
     ...mapGetters(["isAuthenticated","show_language","currentUser"]),
     themeName() { return this.getThemeMode.dark ? "dark-theme" : " "; },
     rtl() { return this.getThemeMode.rtl ? "rtl" : " "; },
