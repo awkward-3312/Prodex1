@@ -988,7 +988,12 @@ export default {
   height: 100vh;
   border: 0;
   border-radius: 0;
-  overflow: visible; /* deja salir el popover del profile chip bajo el topbar */
+  /* QA transversal: `overflow: visible` hacía que TODO el shell (riel + topbar)
+     scrollara con la página en cualquier vista más alta que el viewport. El
+     scroll vive dentro de `.pxn-shell__canvas`; el chrome queda fijo, como el
+     layout legacy. Los popovers del topbar (perfil, campana, alcance) miden
+     ≤ ~250px y abren desde 56px, así que no los recorta. */
+  overflow: hidden;
 }
 
 /* Contenedor riel + panel. En desktop es la 1ª columna del grid;
@@ -1111,7 +1116,10 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 .pxn-shell__panel-caret.is-open { transform: rotate(180deg); }
 
 /* columna principal */
-.pxn-shell__main { display: flex; flex-direction: column; min-width: 0; }
+/* `min-height: 0` deja que la columna se ajuste a la fila del grid (100vh) para
+   que `.pxn-shell__canvas` (flex:1, overflow:auto) tenga altura acotada y
+   scrollee internamente en vez de crecer con el contenido. */
+.pxn-shell__main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .pxn-shell__topbar {
   flex: none;
   display: flex;
