@@ -191,11 +191,15 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
     public function test_ms2_transition_boundary_guards_fence_every_mutation_path(): void
     {
         $src = $this->read('app/Http/Controllers/PurchasesController.php');
+        $trait = $this->read('app/Http/Controllers/Concerns/GuardsPurchaseTransitionMode.php');
 
-        // Both guards exist and lock the transition state (deterministic asc).
-        $this->assertStringContainsString('private function assertLegacyPurchaseTransitionSafe(', $src);
-        $this->assertStringContainsString('private function assertLocationNativePurchaseTransitionSafe(', $src);
-        $this->assertStringContainsString('$resolver->lockStates(', $src);
+        // Both guards live in the shared trait, lock the transition state first
+        // (deterministic asc), and PurchasesController uses it.
+        $this->assertStringContainsString('use App\Http\Controllers\Concerns\GuardsPurchaseTransitionMode;', $src);
+        $this->assertStringContainsString('use GuardsPurchaseTransitionMode;', $src);
+        $this->assertStringContainsString('function assertLegacyPurchaseTransitionSafe(', $trait);
+        $this->assertStringContainsString('function assertLocationNativePurchaseTransitionSafe(', $trait);
+        $this->assertStringContainsString('$resolver->lockStates(', $trait);
 
         // Legacy paths fenced: a location_primary warehouse can never take a
         // legacy product_warehouse mutation.
@@ -233,20 +237,111 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
     }
 
     // =====================================================================
-    // MS2 · SCOPE FENCES — returns / import stay legacy
+    // MS3 · PURCHASE RETURNS location-native
     // =====================================================================
 
-    public function test_purchase_returns_controller_is_still_fully_legacy(): void
+    public function test_ms3_purchase_returns_controller_is_wired_to_the_engine(): void
     {
         $src = $this->read('app/Http/Controllers/PurchasesReturnController.php');
-        $this->assertStringNotContainsString('LocationAwarePurchase', $src);
-        $this->assertStringNotContainsString('WarehouseInventoryModeResolver', $src);
-        $this->assertStringNotContainsString('inventory_location_id', $src);
+
+        $this->assertStringContainsString('use App\Http\Controllers\Concerns\GuardsPurchaseTransitionMode;', $src);
+        $this->assertStringContainsString('use GuardsPurchaseTransitionMode;', $src);
+        $this->assertStringContainsString('use App\Services\LocationAwarePurchaseStockService;', $src);
+        $this->assertStringContainsString('use App\Services\WarehouseInventoryModeResolver;', $src);
+        $this->assertStringContainsString('LocationAwarePurchaseStockService::DOC_PURCHASE_RETURN', $src);
+
+        // store routes by mode; update/destroy/bulk by persisted identity.
+        $this->assertStringContainsString('WarehouseInventoryModeResolver::class)->isLocationPrimary(', $this->fn($src, 'store'));
+        foreach (['update', 'destroy'] as $m) {
+            $this->assertStringContainsString('inventory_location_id !== null', $this->fn($src, $m));
+            $this->assertStringContainsString($m.'LocationAware(', $this->fn($src, $m));
+        }
+        $this->assertStringContainsString('$current_PurchaseReturn->inventory_location_id !== null', $this->fn($src, 'delete_by_selection'));
+
+        // legacy writers still present (unchanged count) + still fenced.
         $this->assertSame(
             self::RETURNS_CONTROLLER_LEGACY_PW_SAVE_SITES,
             substr_count($src, '$product_warehouse->save();'),
-            'MS2 must not touch PurchasesReturnController — MS3 does.'
+            'MS3 adds an ALTERNATIVE path; it must not remove any legacy return writer.'
         );
+        foreach (['store', 'update', 'destroy', 'delete_by_selection'] as $m) {
+            $this->assertStringContainsString('assertLegacyPurchaseTransitionSafe(', $this->fn($src, $m));
+        }
+        foreach (['storeLocationAware', 'updateLocationAware', 'destroyLocationAware', 'delete_by_selection'] as $m) {
+            $this->assertStringContainsString('assertLocationNativePurchaseTransitionSafe(', $this->fn($src, $m));
+        }
+    }
+
+    public function test_ms3_native_return_methods_are_location_native_pure(): void
+    {
+        $src = $this->read('app/Http/Controllers/PurchasesReturnController.php');
+        foreach ([
+            'storeLocationAware',
+            'updateLocationAware',
+            'destroyLocationAware',
+            'reverseLocationNativePurchaseReturnStock',
+        ] as $name) {
+            $body = $this->fn($src, $name);
+            $this->assertStringNotContainsString('product_warehouse', $body, "{$name}() must be location-native pure");
+            $this->assertStringNotContainsString('BatchService', $body);
+            $this->assertStringNotContainsString('SerialNumberService', $body);
+        }
+
+        // completed-status semantics preserved (NOT unified with 'received').
+        $this->assertStringContainsString("=== 'completed'", $this->fn($src, 'storeLocationAware'));
+        $this->assertStringContainsString("statut !== 'completed'", $this->fn($src, 'reverseLocationNativePurchaseReturnStock'));
+    }
+
+    public function test_ms3_return_endpoints_and_scope(): void
+    {
+        $routes = $this->read('routes/tenant_api.php');
+        $this->assertStringContainsString("purchase_returns_inventory_locations/{warehouse_id}', 'PurchasesReturnController@inventoryLocationsForWarehouse'", $routes);
+        $this->assertStringContainsString("purchase_returns_location_catalog/{location_id}', 'PurchasesReturnController@inventoryLocationCatalog'", $routes);
+
+        $src = $this->read('app/Http/Controllers/PurchasesReturnController.php');
+        // a return is OUTBOUND => operating scope, NOT receivingLocationIds.
+        $ep = $this->fn($src, 'inventoryLocationsForWarehouse');
+        $this->assertStringContainsString('allowedLocationIds', $ep);
+        $this->assertStringNotContainsString('receivingLocationIds', $ep);
+        // per-location stock read uses the shared catalog service (not product_warehouse).
+        $cat = $this->fn($src, 'inventoryLocationCatalog');
+        $this->assertStringContainsString('LocationCatalogReadService', $cat);
+        $this->assertStringNotContainsString('product_warehouse', $cat);
+    }
+
+    public function test_ms3_return_frontend_sends_inventory_location_id_and_reads_location_stock(): void
+    {
+        foreach ([
+            'resources/src/views/app/pages/purchase_return/create_purchase_return.vue',
+            'resources/src/views/app/pages/purchase_return/edit_purchase_return.vue',
+        ] as $rel) {
+            $src = $this->read($rel);
+            $this->assertStringContainsString('purchase_returns_inventory_locations/', $src);
+            $this->assertStringContainsString('purchase_returns_location_catalog/', $src, "$rel must read stock per location");
+            $this->assertStringContainsString('inventory_location_id', $src);
+            $this->assertStringContainsString('requires_inventory_location', $src);
+            // location-primary path must NOT read product_warehouse.qte as physical stock.
+            $this->assertStringContainsString('available_quantity', $src);
+        }
+    }
+
+    public function test_ms3_l4_legacy_bug_stays_characterized_not_fixed(): void
+    {
+        // The legacy PurchasesReturnController::update still does NOT persist a
+        // changed warehouse_id (L4). The golden master keeps characterizing it.
+        $legacyUpdate = $this->fn($this->read('app/Http/Controllers/PurchasesReturnController.php'), 'update');
+        // legacy branch: header update() call must not include warehouse_id.
+        $this->assertStringContainsString("\$current_PurchaseReturn->update([", $legacyUpdate);
+        $this->assertStringNotContainsString("'warehouse_id' => \$request", $legacyUpdate);
+
+        $gm = $this->read('tests/Feature/PurchaseReturnsLegacyGoldenMasterTest.php');
+        $this->assertStringContainsString('test_update_change_warehouse_moves_stock_but_record_keeps_old_warehouse', $gm);
+        $this->assertStringContainsString('// NOT updated', $gm);
+
+        // the NATIVE branch DOES persist the new identity (its snapshot needs it).
+        $nativeUpdate = $this->fn($this->read('app/Http/Controllers/PurchasesReturnController.php'), 'updateLocationAware');
+        $this->assertStringContainsString("'warehouse_id' => \$newWarehouseId", $nativeUpdate);
+        $this->assertStringContainsString("'inventory_location_id' => \$newLocationId", $nativeUpdate);
     }
 
     public function test_import_purchases_is_still_legacy_and_marked_pending_ms4(): void
@@ -330,10 +425,14 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
             $routes
         );
         $body = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'inventoryLocationsForWarehouse');
-        foreach (['transition_mode', 'transition_status', 'requires_inventory_location', 'default_inventory_location_id', 'is_quarantine'] as $key) {
-            $this->assertStringContainsString($key, $body);
+        $this->assertStringContainsString('inventoryLocationContextPayload(', $body);
+        $this->assertStringContainsString('receivingLocationIds', $body); // purchase = receiving scope
+
+        // the payload contract lives in the shared trait.
+        $trait = $this->read('app/Http/Controllers/Concerns/GuardsPurchaseTransitionMode.php');
+        foreach (['transition_mode', 'transition_status', 'requires_inventory_location', 'blocked', 'default_inventory_location_id', 'is_quarantine'] as $key) {
+            $this->assertStringContainsString("'{$key}'", $trait);
         }
-        $this->assertStringContainsString('InventoryLocationScopeService', $body);
     }
 
     public function test_ms2_create_and_edit_send_inventory_location_id(): void

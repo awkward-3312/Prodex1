@@ -62,6 +62,29 @@
                   </validation-provider>
                 </b-col>
 
+                <!-- inventory location (MS3 · almacenes location_primary / devoluciones location-native) -->
+                <b-col v-if="location_meta.requires" lg="4" md="4" sm="12" class="mb-3">
+                  <validation-provider name="inventory_location" :rules="{ required: true }">
+                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                      <v-select
+                        :class="{'is-invalid': !!errors.length}"
+                        :state="errors[0] ? false : (valid ? true : null)"
+                        v-model="purchase_return.inventory_location_id"
+                        @input="Selected_Inventory_Location"
+                        :reduce="label => label.value"
+                        :placeholder="$t('Choose_Inventory_Location')"
+                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
+                      />
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+                <b-col v-if="location_meta.blocked" cols="12" class="mb-3">
+                  <b-alert show variant="danger" class="mb-0">
+                    {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado.' }}
+                  </b-alert>
+                </b-col>
 
                 <!-- Order products  -->
                 <b-col md="12">
@@ -306,12 +329,16 @@ export default {
         statut: "",
         supplier_id: "",
         warehouse_id: "",
+        inventory_location_id: null,
         purchase_id: "",
         tax_rate: 0,
         TaxNet: 0,
         shipping: 0,
         discount: 0
       },
+      // MS3 — inventory-location select (location_primary warehouses / native returns).
+      inventory_locations: [],
+      location_meta: { requires: false, blocked: false, mode: null, status: null },
       total: 0,
       GrandTotal: 0,
     };
@@ -526,12 +553,77 @@ export default {
 
         if (count === 0) {
           this.makeToast("warning", this.$t("Please_add_return_quantity"), this.$t("Warning"));
-
           return false;
-        } else {
-          return true;
         }
+
+        // MS3 — never submit a return that would fall back to legacy.
+        if (this.location_meta.blocked) {
+          this.makeToast("danger", this.$t("Inventory_Location_Warehouse_Not_Ready") || "El almacén de inventario por ubicación no está listo.", this.$t("Failed"));
+          return false;
+        }
+        if (this.location_meta.requires && !this.purchase_return.inventory_location_id) {
+          this.makeToast("warning", this.$t("Choose_Inventory_Location") || "Selecciona una ubicación de inventario.", this.$t("Warning"));
+          return false;
+        }
+
+        return true;
       }
+    },
+
+    //---- MS3 · inventory-location context for the return warehouse ----\\
+    Load_Inventory_Locations(id) {
+      if (!id) return;
+      axios
+        .get("purchase_returns_inventory_locations/" + id)
+        .then(({ data }) => {
+          this.inventory_locations = (data && data.locations) || [];
+          this.location_meta = {
+            requires: !!(data && data.requires_inventory_location),
+            blocked: !!(data && data.blocked),
+            mode: data && data.transition_mode,
+            status: data && data.transition_status
+          };
+          if (!this.location_meta.requires) {
+            this.purchase_return.inventory_location_id = null;
+            return;
+          }
+          // keep the loaded value (edit of a native return); else default / sole
+          if (this.purchase_return.inventory_location_id) {
+            this.Selected_Inventory_Location(this.purchase_return.inventory_location_id);
+            return;
+          }
+          const def = data && data.default_inventory_location_id;
+          const ids = this.inventory_locations.map(l => l.id);
+          if (def && ids.indexOf(def) !== -1) this.purchase_return.inventory_location_id = def;
+          else if (ids.length === 1) this.purchase_return.inventory_location_id = ids[0];
+          if (this.purchase_return.inventory_location_id) this.Selected_Inventory_Location(this.purchase_return.inventory_location_id);
+        })
+        .catch(() => {
+          this.inventory_locations = [];
+          this.location_meta = { requires: false, blocked: false, mode: null, status: null };
+        });
+    },
+
+    //---- MS3 · refresh per-line stock from the chosen inventory_location ----\\
+    Selected_Inventory_Location(locationId) {
+      const id = locationId || this.purchase_return.inventory_location_id;
+      if (!id || !this.location_meta.requires) return;
+      axios
+        .get("purchase_returns_location_catalog/" + id)
+        .then(({ data }) => {
+          const byKey = {};
+          (data && data.products ? data.products : []).forEach(row => {
+            byKey[row.product_id + ":" + (row.product_variant_id || 0)] = Number(row.available_quantity) || 0;
+          });
+          this.details.forEach(d => {
+            const key = d.product_id + ":" + (d.product_variant_id || 0);
+            if (Object.prototype.hasOwnProperty.call(byKey, key)) {
+              this.$set(d, "current_stock", byKey[key]);
+              this.$set(d, "stock", byKey[key]);
+            }
+          });
+        })
+        .catch(() => {});
     },
 
     //--------------------------------- Update Return Purchase -------------------------\\
@@ -547,6 +639,8 @@ export default {
             supplier_id: this.purchase_return.supplier_id,
             warehouse_id: this.purchase_return.warehouse_id,
             purchase_id: this.purchase_return.purchase_id,
+            // MS3 — sent for a location-native return / location_primary warehouse.
+            inventory_location_id: this.location_meta.requires ? this.purchase_return.inventory_location_id : null,
             statut: this.purchase_return.statut,
             notes: this.purchase_return.notes,
             tax_rate: this.purchase_return.tax_rate?this.purchase_return.tax_rate:0,
@@ -585,6 +679,9 @@ export default {
         .then(response => {
           this.purchase_return = response.data.purchase_return;
           this.details = response.data.details;
+          // MS3 — load the inventory-location context; loaded
+          // purchase_return.inventory_location_id (if any) is preserved.
+          this.Load_Inventory_Locations(this.purchase_return.warehouse_id);
           this.Calcul_Total();
           this.isLoading = false;
         })

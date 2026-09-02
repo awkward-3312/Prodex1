@@ -855,6 +855,9 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::post('returns/purchase/delete/by_selection', 'PurchasesReturnController@delete_by_selection');
     Route::get('returns/purchase/create_purchase_return/{id}', 'PurchasesReturnController@create_purchase_return');
     Route::get('returns/purchase/edit_purchase_return/{id}/{purchase_id}', 'PurchasesReturnController@edit_purchase_return');
+    // MS3 — inventory-location select + per-location stock for the return form.
+    Route::get('purchase_returns_inventory_locations/{warehouse_id}', 'PurchasesReturnController@inventoryLocationsForWarehouse');
+    Route::get('purchase_returns_location_catalog/{location_id}', 'PurchasesReturnController@inventoryLocationCatalog');
 
     // ------------------------------- Payment Sale Returns --------------------------\\
     // --------------------------------------------------------------------------------\\

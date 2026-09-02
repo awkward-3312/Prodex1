@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\GuardsPurchaseTransitionMode;
 use App\Mail\CustomEmail;
 use App\Models\Account;
 use App\Models\EmailMessage;
@@ -55,6 +56,8 @@ use Twilio\Rest\Client as Client_Twilio;
 
 class PurchasesController extends BaseController
 {
+    use GuardsPurchaseTransitionMode;
+
     // ------------- Show ALL Purchases ----------\\
 
     public function index(request $request)
@@ -717,57 +720,18 @@ class PurchasesController extends BaseController
         $svc->reverseSnapshot($snapshot, $purchase->id);
     }
 
-    // --------- Transition-mode boundary guards -------------------------\\
-    //
-    // ABSOLUTE INVARIANT: a location_primary warehouse NEVER takes a legacy-only
-    // stock mutation, and a non-primary warehouse NEVER takes a location-native
-    // -only mutation. Both guards lock inventory_transition_states FIRST (asc by
-    // warehouse_id), so the mode cannot change between the check and the write.
-    // Lock order for the whole purchase flow:
-    //   inventory_transition_states(asc) -> [validateAndLock: warehouses(asc)
-    //   -> inventory_locations -> products(asc) -> product_variants(asc)
-    //   -> units(asc)] -> inventory_location_stocks (InventoryService).
-
-    /**
-     * LEGACY document boundary. A legacy (inventory_location_id NULL) purchase
-     * may only be created/edited/deleted while NEITHER its stored warehouse NOR
-     * the requested warehouse is location_primary. A historical legacy purchase
-     * is never converted to location-native (its physical location is unknown).
-     *
-     * @throws ValidationException  422 inventory_transition
-     */
-    private function assertLegacyPurchaseTransitionSafe(?int $storedWarehouseId, ?int $requestWarehouseId): void
-    {
-        $resolver = app(WarehouseInventoryModeResolver::class);
-        $ids = array_values(array_filter([(int) $storedWarehouseId, (int) $requestWarehouseId], fn ($i) => $i > 0));
-        $states = $resolver->lockStates($ids);
-        foreach ($states as $whId => $state) {
-            $resolver->assertStateNotLocationPrimary((int) $whId, $state);
-        }
-    }
-
-    /**
-     * LOCATION-NATIVE document boundary. BOTH the stored warehouse and the
-     * target warehouse must still be healthy location_primary — a snapshot can
-     * only be reversed/applied inside the architecture that created it.
-     *
-     * @throws ValidationException  422 inventory_transition
-     */
-    private function assertLocationNativePurchaseTransitionSafe(int $storedWarehouseId, ?int $targetWarehouseId): void
-    {
-        $resolver = app(WarehouseInventoryModeResolver::class);
-        $ids = array_values(array_filter([$storedWarehouseId, (int) $targetWarehouseId], fn ($i) => $i > 0));
-        $states = $resolver->lockStates($ids);
-        foreach ($ids as $whId) {
-            $resolver->assertStateHealthyLocationPrimary($whId, $states[$whId] ?? null);
-        }
-    }
+    // Transition-mode boundary guards live in the shared trait
+    // App\Http\Controllers\Concerns\GuardsPurchaseTransitionMode
+    // (assertLegacyPurchaseTransitionSafe / assertLocationNativePurchaseTransitionSafe /
+    // inventoryLocationContextPayload).
 
     // --------- Inventory-location select for the purchase form ----------\\
 
     /**
      * GET purchases_inventory_locations/{warehouse_id}
-     * Same pattern as AdjustmentController::inventoryLocationsForWarehouse.
+     *
+     * A purchase RECEIVES stock into a warehouse location => the user's
+     * "receiving" scope (InventoryLocationScopeService::receivingLocationIds).
      */
     public function inventoryLocationsForWarehouse(Request $request, $warehouseId)
     {
@@ -785,48 +749,11 @@ class PurchasesController extends BaseController
             abort_unless(in_array($warehouseId, $ids, true), 403, 'No tienes acceso a este almacén.');
         }
 
-        $resolver = app(WarehouseInventoryModeResolver::class);
-        $state = $resolver->state($warehouseId);
-        $mode = $state?->mode ?? InventoryTransitionState::MODE_LEGACY_ONLY;
-        $status = $state?->status ?? 'pending';
-        $requires = $resolver->requiresInventoryLocation($warehouseId);
-        $blocked = $resolver->isLocationPrimaryButBlocked($warehouseId);
+        $allowedIds = ($user && ! $user->is_all_warehouses && (int) $user->role_id !== 1)
+            ? app(InventoryLocationScopeService::class)->receivingLocationIds($user)
+            : null;
 
-        // Tenant without the location engine yet — nothing to select, stay legacy.
-        if (! Schema::hasTable('inventory_locations')) {
-            return response()->json([
-                'transition_mode' => $mode,
-                'transition_status' => $status,
-                'requires_inventory_location' => false,
-                'blocked' => false,
-                'locations' => [],
-                'default_inventory_location_id' => null,
-            ]);
-        }
-
-        $query = InventoryLocation::whereNull('deleted_at')
-            ->where('warehouse_id', $warehouseId)
-            ->where('is_active', 1);
-
-        // Respect the user's inventory-location scope (owner / role 1 see all).
-        if ($user && ! $user->is_all_warehouses && (int) $user->role_id !== 1) {
-            $allowed = app(InventoryLocationScopeService::class)->receivingLocationIds($user);
-            $query->whereIn('id', $allowed ?: [0]);
-        }
-
-        $locations = $query->orderBy('code')->get(['id', 'code', 'name', 'type', 'is_quarantine']);
-
-        $default = Warehouse::whereNull('deleted_at')->whereKey($warehouseId)->value('default_inventory_location_id');
-        $defaultEligible = $default && $locations->firstWhere(fn ($l) => (int) $l->id === (int) $default);
-
-        return response()->json([
-            'transition_mode' => $mode,
-            'transition_status' => $status,
-            'requires_inventory_location' => $requires,
-            'blocked' => $blocked,
-            'locations' => $locations,
-            'default_inventory_location_id' => $defaultEligible ? (int) $default : null,
-        ]);
+        return response()->json($this->inventoryLocationContextPayload($warehouseId, $allowedIds));
     }
 
     // --------- Update Purchase  -------------\\
@@ -1284,6 +1211,14 @@ class PurchasesController extends BaseController
             // Backward compatibility: If record_view is null, fall back to role permission check
             $view_records = $user->hasRecordView();
             $selectedIds = $request->selectedIds;
+
+            // MS2 — lock EVERY involved transition state up front, ascending by
+            // warehouse_id, so two concurrent bulk deletes cannot acquire them
+            // in opposite order (tx A: wh1->wh2 vs tx B: wh2->wh1). The per-row
+            // guards below then only assert against an already-locked row.
+            app(WarehouseInventoryModeResolver::class)->lockStates(
+                Purchase::whereIn('id', (array) $selectedIds)->pluck('warehouse_id')->all()
+            );
 
             foreach ($selectedIds as $purchase_id) {
 
