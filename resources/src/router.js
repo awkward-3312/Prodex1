@@ -161,36 +161,89 @@ const baseRoutes = [
                             import(/* webpackChunkName: "import_products_update" */ "./views/app/pages/products/Import_products_update.vue"),
                         },
                     {
+                        // Fase C2C — Creación px-next adoptada. Conserva el name
+                        // "store_product" para que todos los $router.push({name})
+                        // existentes (incl. ?duplicate=:id) sigan funcionando. La
+                        // vista anterior (Add_product.vue) queda intacta en
+                        // /app/products/store-classic para rollback por URL.
                         path: "store",
                         name: "store_product",
                         component: () =>
                             import(
-                                /* webpackChunkName: "store_product" */ "./views/app/pages/products/Add_product"
+                                /* webpackChunkName: "store_product" */ "./views/app/products/next/create/index.vue"
                             )
                     },
                     {
+                        // Rollback inmediato por URL. Misma capa/auth/permisos.
+                        // No aparece en la navegación.
+                        path: "store-classic",
+                        name: "store_product_classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "store_product_classic" */ "./views/app/pages/products/Add_product"
+                            )
+                    },
+                    {
+                        // Fase C2B — Edición px-next adoptada. Conserva el name
+                        // "edit_product" para que todos los $router.push({name})
+                        // existentes sigan funcionando. La vista anterior
+                        // (Edit_product.vue) queda intacta en
+                        // /app/products/edit-classic/:id para rollback por URL.
                         path: "edit/:id",
                         name: "edit_product",
                         component: () =>
                             import(
-                                /* webpackChunkName: "edit_product" */ "./views/app/pages/products/Edit_product"
+                                /* webpackChunkName: "edit_product" */ "./views/app/products/next/edit/index.vue"
                             )
                     },
                     {
+                        // Rollback inmediato por URL. Misma capa/auth/permisos.
+                        // No aparece en la navegación.
+                        path: "edit-classic/:id",
+                        name: "edit_product_classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "edit_product_classic" */ "./views/app/pages/products/Edit_product"
+                            )
+                    },
+                    {
+                        // Fase C2A — Detalle px-next adoptado. La vista anterior
+                        // (Detail_Product.vue) sigue intacta en
+                        // /app/products/detail-classic/:id para rollback por URL.
                         path: "detail/:id",
                         name: "detail_product",
                         component: () =>
                             import(
-                                /* webpackChunkName: "detail_product" */ "./views/app/pages/products/Detail_Product"
+                                /* webpackChunkName: "detail_product" */ "./views/app/products/next/detail/index.vue"
+                            )
+                    },
+                    {
+                        // Rollback inmediato por URL. Misma capa/auth/permisos.
+                        // No aparece en la navegación.
+                        path: "detail-classic/:id",
+                        name: "detail_product_classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "detail_product_classic" */ "./views/app/pages/products/Detail_Product"
                             )
                     },
 
                     {
+                        // C3.4 — Importación de existencias iniciales px-next.
                         path: "opening_stock_import",
                         name: "opening_stock_import",
                         component: () =>
                             import(
-                                /* webpackChunkName: "opening_stock_import" */ "./views/app/pages/products/opening_stock_import"
+                                /* webpackChunkName: "opening_stock_import" */ "./views/app/inventory/next/opening-stock/index.vue"
+                            )
+                    },
+                    {
+                        // Rollback inmediato por URL. Misma capa/auth/permisos.
+                        path: "opening_stock_import-classic",
+                        name: "opening_stock_import_classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "opening_stock_import_classic" */ "./views/app/pages/products/opening_stock_import"
                             )
                     },
 
@@ -204,11 +257,21 @@ const baseRoutes = [
                     },
 
                     {
+                        // C3.3 — Conteo de stock px-next.
                         path: "count_stock",
                         name: "count_stock",
                         component: () =>
                             import(
-                                /* webpackChunkName: "count_stock" */ "./views/app/pages/products/count_stock"
+                                /* webpackChunkName: "count_stock" */ "./views/app/inventory/next/count-stock/index.vue"
+                            )
+                    },
+                    {
+                        // Rollback inmediato por URL. Misma capa/auth/permisos.
+                        path: "count_stock-classic",
+                        name: "count_stock_classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "count_stock_classic" */ "./views/app/pages/products/count_stock"
                             )
                     },
                      // categories
@@ -253,11 +316,21 @@ const baseRoutes = [
 
                     // batches (pharmacy-mode batch & expiry tracking)
                     {
+                        // C3.5 — Lotes y vencimientos px-next.
                         name: "batches",
                         path: "Batches",
                         component: () =>
                             import(
-                                /* webpackChunkName: "batches" */ "./views/app/pages/products/batches"
+                                /* webpackChunkName: "batches" */ "./views/app/inventory/next/batches/index.vue"
+                            )
+                    },
+                    {
+                        // Rollback inmediato por URL. Misma capa/auth/permisos.
+                        name: "batches_classic",
+                        path: "Batches-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "batches_classic" */ "./views/app/pages/products/batches"
                             )
                     },
                 ]
@@ -272,12 +345,13 @@ const baseRoutes = [
                     ),
                 redirect: "/app/serial_numbers/list",
                 children: [
+                    // C3.6 — Números de serie px-next. Route names conservados.
                     {
                         name: "index_serial_numbers",
                         path: "list",
                         component: () =>
                             import(
-                                /* webpackChunkName: "serial_numbers_list" */ "./views/app/pages/serial_numbers/list"
+                                /* webpackChunkName: "serial_numbers_list" */ "./views/app/inventory/next/serial-numbers/list.vue"
                             )
                     },
                     {
@@ -285,7 +359,24 @@ const baseRoutes = [
                         path: "detail/:id",
                         component: () =>
                             import(
-                                /* webpackChunkName: "serial_numbers_detail" */ "./views/app/pages/serial_numbers/detail"
+                                /* webpackChunkName: "serial_numbers_detail" */ "./views/app/inventory/next/serial-numbers/detail.vue"
+                            )
+                    },
+                    // Rollback inmediato por URL. Legacy intacto.
+                    {
+                        name: "index_serial_numbers_classic",
+                        path: "list-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "serial_numbers_list_classic" */ "./views/app/pages/serial_numbers/list"
+                            )
+                    },
+                    {
+                        name: "detail_serial_number_classic",
+                        path: "detail-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "serial_numbers_detail_classic" */ "./views/app/pages/serial_numbers/detail"
                             )
                     }
                 ]
@@ -300,31 +391,38 @@ const baseRoutes = [
                     ),
                 redirect: "/app/adjustments/list",
                 children: [
+                    // Fase C3.1 — Ajustes de inventario px-next adoptados. Se
+                    // conservan los name (index/store/edit/detail_adjustment)
+                    // para que todos los $router.push({name}) sigan funcionando.
+                    // Las vistas legacy quedan intactas en /app/adjustments/*-classic
+                    // para rollback por URL.
                     {
                         name: "index_adjustment",
                         path: "list",
                         component: () =>
                             import(
                                 /* webpackChunkName: "index_adjustment" */
-                                "./views/app/pages/adjustment/index_Adjustment"
+                                "./views/app/inventory/next/adjustments/list.vue"
                             )
                     },
                     {
                         name: "store_adjustment",
                         path: "store",
+                        props: { mode: "create" },
                         component: () =>
                             import(
                                 /* webpackChunkName: "store_adjustment" */
-                                "./views/app/pages/adjustment/Create_Adjustment"
+                                "./views/app/inventory/next/adjustments/form.vue"
                             )
                     },
                     {
                         name: "edit_adjustment",
                         path: "edit/:id",
+                        props: { mode: "edit" },
                         component: () =>
                             import(
                                 /* webpackChunkName: "edit_adjustment" */
-                                "./views/app/pages/adjustment/Edit_Adjustment"
+                                "./views/app/inventory/next/adjustments/form.vue"
                             )
                     },
                     {
@@ -333,6 +431,44 @@ const baseRoutes = [
                         component: () =>
                             import(
                                 /* webpackChunkName: "detail_adjustment" */
+                                "./views/app/inventory/next/adjustments/detail.vue"
+                            )
+                    },
+                    // Rollback inmediato por URL. Misma capa/auth/permisos.
+                    // No aparecen en la navegación.
+                    {
+                        name: "index_adjustment_classic",
+                        path: "list-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "index_adjustment_classic" */
+                                "./views/app/pages/adjustment/index_Adjustment"
+                            )
+                    },
+                    {
+                        name: "store_adjustment_classic",
+                        path: "store-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "store_adjustment_classic" */
+                                "./views/app/pages/adjustment/Create_Adjustment"
+                            )
+                    },
+                    {
+                        name: "edit_adjustment_classic",
+                        path: "edit-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "edit_adjustment_classic" */
+                                "./views/app/pages/adjustment/Edit_Adjustment"
+                            )
+                    },
+                    {
+                        name: "detail_adjustment_classic",
+                        path: "detail-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "detail_adjustment_classic" */
                                 "./views/app/pages/adjustment/Detail_Adjustment"
                             )
                     }
@@ -348,30 +484,61 @@ const baseRoutes = [
                     ),
                 redirect: "/app/damages/list",
                 children: [
+                    // C3.2 — Daños px-next. Se conservan los route names actuales.
                     {
                         name: "index_damage",
                         path: "list",
                         component: () =>
                             import(
                                 /* webpackChunkName: "index_damage" */
-                                "./views/app/pages/damage/index_Damage"
+                                "./views/app/inventory/next/damages/list.vue"
                             )
                     },
                     {
                         name: "store_damage",
                         path: "store",
+                        props: { mode: "create" },
                         component: () =>
                             import(
                                 /* webpackChunkName: "store_damage" */
-                                "./views/app/pages/damage/Create_Damage"
+                                "./views/app/inventory/next/damages/form.vue"
                             )
                     },
                     {
                         name: "edit_damage",
                         path: "edit/:id",
+                        props: { mode: "edit" },
                         component: () =>
                             import(
                                 /* webpackChunkName: "edit_damage" */
+                                "./views/app/inventory/next/damages/form.vue"
+                            )
+                    },
+                    // Rollback inmediato por URL. Misma capa/auth/permisos. Legacy intacto.
+                    {
+                        name: "index_damage_classic",
+                        path: "list-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "index_damage_classic" */
+                                "./views/app/pages/damage/index_Damage"
+                            )
+                    },
+                    {
+                        name: "store_damage_classic",
+                        path: "store-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "store_damage_classic" */
+                                "./views/app/pages/damage/Create_Damage"
+                            )
+                    },
+                    {
+                        name: "edit_damage_classic",
+                        path: "edit-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "edit_damage_classic" */
                                 "./views/app/pages/damage/Edit_Damage"
                             )
                     }
@@ -387,17 +554,75 @@ const baseRoutes = [
                     ),
                 redirect: "/app/transfers/list",
                 children: [
+                    // C3.24–C3.26 — Cutover LOCAL de Traslados a px-next.
+                    // Las rutas reales conservan sus names (index_transfer /
+                    // store_transfer / edit_transfer / detail_transfer) y ahora
+                    // renderizan las vistas px-next. Los alias *-classic siguen
+                    // apuntando a las vistas legacy para rollback por URL.
                     {
                         name: "index_transfer",
                         path: "list",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-list" */ "./views/app/pages/transfers/next/list.vue"
+                            )
+                    },
+                    {
+                        name: "store_transfer",
+                        path: "store",
+                        props: { mode: "create" },
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-form" */ "./views/app/pages/transfers/next/form.vue"
+                            )
+                    },
+                    {
+                        name: "edit_transfer",
+                        path: "edit/:id",
+                        props: { mode: "edit" },
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-form" */ "./views/app/pages/transfers/next/form.vue"
+                            )
+                    },
+                    {
+                        name: "detail_transfer",
+                        path: "detail/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-detail" */ "./views/app/pages/transfers/next/detail.vue"
+                            )
+                    },
+                    // Bandeja de recepciones px-next — ruta real del módulo
+                    // (además del punto de entrada global del header vanilla).
+                    {
+                        name: "transfer_receptions",
+                        path: "receptions",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-receive" */ "./views/app/pages/transfers/next/receive.vue"
+                            )
+                    },
+                    {
+                        name: "transfer_reception",
+                        path: "receptions/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "px-next-transfer-receive" */ "./views/app/pages/transfers/next/receive.vue"
+                            )
+                    },
+                    // Alias legacy explícitos para rollback por URL.
+                    {
+                        name: "index_transfer_classic",
+                        path: "list-classic",
                         component: () =>
                             import(
                                 /* webpackChunkName: "index_transfer" */ "./views/app/pages/transfers/index_transfer"
                             )
                     },
                     {
-                        name: "store_transfer",
-                        path: "store",
+                        name: "store_transfer_classic",
+                        path: "store-classic",
                         component: () =>
                             import(
                                 /* webpackChunkName: "store_transfer" */
@@ -405,16 +630,16 @@ const baseRoutes = [
                             )
                     },
                     {
-                        name: "edit_transfer",
-                        path: "edit/:id",
+                        name: "edit_transfer_classic",
+                        path: "edit-classic/:id",
                         component: () =>
                             import(
                                 /* webpackChunkName: "edit_transfer" */ "./views/app/pages/transfers/edit_transfer"
                             )
                     },
                     {
-                        name: "detail_transfer",
-                        path: "detail/:id",
+                        name: "detail_transfer_classic",
+                        path: "detail-classic/:id",
                         component: () =>
                             import(
                                 /* webpackChunkName: "detail_transfer" */ "./views/app/pages/transfers/detail_transfer"
@@ -2315,13 +2540,21 @@ const baseRoutes = [
                             )
                     },
 
-                    // Warehouses
+                    // Warehouses — C3.7 px-next
                     {
                         name: "Warehouses",
                         path: "Warehouses",
                         component: () =>
                             import(
-                                /* webpackChunkName: "Warehouses" */ "./views/app/pages/settings/warehouses"
+                                /* webpackChunkName: "Warehouses" */ "./views/app/settings/next/warehouses/index.vue"
+                            )
+                    },
+                    {
+                        name: "Warehouses_classic",
+                        path: "Warehouses-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Warehouses_classic" */ "./views/app/pages/settings/warehouses"
                             )
                     },
 
@@ -2335,13 +2568,21 @@ const baseRoutes = [
                             )
                     },
 
-                    // Warehouse Locations (Rack/Location)
+                    // Warehouse Locations (Rack/Location) — C3.8 px-next
                     {
                         name: "Warehouse_Locations",
                         path: "Warehouse_Locations",
                         component: () =>
                             import(
-                                /* webpackChunkName: "Warehouse_Locations" */ "./views/app/pages/settings/warehouse_locations"
+                                /* webpackChunkName: "Warehouse_Locations" */ "./views/app/settings/next/warehouse-locations/index.vue"
+                            )
+                    },
+                    {
+                        name: "Warehouse_Locations_classic",
+                        path: "Warehouse_Locations-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Warehouse_Locations_classic" */ "./views/app/pages/settings/warehouse_locations"
                             )
                     },
 
@@ -2518,11 +2759,21 @@ const baseRoutes = [
                     },
 
                       {
+                        // C3.11 — Reporte de stock muerto px-next.
                         name: "dead_stock_report",
                         path: "dead_stock_report",
                         component: () =>
                             import(
                                 /* webpackChunkName: "Dead_Stock_Report" */
+                                "./views/app/reports/next/dead-stock/index.vue"
+                            )
+                    },
+                    {
+                        name: "dead_stock_report_classic",
+                        path: "dead_stock_report-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Dead_Stock_Report_classic" */
                                 "./views/app/pages/reports/Dead_Stock_Report"
                             )
                     },
@@ -2538,43 +2789,85 @@ const baseRoutes = [
                     },
 
                     {
+                        // C3.17a — Registro de lotes px-next.
                         name: "batch_register_report",
                         path: "batch_register_report",
                         component: () =>
                             import(
                                 /* webpackChunkName: "Batch_Register_Report" */
+                                "./views/app/reports/next/batch-register/index.vue"
+                            )
+                    },
+                    {
+                        name: "batch_register_report_classic",
+                        path: "batch_register_report-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Batch_Register_Report_classic" */
                                 "./views/app/pages/reports/Batch_Register_Report"
                             )
                     },
                     {
+                        // C3.17b — Historial de lote px-next.
                         name: "batch_history_report",
                         path: "batch_history_report/:id",
                         component: () =>
                             import(
                                 /* webpackChunkName: "Batch_History_Report" */
+                                "./views/app/reports/next/batch-history/index.vue"
+                            )
+                    },
+                    {
+                        name: "batch_history_report_classic",
+                        path: "batch_history_report-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "Batch_History_Report_classic" */
                                 "./views/app/pages/reports/Batch_History_Report"
                             )
                     },
 
                     {
+                        // C3.13 — Antigüedad de inventario px-next.
                         name: "stock_aging_report",
                         path: "stock_aging_report",
                         component: () =>
                             import(
                             /* webpackChunkName: "Stock_Aging_Report" */
+                            "./views/app/reports/next/stock-aging/index.vue"
+                            )
+                    },
+                    {
+                        name: "stock_aging_report_classic",
+                        path: "stock_aging_report-classic",
+                        component: () =>
+                            import(
+                            /* webpackChunkName: "Stock_Aging_Report_classic" */
                             "./views/app/pages/reports/Stock_Aging_Report"
                             )
                     },
 
                     {
+                        // C3.14 — Reporte de traslados de stock px-next (solo reporte).
                         name: "stock_transfer_report",
                         path: "stock_transfer_report",
-                        component: () => import(/* webpackChunkName:"Stock_Transfer_Report" */ "./views/app/pages/reports/Stock_Transfer_Report")
+                        component: () => import(/* webpackChunkName:"Stock_Transfer_Report" */ "./views/app/reports/next/stock-transfer/index.vue")
+                    },
+                    {
+                        name: "stock_transfer_report_classic",
+                        path: "stock_transfer_report-classic",
+                        component: () => import(/* webpackChunkName:"Stock_Transfer_Report_classic" */ "./views/app/pages/reports/Stock_Transfer_Report")
                     },
 
                     {
+                        // C3.15 — Reporte de ajustes px-next.
                         name: "stock_adjustment_report",
                         path: "stock_adjustment_report",
+                        component: () => import("./views/app/reports/next/stock-adjustment/index.vue")
+                    },
+                    {
+                        name: "stock_adjustment_report_classic",
+                        path: "stock_adjustment_report-classic",
                         component: () => import("./views/app/pages/reports/Stock_Adjustment_Report")
                     },
 
@@ -2701,21 +2994,41 @@ const baseRoutes = [
                     },
 
                     {
+                        // C3.16a — Valoración de inventario · RESUMEN px-next.
                         name: "inventory_valuation_summary",
                         path: "inventory_valuation_summary",
                         component: () =>
                             import(
                                 /* webpackChunkName: "inventory_valuation_summary" */
+                                "./views/app/reports/next/valuation-summary/index.vue"
+                            )
+                    },
+                    {
+                        name: "inventory_valuation_summary_classic",
+                        path: "inventory_valuation_summary-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "inventory_valuation_summary_classic" */
                                 "./views/app/pages/reports/inventory_valuation_summary"
                             )
                     },
 
                     {
+                        // C3.16b — Valoración de inventario · DETALLE px-next.
                         name: "stock_inventory_valuation",
                         path: "stock_inventory_valuation",
                         component: () =>
                             import(
                                 /* webpackChunkName: "stock_inventory_valuation" */
+                                "./views/app/reports/next/valuation-detail/index.vue"
+                            )
+                    },
+                    {
+                        name: "stock_inventory_valuation_classic",
+                        path: "stock_inventory_valuation-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "stock_inventory_valuation_classic" */
                                 "./views/app/pages/reports/stock_inventory_valuation"
                             )
                     },
@@ -2762,11 +3075,21 @@ const baseRoutes = [
                     },
 
                     {
+                        // C3.10 — Reporte de stock negativo px-next.
                         name: "negative_stock_report",
                         path: "negative_stock_report",
                         component: () =>
                             import(
                                 /* webpackChunkName: "negative_stock_report" */
+                                "./views/app/reports/next/negative-stock/index.vue"
+                            )
+                    },
+                    {
+                        name: "negative_stock_report_classic",
+                        path: "negative_stock_report-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "negative_stock_report_classic" */
                                 "./views/app/pages/reports/Negative_Stock_Report"
                             )
                     },
@@ -2782,11 +3105,21 @@ const baseRoutes = [
                             )
                     },
                     {
+                        // C3.18 — Dashboard / Reporte por almacén px-next.
                         name: "warehouse_report",
                         path: "warehouse_report",
                         component: () =>
                             import(
                                 /* webpackChunkName: "warehouse_report" */
+                                "./views/app/reports/next/warehouse/index.vue"
+                            )
+                    },
+                    {
+                        name: "warehouse_report_classic",
+                        path: "warehouse_report-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "warehouse_report_classic" */
                                 "./views/app/pages/reports/warehouse_report"
                             )
                     },
@@ -2918,48 +3251,93 @@ const baseRoutes = [
                     },
 
                     {
+                        // C3.9 — Reporte de existencias px-next (lista). El detalle
+                        // drill-down (detail_stock_report, 7 pestañas) sigue en legacy.
                         name: "stock_report",
                         path: "stock_report",
                         component: () =>
                             import(
                                 /* webpackChunkName: "stock_report" */
+                                "./views/app/reports/next/stock/index.vue"
+                            )
+                    },
+                    {
+                        name: "stock_report_classic",
+                        path: "stock_report-classic",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "stock_report_classic" */
                                 "./views/app/pages/reports/stock_report"
                             )
                     },
                     {
+                        // C3.19 — Detalle completo de existencias de un producto px-next.
                         name: "detail_stock_report",
                         path: "detail_stock/:id",
                         component: () =>
                             import(
                                 /* webpackChunkName: "detail_stock_report" */
+                                "./views/app/reports/next/detail-stock/index.vue"
+                            )
+                    },
+                    {
+                        name: "detail_stock_report_classic",
+                        path: "detail_stock-classic/:id",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "detail_stock_report_classic" */
                                 "./views/app/pages/reports/detail_stock_report"
                             )
                     },
 
-                    // Serial / IMEI reports
+                    // Serial / IMEI reports — C3.20–C3.23 px-next
                     {
                         name: "serial_available_report",
                         path: "serial_available_report",
                         component: () =>
-                            import(/* webpackChunkName: "serial_available_report" */ "./views/app/pages/reports/Serial_Available_Report")
+                            import(/* webpackChunkName: "serial_available_report" */ "./views/app/reports/next/serials/available.vue")
+                    },
+                    {
+                        name: "serial_available_report_classic",
+                        path: "serial_available_report-classic",
+                        component: () =>
+                            import(/* webpackChunkName: "serial_available_report_classic" */ "./views/app/pages/reports/Serial_Available_Report")
                     },
                     {
                         name: "serial_sold_report",
                         path: "serial_sold_report",
                         component: () =>
-                            import(/* webpackChunkName: "serial_sold_report" */ "./views/app/pages/reports/Serial_Sold_Report")
+                            import(/* webpackChunkName: "serial_sold_report" */ "./views/app/reports/next/serials/sold.vue")
+                    },
+                    {
+                        name: "serial_sold_report_classic",
+                        path: "serial_sold_report-classic",
+                        component: () =>
+                            import(/* webpackChunkName: "serial_sold_report_classic" */ "./views/app/pages/reports/Serial_Sold_Report")
                     },
                     {
                         name: "serial_movement_report",
                         path: "serial_movement_report",
                         component: () =>
-                            import(/* webpackChunkName: "serial_movement_report" */ "./views/app/pages/reports/Serial_Movement_Report")
+                            import(/* webpackChunkName: "serial_movement_report" */ "./views/app/reports/next/serials/movements.vue")
+                    },
+                    {
+                        name: "serial_movement_report_classic",
+                        path: "serial_movement_report-classic",
+                        component: () =>
+                            import(/* webpackChunkName: "serial_movement_report_classic" */ "./views/app/pages/reports/Serial_Movement_Report")
                     },
                     {
                         name: "serial_inventory_report",
                         path: "serial_inventory_report",
                         component: () =>
-                            import(/* webpackChunkName: "serial_inventory_report" */ "./views/app/pages/reports/Serial_Inventory_Report")
+                            import(/* webpackChunkName: "serial_inventory_report" */ "./views/app/reports/next/serials/inventory.vue")
+                    },
+                    {
+                        name: "serial_inventory_report_classic",
+                        path: "serial_inventory_report-classic",
+                        component: () =>
+                            import(/* webpackChunkName: "serial_inventory_report_classic" */ "./views/app/pages/reports/Serial_Inventory_Report")
                     },
 
                     {
@@ -3206,6 +3584,359 @@ if (process.env.NODE_ENV !== "production") {
                     component: () =>
                         import(/* webpackChunkName: "px-next-products" */ "./views/app/products/next/index.vue")
                 }
+            ]
+        },
+        {
+            // Fase C2A — alias dev-only al componente permanente. La ruta real
+            // es /app/products/detail/:id; este alias mantiene el atajo del
+            // playground.
+            path: "/app/_ui/producto/:id/detalle",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_product_detail_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-product-detail" */ "./views/app/products/next/detail/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C2B — alias dev-only al componente permanente. La ruta real
+            // es /app/products/edit/:id; este alias mantiene el atajo del
+            // playground.
+            path: "/app/_ui/producto/:id/edicion",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_product_edit_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-product-edit" */ "./views/app/products/next/edit/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C2C — alias dev-only al componente permanente. La ruta real
+            // es /app/products/store; este alias mantiene el atajo del
+            // playground. Acepta ?duplicate=:id igual que el legacy.
+            path: "/app/_ui/producto/nuevo",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_product_create_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-product-create" */ "./views/app/products/next/create/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.1 — Ajustes de inventario px-next (preview dev-only). Las
+            // rutas reales /app/adjustments/* siguen sirviendo la vista legacy.
+            path: "/app/_ui/inventario/ajustes",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_adjustment_list_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-adjustments" */ "./views/app/inventory/next/adjustments/list.vue"
+                        )
+                },
+                {
+                    path: "nuevo",
+                    name: "px_next_adjustment_create_preview",
+                    props: { mode: "create" },
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-adjustment-form" */ "./views/app/inventory/next/adjustments/form.vue"
+                        )
+                },
+                {
+                    path: ":id/editar",
+                    name: "px_next_adjustment_edit_preview",
+                    props: { mode: "edit" },
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-adjustment-form" */ "./views/app/inventory/next/adjustments/form.vue"
+                        )
+                },
+                {
+                    path: ":id/detalle",
+                    name: "px_next_adjustment_detail_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-adjustment-detail" */ "./views/app/inventory/next/adjustments/detail.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.2 — Daños px-next (alias dev-only). La ruta real
+            // /app/damages/* ya sirve px-next tras el cutover.
+            path: "/app/_ui/inventario/danos",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_damage_list_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-damages" */ "./views/app/inventory/next/damages/list.vue"
+                        )
+                },
+                {
+                    path: "nuevo",
+                    name: "px_next_damage_create_preview",
+                    props: { mode: "create" },
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-damage-form" */ "./views/app/inventory/next/damages/form.vue"
+                        )
+                },
+                {
+                    path: ":id/editar",
+                    name: "px_next_damage_edit_preview",
+                    props: { mode: "edit" },
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-damage-form" */ "./views/app/inventory/next/damages/form.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.3 — Conteo de stock px-next (alias dev-only).
+            path: "/app/_ui/inventario/conteo",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_count_stock_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-count-stock" */ "./views/app/inventory/next/count-stock/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.4 — Importación de existencias iniciales px-next (alias dev-only).
+            path: "/app/_ui/inventario/importar-existencias",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_opening_stock_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-opening-stock" */ "./views/app/inventory/next/opening-stock/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.5 — Lotes y vencimientos px-next (alias dev-only).
+            path: "/app/_ui/inventario/lotes",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_batches_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-batches" */ "./views/app/inventory/next/batches/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.6 — Números de serie px-next (alias dev-only).
+            path: "/app/_ui/inventario/seriales",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_serial_list_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-serials" */ "./views/app/inventory/next/serial-numbers/list.vue"
+                        )
+                },
+                {
+                    path: ":id",
+                    name: "px_next_serial_detail_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-serial-detail" */ "./views/app/inventory/next/serial-numbers/detail.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.7 — Almacenes px-next (alias dev-only).
+            path: "/app/_ui/config/almacenes",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_warehouses_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-warehouses" */ "./views/app/settings/next/warehouses/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.8 — Ubicaciones internas px-next (alias dev-only).
+            path: "/app/_ui/config/ubicaciones",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_warehouse_locations_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-warehouse-locations" */ "./views/app/settings/next/warehouse-locations/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.9 — Reporte de existencias px-next (alias dev-only).
+            path: "/app/_ui/reportes/existencias",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_stock_report_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-stock-report" */ "./views/app/reports/next/stock/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.10 — Reporte de stock negativo px-next (alias dev-only).
+            path: "/app/_ui/reportes/stock-negativo",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_negative_stock_report_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-negative-stock" */ "./views/app/reports/next/negative-stock/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.11 — Reporte de stock muerto px-next (alias dev-only).
+            path: "/app/_ui/reportes/stock-muerto",
+            component: () => import("./views/app"),
+            children: [
+                {
+                    path: "",
+                    name: "px_next_dead_stock_report_preview",
+                    component: () =>
+                        import(
+                            /* webpackChunkName: "px-next-dead-stock" */ "./views/app/reports/next/dead-stock/index.vue"
+                        )
+                }
+            ]
+        },
+        {
+            // Fase C3.13 — Antigüedad de inventario px-next (alias dev-only).
+            path: "/app/_ui/reportes/antiguedad",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_stock_aging_preview", component: () => import(/* webpackChunkName: "px-next-stock-aging" */ "./views/app/reports/next/stock-aging/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.14 — Reporte de traslados de stock px-next (alias dev-only).
+            path: "/app/_ui/reportes/traslados",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_stock_transfer_report_preview", component: () => import(/* webpackChunkName: "px-next-stock-transfer" */ "./views/app/reports/next/stock-transfer/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.15 — Reporte de ajustes px-next (alias dev-only).
+            path: "/app/_ui/reportes/ajustes",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_stock_adjustment_report_preview", component: () => import(/* webpackChunkName: "px-next-stock-adjustment" */ "./views/app/reports/next/stock-adjustment/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.16 — Valoración de inventario px-next (alias dev-only).
+            path: "/app/_ui/reportes/valoracion",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_valuation_summary_preview", component: () => import(/* webpackChunkName: "px-next-valuation-summary" */ "./views/app/reports/next/valuation-summary/index.vue") },
+                { path: "detalle", name: "px_next_valuation_detail_preview", component: () => import(/* webpackChunkName: "px-next-valuation-detail" */ "./views/app/reports/next/valuation-detail/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.17 — Reportes de lotes px-next (alias dev-only).
+            path: "/app/_ui/reportes/lotes",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_batch_register_preview", component: () => import(/* webpackChunkName: "px-next-batch-register" */ "./views/app/reports/next/batch-register/index.vue") },
+                { path: ":id", name: "px_next_batch_history_preview", component: () => import(/* webpackChunkName: "px-next-batch-history" */ "./views/app/reports/next/batch-history/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.18 — Reporte por almacén px-next (alias dev-only).
+            path: "/app/_ui/reportes/almacen",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_warehouse_report_preview", component: () => import(/* webpackChunkName: "px-next-warehouse-report" */ "./views/app/reports/next/warehouse/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.19 — Detalle completo de existencias px-next (alias dev-only).
+            path: "/app/_ui/reportes/existencias-detalle",
+            component: () => import("./views/app"),
+            children: [
+                { path: ":id", name: "px_next_detail_stock_report_preview", component: () => import(/* webpackChunkName: "px-next-detail-stock" */ "./views/app/reports/next/detail-stock/index.vue") }
+            ]
+        },
+        {
+            // Fase C3.20–C3.23 — Reportes de seriales px-next (alias dev-only).
+            path: "/app/_ui/reportes/seriales",
+            component: () => import("./views/app"),
+            children: [
+                { path: "disponibles", name: "px_next_serial_available_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-available" */ "./views/app/reports/next/serials/available.vue") },
+                { path: "vendidos", name: "px_next_serial_sold_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-sold" */ "./views/app/reports/next/serials/sold.vue") },
+                { path: "inventario", name: "px_next_serial_inventory_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-inventory" */ "./views/app/reports/next/serials/inventory.vue") },
+                { path: "movimientos", name: "px_next_serial_movement_report_preview", component: () => import(/* webpackChunkName: "px-next-serial-movements" */ "./views/app/reports/next/serials/movements.vue") }
+            ]
+        },
+        {
+            // Fase C3.24–C3.26 — Traslados px-next: alias dev-only conservados
+            // como referencia tras el cutover. Las rutas reales /app/transfers/*
+            // ya renderizan estas mismas vistas; la bandeja de recepciones vive
+            // en la ruta real /app/transfers/receptions.
+            path: "/app/_ui/traslados",
+            component: () => import("./views/app"),
+            children: [
+                { path: "", name: "px_next_transfer_list_preview", component: () => import(/* webpackChunkName: "px-next-transfer-list" */ "./views/app/pages/transfers/next/list.vue") },
+                { path: "nuevo", name: "px_next_transfer_create_preview", component: () => import(/* webpackChunkName: "px-next-transfer-form" */ "./views/app/pages/transfers/next/form.vue"), props: { mode: "create" } },
+                { path: ":id/editar", name: "px_next_transfer_edit_preview", component: () => import(/* webpackChunkName: "px-next-transfer-form" */ "./views/app/pages/transfers/next/form.vue"), props: { mode: "edit" } },
+                { path: ":id", name: "px_next_transfer_detail_preview", component: () => import(/* webpackChunkName: "px-next-transfer-detail" */ "./views/app/pages/transfers/next/detail.vue") }
             ]
         },
         {

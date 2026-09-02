@@ -47,7 +47,8 @@ import {
   ArrowDown, ArrowLeftRight, BookOpen, Boxes, Building2, ChevronUp,
   FileQuestion, FileX2, FolderOpen, Gift, Hash, LayoutGrid, MapPinPlus,
   PackageSearch, Percent, Rocket, ScanLine, SearchX, ServerCog, ShieldPlus,
-  Truck, WalletCards, Webhook, ZoomIn
+  Truck, WalletCards, Webhook, ZoomIn,
+  Shapes, ChevronsDown, ImageOff
 } from 'lucide-vue';
 
 const REGISTRY = {
@@ -265,6 +266,9 @@ const REGISTRY = {
   'wallet-cards': WalletCards,
   'webhook': Webhook,
   'zoom-in': ZoomIn,
+  'shapes': Shapes,
+  'chevrons-down': ChevronsDown,
+  'image-off': ImageOff,
 };
 
 export default {

@@ -14,14 +14,20 @@ class TransferImmediateDispatchTest extends TestCase
         $incoming = file_get_contents($root.'/app/Http/Controllers/FinalTransferLogisticsController.php');
         $model = file_get_contents($root.'/app/Models/Transfer.php');
 
-        $this->assertStringContainsString('return DB::transaction(function () use ($request, $user)', $controller);
+        $this->assertStringContainsString('return DB::transaction(function () use ($request, $user, $batchPlan, $mayAutoDispatch)', $controller);
+        // Auto approve+dispatch is gated by the creator's authority (transfer_edit).
+        $this->assertStringContainsString('$mayAutoDispatch = $this->creatorMayAutoDispatch($user);', $controller);
+        $this->assertStringContainsString('if ($mayAutoDispatch) {', $controller);
         $this->assertStringContainsString('parent::store($request);', $controller);
         $this->assertStringContainsString('private ?string $createdTransferReference = null;', $controller);
         $this->assertStringContainsString("->where('Ref', \$this->createdTransferReference)", $controller);
         $this->assertStringContainsString("->lockForUpdate()", $controller);
         $this->assertStringNotContainsString("->where('user_id', \$user->id)\n                ->orderByDesc('id')", $controller);
         $this->assertStringContainsString('$transfer = $workflow->approve($transfer, $user);', $controller);
-        $this->assertStringContainsString('$transfer = $workflow->dispatch($transfer, $user);', $controller);
+        // Dispatch now also receives the user's explicit per-line batch picks so the
+        // location dispatcher honours them instead of silently auto-FEFO.
+        $this->assertStringContainsString('$transfer = $workflow->dispatch($transfer, $user, $batchPlan);', $controller);
+        $this->assertStringContainsString('$batchPlan = $this->extractBatchPlan($request);', $controller);
         $this->assertStringContainsString("'logistics_status' => \$transfer->logistics_status", $controller);
         $this->assertStringContainsString("'receiving_token' => \$transfer->receiving_token", $controller);
 

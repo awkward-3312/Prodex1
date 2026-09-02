@@ -115,7 +115,14 @@ axios.interceptors.response.use(response => { decrementPending(response && respo
   const requestUrl = ((error.config && error.config.url) || '').toString();
   const isTransferLogisticsCapabilityRequest = /(^|\/)transfer-logistics(\/|$)/i.test(requestUrl);
   const isOrganizationCapabilityRequest = /(^|\/)organization(\/|$)/i.test(requestUrl);
-  const isNavigationalLoad = method === 'get' && !skipErrorRedirect && !isTransferLogisticsCapabilityRequest && !isOrganizationCapabilityRequest;
+  // Background / capability probes fired by header widgets and global scripts
+  // (transfer widgets, notification center, operational context, ERP integrity,
+  // inventory visibility, health). A 403 on any of these just means "widget not
+  // available for this user" — it must never navigate the whole SPA to not_authorize.
+  const isBackgroundCapabilityRequest = /(^|\/)(transfer-workflow|transfer-location|notification-center|operational-context|business-audit|inventory-visibility)(\/|$)/i.test(requestUrl)
+    || /(^|\/)system\/version(\/|$)/i.test(requestUrl)
+    || /(^|\/)ping(\/|$)/i.test(requestUrl);
+  const isNavigationalLoad = method === 'get' && !skipErrorRedirect && !isTransferLogisticsCapabilityRequest && !isOrganizationCapabilityRequest && !isBackgroundCapabilityRequest;
   if (status === 404 && isNavigationalLoad) router.push({ name: 'NotFound' });
   if (status === 403) { if (data && data.status === 'limit_reached') { Vue.prototype.$limitReachedMessage = data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.'; window.Fire.$emit('show-limit-reached', data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.'); } else if (isNavigationalLoad) router.push({ name: 'not_authorize' }); }
   return Promise.reject(data || translateLegacyApiMessage(error.message));

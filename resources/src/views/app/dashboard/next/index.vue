@@ -514,13 +514,16 @@ export default {
       this.loading = true;
       this.error = null;
       try {
+        // warehouseId 0 = "todos" → no enviar el selector (paridad con el
+        // dashboard anterior, que manda warehouse_id vacío). Un warehouse_id
+        // numérico > 0 es una selección real y sí se valida por alcance.
+        const params = { from: this.dateFrom, to: this.dateTo };
+        if (this.warehouseId) params.warehouse_id = this.warehouseId;
+        // Alcance de sucursal del shell px-next (0 = todas): sólo se envía cuando
+        // hay una sucursal seleccionada. Sin shell vale 0 y no se manda.
+        if (this.shellBranchId) params.branch_id = this.shellBranchId;
         const { data } = await window.axios.get("dashboard_data", {
-          params: {
-            warehouse_id: this.warehouseId,
-            branch_id: this.shellBranchId || 0,
-            from: this.dateFrom,
-            to: this.dateTo
-          },
+          params,
           meta: { skipInitialLoader: true }
         });
         this.raw = data;

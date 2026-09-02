@@ -31,7 +31,9 @@ jobs:
       - name: Run organization scope tests
         run: vendor/bin/phpunit tests/Unit/WarehouseScopeServiceTest.php tests/Unit/BranchInventoryScopeServiceTest.php tests/Unit/BranchTransferReceivingScopeTest.php
       - name: Run inventory architecture tests
-        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php tests/Unit/InventoryReadServiceTest.php tests/Unit/BatchLocationServiceTest.php tests/Unit/SerialLocationServiceTest.php tests/Unit/InternalInventoryMoveServiceTest.php
+        run: vendor/bin/phpunit tests/Unit/InventoryLocationServiceTest.php tests/Unit/InventoryServiceTest.php tests/Unit/LegacyInventoryReconciliationServiceTest.php tests/Unit/InventoryCompatibilityServiceTest.php tests/Unit/InventoryReadServiceTest.php tests/Unit/BatchLocationServiceTest.php tests/Unit/SerialLocationServiceTest.php tests/Unit/InternalInventoryMoveServiceTest.php tests/Unit/InventoryProvenanceAuditServiceTest.php tests/Unit/InventoryLegacyDivergenceContractTest.php tests/Unit/OpeningStockInventoryServiceTest.php tests/Unit/LocationAwareStockDocumentServiceTest.php tests/Unit/LocationAwareAdjustmentDamageContractTest.php
+      - name: Run public landing (landing-prime) tests
+        run: vendor/bin/phpunit tests/Unit/PlanRecommendationServiceTest.php tests/Unit/LandingPrimeContractTest.php
       - name: PHP syntax check for SAR files
         run: |
           php -l app/Services/SarFiscalNumberService.php
@@ -134,10 +136,19 @@ jobs:
           php -l app/Services/LegacyInventoryReconciliationService.php
           php -l app/Services/InventoryCompatibilityService.php
           php -l app/Services/InventoryReadService.php
+          php -l app/Services/InventoryProvenanceAuditService.php
+          php -l app/Services/OpeningStockInventoryService.php
+          php -l app/Services/LocationAwareStockDocumentService.php
+          php -l app/Services/LocationAwareAdjustmentService.php
+          php -l app/Services/LocationAwareDamageService.php
+          php -l app/Http/Controllers/AdjustmentController.php
+          php -l app/Http/Controllers/DamageController.php
+          php -l database/migrations/tenant/2026_08_31_000000_add_inventory_location_to_adjustments_and_damages.php
           php -l app/Services/BatchLocationService.php
           php -l app/Services/SerialLocationService.php
           php -l app/Services/InternalInventoryMoveService.php
           php -l app/Services/TenantSchemaHealthService.php
+          php -l app/Http/Controllers/ProductsController.php
           php -l app/Console/Commands/ProdexInventoryReconcile.php
           php -l app/Console/Commands/ProdexInventoryTransition.php
           php -l database/migrations/tenant/2026_08_21_150000_create_inventory_locations_foundation.php
@@ -153,6 +164,15 @@ jobs:
           php -l tests/Unit/BatchLocationServiceTest.php
           php -l tests/Unit/SerialLocationServiceTest.php
           php -l tests/Unit/InternalInventoryMoveServiceTest.php
+      - name: PHP syntax check for public landing (landing-prime) files
+        run: |
+          php -l app/Services/PlanRecommendationService.php
+          php -l app/Support/LandingContact.php
+          php -l app/Http/Controllers/Central/PricingCalculatorController.php
+          php -l app/Http/Controllers/Central/LandingPageController.php
+          php -l app/Support/LandingPageTemplate.php
+          php -l tests/Unit/PlanRecommendationServiceTest.php
+          php -l tests/Unit/LandingPrimeContractTest.php
 
   frontend-build:
     runs-on: ubuntu-latest
@@ -172,6 +192,7 @@ jobs:
           node --check resources/static/prodex-transfer-permission-ui.js
           node --check resources/static/prodex-transfer-issues.js
           node --check resources/static/prodex-organization-navigation.js
+          node --check public/assets_super/js/landing-prime.js
       - name: Production build
         env:
           NODE_OPTIONS: --max-old-space-size=8192

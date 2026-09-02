@@ -70,7 +70,12 @@
     return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17h4V5H2v12h3"/><path d="M14 9h4l4 4v4h-3"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg>';
   }
 
+  function uiSuppressed() {
+    return !!(window.__pxTransferUiSuppressed && window.__pxTransferUiSuppressed());
+  }
+
   function ensureHeaderButton() {
+    if (uiSuppressed()) { var b = document.getElementById('px-transfer-logistics-btn'); if (b) b.remove(); return; }
     if (!state.allowed || document.getElementById('px-transfer-logistics-btn')) return;
     var host = document.querySelector('.main-header .header-part-right.nav-right, .vertical-top-nav .header-part-right.nav-right');
     if (!host) return;
@@ -108,6 +113,7 @@
   }
 
   function renderPanel() {
+    if (uiSuppressed()) return;
     var panel = document.createElement('div');
     panel.id = 'px-transfer-logistics-panel';
     panel.className = 'px-tl-panel';
@@ -191,6 +197,7 @@
   }
 
   function showToast() {
+    if (uiSuppressed()) return;
     var unread = state.notifications.find(function (n) { return !n.read_at; });
     if (!unread) return;
     var old = document.getElementById('px-tl-toast');
@@ -280,6 +287,7 @@
   }
 
   function renderReceiving(payload) {
+    if (uiSuppressed()) { closeOverlay(); return; }
     state.active = payload;
     var t = payload.transfer || {};
     var details = payload.details || [];

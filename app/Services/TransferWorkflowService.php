@@ -59,9 +59,15 @@ class TransferWorkflowService
         }, 5);
     }
 
-    public function dispatch(Transfer $transfer, User $actor): Transfer
+    /**
+     * @param  array|null  $batchPlan  Explicit per-line batch picks captured at
+     *   create time (see TransferLocationDispatchService::ensureDispatched). Only
+     *   the create→approve→dispatch path passes it; a standalone workflow dispatch
+     *   leaves it null and the location service falls back to FEFO-among-eligible.
+     */
+    public function dispatch(Transfer $transfer, User $actor, ?array $batchPlan = null): Transfer
     {
-        return DB::transaction(function () use ($transfer, $actor) {
+        return DB::transaction(function () use ($transfer, $actor, $batchPlan) {
             $locked = Transfer::with('details')->whereNull('deleted_at')->whereKey($transfer->id)->lockForUpdate()->firstOrFail();
 
             if (! $locked->isApproved()) {
@@ -76,7 +82,7 @@ class TransferWorkflowService
             }
 
             if ($locked->from_inventory_location_id) {
-                app(TransferLocationDispatchService::class)->ensureDispatched($locked);
+                app(TransferLocationDispatchService::class)->ensureDispatched($locked, $batchPlan);
             } else {
                 $this->debitLegacySource($locked);
             }

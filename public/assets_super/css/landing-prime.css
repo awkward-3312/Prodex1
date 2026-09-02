@@ -1,0 +1,620 @@
+/* ==========================================================================
+   landing-prime — PRODEX página pública (modo claro, empresarial)
+   Solo lo que Tailwind (Play CDN) no cubre con comodidad: tokens, sliders,
+   calculadora, foco, y motion funcional. Sin librerías.
+   ========================================================================== */
+
+:root {
+    --lp-ink:        #0F172A;
+    --lp-ink-2:      #334155;
+    --lp-ink-3:      #5A6B85;   /* AA sobre blanco y sobre #F8FAFC */
+    --lp-line:       #E7EAF0;
+    --lp-line-soft:  #EEF1F6;
+    --lp-bg:         #FFFFFF;
+    --lp-bg-2:       #F7F9FC;
+    --lp-brand:      #4F46E5;
+    --lp-brand-ink:  #3730A3;
+    --lp-brand-050:  #EEF0FF;
+    --lp-accent:     #2563EB;
+    /* Firma visual PRODEX — "aurora" tecnológica. Sólo en puntos de impacto. */
+    --lp-aurora-1:   #1D4ED8;   /* azul profundo */
+    --lp-aurora-2:   #4F46E5;   /* indigo */
+    --lp-aurora-3:   #22D3EE;   /* cyan / turquesa */
+    --lp-ink-950:    #0B1220;   /* superficie profunda para el cierre */
+    --lp-navy:       #16233F;   /* confianza — texto/acentos oscuros */
+    --lp-orange:     #E15A00;   /* acento comercial estratégico (AA con blanco) */
+    --lp-orange-050: #FFF2E8;
+    /* Personalidad por plan: icono · borde · precio · CTA · detalles (NO la card entera) */
+    --lp-plan-1:     #0E9CB8;   /* Emprendedor — cyan/turquesa (AA) */
+    --lp-plan-1-050: #E4FAFE;
+    --lp-plan-1-200: #8DDDE9;
+    --lp-plan-2:     #2563EB;   /* Pyme — azul */
+    --lp-plan-2-050: #E8F0FF;
+    --lp-plan-2-200: #A9C4F6;
+    --lp-plan-3:     #6D42E0;   /* Profesional — índigo/violeta */
+    --lp-plan-3-050: #F0EAFE;
+    --lp-plan-3-200: #C4B0F2;
+    --lp-plan-4:     #E15A00;   /* Empresarial — naranja */
+    --lp-plan-4-050: #FFF2E8;
+    --lp-plan-4-200: #F5B78A;
+    --lp-ok:         #059669;
+    --lp-wa:         #0E7C6B;   /* verde WhatsApp — 5.1:1 con texto blanco (AA) */
+    --lp-radius:     16px;
+    --lp-radius-sm:  12px;
+    --lp-radius-lg:  22px;
+    --lp-shadow-sm:  0 1px 2px rgba(15, 23, 42, .04), 0 1px 3px rgba(15, 23, 42, .05);
+    --lp-shadow:     0 12px 30px rgba(15, 23, 42, .07);
+    --lp-shadow-lg:  0 26px 60px -12px rgba(15, 23, 42, .16);
+    --lp-nav-h:      68px;
+    --lp-ease-out:   cubic-bezier(.16, 1, .3, 1);
+    --lp-ring:       0 0 0 3px var(--lp-brand-050), 0 0 0 4px var(--lp-brand);
+}
+
+body.landing-prime {
+    background: var(--lp-bg);
+    color: var(--lp-ink);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+}
+
+.landing-prime a { text-decoration: none; }
+.landing-prime ::selection { background: var(--lp-brand-050); color: var(--lp-brand-ink); }
+.landing-prime .lp-tnum { font-variant-numeric: tabular-nums; }
+.landing-prime input { caret-color: var(--lp-brand); }
+
+/* El navbar fijo no debe tapar el destino de los anclajes internos. */
+.landing-prime section[id],
+.landing-prime [id^="lp-panel"] { scroll-margin-top: calc(var(--lp-nav-h) + 20px); }
+
+/* Foco visible coherente en todo lo interactivo -------------------------------*/
+.landing-prime a:focus-visible,
+.lp-btn:focus-visible,
+.lp-nav__link:focus-visible,
+.lp-tab:focus-visible,
+.lp-seg__btn:focus-visible,
+.lp-step__btn:focus-visible,
+.landing-prime summary:focus-visible,
+.landing-prime button:focus-visible {
+    outline: none;
+    box-shadow: var(--lp-ring);
+    border-radius: 10px;
+}
+.lp-range:focus-visible { box-shadow: var(--lp-ring); }
+
+/* Fondos casi imperceptibles ------------------------------------------------- */
+.lp-soft {
+    background:
+        radial-gradient(60rem 40rem at 14% -10%, rgba(79, 70, 229, .05), transparent 60%),
+        radial-gradient(50rem 36rem at 92% 2%, rgba(37, 99, 235, .04), transparent 55%),
+        var(--lp-bg-2);
+}
+.lp-grid-bg {
+    background-image:
+        linear-gradient(rgba(148, 163, 184, .08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, .08) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(58% 52% at 50% 26%, #000 0%, transparent 100%);
+            mask-image: radial-gradient(58% 52% at 50% 26%, #000 0%, transparent 100%);
+}
+.lp-glow { filter: blur(90px); }
+
+/* Superficies -------------------------------------------------------------- */
+.lp-card    { box-shadow: var(--lp-shadow-sm); transition: transform .22s var(--lp-ease-out), box-shadow .22s var(--lp-ease-out), border-color .22s var(--lp-ease-out); }
+.lp-card--hover:hover { transform: translateY(-3px); box-shadow: var(--lp-shadow); border-color: rgba(79, 70, 229, .22); }
+.lp-elevate { box-shadow: var(--lp-shadow-lg); }
+
+/* Índice editorial de módulos (fallback, sin muro de tarjetas) ------------- */
+.lp-idx { border-top: 1px solid var(--lp-line); padding-top: 1.5rem; }
+.lp-idx__mark { color: var(--lp-brand); }
+
+/* Ventana / mockup de producto ------------------------------------------------*/
+.lp-window {
+    border: 1px solid var(--lp-line);
+    border-radius: var(--lp-radius-lg);
+    background: #fff;
+    overflow: hidden;
+    box-shadow: var(--lp-shadow-lg);
+}
+.lp-window__bar {
+    height: 42px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 14px;
+    background: var(--lp-bg-2);
+    border-bottom: 1px solid var(--lp-line);
+    font-size: 12px; color: var(--lp-ink-2);
+}
+.lp-window__dot { width: 9px; height: 9px; border-radius: 999px; background: #CBD5E1; flex: none; }
+.lp-window__title { margin-left: 8px; font-weight: 600; }
+
+/* Barra decorativa (sin cifras atribuidas a un negocio real) --------------- */
+.lp-bars { display: flex; align-items: flex-end; gap: 10px; height: 120px; }
+.lp-bars span {
+    flex: 1; border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, rgba(79, 70, 229, .8), rgba(79, 70, 229, .3));
+}
+.lp-bars span:nth-child(even) { background: linear-gradient(180deg, rgba(37, 99, 235, .62), rgba(37, 99, 235, .24)); }
+
+/* ==========================================================================
+   FIRMA VISUAL PRODEX — aurora, superficie profunda, motivo, chrome de app
+   Se usa SÓLO en los tres picos: hero, calculadora, cierre.
+   ========================================================================== */
+
+/* Aurora suave sobre base clara (hero + calculadora).
+   overflow:clip contiene el ::before sangrado sin crear scroll-container
+   (no rompe el position:sticky del resumen de la calculadora). */
+.lp-aurora { position: relative; isolation: isolate; overflow: clip; }
+.lp-aurora > * { position: relative; z-index: 1; }
+.lp-aurora::before {
+    content: ""; position: absolute; inset: -12% -6% -18% -6%; z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(40rem 26rem at 8% -6%,  rgba(29, 78, 216, .20), transparent 62%),
+        radial-gradient(34rem 22rem at 96% 4%,  rgba(34, 211, 238, .16), transparent 60%),
+        radial-gradient(30rem 22rem at 60% 112%, rgba(79, 70, 229, .12), transparent 60%);
+    filter: blur(40px);
+}
+
+/* Superficie profunda para el cierre de marca */
+.lp-deep {
+    position: relative; isolation: isolate; overflow: hidden;
+    background: var(--lp-ink-950); color: #E6EAF2;
+}
+.lp-deep > * { position: relative; z-index: 1; }
+.lp-deep::before {
+    content: ""; position: absolute; inset: -30%; z-index: 0; pointer-events: none;
+    background:
+        radial-gradient(38rem 26rem at 4% 0%,   rgba(29, 78, 216, .45), transparent 60%),
+        radial-gradient(36rem 24rem at 100% 100%, rgba(34, 211, 238, .28), transparent 58%),
+        radial-gradient(30rem 22rem at 58% 46%, rgba(79, 70, 229, .30), transparent 62%);
+    filter: blur(34px);
+}
+.lp-deep .lp-btn--ghost { background: rgba(255, 255, 255, .06); color: #fff; border-color: rgba(255, 255, 255, .22); }
+.lp-deep .lp-btn--ghost:hover { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .4); }
+
+/* Hero sobre superficie profunda: se extiende bajo el navbar fijo y el
+   contenido baja lo justo. (Sólo el hero; el resto de la página sigue claro.) */
+.lp-hero-deep {
+    margin-top: calc(-1 * var(--lp-nav-h));
+    padding-top: calc(var(--lp-nav-h) + 3rem);
+    padding-bottom: 6rem;
+}
+@media (min-width: 640px) {
+    .lp-hero-deep { padding-top: calc(var(--lp-nav-h) + 4.5rem); padding-bottom: 8rem; }
+}
+/* La UI de producto flota MÁS sobre el fondo oscuro. */
+.lp-deep .lp-window { box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .65), 0 0 0 1px rgba(255, 255, 255, .04); }
+.lp-deep .lp-chip { background: #fff; box-shadow: 0 26px 50px -14px rgba(0, 0, 0, .55); }
+
+/* Motivo recurrente: regla azul→cyan. NO es un eyebrow de texto. */
+.lp-mark {
+    display: block; width: 44px; height: 3px; border-radius: 999px;
+    background: linear-gradient(90deg, var(--lp-aurora-1), var(--lp-aurora-3));
+}
+.lp-mark--center { margin-inline: auto; }
+.lp-mark--orange { background: linear-gradient(90deg, var(--lp-orange), #F59E42); }
+.lp-deep .lp-mark { background: linear-gradient(90deg, #60A5FA, var(--lp-aurora-3)); }
+
+/* "¿Te suena familiar?" — dolores reales, sin métricas. Icono en tono neutro
+   (el verde se reserva para estados positivos). */
+.lp-problem { display: flex; gap: 12px; align-items: flex-start; }
+.lp-problem__mark {
+    flex: none; margin-top: 3px; font-size: 18px;
+    color: var(--lp-navy); opacity: .5;
+}
+
+/* Chrome de aplicación real: riel + panel */
+.lp-appui { display: grid; grid-template-columns: 52px minmax(0, 1fr); background: #fff; }
+.lp-appui__rail {
+    display: flex; flex-direction: column; align-items: center; gap: 18px;
+    padding: 16px 0; background: var(--lp-bg-2);
+    border-right: 1px solid var(--lp-line-soft);
+}
+.lp-appui__rail i { font-size: 15px; color: var(--lp-ink-3); }
+.lp-appui__rail i.is-active { color: var(--lp-brand); }
+.lp-appui__main { min-width: 0; padding: 16px 18px 18px; }
+.lp-appui__topbar {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+    font-size: 12px; font-weight: 600; color: var(--lp-ink-2);
+}
+.lp-appui__topbar .lp-appui__pin { margin-left: auto; width: 22px; height: 22px; border-radius: 7px; background: var(--lp-bg-2); }
+
+.lp-kpi { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.lp-kpi > div { border: 1px solid var(--lp-line-soft); border-radius: 12px; padding: 10px 11px; }
+.lp-kpi b { display: block; font-size: 11px; font-weight: 600; letter-spacing: -.01em; color: var(--lp-ink-3); margin-bottom: 8px; }
+.lp-spark { display: flex; align-items: flex-end; gap: 3px; height: 22px; }
+.lp-spark span { flex: 1; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, rgba(79, 70, 229, .75), rgba(34, 211, 238, .32)); }
+
+.lp-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.lp-pill i { font-size: 7px; }
+.lp-pill--ok   { background: rgba(5, 150, 105, .10);  color: #047857; }
+.lp-pill--wait { background: rgba(217, 119, 6, .12);  color: #B45309; }
+.lp-pill--info { background: rgba(29, 78, 216, .10);  color: #1D4ED8; }
+
+/* Tarjetas-evento flotantes del hero (sin cifras). Entrada, no bucle. */
+.lp-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 13px; border-radius: 14px;
+    background: rgba(255, 255, 255, .92);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border: 1px solid var(--lp-line); box-shadow: var(--lp-shadow);
+}
+.lp-chip__ic {
+    width: 28px; height: 28px; border-radius: 9px; flex: none;
+    display: grid; place-items: center; font-size: 14px; color: var(--lp-brand);
+    background: linear-gradient(135deg, rgba(29, 78, 216, .14), rgba(34, 211, 238, .16));
+}
+.lp-chip b { display: block; font-size: 12px; font-weight: 600; letter-spacing: -.01em; color: var(--lp-ink); }
+.lp-chip span { font-size: 11px; color: var(--lp-ink-3); }
+
+/* ==========================================================================
+   Calculadora de precios
+   ========================================================================== */
+
+.lp-calc__summary { align-self: start; }
+@media (min-width: 1024px) {
+    .lp-calc__summary--sticky { position: sticky; top: calc(var(--lp-nav-h) + 20px); }
+}
+
+/* "Tu negocio" / "Tu PRODEX" — encuadra la calculadora como configuración. */
+.lp-calc__col-label {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 11px; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--lp-ink-3);
+    margin-bottom: 14px;
+}
+.lp-calc__col-label::before {
+    content: ""; width: 18px; height: 2px; border-radius: 999px; flex: none;
+    background: linear-gradient(90deg, var(--lp-aurora-1), var(--lp-aurora-3));
+}
+/* "Tu negocio": controles en 2 columnas cuando hay sitio; 1 en móvil.
+   El label va sobre el stepper para que cada celda sea baja y legible. */
+.lp-calc__fields { display: grid; gap: 1.125rem 1.5rem; }
+@media (min-width: 640px) { .lp-calc__fields { grid-template-columns: 1fr 1fr; } }
+.lp-calc__fields-group { grid-column: 1 / -1; }
+.lp-field__head { flex-wrap: wrap; }
+.lp-field__head > label { flex: 1 1 100%; margin-bottom: .25rem; }
+.lp-field__head .lp-step { align-self: flex-start; }
+
+/* Resumen compacto: límites y features acotados (server y JS re-render). */
+.lp-calc__state--ok [data-calc-included] li:nth-child(n+5),
+.lp-calc__state--ok [data-calc-features] li:nth-child(n+5) { display: none; }
+
+/* El resumen ("Tu PRODEX") pesa más: borde, tinte y elevación aurora. */
+.lp-calc__summary .lp-calc__card {
+    border-color: rgba(79, 70, 229, .30);
+    background:
+        linear-gradient(180deg, rgba(34, 211, 238, .05), rgba(255, 255, 255, 0) 42%),
+        #fff;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .8) inset,
+        0 28px 70px -22px rgba(29, 78, 216, .40),
+        0 8px 24px -12px rgba(29, 78, 216, .18),
+        var(--lp-shadow);
+}
+
+/* Sin JS: la tarjeta fluye normal. Con JS (.lp-js-calc) los tres estados se
+   apilan en la MISMA celda de grid, así el alto es el del estado más alto y el
+   cambio de recomendación nunca provoca salto de layout. */
+.lp-calc__card { display: flex; flex-direction: column; }
+
+.lp-seg {
+    display: inline-flex; padding: 4px; gap: 4px;
+    background: var(--lp-bg-2); border: 1px solid var(--lp-line);
+    border-radius: 999px;
+}
+.lp-seg__btn {
+    appearance: none; border: 0; cursor: pointer;
+    padding: 8px 18px; border-radius: 999px;
+    font: inherit; font-weight: 600; font-size: 14px;
+    color: var(--lp-ink-3); background: transparent;
+    transition: background .16s var(--lp-ease-out), color .16s var(--lp-ease-out), box-shadow .16s var(--lp-ease-out);
+}
+.lp-seg__btn[aria-pressed="true"] { background: #fff; color: var(--lp-ink); box-shadow: var(--lp-shadow-sm); }
+.lp-seg__save {
+    margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+    background: var(--lp-brand); color: #fff;
+    font-size: 11px; font-weight: 700;
+}
+
+/* Slider */
+.lp-range {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px; border-radius: 999px;
+    background: var(--lp-line);
+    outline: none; margin: 8px 0 2px;
+}
+.lp-range::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; border-radius: 999px;
+    background: #fff; border: 2px solid var(--lp-brand);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, .18);
+    cursor: pointer; transition: transform .12s var(--lp-ease-out);
+}
+.lp-range::-webkit-slider-thumb:active { transform: scale(1.1); }
+.lp-range::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 999px;
+    background: #fff; border: 2px solid var(--lp-brand);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, .18); cursor: pointer;
+}
+.lp-range--track {
+    background:
+        linear-gradient(var(--lp-brand), var(--lp-brand)) 0 / var(--lp-fill, 0%) 100% no-repeat,
+        var(--lp-line);
+}
+
+/* Stepper */
+.lp-step {
+    display: inline-flex; align-items: center; gap: 2px;
+    border: 1px solid var(--lp-line); border-radius: 999px;
+    background: #fff;
+}
+.lp-step__btn {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    width: 36px; height: 36px; border-radius: 999px;
+    display: grid; place-items: center;
+    color: var(--lp-ink-2); font-size: 18px; line-height: 1;
+    transition: background .14s var(--lp-ease-out), color .14s var(--lp-ease-out);
+}
+.lp-step__btn:hover { background: var(--lp-bg-2); color: var(--lp-ink); }
+.lp-step__val {
+    min-width: 64px; text-align: center;
+    font-weight: 700; font-variant-numeric: tabular-nums;
+    background: transparent; border: 0; color: var(--lp-ink);
+    font-size: 14px; padding: 0 4px;
+}
+.lp-step__val:focus-visible { outline: none; box-shadow: var(--lp-ring); border-radius: 8px; }
+
+.lp-calc__badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 999px;
+    background: var(--lp-brand-050); color: var(--lp-brand-ink);
+    font-size: 12px; font-weight: 700;
+}
+
+/* Estados del resumen.
+   Baseline SIN JS: se controla por data-status (combinador descendente OK:
+   .lp-calc__state está DENTRO de .lp-calc).
+   Con JS: initCalculator añade .lp-js-calc AL MISMO nodo .lp-calc, así que las
+   reglas que muestran cada estado deben compoundarse en el mismo elemento
+   (.lp-calc.lp-js-calc[data-status=...]), NUNCA como descendiente. */
+.lp-calc__state { display: none; }
+.lp-calc[data-status="ok"]     .lp-calc__state--ok     { display: flex; flex-direction: column; }
+.lp-calc[data-status="custom"] .lp-calc__state--custom { display: flex; flex-direction: column; }
+.lp-calc[data-status="insufficient_plan_data"] .lp-calc__state--nodata { display: flex; flex-direction: column; }
+
+.lp-calc.lp-js-calc .lp-calc__card { display: grid; }
+.lp-calc.lp-js-calc .lp-calc__state {
+    grid-area: 1 / 1;
+    display: flex; flex-direction: column;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .18s var(--lp-ease-out);
+}
+.lp-calc.lp-js-calc[data-status="ok"]     .lp-calc__state--ok,
+.lp-calc.lp-js-calc[data-status="custom"] .lp-calc__state--custom,
+.lp-calc.lp-js-calc[data-status="insufficient_plan_data"] .lp-calc__state--nodata {
+    opacity: 1; visibility: visible; pointer-events: auto;
+}
+
+/* Refresco de la cifra: baja levemente y vuelve — no salta. */
+.lp-calc__figure { transition: opacity .15s var(--lp-ease-out), transform .15s var(--lp-ease-out); }
+.lp-calc[data-swapping] .lp-calc__figure { opacity: .32; transform: translateY(2px); }
+
+/* ==========================================================================
+   Comparación de planes — SIEMPRE visible, cards neutrales, comparables
+   ========================================================================== */
+.lp-plan {
+    --pc: var(--lp-brand);          /* color del plan (se sobreescribe por .lp-plan--c*) */
+    --pc-050: var(--lp-brand-050);
+    --pc-200: #C7CBF6;
+    position: relative;
+    display: flex; flex-direction: column;
+    border: 1px solid var(--lp-line);
+    border-radius: var(--lp-radius);
+    background: #fff;
+    padding: 1.5rem 1.375rem;
+    box-shadow: var(--lp-shadow-sm);
+    transition: border-color .2s var(--lp-ease-out), box-shadow .2s var(--lp-ease-out);
+}
+/* Acento corto e inset (no una barra a todo lo ancho tipo progress/focus):
+   alineado con icono/nombre, sin tocar los bordes de la card. */
+.lp-plan::before {
+    content: ""; position: absolute; top: .85rem; left: 1.375rem;
+    width: 68px; height: 4px; border-radius: 999px;
+    background: var(--pc);
+}
+/* El recomendado ya tiene borde + halo + chip en su color: el acento se
+   retira para que sea UN solo sistema de énfasis, no señales compitiendo. */
+.lp-plan.is-recommended::before { display: none; }
+.lp-plan--c1 { --pc: var(--lp-plan-1); --pc-050: var(--lp-plan-1-050); --pc-200: var(--lp-plan-1-200); }
+.lp-plan--c2 { --pc: var(--lp-plan-2); --pc-050: var(--lp-plan-2-050); --pc-200: var(--lp-plan-2-200); }
+.lp-plan--c3 { --pc: var(--lp-plan-3); --pc-050: var(--lp-plan-3-050); --pc-200: var(--lp-plan-3-200); }
+.lp-plan--c4 { --pc: var(--lp-plan-4); --pc-050: var(--lp-plan-4-050); --pc-200: var(--lp-plan-4-200); }
+
+.lp-plan__ic {
+    width: 34px; height: 34px; border-radius: 10px; flex: none;
+    display: grid; place-items: center; font-size: 16px;
+    color: var(--pc); background: var(--pc-050);
+    margin-bottom: .875rem;
+}
+.lp-plan__chip {
+    position: absolute; top: -0.7rem; left: 1.375rem;
+    padding: 3px 10px; border-radius: 999px;
+    background: var(--pc); color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: .01em;
+    white-space: nowrap;
+    opacity: 0; transform: translateY(3px);
+    transition: opacity .2s var(--lp-ease-out), transform .2s var(--lp-ease-out);
+    pointer-events: none;
+}
+/* Realce del plan que la calculadora recomienda (por plan_id), en SU color. */
+.lp-plan.is-recommended {
+    border-color: var(--pc);
+    box-shadow: 0 0 0 1px var(--pc), 0 0 0 5px var(--pc-050), var(--lp-shadow-lg);
+}
+.lp-plan.is-recommended .lp-plan__chip { opacity: 1; transform: none; }
+
+.lp-plan__name {
+    font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--lp-ink);
+}
+.lp-plan__price { display: flex; align-items: baseline; gap: 4px; margin-top: .375rem; }
+.lp-plan__amt { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--pc); }
+.lp-plan__amt--free { color: var(--lp-ink); }
+.lp-plan__per { font-size: .875rem; color: var(--lp-ink-3); }
+/* Altura reservada SIEMPRE (haya o no anual/prueba real) => ninguna card,
+   incluida Profesional mientras su yearly_price sea inválido, se desalinea. */
+.lp-plan__yearly { font-size: .75rem; line-height: 1.4; color: var(--lp-ink-3); min-height: 1.1rem; }
+.lp-plan__detail { border-top: 1px solid var(--lp-line-soft); margin-bottom: 1.5rem; }
+.lp-plan__kicker {
+    font-size: .6875rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--lp-ink-3); margin-bottom: .75rem;
+}
+.lp-plan__list { display: flex; flex-direction: column; gap: .5rem; font-size: .8125rem; color: var(--lp-ink-2); }
+.lp-plan__list li { display: flex; align-items: flex-start; gap: .5rem; }
+.lp-plan__list .bi { color: var(--pc); font-size: .875rem; line-height: 1.4; flex: none; }
+/* CTA en el color del plan (contorno para los no destacados, sólido para el recomendado).
+   margin-top:auto alinea la base de todas las cards de la fila. */
+.lp-plan__cta {
+    margin-top: auto;
+    background: #fff; color: var(--pc); font-weight: 600;
+    border: 1px solid var(--lp-line);
+    border-color: var(--pc-200);
+}
+.lp-plan__cta:hover { background: var(--pc-050); border-color: var(--pc); }
+.lp-plan.is-recommended .lp-plan__cta { background: var(--pc); color: #fff; border-color: var(--pc); }
+.lp-plan.is-recommended .lp-plan__cta:hover { filter: brightness(1.06); background: var(--pc); }
+
+/* ==========================================================================
+   Showcase con tabs
+   ========================================================================== */
+.lp-tab {
+    appearance: none; border: 1px solid transparent; cursor: pointer;
+    padding: 9px 16px; border-radius: 999px;
+    font: inherit; font-weight: 600; font-size: 14px;
+    color: var(--lp-ink-3); background: transparent;
+    white-space: nowrap;
+    transition: background .16s var(--lp-ease-out), color .16s var(--lp-ease-out), border-color .16s var(--lp-ease-out);
+}
+.lp-tab:hover { color: var(--lp-ink-2); }
+.lp-tab[aria-selected="true"] {
+    background: #fff; color: var(--lp-brand-ink);
+    border-color: var(--lp-line); box-shadow: var(--lp-shadow-sm);
+}
+.lp-tabpanel { transition: opacity .18s var(--lp-ease-out); }
+.lp-tabpanel[hidden] { display: none; }
+.lp-tabpanel.is-entering { opacity: 0; }
+.lp-tabs__scroller { scrollbar-width: none; }
+.lp-tabs__scroller::-webkit-scrollbar { display: none; }
+
+/* ==========================================================================
+   Motion — un solo gesto: aparición sutil. Rápido, ease-out, desde visible.
+   ========================================================================== */
+.lp-reveal { opacity: 1; transform: none; }
+.lp-js .lp-reveal {
+    opacity: 0; transform: translateY(8px);
+    transition: opacity .4s var(--lp-ease-out), transform .4s var(--lp-ease-out);
+}
+.lp-js .lp-reveal.is-in { opacity: 1; transform: none; }
+.lp-js .lp-reveal[data-delay="1"] { transition-delay: .05s; }
+.lp-js .lp-reveal[data-delay="2"] { transition-delay: .1s; }
+.lp-js .lp-reveal[data-delay="3"] { transition-delay: .15s; }
+
+@media (prefers-reduced-motion: reduce) {
+    html.scroll-smooth { scroll-behavior: auto; }
+    .landing-prime *,
+    .landing-prime *::before,
+    .landing-prime *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+    }
+    .lp-js .lp-reveal { opacity: 1; transform: none; }
+    .lp-calc__figure { transition: none; }
+}
+
+/* ==========================================================================
+   Navbar
+   ========================================================================== */
+.lp-nav {
+    position: fixed; inset: 0 0 auto 0; z-index: 50;
+    height: var(--lp-nav-h);
+    background: rgba(255, 255, 255, .82);
+    -webkit-backdrop-filter: saturate(180%) blur(10px);
+            backdrop-filter: saturate(180%) blur(10px);
+    border-bottom: 1px solid transparent;
+    transition: border-color .2s var(--lp-ease-out), box-shadow .2s var(--lp-ease-out), background .2s var(--lp-ease-out);
+}
+.lp-nav.is-scrolled {
+    border-bottom-color: var(--lp-line);
+    box-shadow: 0 1px 0 rgba(15, 23, 42, .02), var(--lp-shadow-sm);
+    background: rgba(255, 255, 255, .9);
+}
+.lp-nav__link {
+    color: var(--lp-ink-2); font-weight: 500; font-size: 14px;
+    padding: 8px 12px; border-radius: 8px;
+    transition: color .14s var(--lp-ease-out), background .14s var(--lp-ease-out);
+}
+.lp-nav__link:hover { color: var(--lp-ink); background: var(--lp-bg-2); }
+
+.lp-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 600; font-size: 14px; line-height: 1;
+    padding: 11px 20px; border-radius: 999px;
+    transition: transform .14s var(--lp-ease-out), background .14s var(--lp-ease-out), box-shadow .14s var(--lp-ease-out), border-color .14s var(--lp-ease-out);
+}
+.lp-btn:active { transform: translateY(1px); }
+.lp-btn--primary { background: var(--lp-ink); color: #fff; box-shadow: var(--lp-shadow); }
+.lp-btn--primary:hover { background: var(--lp-brand); }
+.lp-btn--ghost { background: #fff; color: var(--lp-ink-2); border: 1px solid var(--lp-line); }
+.lp-btn--ghost:hover { border-color: #CBD5E1; background: var(--lp-bg-2); }
+.lp-btn--lg { padding: 14px 26px; font-size: 15px; }
+
+/* Menú móvil */
+.lp-drawer { transition: opacity .2s var(--lp-ease-out); }
+.lp-drawer[hidden] { display: none; }
+.lp-drawer__panel { transition: transform .28s var(--lp-ease-out); }
+
+/* Botón flotante de ventas (WhatsApp) */
+.lp-fab {
+    position: fixed; z-index: 45; right: 18px; bottom: 18px;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 16px; border-radius: 999px;
+    background: var(--lp-wa); color: #fff; font-weight: 700; font-size: 14px;
+    box-shadow: 0 14px 30px rgba(18, 140, 126, .32);
+    transition: transform .14s var(--lp-ease-out), filter .14s var(--lp-ease-out);
+}
+.lp-fab:hover { filter: brightness(1.05); transform: translateY(-1px); }
+@media (max-width: 640px) { .lp-fab span { display: none; } .lp-fab { padding: 14px; } }
+
+/* Cookie banner */
+.lp-cookie { transition: transform .3s var(--lp-ease-out), opacity .3s var(--lp-ease-out); }
+.lp-cookie[data-hidden="true"] { transform: translateY(130%); opacity: 0; pointer-events: none; }
+
+/* ==========================================================================
+   Anti-overflow horizontal + layout en pantallas pequeñas
+   ========================================================================== */
+/* Los adornos (aurora, glow) pueden sangrar; se recortan sin crear scroll
+   ni romper position:sticky. El contenido funcional se arregla abajo. */
+.landing-prime { overflow-x: clip; }
+#lpCalc, #lpCalc > *, .lp-calc__summary, .lp-field, .lp-appui, .lp-appui__main { min-width: 0; }
+
+@media (max-width: 639px) {
+    .lp-step__btn { width: 42px; height: 42px; }
+    .lp-tab { padding: 11px 16px; }
+
+    /* La calculadora ya apila etiqueta/stepper vía .lp-field__head; en móvil
+       sólo estrechamos el valor para que quepa con los botones grandes. */
+    .lp-step__val { min-width: 52px; }
+
+    /* KPIs del mockup: 3 columnas no caben cómodas en 320-360px. */
+    .lp-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lp-kpi > div:last-child { grid-column: span 2; }
+
+    /* Chips-evento del hero: dentro del flujo, nunca fuera del viewport. */
+    .lp-chip { width: 100%; }
+
+    /* Tabs del showcase: en móvil ENVUELVEN (2 filas) en vez de scrollear —
+       todas visibles y accesibles, y cero desbordamiento de página. */
+    .landing-prime .lp-tabs__scroller { margin-inline: 0; padding-inline: 0; overflow-x: visible; }
+    #lpShowcaseTabs { flex-wrap: wrap; justify-content: center; }
+}

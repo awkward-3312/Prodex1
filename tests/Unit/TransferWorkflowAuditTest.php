@@ -19,8 +19,10 @@ class TransferWorkflowAuditTest extends TestCase
 
         $this->assertStringContainsString('public function approve(Transfer $transfer, User $actor)', $service);
         $this->assertStringContainsString("\$locked->approval_status = 'approved'", $service);
-        $this->assertStringContainsString('public function dispatch(Transfer $transfer, User $actor)', $service);
-        $this->assertStringContainsString('TransferLocationDispatchService::class', $service);
+        // dispatch() gained an optional $batchPlan carrying the user's explicit
+        // per-line batch picks from the create payload (hardening C3.26).
+        $this->assertStringContainsString('public function dispatch(Transfer $transfer, User $actor, ?array $batchPlan = null)', $service);
+        $this->assertStringContainsString('TransferLocationDispatchService::class)->ensureDispatched($locked, $batchPlan)', $service);
         $this->assertStringContainsString('syncDispatchState($locked, $actor)', $service);
 
         $this->assertStringContainsString("'events' => \$events", $controller);
