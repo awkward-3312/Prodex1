@@ -97,6 +97,24 @@ class BatchLocationServiceTest extends TestCase
             $table->boolean('manage_stock')->default(true);
             $table->timestamps();
         });
+
+        Schema::create('inventory_location_movements', function ($table) {
+            $table->increments('id');
+            $table->string('movement_type');
+            $table->integer('product_id');
+            $table->integer('product_variant_id')->nullable();
+            $table->integer('from_inventory_location_id')->nullable();
+            $table->integer('to_inventory_location_id')->nullable();
+            $table->decimal('quantity', 12, 3);
+            $table->integer('user_id')->nullable();
+            $table->string('reference_type')->nullable();
+            $table->string('reference_id')->nullable();
+            $table->string('idempotency_key')->nullable()->unique();
+            $table->string('idempotency_fingerprint', 64)->nullable();
+            $table->string('notes')->nullable();
+            $table->json('metadata')->nullable();
+            $table->timestamps();
+        });
     }
 
     public function test_batch_can_be_split_between_branch_locations_without_changing_legacy_total(): void
@@ -375,6 +393,7 @@ class BatchLocationServiceTest extends TestCase
         $loc = $this->whLocation(7);
         $batch = $this->whBatch(7, ['qty' => 20]);
         $this->slice($batch->id, $loc->id, 20);
+        $this->generalStock($loc->id, 100, null, 20);      // coherent coverage
 
         $movement = app(BatchLocationService::class)->issue($batch->id, $loc->id, 5, ['idempotency_key' => 'iss-1']);
 
@@ -390,6 +409,7 @@ class BatchLocationServiceTest extends TestCase
         $loc = $this->whLocation(7);
         $batch = $this->whBatch(7, ['qty' => 20]);
         $this->slice($batch->id, $loc->id, 20);
+        $this->generalStock($loc->id, 100, null, 20);
         $svc = app(BatchLocationService::class);
 
         $first = $svc->issue($batch->id, $loc->id, 5, ['idempotency_key' => 'iss-same']);
@@ -406,6 +426,7 @@ class BatchLocationServiceTest extends TestCase
         $loc = $this->whLocation(7);
         $batch = $this->whBatch(7, ['qty' => 3]);
         $this->slice($batch->id, $loc->id, 3);
+        $this->generalStock($loc->id, 100, null, 3);       // coverage OK -> slice guard fires
 
         try {
             app(BatchLocationService::class)->issue($batch->id, $loc->id, 5);
@@ -423,6 +444,7 @@ class BatchLocationServiceTest extends TestCase
         $loc = $this->whLocation(7);
         $batch = $this->whBatch(7, ['qty' => 10]);
         $this->slice($batch->id, $loc->id, 10, 8);   // available = 2
+        $this->generalStock($loc->id, 100, null, 10);   // coverage OK (raw slice qty 10)
 
         try {
             app(BatchLocationService::class)->issue($batch->id, $loc->id, 5);
@@ -534,6 +556,109 @@ class BatchLocationServiceTest extends TestCase
         $this->assertSame(5.0, $cov['batch_quantity']);   // locB slice ignored
         $this->assertTrue($cov['matches']);
         $this->assertSame($before, [ProductBatchLocationStock::count(), ProductBatch::count(), $this->movementCount()]);
+    }
+
+    // ---- B0.1: general-coverage gate --------------------------------------
+
+    /**
+     * The exact legacy false positive: aggregate reconciles (A == B == 10) but
+     * the general location stock is 120 (10 boxes x 12, backfill copied 10 to
+     * the slice). receive() AND issue() must FAIL CLOSED with zero mutation.
+     */
+    public function test_receive_and_issue_fail_closed_on_legacy_coverage_drift_even_when_aggregate_reconciles(): void
+    {
+        $loc = $this->whLocation(7);
+        $batch = $this->whBatch(7, ['product_id' => 300, 'qty' => 10]);
+        $this->slice($batch->id, $loc->id, 10);              // A = 10
+        $this->generalStock($loc->id, 300, null, 120);       // C = 120
+
+        $svc = app(BatchLocationService::class);
+
+        // The false positive is real: aggregate matches, coverage does not.
+        $this->assertTrue($svc->reconcileBatch($batch->id)['matches']);
+        $this->assertFalse($svc->batchCoverageForLocation($loc->id, 300)['matches']);
+
+        try {
+            $svc->receive($batch->id, $loc->id, 12);
+            $this->fail('expected ValidationException on receive');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('batch_transition', $e->errors());
+        }
+
+        try {
+            $svc->issue($batch->id, $loc->id, 5);
+            $this->fail('expected ValidationException on issue');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('batch_transition', $e->errors());
+        }
+
+        $this->assertSame(10.0, (float) $batch->fresh()->qty);
+        $this->assertSame(10.0, (float) ProductBatchLocationStock::where('product_batch_id', $batch->id)->value('quantity'));
+        $this->assertSame(120.0, (float) \App\Models\InventoryLocationStock::query()
+            ->where('inventory_location_id', $loc->id)->where('product_id', 300)->value('quantity'));
+        $this->assertSame(0, $this->movementCount());
+    }
+
+    /**
+     * Correct case + the composition contract: the primitive moves ONLY the
+     * batch artifact; the business layer completes it with InventoryService in
+     * the same conceptual transaction. Final state is fully reconciled.
+     */
+    public function test_receive_composes_with_general_increase_to_a_reconciled_state(): void
+    {
+        $loc = $this->whLocation(7);
+        $batch = $this->whBatch(7, ['product_id' => 301, 'qty' => 10]);
+        $this->slice($batch->id, $loc->id, 10);
+        $this->generalStock($loc->id, 301, null, 10);        // A=B=C=10
+
+        $svc = app(BatchLocationService::class);
+        $svc->receive($batch->id, $loc->id, 5, ['idempotency_key' => 'compose-rcv']);
+
+        // Artifact layer moved; general NOT touched by the primitive.
+        $this->assertSame(15.0, (float) $batch->fresh()->qty);
+        $this->assertSame(15.0, (float) ProductBatchLocationStock::where('product_batch_id', $batch->id)->value('quantity'));
+        $this->assertSame(10.0, (float) $this->generalQty($loc->id, 301));
+
+        // Business layer completes the composition.
+        app(\App\Services\InventoryService::class)->increase($loc->id, 301, 5, null, [
+            'idempotency_key' => 'compose-rcv:general', 'reference_type' => 'Test',
+        ]);
+
+        $this->assertSame(15.0, (float) $this->generalQty($loc->id, 301));
+        $this->assertTrue($svc->reconcileBatch($batch->id)['matches']);
+        $this->assertTrue($svc->batchCoverageForLocation($loc->id, 301)['matches']);
+    }
+
+    public function test_issue_composes_with_general_decrease_to_a_reconciled_state(): void
+    {
+        $loc = $this->whLocation(7);
+        $batch = $this->whBatch(7, ['product_id' => 302, 'qty' => 20]);
+        $this->slice($batch->id, $loc->id, 20);
+        $this->generalStock($loc->id, 302, null, 20);
+
+        $svc = app(BatchLocationService::class);
+        $svc->issue($batch->id, $loc->id, 5, ['idempotency_key' => 'compose-iss']);
+
+        $this->assertSame(15.0, (float) $batch->fresh()->qty);
+        $this->assertSame(15.0, (float) ProductBatchLocationStock::where('product_batch_id', $batch->id)->value('quantity'));
+        $this->assertSame(20.0, (float) $this->generalQty($loc->id, 302));
+
+        app(\App\Services\InventoryService::class)->decrease($loc->id, 302, 5, null, [
+            'idempotency_key' => 'compose-iss:general', 'reference_type' => 'Test',
+        ]);
+
+        $this->assertSame(15.0, (float) $this->generalQty($loc->id, 302));
+        $this->assertTrue($svc->reconcileBatch($batch->id)['matches']);
+        $this->assertTrue($svc->batchCoverageForLocation($loc->id, 302)['matches']);
+    }
+
+    private function generalQty(int $locationId, int $productId, ?int $variantId = null): float
+    {
+        return (float) \App\Models\InventoryLocationStock::query()
+            ->where('inventory_location_id', $locationId)
+            ->where('product_id', $productId)
+            ->where('variant_key', (int) ($variantId ?: 0))
+            ->value('quantity');
     }
 
     private function generalStock(int $locationId, int $productId, ?int $variantId, float $qty): void

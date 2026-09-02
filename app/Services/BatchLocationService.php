@@ -126,9 +126,9 @@ class BatchLocationService
     }
 
     // =====================================================================
-    // MS5-B0 — external batch primitives (INACTIVE: no productive flow calls
-    // these yet). `move()` above is INTERNAL (location -> location). receive()
-    // and issue() model an EXTERNAL boundary:
+    // MS5-B0 — external batch ARTIFACT PRIMITIVES (INACTIVE: no productive flow
+    // calls these yet). `move()` above is INTERNAL (location -> location).
+    // receive() and issue() model an EXTERNAL boundary:
     //
     //   receive  : supplier / outside  ->  location   (from = NULL, to = loc)
     //   issue    : location  ->  supplier / outside    (from = loc, to = NULL)
@@ -137,6 +137,14 @@ class BatchLocationService
     // input to base BEFORE calling. Both mutate the aggregate ProductBatch.qty
     // AND the per-location slice, write an immutable ledger row, and are
     // idempotent by key + fingerprint (same philosophy as move()).
+    //
+    // NOT a complete inventory operation. receive()/issue() ONLY move the batch
+    // artifact and validate the PREVIOUS state. They MUST be executed in the
+    // SAME business transaction as the matching InventoryService mutation
+    // (increase for receive, decrease for issue). Canonical order:
+    //     BATCH / ARTIFACT  ->  GENERAL INVENTORY
+    // Do NOT call these from an endpoint directly. MS5 controllers compose the
+    // two layers through LocationAwarePurchaseStockService.
     //
     // These primitives do NOT resolve batch identity — the caller passes an
     // already-resolved, active $batchId (see MS5-B1 batch planner). A
@@ -150,9 +158,10 @@ class BatchLocationService
      * batch into $toLocationId. Increments ProductBatch.qty and the slice.
      *
      * @throws ValidationException  quantity<=0, missing/soft-deleted batch,
-     *   inactive location, warehouse mismatch, non-operable status, and — when
-     *   the batch already carried historical stock — a batch that is not
-     *   "native-ready" (see assertBatchNativeReady()).
+     *   inactive location, warehouse mismatch, non-operable status, or a batch /
+     *   product+location that is not "native-ready" (see assertBatchNativeReady():
+     *   BOTH the batch-aggregate reconciliation AND the product/location general
+     *   coverage must hold — even for a brand-new batch).
      */
     public function receive(int $batchId, int $toLocationId, float $quantityBase, array $context = []): ProductBatchLocationMovement
     {
@@ -188,16 +197,12 @@ class BatchLocationService
 
             $location = $this->activeLocation($toLocationId);
             $this->assertBatchLocationWarehouse($batch, $location);
-            $this->assertOperableStatus($batch);
 
-            // A brand-new batch (no aggregate, no slices) does not need prior
-            // global equality — 0 == 0. Any batch that already carried stock
-            // MUST be reconciled before it can take a native receipt.
-            if ($this->batchHasHistory($batch)) {
-                $this->assertBatchNativeReady($batch, $context);
-            } else {
-                $this->assertExpectedIdentity($batch, $context);
-            }
+            // ALWAYS — even a brand-new batch (qty 0, no slices): the aggregate
+            // reconciliation is trivially 0 == 0, but the product/location
+            // general coverage is still enforced, so a legacy-drifted product
+            // in this location can NOT take a native receipt.
+            $this->assertBatchNativeReady($batch, $toLocationId, $context);
 
             $slice = ProductBatchLocationStock::firstOrCreate(
                 ['product_batch_id' => $batch->id, 'inventory_location_id' => $toLocationId],
@@ -229,8 +234,10 @@ class BatchLocationService
     /**
      * External outbound: debit $quantityBase (BASE UNIT) of an existing, active,
      * native-ready batch out of $fromLocationId. Decrements the slice and
-     * ProductBatch.qty. NO clamp, NO max(0): if either the slice available
-     * quantity or the aggregate is short, FAIL CLOSED with zero mutation.
+     * ProductBatch.qty. Always requires BOTH the batch-aggregate reconciliation
+     * AND the product/location general coverage to hold first. NO clamp, NO
+     * max(0): if the slice available quantity or the aggregate is short, FAIL
+     * CLOSED with zero mutation.
      *
      * @throws ValidationException
      */
@@ -268,8 +275,9 @@ class BatchLocationService
 
             $location = $this->activeLocation($fromLocationId);
             $this->assertBatchLocationWarehouse($batch, $location);
-            $this->assertOperableStatus($batch);
-            $this->assertBatchNativeReady($batch, $context);
+            // ALWAYS: aggregate reconciliation AND product/location coverage
+            // must hold before any decrement.
+            $this->assertBatchNativeReady($batch, $fromLocationId, $context);
 
             $slice = ProductBatchLocationStock::where('product_batch_id', $batch->id)
                 ->where('inventory_location_id', $fromLocationId)
@@ -456,19 +464,6 @@ class BatchLocationService
         }
     }
 
-    private function batchHasHistory(ProductBatch $batch): bool
-    {
-        if (round((float) $batch->qty, 3) !== 0.0) {
-            return true;
-        }
-
-        return ProductBatchLocationStock::where('product_batch_id', $batch->id)
-            ->where(function ($q) {
-                $q->where('quantity', '!=', 0)->orWhere('reserved_quantity', '!=', 0);
-            })
-            ->exists();
-    }
-
     /**
      * Optional identity assertion. receive()/issue() do NOT resolve batch
      * identity, but a caller that already knows the product/variant can pin it
@@ -495,19 +490,42 @@ class BatchLocationService
     }
 
     /**
-     * BATCH NATIVE READY (MS5-B0). A ProductBatch that already carried stock may
-     * only take a native receive/issue when:
-     *   A. reconcileBatch().matches === true  (aggregate == SUM of slices)
-     *   B. aggregate qty is not negative
-     *   C. no slice has a negative quantity / reserved_quantity
-     *   D. batch warehouse == location warehouse   (asserted by the caller)
-     *   E. product / variant match the expectation  (optional, via context)
-     *   F. status is physically operable            (OPERABLE_STATUSES)
+     * BATCH NATIVE READY (MS5-B0 + hardened in B0.1).
      *
-     * Otherwise FAIL CLOSED (`batch_transition`). No auto-reconcile, no
-     * backfill, no adjustTo, no unit guessing.
+     * An external receive()/issue() may only proceed when TWO INDEPENDENT
+     * reconciliations hold, plus the identity / status / sign checks:
+     *
+     *   1. BATCH AGGREGATE   — ProductBatch.qty == SUM(this batch's slices)
+     *                          (reconcileBatch().matches)
+     *   2. GENERAL COVERAGE  — inventory_location_stocks.quantity ==
+     *                          SUM(all slices of product+variant in THIS location)
+     *                          (batchCoverageForLocation().matches)
+     *
+     * (1) alone is NOT sufficient: the legacy "10 boxes x 12" case can leave
+     * ProductBatch.qty == SUM(slices) == 10 while the general location stock is
+     * 120 — both batch numbers are in the wrong unit relative to physical
+     * stock. (2) catches that.
+     *
+     * Plus: B non-negative aggregate, C non-negative slices, D warehouse match
+     * (asserted separately by the caller before this), E optional expected
+     * product/variant, F operable status.
+     *
+     * Any failure => FAIL CLOSED (`batch_transition`), zero mutation. No
+     * auto-reconcile, no backfill, no adjustTo, no unit guessing.
      */
-    private function assertBatchNativeReady(ProductBatch $batch, array $context = []): void
+    private function assertBatchNativeReady(ProductBatch $batch, int $inventoryLocationId, array $context = []): void
+    {
+        $this->assertBatchAggregateReady($batch, $context);
+        $this->assertProductLocationBatchCoverageReady($batch, $inventoryLocationId);
+    }
+
+    /**
+     * (1) + B + C + E + F. The batch's own aggregate must equal the sum of its
+     * per-location slices, its quantities must be non-negative, its status must
+     * be operable, and — if the caller pinned them — the product/variant must
+     * match.
+     */
+    private function assertBatchAggregateReady(ProductBatch $batch, array $context = []): void
     {
         $this->assertOperableStatus($batch);                 // F
         $this->assertExpectedIdentity($batch, $context);     // E
@@ -529,12 +547,34 @@ class BatchLocationService
             ]);
         }
 
-        $reconcile = $this->reconcileBatch($batch->id);       // A
+        $reconcile = $this->reconcileBatch($batch->id);       // (1)
         if (! $reconcile['matches']) {
             throw ValidationException::withMessages([
                 'batch_transition' => 'El lote no está conciliado: total agregado '.$reconcile['legacy_quantity']
                     .' vs suma de existencias por ubicación '.$reconcile['location_quantity']
                     .'. No puede participar en una operación de lote por ubicación hasta conciliarse.',
+            ]);
+        }
+    }
+
+    /**
+     * (2) The general location stock for this batch's product+variant must
+     * equal the sum of ALL batch slices of that product+variant in the same
+     * location. A legacy-drifted product (e.g. general in base unit, batches in
+     * a pack unit, or a partial backfill) FAILS CLOSED here — even for a
+     * brand-new batch, so we never mix a native slice on top of legacy drift.
+     */
+    private function assertProductLocationBatchCoverageReady(ProductBatch $batch, int $inventoryLocationId): void
+    {
+        $variantId = $batch->product_variant_id !== null ? (int) $batch->product_variant_id : null;
+        $coverage = $this->batchCoverageForLocation($inventoryLocationId, (int) $batch->product_id, $variantId);
+
+        if (! $coverage['matches']) {
+            throw ValidationException::withMessages([
+                'batch_transition' => 'La cobertura de lotes del producto en la ubicación no está conciliada: '
+                    .'existencia general '.$coverage['general_quantity']
+                    .' vs suma de existencias por lote '.$coverage['batch_quantity']
+                    .'. El producto arrastra un descuadre legacy en esta ubicación y no admite una operación de lote por ubicación hasta conciliarse.',
             ]);
         }
     }
