@@ -513,6 +513,37 @@ class LocationAwarePurchaseStockServiceTest extends TestCase
         $this->assertSame('purchase:200:rev:1:effect:0:reverse', $r->idempotency_key);
     }
 
+    /**
+     * BLOCKER — reverse must be an exact -delta on the row, never a reset.
+     * Starting from PREEXISTING stock so "decrease by 10" and "reset to 0" are
+     * distinguishable (0->10->0 would not catch a reset).
+     */
+    public function test_purchase_apply_then_reverse_from_preexisting_stock(): void
+    {
+        $wh = $this->wh();
+        $loc = $this->loc($wh);
+        $u = $this->unit();
+        $p = $this->product();
+        $this->seedLocStock($loc, $p, 5); // preexisting
+
+        $snap = $this->tx(function () use ($wh, $loc, $u, $p) {
+            $v = $this->svc()->validateAndLock(Svc::DOC_PURCHASE, $wh, $loc, [$this->line($p, $u, 10)]);
+            $s = $this->svc()->buildSnapshot($v);
+            $this->assertSame(10.0, (float) $s['effects'][0]['delta']);
+            $this->svc()->applySnapshot($s, 111);
+
+            return $s;
+        });
+        $this->assertSame(15.0, $this->locQty($loc, $p)); // 5 + 10
+
+        $this->tx(fn () => $this->svc()->reverseSnapshot($snap, 111));
+        $this->assertSame(5.0, $this->locQty($loc, $p)); // 15 - 10 -> back to 5, NOT 0
+
+        $r = InventoryLocationMovement::where('reference_type', Svc::REF_PURCHASE_REVERSAL)->firstOrFail();
+        $this->assertSame('decrease', $r->movement_type);
+        $this->assertSame(10.0, (float) $r->quantity); // exact -delta, not the running total
+    }
+
     public function test_purchase_variant_line_moves_variant_scoped_stock(): void
     {
         $wh = $this->wh();
@@ -665,6 +696,67 @@ class LocationAwarePurchaseStockServiceTest extends TestCase
         $this->tx(fn () => $this->svc()->applySnapshot($snap, 600)); // replay
         $this->assertSame(6.0, $this->locQty($loc, $p)); // not 12
         $this->assertSame(1, InventoryLocationMovement::where('idempotency_key', 'purchase:600:rev:1:effect:0:apply')->count());
+    }
+
+    /**
+     * BLOCKER §4 — idempotency measured from PREEXISTING stock. Replayed apply
+     * / reverse of the SAME revision must be a no-op on the row.
+     */
+    public function test_idempotency_from_preexisting_stock_purchase(): void
+    {
+        $wh = $this->wh();
+        $loc = $this->loc($wh);
+        $u = $this->unit();
+        $p = $this->product();
+        $this->seedLocStock($loc, $p, 5); // preexisting
+
+        $snap = $this->tx(function () use ($wh, $loc, $u, $p) {
+            $v = $this->svc()->validateAndLock(Svc::DOC_PURCHASE, $wh, $loc, [$this->line($p, $u, 10)]);
+
+            return $this->svc()->buildSnapshot($v, 1);
+        });
+
+        $this->tx(fn () => $this->svc()->applySnapshot($snap, 900));
+        $this->assertSame(15.0, $this->locQty($loc, $p)); // 5 -> 15
+
+        $this->tx(fn () => $this->svc()->applySnapshot($snap, 900)); // replay
+        $this->assertSame(15.0, $this->locQty($loc, $p)); // still 15
+
+        $this->tx(fn () => $this->svc()->reverseSnapshot($snap, 900));
+        $this->assertSame(5.0, $this->locQty($loc, $p)); // 15 -> 5
+
+        $this->tx(fn () => $this->svc()->reverseSnapshot($snap, 900)); // replay
+        $this->assertSame(5.0, $this->locQty($loc, $p)); // still 5
+
+        $this->assertSame(1, InventoryLocationMovement::where('idempotency_key', 'purchase:900:rev:1:effect:0:apply')->count());
+        $this->assertSame(1, InventoryLocationMovement::where('idempotency_key', 'purchase:900:rev:1:effect:0:reverse')->count());
+    }
+
+    public function test_idempotency_from_preexisting_stock_purchase_return(): void
+    {
+        $wh = $this->wh();
+        $loc = $this->loc($wh);
+        $u = $this->unit();
+        $p = $this->product();
+        $this->seedLocStock($loc, $p, 20); // preexisting
+
+        $snap = $this->tx(function () use ($wh, $loc, $u, $p) {
+            $v = $this->svc()->validateAndLock(Svc::DOC_PURCHASE_RETURN, $wh, $loc, [$this->line($p, $u, 5)]);
+
+            return $this->svc()->buildSnapshot($v, 1);
+        });
+
+        $this->tx(fn () => $this->svc()->applySnapshot($snap, 901));
+        $this->assertSame(15.0, $this->locQty($loc, $p)); // 20 -> 15
+
+        $this->tx(fn () => $this->svc()->applySnapshot($snap, 901)); // replay
+        $this->assertSame(15.0, $this->locQty($loc, $p)); // still 15
+
+        $this->tx(fn () => $this->svc()->reverseSnapshot($snap, 901));
+        $this->assertSame(20.0, $this->locQty($loc, $p)); // 15 -> 20, NOT 0
+
+        $this->tx(fn () => $this->svc()->reverseSnapshot($snap, 901)); // replay
+        $this->assertSame(20.0, $this->locQty($loc, $p)); // still 20
     }
 
     public function test_repeating_reverse_of_the_same_revision_does_not_duplicate(): void
