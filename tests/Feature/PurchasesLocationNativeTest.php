@@ -175,6 +175,52 @@ class PurchasesLocationNativeTest extends TestCase
     }
 
     // =====================================================================
+    // ENDPOINT — malformed / corrupt transition state
+    // =====================================================================
+
+    public function test_endpoint_healthy_location_primary_returns_requires_true(): void
+    {
+        $this->lp();
+        $req = $this->makeRequest([], 'GET');
+        $body = $this->controller()->inventoryLocationsForWarehouse($req, $this->wh)->getData(true);
+
+        $this->assertSame('location_primary', $body['transition_mode']);
+        $this->assertSame('healthy', $body['transition_status']);
+        $this->assertTrue($body['requires_inventory_location']);
+        $this->assertFalse($body['blocked']);
+        $this->assertSame($this->loc, $body['default_inventory_location_id']);
+    }
+
+    /**
+     * #14 — mode=location_primary, status=healthy, but state.inventory_location_id
+     * IS NULL. This corrupt state must NOT read as requires=false/blocked=false.
+     */
+    public function test_endpoint_corrupt_state_healthy_primary_without_location_is_blocked(): void
+    {
+        // healthy location_primary but NO inventory_location_id on the state row
+        $this->setTransitionMode($this->wh, Mode::MODE_LOCATION_PRIMARY, null, 'healthy');
+
+        $req = $this->makeRequest([], 'GET');
+        $body = $this->controller()->inventoryLocationsForWarehouse($req, $this->wh)->getData(true);
+
+        $this->assertSame('location_primary', $body['transition_mode']);
+        $this->assertFalse($body['requires_inventory_location'], 'corrupt state must not require (and pass) a location');
+        $this->assertTrue($body['blocked'], 'corrupt location_primary state must hard-block the form');
+    }
+
+    public function test_endpoint_corrupt_state_also_blocks_the_store_backend(): void
+    {
+        $this->setTransitionMode($this->wh, Mode::MODE_LOCATION_PRIMARY, null, 'healthy');
+        $p = $this->makeProduct();
+        $this->seedLocationStock($this->loc, $p, 0);
+
+        // isLocationPrimary() is true (mode check) -> routed to storeLocationAware
+        // -> assertLocationNativePurchaseTransitionSafe -> 422 (state not ready).
+        $this->expectException(ValidationException::class);
+        $this->controller()->store($this->makeRequest($this->payload([$this->line(['product_id' => $p, 'quantity' => 1])])));
+    }
+
+    // =====================================================================
     // STORE
     // =====================================================================
 
@@ -561,12 +607,12 @@ class PurchasesLocationNativeTest extends TestCase
     }
 
     // =====================================================================
-    // HISTORICAL LEGACY PURCHASE
+    // HISTORICAL LEGACY PURCHASE — transition boundary
     // =====================================================================
 
-    public function test_legacy_purchase_stays_legacy_even_after_warehouse_is_promoted(): void
+    /** A legacy purchase created + edited while the warehouse stays legacy. */
+    public function test_legacy_purchase_editable_while_warehouse_stays_legacy(): void
     {
-        // created while the warehouse is legacy_only
         $p = $this->makeProduct();
         $this->seedStock($this->wh, $p, 10);
         $this->seedLocationStock($this->loc, $p, 0);
@@ -575,18 +621,276 @@ class PurchasesLocationNativeTest extends TestCase
         $pid = (int) DB::table('purchases')->value('id');
         $did = (int) DB::table('purchase_details')->value('id');
         $this->assertNull(DB::table('purchases')->where('id', $pid)->value('inventory_location_id'));
-        $this->assertSame(14.0, $this->stockOf($this->wh, $p)); // legacy applied
+        $this->assertSame(14.0, $this->stockOf($this->wh, $p));
 
-        // warehouse is promoted afterwards
-        $this->lp();
-
-        // update still runs the legacy flow (identity = NULL location)
         $upReq = $this->makeRequest($this->payload([$this->line(['id' => $did, 'product_id' => $p, 'quantity' => 9])], 'received', null, null), 'PUT');
         $this->controller()->update($upReq, $pid);
 
         $this->assertSame(19.0, $this->stockOf($this->wh, $p)); // 14 - 4 + 9 legacy arithmetic
         $this->assertSame(0.0, $this->locStock($this->loc, $p));
         $this->assertSame(0, $this->movementCount());
+    }
+
+    /**
+     * BLOCKER — a legacy purchase whose warehouse is LATER promoted to
+     * location_primary must NOT be edited through the legacy product_warehouse
+     * writer. It FAILS CLOSED (we can't know its historical physical location)
+     * and mutates nothing.
+     */
+    public function test_legacy_purchase_update_fails_closed_when_warehouse_became_location_primary(): void
+    {
+        $p = $this->makeProduct();
+        $this->seedStock($this->wh, $p, 10);
+        $this->seedLocationStock($this->loc, $p, 0);
+        $this->controller()->store($this->makeRequest($this->payload([$this->line(['product_id' => $p, 'quantity' => 4])], 'received', null, null)));
+        $pid = (int) DB::table('purchases')->value('id');
+        $did = (int) DB::table('purchase_details')->value('id');
+        $this->assertSame(14.0, $this->stockOf($this->wh, $p));
+
+        $this->lp(); // warehouse promoted afterwards
+
+        $req = $this->makeRequest($this->payload([$this->line(['id' => $did, 'product_id' => $p, 'quantity' => 9])], 'received', null, null), 'PUT');
+        try {
+            $this->controller()->update($req, $pid);
+            $this->fail('expected 422 inventory_transition');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('inventory_transition', $e->errors());
+        }
+
+        $this->assertSame(14.0, $this->stockOf($this->wh, $p));           // product_warehouse unchanged
+        $this->assertSame(0.0, $this->locStock($this->loc, $p));          // location engine untouched
+        $this->assertSame(0, $this->movementCount());
+        $this->assertEquals(4, (float) DB::table('purchase_details')->where('id', $did)->value('quantity')); // details unchanged
+        $this->assertNull(DB::table('purchases')->where('id', $pid)->value('deleted_at'));
+    }
+
+    /**
+     * Legacy purchase, OLD warehouse legacy but the REQUEST points at a
+     * location_primary warehouse => 422 before anything is applied (we do not
+     * convert legacy documents to location-native on update).
+     */
+    public function test_legacy_purchase_update_fails_closed_when_request_targets_location_primary_warehouse(): void
+    {
+        $legacyWh = $this->makeWarehouse('LEG');
+        $p = $this->makeProduct();
+        $this->seedStock($legacyWh, $p, 10);
+        $storeReq = $this->makeRequest([
+            'supplier_id' => 1, 'warehouse_id' => $legacyWh, 'date' => '2026-09-05', 'statut' => 'received',
+            'notes' => null, 'tax_rate' => 0, 'TaxNet' => 0, 'discount' => 0, 'shipping' => 0, 'GrandTotal' => 10,
+            'details' => [$this->line(['product_id' => $p, 'quantity' => 4])],
+        ]);
+        $this->controller()->store($storeReq);
+        $pid = (int) DB::table('purchases')->where('warehouse_id', $legacyWh)->value('id');
+        $did = (int) DB::table('purchase_details')->where('purchase_id', $pid)->value('id');
+        $this->assertSame(14.0, $this->stockOf($legacyWh, $p));
+
+        $this->lp(); // this->wh is location_primary; request will target it
+
+        $req = $this->makeRequest([
+            'supplier_id' => 1, 'warehouse_id' => $this->wh, 'date' => '2026-09-05', 'statut' => 'received',
+            'notes' => null, 'tax_rate' => 0, 'TaxNet' => 0, 'discount' => 0, 'shipping' => 0, 'GrandTotal' => 10,
+            'details' => [$this->line(['id' => $did, 'product_id' => $p, 'quantity' => 9])],
+        ], 'PUT');
+        try {
+            $this->controller()->update($req, $pid);
+            $this->fail('expected 422 inventory_transition');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('inventory_transition', $e->errors());
+        }
+
+        $this->assertSame(14.0, $this->stockOf($legacyWh, $p));
+        $this->assertSame(0.0, $this->locStock($this->loc, $p));
+        $this->assertSame(0, $this->movementCount());
+        $this->assertEquals($legacyWh, DB::table('purchases')->where('id', $pid)->value('warehouse_id'));
+    }
+
+    public function test_legacy_purchase_destroy_fails_closed_when_warehouse_is_location_primary(): void
+    {
+        $p = $this->makeProduct();
+        $this->seedStock($this->wh, $p, 10);
+        $this->controller()->store($this->makeRequest($this->payload([$this->line(['product_id' => $p, 'quantity' => 4])], 'received', null, null)));
+        $pid = (int) DB::table('purchases')->value('id');
+        $this->assertSame(14.0, $this->stockOf($this->wh, $p));
+
+        $this->lp();
+
+        try {
+            $this->controller()->destroy($this->makeRequest([], 'DELETE'), $pid);
+            $this->fail('expected 422');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('inventory_transition', $e->errors());
+        }
+
+        $this->assertSame(14.0, $this->stockOf($this->wh, $p));
+        $this->assertNull(DB::table('purchases')->where('id', $pid)->value('deleted_at'));
+    }
+
+    /**
+     * A location-native purchase whose warehouse is LATER demoted must fail
+     * closed on update/destroy — no legacy fallback, no product_warehouse.
+     */
+    public function test_native_purchase_update_fails_closed_after_warehouse_demotion(): void
+    {
+        $this->lp();
+        $p = $this->makeProduct();
+        $this->seedStock($this->wh, $p, 50);
+        $this->seedLocationStock($this->loc, $p, 10);
+        [$pid, $did] = $this->createReceived($p, 5);
+        $this->assertSame(15.0, $this->locStock($this->loc, $p));
+
+        // demote
+        $this->setTransitionMode($this->wh, Mode::MODE_DUAL_WRITE, $this->loc, 'healthy');
+
+        try {
+            $this->updateReq($pid, [$this->line(['id' => $did, 'product_id' => $p, 'quantity' => 8])], 'received');
+            $this->fail('expected 422');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('inventory_transition', $e->errors());
+        }
+
+        $this->assertSame(15.0, $this->locStock($this->loc, $p)); // reverse rolled back
+        $this->assertSame(50.0, $this->stockOf($this->wh, $p));   // product_warehouse untouched
+        $this->assertEquals(5, (float) DB::table('purchase_details')->where('id', $did)->value('quantity'));
+    }
+
+    public function test_native_purchase_update_fails_closed_when_warehouse_unhealthy(): void
+    {
+        $this->lp();
+        $p = $this->makeProduct();
+        $this->seedLocationStock($this->loc, $p, 10);
+        [$pid, $did] = $this->createReceived($p, 5);
+
+        $this->setTransitionMode($this->wh, Mode::MODE_LOCATION_PRIMARY, $this->loc, 'mismatch');
+
+        $this->expectException(ValidationException::class);
+        $this->updateReq($pid, [$this->line(['id' => $did, 'product_id' => $p, 'quantity' => 8])], 'received');
+    }
+
+    public function test_native_purchase_destroy_fails_closed_after_warehouse_demotion(): void
+    {
+        $this->lp();
+        $p = $this->makeProduct();
+        $this->seedStock($this->wh, $p, 50);
+        $this->seedLocationStock($this->loc, $p, 10);
+        [$pid] = $this->createReceived($p, 5);
+        $this->assertSame(15.0, $this->locStock($this->loc, $p));
+
+        $this->setTransitionMode($this->wh, Mode::MODE_LEGACY_ONLY, null, 'pending');
+
+        try {
+            $this->controller()->destroy($this->makeRequest([], 'DELETE'), $pid);
+            $this->fail('expected 422');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('inventory_transition', $e->errors());
+        }
+
+        $this->assertSame(15.0, $this->locStock($this->loc, $p));  // untouched
+        $this->assertSame(50.0, $this->stockOf($this->wh, $p));
+        $this->assertNull(DB::table('purchases')->where('id', $pid)->value('deleted_at'));
+    }
+
+    /**
+     * pending location-native, warehouse demoted BEFORE pending->received:
+     * fail closed, no movement.
+     */
+    public function test_pending_native_to_received_fails_closed_after_demotion(): void
+    {
+        $this->lp();
+        $p = $this->makeProduct();
+        $this->seedLocationStock($this->loc, $p, 0);
+        [$pid, $did] = $this->createPending($p, 8);
+
+        $this->setTransitionMode($this->wh, Mode::MODE_LEGACY_ONLY, null, 'pending');
+
+        try {
+            $this->updateReq($pid, [$this->line(['id' => $did, 'product_id' => $p, 'quantity' => 8])], 'received');
+            $this->fail('expected 422');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('inventory_transition', $e->errors());
+        }
+
+        $this->assertSame(0.0, $this->locStock($this->loc, $p));
+        $this->assertSame(0, $this->movementCount());
+        $this->assertSame('pending', DB::table('purchases')->where('id', $pid)->value('statut'));
+    }
+
+    public function test_native_purchase_change_to_another_healthy_primary_warehouse_is_allowed(): void
+    {
+        $this->lp();
+        $wh2 = $this->makeWarehouse('WH2-LP');
+        $loc2 = $this->makeInventoryLocation($wh2);
+        $this->setTransitionMode($wh2, Mode::MODE_LOCATION_PRIMARY, $loc2, 'healthy');
+        $p = $this->makeProduct();
+        $this->seedLocationStock($this->loc, $p, 10);
+        $this->seedLocationStock($loc2, $p, 10);
+        [$pid, $did] = $this->createReceived($p, 6);
+
+        $req = $this->makeRequest($this->payload(
+            [$this->line(['id' => $did, 'product_id' => $p, 'quantity' => 6])], 'received', $wh2, $loc2
+        ), 'PUT');
+        $this->controller()->update($req, $pid); // allowed: A healthy primary -> B healthy primary
+
+        $this->assertSame(10.0, $this->locStock($this->loc, $p));
+        $this->assertSame(16.0, $this->locStock($loc2, $p));
+    }
+
+    public function test_native_purchase_change_to_legacy_warehouse_fails_closed(): void
+    {
+        $this->lp();
+        $legacyWh = $this->makeWarehouse('LEG-B');
+        $p = $this->makeProduct();
+        $this->seedLocationStock($this->loc, $p, 10);
+        [$pid, $did] = $this->createReceived($p, 6);
+
+        $req = $this->makeRequest($this->payload(
+            [$this->line(['id' => $did, 'product_id' => $p, 'quantity' => 6])], 'received', $legacyWh, 999
+        ), 'PUT');
+        $this->expectException(ValidationException::class);
+        $this->controller()->update($req, $pid);
+    }
+
+    /**
+     * Bulk atomicity: a selection with a valid native purchase + a legacy
+     * purchase whose warehouse is now location_primary => the WHOLE operation
+     * rolls back. Nothing deleted, no stock changed.
+     */
+    public function test_bulk_delete_aborts_atomically_on_a_transition_incompatible_row(): void
+    {
+        // legacy purchase in a warehouse that will be promoted
+        $legWh = $this->makeWarehouse('LEG-BULK');
+        $pl = $this->makeProduct();
+        $this->seedStock($legWh, $pl, 30);
+        $this->controller()->store($this->makeRequest([
+            'supplier_id' => 1, 'warehouse_id' => $legWh, 'date' => '2026-09-05', 'statut' => 'received',
+            'notes' => null, 'tax_rate' => 0, 'TaxNet' => 0, 'discount' => 0, 'shipping' => 0, 'GrandTotal' => 10,
+            'details' => [$this->line(['product_id' => $pl, 'quantity' => 5])],
+        ]));
+        $legacyId = (int) DB::table('purchases')->where('warehouse_id', $legWh)->value('id');
+        $this->assertSame(35.0, $this->stockOf($legWh, $pl));
+
+        // valid location-native purchase
+        $this->lp();
+        $pn = $this->makeProduct();
+        $this->seedLocationStock($this->loc, $pn, 20);
+        [$nativeId] = $this->createReceived($pn, 8);
+        $this->assertSame(28.0, $this->locStock($this->loc, $pn));
+
+        // promote the legacy purchase's warehouse -> its row is now incompatible
+        $this->setTransitionMode($legWh, Mode::MODE_LOCATION_PRIMARY, $this->makeInventoryLocation($legWh), 'healthy');
+
+        try {
+            $this->controller()->delete_by_selection($this->makeRequest(['selectedIds' => [$nativeId, $legacyId]], 'POST'));
+            $this->fail('expected the incompatible legacy row to abort the whole bulk delete');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('inventory_transition', $e->errors());
+        }
+
+        // NOTHING deleted, NOTHING moved.
+        $this->assertNull(DB::table('purchases')->where('id', $legacyId)->value('deleted_at'));
+        $this->assertNull(DB::table('purchases')->where('id', $nativeId)->value('deleted_at'));
+        $this->assertSame(35.0, $this->stockOf($legWh, $pl));
+        $this->assertSame(28.0, $this->locStock($this->loc, $pn));
+        $this->assertSame(0, $this->movementCount('PurchaseReversal'));
     }
 
     // =====================================================================

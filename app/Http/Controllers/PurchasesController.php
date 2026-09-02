@@ -223,6 +223,11 @@ class PurchasesController extends BaseController
         }
 
         \DB::transaction(function () use ($request) {
+            // MS2 boundary — a location_primary warehouse must NEVER take a
+            // legacy-only stock mutation (closes the router race: mode could
+            // flip between routing and here). Locks the transition state first.
+            $this->assertLegacyPurchaseTransitionSafe(null, (int) $request->warehouse_id);
+
             $order = new Purchase;
 
             $order->date = $request->date;
@@ -460,13 +465,13 @@ class PurchasesController extends BaseController
     private function storeLocationAware(Request $request)
     {
         $svc = app(LocationAwarePurchaseStockService::class);
-        $resolver = app(WarehouseInventoryModeResolver::class);
         $warehouseId = (int) $request->warehouse_id;
         $statut = $request->statut;
 
-        \DB::transaction(function () use ($request, $svc, $resolver, $warehouseId, $statut) {
+        \DB::transaction(function () use ($request, $svc, $warehouseId, $statut) {
             // FAIL CLOSED — location_primary must be healthy; no legacy fallback.
-            $resolver->assertHealthyLocationPrimary($warehouseId);
+            // Locks inventory_transition_states before any stock write.
+            $this->assertLocationNativePurchaseTransitionSafe($warehouseId, null);
 
             request()->validate(['inventory_location_id' => 'required|integer']);
             $locationId = (int) $request->inventory_location_id;
@@ -522,11 +527,10 @@ class PurchasesController extends BaseController
     private function updateLocationAware(Request $request, Purchase $current)
     {
         $svc = app(LocationAwarePurchaseStockService::class);
-        $resolver = app(WarehouseInventoryModeResolver::class);
         $newWarehouseId = (int) $request->warehouse_id;
         $newStatut = $request->statut;
 
-        $response = \DB::transaction(function () use ($request, $current, $svc, $resolver, $newWarehouseId, $newStatut) {
+        $response = \DB::transaction(function () use ($request, $current, $svc, $newWarehouseId, $newStatut) {
             $user = Auth::user();
             $view_records = $user->hasRecordView();
 
@@ -549,14 +553,17 @@ class PurchasesController extends BaseController
                 throw ValidationException::withMessages(['purchase' => 'Registro legacy: usa la ruta histórica.']);
             }
 
+            // MS2 boundary — BOTH the stored warehouse and the target warehouse
+            // must still be healthy location_primary. Fails closed if the origin
+            // warehouse was demoted, or the target is not primary / unhealthy.
+            // Locks inventory_transition_states before touching stock.
+            $this->assertLocationNativePurchaseTransitionSafe((int) $locked->warehouse_id, $newWarehouseId);
+
             $oldStatut = $locked->statut;
             $oldSnapshotRaw = $locked->inventory_effect_snapshot; // array|null (cast)
             $hasHistoricalSnapshot = ! empty($oldSnapshotRaw);
             $hadActiveEffect = ($oldStatut === 'received') && $hasHistoricalSnapshot;
 
-            // A location-native purchase can only live in a healthy
-            // location_primary warehouse. Applies to the NEW warehouse too.
-            $resolver->assertHealthyLocationPrimary($newWarehouseId);
             $newLocationId = $request->filled('inventory_location_id') ? (int) $request->inventory_location_id : null;
             if (! $newLocationId) {
                 throw ValidationException::withMessages(['inventory_location_id' => 'Debes seleccionar una ubicación de inventario.']);
@@ -663,6 +670,11 @@ class PurchasesController extends BaseController
                 $this->authorizeForUser($request->user('api'), 'check_record', $locked);
             }
 
+            // MS2 boundary — the snapshot can only be reversed inside the
+            // architecture that created it: the persisted warehouse must still
+            // be healthy location_primary. Locks the transition state first.
+            $this->assertLocationNativePurchaseTransitionSafe((int) $locked->warehouse_id, null);
+
             $this->reverseLocationNativePurchaseStock($locked);
 
             $locked->details()->delete();
@@ -703,6 +715,52 @@ class PurchasesController extends BaseController
         $snapshot = $svc->normalizeSnapshot($purchase->inventory_effect_snapshot); // throws if null/malformed
         $svc->assertSnapshotArtifactSafeAndLock($snapshot);
         $svc->reverseSnapshot($snapshot, $purchase->id);
+    }
+
+    // --------- Transition-mode boundary guards -------------------------\\
+    //
+    // ABSOLUTE INVARIANT: a location_primary warehouse NEVER takes a legacy-only
+    // stock mutation, and a non-primary warehouse NEVER takes a location-native
+    // -only mutation. Both guards lock inventory_transition_states FIRST (asc by
+    // warehouse_id), so the mode cannot change between the check and the write.
+    // Lock order for the whole purchase flow:
+    //   inventory_transition_states(asc) -> [validateAndLock: warehouses(asc)
+    //   -> inventory_locations -> products(asc) -> product_variants(asc)
+    //   -> units(asc)] -> inventory_location_stocks (InventoryService).
+
+    /**
+     * LEGACY document boundary. A legacy (inventory_location_id NULL) purchase
+     * may only be created/edited/deleted while NEITHER its stored warehouse NOR
+     * the requested warehouse is location_primary. A historical legacy purchase
+     * is never converted to location-native (its physical location is unknown).
+     *
+     * @throws ValidationException  422 inventory_transition
+     */
+    private function assertLegacyPurchaseTransitionSafe(?int $storedWarehouseId, ?int $requestWarehouseId): void
+    {
+        $resolver = app(WarehouseInventoryModeResolver::class);
+        $ids = array_values(array_filter([(int) $storedWarehouseId, (int) $requestWarehouseId], fn ($i) => $i > 0));
+        $states = $resolver->lockStates($ids);
+        foreach ($states as $whId => $state) {
+            $resolver->assertStateNotLocationPrimary((int) $whId, $state);
+        }
+    }
+
+    /**
+     * LOCATION-NATIVE document boundary. BOTH the stored warehouse and the
+     * target warehouse must still be healthy location_primary — a snapshot can
+     * only be reversed/applied inside the architecture that created it.
+     *
+     * @throws ValidationException  422 inventory_transition
+     */
+    private function assertLocationNativePurchaseTransitionSafe(int $storedWarehouseId, ?int $targetWarehouseId): void
+    {
+        $resolver = app(WarehouseInventoryModeResolver::class);
+        $ids = array_values(array_filter([$storedWarehouseId, (int) $targetWarehouseId], fn ($i) => $i > 0));
+        $states = $resolver->lockStates($ids);
+        foreach ($ids as $whId) {
+            $resolver->assertStateHealthyLocationPrimary($whId, $states[$whId] ?? null);
+        }
     }
 
     // --------- Inventory-location select for the purchase form ----------\\
@@ -783,9 +841,10 @@ class PurchasesController extends BaseController
         ]);
 
         // MS2 — route by the PERSISTED document identity, not the warehouse's
-        // current mode. A purchase created location-native stays location-native
-        // for its whole life; a legacy purchase stays legacy even if its
-        // warehouse is later promoted to location_primary.
+        // current mode. A location-native purchase stays location-native; a
+        // legacy purchase stays legacy. A legacy purchase whose warehouse is
+        // now location_primary is NOT silently converted — it FAILS CLOSED
+        // (see assertLegacyPurchaseTransitionSafe below).
         $routing_purchase = Purchase::find($id);
         if ($routing_purchase && $routing_purchase->inventory_location_id !== null) {
             return $this->updateLocationAware($request, $routing_purchase);
@@ -797,6 +856,11 @@ class PurchasesController extends BaseController
             // Backward compatibility: If record_view is null, fall back to role permission check
             $view_records = $user->hasRecordView();
             $current_Purchase = Purchase::findOrFail($id);
+
+            // MS2 boundary — a legacy purchase may only be edited while NEITHER
+            // its stored warehouse NOR the requested warehouse is
+            // location_primary. Locks inventory_transition_states first.
+            $this->assertLegacyPurchaseTransitionSafe((int) $current_Purchase->warehouse_id, (int) $request->warehouse_id);
 
              /**
              * Warehouses restriction
@@ -1083,6 +1147,10 @@ class PurchasesController extends BaseController
             $view_records = $user->hasRecordView();
             $current_Purchase = Purchase::findOrFail($id);
 
+            // MS2 boundary — a legacy purchase in a location_primary warehouse
+            // must NOT be torn down through the product_warehouse writer.
+            $this->assertLegacyPurchaseTransitionSafe((int) $current_Purchase->warehouse_id, null);
+
              /**
              * Warehouses restriction
              * Allow if:
@@ -1254,11 +1322,16 @@ class PurchasesController extends BaseController
                     }
 
                     // MS2 — mixed selection: each purchase reverses by ITS OWN
-                    // identity. Location-native purchases NEVER run the legacy
-                    // product_warehouse writers below.
+                    // identity, and each is fenced against a transition-mode
+                    // mismatch. A throw here aborts the WHOLE \DB::transaction
+                    // (this loop is inside one) => zero partial deletes, zero
+                    // partial stock.
                     if ($current_Purchase->inventory_location_id !== null) {
+                        $this->assertLocationNativePurchaseTransitionSafe((int) $current_Purchase->warehouse_id, null);
                         $this->reverseLocationNativePurchaseStock($current_Purchase);
                     } else {
+
+                    $this->assertLegacyPurchaseTransitionSafe((int) $current_Purchase->warehouse_id, null);
 
                     // Pharmacy: reverse batch consumption (subtracts qty from product_batches,
                     // removes pivot rows) before warehouse stock is decremented below.

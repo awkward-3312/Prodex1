@@ -98,6 +98,11 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
         $this->assertStringNotContainsString('->save(', $src);
         $this->assertStringContainsString('assertHealthyLocationPrimary', $src);
         $this->assertStringContainsString("MODE_LOCATION_PRIMARY", $src);
+        // MS2 hardening — transaction-time locking + boundary assertions.
+        $this->assertStringContainsString('public function lockStates(', $src);
+        $this->assertStringContainsString('->lockForUpdate()', $src);
+        $this->assertStringContainsString('assertStateNotLocationPrimary', $src);
+        $this->assertStringContainsString('assertStateHealthyLocationPrimary', $src);
     }
 
     // =====================================================================
@@ -160,7 +165,9 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
     public function test_ms2_location_aware_store_uses_the_engine_and_writes_the_snapshot(): void
     {
         $body = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'storeLocationAware');
-        $this->assertStringContainsString('assertHealthyLocationPrimary(', $body);
+        // MS2 hardening — the boundary guard (which locks the transition state)
+        // runs before any stock write.
+        $this->assertStringContainsString('assertLocationNativePurchaseTransitionSafe($warehouseId, null);', $body);
         $this->assertStringContainsString("request()->validate(['inventory_location_id' => 'required|integer']);", $body);
         $this->assertStringContainsString('->validateAndLock(', $body);
         $this->assertStringContainsString("'inventory_effect_snapshot' => \$snapshot", $body);
@@ -177,6 +184,52 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
         $this->assertStringContainsString('->reverseSnapshot($oldSnapshot, $locked->id);', $body);
         $this->assertStringContainsString('$oldRevision + 1', $body);
         $this->assertStringContainsString("if (\$newStatut === 'received')", $body);
+        // MS2 hardening — old AND new warehouse must stay healthy location_primary.
+        $this->assertStringContainsString('assertLocationNativePurchaseTransitionSafe((int) $locked->warehouse_id, $newWarehouseId);', $body);
+    }
+
+    public function test_ms2_transition_boundary_guards_fence_every_mutation_path(): void
+    {
+        $src = $this->read('app/Http/Controllers/PurchasesController.php');
+
+        // Both guards exist and lock the transition state (deterministic asc).
+        $this->assertStringContainsString('private function assertLegacyPurchaseTransitionSafe(', $src);
+        $this->assertStringContainsString('private function assertLocationNativePurchaseTransitionSafe(', $src);
+        $this->assertStringContainsString('$resolver->lockStates(', $src);
+
+        // Legacy paths fenced: a location_primary warehouse can never take a
+        // legacy product_warehouse mutation.
+        foreach (['store', 'update', 'destroy', 'delete_by_selection'] as $method) {
+            $body = $this->fn($src, $method);
+            $this->assertStringContainsString(
+                'assertLegacyPurchaseTransitionSafe(',
+                $body,
+                "legacy {$method}() is not fenced against a location_primary warehouse"
+            );
+        }
+
+        // Location-native paths fenced: a demoted / unhealthy warehouse can
+        // never take a location-native mutation.
+        foreach (['storeLocationAware', 'updateLocationAware', 'destroyLocationAware', 'delete_by_selection'] as $method) {
+            $body = $this->fn($src, $method);
+            $this->assertStringContainsString(
+                'assertLocationNativePurchaseTransitionSafe(',
+                $body,
+                "location-native {$method}() is not fenced against a non-primary warehouse"
+            );
+        }
+
+        // The guards live inside the DB transaction of each mutating path
+        // (checked structurally: the assertion text appears after the
+        // \DB::transaction( opener within the same method body).
+        foreach (['storeLocationAware', 'updateLocationAware', 'destroyLocationAware'] as $method) {
+            $body = $this->fn($src, $method);
+            $txPos = strpos($body, '\DB::transaction(');
+            $guardPos = strpos($body, 'assertLocationNativePurchaseTransitionSafe(');
+            $this->assertNotFalse($txPos);
+            $this->assertNotFalse($guardPos);
+            $this->assertGreaterThan($txPos, $guardPos, "{$method}() guard must run inside the transaction");
+        }
     }
 
     // =====================================================================
