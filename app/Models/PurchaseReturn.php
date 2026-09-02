@@ -13,6 +13,8 @@ class PurchaseReturn extends Model
         'user_id', 'discount', 'shipping',
         'warehouse_id', 'purchase_id', 'provider_id', 'notes', 'TaxNet', 'tax_rate', 'statut',
         'paid_amount', 'payment_statut', 'created_at', 'updated_at', 'deleted_at',
+        // MS1 — location-native (inactivo hasta MS2). NULL => documento legacy.
+        'inventory_location_id', 'inventory_effect_snapshot',
     ];
 
     protected $casts = [
@@ -26,6 +28,8 @@ class PurchaseReturn extends Model
         'TaxNet' => 'double',
         'tax_rate' => 'double',
         'paid_amount' => 'double',
+        'inventory_location_id' => 'integer',
+        'inventory_effect_snapshot' => 'array',
     ];
 
     public function user()
@@ -51,6 +55,11 @@ class PurchaseReturn extends Model
     public function warehouse()
     {
         return $this->belongsTo('App\Models\Warehouse');
+    }
+
+    public function inventoryLocation()
+    {
+        return $this->belongsTo(InventoryLocation::class, 'inventory_location_id');
     }
 
     public function purchase()

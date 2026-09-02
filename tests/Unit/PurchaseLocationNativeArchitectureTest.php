@@ -6,50 +6,35 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * ============================================================================
- *  PRE-LOCATION-NATIVE BASELINE  —  MS0 (test-only)
+ *  LOCATION-NATIVE PURCHASES — architecture contract
  * ============================================================================
  *
- * This test PINS the CURRENT (legacy) architecture of Purchases and Purchase
- * Returns so that MS1 / MS2 have to change these assertions ON PURPOSE. Every
- * assertion here describes what `main` does TODAY, not the target design.
+ *  MS0  (1e7289e)  — pinned the fully-legacy baseline.
+ *  MS1  (this)     — schema + models + engine PREPARED, controllers STILL legacy.
  *
- * When a milestone lands, the matching constant / assertion below flips and the
- * diff shows exactly which legacy writer disappeared and which one is still
- * alive.
- *
- *   MS1  → PURCHASES_HAS_LOCATION_COLUMN / RETURNS_HAS_LOCATION_COLUMN become true
- *          LOCATION_AWARE_PURCHASE_SERVICE_EXISTS becomes true
- *   MS2  → PURCHASES_CONTROLLER_LEGACY_PW_SAVE_SITES drops (store + import + …)
- *   MS3  → RETURNS_CONTROLLER_LEGACY_PW_SAVE_SITES drops
- *   MS5/6→ batch / serial writers move to the location engine
+ * The legacy writer counts MUST NOT move at MS1: schema + service must not
+ * activate any behaviour. They drop deliberately at:
+ *   MS2 → PurchasesController legacy product_warehouse writers
+ *   MS3 → PurchasesReturnController legacy product_warehouse writers
+ *   MS5/6 → batch / serial writers move to the location engine
  */
 class PurchaseLocationNativeArchitectureTest extends TestCase
 {
-    // ---- BASELINE CONSTANTS (audited on origin/main @ 58e0394) --------------
-
-    /** `purchases` today has NO inventory_location_id / inventory_effect_snapshot. */
-    private const PURCHASES_HAS_LOCATION_COLUMN = false;
-
-    /** `purchase_returns` today has NO inventory_location_id / inventory_effect_snapshot. */
-    private const RETURNS_HAS_LOCATION_COLUMN = false;
-
-    /** No LocationAwarePurchaseStockService / LocationAwarePurchaseReturnStockService yet. */
-    private const LOCATION_AWARE_PURCHASE_SERVICE_EXISTS = false;
+    /** MS1 additive migration (same pattern as PR #81 adjustments/damages). */
+    private const MS1_MIGRATION =
+        'database/migrations/tenant/2026_09_02_000000_add_inventory_location_to_purchases_and_returns.php';
 
     /**
-     * `$product_warehouse->save();` sites in PurchasesController.
-     * 6 legacy write contexts: store(+), update-reverse(-), update-reapply(+),
-     * destroy(-), delete_by_selection(-) — each with a variant + a non-variant
-     * branch (2 saves) — plus store_import_purchases(+) with a single branch
-     * (1 save)  =>  5*2 + 1 = 11.
+     * `$product_warehouse->save();` sites in PurchasesController — UNCHANGED at MS1.
+     * 6 write contexts: store(+), update-reverse(-), update-reapply(+), destroy(-),
+     * delete_by_selection(-) each with a variant + non-variant branch (2 saves),
+     * plus store_import_purchases(+) with a single branch  =>  5*2 + 1 = 11.
      */
     private const PURCHASES_CONTROLLER_LEGACY_PW_SAVE_SITES = 11;
 
     /**
-     * `$product_warehouse->save();` sites in PurchasesReturnController.
-     * 5 legacy write contexts: store(-), update-reverse(+), update-reapply(-),
-     * destroy(+), delete_by_selection(+) — each with a variant + a non-variant
-     * branch  =>  5*2 = 10.
+     * `$product_warehouse->save();` sites in PurchasesReturnController — UNCHANGED at MS1.
+     * 5 write contexts, each with a variant + non-variant branch  =>  5*2 = 10.
      */
     private const RETURNS_CONTROLLER_LEGACY_PW_SAVE_SITES = 10;
 
@@ -70,70 +55,119 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
     }
 
     // =====================================================================
-    // 4 · BASELINE — schema / models have NO location context yet
+    // MS1 · SCHEMA — additive nullable columns for both documents
     // =====================================================================
 
-    public function test_baseline_purchases_migration_has_no_inventory_location_columns(): void
+    public function test_ms1_migration_adds_inventory_location_columns_to_both_documents(): void
     {
-        $mig = $this->read('database/migrations/tenant/2026_03_24_203803_create_purchases_table.php');
-        $this->assertStringContainsString("Schema::create('purchases'", $mig);
-        $this->assertStringContainsString("\$table->integer('warehouse_id')", $mig);
+        $this->assertFileExists(dirname(__DIR__, 2).'/'.self::MS1_MIGRATION);
+        $mig = $this->read(self::MS1_MIGRATION);
 
-        $hasLocation = str_contains($mig, 'inventory_location_id')
-            || str_contains($mig, 'inventory_effect_snapshot');
-        $this->assertSame(
-            self::PURCHASES_HAS_LOCATION_COLUMN,
-            $hasLocation,
-            'BASELINE: purchases has no inventory_location_id yet. When MS1 adds it, flip PURCHASES_HAS_LOCATION_COLUMN.'
-        );
+        // both tables covered by the same loop.
+        $this->assertMatchesRegularExpression("/\\['purchases',\\s*'purchase_returns'\\]/", $mig);
 
-        // And no later add_* migration introduces it either.
-        $dir = dirname(__DIR__, 2).'/database/migrations/tenant';
-        foreach (glob($dir.'/*purchase*') as $file) {
-            $body = file_get_contents($file);
-            if (str_contains($body, "'purchases'") && str_contains($body, 'inventory_location_id')) {
-                $this->fail('Unexpected inventory_location_id migration for purchases: '.basename($file));
-            }
-        }
+        // nullable + indexed integer + json snapshot, same shape as PR #81.
+        $this->assertStringContainsString("\$t->integer('inventory_location_id')->nullable()->index()", $mig);
+        $this->assertStringContainsString("\$t->json('inventory_effect_snapshot')->nullable()", $mig);
+
+        // additive & safe: hasColumn guards on up(), dropColumn on down().
+        $this->assertStringContainsString("Schema::hasColumn(\$table, 'inventory_location_id')", $mig);
+        $this->assertStringContainsString('function down()', $mig);
+        $this->assertStringContainsString("\$t->dropColumn(\$col)", $mig);
+
+        // no branch_id column, no foreign key, no data backfill.
+        $this->assertStringNotContainsString("('branch_id')", $mig);
+        $this->assertStringNotContainsString('->foreign(', $mig);
+        $this->assertStringNotContainsString('DB::table(', $mig);
     }
 
-    public function test_baseline_purchase_returns_migration_has_no_inventory_location_columns(): void
+    public function test_ms1_original_create_migrations_are_untouched(): void
     {
-        $mig = $this->read('database/migrations/tenant/2026_03_24_203803_create_purchase_returns_table.php');
-        $this->assertStringContainsString("Schema::create('purchase_returns'", $mig);
-
-        $hasLocation = str_contains($mig, 'inventory_location_id')
-            || str_contains($mig, 'inventory_effect_snapshot');
-        $this->assertSame(self::RETURNS_HAS_LOCATION_COLUMN, $hasLocation);
-    }
-
-    public function test_baseline_purchase_models_have_no_inventory_location_fillable(): void
-    {
-        foreach (['Purchase', 'PurchaseReturn', 'PurchaseDetail', 'PurchaseReturnDetails'] as $model) {
-            $src = $this->read("app/Models/{$model}.php");
-            $this->assertStringNotContainsString(
-                'inventory_location_id',
-                $src,
-                "BASELINE: {$model} has no inventory_location_id. MS1 will add it."
-            );
+        // The CREATE tables still have warehouse_id only — the new columns are
+        // added by the separate additive migration, never retro-fitted here.
+        foreach ([
+            'database/migrations/tenant/2026_03_24_203803_create_purchases_table.php',
+            'database/migrations/tenant/2026_03_24_203803_create_purchase_returns_table.php',
+        ] as $rel) {
+            $src = $this->read($rel);
+            $this->assertStringContainsString("\$table->integer('warehouse_id')", $src);
+            $this->assertStringNotContainsString('inventory_location_id', $src);
             $this->assertStringNotContainsString('inventory_effect_snapshot', $src);
         }
     }
 
     // =====================================================================
-    // 4 · BASELINE — controllers still hold the legacy product_warehouse writers
+    // MS1 · MODELS — prepared (fillable + array cast + relation)
     // =====================================================================
 
-    public function test_baseline_purchases_controller_has_legacy_product_warehouse_writers(): void
+    public function test_ms1_purchase_models_are_prepared(): void
+    {
+        foreach (['Purchase', 'PurchaseReturn'] as $model) {
+            $src = $this->read("app/Models/{$model}.php");
+            $this->assertStringContainsString("'inventory_location_id', 'inventory_effect_snapshot'", $src);
+            $this->assertStringContainsString("'inventory_location_id' => 'integer'", $src);
+            $this->assertStringContainsString("'inventory_effect_snapshot' => 'array'", $src);
+            $this->assertStringContainsString('function inventoryLocation()', $src);
+            $this->assertStringContainsString("belongsTo(InventoryLocation::class, 'inventory_location_id')", $src);
+        }
+    }
+
+    public function test_ms1_detail_models_stay_untouched(): void
+    {
+        // Only the document headers carry the snapshot; detail rows are unchanged.
+        foreach (['PurchaseDetail', 'PurchaseReturnDetails'] as $model) {
+            $src = $this->read("app/Models/{$model}.php");
+            $this->assertStringNotContainsString('inventory_location_id', $src);
+            $this->assertStringNotContainsString('inventory_effect_snapshot', $src);
+        }
+    }
+
+    // =====================================================================
+    // MS1 · SERVICE — the engine exists and is location-native pure
+    // =====================================================================
+
+    public function test_ms1_location_aware_purchase_stock_service_exists_and_is_pure(): void
+    {
+        $rel = 'app/Services/LocationAwarePurchaseStockService.php';
+        $this->assertFileExists(dirname(__DIR__, 2).'/'.$rel);
+        $src = $this->read($rel);
+
+        $this->assertStringContainsString('class LocationAwarePurchaseStockService', $src);
+
+        // Uses InventoryService as its only writer (constructor-injected).
+        $this->assertStringContainsString('InventoryService $inventory', $src);
+        $this->assertStringContainsString('$this->inventory->increase(', $src);
+        $this->assertStringContainsString('$this->inventory->decrease(', $src);
+
+        // Location-native PURE: never the legacy per-warehouse model/table,
+        // never the dual-write mirror.
+        $this->assertStringNotContainsString('product_warehouse', $src);
+        $this->assertStringNotContainsString('mirrorLegacySnapshot', $src);
+        $this->assertStringNotContainsString('adjustTo(', $src);
+
+        // Explicit reference types (MS7 will teach the provenance auditor about them).
+        foreach (['Purchase', 'PurchaseReversal', 'PurchaseReturn', 'PurchaseReturnReversal'] as $ref) {
+            $this->assertStringContainsString("'{$ref}'", $src);
+        }
+
+        // Contract guards from the reference engine.
+        $this->assertStringContainsString('DB::transactionLevel() <= 0', $src);
+        $this->assertStringContainsString('is_batch_tracked', $src);
+        $this->assertStringContainsString('is_imei', $src);
+        $this->assertStringContainsString('SNAPSHOT_VERSION', $src);
+        $this->assertStringContainsString("'revision'", $src);
+    }
+
+    // =====================================================================
+    // MS1 · CONTROLLERS — STILL fully legacy
+    // =====================================================================
+
+    public function test_purchases_controller_still_holds_the_legacy_writers(): void
     {
         $src = $this->read('app/Http/Controllers/PurchasesController.php');
 
         $this->assertStringContainsString('use App\Models\product_warehouse;', $src);
-        $this->assertStringContainsString('$product_warehouse->save();', $src);
-        $this->assertStringContainsString("\$product_warehouse->qte += ", $src);
-        $this->assertStringContainsString("\$product_warehouse->qte -= ", $src);
 
-        // Per-method legacy writer presence (method => directions it must contain).
         $expected = [
             'store' => ['+='],
             'update' => ['-=', '+='],
@@ -150,12 +184,10 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
         }
     }
 
-    public function test_baseline_purchase_returns_controller_has_legacy_product_warehouse_writers(): void
+    public function test_purchase_returns_controller_still_holds_the_legacy_writers(): void
     {
         $src = $this->read('app/Http/Controllers/PurchasesReturnController.php');
-
         $this->assertStringContainsString('use App\Models\product_warehouse;', $src);
-        $this->assertStringContainsString('$product_warehouse->save();', $src);
 
         $expected = [
             'store' => ['-='],
@@ -172,45 +204,24 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
         }
     }
 
-    public function test_baseline_purchases_controller_is_not_location_aware_yet(): void
+    public function test_controllers_are_not_wired_to_the_location_engine_yet(): void
     {
-        $src = $this->read('app/Http/Controllers/PurchasesController.php');
         foreach ([
-            'inventory_location_id',
-            'LocationAwarePurchase',
-            'inventory_effect_snapshot',
-            'InventoryService',
-            'storeLocationAware',
-        ] as $needle) {
-            $this->assertStringNotContainsString(
-                $needle,
-                $src,
-                "BASELINE: PurchasesController must NOT reference '{$needle}' yet (MS2 introduces it)."
-            );
+            'PurchasesController' => ['inventory_location_id', 'LocationAwarePurchase', 'inventory_effect_snapshot', 'InventoryService', 'storeLocationAware'],
+            'PurchasesReturnController' => ['inventory_location_id', 'LocationAwarePurchaseReturn', 'inventory_effect_snapshot', 'InventoryService'],
+        ] as $ctrl => $needles) {
+            $src = $this->read("app/Http/Controllers/{$ctrl}.php");
+            foreach ($needles as $needle) {
+                $this->assertStringNotContainsString(
+                    $needle,
+                    $src,
+                    "MS1: {$ctrl} must NOT reference '{$needle}' yet — MS2/MS3 wire it."
+                );
+            }
         }
     }
 
-    public function test_baseline_purchase_returns_controller_is_not_location_aware_yet(): void
-    {
-        $src = $this->read('app/Http/Controllers/PurchasesReturnController.php');
-        foreach (['inventory_location_id', 'LocationAwarePurchaseReturn', 'inventory_effect_snapshot', 'InventoryService'] as $needle) {
-            $this->assertStringNotContainsString($needle, $src);
-        }
-    }
-
-    public function test_baseline_location_aware_purchase_services_do_not_exist_yet(): void
-    {
-        $base = dirname(__DIR__, 2).'/app/Services/';
-        foreach (['LocationAwarePurchaseStockService.php', 'LocationAwarePurchaseReturnStockService.php'] as $file) {
-            $this->assertSame(
-                self::LOCATION_AWARE_PURCHASE_SERVICE_EXISTS,
-                file_exists($base.$file),
-                "BASELINE: {$file} is created in MS1. Flip LOCATION_AWARE_PURCHASE_SERVICE_EXISTS then."
-            );
-        }
-    }
-
-    public function test_baseline_no_purchase_inventory_locations_endpoint(): void
+    public function test_no_purchase_inventory_locations_endpoint_yet(): void
     {
         $routes = $this->read('routes/tenant_api.php');
         $this->assertStringNotContainsString('purchases_inventory_locations', $routes);
@@ -218,15 +229,10 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
     }
 
     // =====================================================================
-    // 5 · WRITER INVENTORY — count the legacy product_warehouse write sites
+    // WRITER INVENTORY — legacy product_warehouse save sites (MUST be intact)
     // =====================================================================
 
-    /**
-     * Guard that pins HOW MANY legacy `product_warehouse->save()` sites each
-     * controller has. A drop here is expected at MS2 (purchases) / MS3
-     * (returns); a change must be deliberate. Pattern-based, not line-based.
-     */
-    public function test_writer_inventory_legacy_product_warehouse_save_site_counts(): void
+    public function test_writer_inventory_legacy_product_warehouse_save_site_counts_are_unchanged(): void
     {
         $purchases = $this->read('app/Http/Controllers/PurchasesController.php');
         $returns = $this->read('app/Http/Controllers/PurchasesReturnController.php');
@@ -234,40 +240,34 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
         $this->assertSame(
             self::PURCHASES_CONTROLLER_LEGACY_PW_SAVE_SITES,
             substr_count($purchases, '$product_warehouse->save();'),
-            'PurchasesController legacy product_warehouse write sites changed — update the constant on purpose (MS2).'
+            'MS1 must NOT move any legacy product_warehouse writer in PurchasesController.'
         );
         $this->assertSame(
             self::RETURNS_CONTROLLER_LEGACY_PW_SAVE_SITES,
             substr_count($returns, '$product_warehouse->save();'),
-            'PurchasesReturnController legacy product_warehouse write sites changed — update the constant on purpose (MS3).'
+            'MS1 must NOT move any legacy product_warehouse writer in PurchasesReturnController.'
         );
 
-        // The lookup that opens every write context is the same fingerprint.
         $lookup = "product_warehouse = product_warehouse::where('deleted_at', '=', null)";
-        $this->assertSame(11, substr_count($purchases, $lookup), 'PurchasesController PW-lookup sites changed.');
-        $this->assertSame(10, substr_count($returns, $lookup), 'PurchasesReturnController PW-lookup sites changed.');
+        $this->assertSame(11, substr_count($purchases, $lookup));
+        $this->assertSame(10, substr_count($returns, $lookup));
     }
 
-    /**
-     * Human-readable map of the 6 + 5 legacy write CONTEXTS the migration will
-     * dismantle. Each entry = (method, direction). If a method stops carrying
-     * its direction, this fails and names it.
-     */
-    public function test_writer_inventory_context_map(): void
+    public function test_writer_inventory_context_map_is_intact(): void
     {
         $contexts = [
             'PurchasesController' => [
                 ['store', '+='],
-                ['update', '-='],                    // reverse old effect
-                ['update', '+='],                    // apply new effect
+                ['update', '-='],
+                ['update', '+='],
                 ['destroy', '-='],
                 ['delete_by_selection', '-='],
                 ['store_import_purchases', '+='],
             ],
             'PurchasesReturnController' => [
                 ['store', '-='],
-                ['update', '+='],                    // reverse old effect
-                ['update', '-='],                    // apply new effect
+                ['update', '+='],
+                ['update', '-='],
                 ['destroy', '+='],
                 ['delete_by_selection', '+='],
             ],

@@ -12,6 +12,8 @@ class Purchase extends Model
         'date', 'Ref', 'provider_id', 'warehouse_id', 'GrandTotal', 'time',
         'discount', 'shipping', 'statut', 'notes', 'TaxNet', 'tax_rate', 'paid_amount',
         'payment_statut', 'created_at', 'updated_at', 'deleted_at',
+        // MS1 — location-native (inactivo hasta MS2). NULL => documento legacy.
+        'inventory_location_id', 'inventory_effect_snapshot',
     ];
 
     protected $casts = [
@@ -24,6 +26,8 @@ class Purchase extends Model
         'TaxNet' => 'double',
         'tax_rate' => 'double',
         'paid_amount' => 'double',
+        'inventory_location_id' => 'integer',
+        'inventory_effect_snapshot' => 'array',
     ];
 
     public function details()
@@ -44,6 +48,11 @@ class Purchase extends Model
     public function warehouse()
     {
         return $this->belongsTo('App\Models\Warehouse');
+    }
+
+    public function inventoryLocation()
+    {
+        return $this->belongsTo(InventoryLocation::class, 'inventory_location_id');
     }
 
     public function user()
