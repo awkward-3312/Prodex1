@@ -57,17 +57,19 @@
         </ul>
 
         <div class="pxn-shell__rail-foot">
-          <span
-            v-for="m in foot"
+          <router-link
+            v-for="m in visibleFoot"
             :key="m.key"
-            class="pxn-shell__module is-pending"
-            :title="m.label + ' — pendiente'"
-            :aria-label="m.label + ' (pendiente)'"
-            aria-disabled="true"
+            :to="m.to"
+            class="pxn-shell__module pxn-ring"
+            :class="{ 'is-active': m.key === activeDomain }"
+            :title="m.label"
+            :aria-label="m.label"
+            :aria-current="m.key === activeDomain ? 'page' : null"
           >
             <lucide-icon :name="m.icon" :size="17" />
             <span class="pxn-shell__module-label">{{ m.label }}</span>
-          </span>
+          </router-link>
         </div>
       </nav>
 
@@ -77,12 +79,33 @@
           <span>{{ activePanel.title }}</span>
         </div>
 
-        <div v-for="(g, gi) in visiblePanelGroups" :key="'g' + gi" class="pxn-shell__panel-group">
-          <div class="pxn-shell__panel-grouptitle">{{ g.title }}</div>
-          <ul class="pxn-shell__panel-list">
+        <div
+          v-for="(g, gi) in visiblePanelGroups"
+          :key="'g' + gi"
+          class="pxn-shell__panel-group"
+          :class="{ 'is-collapsible': groupCollapsible(g) }"
+        >
+          <button
+            v-if="groupCollapsible(g)"
+            type="button"
+            class="pxn-shell__panel-grouptitle pxn-shell__panel-grouptoggle"
+            :aria-expanded="String(!isGroupCollapsed(g))"
+            @click="toggleGroup(g)"
+          >
+            <span>{{ g.title }}</span>
+            <lucide-icon
+              name="chevron-down"
+              :size="13"
+              class="pxn-shell__panel-caret"
+              :class="{ 'is-open': !isGroupCollapsed(g) }"
+            />
+          </button>
+          <div v-else class="pxn-shell__panel-grouptitle">{{ g.title }}</div>
+
+          <ul v-show="!isGroupCollapsed(g)" class="pxn-shell__panel-list">
             <li v-for="(it, i) in g.items" :key="i">
               <router-link
-                :to="it.to || it.route"
+                :to="it.query ? { path: it.to, query: it.query } : (it.to || it.route)"
                 class="pxn-shell__panel-link"
                 :class="{ 'is-active': isActiveItem(it) }"
                 :aria-current="isActiveItem(it) ? 'page' : null"
@@ -144,7 +167,7 @@
         <!-- Alcance de VISUALIZACIÓN por sucursal. Sólo filtra lecturas del
              panel (branch_id → dashboard_data). No toca contexto operativo. -->
         <div
-          v-if="scopeBranches.length"
+          v-if="branchScopeVisible"
           ref="scopechip"
           class="pxn-scopechip"
           :class="{ 'is-open': scopeOpen }"
@@ -316,7 +339,7 @@
 <script>
 import { mapGetters, mapActions } from "vuex";
 import TopNav from "@/containers/layouts/largeSidebar/TopNav.vue";
-import { SHELL_RAIL, SHELL_RAIL_PENDING, SHELL_FOOT } from "@/views/app/_ui/data/shell-nav";
+import { SHELL_RAIL, SHELL_FOOT } from "@/views/app/_ui/data/shell-nav";
 
 export default {
   name: "PxShell",
@@ -324,7 +347,6 @@ export default {
   data() {
     return {
       railWired: SHELL_RAIL,
-      railPending: SHELL_RAIL_PENDING,
       foot: SHELL_FOOT,
       // Logo del rail (misma fuente que TopNav: settings.logo → fallback oficial)
       brandLogoBroken: false,
@@ -347,7 +369,9 @@ export default {
       issuesTimer: null,
       // Navegación adaptable (drawer en tablet/móvil)
       isCompact: false,
-      navDrawerOpen: false
+      navDrawerOpen: false,
+      // Grupos del panel colapsados por el usuario (clave: dominio::título)
+      collapsedGroups: {}
     };
   },
   computed: {
@@ -371,6 +395,11 @@ export default {
     },
     scopeLabel() {
       return this.shellScopeLabel;
+    },
+    // El branch scope hoy sólo afecta al Dashboard. Se muestra únicamente en el
+    // dominio Panel para no presentar un filtro falso en Reportes/Finanzas/etc.
+    branchScopeVisible() {
+      return this.scopeBranches.length > 0 && this.activeDomain === "panel";
     },
 
     // ---- Incidencias de transferencias -------------------------------
@@ -455,21 +484,24 @@ export default {
     // Dominio activo derivado de la ruta real del shell.
     activeDomain() {
       const seg = (this.$route.path.split("/")[3] || "panel").toLowerCase();
-      return ["panel", "ventas", "inventario", "compras"].indexOf(seg) !== -1 ? seg : "panel";
+      const known = ["panel", "ventas", "inventario", "compras", "finanzas", "reportes", "rrhh", "config", "mas"];
+      return known.indexOf(seg) !== -1 ? seg : "panel";
     },
 
-    // Riel visible = wired (gate real permiso + plan) seguido de pendientes (informativos).
+    // Riel visible. `always` → siempre; `gated` → sólo si el plan/permiso
+    // habilita ≥1 opción real del panel (B0 §7). El resto → gate por permiso.
     visibleRail() {
-      const wired = this.railWired.filter(m => {
-        if (m.always) return true;
-        if (m.plan && !this.planFeature(m.plan)) return false;
-        return this.hasAnyPerm(m.anyPerm);
-      });
-      return wired.concat(this.railPending);
+      return this.railWired.filter(m => this.railEntryVisible(m));
+    },
+
+    // Pie del riel (Configuración / Más) — mismas reglas `gated`.
+    visibleFoot() {
+      return this.foot.filter(m => this.railEntryVisible(m));
     },
 
     activeRailEntry() {
-      return this.railWired.find(m => m.key === this.activeDomain) || null;
+      const all = this.railWired.concat(this.foot);
+      return all.find(m => m.key === this.activeDomain) || null;
     },
 
     // Etiqueta del dominio activo para el botón de navegación (tablet/móvil).
@@ -493,6 +525,12 @@ export default {
           })
         }))
         .filter(g => g.items.length);
+    },
+
+    // Panel "denso": muchos ítems visibles → habilita grupos colapsables sobrios.
+    // Config (Owner) y Finanzas completas caen aquí; Reportes/Ventas normales no.
+    panelDense() {
+      return this.visiblePanelGroups.reduce((n, g) => n + g.items.length, 0) > 14;
     }
   },
   methods: {
@@ -507,9 +545,60 @@ export default {
       const mine = this.currentUserPermissions || [];
       return perms.some(p => mine.indexOf(p) !== -1);
     },
+
+    // ¿El panel de este dominio tiene al menos un ítem usable (permiso + plan)?
+    railEntryHasContent(entry) {
+      if (!entry.panel || !entry.panel.groups) return true;
+      return entry.panel.groups.some(g =>
+        (g.items || []).some(it => {
+          if (it.plan && !this.planFeature(it.plan)) return false;
+          return this.hasAnyPerm(it.anyPerm);
+        })
+      );
+    },
+
+    // Visibilidad de un dominio de riel / pie:
+    //   · always  → siempre
+    //   · plan    → oculto si el plan no está activo
+    //   · anyPerm → visible con ≥1 permiso
+    //   · gated   → además, el panel debe tener ≥1 opción usable (no "cajón vacío")
+    railEntryVisible(m) {
+      if (m.always) return true;
+      if (m.plan && !this.planFeature(m.plan)) return false;
+      if (!this.hasAnyPerm(m.anyPerm)) return false;
+      if (m.gated && !this.railEntryHasContent(m)) return false;
+      return true;
+    },
     isActiveItem(it) {
       if (!it.to) return false;
-      return this.$route.path === it.to || this.$route.path.indexOf(it.to + "/") === 0;
+      const samePath =
+        this.$route.path === it.to || this.$route.path.indexOf(it.to + "/") === 0;
+      if (!samePath) return false;
+      // Ítems de categoría de Reportes comparten path y se distinguen por ?cat=.
+      const routeCat = String(this.$route.query.cat || "");
+      const itemCat = it.query ? String(it.query.cat || "") : "";
+      return routeCat === itemCat;
+    },
+
+    // ---- Grupos colapsables del panel (sólo cuando panelDense) -----------
+    groupKey(g) {
+      return this.activeDomain + "::" + g.title;
+    },
+    // Sólo se colapsan grupos con volumen real; los pequeños (1–2 ítems) se
+    // quedan siempre visibles para no añadir chrome innecesario (B0 §7).
+    groupCollapsible(g) {
+      return this.panelDense && g.items.length >= 3;
+    },
+    isGroupCollapsed(g) {
+      if (!this.groupCollapsible(g)) return false;
+      // El grupo con el ítem activo permanece siempre visible.
+      if (g.items.some(it => this.isActiveItem(it))) return false;
+      const k = this.groupKey(g);
+      return k in this.collapsedGroups ? this.collapsedGroups[k] : true;
+    },
+    toggleGroup(g) {
+      const k = this.groupKey(g);
+      this.$set(this.collapsedGroups, k, !this.isGroupCollapsed(g));
     },
 
     // ---- Profile chip -----------------------------------------------------
@@ -800,7 +889,7 @@ export default {
     // drawer. Cambiar de dominio dentro del shell lo mantiene abierto para
     // poder elegir después una opción del panel.
     "$route.path"(p) {
-      if (!/^\/app\/shell\/(panel|ventas|inventario|compras)\/?$/.test(p || "")) {
+      if (!/^\/app\/shell\/(panel|ventas|inventario|compras|finanzas|reportes|rrhh|config|mas)\/?$/.test(p || "")) {
         this.navDrawerOpen = false;
       }
     }
@@ -956,6 +1045,23 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 .pxn-shell__panel-static > span:first-of-type { flex: 1; }
 .pxn-shell__panel-cond { font-size: 9px; color: var(--pxn-ink-3); background: var(--pxn-surface-3); padding: 1px 4px; border-radius: 3px; white-space: nowrap; }
 .pxn-shell__panel-list--reports li { color: var(--pxn-ink-3); }
+
+/* grupos colapsables (sólo panel denso: Configuración, Finanzas completa) */
+.pxn-shell__panel-group.is-collapsible { margin-bottom: var(--pxn-space-2); }
+.pxn-shell__panel-grouptoggle {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-3);
+  border: 0; background: transparent; cursor: pointer;
+  font: inherit;
+  border-radius: var(--pxn-radius-sm);
+  transition: color var(--pxn-dur-1) var(--pxn-ease), background var(--pxn-dur-1) var(--pxn-ease);
+}
+.pxn-shell__panel-grouptoggle:hover { color: var(--pxn-ink-2); background: var(--pxn-surface-2); }
+.pxn-shell__panel-caret {
+  flex: none; color: var(--pxn-ink-3);
+  transition: transform var(--pxn-dur-1) var(--pxn-ease);
+}
+.pxn-shell__panel-caret.is-open { transform: rotate(180deg); }
 
 /* columna principal */
 .pxn-shell__main { display: flex; flex-direction: column; min-width: 0; }
@@ -1476,6 +1582,8 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
   .pxn-scopechip__opt,
   .pxn-notif__btn,
   .pxn-notif__item,
+  .pxn-shell__panel-grouptoggle,
+  .pxn-shell__panel-caret,
   .pxn-issues { transition: none; }
 }
 </style>

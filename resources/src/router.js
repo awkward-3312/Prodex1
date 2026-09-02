@@ -3243,6 +3243,39 @@ if (process.env.NODE_ENV !== "production") {
                     name: "px_shell_compras",
                     component: () =>
                         import(/* webpackChunkName: "index_purchases" */ "./views/app/pages/purchases/index_purchase")
+                },
+                // Milestone 2 — Finanzas · Reportes · RR. HH. · Configuración · Más.
+                // Landing ligera; la navegación real vive en el panel contextual
+                // (rutas reales que hoy salen del shell, como en M1).
+                {
+                    path: "finanzas",
+                    name: "px_shell_finanzas",
+                    component: () =>
+                        import(/* webpackChunkName: "px-next-shell" */ "./views/app/shell/domain_landing.vue")
+                },
+                {
+                    path: "reportes",
+                    name: "px_shell_reportes",
+                    component: () =>
+                        import(/* webpackChunkName: "px-next-shell" */ "./views/app/shell/domain_landing.vue")
+                },
+                {
+                    path: "rrhh",
+                    name: "px_shell_rrhh",
+                    component: () =>
+                        import(/* webpackChunkName: "px-next-shell" */ "./views/app/shell/domain_landing.vue")
+                },
+                {
+                    path: "config",
+                    name: "px_shell_config",
+                    component: () =>
+                        import(/* webpackChunkName: "px-next-shell" */ "./views/app/shell/domain_landing.vue")
+                },
+                {
+                    path: "mas",
+                    name: "px_shell_mas",
+                    component: () =>
+                        import(/* webpackChunkName: "px-next-shell" */ "./views/app/shell/domain_landing.vue")
                 }
             ]
         }
