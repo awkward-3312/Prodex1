@@ -194,6 +194,31 @@
                   </validation-provider>
                 </b-col>
 
+                <!-- inventory location (MS2 · sólo almacenes location_primary) -->
+                <b-col v-if="location_meta.requires" lg="4" md="4" sm="12" class="mb-3">
+                  <validation-provider name="inventory_location" :rules="{ required: true }">
+                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                      <v-select
+                        :class="{'is-invalid': !!errors.length}"
+                        :state="errors[0] ? false : (valid ? true : null)"
+                        :disabled="details.length > 0 || !purchase.warehouse_id"
+                        v-model="purchase.inventory_location_id"
+                        :reduce="label => label.value"
+                        :placeholder="$t('Choose_Inventory_Location')"
+                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
+                      />
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+                <!-- location_primary but not reconciled: block the form -->
+                <b-col v-if="location_meta.blocked" cols="12" class="mb-3">
+                  <b-alert show variant="danger" class="mb-0">
+                    {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado. No se puede registrar la compra hasta resolverlo.' }}
+                  </b-alert>
+                </b-col>
+
                 <!-- Product -->
                 <b-col md="12" class="mb-5">
                   <h6>{{$t('ProductName')}}</h6>
@@ -1014,11 +1039,15 @@ export default {
         notes: "",
         supplier_id: "",
         warehouse_id: "",
+        inventory_location_id: null,
         tax_rate: 0,
         TaxNet: 0,
         shipping: 0,
         discount: 0
       },
+      // MS2 — inventory-location select (only for location_primary warehouses).
+      inventory_locations: [],
+      location_meta: { requires: false, blocked: false, mode: null, status: null },
       total: 0,
       GrandTotal: 0,
       extra_charges: [],
@@ -1377,7 +1406,43 @@ export default {
     Selected_Warehouse(value) {
       this.search_input= '';
       this.product_filter = [];
+      // MS2 — reset + reload the inventory-location context for the new warehouse.
+      this.purchase.inventory_location_id = null;
+      this.inventory_locations = [];
+      this.location_meta = { requires: false, blocked: false, mode: null, status: null };
+      this.Load_Inventory_Locations(value);
       this.Get_Products_By_Warehouse(value);
+    },
+
+    //---- MS2 · inventory locations of the selected warehouse ----\\
+    Load_Inventory_Locations(id) {
+      if (!id) return;
+      axios
+        .get("purchases_inventory_locations/" + id)
+        .then(({ data }) => {
+          this.inventory_locations = (data && data.locations) || [];
+          this.location_meta = {
+            requires: !!(data && data.requires_inventory_location),
+            blocked: !!(data && data.blocked),
+            mode: data && data.transition_mode,
+            status: data && data.transition_status
+          };
+          if (!this.location_meta.requires) {
+            this.purchase.inventory_location_id = null;
+            return;
+          }
+          const def = data && data.default_inventory_location_id;
+          const ids = this.inventory_locations.map(l => l.id);
+          if (def && ids.indexOf(def) !== -1) {
+            this.purchase.inventory_location_id = def;
+          } else if (ids.length === 1) {
+            this.purchase.inventory_location_id = ids[0];
+          }
+        })
+        .catch(() => {
+          this.inventory_locations = [];
+          this.location_meta = { requires: false, blocked: false, mode: null, status: null };
+        });
     },
 
     //------------------------------------ Get Products By Warehouse -------------------------\\
@@ -1666,9 +1731,19 @@ export default {
         if (count > 0) {
           this.makeToast("warning", this.$t("AddQuantity"), this.$t("Warning"));
           return false;
-        } else {
-          return true;
         }
+
+        // MS2 — never submit a purchase that would fall back to legacy.
+        if (this.location_meta.blocked) {
+          this.makeToast("danger", this.$t("Inventory_Location_Warehouse_Not_Ready") || "El almacén de inventario por ubicación no está listo.", this.$t("Failed"));
+          return false;
+        }
+        if (this.location_meta.requires && !this.purchase.inventory_location_id) {
+          this.makeToast("warning", this.$t("Choose_Inventory_Location") || "Selecciona una ubicación de inventario.", this.$t("Warning"));
+          return false;
+        }
+
+        return true;
       }
     },
 
@@ -1684,6 +1759,8 @@ export default {
             date: this.purchase.date,
             supplier_id: this.purchase.supplier_id,
             warehouse_id: this.purchase.warehouse_id,
+            // MS2 — only sent when the warehouse is a healthy location_primary.
+            inventory_location_id: this.location_meta.requires ? this.purchase.inventory_location_id : null,
             statut: this.purchase.statut,
             notes: this.purchase.notes,
             tax_rate: this.purchase.tax_rate?this.purchase.tax_rate:0,

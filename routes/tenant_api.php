@@ -691,6 +691,8 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::post('purchases_delete_by_selection', 'PurchasesController@delete_by_selection');
     Route::get('get_Products_by_purchase/{id}', 'PurchasesController@get_Products_by_purchase');
     Route::post('purchase_send_whatsapp', 'PurchasesController@purchase_send_whatsapp');
+    // MS2 — inventory-location select for the purchase form (location_primary warehouses).
+    Route::get('purchases_inventory_locations/{warehouse_id}', 'PurchasesController@inventoryLocationsForWarehouse');
 
     Route::get('get_import_purchases', 'PurchasesController@get_import_purchases');
     Route::post('preview_import_purchases', 'PurchasesController@preview_import_purchases');

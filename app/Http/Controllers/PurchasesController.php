@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Mail\CustomEmail;
 use App\Models\Account;
 use App\Models\EmailMessage;
+use App\Models\InventoryLocation;
+use App\Models\InventoryTransitionState;
 use App\Models\PaymentMethod;
 use App\Models\PaymentPurchase;
 use App\Models\Product;
@@ -25,7 +27,10 @@ use App\Models\User;
 use App\Models\UserWarehouse;
 use App\Models\Warehouse;
 use App\Services\BatchService;
+use App\Services\InventoryLocationScopeService;
+use App\Services\LocationAwarePurchaseStockService;
 use App\Services\SerialNumberService;
+use App\Services\WarehouseInventoryModeResolver;
 use App\utils\helpers;
 use ArPHP\I18N\Arabic;
 use Carbon\Carbon;
@@ -34,9 +39,12 @@ use GuzzleHttp\Client as Client_guzzle;
 use GuzzleHttp\Client as Client_termi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Infobip\Api\SendSmsApi;
 use Infobip\Configuration;
 use Infobip\Model\SmsAdvancedTextualRequest;
@@ -206,6 +214,14 @@ class PurchasesController extends BaseController
             'warehouse_id' => 'required',
         ]);
 
+        // MS2 — routing by warehouse transition mode. A CREATE for a
+        // location_primary warehouse goes to the location-native engine; every
+        // other mode (legacy_only / shadow_compare / dual_write / no row) keeps
+        // the exact legacy flow below.
+        if (app(WarehouseInventoryModeResolver::class)->isLocationPrimary((int) $request->warehouse_id)) {
+            return $this->storeLocationAware($request);
+        }
+
         \DB::transaction(function () use ($request) {
             $order = new Purchase;
 
@@ -369,6 +385,392 @@ class PurchasesController extends BaseController
         }
     }
 
+    // =====================================================================
+    // MS2 — Purchases location-native (warehouses in MODE_LOCATION_PRIMARY).
+    //
+    // Scope: is_single / is_variant, manual purchases only. Import stays legacy
+    // (MS4). PurchaseReturn stays legacy (MS3). batch / IMEI => the service
+    // fails closed. NO legacy product_warehouse / BatchService / SerialNumber
+    // writes on this path. The document identity (inventory_location_id NOT
+    // NULL) — not the warehouse's current mode — governs update/destroy.
+    // =====================================================================
+
+    /** Raw request details -> LocationAwarePurchaseStockService line shape. */
+    private function locationAwarePurchaseLines(Request $request): array
+    {
+        return array_map(fn ($v) => [
+            'product_id' => $v['product_id'] ?? null,
+            'product_variant_id' => (isset($v['product_variant_id']) && $v['product_variant_id'] !== '' ) ? $v['product_variant_id'] : null,
+            'quantity' => $v['quantity'] ?? 0,
+            'purchase_unit_id' => $v['purchase_unit_id'] ?? null,
+        ], array_values($request['details'] ?? []));
+    }
+
+    /**
+     * Create PurchaseDetail rows one by one (NOT bulk insert) so we get each
+     * real id back in request order. Returns [lineIndex => purchase_detail_id].
+     */
+    private function persistLocationAwarePurchaseDetails(int $purchaseId, array $rawLines): array
+    {
+        $ids = [];
+        foreach (array_values($rawLines) as $i => $value) {
+            $d = PurchaseDetail::create([
+                'purchase_id' => $purchaseId,
+                'quantity' => $value['quantity'],
+                'cost' => $value['Unit_cost'] ?? 0,
+                'purchase_unit_id' => $value['purchase_unit_id'] ?? null,
+                'TaxNet' => $value['tax_percent'] ?? 0,
+                'tax_method' => $value['tax_method'] ?? '1',
+                'discount' => $value['discount'] ?? 0,
+                'discount_method' => $value['discount_Method'] ?? '2',
+                'product_id' => $value['product_id'],
+                'product_variant_id' => (isset($value['product_variant_id']) && $value['product_variant_id'] !== '') ? $value['product_variant_id'] : null,
+                'total' => $value['subtotal'] ?? 0,
+                'imei_number' => $this->resolveImeiString($value),
+            ]);
+            $ids[$i] = $d->id;
+        }
+
+        return $ids;
+    }
+
+    /** Attach the real source_detail_id to each validated line (same order). */
+    private function withSourceDetailIds(array $validatedLines, array $detailIds): array
+    {
+        $out = [];
+        foreach (array_values($validatedLines) as $i => $ln) {
+            $out[] = ['source_detail_id' => $detailIds[$i] ?? null] + $ln;
+        }
+
+        return $out;
+    }
+
+    private function paymentStatutFor(float $grandTotal, float $paidAmount): string
+    {
+        $due = $grandTotal - $paidAmount;
+        if ($due <= 0.0) {
+            return 'paid';
+        }
+
+        return $due != $grandTotal ? 'partial' : 'unpaid';
+    }
+
+    // --------- CREATE (location-native) ---------------------------------\\
+
+    private function storeLocationAware(Request $request)
+    {
+        $svc = app(LocationAwarePurchaseStockService::class);
+        $resolver = app(WarehouseInventoryModeResolver::class);
+        $warehouseId = (int) $request->warehouse_id;
+        $statut = $request->statut;
+
+        \DB::transaction(function () use ($request, $svc, $resolver, $warehouseId, $statut) {
+            // FAIL CLOSED — location_primary must be healthy; no legacy fallback.
+            $resolver->assertHealthyLocationPrimary($warehouseId);
+
+            request()->validate(['inventory_location_id' => 'required|integer']);
+            $locationId = (int) $request->inventory_location_id;
+            $rawLines = array_values($request['details'] ?? []);
+
+            // Validate + lock ALWAYS (pending included): a location_primary
+            // purchase can only be saved with a valid location + valid lines.
+            $validated = $svc->validateAndLock(
+                LocationAwarePurchaseStockService::DOC_PURCHASE,
+                $warehouseId,
+                $locationId,
+                $this->locationAwarePurchaseLines($request)
+            );
+
+            $order = new Purchase;
+            $order->date = $request->date;
+            $order->time = now()->toTimeString();
+            $order->Ref = $this->getNumberOrder();
+            $order->provider_id = $request->supplier_id;
+            $order->GrandTotal = $request->GrandTotal;
+            $order->warehouse_id = $warehouseId;
+            $order->inventory_location_id = $locationId;
+            $order->tax_rate = $request->tax_rate;
+            $order->TaxNet = $request->TaxNet;
+            $order->discount = $request->discount;
+            $order->shipping = $request->shipping;
+            $order->statut = $statut;
+            $order->payment_statut = 'unpaid';
+            $order->notes = $request->notes;
+            $order->user_id = Auth::user()->id;
+            $order->save();
+
+            $this->syncExtraChargesAndCustomFields($order->id, $request);
+
+            $detailIds = $this->persistLocationAwarePurchaseDetails($order->id, $rawLines);
+
+            // Physical effect ONLY for a received purchase. A pending purchase
+            // keeps location + header + details, but NO snapshot and NO
+            // movements — the snapshot represents an effect that WAS applied.
+            if ($statut === 'received') {
+                $validated['lines'] = $this->withSourceDetailIds($validated['lines'], $detailIds);
+                $snapshot = $svc->buildSnapshot($validated, 1);
+                $order->update(['inventory_effect_snapshot' => $snapshot]);
+                $svc->applySnapshot($snapshot, $order->id);
+            }
+        }, 10);
+
+        return response()->json(['success' => true, 'message' => 'Purchase Created !!']);
+    }
+
+    // --------- UPDATE (location-native) — state machine A/B/C/D ---------\\
+
+    private function updateLocationAware(Request $request, Purchase $current)
+    {
+        $svc = app(LocationAwarePurchaseStockService::class);
+        $resolver = app(WarehouseInventoryModeResolver::class);
+        $newWarehouseId = (int) $request->warehouse_id;
+        $newStatut = $request->statut;
+
+        $response = \DB::transaction(function () use ($request, $current, $svc, $resolver, $newWarehouseId, $newStatut) {
+            $user = Auth::user();
+            $view_records = $user->hasRecordView();
+
+            // Same guards as the legacy path.
+            if (! $user->is_all_warehouses) {
+                $warehouses_id = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->toArray();
+                if (empty($current->warehouse_id) || ! in_array($current->warehouse_id, $warehouses_id)) {
+                    return response()->json(['success' => false, 'message' => 'You are not allowed to access this sale (warehouse restriction).'], 403);
+                }
+            }
+            if (PurchaseReturn::where('purchase_id', $current->id)->where('deleted_at', '=', null)->exists()) {
+                return response()->json(['success' => false, 'Return exist for the Transaction' => false], 403);
+            }
+            if (! $view_records) {
+                $this->authorizeForUser($request->user('api'), 'check_record', $current);
+            }
+
+            $locked = Purchase::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
+            if ($locked->inventory_location_id === null) {
+                throw ValidationException::withMessages(['purchase' => 'Registro legacy: usa la ruta histórica.']);
+            }
+
+            $oldStatut = $locked->statut;
+            $oldSnapshotRaw = $locked->inventory_effect_snapshot; // array|null (cast)
+            $hasHistoricalSnapshot = ! empty($oldSnapshotRaw);
+            $hadActiveEffect = ($oldStatut === 'received') && $hasHistoricalSnapshot;
+
+            // A location-native purchase can only live in a healthy
+            // location_primary warehouse. Applies to the NEW warehouse too.
+            $resolver->assertHealthyLocationPrimary($newWarehouseId);
+            $newLocationId = $request->filled('inventory_location_id') ? (int) $request->inventory_location_id : null;
+            if (! $newLocationId) {
+                throw ValidationException::withMessages(['inventory_location_id' => 'Debes seleccionar una ubicación de inventario.']);
+            }
+
+            $rawLines = array_values($request['details'] ?? []);
+
+            // Revision progression: 1 if there was never a snapshot; else old + 1.
+            $oldRevision = 0;
+            if ($hasHistoricalSnapshot) {
+                $normOld = $svc->normalizeSnapshot($oldSnapshotRaw);
+                $oldRevision = $normOld['revision'];
+            }
+
+            // (C, D) reverse the currently-applied effect using the OLD snapshot
+            // (old warehouse/location/effects live inside it).
+            if ($hadActiveEffect) {
+                $oldSnapshot = $svc->normalizeSnapshot($oldSnapshotRaw);
+                $svc->assertSnapshotArtifactSafeAndLock($oldSnapshot);
+                $svc->reverseSnapshot($oldSnapshot, $locked->id);
+            }
+
+            // Validate the NEW lines + lock (pending and received alike).
+            $extra = [];
+            if ($hasHistoricalSnapshot) {
+                $extra = array_values(array_unique(array_map(fn ($e) => (int) $e['product_id'], $svc->normalizeSnapshot($oldSnapshotRaw)['effects'])));
+            }
+            $validated = $svc->validateAndLock(
+                LocationAwarePurchaseStockService::DOC_PURCHASE,
+                $newWarehouseId,
+                $newLocationId,
+                $this->locationAwarePurchaseLines($request),
+                $extra
+            );
+
+            // Replace details (location-native never touched batch/serial).
+            PurchaseDetail::where('purchase_id', $locked->id)->delete();
+            $detailIds = $this->persistLocationAwarePurchaseDetails($locked->id, $rawLines);
+
+            // (B, C) apply a NEW snapshot only when the new statut is received.
+            $newSnapshot = null;
+            if ($newStatut === 'received') {
+                $validated['lines'] = $this->withSourceDetailIds($validated['lines'], $detailIds);
+                $newSnapshot = $svc->buildSnapshot($validated, $oldRevision + 1);
+                $svc->applySnapshot($newSnapshot, $locked->id);
+            }
+
+            $payload = [
+                'date' => $request['date'],
+                'provider_id' => $request['supplier_id'],
+                'warehouse_id' => $newWarehouseId,
+                'inventory_location_id' => $newLocationId,
+                'notes' => $request['notes'],
+                'tax_rate' => $request['tax_rate'],
+                'TaxNet' => $request['TaxNet'],
+                'discount' => $request['discount'],
+                'shipping' => $request['shipping'],
+                'statut' => $newStatut,
+                'GrandTotal' => $request['GrandTotal'],
+                'payment_statut' => $this->paymentStatutFor((float) $request['GrandTotal'], (float) $locked->paid_amount),
+            ];
+            if ($newSnapshot !== null) {
+                // C / B
+                $payload['inventory_effect_snapshot'] = $newSnapshot;
+            }
+            // A (pending->pending) and D (received->pending): keep the last
+            // historical snapshot so a later pending->received bumps its revision.
+            $locked->update($payload);
+
+            $this->syncExtraChargesAndCustomFields($locked->id, $request);
+
+            return null;
+        }, 10);
+
+        if ($response !== null) {
+            return $response;
+        }
+
+        return response()->json(['success' => true, 'message' => 'Purchase Updated !!']);
+    }
+
+    // --------- DESTROY (location-native) -------------------------------\\
+
+    private function destroyLocationAware(Request $request, Purchase $current)
+    {
+        $svc = app(LocationAwarePurchaseStockService::class);
+
+        $response = \DB::transaction(function () use ($request, $current, $svc) {
+            $user = Auth::user();
+            $view_records = $user->hasRecordView();
+
+            $locked = Purchase::whereKey($current->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
+
+            if (! $user->is_all_warehouses) {
+                $warehouses_id = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->toArray();
+                if (empty($locked->warehouse_id) || ! in_array($locked->warehouse_id, $warehouses_id)) {
+                    return response()->json(['success' => false, 'message' => 'You are not allowed to access this sale (warehouse restriction).'], 403);
+                }
+            }
+            if (PurchaseReturn::where('purchase_id', $locked->id)->where('deleted_at', '=', null)->exists()) {
+                return response()->json(['success' => false, 'Return exist for the Transaction' => false], 403);
+            }
+            if (! $view_records) {
+                $this->authorizeForUser($request->user('api'), 'check_record', $locked);
+            }
+
+            $this->reverseLocationNativePurchaseStock($locked);
+
+            $locked->details()->delete();
+            $locked->update(['deleted_at' => Carbon::now()]);
+
+            $Payment_purchase_data = PaymentPurchase::where('purchase_id', $locked->id)->get();
+            foreach ($Payment_purchase_data as $Payment_purchase) {
+                $account = Account::find($Payment_purchase->account_id);
+                if ($account) {
+                    $account->update(['balance' => $account->balance + $Payment_purchase->montant]);
+                }
+                $Payment_purchase->delete();
+            }
+
+            return null;
+        }, 10);
+
+        if ($response !== null) {
+            return $response;
+        }
+
+        return response()->json(['success' => true, 'message' => 'Purchase Deleted !!']);
+    }
+
+    /**
+     * Shared physical-stock reversal for a location-native purchase being
+     * deleted (single destroy AND bulk delete). Received => reverse the exact
+     * historical snapshot; pending => nothing. FAIL CLOSED on a missing/broken
+     * snapshot — never guess, never fall back to the legacy per-warehouse writer.
+     */
+    private function reverseLocationNativePurchaseStock(Purchase $purchase): void
+    {
+        if ($purchase->statut !== 'received') {
+            return;
+        }
+
+        $svc = app(LocationAwarePurchaseStockService::class);
+        $snapshot = $svc->normalizeSnapshot($purchase->inventory_effect_snapshot); // throws if null/malformed
+        $svc->assertSnapshotArtifactSafeAndLock($snapshot);
+        $svc->reverseSnapshot($snapshot, $purchase->id);
+    }
+
+    // --------- Inventory-location select for the purchase form ----------\\
+
+    /**
+     * GET purchases_inventory_locations/{warehouse_id}
+     * Same pattern as AdjustmentController::inventoryLocationsForWarehouse.
+     */
+    public function inventoryLocationsForWarehouse(Request $request, $warehouseId)
+    {
+        $u = $request->user('api');
+        abort_unless(
+            $u && (Gate::forUser($u)->allows('create', Purchase::class) || Gate::forUser($u)->allows('update', Purchase::class)),
+            403,
+            'No tienes permiso para consultar ubicaciones de inventario de compras.'
+        );
+
+        $warehouseId = (int) $warehouseId;
+        $user = auth()->user();
+        if ($user && ! $user->is_all_warehouses) {
+            $ids = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
+            abort_unless(in_array($warehouseId, $ids, true), 403, 'No tienes acceso a este almacén.');
+        }
+
+        $resolver = app(WarehouseInventoryModeResolver::class);
+        $state = $resolver->state($warehouseId);
+        $mode = $state?->mode ?? InventoryTransitionState::MODE_LEGACY_ONLY;
+        $status = $state?->status ?? 'pending';
+        $requires = $resolver->requiresInventoryLocation($warehouseId);
+        $blocked = $resolver->isLocationPrimaryButBlocked($warehouseId);
+
+        // Tenant without the location engine yet — nothing to select, stay legacy.
+        if (! Schema::hasTable('inventory_locations')) {
+            return response()->json([
+                'transition_mode' => $mode,
+                'transition_status' => $status,
+                'requires_inventory_location' => false,
+                'blocked' => false,
+                'locations' => [],
+                'default_inventory_location_id' => null,
+            ]);
+        }
+
+        $query = InventoryLocation::whereNull('deleted_at')
+            ->where('warehouse_id', $warehouseId)
+            ->where('is_active', 1);
+
+        // Respect the user's inventory-location scope (owner / role 1 see all).
+        if ($user && ! $user->is_all_warehouses && (int) $user->role_id !== 1) {
+            $allowed = app(InventoryLocationScopeService::class)->receivingLocationIds($user);
+            $query->whereIn('id', $allowed ?: [0]);
+        }
+
+        $locations = $query->orderBy('code')->get(['id', 'code', 'name', 'type', 'is_quarantine']);
+
+        $default = Warehouse::whereNull('deleted_at')->whereKey($warehouseId)->value('default_inventory_location_id');
+        $defaultEligible = $default && $locations->firstWhere(fn ($l) => (int) $l->id === (int) $default);
+
+        return response()->json([
+            'transition_mode' => $mode,
+            'transition_status' => $status,
+            'requires_inventory_location' => $requires,
+            'blocked' => $blocked,
+            'locations' => $locations,
+            'default_inventory_location_id' => $defaultEligible ? (int) $default : null,
+        ]);
+    }
+
     // --------- Update Purchase  -------------\\
 
     public function update(Request $request, $id)
@@ -379,6 +781,15 @@ class PurchasesController extends BaseController
             'warehouse_id' => 'required',
             'supplier_id' => 'required',
         ]);
+
+        // MS2 — route by the PERSISTED document identity, not the warehouse's
+        // current mode. A purchase created location-native stays location-native
+        // for its whole life; a legacy purchase stays legacy even if its
+        // warehouse is later promoted to location_primary.
+        $routing_purchase = Purchase::find($id);
+        if ($routing_purchase && $routing_purchase->inventory_location_id !== null) {
+            return $this->updateLocationAware($request, $routing_purchase);
+        }
 
         \DB::transaction(function () use ($request, $id) {
             $user = Auth::user();
@@ -659,6 +1070,12 @@ class PurchasesController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'delete', Purchase::class);
 
+        // MS2 — route by persisted identity (see update()).
+        $routing_purchase = Purchase::find($id);
+        if ($routing_purchase && $routing_purchase->inventory_location_id !== null) {
+            return $this->destroyLocationAware($request, $routing_purchase);
+        }
+
         \DB::transaction(function () use ($id, $request) {
             $user = Auth::user();
             // New way: Check user's record_view field (user-level boolean)
@@ -836,6 +1253,13 @@ class PurchasesController extends BaseController
                         $this->authorizeForUser($request->user('api'), 'check_record', $current_Purchase);
                     }
 
+                    // MS2 — mixed selection: each purchase reverses by ITS OWN
+                    // identity. Location-native purchases NEVER run the legacy
+                    // product_warehouse writers below.
+                    if ($current_Purchase->inventory_location_id !== null) {
+                        $this->reverseLocationNativePurchaseStock($current_Purchase);
+                    } else {
+
                     // Pharmacy: reverse batch consumption (subtracts qty from product_batches,
                     // removes pivot rows) before warehouse stock is decremented below.
                     $batchService = app(BatchService::class);
@@ -892,6 +1316,8 @@ class PurchasesController extends BaseController
                             }
                         }
                     }
+
+                    } // end legacy reversal branch
 
                     $current_Purchase->details()->delete();
                     $current_Purchase->update([
@@ -1461,6 +1887,9 @@ class PurchasesController extends BaseController
             }
 
             $purchase['date'] = $Purchase_data->date;
+            // MS2 — non-null only for a location-native purchase; the edit form
+            // loads/shows the inventory location and keeps sending it back.
+            $purchase['inventory_location_id'] = $Purchase_data->inventory_location_id;
             $purchase['tax_rate'] = $Purchase_data->tax_rate;
             $purchase['TaxNet'] = $Purchase_data->TaxNet;
             $purchase['discount'] = $Purchase_data->discount;
