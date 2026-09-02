@@ -1,20 +1,20 @@
 <template>
   <!--
-    Landing de un dominio del shell px-next. El shell NO es todavía el layout
-    persistente: la navegación real ocurre en el panel contextual (rutas reales
-    que hoy salen del shell, igual que en Milestone 1).
-    · Reportes → hub ligero con búsqueda (misma fuente: shell-nav.js).
-    · Finanzas · RR. HH. · Configuración · Más → orientación breve.
+    · Reportes → hub ligero con búsqueda (fuente única: shell-nav.js).
+      Ruta PRODUCTIVA: /app/reports/all (child real de /app/reports, dentro del
+      PxShellLayout persistente). Alias dev-only conservado: /app/shell/reportes.
+    · Finanzas · RR. HH. · Configuración · Más → orientación breve (sólo alias dev
+      /app/shell/<dominio>; en producción el riel lleva a rutas reales).
   -->
   <div class="px-next pxn-domain">
     <!-- ============ HUB DE REPORTES ============ -->
-    <div v-if="seg === 'reportes'" class="pxn-hub">
+    <div v-if="isReportsHub" class="pxn-hub">
       <header class="pxn-hub__head">
         <h1 class="pxn-hub__title">Reportes</h1>
         <p class="pxn-hub__lead">
           {{ totalPermitted }} reportes disponibles según tu acceso.
           <template v-if="activeCat"> · Categoría: <strong>{{ activeCat.title }}</strong>
-            <router-link :to="{ path: '/app/shell/reportes' }" class="pxn-hub__clearcat">ver todas</router-link>
+            <router-link :to="{ path: hubRoute }" class="pxn-hub__clearcat">ver todas</router-link>
           </template>
         </p>
         <div class="pxn-hub__search">
@@ -64,7 +64,7 @@
 
 <script>
 import { mapGetters } from "vuex";
-import { SHELL_REPORTS } from "@/views/app/_ui/data/shell-nav";
+import { SHELL_REPORTS, REPORTS_HUB_ROUTE } from "@/views/app/_ui/data/shell-nav";
 
 const MAP = {
   finanzas: { title: "Finanzas", icon: "calculator" },
@@ -90,6 +90,15 @@ export default {
     ...mapGetters(["currentUserPermissions"]),
     seg() {
       return (this.$route.path.split("/")[3] || "").toLowerCase();
+    },
+    hubRoute() {
+      return REPORTS_HUB_ROUTE;
+    },
+    // El hub de Reportes se sirve tanto en su ruta PRODUCTIVA (/app/reports/all)
+    // como en el alias dev-only (/app/shell/reportes).
+    isReportsHub() {
+      const p = this.$route.path;
+      return p === REPORTS_HUB_ROUTE || p === "/app/shell/reportes" || this.seg === "reportes";
     },
     title() {
       return (MAP[this.seg] || {}).title || "Dominio";

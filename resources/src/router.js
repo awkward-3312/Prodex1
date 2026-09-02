@@ -2702,6 +2702,21 @@ const baseRoutes = [
                 redirect: "/app/reports/profit_and_loss",
                 children: [
                     {
+                        // Hub de Reportes px-next — ruta PRODUCTIVA. Reemplaza al
+                        // destino dev-only /app/shell/reportes (que no existe en el
+                        // bundle de producción). Se monta dentro del PxShellLayout
+                        // persistente (via views/app/index.vue -> pages/reports
+                        // que es sólo <router-view/>). resolveShellDomain lo mapea
+                        // a "reportes" por el prefijo /app/reports.
+                        name: "reports_all_hub",
+                        path: "all",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "reports-hub" */
+                                "./views/app/shell/domain_landing.vue"
+                            )
+                    },
+                    {
                         name: "payments_purchases",
                         path: "payments_purchase",
                         component: () =>
