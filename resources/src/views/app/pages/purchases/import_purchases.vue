@@ -94,6 +94,43 @@
                     </validation-provider>
                   </b-col>
 
+                  <!-- inventory location (MS4 · only location_primary warehouses) -->
+                  <b-col v-if="location_meta.requires" md="12" class="mb-3">
+                    <validation-provider name="inventory_location" :rules="{ required: true }">
+                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                        <v-select
+                          :class="{'is-invalid': !!errors.length}"
+                          :state="errors[0] ? false : (valid ? true : null)"
+                          :disabled="!purchase.warehouse_id"
+                          v-model="purchase.inventory_location_id"
+                          :reduce="label => label.value"
+                          :placeholder="$t('Choose_Inventory_Location')"
+                          :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
+                        />
+                        <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                      </b-form-group>
+                    </validation-provider>
+                  </b-col>
+
+                  <!-- location_primary but not reconciled: block the import -->
+                  <b-col v-if="location_meta.blocked" md="12" class="mb-3">
+                    <b-alert show variant="danger" class="mb-0">
+                      {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado. No se puede importar la compra hasta resolverlo.' }}
+                    </b-alert>
+                  </b-col>
+
+                  <!-- rows the location-native import cannot accept -->
+                  <b-col v-if="location_meta.requires && incompatibleRows.length" md="12" class="mb-3">
+                    <b-alert show variant="warning" class="mb-0">
+                      {{ $t('Import_Location_Incompatible_Rows') || 'Algunas filas del CSV no se pueden importar a un almacén por ubicación (productos con variantes, lote o serie/IMEI). Corrige el archivo antes de importar:' }}
+                      <ul class="mb-0 mt-2" style="padding-left: 18px;">
+                        <li v-for="(row, i) in incompatibleRows" :key="'inc-' + i">
+                          <code>{{ row.code }}</code> — {{ warningLabel(row.validation_warning) }}
+                        </li>
+                      </ul>
+                    </b-alert>
+                  </b-col>
+
                   <!-- Status -->
                   <b-col md="12" class="mb-3">
                     <validation-provider name="Status" :rules="{ required: true}">
@@ -484,7 +521,7 @@
               <b-button
                 variant="primary"
                 @click="Submit_Purchase"
-                :disabled="SubmitProcessing || !previewRows.length || hasBatchValidationErrors"
+                :disabled="SubmitProcessing || !previewRows.length || hasBatchValidationErrors || locationGateBlocked"
                 :style="submitBtnStyle"
               >
                 <lucide-icon name="check" style="margin-right: 6px;" />
@@ -521,6 +558,8 @@ export default {
       previewLoading: false,
       previewError: "",
       dropzoneHover: false,
+      inventory_locations: [],
+      location_meta: { requires: false, blocked: false, mode: null, status: null },
       purchase: {
         id: "",
         date: new Date().toISOString().slice(0, 10),
@@ -528,12 +567,19 @@ export default {
         notes: "",
         supplier_id: "",
         warehouse_id: "",
+        inventory_location_id: null,
         tax_rate: 0,
         TaxNet: 0,
         shipping: 0,
         discount: 0
       }
     };
+  },
+
+  watch: {
+    "purchase.warehouse_id"(val) {
+      this.onWarehouseChange(val);
+    }
   },
 
   computed: {
@@ -1000,6 +1046,22 @@ export default {
         }
       }
       return "";
+    },
+
+    // MS4 — CSV rows a location-native import cannot accept (variant / batch / IMEI).
+    incompatibleRows() {
+      if (!Array.isArray(this.previewRows)) return [];
+      return this.previewRows.filter(
+        r => r && (r.is_variant || r.is_batch_tracked || r.is_imei)
+      );
+    },
+
+    // Block submit while the warehouse is location_primary-but-not-ready, or
+    // requires a location that is not chosen, or the CSV has incompatible rows.
+    locationGateBlocked() {
+      if (this.location_meta.blocked) return true;
+      if (!this.location_meta.requires) return false;
+      return !this.purchase.inventory_location_id || this.incompatibleRows.length > 0;
     }
   },
 
@@ -1223,6 +1285,30 @@ export default {
           );
           return;
         }
+        if (this.location_meta.blocked) {
+          this.makeToast(
+            "danger",
+            this.$t("Inventory_Location_Warehouse_Not_Ready") || "This warehouse is not reconciled for location inventory yet.",
+            this.$t("Failed")
+          );
+          return;
+        }
+        if (this.location_meta.requires && !this.purchase.inventory_location_id) {
+          this.makeToast(
+            "danger",
+            this.$t("Choose_Inventory_Location") || "Choose an inventory location",
+            this.$t("Failed")
+          );
+          return;
+        }
+        if (this.location_meta.requires && this.incompatibleRows.length) {
+          this.makeToast(
+            "danger",
+            this.$t("Import_Location_Incompatible_Rows") || "Some CSV rows cannot be imported into a location-based warehouse.",
+            this.$t("Failed")
+          );
+          return;
+        }
         this.Create_Purchase();
       });
     },
@@ -1291,6 +1377,12 @@ export default {
       data.append("tax_rate", this.purchase.tax_rate);
       data.append("discount", this.purchase.discount);
       data.append("shipping", this.purchase.shipping);
+      data.append(
+        "inventory_location_id",
+        this.location_meta.requires && this.purchase.inventory_location_id
+          ? this.purchase.inventory_location_id
+          : ""
+      );
       data.append("products", this.import_products);
 
       // Include batches keyed by productcode for batch-tracked products.
@@ -1332,6 +1424,52 @@ export default {
             this.$t("Failed")
           );
           this.SubmitProcessing = false;
+        });
+    },
+
+    //--------------------------- Inventory location (MS4) ---------------------\\
+    warningLabel(kind) {
+      if (kind === "variant") return this.$t("Has_Variants") || "product has variants";
+      if (kind === "batch") return this.$t("Batch_Tracked") || "batch-tracked product";
+      if (kind === "imei") return this.$t("Serialized_IMEI") || "serialized (IMEI) product";
+      return kind || "";
+    },
+
+    onWarehouseChange(id) {
+      this.purchase.inventory_location_id = null;
+      this.inventory_locations = [];
+      this.location_meta = { requires: false, blocked: false, mode: null, status: null };
+      if (id) {
+        this.Load_Inventory_Locations(id);
+      }
+    },
+
+    Load_Inventory_Locations(id) {
+      axios
+        .get("purchases_inventory_locations/" + id)
+        .then(({ data }) => {
+          this.inventory_locations = (data && data.locations) || [];
+          this.location_meta = {
+            requires: !!(data && data.requires_inventory_location),
+            blocked: !!(data && data.blocked),
+            mode: (data && data.transition_mode) || null,
+            status: (data && data.transition_status) || null
+          };
+          if (!this.location_meta.requires) {
+            this.purchase.inventory_location_id = null;
+            return;
+          }
+          const def = data && data.default_inventory_location_id;
+          const ids = this.inventory_locations.map(l => l.id);
+          if (def && ids.includes(def)) {
+            this.purchase.inventory_location_id = def;
+          } else if (ids.length === 1) {
+            this.purchase.inventory_location_id = ids[0];
+          }
+        })
+        .catch(() => {
+          this.inventory_locations = [];
+          this.location_meta = { requires: false, blocked: false, mode: null, status: null };
         });
     },
 

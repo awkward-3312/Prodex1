@@ -14,8 +14,8 @@ use Tests\TestCase;
  * ONLY for warehouses in MODE_LOCATION_PRIMARY + healthy. Every other mode
  * keeps the exact legacy flow (covered by PurchasesLegacyGoldenMasterTest).
  *
- * NOT production-ready as a package: store_import_purchases and PurchaseReturn
- * are still legacy (MS3 / MS4).
+ * NOT production-ready as a package: batch (MS5), serial / IMEI (MS6) and
+ * provenance (MS7) are still legacy / pending.
  */
 class PurchasesLocationNativeTest extends TestCase
 {

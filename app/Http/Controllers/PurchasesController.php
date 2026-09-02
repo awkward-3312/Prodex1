@@ -2514,6 +2514,21 @@ class PurchasesController extends BaseController
             $total = $qty * $cost;
             $subtotal += $total;
 
+            // MS4 — additive UX hints so the form can warn BEFORE submit when
+            // the chosen warehouse is location_primary. The store endpoint is
+            // still the final guard.
+            $isVariant = ((int) ($product->is_variant ?? 0) === 1) || ((string) $product->type === 'is_variant');
+            $isBatch = (bool) ($product->is_batch_tracked ?? false);
+            $isImei = (int) ($product->is_imei ?? 0) === 1;
+            $warning = null;
+            if ($isVariant) {
+                $warning = 'variant';
+            } elseif ($isBatch) {
+                $warning = 'batch';
+            } elseif ($isImei) {
+                $warning = 'imei';
+            }
+
             $rows[] = [
                 'code' => $product->code,
                 'name' => $product->name,
@@ -2521,8 +2536,13 @@ class PurchasesController extends BaseController
                 'cost' => $cost,
                 'total' => $total,
                 'unit' => optional($product->unitPurchase)->ShortName,
-                'is_batch_tracked' => (bool) ($product->is_batch_tracked ?? false),
+                'is_batch_tracked' => $isBatch,
+                'is_imei' => $isImei,
+                'is_variant' => $isVariant,
+                'product_type' => (string) $product->type,
                 'product_id' => $product->id,
+                'product_variant_id' => null,
+                'validation_warning' => $warning,
             ];
         }
 
@@ -2555,6 +2575,21 @@ class PurchasesController extends BaseController
             if (is_array($decoded)) {
                 $batchesByCode = $decoded;
             }
+        }
+
+        // MS4 — routing by warehouse transition mode. An import for a
+        // location_primary warehouse goes to the location-native engine; every
+        // other mode (legacy_only / shadow_compare / dual_write / no row) keeps
+        // the exact legacy flow below.
+        if (app(WarehouseInventoryModeResolver::class)->isLocationPrimary((int) $request->warehouse_id)) {
+            if ($data instanceof \Illuminate\Http\JsonResponse) {
+                return $data; // CSV parse / validation error already shaped by request_products_csv
+            }
+            if (! is_array($data)) {
+                return response()->json(['status' => false, 'msg' => 'Invalid CSV file'], 422);
+            }
+
+            return $this->storeImportLocationAware($request, $data, $batchesByCode);
         }
 
         \DB::transaction(function () use ($request, $data, $batchesByCode) {
@@ -2649,6 +2684,174 @@ class PurchasesController extends BaseController
         }, 10);
 
         return response()->json(['success' => true, 'message' => 'Purchase Created !!']);
+    }
+
+    // =====================================================================
+    // MS4 — Import purchases location-native (warehouses in MODE_LOCATION_PRIMARY).
+    //
+    // The CSV contract (productcode;qty) identifies a Product by Product.code
+    // ONLY — it has NO variant column, so a location-native import CANNOT
+    // resolve a ProductVariant. Every is_variant / is_batch_tracked / is_imei
+    // row FAILS CLOSED (422): resolveImportLinesForLocationNative() pre-flags it
+    // with a clear per-row message and the engine's validateAndLock() is the
+    // second fence. Legacy import (any non-primary mode) keeps its exact current
+    // behaviour, including the historical variant-NULL product_warehouse write.
+    // NO product_warehouse / BatchService / SerialNumberService on this path.
+    // =====================================================================
+
+    private function storeImportLocationAware(Request $request, array $data, array $batchesByCode)
+    {
+        $svc = app(LocationAwarePurchaseStockService::class);
+        $warehouseId = (int) $request->warehouse_id;
+        $statut = $request->statut;
+
+        \DB::transaction(function () use ($request, $data, $svc, $warehouseId, $statut) {
+            // FAIL CLOSED — location_primary must still be healthy INSIDE the tx
+            // (locks inventory_transition_states first). No legacy fallback.
+            $this->assertLocationNativePurchaseTransitionSafe($warehouseId, null);
+
+            request()->validate(['inventory_location_id' => 'required|integer']);
+            $locationId = (int) $request->inventory_location_id;
+
+            // Resolve + validate EVERY row BEFORE any stock mutation.
+            $resolved = $this->resolveImportLinesForLocationNative($data);
+
+            // Full-document validate + lock. Fails closed on unknown/deleted
+            // product, qty <= 0, invalid unit, batch/IMEI, or an is_variant row
+            // (product_variant_id is always null here — the CSV cannot name one).
+            $validated = $svc->validateAndLock(
+                LocationAwarePurchaseStockService::DOC_PURCHASE,
+                $warehouseId,
+                $locationId,
+                array_map(fn ($r) => [
+                    'product_id' => $r['product']->id,
+                    'product_variant_id' => null,
+                    'quantity' => $r['qty'],
+                    'purchase_unit_id' => $r['unit_purchase_id'],
+                ], $resolved)
+            );
+
+            $order = new Purchase;
+            $order->date = $request->date;
+            $order->time = now()->toTimeString();
+            $order->Ref = $this->getNumberOrder();
+            $order->provider_id = $request->supplier_id;
+            $order->GrandTotal = 0;
+            $order->warehouse_id = $warehouseId;
+            $order->inventory_location_id = $locationId;
+            $order->tax_rate = $request->tax_rate;
+            $order->TaxNet = 0;
+            $order->discount = $request->discount;
+            $order->shipping = $request->shipping;
+            $order->statut = $statut;
+            $order->payment_statut = 'unpaid';
+            $order->notes = $request->notes;
+            $order->user_id = Auth::user()->id;
+            $order->save();
+
+            // Details one by one -> real ids. request_products_csv already
+            // rejects a duplicate productcode, so each CSV row is its own line.
+            $total = 0;
+            $detailIds = [];
+            foreach (array_values($resolved) as $i => $r) {
+                $lineTotal = $r['qty'] * (float) $r['product']->cost;
+                $total += $lineTotal;
+                $d = PurchaseDetail::create([
+                    'purchase_id' => $order->id,
+                    'quantity' => $r['qty'],
+                    'cost' => $r['product']->cost,
+                    'purchase_unit_id' => $r['product']->unit_purchase_id,
+                    'TaxNet' => 0,
+                    'tax_method' => 1,
+                    'discount' => 0,
+                    'discount_method' => 2,
+                    'product_id' => $r['product']->id,
+                    'product_variant_id' => null,
+                    'total' => $lineTotal,
+                    'imei_number' => null,
+                ]);
+                $detailIds[$i] = $d->id;
+            }
+
+            // GrandTotal — identical arithmetic to the legacy import.
+            $total_without_discount = $total - $order->discount;
+            $TaxNet = ($total_without_discount * $order->tax_rate) / 100;
+            $order->TaxNet = $TaxNet;
+            $order->GrandTotal = $total_without_discount + $TaxNet + $order->shipping;
+            $order->save();
+
+            // Physical effect ONLY for a received import. A pending / ordered
+            // import keeps location + header + details, NO snapshot, NO movements.
+            if ($statut === 'received') {
+                $validated['lines'] = $this->withSourceDetailIds($validated['lines'], $detailIds);
+                $snapshot = $svc->buildSnapshot($validated, 1);
+                $order->update(['inventory_effect_snapshot' => $snapshot]);
+                $svc->applySnapshot($snapshot, $order->id);
+            }
+        }, 10);
+
+        return response()->json(['success' => true, 'message' => 'Purchase Created !!']);
+    }
+
+    /**
+     * Resolve each CSV row (productcode;qty) to a real Product + its purchase
+     * Unit for the location-native import, validating the WHOLE document before
+     * any stock mutation. FAIL CLOSED (422) on: unknown / soft-deleted product,
+     * qty <= 0, a product with variants (the CSV has no variant column), or a
+     * batch / IMEI-tracked product (MS5 / MS6).
+     *
+     * @return array<int,array{code:string, product:\App\Models\Product, unit_purchase_id:?int, qty:float}>
+     */
+    private function resolveImportLinesForLocationNative(array $data): array
+    {
+        if (empty($data)) {
+            throw ValidationException::withMessages(['products' => 'El archivo CSV no tiene filas.']);
+        }
+
+        $out = [];
+        foreach (array_values($data) as $i => $row) {
+            $code = isset($row['productcode']) ? trim((string) $row['productcode']) : '';
+            $line = $i + 1;
+
+            $product = Product::where('deleted_at', '=', null)->where('code', $code)->first();
+            if (! $product) {
+                throw ValidationException::withMessages([
+                    "products.$i" => "Fila $line: el producto con código '$code' no existe o fue eliminado.",
+                ]);
+            }
+
+            $qty = round((float) ($row['qty'] ?? 0), 3);
+            if ($qty <= 0) {
+                throw ValidationException::withMessages([
+                    "products.$i" => "Fila $line ($code): la cantidad debe ser mayor que cero.",
+                ]);
+            }
+
+            if ((int) ($product->is_variant ?? 0) === 1 || (string) $product->type === 'is_variant') {
+                throw ValidationException::withMessages([
+                    "products.$i" => "Fila $line ($code): es un producto con variantes. La importación de compra por ubicación no puede determinar la variante desde el CSV actual (columnas productcode;qty). FAIL CLOSED.",
+                ]);
+            }
+            if ((int) ($product->is_batch_tracked ?? 0) === 1) {
+                throw ValidationException::withMessages([
+                    "products.$i" => "Fila $line ($code): es un producto con control de lote. La entrada de lote por ubicación llega en un hito posterior. FAIL CLOSED.",
+                ]);
+            }
+            if ((int) ($product->is_imei ?? 0) === 1) {
+                throw ValidationException::withMessages([
+                    "products.$i" => "Fila $line ($code): es un producto serializado (IMEI). La entrada de series por ubicación llega en un hito posterior. FAIL CLOSED.",
+                ]);
+            }
+
+            $out[] = [
+                'code' => $code,
+                'product' => $product,
+                'unit_purchase_id' => $product->unit_purchase_id,
+                'qty' => $qty,
+            ];
+        }
+
+        return $out;
     }
 
     // import Products

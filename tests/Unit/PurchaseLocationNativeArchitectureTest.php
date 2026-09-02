@@ -11,9 +11,12 @@ use PHPUnit\Framework\TestCase;
  *
  *  MS0 (1e7289e) — fully-legacy baseline.
  *  MS1 (ce1fccf) — schema + models + engine prepared, controllers still legacy.
- *  MS2 (this)    — PurchasesController wired to the engine for
+ *  MS2 (dac74fc) — PurchasesController wired to the engine for
  *                  MODE_LOCATION_PRIMARY warehouses ONLY. Legacy writers stay.
- *                  PurchaseReturn + import + batch/serial are still legacy.
+ *  MS3 (9cae01e) — PurchasesReturnController wired to the same engine.
+ *  MS4 (this)    — store_import_purchases wired to the same engine for
+ *                  MODE_LOCATION_PRIMARY. Legacy import writer stays. Variant /
+ *                  batch / IMEI rows FAIL CLOSED. batch/serial/provenance pend.
  *
  * Not fragile: pattern / method based, never line numbers.
  */
@@ -344,16 +347,88 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
         $this->assertStringContainsString("'inventory_location_id' => \$newLocationId", $nativeUpdate);
     }
 
-    public function test_import_purchases_is_still_legacy_and_marked_pending_ms4(): void
+    // =====================================================================
+    // MS4 · IMPORT PURCHASES location-native
+    // =====================================================================
+
+    public function test_ms4_store_import_routes_by_location_primary_mode(): void
     {
         $body = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'store_import_purchases');
-        $this->assertStringNotContainsString('LocationAwarePurchaseStockService', $body);
-        $this->assertStringNotContainsString('inventory_location_id', $body);
-        $this->assertStringContainsString('$product_warehouse->qte += ', $body, 'import still uses the legacy writer');
-        // explicit "not production-ready" fence for MS2.
-        $doc = $this->read('tests/Feature/PurchasesLocationNativeTest.php');
-        $this->assertStringContainsString('NOT production-ready', $doc);
-        $this->assertStringContainsString('store_import_purchases and PurchaseReturn', $doc);
+        $this->assertStringContainsString('WarehouseInventoryModeResolver::class)->isLocationPrimary(', $body);
+        $this->assertStringContainsString('return $this->storeImportLocationAware($request, $data, $batchesByCode);', $body);
+        // legacy import body is still right there after the guard (unchanged).
+        $this->assertStringContainsString('$product_warehouse->qte += ', $body, 'legacy import writer must stay');
+    }
+
+    public function test_ms4_native_import_uses_the_engine_and_is_location_native_pure(): void
+    {
+        $src = $this->read('app/Http/Controllers/PurchasesController.php');
+        foreach (['storeImportLocationAware', 'resolveImportLinesForLocationNative'] as $name) {
+            $body = $this->fn($src, $name);
+            $this->assertStringNotContainsString('product_warehouse', $body, "{$name}() must be location-native pure");
+            $this->assertStringNotContainsString('BatchService', $body, "{$name}() must not run legacy batch writers");
+            $this->assertStringNotContainsString('SerialNumberService', $body, "{$name}() must not run legacy serial writers");
+        }
+
+        $body = $this->fn($src, 'storeImportLocationAware');
+        // transition guard runs INSIDE the tx, before any stock write.
+        $txPos = strpos($body, '\DB::transaction(');
+        $guardPos = strpos($body, 'assertLocationNativePurchaseTransitionSafe($warehouseId, null);');
+        $this->assertNotFalse($txPos);
+        $this->assertNotFalse($guardPos);
+        $this->assertGreaterThan($txPos, $guardPos, 'import guard must run inside the transaction');
+
+        $this->assertStringContainsString("request()->validate(['inventory_location_id' => 'required|integer']);", $body);
+        $this->assertStringContainsString('LocationAwarePurchaseStockService::DOC_PURCHASE', $body);
+        $this->assertStringContainsString('->validateAndLock(', $body);
+        $this->assertStringContainsString('->resolveImportLinesForLocationNative($data);', $body);
+        $this->assertStringContainsString("'inventory_effect_snapshot' => \$snapshot", $body);
+        $this->assertStringContainsString('->applySnapshot($snapshot, $order->id);', $body);
+        // pending guard: apply only when received.
+        $this->assertStringContainsString("if (\$statut === 'received')", $body);
+    }
+
+    public function test_ms4_native_import_fails_closed_on_variant_batch_and_imei(): void
+    {
+        $body = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'resolveImportLinesForLocationNative');
+        $this->assertStringContainsString("(string) \$product->type === 'is_variant'", $body);
+        $this->assertStringContainsString('is_batch_tracked', $body);
+        $this->assertStringContainsString('is_imei', $body);
+        $this->assertStringContainsString('FAIL CLOSED', $body);
+        $this->assertStringContainsString('ValidationException::withMessages', $body);
+    }
+
+    public function test_ms4_import_frontend_reuses_the_purchases_endpoint(): void
+    {
+        $src = $this->read('resources/src/views/app/pages/purchases/import_purchases.vue');
+        $this->assertStringContainsString('purchases_inventory_locations/', $src, 'import form must reuse the purchase endpoint');
+        $this->assertStringContainsString('requires_inventory_location', $src);
+        $this->assertStringContainsString('inventory_location_id', $src);
+        $this->assertStringContainsString('incompatibleRows', $src);
+        // no duplicated API for the import screen.
+        $this->assertStringNotContainsString('import_purchases_inventory_locations', $src);
+        $routes = $this->read('routes/tenant_api.php');
+        $this->assertStringNotContainsString('import_purchases_inventory_locations', $routes);
+    }
+
+    public function test_ms4_preview_import_is_read_only_and_enriched(): void
+    {
+        $body = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'preview_import_purchases');
+        $this->assertStringNotContainsString('->save(', $body, 'preview must not mutate');
+        $this->assertStringNotContainsString('DB::transaction', $body);
+        foreach (["'is_variant'", "'is_imei'", "'validation_warning'", "'product_type'"] as $key) {
+            $this->assertStringContainsString($key, $body);
+        }
+    }
+
+    public function test_ms4_purchase_and_return_ms2_ms3_paths_remain_intact(): void
+    {
+        $src = $this->read('app/Http/Controllers/PurchasesController.php');
+        // MS2 manual purchase engine wiring untouched.
+        $this->assertStringContainsString('return $this->storeLocationAware($request);', $this->fn($src, 'store'));
+        // MS3 return engine wiring untouched.
+        $ret = $this->read('app/Http/Controllers/PurchasesReturnController.php');
+        $this->assertStringContainsString('LocationAwarePurchaseStockService::DOC_PURCHASE_RETURN', $ret);
     }
 
     // =====================================================================
