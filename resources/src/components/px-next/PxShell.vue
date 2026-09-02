@@ -329,7 +329,7 @@
 
         </div><!-- /.pxn-topbar__rhs -->
       </header>
-      <div class="pxn-shell__canvas pxn-scroll">
+      <div ref="canvas" class="pxn-shell__canvas pxn-scroll">
         <slot />
       </div>
     </div>
@@ -939,6 +939,14 @@ export default {
       if (!/^\/app\/shell\/(panel|ventas|inventario|compras|finanzas|reportes|rrhh|config|mas)\/?$/.test(p || "")) {
         this.navDrawerOpen = false;
       }
+      // El canvas es el scroll container: como el shell persiste entre rutas,
+      // hay que devolverlo al inicio en cada navegación (equivalente al
+      // scrollBehavior {x:0,y:0} del router, que sólo afecta a window). Se hace
+      // de inmediato y de nuevo tras renderizar la página entrante.
+      if (this.$refs.canvas) this.$refs.canvas.scrollTop = 0;
+      this.$nextTick(() => {
+        if (this.$refs.canvas) this.$refs.canvas.scrollTop = 0;
+      });
     }
   },
   mounted() {
