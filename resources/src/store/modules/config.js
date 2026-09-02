@@ -373,6 +373,33 @@ function readStoredDarkMode() {
   return false;
 }
 
+// -----------------------------------------------------------------------------
+// px-next shell como layout de /app/* — OPT-IN local (Milestone 3).
+// Bandera por navegador (localStorage). Se puede alternar por URL con
+// ?pxshell=1 / ?pxshell=0 (persistente). No toca producción para otros
+// usuarios ni el backend. `large-sidebar` sigue siendo el layout por defecto.
+// -----------------------------------------------------------------------------
+const PXN_SHELL_LAYOUT_KEY = 'pxnShellLayout';
+
+function readStoredShellLayout() {
+  let stored = false;
+  try {
+    stored = localStorage.getItem(PXN_SHELL_LAYOUT_KEY) === 'true';
+  } catch (e) {}
+  try {
+    const q = new URLSearchParams(window.location.search).get('pxshell');
+    if (q === '1' || q === 'true' || q === 'on') { persistShellLayout(true); return true; }
+    if (q === '0' || q === 'false' || q === 'off') { persistShellLayout(false); return false; }
+  } catch (e) {}
+  return stored;
+}
+
+function persistShellLayout(value) {
+  try {
+    localStorage.setItem(PXN_SHELL_LAYOUT_KEY, value ? 'true' : 'false');
+  } catch (e) {}
+}
+
 function persistDarkMode(value) {
   try {
     localStorage.setItem('darkMode', value ? 'true' : 'false');
@@ -392,12 +419,14 @@ const state = {
   },
   primaryColor: readStoredPrimaryColor(),
   customizeButtonVisible: readStoredCustomizeButtonVisible(),
+  pxShellLayout: readStoredShellLayout(),
 };
 
 const getters = {
   getThemeMode: (state) => state.themeMode,
   getPrimaryColor: (state) => state.primaryColor,
   getCustomizeButtonVisible: (state) => state.customizeButtonVisible,
+  getPxShellLayout: (state) => state.pxShellLayout,
 };
 
 const actions = {
@@ -423,6 +452,9 @@ const actions = {
   },
   setCustomizeButtonVisible({ commit }, visible) {
     commit('setCustomizeButtonVisible', !!visible);
+  },
+  setPxShellLayout({ commit }, value) {
+    commit('setPxShellLayout', !!value);
   },
 };
 
@@ -454,6 +486,10 @@ const mutations = {
     try {
       localStorage.setItem('customizeButtonVisible', visible ? 'true' : 'false');
     } catch (e) {}
+  },
+  setPxShellLayout(state, value) {
+    state.pxShellLayout = value;
+    persistShellLayout(value);
   },
 };
 

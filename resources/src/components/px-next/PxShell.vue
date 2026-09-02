@@ -339,7 +339,7 @@
 <script>
 import { mapGetters, mapActions } from "vuex";
 import TopNav from "@/containers/layouts/largeSidebar/TopNav.vue";
-import { SHELL_RAIL, SHELL_FOOT } from "@/views/app/_ui/data/shell-nav";
+import { SHELL_RAIL, SHELL_FOOT, resolveShellDomain, resolveReportCategory } from "@/views/app/_ui/data/shell-nav";
 
 export default {
   name: "PxShell",
@@ -481,11 +481,12 @@ export default {
       return ps && ps.has_plan && ps.features ? ps.features : {};
     },
 
-    // Dominio activo derivado de la ruta real del shell.
+    // Dominio activo. Bajo /app/shell/<dominio> se lee el segmento; en cutover
+    // opt-in (rutas reales /app/*) se resuelve con el mapa único de shell-nav.
+    // Puede ser `null` (ruta neutra o no clasificada): el shell lo tolera —
+    // rail sin ítem activo, sin panel; nunca se finge "panel".
     activeDomain() {
-      const seg = (this.$route.path.split("/")[3] || "panel").toLowerCase();
-      const known = ["panel", "ventas", "inventario", "compras", "finanzas", "reportes", "rrhh", "config", "mas"];
-      return known.indexOf(seg) !== -1 ? seg : "panel";
+      return resolveShellDomain(this.$route.path);
     },
 
     // Riel visible. `always` → siempre; `gated` → sólo si el plan/permiso
@@ -569,15 +570,61 @@ export default {
       if (m.gated && !this.railEntryHasContent(m)) return false;
       return true;
     },
+    // Rutas reales que un ítem específico del panel activo ya "reclama".
+    // Sirve para que el ítem "home" del dominio no robe el estado activo a un
+    // hijo más específico durante el cutover (p. ej. Nueva venta vs. Ventas).
+    panelClaimsPath(path) {
+      const groups = this.visiblePanelGroups || [];
+      for (let gi = 0; gi < groups.length; gi++) {
+        const items = groups[gi].items || [];
+        for (let i = 0; i < items.length; i++) {
+          const r = items[i].route;
+          if (r && (path === r || path.indexOf(r + "/") === 0)) return true;
+        }
+      }
+      return false;
+    },
     isActiveItem(it) {
+      const path = this.$route.path;
+      // 1) Ítem con ruta REAL de PRODEX (cutover) — coincidencia exacta o prefijo.
+      if (it.route) {
+        return path === it.route || path.indexOf(it.route + "/") === 0;
+      }
       if (!it.to) return false;
-      const samePath =
-        this.$route.path === it.to || this.$route.path.indexOf(it.to + "/") === 0;
-      if (!samePath) return false;
-      // Ítems de categoría de Reportes comparten path y se distinguen por ?cat=.
-      const routeCat = String(this.$route.query.cat || "");
-      const itemCat = it.query ? String(it.query.cat || "") : "";
-      return routeCat === itemCat;
+
+      // 2) Reportes — ítem de CATEGORÍA (lleva query.cat). En el hub se distingue
+      //    por ?cat=; en una ruta real de reporte, la categoría se resuelve
+      //    desde SHELL_REPORTS (fuente única, sin casos hardcodeados aquí).
+      if (it.query && it.query.cat) {
+        if (path === it.to) {
+          return String(this.$route.query.cat || "") === String(it.query.cat || "");
+        }
+        return resolveReportCategory(path) === it.query.cat;
+      }
+
+      // 3) Ítem con destino INTERNO del shell (/app/shell/<dominio>).
+      const onShellPath = path === it.to || path.indexOf(it.to + "/") === 0;
+      if (onShellPath) {
+        const routeCat = String(this.$route.query.cat || "");
+        const itemCat = it.query ? String(it.query.cat || "") : "";
+        return routeCat === itemCat;
+      }
+
+      // 4) "Todos los reportes" — sólo activo en el hub sin categoría (caso 3) o
+      //    en un reporte real que NO cae en ninguna categoría del catálogo.
+      if (it.catchAllReports) {
+        const onReport = path === "/app/reports" || path.indexOf("/app/reports/") === 0;
+        return onReport && resolveReportCategory(path) == null;
+      }
+
+      // 5) Cutover: ítem "home" del dominio (activeMatch) — activo si estamos en
+      //    una ruta real del dominio y ningún ítem específico la reclama.
+      if (it.activeMatch) {
+        const ms = [].concat(it.activeMatch);
+        const hit = ms.some(m => path === m || path.indexOf(m + "/") === 0);
+        if (hit) return !this.panelClaimsPath(path);
+      }
+      return false;
     },
 
     // ---- Grupos colapsables del panel (sólo cuando panelDense) -----------
