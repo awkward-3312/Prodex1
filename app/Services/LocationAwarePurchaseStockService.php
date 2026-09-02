@@ -51,6 +51,12 @@ class LocationAwarePurchaseStockService
     public const REF_PURCHASE_RETURN = 'PurchaseReturn';
     public const REF_PURCHASE_RETURN_REVERSAL = 'PurchaseReturnReversal';
 
+    // MS5-B2 — batch-artifact ledger reference types (one row per allocation).
+    public const REF_PURCHASE_BATCH = 'PurchaseBatch';
+    public const REF_PURCHASE_BATCH_REVERSAL = 'PurchaseBatchReversal';
+    public const REF_PURCHASE_RETURN_BATCH = 'PurchaseReturnBatch';
+    public const REF_PURCHASE_RETURN_BATCH_REVERSAL = 'PurchaseReturnBatchReversal';
+
     public const SNAPSHOT_VERSION = 1;
 
     /** MS1: sólo productos con inventario físico simple / variante. */
@@ -77,10 +83,16 @@ class LocationAwarePurchaseStockService
      *
      * @throws ValidationException
      */
-    public function validateAndLock(string $documentType, int $warehouseId, ?int $locationId, array $lines, array $extraProductIds = []): array
+    public function validateAndLock(string $documentType, int $warehouseId, ?int $locationId, array $lines, array $extraProductIds = [], array $options = []): array
     {
         $documentType = $this->assertDocumentType($documentType);
         $this->assertInTransaction();
+
+        // MS5-B2 — backward-compatible opt-in. allow_batch === false (default):
+        // EXACTLY as before, a batch-tracked line fails closed. allow_batch ===
+        // true: a batch-tracked line is allowed and marked requires_batch, and
+        // the caller MUST then run the batch layer. IMEI ALWAYS fails closed.
+        $allowBatch = (bool) ($options['allow_batch'] ?? false);
 
         // 1. Warehouse (bloqueado, no eliminado).
         $warehouse = DB::table('warehouses')->where('id', $warehouseId)->whereNull('deleted_at')
@@ -156,7 +168,8 @@ class LocationAwarePurchaseStockService
         $hasImei = Schema::hasColumn('products', 'is_imei');
 
         $normalized = [];
-        $trackedIds = [];
+        $imeiIds = [];
+        $batchIds = [];
         foreach ($lines as $i => $line) {
             $pid = (int) ($line['product_id'] ?? 0);
             $vid = isset($line['product_variant_id']) && $line['product_variant_id'] !== null && $line['product_variant_id'] !== '' && (int) $line['product_variant_id'] > 0
@@ -213,10 +226,21 @@ class LocationAwarePurchaseStockService
                 ]);
             }
 
-            // (ARTIFACT SAFETY) fail closed batch / IMEI.
-            if (($hasBatch && (int) ($product->is_batch_tracked ?? 0) === 1)
-                || ($hasImei && (int) ($product->is_imei ?? 0) === 1)) {
-                $trackedIds[$pid] = true;
+            // (ARTIFACT SAFETY) IMEI ALWAYS fails closed (MS6). Batch fails
+            // closed UNLESS allow_batch — then the line is marked requires_batch
+            // and the caller must run the batch layer.
+            $isImei = $hasImei && (int) ($product->is_imei ?? 0) === 1;
+            $isBatch = $hasBatch && (int) ($product->is_batch_tracked ?? 0) === 1;
+            if ($isImei) {
+                $imeiIds[$pid] = true;
+            }
+            $requiresBatch = false;
+            if ($isBatch) {
+                if ($allowBatch) {
+                    $requiresBatch = true;
+                } else {
+                    $batchIds[$pid] = true;
+                }
             }
 
             $normalized[] = [
@@ -225,13 +249,23 @@ class LocationAwarePurchaseStockService
                 'product_variant_id' => $vid,
                 'quantity' => $qty,
                 'quantity_base' => $this->toBaseQuantity($qty, (string) $unit->operator, $operatorValue),
+                'requires_batch' => $requiresBatch,
+                'purchase_unit_id' => $unitId,
+                'unit_operator' => (string) $unit->operator,
+                'unit_operator_value' => $operatorValue,
             ];
         }
 
-        if ($trackedIds) {
+        if ($imeiIds) {
             throw ValidationException::withMessages([
-                'details' => 'La compra/devolución por ubicación de productos con control de lote o serie/IMEI se habilitará mediante el flujo artifact-aware. '
-                    .'Productos afectados: '.implode(', ', array_keys($trackedIds)).'.',
+                'details' => 'La compra/devolución por ubicación de productos con serie/IMEI se habilitará mediante el flujo artifact-aware (MS6). '
+                    .'Productos afectados: '.implode(', ', array_keys($imeiIds)).'.',
+            ]);
+        }
+        if ($batchIds) {
+            throw ValidationException::withMessages([
+                'details' => 'La compra/devolución por ubicación de productos con control de lote se habilitará mediante el flujo artifact-aware (allow_batch). '
+                    .'Productos afectados: '.implode(', ', array_keys($batchIds)).'.',
             ]);
         }
 
@@ -257,6 +291,82 @@ class LocationAwarePurchaseStockService
         return round($base, 3);
     }
 
+    /**
+     * MS5-B2 — normalize + validate a batch_allocation list for ONE effect.
+     * FAIL CLOSED: empty, product_batch_id <= 0, quantity_base <= 0, duplicate
+     * bidx, or SUM(quantity_base) != $effectQtyBase (EPS). Returns the list
+     * sorted by bidx, each entry {bidx, product_batch_id, batch_no, expiry_date,
+     * mfg_date, quantity_base, unit_cost}.
+     *
+     * @throws ValidationException
+     */
+    private function normalizeBatchAllocation($raw, float $effectQtyBase): array
+    {
+        if (! is_array($raw) || $raw === []) {
+            throw ValidationException::withMessages([
+                'inventory_effect_snapshot' => 'Un efecto de lote no tiene asignación de lotes.',
+            ]);
+        }
+
+        $entries = [];
+        $seenBidx = [];
+        $sum = 0.0;
+        foreach ($raw as $k => $a) {
+            if (! is_array($a)) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'Asignación de lote malformada.']);
+            }
+            $bidx = array_key_exists('bidx', $a) ? (int) $a['bidx'] : (int) $k;
+            $pbid = (int) ($a['product_batch_id'] ?? 0);
+            $qtyBase = round((float) ($a['quantity_base'] ?? 0), 3);
+            if ($pbid <= 0) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'Asignación de lote sin product_batch_id.']);
+            }
+            if ($qtyBase <= self::EPS) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'Asignación de lote con cantidad base no positiva.']);
+            }
+            if (isset($seenBidx[$bidx])) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'bidx duplicado en la asignación de lotes.']);
+            }
+            $seenBidx[$bidx] = true;
+            $sum = round($sum + $qtyBase, 3);
+
+            $entries[] = [
+                'bidx' => $bidx,
+                'product_batch_id' => $pbid,
+                'batch_no' => isset($a['batch_no']) ? (string) $a['batch_no'] : '',
+                'expiry_date' => $this->dateOrNull($a['expiry_date'] ?? null),
+                'mfg_date' => $this->dateOrNull($a['mfg_date'] ?? null),
+                'quantity_base' => $qtyBase,
+                'unit_cost' => isset($a['unit_cost']) && $a['unit_cost'] !== null && $a['unit_cost'] !== '' ? (float) $a['unit_cost'] : null,
+            ];
+        }
+
+        if (abs($sum - round($effectQtyBase, 3)) > self::EPS) {
+            throw ValidationException::withMessages([
+                'inventory_effect_snapshot' => 'La suma de la asignación de lotes ('.$sum.') no coincide con la cantidad física del efecto ('.round($effectQtyBase, 3).').',
+            ]);
+        }
+
+        usort($entries, fn ($a, $b) => $a['bidx'] <=> $b['bidx']);
+
+        return $entries;
+    }
+
+    /** Alias kept for buildSnapshot() readability. */
+    private function buildBatchAllocation($raw, float $effectQtyBase): array
+    {
+        return $this->normalizeBatchAllocation($raw, $effectQtyBase);
+    }
+
+    private function dateOrNull($v): ?string
+    {
+        if ($v === null || $v === '' || $v === 'null') {
+            return null;
+        }
+
+        return (string) $v;
+    }
+
     // =====================================================================
     // 2 · Construcción del snapshot (plan físico histórico, versionado)
     // =====================================================================
@@ -278,13 +388,28 @@ class LocationAwarePurchaseStockService
             if ($qtyBase <= self::EPS) {
                 continue;
             }
-            $effects[] = [
+            $effect = [
                 'source_detail_id' => $line['source_detail_id'] !== null ? (int) $line['source_detail_id'] : null,
                 'product_id' => (int) $line['product_id'],
                 'product_variant_id' => $line['product_variant_id'] !== null ? (int) $line['product_variant_id'] : null,
                 'quantity_base' => $qtyBase,
                 'delta' => round($sign * $qtyBase, 3),
             ];
+
+            // MS5-B2 — a requires_batch line MUST carry a non-empty
+            // batch_allocation (frozen by LocationAwarePurchaseBatchPlanner);
+            // a non-batch line must NOT carry one.
+            $requiresBatch = (bool) ($line['requires_batch'] ?? false);
+            $rawAlloc = $line['batch_allocation'] ?? null;
+            if ($requiresBatch) {
+                $effect['batch_allocation'] = $this->buildBatchAllocation($rawAlloc, $qtyBase);
+            } elseif (! empty($rawAlloc)) {
+                throw ValidationException::withMessages([
+                    'inventory_effect_snapshot' => 'Se recibió una asignación de lote para un producto que el plan no marcó como batch.',
+                ]);
+            }
+
+            $effects[] = $effect;
         }
 
         // Orden determinístico y ESTABLE — define el índice de efecto que va en
@@ -361,13 +486,22 @@ class LocationAwarePurchaseStockService
             if (($delta > 0 ? 1 : -1) !== $expectedSign) {
                 throw ValidationException::withMessages(['inventory_effect_snapshot' => 'Signo de delta incompatible con el tipo de documento.']);
             }
-            $effects[] = [
+
+            $effect = [
                 'source_detail_id' => isset($e['source_detail_id']) && $e['source_detail_id'] !== null ? (int) $e['source_detail_id'] : null,
                 'product_id' => $pid,
                 'product_variant_id' => isset($e['product_variant_id']) && $e['product_variant_id'] !== null ? (int) $e['product_variant_id'] : null,
                 'quantity_base' => $qtyBase,
                 'delta' => $delta,
             ];
+
+            // MS5-B2 — accept effects with OR without batch_allocation. When
+            // present it is normalized + validated (sum, unique bidx, sorted).
+            if (array_key_exists('batch_allocation', $e) && $e['batch_allocation'] !== null && $e['batch_allocation'] !== []) {
+                $effect['batch_allocation'] = $this->normalizeBatchAllocation($e['batch_allocation'], $qtyBase);
+            }
+
+            $effects[] = $effect;
         }
 
         return [
@@ -390,10 +524,11 @@ class LocationAwarePurchaseStockService
      *
      * @throws ValidationException
      */
-    public function assertSnapshotArtifactSafeAndLock(array $snapshot): void
+    public function assertSnapshotArtifactSafeAndLock(array $snapshot, array $options = []): void
     {
         $this->assertInTransaction();
         $snapshot = $this->normalizeSnapshot($snapshot);
+        $allowBatch = (bool) ($options['allow_batch'] ?? false);
 
         $ids = array_values(array_unique(array_map(fn ($e) => (int) $e['product_id'], $snapshot['effects'])));
         sort($ids);
@@ -406,7 +541,8 @@ class LocationAwarePurchaseStockService
         $hasImei = Schema::hasColumn('products', 'is_imei');
 
         $missing = [];
-        $nowTracked = [];
+        $nowImei = [];
+        $nowBatch = [];
         foreach ($ids as $id) {
             $p = $rows->get($id);
             if (! $p) {
@@ -414,8 +550,10 @@ class LocationAwarePurchaseStockService
 
                 continue;
             }
-            if (($hasBatch && (int) ($p->is_batch_tracked ?? 0) === 1) || ($hasImei && (int) ($p->is_imei ?? 0) === 1)) {
-                $nowTracked[] = $id;
+            if ($hasImei && (int) ($p->is_imei ?? 0) === 1) {
+                $nowImei[] = $id;                       // IMEI ALWAYS fails closed.
+            } elseif ($hasBatch && (int) ($p->is_batch_tracked ?? 0) === 1) {
+                $nowBatch[] = $id;
             }
         }
 
@@ -424,10 +562,29 @@ class LocationAwarePurchaseStockService
                 'inventory_effect_snapshot' => 'No se puede revertir el documento: productos del snapshot ya no existen ('.implode(', ', $missing).'). FAIL CLOSED.',
             ]);
         }
-        if ($nowTracked) {
+        if ($nowImei) {
             throw ValidationException::withMessages([
-                'inventory_effect_snapshot' => 'No se puede revertir con una operación quantity-only: los productos '.implode(', ', $nowTracked).' ahora llevan control de lote o serie/IMEI. Requiere el flujo artifact-aware.',
+                'inventory_effect_snapshot' => 'No se puede revertir con una operación quantity-only: los productos '.implode(', ', $nowImei).' ahora llevan serie/IMEI. Requiere el flujo artifact-aware (MS6).',
             ]);
+        }
+        if ($nowBatch) {
+            if (! $allowBatch) {
+                throw ValidationException::withMessages([
+                    'inventory_effect_snapshot' => 'No se puede revertir con una operación quantity-only: los productos '.implode(', ', $nowBatch).' ahora llevan control de lote. Requiere el flujo artifact-aware.',
+                ]);
+            }
+            // allow_batch: a snapshot effect for a now-batch product MUST carry
+            // a batch_allocation. A pre-MS5 quantity-only effect cannot be
+            // reverted for a product that became batch-tracked — FAIL CLOSED.
+            $batchProducts = array_flip($nowBatch);
+            foreach ($snapshot['effects'] as $e) {
+                if (isset($batchProducts[(int) $e['product_id']]) && empty($e['batch_allocation'])) {
+                    throw ValidationException::withMessages([
+                        'inventory_effect_snapshot' => 'El snapshot del producto '.$e['product_id'].' no trae asignación de lotes y el producto ahora lleva control de lote. No se puede adivinar. FAIL CLOSED.',
+                    ]);
+                }
+            }
+            $this->assertSnapshotBatchAllocationSafeAndLock($snapshot);
         }
 
         // Variantes del snapshot: si una línea era de variante, la variante debe
@@ -485,6 +642,50 @@ class LocationAwarePurchaseStockService
         $referenceType = $this->referenceType($documentType, $apply);
         $userId = function_exists('auth') ? auth()->id() : null;
 
+        // The whole snapshot has ONE delta sign (all purchase effects > 0, all
+        // return effects < 0). After apply/reverse it is $effectiveSign.
+        $signApply = $documentType === self::DOC_PURCHASE ? 1 : -1;
+        $effectiveSign = $apply ? $signApply : -$signApply;
+
+        // ===== PHASE A — ALL BATCH ARTIFACTS (one receiveMany/issueMany) =====
+        // Canonical order: batch artifacts BEFORE general inventory. Never
+        // interleave general effect 0 -> batch effect 0 -> general effect 1.
+        $allocations = [];
+        foreach ($snapshot['effects'] as $effect) {
+            $sdid = (int) ($effect['source_detail_id'] ?? 0);
+            foreach ($effect['batch_allocation'] ?? [] as $a) {
+                $bidx = (int) $a['bidx'];
+                $allocations[] = [
+                    'product_batch_id' => (int) $a['product_batch_id'],
+                    'quantity' => round((float) $a['quantity_base'], 3),
+                    'idempotency_key' => $this->batchIdempotencyKey($documentType, $documentId, $revision, $sdid, $bidx, $operation),
+                    'expected_product_id' => (int) $effect['product_id'],
+                    'expected_variant_id' => $effect['product_variant_id'] !== null ? (int) $effect['product_variant_id'] : null,
+                    'reference_type' => $this->batchReferenceType($documentType, $apply),
+                    'reference_id' => (string) $documentId,
+                    'notes' => $this->batchReferenceType($documentType, $apply).' '.$operation.' (rev '.$revision.', detail '.$sdid.', b '.$bidx.')',
+                    'metadata' => [
+                        'document_type' => $documentType,
+                        'document_id' => $documentId,
+                        'revision' => $revision,
+                        'source_detail_id' => $effect['source_detail_id'],
+                        'bidx' => $bidx,
+                        'batch_no' => $a['batch_no'],
+                        'inventory_location_id' => $locationId,
+                    ],
+                ];
+            }
+        }
+        if ($allocations) {
+            $batch = app(BatchLocationService::class);
+            if ($effectiveSign > 0) {
+                $batch->receiveMany($locationId, $allocations);
+            } else {
+                $batch->issueMany($locationId, $allocations);
+            }
+        }
+
+        // ===== PHASE B — ALL GENERAL INVENTORY (unchanged per-effect keys) ====
         foreach ($snapshot['effects'] as $n => $effect) {
             // apply: delta tal cual. reverse: delta negado.
             $delta = $apply ? $effect['delta'] : -$effect['delta'];
@@ -547,6 +748,94 @@ class LocationAwarePurchaseStockService
         }
 
         return $apply ? self::REF_PURCHASE_RETURN : self::REF_PURCHASE_RETURN_REVERSAL;
+    }
+
+    /**
+     * Batch-artifact idempotency key (one per allocation). Coexists with the
+     * general effect key; same revision + operation => same key (replay-safe).
+     * < 120 chars.
+     */
+    public function batchIdempotencyKey(string $documentType, int $documentId, int $revision, int $sourceDetailId, int $bidx, string $operation): string
+    {
+        return $documentType.':'.$documentId.':rev:'.$revision.':detail:'.$sourceDetailId.':b:'.$bidx.':'.$operation;
+    }
+
+    public function batchReferenceType(string $documentType, bool $apply): string
+    {
+        if ($documentType === self::DOC_PURCHASE) {
+            return $apply ? self::REF_PURCHASE_BATCH : self::REF_PURCHASE_BATCH_REVERSAL;
+        }
+
+        return $apply ? self::REF_PURCHASE_RETURN_BATCH : self::REF_PURCHASE_RETURN_BATCH_REVERSAL;
+    }
+
+    /**
+     * MS5-B2 — lock + validate the batch identity of every batch_allocation
+     * entry against snapshot.warehouse_id / snapshot.inventory_location_id and
+     * the effect's product/variant, BEFORE reverseSnapshot()/applySnapshot()
+     * mutates anything. FAIL CLOSED on: batch missing / soft-deleted / wrong
+     * product / wrong variant / wrong warehouse / non-operable status.
+     * Physical sufficiency for an ISSUE is enforced afterwards by issueMany().
+     *
+     * @throws ValidationException
+     */
+    private function assertSnapshotBatchAllocationSafeAndLock(array $snapshot): void
+    {
+        if (! Schema::hasTable('product_batches')) {
+            throw ValidationException::withMessages([
+                'inventory_effect_snapshot' => 'El esquema de lotes no está disponible en este tenant. FAIL CLOSED.',
+            ]);
+        }
+
+        $warehouseId = (int) $snapshot['warehouse_id'];
+
+        // effect product/variant per batch id (a batch id may repeat across effects).
+        $expectBy = [];
+        foreach ($snapshot['effects'] as $e) {
+            foreach ($e['batch_allocation'] ?? [] as $a) {
+                $expectBy[(int) $a['product_batch_id']] = [
+                    'product_id' => (int) $e['product_id'],
+                    'variant_id' => $e['product_variant_id'] !== null ? (int) $e['product_variant_id'] : null,
+                ];
+            }
+        }
+        if (! $expectBy) {
+            return;
+        }
+
+        $batchIds = array_keys($expectBy);
+        sort($batchIds, SORT_NUMERIC);
+
+        $rows = DB::table('product_batches')->whereIn('id', $batchIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        if (Schema::hasTable('product_batch_location_stocks')) {
+            DB::table('product_batch_location_stocks')
+                ->whereIn('product_batch_id', $batchIds)
+                ->where('inventory_location_id', (int) $snapshot['inventory_location_id'])
+                ->orderBy('product_batch_id')->orderBy('id')
+                ->lockForUpdate()->get();
+        }
+
+        $operable = \App\Services\BatchLocationService::OPERABLE_STATUSES;
+        foreach ($batchIds as $bid) {
+            $b = $rows->get($bid);
+            $expect = $expectBy[$bid];
+            if (! $b || $b->deleted_at !== null) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'El lote '.$bid.' del snapshot ya no existe o fue eliminado. FAIL CLOSED.']);
+            }
+            if ((int) $b->product_id !== $expect['product_id']) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'El lote '.$bid.' no corresponde al producto del efecto. FAIL CLOSED.']);
+            }
+            $bVariant = $b->product_variant_id !== null ? (int) $b->product_variant_id : null;
+            if ($bVariant !== $expect['variant_id']) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'El lote '.$bid.' no corresponde a la variante del efecto. FAIL CLOSED.']);
+            }
+            if ($b->warehouse_id !== null && (int) $b->warehouse_id !== $warehouseId) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'El lote '.$bid.' pertenece a otro almacén. FAIL CLOSED.']);
+            }
+            if (! in_array((string) $b->status, $operable, true)) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'El lote '.$bid.' está en un estado no operable ('.$b->status.'). FAIL CLOSED.']);
+            }
+        }
     }
 
     private function assertDocumentType(string $documentType): string
