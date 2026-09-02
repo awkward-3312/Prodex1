@@ -374,30 +374,57 @@ function readStoredDarkMode() {
 }
 
 // -----------------------------------------------------------------------------
-// px-next shell como layout de /app/* — OPT-IN local (Milestone 3).
-// Bandera por navegador (localStorage). Se puede alternar por URL con
-// ?pxshell=1 / ?pxshell=0 (persistente). No toca producción para otros
-// usuarios ni el backend. `large-sidebar` sigue siendo el layout por defecto.
+// Layout de /app/* — px-next es el DEFAULT del producto (cutover local).
 // -----------------------------------------------------------------------------
-const PXN_SHELL_LAYOUT_KEY = 'pxnShellLayout';
+// Semántica del override por navegador (localStorage `pxnLayoutOverride`):
+//   · clave AUSENTE (o valor no reconocido)  → px-next   ← default del producto
+//   · valor 'legacy'                          → large-sidebar (rollback explícito)
+//   · valor 'px-next'                         → px-next (override explícito)
+//
+// URL: ?pxshell=0 fija 'legacy' y persiste; ?pxshell=1 fija 'px-next' y persiste.
+//
+// El modelo opt-in anterior guardaba un booleano en `pxnShellLayout`
+// ('true'/'false'). Ese valor era ambiguo ('false' = "no he optado" vs "opté por
+// salir"), así que se IGNORA y se elimina: ningún resto del opt-in puede dejar a
+// un usuario en legacy por accidente. Sólo un ?pxshell=0 posterior al cutover
+// activa el rollback.
+// -----------------------------------------------------------------------------
+const PXN_LAYOUT_KEY = 'pxnLayoutOverride';
+const PXN_LEGACY_OPTIN_KEY = 'pxnShellLayout';
 
-function readStoredShellLayout() {
-  let stored = false;
+function persistLayoutOverride(value) {
   try {
-    stored = localStorage.getItem(PXN_SHELL_LAYOUT_KEY) === 'true';
+    if (value === 'legacy' || value === 'px-next') {
+      localStorage.setItem(PXN_LAYOUT_KEY, value);
+    } else {
+      localStorage.removeItem(PXN_LAYOUT_KEY);
+    }
   } catch (e) {}
+}
+
+// Devuelve 'legacy' | 'px-next' | null (sin override → default px-next).
+function readLayoutOverride() {
   try {
     const q = new URLSearchParams(window.location.search).get('pxshell');
-    if (q === '1' || q === 'true' || q === 'on') { persistShellLayout(true); return true; }
-    if (q === '0' || q === 'false' || q === 'off') { persistShellLayout(false); return false; }
+    if (q === '1' || q === 'true' || q === 'on') { persistLayoutOverride('px-next'); return 'px-next'; }
+    if (q === '0' || q === 'false' || q === 'off') { persistLayoutOverride('legacy'); return 'legacy'; }
   } catch (e) {}
-  return stored;
+  // Migración mínima: descarta la bandera booleana del opt-in (nunca fuerza legacy).
+  try { localStorage.removeItem(PXN_LEGACY_OPTIN_KEY); } catch (e) {}
+  try {
+    const v = localStorage.getItem(PXN_LAYOUT_KEY);
+    if (v === 'legacy' || v === 'px-next') return v;
+  } catch (e) {}
+  return null;
+}
+
+// px-next activo salvo override explícito 'legacy'.
+function readStoredShellLayout() {
+  return readLayoutOverride() !== 'legacy';
 }
 
 function persistShellLayout(value) {
-  try {
-    localStorage.setItem(PXN_SHELL_LAYOUT_KEY, value ? 'true' : 'false');
-  } catch (e) {}
+  persistLayoutOverride(value ? 'px-next' : 'legacy');
 }
 
 function persistDarkMode(value) {

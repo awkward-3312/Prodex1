@@ -14,14 +14,15 @@ export default {
   },
   computed: {
     ...mapGetters("config", ["getThemeMode", "getPxShellLayout"]),
-    // Milestone 3 — cutover opt-in: si la bandera local está activa, /app/* se
-    // monta bajo el shell px-next; si no, sigue el layout legacy sin cambios.
+    // Cutover local: px-next es el layout por DEFECTO de /app/*. `getPxShellLayout`
+    // es true salvo override explícito de rollback ('legacy'); en ese caso se
+    // monta el layout legacy (`getThemeMode.layout`), que sigue intacto.
     activeLayout() {
       return this.getPxShellLayout ? "px-shell-layout" : this.getThemeMode.layout;
     }
   },
   created() {
-    // ?pxshell=1 / ?pxshell=0 alterna y persiste la bandera (deep-link directo).
+    // ?pxshell=0 → rollback a legacy · ?pxshell=1 → px-next. Persiste (deep-link).
     const q = this.$route && this.$route.query ? this.$route.query.pxshell : undefined;
     if (q === "1" || q === "true" || q === "on") {
       this.$store.dispatch("config/setPxShellLayout", true);
