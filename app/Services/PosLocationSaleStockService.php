@@ -25,6 +25,16 @@ class PosLocationSaleStockService
         $details = array_values((array) $request->input('details', []));
         if (! $details) return;
 
+        // MS5-B1 — ARTIFACT PREFLIGHT. Resolve, validate and row-lock EVERY
+        // physical artifact of the whole cart (batches first, then serials)
+        // WITHOUT mutating anything, BEFORE the first InventoryService::decrease
+        // below. From here on the batch/serial apply steps in PosController only
+        // re-touch rows this transaction already holds — no ProductBatch /
+        // ProductSerial lock is ever acquired after the general lock, so the
+        // POS lock order matches InternalInventoryMove (batch -> serial ->
+        // general) and the historical inversion is gone.
+        app(PosLocationArtifactPreflightService::class)->preflight($sale, $request, $details);
+
         $inventory = app(InventoryService::class);
 
         foreach ($details as $index => $row) {

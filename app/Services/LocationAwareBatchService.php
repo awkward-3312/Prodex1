@@ -15,6 +15,9 @@ use Illuminate\Validation\ValidationException;
 
 class LocationAwareBatchService extends BatchService
 {
+    /** Request-attribute prefix for the MS5-B1 POS batch preflight plan. */
+    public const POS_BATCH_PREFLIGHT_ATTR = 'prodex_pos_batch_preflight';
+
     public function applyForSaleWithAutoFallback(Sale $sale, array $inputDetails, $persistedDetails): void
     {
         if (! $sale->inventory_location_id) {
@@ -24,10 +27,30 @@ class LocationAwareBatchService extends BatchService
 
         if (! $this->isSupported()) return;
 
+        // MS5-B1 — if a POS artifact preflight ran for this sale, its frozen plan
+        // is AUTHORITATIVE: consume EXACTLY those allocations. Every ProductBatch
+        // / slice was resolved and row-locked during preflight, BEFORE the
+        // general decrease, so this step re-locks rows the transaction already
+        // holds and never re-runs FEFO / discovers a new batch.
+        $plan = $this->consumePosArtifactPreflightPlan($sale);
+
         $persistedDetails = collect($persistedDetails)->values();
         foreach (array_values($inputDetails) as $i => $row) {
             $detail = $persistedDetails->get($i);
             if (! $detail || ! $this->productIsTracked($detail->product_id)) continue;
+
+            if ($plan !== null) {
+                foreach (($plan[$i]['allocations'] ?? []) as $alloc) {
+                    $this->consumeBatch(
+                        $sale,
+                        $detail,
+                        (int) $alloc['product_batch_id'],
+                        (float) $alloc['quantity'],
+                        $alloc['unit_price'] ?? null
+                    );
+                }
+                continue;
+            }
 
             $needed = $this->baseQuantity($row, $detail);
             if ($needed <= 0) continue;
@@ -48,6 +71,236 @@ class LocationAwareBatchService extends BatchService
 
             $this->consumeFefo($sale, $detail, $needed);
         }
+    }
+
+    /**
+     * MS5-B1 — resolve, validate and DETERMINISTICALLY row-lock every batch
+     * artifact of the whole POS cart WITHOUT mutating anything, and return a
+     * frozen per-line-index allocation plan. Runs inside CreatePOS's
+     * transaction, from PosLocationSaleStockService::apply(), BEFORE the general
+     * decrease.
+     *
+     * Only for a location-aware POS sale. A non-location sale returns [] and its
+     * apply path is unchanged.
+     *
+     * Locking order (deterministic, whole cart):
+     *   1. ProductBatch                by id ASC
+     *   2. ProductBatchLocationStock   by (product_batch_id, id) ASC
+     * ...then per line: revalidate under lock + build the FEFO / explicit plan.
+     *
+     * @return array<int, array{product_id:int, product_variant_id:?int,
+     *   quantity_base:float, mode:string,
+     *   allocations:array<int, array{product_batch_id:int, quantity:float, unit_price:?float}>}>
+     *
+     * @throws ValidationException  insufficient stock, wrong batch, unit mismatch
+     */
+    public function preflightSaleAllocations(Sale $sale, array $inputDetails): array
+    {
+        if (! $sale->inventory_location_id || ! $this->isSupported()) {
+            return [];
+        }
+
+        $locationId = (int) $sale->inventory_location_id;
+        $posStock = app(PosLocationSaleStockService::class);
+
+        // -- Pass 1: describe every batch-tracked line + collect candidate ids.
+        $lines = [];
+        $candidateBatchIds = [];
+        foreach (array_values($inputDetails) as $i => $row) {
+            $productId = (int) ($row['product_id'] ?? 0);
+            if ($productId <= 0 || ! $this->productIsTracked($productId)) {
+                continue;
+            }
+            if ((($row['product_type'] ?? null) === 'is_service')) {
+                continue;
+            }
+
+            $product = \App\Models\Product::with('unitSale')->whereNull('deleted_at')->find($productId);
+            if (! $product) {
+                continue;
+            }
+
+            $quantityBase = round($posStock->baseQuantity($row, $product), 3);
+            if ($quantityBase <= 0) {
+                continue;
+            }
+
+            $variantId = ! empty($row['product_variant_id']) ? (int) $row['product_variant_id'] : null;
+            $explicit = $this->extractSaleBatchesFromRow($row);
+
+            if ($explicit) {
+                $selected = round((float) collect($explicit)->sum('qty'), 3);
+                if (abs($selected - $quantityBase) > 0.0005) {
+                    throw ValidationException::withMessages([
+                        'batches' => 'La cantidad seleccionada por lote debe coincidir exactamente con la cantidad física vendida.',
+                    ]);
+                }
+                foreach ($explicit as $e) {
+                    $candidateBatchIds[] = (int) $e['product_batch_id'];
+                }
+            } else {
+                foreach ($this->discoverFefoBatchIds($locationId, $productId, $variantId) as $bid) {
+                    $candidateBatchIds[] = $bid;
+                }
+            }
+
+            $lines[$i] = [
+                'product_id' => $productId,
+                'product_variant_id' => $variantId,
+                'quantity_base' => $quantityBase,
+                'mode' => $explicit ? 'explicit' : 'fefo',
+                'explicit' => $explicit,
+            ];
+        }
+
+        if (empty($lines)) {
+            return [];
+        }
+
+        // -- Deterministic locks: ProductBatch (id ASC) then slices.
+        $candidateBatchIds = array_values(array_unique(array_filter($candidateBatchIds)));
+        sort($candidateBatchIds, SORT_NUMERIC);
+
+        $batches = $candidateBatchIds
+            ? ProductBatch::whereIn('id', $candidateBatchIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id')
+            : collect();
+
+        $slices = $candidateBatchIds
+            ? ProductBatchLocationStock::whereIn('product_batch_id', $candidateBatchIds)
+                ->where('inventory_location_id', $locationId)
+                ->orderBy('product_batch_id')->orderBy('id')
+                ->lockForUpdate()->get()
+                ->keyBy('product_batch_id')
+            : collect();
+
+        // -- Pass 2: revalidate under lock, freeze allocations.
+        $plan = [];
+        foreach ($lines as $i => $line) {
+            $variantId = $line['product_variant_id'];
+            $allocations = [];
+
+            if ($line['mode'] === 'explicit') {
+                foreach ($line['explicit'] as $e) {
+                    $bid = (int) $e['product_batch_id'];
+                    $qty = round((float) $e['qty'], 3);
+                    $batch = $batches->get($bid);
+                    if (! $batch || ! $this->batchMatchesLine($batch, $line['product_id'], $variantId)) {
+                        throw ValidationException::withMessages(['batches' => 'El lote seleccionado no corresponde al producto vendido.']);
+                    }
+                    $slice = $slices->get($bid);
+                    if (! $slice || $slice->available_quantity + 0.0005 < $qty) {
+                        throw ValidationException::withMessages(['batches' => 'El lote no tiene suficiente existencia disponible en esta ubicación.']);
+                    }
+                    if ((float) $batch->qty + 0.0005 < $qty) {
+                        throw ValidationException::withMessages(['batches' => 'La existencia agregada del lote es insuficiente.']);
+                    }
+                    $allocations[] = [
+                        'product_batch_id' => $bid,
+                        'quantity' => $qty,
+                        'unit_price' => $e['unit_price'] ?? null,
+                    ];
+                }
+            } else {
+                $remaining = $line['quantity_base'];
+                $ordered = $slices->filter(function ($slice) use ($batches, $line, $variantId) {
+                    $batch = $batches->get($slice->product_batch_id);
+
+                    return $batch
+                        && $this->batchMatchesLine($batch, $line['product_id'], $variantId)
+                        && (string) $batch->status === 'active'
+                        && $slice->available_quantity > 0;
+                })->sortBy(function ($slice) use ($batches) {
+                    $batch = $batches->get($slice->product_batch_id);
+                    $expiry = optional($batch)->expiry_date;
+
+                    return $expiry
+                        ? $expiry->format('Y-m-d').'|'.str_pad((string) $slice->product_batch_id, 12, '0', STR_PAD_LEFT)
+                        : '9999-12-31|'.str_pad((string) $slice->product_batch_id, 12, '0', STR_PAD_LEFT);
+                });
+
+                foreach ($ordered as $slice) {
+                    if ($remaining <= 0.0005) {
+                        break;
+                    }
+                    $take = round(min($remaining, (float) $slice->available_quantity), 3);
+                    if ($take <= 0) {
+                        continue;
+                    }
+                    $allocations[] = [
+                        'product_batch_id' => (int) $slice->product_batch_id,
+                        'quantity' => $take,
+                        'unit_price' => null,
+                    ];
+                    $remaining = round($remaining - $take, 3);
+                }
+
+                if ($remaining > 0.0005) {
+                    throw ValidationException::withMessages([
+                        'batches' => 'No hay suficiente existencia por lote en la ubicación de venta seleccionada.',
+                    ]);
+                }
+            }
+
+            $plan[$i] = [
+                'product_id' => $line['product_id'],
+                'product_variant_id' => $variantId,
+                'quantity_base' => $line['quantity_base'],
+                'mode' => $line['mode'],
+                'allocations' => $allocations,
+            ];
+        }
+
+        return $plan;
+    }
+
+    /** Candidate active batch ids for a product+variant in a location (FEFO pool). */
+    private function discoverFefoBatchIds(int $locationId, int $productId, ?int $variantId): array
+    {
+        return ProductBatchLocationStock::query()
+            ->where('inventory_location_id', $locationId)
+            ->whereHas('batch', function ($query) use ($productId, $variantId) {
+                $query->where('product_id', $productId)
+                    ->where('status', 'active')
+                    ->whereNull('deleted_at');
+                $variantId === null
+                    ? $query->whereNull('product_variant_id')
+                    : $query->where('product_variant_id', $variantId);
+            })
+            ->pluck('product_batch_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    private function batchMatchesLine(ProductBatch $batch, int $productId, ?int $variantId): bool
+    {
+        if ((int) $batch->product_id !== $productId || $batch->deleted_at !== null) {
+            return false;
+        }
+        $batchVariant = $batch->product_variant_id ? (int) $batch->product_variant_id : null;
+
+        return $batchVariant === $variantId;
+    }
+
+    /**
+     * Read + consume the frozen POS batch plan for this sale. Returns null when
+     * no POS preflight ran (admin / legacy sale) — the caller then keeps the
+     * historical explicit / FEFO behaviour. Returns an array (possibly empty)
+     * when a preflight ran — that plan is authoritative.
+     */
+    private function consumePosArtifactPreflightPlan(Sale $sale): ?array
+    {
+        if (! function_exists('app') || ! app()->bound('request') || ! $sale->id) {
+            return null;
+        }
+        $key = self::POS_BATCH_PREFLIGHT_ATTR.':'.$sale->id;
+        $request = request();
+        if (! $request->attributes->has($key)) {
+            return null;
+        }
+        $plan = $request->attributes->get($key);
+        $request->attributes->remove($key);
+
+        return is_array($plan) ? $plan : [];
     }
 
     public function reverseForSaleDetails($saleDetails): void
