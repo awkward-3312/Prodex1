@@ -126,194 +126,322 @@ class BatchLocationService
     }
 
     // =====================================================================
-    // MS5-B0 — external batch ARTIFACT PRIMITIVES (INACTIVE: no productive flow
-    // calls these yet). `move()` above is INTERNAL (location -> location).
-    // receive() and issue() model an EXTERNAL boundary:
+    // MS5-B0 / B0.1 / B0.2 — external batch ARTIFACT PRIMITIVES (INACTIVE: no
+    // productive flow calls these yet). `move()` above is INTERNAL
+    // (location -> location). The external boundary is:
     //
     //   receive  : supplier / outside  ->  location   (from = NULL, to = loc)
     //   issue    : location  ->  supplier / outside    (from = loc, to = NULL)
     //
-    // ALL quantities are in BASE UNIT. The caller converts a purchase-unit
-    // input to base BEFORE calling. Both mutate the aggregate ProductBatch.qty
-    // AND the per-location slice, write an immutable ledger row, and are
-    // idempotent by key + fingerprint (same philosophy as move()).
+    // ALL quantities are BASE UNIT. The caller converts a purchase-unit input to
+    // base BEFORE calling. Every external mutation goes through ONE physical
+    // implementation, applyExternalBatchSet(), as an ATOMIC SET:
     //
-    // NOT a complete inventory operation. receive()/issue() ONLY move the batch
-    // artifact and validate the PREVIOUS state. They MUST be executed in the
-    // SAME business transaction as the matching InventoryService mutation
-    // (increase for receive, decrease for issue). Canonical order:
-    //     BATCH / ARTIFACT  ->  GENERAL INVENTORY
+    //   A. normalize the whole set
+    //   B. resolve idempotency against the PRE-STATE (all-new / full-replay /
+    //      partial => FAIL CLOSED / fingerprint clash => 422)
+    //   C. lock the whole set deterministically (ProductBatch id ASC, then
+    //      ProductBatchLocationStock by (product_batch_id, id) ASC)
+    //   D. validate the whole set against the PRE-STATE:
+    //        - per unique batch: status / warehouse / expected identity /
+    //          non-negative qty+slices / reconcileBatch().matches
+    //        - per unique (product, variant): batchCoverageForLocation().matches
+    //          — exactly ONCE, on the PRE-STATE (so a set of many batches of the
+    //          same product never re-checks coverage after a partial mutation)
+    //        - ISSUE: aggregated sufficiency per batch (SUM of its allocations),
+    //          NO clamp
+    //   E. mutate: ProductBatch.qty and the slice by the AGGREGATED delta per
+    //      batch
+    //   F. one immutable ProductBatchLocationMovement PER allocation, with the
+    //      individual quantity + idempotency_key
+    //
+    // NOT a complete inventory operation. It ONLY moves the batch artifact and
+    // validates the PREVIOUS state. It MUST run inside an OUTER business
+    // transaction that also performs the matching InventoryService mutation
+    // (increase for receive, decrease for issue) — this is now enforced
+    // (LogicException). Canonical order:  BATCH / ARTIFACT  ->  GENERAL INVENTORY.
     // Do NOT call these from an endpoint directly. MS5 controllers compose the
     // two layers through LocationAwarePurchaseStockService.
     //
-    // These primitives do NOT resolve batch identity — the caller passes an
-    // already-resolved, active $batchId (see MS5-B1 batch planner). A
-    // soft-deleted batch is NEVER auto-restored here.
-    //
-    // Lock order inside a primitive: ProductBatch -> ProductBatchLocationStock.
+    // These primitives do NOT resolve batch identity — the caller passes
+    // already-resolved, active batch ids. A soft-deleted batch is NEVER
+    // auto-restored here. BatchLocationService NEVER touches InventoryService.
     // =====================================================================
 
+    private const DIR_RECEIVE = 'receive';
+
+    private const DIR_ISSUE = 'issue';
+
     /**
-     * External inbound: credit $quantityBase (BASE UNIT) of an existing, active
-     * batch into $toLocationId. Increments ProductBatch.qty and the slice.
-     *
-     * @throws ValidationException  quantity<=0, missing/soft-deleted batch,
-     *   inactive location, warehouse mismatch, non-operable status, or a batch /
-     *   product+location that is not "native-ready" (see assertBatchNativeReady():
-     *   BOTH the batch-aggregate reconciliation AND the product/location general
-     *   coverage must hold — even for a brand-new batch).
+     * External inbound (single). Delegates to receiveMany() — ONE physical
+     * implementation for every external mutation.
      */
     public function receive(int $batchId, int $toLocationId, float $quantityBase, array $context = []): ProductBatchLocationMovement
     {
-        $quantityBase = round($quantityBase, 3);
-        if ($quantityBase <= 0) {
-            throw ValidationException::withMessages(['quantity' => 'La cantidad base del lote debe ser mayor que cero.']);
-        }
-
-        $idempotencyKey = isset($context['idempotency_key']) ? trim((string) $context['idempotency_key']) : null;
-        if ($idempotencyKey) {
-            $existing = ProductBatchLocationMovement::where('idempotency_key', $idempotencyKey)->first();
-            if ($existing) {
-                $this->assertSameMovementRequest($existing, $batchId, null, $toLocationId, $quantityBase);
-
-                return $existing;
-            }
-        }
-
-        return DB::transaction(function () use ($batchId, $toLocationId, $quantityBase, $context, $idempotencyKey) {
-            if ($idempotencyKey) {
-                $existing = ProductBatchLocationMovement::where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
-                if ($existing) {
-                    $this->assertSameMovementRequest($existing, $batchId, null, $toLocationId, $quantityBase);
-
-                    return $existing;
-                }
-            }
-
-            $batch = ProductBatch::whereNull('deleted_at')->lockForUpdate()->find($batchId);
-            if (! $batch) {
-                throw ValidationException::withMessages(['product_batch_id' => 'El lote no existe o fue eliminado.']);
-            }
-
-            $location = $this->activeLocation($toLocationId);
-            $this->assertBatchLocationWarehouse($batch, $location);
-
-            // ALWAYS — even a brand-new batch (qty 0, no slices): the aggregate
-            // reconciliation is trivially 0 == 0, but the product/location
-            // general coverage is still enforced, so a legacy-drifted product
-            // in this location can NOT take a native receipt.
-            $this->assertBatchNativeReady($batch, $toLocationId, $context);
-
-            $slice = ProductBatchLocationStock::firstOrCreate(
-                ['product_batch_id' => $batch->id, 'inventory_location_id' => $toLocationId],
-                ['quantity' => 0, 'reserved_quantity' => 0]
-            );
-            $slice = ProductBatchLocationStock::whereKey($slice->id)->lockForUpdate()->firstOrFail();
-
-            $batch->qty = round((float) $batch->qty + $quantityBase, 3);
-            $batch->save();
-
-            $slice->quantity = round((float) $slice->quantity + $quantityBase, 3);
-            $slice->save();
-
-            return ProductBatchLocationMovement::create([
-                'product_batch_id' => $batch->id,
-                'from_inventory_location_id' => null,
-                'to_inventory_location_id' => $toLocationId,
-                'quantity' => $quantityBase,
-                'user_id' => $context['user_id'] ?? auth()->id(),
-                'reference_type' => $context['reference_type'] ?? null,
-                'reference_id' => isset($context['reference_id']) ? (string) $context['reference_id'] : null,
-                'idempotency_key' => $idempotencyKey ?: null,
-                'notes' => $context['notes'] ?? null,
-                'metadata' => $context['metadata'] ?? null,
-            ]);
-        }, 3);
+        return $this->receiveMany($toLocationId, [$this->singleAllocation($batchId, $quantityBase, $context)], $context)[0];
     }
 
     /**
-     * External outbound: debit $quantityBase (BASE UNIT) of an existing, active,
-     * native-ready batch out of $fromLocationId. Decrements the slice and
-     * ProductBatch.qty. Always requires BOTH the batch-aggregate reconciliation
-     * AND the product/location general coverage to hold first. NO clamp, NO
-     * max(0): if the slice available quantity or the aggregate is short, FAIL
-     * CLOSED with zero mutation.
-     *
-     * @throws ValidationException
+     * External outbound (single). Delegates to issueMany().
      */
     public function issue(int $batchId, int $fromLocationId, float $quantityBase, array $context = []): ProductBatchLocationMovement
     {
-        $quantityBase = round($quantityBase, 3);
-        if ($quantityBase <= 0) {
-            throw ValidationException::withMessages(['quantity' => 'La cantidad base del lote debe ser mayor que cero.']);
-        }
+        return $this->issueMany($fromLocationId, [$this->singleAllocation($batchId, $quantityBase, $context)], $context)[0];
+    }
 
-        $idempotencyKey = isset($context['idempotency_key']) ? trim((string) $context['idempotency_key']) : null;
-        if ($idempotencyKey) {
-            $existing = ProductBatchLocationMovement::where('idempotency_key', $idempotencyKey)->first();
-            if ($existing) {
-                $this->assertSameMovementRequest($existing, $batchId, $fromLocationId, null, $quantityBase);
+    /**
+     * External inbound (SET). Credit a set of BASE-UNIT allocations into
+     * $toLocationId as ONE atomic operation. Coverage / reconciliation are
+     * validated ONCE against the PRE-STATE, before the first mutation.
+     *
+     * @param  array<int, array{product_batch_id:int, quantity:float,
+     *   idempotency_key?:?string, expected_product_id?:int,
+     *   expected_variant_id?:?int, reference_type?:string, reference_id?:string,
+     *   notes?:?string, metadata?:?array}>  $allocations
+     * @return ProductBatchLocationMovement[]  one per allocation, in order
+     *
+     * @throws \LogicException          no outer transaction
+     * @throws ValidationException      set invalid / not native-ready / partial replay
+     */
+    public function receiveMany(int $toLocationId, array $allocations, array $context = []): array
+    {
+        return $this->applyExternalBatchSet(self::DIR_RECEIVE, $toLocationId, $allocations, $context);
+    }
 
-                return $existing;
+    /**
+     * External outbound (SET). Debit a set of BASE-UNIT allocations out of
+     * $fromLocationId as ONE atomic operation. Sufficiency is checked on the
+     * AGGREGATED requested quantity per batch (a batch may appear more than
+     * once). NO clamp.
+     *
+     * @param  array<int, array{product_batch_id:int, quantity:float, ...}>  $allocations
+     * @return ProductBatchLocationMovement[]
+     *
+     * @throws \LogicException
+     * @throws ValidationException
+     */
+    public function issueMany(int $fromLocationId, array $allocations, array $context = []): array
+    {
+        return $this->applyExternalBatchSet(self::DIR_ISSUE, $fromLocationId, $allocations, $context);
+    }
+
+    private function singleAllocation(int $batchId, float $quantityBase, array $context): array
+    {
+        $a = ['product_batch_id' => $batchId, 'quantity' => $quantityBase];
+        foreach (['idempotency_key', 'expected_product_id', 'expected_variant_id', 'reference_type', 'reference_id', 'notes', 'metadata'] as $k) {
+            if (array_key_exists($k, $context)) {
+                $a[$k] = $context[$k];
             }
         }
 
-        return DB::transaction(function () use ($batchId, $fromLocationId, $quantityBase, $context, $idempotencyKey) {
-            if ($idempotencyKey) {
-                $existing = ProductBatchLocationMovement::where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
-                if ($existing) {
-                    $this->assertSameMovementRequest($existing, $batchId, $fromLocationId, null, $quantityBase);
+        return $a;
+    }
 
-                    return $existing;
+    /**
+     * The ONE physical implementation for every external batch mutation.
+     * NEVER calls receive()/issue() — a set is not a loop of singles (that would
+     * re-run coverage on a partially mutated state). NEVER calls InventoryService.
+     */
+    private function applyExternalBatchSet(string $direction, int $externalLocationId, array $allocations, array $context): array
+    {
+        if (DB::transactionLevel() <= 0) {
+            throw new \LogicException(
+                'BatchLocationService::'.$direction.'Many() must run inside an outer business transaction '
+                .'(the same one that performs the matching InventoryService mutation).'
+            );
+        }
+
+        $isReceive = $direction === self::DIR_RECEIVE;
+        $fromLoc = $isReceive ? null : $externalLocationId;
+        $toLoc = $isReceive ? $externalLocationId : null;
+
+        // ---- A. normalize the whole set --------------------------------
+        $rows = [];
+        foreach (array_values($allocations) as $i => $a) {
+            $batchId = (int) ($a['product_batch_id'] ?? 0);
+            $qty = round((float) ($a['quantity'] ?? 0), 3);
+            if ($batchId <= 0) {
+                throw ValidationException::withMessages(["allocations.$i" => 'Asignación de lote sin identificador válido.']);
+            }
+            if ($qty <= 0) {
+                throw ValidationException::withMessages(["allocations.$i" => 'La cantidad base del lote debe ser mayor que cero.']);
+            }
+            $rows[] = [
+                'product_batch_id' => $batchId,
+                'quantity' => $qty,
+                'idempotency_key' => isset($a['idempotency_key']) && trim((string) $a['idempotency_key']) !== ''
+                    ? trim((string) $a['idempotency_key']) : null,
+                'expected_product_id' => array_key_exists('expected_product_id', $a) ? $a['expected_product_id'] : null,
+                'has_expected_variant' => array_key_exists('expected_variant_id', $a),
+                'expected_variant_id' => $a['expected_variant_id'] ?? null,
+                'reference_type' => $a['reference_type'] ?? ($context['reference_type'] ?? null),
+                'reference_id' => array_key_exists('reference_id', $a) ? $a['reference_id'] : ($context['reference_id'] ?? null),
+                'notes' => $a['notes'] ?? ($context['notes'] ?? null),
+                'metadata' => $a['metadata'] ?? ($context['metadata'] ?? null),
+            ];
+        }
+        if (empty($rows)) {
+            throw ValidationException::withMessages(['allocations' => 'El conjunto de asignaciones de lote está vacío.']);
+        }
+
+        // ---- B. idempotency resolution against the PRE-STATE ----------
+        $keyed = array_values(array_filter($rows, fn ($r) => $r['idempotency_key'] !== null));
+        $existingByKey = $keyed
+            ? ProductBatchLocationMovement::whereIn('idempotency_key', array_map(fn ($r) => $r['idempotency_key'], $keyed))
+                ->get()->keyBy('idempotency_key')
+            : collect();
+
+        $replayed = 0;
+        foreach ($keyed as $r) {
+            $existing = $existingByKey->get($r['idempotency_key']);
+            if (! $existing) {
+                continue;
+            }
+            // D — key reused for a physically different request.
+            $this->assertSameMovementRequest($existing, $r['product_batch_id'], $fromLoc, $toLoc, $r['quantity']);
+            $replayed++;
+        }
+        if ($replayed > 0) {
+            // B — clean full replay: EVERY allocation keyed and matched.
+            if (count($keyed) === count($rows) && $replayed === count($rows)) {
+                return array_map(fn ($r) => $existingByKey->get($r['idempotency_key']), $rows);
+            }
+            // C — the set is partially applied; never silently complete it.
+            throw ValidationException::withMessages([
+                'batch_transition' => 'El conjunto de movimientos de lote está parcialmente aplicado ('
+                    .$replayed.'/'.count($rows).'); no se completará automáticamente. Requiere revisión.',
+            ]);
+        }
+
+        // ---- C. lock the whole set deterministically -----------------
+        $batchIds = array_values(array_unique(array_map(fn ($r) => $r['product_batch_id'], $rows)));
+        sort($batchIds, SORT_NUMERIC);
+
+        $batches = ProductBatch::whereIn('id', $batchIds)
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+        foreach ($batchIds as $bid) {
+            if (! $batches->has($bid)) {
+                throw ValidationException::withMessages(['product_batch_id' => 'El lote '.$bid.' no existe o fue eliminado.']);
+            }
+        }
+
+        $location = $this->activeLocation($externalLocationId);
+
+        if ($isReceive) {
+            // resolve/create the zero slices we will credit (no quantity mutation).
+            foreach ($batchIds as $bid) {
+                ProductBatchLocationStock::firstOrCreate(
+                    ['product_batch_id' => $bid, 'inventory_location_id' => $externalLocationId],
+                    ['quantity' => 0, 'reserved_quantity' => 0]
+                );
+            }
+        }
+
+        $slices = ProductBatchLocationStock::whereIn('product_batch_id', $batchIds)
+            ->where('inventory_location_id', $externalLocationId)
+            ->orderBy('product_batch_id')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('product_batch_id');
+
+        // ---- D. validate the whole set against the PRE-STATE ---------
+        $requestedByBatch = [];
+        foreach ($rows as $r) {
+            $requestedByBatch[$r['product_batch_id']] = round(
+                ($requestedByBatch[$r['product_batch_id']] ?? 0) + $r['quantity'], 3
+            );
+        }
+
+        $coverageChecked = [];
+        foreach ($batchIds as $bid) {
+            $batch = $batches->get($bid);
+
+            $this->assertOperableStatus($batch);                     // F
+            $this->assertBatchLocationWarehouse($batch, $location);  // D (warehouse)
+
+            // E — expected product / variant, from any allocation for this batch.
+            foreach ($rows as $r) {
+                if ($r['product_batch_id'] !== $bid) {
+                    continue;
+                }
+                $idCtx = [];
+                if ($r['expected_product_id'] !== null) {
+                    $idCtx['expected_product_id'] = $r['expected_product_id'];
+                }
+                if ($r['has_expected_variant']) {
+                    $idCtx['expected_variant_id'] = $r['expected_variant_id'];
+                }
+                if ($idCtx) {
+                    $this->assertExpectedIdentity($batch, $idCtx);
                 }
             }
 
-            $batch = ProductBatch::whereNull('deleted_at')->lockForUpdate()->find($batchId);
-            if (! $batch) {
-                throw ValidationException::withMessages(['product_batch_id' => 'El lote no existe o fue eliminado.']);
+            // B/C + (1) reconcile — all on the PRE-STATE.
+            $this->assertBatchAggregateReady($batch);
+
+            // (2) coverage — ONCE per unique (product, variant), PRE-STATE.
+            $variantId = $batch->product_variant_id !== null ? (int) $batch->product_variant_id : null;
+            $covKey = $batch->product_id.'|'.(int) ($variantId ?: 0);
+            if (! isset($coverageChecked[$covKey])) {
+                $this->assertCoverageMatches($externalLocationId, (int) $batch->product_id, $variantId);
+                $coverageChecked[$covKey] = true;
             }
 
-            $location = $this->activeLocation($fromLocationId);
-            $this->assertBatchLocationWarehouse($batch, $location);
-            // ALWAYS: aggregate reconciliation AND product/location coverage
-            // must hold before any decrement.
-            $this->assertBatchNativeReady($batch, $fromLocationId, $context);
-
-            $slice = ProductBatchLocationStock::where('product_batch_id', $batch->id)
-                ->where('inventory_location_id', $fromLocationId)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $slice || $slice->available_quantity + self::EPS < $quantityBase) {
-                throw ValidationException::withMessages([
-                    'quantity' => 'El lote no tiene suficiente existencia disponible en la ubicación de origen.',
-                ]);
+            // ISSUE sufficiency — AGGREGATED per batch, no clamp.
+            if (! $isReceive) {
+                $need = $requestedByBatch[$bid];
+                $slice = $slices->get($bid);
+                if (! $slice || $slice->available_quantity + self::EPS < $need) {
+                    throw ValidationException::withMessages([
+                        'quantity' => 'El lote '.$bid.' no tiene suficiente existencia disponible en la ubicación de origen.',
+                    ]);
+                }
+                if (round((float) $batch->qty, 3) + self::EPS < $need) {
+                    throw ValidationException::withMessages([
+                        'quantity' => 'La existencia agregada del lote '.$bid.' es insuficiente para la salida.',
+                    ]);
+                }
             }
-            if (round((float) $batch->qty, 3) + self::EPS < $quantityBase) {
-                throw ValidationException::withMessages([
-                    'quantity' => 'La existencia agregada del lote es insuficiente para la salida.',
-                ]);
-            }
+        }
 
-            $batch->qty = round((float) $batch->qty - $quantityBase, 3);
+        // ---- E. mutate the whole set (aggregated per batch) ----------
+        $sign = $isReceive ? 1 : -1;
+        foreach ($batchIds as $bid) {
+            $batch = $batches->get($bid);
+            $delta = $sign * $requestedByBatch[$bid];
+
+            $batch->qty = round((float) $batch->qty + $delta, 3);
             $batch->save();
 
-            $slice->quantity = round((float) $slice->quantity - $quantityBase, 3);
+            $slice = $slices->get($bid);
+            $slice->quantity = round((float) $slice->quantity + $delta, 3);
             $slice->save();
+        }
 
-            return ProductBatchLocationMovement::create([
-                'product_batch_id' => $batch->id,
-                'from_inventory_location_id' => $fromLocationId,
-                'to_inventory_location_id' => null,
-                'quantity' => $quantityBase,
-                'user_id' => $context['user_id'] ?? auth()->id(),
-                'reference_type' => $context['reference_type'] ?? null,
-                'reference_id' => isset($context['reference_id']) ? (string) $context['reference_id'] : null,
-                'idempotency_key' => $idempotencyKey ?: null,
-                'notes' => $context['notes'] ?? null,
-                'metadata' => $context['metadata'] ?? null,
+        // ---- F. one immutable ledger row PER allocation --------------
+        $userId = function_exists('auth') ? auth()->id() : null;
+        $movements = [];
+        foreach ($rows as $r) {
+            $movements[] = ProductBatchLocationMovement::create([
+                'product_batch_id' => $r['product_batch_id'],
+                'from_inventory_location_id' => $fromLoc,
+                'to_inventory_location_id' => $toLoc,
+                'quantity' => $r['quantity'],
+                'user_id' => $context['user_id'] ?? $userId,
+                'reference_type' => $r['reference_type'],
+                'reference_id' => $r['reference_id'] !== null ? (string) $r['reference_id'] : null,
+                'idempotency_key' => $r['idempotency_key'],
+                'notes' => $r['notes'],
+                'metadata' => $r['metadata'],
             ]);
-        }, 3);
+        }
+
+        return $movements;
     }
 
     /**
@@ -490,46 +618,18 @@ class BatchLocationService
     }
 
     /**
-     * BATCH NATIVE READY (MS5-B0 + hardened in B0.1).
+     * PER-BATCH PRE-STATE checks for an external set (MS5-B0 + B0.1 + B0.2):
+     *   B  ProductBatch.qty is not negative
+     *   C  no slice of this batch has a negative quantity / reserved_quantity
+     *   1  reconcileBatch().matches  (aggregate == SUM of this batch's slices)
      *
-     * An external receive()/issue() may only proceed when TWO INDEPENDENT
-     * reconciliations hold, plus the identity / status / sign checks:
-     *
-     *   1. BATCH AGGREGATE   — ProductBatch.qty == SUM(this batch's slices)
-     *                          (reconcileBatch().matches)
-     *   2. GENERAL COVERAGE  — inventory_location_stocks.quantity ==
-     *                          SUM(all slices of product+variant in THIS location)
-     *                          (batchCoverageForLocation().matches)
-     *
-     * (1) alone is NOT sufficient: the legacy "10 boxes x 12" case can leave
-     * ProductBatch.qty == SUM(slices) == 10 while the general location stock is
-     * 120 — both batch numbers are in the wrong unit relative to physical
-     * stock. (2) catches that.
-     *
-     * Plus: B non-negative aggregate, C non-negative slices, D warehouse match
-     * (asserted separately by the caller before this), E optional expected
-     * product/variant, F operable status.
-     *
-     * Any failure => FAIL CLOSED (`batch_transition`), zero mutation. No
-     * auto-reconcile, no backfill, no adjustTo, no unit guessing.
+     * Status (F), warehouse (D) and expected product/variant (E) are asserted
+     * by applyExternalBatchSet() alongside this. Coverage (2) is asserted ONCE
+     * per (product, variant) — see assertCoverageMatches(). Everything runs on
+     * the PRE-STATE, before the first mutation. FAIL CLOSED => `batch_transition`.
      */
-    private function assertBatchNativeReady(ProductBatch $batch, int $inventoryLocationId, array $context = []): void
+    private function assertBatchAggregateReady(ProductBatch $batch): void
     {
-        $this->assertBatchAggregateReady($batch, $context);
-        $this->assertProductLocationBatchCoverageReady($batch, $inventoryLocationId);
-    }
-
-    /**
-     * (1) + B + C + E + F. The batch's own aggregate must equal the sum of its
-     * per-location slices, its quantities must be non-negative, its status must
-     * be operable, and — if the caller pinned them — the product/variant must
-     * match.
-     */
-    private function assertBatchAggregateReady(ProductBatch $batch, array $context = []): void
-    {
-        $this->assertOperableStatus($batch);                 // F
-        $this->assertExpectedIdentity($batch, $context);     // E
-
         if (round((float) $batch->qty, 3) < -self::EPS) {    // B
             throw ValidationException::withMessages([
                 'batch_transition' => 'La existencia agregada del lote es negativa; requiere conciliación manual antes de una operación de lote por ubicación.',
@@ -558,20 +658,21 @@ class BatchLocationService
     }
 
     /**
-     * (2) The general location stock for this batch's product+variant must
-     * equal the sum of ALL batch slices of that product+variant in the same
-     * location. A legacy-drifted product (e.g. general in base unit, batches in
-     * a pack unit, or a partial backfill) FAILS CLOSED here — even for a
-     * brand-new batch, so we never mix a native slice on top of legacy drift.
+     * (2) GENERAL COVERAGE — the general location stock for a (product, variant)
+     * must equal the sum of ALL its batch slices in that location. Checked ONCE
+     * per (product, variant) per set, on the PRE-STATE — so a set of many
+     * batches of the same product never re-checks coverage after a partial
+     * mutation. A legacy-drifted product (general in base unit, batches in a
+     * pack unit, partial backfill, …) FAILS CLOSED here, even for a brand-new
+     * batch, so a native slice is never laid on top of legacy drift.
      */
-    private function assertProductLocationBatchCoverageReady(ProductBatch $batch, int $inventoryLocationId): void
+    private function assertCoverageMatches(int $inventoryLocationId, int $productId, ?int $variantId): void
     {
-        $variantId = $batch->product_variant_id !== null ? (int) $batch->product_variant_id : null;
-        $coverage = $this->batchCoverageForLocation($inventoryLocationId, (int) $batch->product_id, $variantId);
+        $coverage = $this->batchCoverageForLocation($inventoryLocationId, $productId, $variantId);
 
         if (! $coverage['matches']) {
             throw ValidationException::withMessages([
-                'batch_transition' => 'La cobertura de lotes del producto en la ubicación no está conciliada: '
+                'batch_transition' => 'La cobertura de lotes del producto '.$productId.' en la ubicación no está conciliada: '
                     .'existencia general '.$coverage['general_quantity']
                     .' vs suma de existencias por lote '.$coverage['batch_quantity']
                     .'. El producto arrastra un descuadre legacy en esta ubicación y no admite una operación de lote por ubicación hasta conciliarse.',

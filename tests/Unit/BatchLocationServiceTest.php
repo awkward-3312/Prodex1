@@ -8,6 +8,7 @@ use App\Models\ProductBatch;
 use App\Models\ProductBatchLocationMovement;
 use App\Models\ProductBatchLocationStock;
 use App\Services\BatchLocationService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use LogicException;
@@ -259,6 +260,27 @@ class BatchLocationServiceTest extends TestCase
         return (int) ProductBatchLocationMovement::count();
     }
 
+    // MS5-B0.2 — external primitives now REQUIRE an outer business transaction.
+    private function rcv(...$args)
+    {
+        return DB::transaction(fn () => app(BatchLocationService::class)->receive(...$args));
+    }
+
+    private function iss(...$args)
+    {
+        return DB::transaction(fn () => app(BatchLocationService::class)->issue(...$args));
+    }
+
+    private function rcvMany(...$args)
+    {
+        return DB::transaction(fn () => app(BatchLocationService::class)->receiveMany(...$args));
+    }
+
+    private function issMany(...$args)
+    {
+        return DB::transaction(fn () => app(BatchLocationService::class)->issueMany(...$args));
+    }
+
     // ---- RECEIVE --------------------------------------------------------
 
     public function test_receive_credits_new_batch_and_writes_null_to_location(): void
@@ -266,7 +288,7 @@ class BatchLocationServiceTest extends TestCase
         $loc = $this->whLocation(7);
         $batch = $this->whBatch(7);                 // qty 0, no slices — brand new
 
-        $movement = app(BatchLocationService::class)->receive($batch->id, $loc->id, 10, ['idempotency_key' => 'rcv-1']);
+        $movement = $this->rcv($batch->id, $loc->id, 10, ['idempotency_key' => 'rcv-1']);
 
         $this->assertSame(10.0, (float) $batch->fresh()->qty);
         $this->assertSame(10.0, (float) ProductBatchLocationStock::where('product_batch_id', $batch->id)->value('quantity'));
@@ -282,8 +304,8 @@ class BatchLocationServiceTest extends TestCase
         $batch = $this->whBatch(7);
         $svc = app(BatchLocationService::class);
 
-        $first = $svc->receive($batch->id, $loc->id, 10, ['idempotency_key' => 'rcv-same']);
-        $second = $svc->receive($batch->id, $loc->id, 10, ['idempotency_key' => 'rcv-same']);
+        $first = $this->rcv($batch->id, $loc->id, 10, ['idempotency_key' => 'rcv-same']);
+        $second = $this->rcv($batch->id, $loc->id, 10, ['idempotency_key' => 'rcv-same']);
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame(10.0, (float) $batch->fresh()->qty);
@@ -296,10 +318,10 @@ class BatchLocationServiceTest extends TestCase
         $loc = $this->whLocation(7);
         $batch = $this->whBatch(7);
         $svc = app(BatchLocationService::class);
-        $svc->receive($batch->id, $loc->id, 10, ['idempotency_key' => 'rcv-clash']);
+        $this->rcv($batch->id, $loc->id, 10, ['idempotency_key' => 'rcv-clash']);
 
         try {
-            $svc->receive($batch->id, $loc->id, 11, ['idempotency_key' => 'rcv-clash']);
+            $this->rcv($batch->id, $loc->id, 11, ['idempotency_key' => 'rcv-clash']);
             $this->fail('expected ValidationException');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('idempotency_key', $e->errors());
@@ -314,7 +336,7 @@ class BatchLocationServiceTest extends TestCase
         $batch = $this->whBatch(7);
 
         try {
-            app(BatchLocationService::class)->receive($batch->id, $loc->id, 5);
+            $this->rcv($batch->id, $loc->id, 5);
             $this->fail('expected ValidationException');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('batch_transition', $e->errors());
@@ -331,7 +353,7 @@ class BatchLocationServiceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         try {
-            app(BatchLocationService::class)->receive($batch->id, $loc->id, 5);
+            $this->rcv($batch->id, $loc->id, 5);
         } finally {
             $this->assertSame(0.0, (float) $batch->fresh()->qty);
             $this->assertSame(0, $this->movementCount());
@@ -345,7 +367,7 @@ class BatchLocationServiceTest extends TestCase
         $batch->delete();
 
         try {
-            app(BatchLocationService::class)->receive($batch->id, $loc->id, 5);
+            $this->rcv($batch->id, $loc->id, 5);
             $this->fail('expected ValidationException');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('product_batch_id', $e->errors());
@@ -360,7 +382,7 @@ class BatchLocationServiceTest extends TestCase
         $batch = $this->whBatch(7, ['status' => 'written_off']);
 
         try {
-            app(BatchLocationService::class)->receive($batch->id, $loc->id, 5);
+            $this->rcv($batch->id, $loc->id, 5);
             $this->fail('expected ValidationException');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('batch_transition', $e->errors());
@@ -376,7 +398,7 @@ class BatchLocationServiceTest extends TestCase
         $this->slice($batch->id, $loc->id, 12);      // slices 12 -> reconcile mismatch
 
         try {
-            app(BatchLocationService::class)->receive($batch->id, $loc->id, 5);
+            $this->rcv($batch->id, $loc->id, 5);
             $this->fail('expected ValidationException');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('batch_transition', $e->errors());
@@ -395,7 +417,7 @@ class BatchLocationServiceTest extends TestCase
         $this->slice($batch->id, $loc->id, 20);
         $this->generalStock($loc->id, 100, null, 20);      // coherent coverage
 
-        $movement = app(BatchLocationService::class)->issue($batch->id, $loc->id, 5, ['idempotency_key' => 'iss-1']);
+        $movement = $this->iss($batch->id, $loc->id, 5, ['idempotency_key' => 'iss-1']);
 
         $this->assertSame(15.0, (float) $batch->fresh()->qty);
         $this->assertSame(15.0, (float) ProductBatchLocationStock::where('product_batch_id', $batch->id)->value('quantity'));
@@ -412,8 +434,8 @@ class BatchLocationServiceTest extends TestCase
         $this->generalStock($loc->id, 100, null, 20);
         $svc = app(BatchLocationService::class);
 
-        $first = $svc->issue($batch->id, $loc->id, 5, ['idempotency_key' => 'iss-same']);
-        $second = $svc->issue($batch->id, $loc->id, 5, ['idempotency_key' => 'iss-same']);
+        $first = $this->iss($batch->id, $loc->id, 5, ['idempotency_key' => 'iss-same']);
+        $second = $this->iss($batch->id, $loc->id, 5, ['idempotency_key' => 'iss-same']);
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame(15.0, (float) $batch->fresh()->qty);
@@ -429,7 +451,7 @@ class BatchLocationServiceTest extends TestCase
         $this->generalStock($loc->id, 100, null, 3);       // coverage OK -> slice guard fires
 
         try {
-            app(BatchLocationService::class)->issue($batch->id, $loc->id, 5);
+            $this->iss($batch->id, $loc->id, 5);
             $this->fail('expected ValidationException');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('quantity', $e->errors());
@@ -447,7 +469,7 @@ class BatchLocationServiceTest extends TestCase
         $this->generalStock($loc->id, 100, null, 10);   // coverage OK (raw slice qty 10)
 
         try {
-            app(BatchLocationService::class)->issue($batch->id, $loc->id, 5);
+            $this->iss($batch->id, $loc->id, 5);
             $this->fail('expected ValidationException');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('quantity', $e->errors());
@@ -464,7 +486,7 @@ class BatchLocationServiceTest extends TestCase
         $this->slice($batch->id, $loc->id, 7);       // reconcile mismatch
 
         try {
-            app(BatchLocationService::class)->issue($batch->id, $loc->id, 3);
+            $this->iss($batch->id, $loc->id, 3);
             $this->fail('expected ValidationException');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('batch_transition', $e->errors());
@@ -482,7 +504,7 @@ class BatchLocationServiceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         try {
-            app(BatchLocationService::class)->issue($batch->id, $loc->id, 3);
+            $this->iss($batch->id, $loc->id, 3);
         } finally {
             $this->assertSame(10.0, (float) $batch->fresh()->qty);
             $this->assertSame(0, $this->movementCount());
@@ -579,14 +601,14 @@ class BatchLocationServiceTest extends TestCase
         $this->assertFalse($svc->batchCoverageForLocation($loc->id, 300)['matches']);
 
         try {
-            $svc->receive($batch->id, $loc->id, 12);
+            $this->rcv($batch->id, $loc->id, 12);
             $this->fail('expected ValidationException on receive');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('batch_transition', $e->errors());
         }
 
         try {
-            $svc->issue($batch->id, $loc->id, 5);
+            $this->iss($batch->id, $loc->id, 5);
             $this->fail('expected ValidationException on issue');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('batch_transition', $e->errors());
@@ -612,7 +634,7 @@ class BatchLocationServiceTest extends TestCase
         $this->generalStock($loc->id, 301, null, 10);        // A=B=C=10
 
         $svc = app(BatchLocationService::class);
-        $svc->receive($batch->id, $loc->id, 5, ['idempotency_key' => 'compose-rcv']);
+        $this->rcv($batch->id, $loc->id, 5, ['idempotency_key' => 'compose-rcv']);
 
         // Artifact layer moved; general NOT touched by the primitive.
         $this->assertSame(15.0, (float) $batch->fresh()->qty);
@@ -637,7 +659,7 @@ class BatchLocationServiceTest extends TestCase
         $this->generalStock($loc->id, 302, null, 20);
 
         $svc = app(BatchLocationService::class);
-        $svc->issue($batch->id, $loc->id, 5, ['idempotency_key' => 'compose-iss']);
+        $this->iss($batch->id, $loc->id, 5, ['idempotency_key' => 'compose-iss']);
 
         $this->assertSame(15.0, (float) $batch->fresh()->qty);
         $this->assertSame(15.0, (float) ProductBatchLocationStock::where('product_batch_id', $batch->id)->value('quantity'));
@@ -650,6 +672,239 @@ class BatchLocationServiceTest extends TestCase
         $this->assertSame(15.0, (float) $this->generalQty($loc->id, 302));
         $this->assertTrue($svc->reconcileBatch($batch->id)['matches']);
         $this->assertTrue($svc->batchCoverageForLocation($loc->id, 302)['matches']);
+    }
+
+    // =====================================================================
+    // MS5-B0.2 — ATOMIC EXTERNAL BATCH SETS (receiveMany / issueMany)
+    // =====================================================================
+
+    public function test_external_primitives_require_an_outer_transaction(): void
+    {
+        $loc = $this->whLocation(7);
+        $batch = $this->whBatch(7);
+
+        try {
+            app(BatchLocationService::class)->receive($batch->id, $loc->id, 5);
+            $this->fail('expected LogicException');
+        } catch (LogicException $e) {
+            $this->assertStringContainsStringIgnoringCase('transaction', $e->getMessage());
+        }
+
+        try {
+            app(BatchLocationService::class)->receiveMany($loc->id, [['product_batch_id' => $batch->id, 'quantity' => 5]]);
+            $this->fail('expected LogicException');
+        } catch (LogicException $e) {
+            $this->assertStringContainsStringIgnoringCase('transaction', $e->getMessage());
+        }
+        $this->assertSame(0, $this->movementCount());
+    }
+
+    public function test_receive_many_two_batches_validates_coverage_once_on_pre_state(): void
+    {
+        $loc = $this->whLocation(7);
+        $a = $this->whBatch(7, ['product_id' => 400]);   // qty 0, no slices
+        $b = $this->whBatch(7, ['product_id' => 400]);
+        // general 0, batch slices 0  -> coverage matches on the PRE-STATE.
+
+        $moves = $this->rcvMany($loc->id, [
+            ['product_batch_id' => $a->id, 'quantity' => 6, 'idempotency_key' => 'set-A'],
+            ['product_batch_id' => $b->id, 'quantity' => 4, 'idempotency_key' => 'set-B'],
+        ]);
+
+        $this->assertCount(2, $moves);
+        $this->assertSame(6.0, (float) $a->fresh()->qty);
+        $this->assertSame(4.0, (float) $b->fresh()->qty);
+        $this->assertSame(10.0, (float) ProductBatchLocationStock::whereIn('product_batch_id', [$a->id, $b->id])->sum('quantity'));
+        $this->assertSame(0.0, $this->generalQty($loc->id, 400));       // primitive did NOT touch general
+        $this->assertSame(2, $this->movementCount());
+
+        // business layer completes the composition.
+        DB::transaction(fn () => app(\App\Services\InventoryService::class)->increase($loc->id, 400, 10, null, ['idempotency_key' => 'gen-400']));
+
+        $this->assertSame(10.0, $this->generalQty($loc->id, 400));
+        $this->assertTrue(app(BatchLocationService::class)->reconcileBatch($a->id)['matches']);
+        $this->assertTrue(app(BatchLocationService::class)->batchCoverageForLocation($loc->id, 400)['matches']);
+    }
+
+    public function test_issue_many_two_batches_drains_both_before_general(): void
+    {
+        $loc = $this->whLocation(7);
+        $a = $this->whBatch(7, ['product_id' => 401, 'qty' => 6]);
+        $b = $this->whBatch(7, ['product_id' => 401, 'qty' => 4]);
+        $this->slice($a->id, $loc->id, 6);
+        $this->slice($b->id, $loc->id, 4);
+        $this->generalStock($loc->id, 401, null, 10);
+
+        $this->issMany($loc->id, [
+            ['product_batch_id' => $a->id, 'quantity' => 6],
+            ['product_batch_id' => $b->id, 'quantity' => 4],
+        ]);
+
+        $this->assertSame(0.0, (float) $a->fresh()->qty);
+        $this->assertSame(0.0, (float) $b->fresh()->qty);
+        $this->assertSame(0.0, (float) ProductBatchLocationStock::whereIn('product_batch_id', [$a->id, $b->id])->sum('quantity'));
+        $this->assertSame(10.0, $this->generalQty($loc->id, 401));    // untouched by the primitive
+        $this->assertSame(2, $this->movementCount());
+
+        DB::transaction(fn () => app(\App\Services\InventoryService::class)->decrease($loc->id, 401, 10, null, ['idempotency_key' => 'gen-401']));
+        $this->assertSame(0.0, $this->generalQty($loc->id, 401));
+        $this->assertTrue(app(BatchLocationService::class)->batchCoverageForLocation($loc->id, 401)['matches']);
+    }
+
+    public function test_issue_many_same_batch_twice_aggregates_sufficiency_then_two_ledger_rows(): void
+    {
+        $loc = $this->whLocation(7);
+        $batch = $this->whBatch(7, ['product_id' => 402, 'qty' => 10]);
+        $this->slice($batch->id, $loc->id, 10);
+        $this->generalStock($loc->id, 402, null, 10);
+
+        $moves = $this->issMany($loc->id, [
+            ['product_batch_id' => $batch->id, 'quantity' => 3, 'reference_id' => 'detailA'],
+            ['product_batch_id' => $batch->id, 'quantity' => 4, 'reference_id' => 'detailB'],
+        ]);
+
+        $this->assertSame(3.0, (float) $batch->fresh()->qty);
+        $this->assertSame(3.0, (float) ProductBatchLocationStock::where('product_batch_id', $batch->id)->value('quantity'));
+        $this->assertCount(2, $moves);
+        $this->assertEqualsCanonicalizing([3.0, 4.0], array_map(fn ($m) => (float) $m->quantity, $moves));
+        $this->assertEqualsCanonicalizing(['detailA', 'detailB'], array_map(fn ($m) => $m->reference_id, $moves));
+    }
+
+    public function test_issue_many_same_batch_twice_rejects_when_aggregate_is_short_no_mutation(): void
+    {
+        $loc = $this->whLocation(7);
+        $batch = $this->whBatch(7, ['product_id' => 403, 'qty' => 5]);
+        $this->slice($batch->id, $loc->id, 5);
+        $this->generalStock($loc->id, 403, null, 5);
+
+        try {
+            $this->issMany($loc->id, [
+                ['product_batch_id' => $batch->id, 'quantity' => 3],
+                ['product_batch_id' => $batch->id, 'quantity' => 4],   // 3 + 4 = 7 > 5
+            ]);
+            $this->fail('expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('quantity', $e->errors());
+        }
+        $this->assertSame(5.0, (float) $batch->fresh()->qty);
+        $this->assertSame(5.0, (float) ProductBatchLocationStock::where('product_batch_id', $batch->id)->value('quantity'));
+        $this->assertSame(0, $this->movementCount());
+    }
+
+    public function test_receive_many_multi_product_checks_coverage_per_product(): void
+    {
+        $loc = $this->whLocation(7);
+        $a = $this->whBatch(7, ['product_id' => 500]);
+        $b = $this->whBatch(7, ['product_id' => 501]);
+        // product 501 carries legacy drift -> its coverage must fail the whole set.
+        $this->generalStock($loc->id, 501, null, 99);
+
+        try {
+            $this->rcvMany($loc->id, [
+                ['product_batch_id' => $a->id, 'quantity' => 5],
+                ['product_batch_id' => $b->id, 'quantity' => 5],
+            ]);
+            $this->fail('expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('batch_transition', $e->errors());
+        }
+        $this->assertSame(0.0, (float) $a->fresh()->qty);
+        $this->assertSame(0.0, (float) $b->fresh()->qty);
+        $this->assertSame(0, $this->movementCount());
+    }
+
+    public function test_full_set_replay_returns_existing_movements_zero_mutation(): void
+    {
+        $loc = $this->whLocation(7);
+        $a = $this->whBatch(7, ['product_id' => 600]);
+        $b = $this->whBatch(7, ['product_id' => 600]);
+
+        $first = $this->rcvMany($loc->id, [
+            ['product_batch_id' => $a->id, 'quantity' => 6, 'idempotency_key' => 'rep-A'],
+            ['product_batch_id' => $b->id, 'quantity' => 4, 'idempotency_key' => 'rep-B'],
+        ]);
+        $second = $this->rcvMany($loc->id, [
+            ['product_batch_id' => $a->id, 'quantity' => 6, 'idempotency_key' => 'rep-A'],
+            ['product_batch_id' => $b->id, 'quantity' => 4, 'idempotency_key' => 'rep-B'],
+        ]);
+
+        $this->assertSame(array_map(fn ($m) => $m->id, $first), array_map(fn ($m) => $m->id, $second));
+        $this->assertSame(6.0, (float) $a->fresh()->qty);   // still 6, not 12
+        $this->assertSame(4.0, (float) $b->fresh()->qty);
+        $this->assertSame(2, $this->movementCount());
+    }
+
+    public function test_partial_set_replay_fails_closed(): void
+    {
+        $loc = $this->whLocation(7);
+        $a = $this->whBatch(7, ['product_id' => 601]);
+        $b = $this->whBatch(7, ['product_id' => 601]);
+
+        // Only the first allocation's movement already exists (fingerprint-matching).
+        ProductBatchLocationMovement::create([
+            'product_batch_id' => $a->id,
+            'from_inventory_location_id' => null,
+            'to_inventory_location_id' => $loc->id,
+            'quantity' => 6,
+            'idempotency_key' => 'part-A',
+        ]);
+
+        try {
+            $this->rcvMany($loc->id, [
+                ['product_batch_id' => $a->id, 'quantity' => 6, 'idempotency_key' => 'part-A'],
+                ['product_batch_id' => $b->id, 'quantity' => 4, 'idempotency_key' => 'part-B'],
+            ]);
+            $this->fail('expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('batch_transition', $e->errors());
+        }
+        $this->assertSame(0.0, (float) $a->fresh()->qty);
+        $this->assertSame(0.0, (float) $b->fresh()->qty);
+        $this->assertSame(1, $this->movementCount());   // the seeded row only
+    }
+
+    public function test_set_key_reused_with_different_quantity_is_422(): void
+    {
+        $loc = $this->whLocation(7);
+        $batch = $this->whBatch(7, ['product_id' => 602]);
+
+        $this->rcvMany($loc->id, [['product_batch_id' => $batch->id, 'quantity' => 6, 'idempotency_key' => 'clash']]);
+
+        try {
+            $this->rcvMany($loc->id, [['product_batch_id' => $batch->id, 'quantity' => 7, 'idempotency_key' => 'clash']]);
+            $this->fail('expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('idempotency_key', $e->errors());
+        }
+        $this->assertSame(6.0, (float) $batch->fresh()->qty);
+    }
+
+    public function test_set_and_general_roll_back_together_on_outer_throw(): void
+    {
+        $loc = $this->whLocation(7);
+        $a = $this->whBatch(7, ['product_id' => 700]);
+        $b = $this->whBatch(7, ['product_id' => 700]);
+
+        try {
+            DB::transaction(function () use ($loc, $a, $b) {
+                app(BatchLocationService::class)->receiveMany($loc->id, [
+                    ['product_batch_id' => $a->id, 'quantity' => 6],
+                    ['product_batch_id' => $b->id, 'quantity' => 4],
+                ]);
+                app(\App\Services\InventoryService::class)->increase($loc->id, 700, 10, null, ['idempotency_key' => 'roll-700']);
+                throw new \RuntimeException('__ROLLBACK__');
+            });
+            $this->fail('expected RuntimeException');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('__ROLLBACK__', $e->getMessage());
+        }
+
+        $this->assertSame(0.0, (float) $a->fresh()->qty);
+        $this->assertSame(0.0, (float) $b->fresh()->qty);
+        $this->assertSame(0.0, (float) ProductBatchLocationStock::whereIn('product_batch_id', [$a->id, $b->id])->sum('quantity'));
+        $this->assertSame(0, $this->movementCount());
+        $this->assertSame(0.0, $this->generalQty($loc->id, 700));
+        $this->assertSame(0, (int) DB::table('inventory_location_movements')->count());
     }
 
     private function generalQty(int $locationId, int $productId, ?int $variantId = null): float

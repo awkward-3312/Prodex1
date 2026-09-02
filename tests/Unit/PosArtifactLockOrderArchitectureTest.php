@@ -147,14 +147,15 @@ class PosArtifactLockOrderArchitectureTest extends TestCase
 
     public function test_batch_foundation_primitives_still_lock_batch_before_slice(): void
     {
+        // MS5-B0.2: every external mutation flows through one implementation,
+        // applyExternalBatchSet(), which locks ProductBatch before the slice.
         $src = $this->read('app/Services/BatchLocationService.php');
-        foreach (['receive', 'issue'] as $method) {
-            $this->assertMatchesRegularExpression(
-                '/function '.$method.'\(.*?ProductBatch::.*?->lockForUpdate\(\).*?ProductBatchLocationStock::.*?->lockForUpdate\(\)/s',
-                $src,
-                $method.'() must lock ProductBatch before ProductBatchLocationStock'
-            );
-        }
+        $body = $this->methodBody($src, 'applyExternalBatchSet');
+        $this->assertMatchesRegularExpression(
+            '/ProductBatch::.*?->lockForUpdate\(\).*?ProductBatchLocationStock::.*?->lockForUpdate\(\)/s',
+            $body,
+            'applyExternalBatchSet() must lock ProductBatch before ProductBatchLocationStock'
+        );
     }
 
     private function methodBody(string $src, string $name): string
