@@ -17,6 +17,7 @@ use App\Models\Provider;
 use App\Models\Purchase;
 use App\Models\PurchaseCustomField;
 use App\Models\PurchaseDetail;
+use App\Models\PurchaseDetailBatch;
 use App\Models\PurchaseExtraCharge;
 use App\Models\PurchaseReturn;
 use App\Models\Role;
@@ -29,6 +30,7 @@ use App\Models\UserWarehouse;
 use App\Models\Warehouse;
 use App\Services\BatchService;
 use App\Services\InventoryLocationScopeService;
+use App\Services\LocationAwarePurchaseBatchPlanner;
 use App\Services\LocationAwarePurchaseStockService;
 use App\Services\SerialNumberService;
 use App\Services\WarehouseInventoryModeResolver;
@@ -394,14 +396,69 @@ class PurchasesController extends BaseController
     }
 
     // =====================================================================
-    // MS2 — Purchases location-native (warehouses in MODE_LOCATION_PRIMARY).
+    // MS2 / MS5-C — Purchases location-native (warehouses in MODE_LOCATION_PRIMARY).
     //
-    // Scope: is_single / is_variant, manual purchases only. Import stays legacy
-    // (MS4). PurchaseReturn stays legacy (MS3). batch / IMEI => the service
-    // fails closed. NO legacy product_warehouse / BatchService / SerialNumber
+    // Scope: is_single / is_variant, manual purchases only, INCLUDING
+    // is_batch_tracked (MS5-C). Import stays legacy (MS5-E). PurchaseReturn
+    // stays legacy (MS5-D). IMEI => the service still fails closed (MS6).
+    //
+    // batch: validateAndLock(allow_batch=true) -> LocationAwarePurchaseBatchPlanner
+    // freezes a per-line batch_allocation -> buildSnapshot embeds it ->
+    // applySnapshot runs BatchLocationService::receiveMany BEFORE
+    // InventoryService::increase (and issueMany BEFORE decrease on a reverse).
+    // The snapshot is the ONLY source of a reverse; purchase_detail_batches are
+    // secondary UX/reporting (pivot.qty = the entered PURCHASE-unit quantity,
+    // never used for the physical reverse). A PENDING purchase creates NO batch
+    // artifact at all. NO legacy product_warehouse / BatchService / SerialNumber
     // writes on this path. The document identity (inventory_location_id NOT
     // NULL) — not the warehouse's current mode — governs update/destroy.
     // =====================================================================
+
+    /**
+     * MS5-C — persist one purchase_detail_batches pivot per snapshot batch
+     * allocation. pivot.qty keeps the COMMERCIAL (purchase-unit) quantity the
+     * user entered (quantity_input); the physical BASE quantity lives only in
+     * the snapshot. NOT used for the physical reverse.
+     *
+     * @param  array  $plannedLines  validated lines enriched by the planner + withSourceDetailIds()
+     */
+    private function persistLocationAwarePurchaseDetailBatches(array $plannedLines): void
+    {
+        foreach ($plannedLines as $line) {
+            $detailId = $line['source_detail_id'] ?? null;
+            if (! $detailId || empty($line['batch_allocation'])) {
+                continue;
+            }
+            foreach ($line['batch_allocation'] as $a) {
+                PurchaseDetailBatch::create([
+                    'purchase_detail_id' => (int) $detailId,
+                    'product_batch_id' => (int) $a['product_batch_id'],
+                    'qty' => $a['quantity_input'] !== null ? (float) $a['quantity_input'] : (float) $a['quantity_base'],
+                    'unit_cost' => $a['unit_cost'] !== null ? (float) $a['unit_cost'] : null,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * MS5-C — run the batch planner for a RECEIVED location-native purchase and
+     * fold its per-line batch_allocation into the validated lines. A no-op for a
+     * cart with no batch-tracked line (returns the lines with batch_allocation
+     * => []). MUST run inside the document transaction.
+     */
+    private function planLocationAwarePurchaseBatches(int $warehouseId, int $locationId, array $validatedLines, array $rawLines, int $sourcePurchaseId, $providerId): array
+    {
+        return app(LocationAwarePurchaseBatchPlanner::class)->planPurchaseReceipt(
+            $warehouseId,
+            $locationId,
+            $validatedLines,
+            $rawLines,
+            [
+                'source_purchase_id' => $sourcePurchaseId,
+                'provider_id' => $providerId !== null ? (int) $providerId : null,
+            ]
+        );
+    }
 
     /** Raw request details -> LocationAwarePurchaseStockService line shape. */
     private function locationAwarePurchaseLines(Request $request): array
@@ -482,11 +539,15 @@ class PurchasesController extends BaseController
 
             // Validate + lock ALWAYS (pending included): a location_primary
             // purchase can only be saved with a valid location + valid lines.
+            // allow_batch=true — a batch-tracked line is marked requires_batch
+            // (the planner runs only for a RECEIVED purchase); IMEI still 422.
             $validated = $svc->validateAndLock(
                 LocationAwarePurchaseStockService::DOC_PURCHASE,
                 $warehouseId,
                 $locationId,
-                $this->locationAwarePurchaseLines($request)
+                $this->locationAwarePurchaseLines($request),
+                [],
+                ['allow_batch' => true]
             );
 
             $order = new Purchase;
@@ -512,13 +573,18 @@ class PurchasesController extends BaseController
             $detailIds = $this->persistLocationAwarePurchaseDetails($order->id, $rawLines);
 
             // Physical effect ONLY for a received purchase. A pending purchase
-            // keeps location + header + details, but NO snapshot and NO
-            // movements — the snapshot represents an effect that WAS applied.
+            // keeps location + header + details, but NO snapshot, NO batch
+            // artifact, NO movements — the planner NEVER runs for pending, even
+            // if the request carried `batches`.
             if ($statut === 'received') {
-                $validated['lines'] = $this->withSourceDetailIds($validated['lines'], $detailIds);
+                $planned = $this->planLocationAwarePurchaseBatches(
+                    $warehouseId, $locationId, $validated['lines'], $rawLines, (int) $order->id, $order->provider_id
+                );
+                $validated['lines'] = $this->withSourceDetailIds($planned, $detailIds);
                 $snapshot = $svc->buildSnapshot($validated, 1);
                 $order->update(['inventory_effect_snapshot' => $snapshot]);
                 $svc->applySnapshot($snapshot, $order->id);
+                $this->persistLocationAwarePurchaseDetailBatches($validated['lines']);
             }
         }, 10);
 
@@ -582,10 +648,12 @@ class PurchasesController extends BaseController
             }
 
             // (C, D) reverse the currently-applied effect using the OLD snapshot
-            // (old warehouse/location/effects live inside it).
+            // (old warehouse/location/effects/batch_allocation live inside it —
+            // NEVER the current request). allow_batch=true so a now-batch
+            // product with a batch_allocation reverses via issueMany.
             if ($hadActiveEffect) {
                 $oldSnapshot = $svc->normalizeSnapshot($oldSnapshotRaw);
-                $svc->assertSnapshotArtifactSafeAndLock($oldSnapshot);
+                $svc->assertSnapshotArtifactSafeAndLock($oldSnapshot, ['allow_batch' => true]);
                 $svc->reverseSnapshot($oldSnapshot, $locked->id);
             }
 
@@ -599,19 +667,31 @@ class PurchasesController extends BaseController
                 $newWarehouseId,
                 $newLocationId,
                 $this->locationAwarePurchaseLines($request),
-                $extra
+                $extra,
+                ['allow_batch' => true]
             );
 
-            // Replace details (location-native never touched batch/serial).
+            // Replace details + their batch pivots (the OLD snapshot already
+            // drove the physical reverse above; pivots are only UX/reporting).
+            $oldDetailIds = PurchaseDetail::where('purchase_id', $locked->id)->pluck('id')->all();
+            if ($oldDetailIds && Schema::hasTable('purchase_detail_batches')) {
+                PurchaseDetailBatch::whereIn('purchase_detail_id', $oldDetailIds)->delete();
+            }
             PurchaseDetail::where('purchase_id', $locked->id)->delete();
             $detailIds = $this->persistLocationAwarePurchaseDetails($locked->id, $rawLines);
 
             // (B, C) apply a NEW snapshot only when the new statut is received.
+            // The planner uses the CURRENT request; a requires_batch line MUST
+            // carry batches now (never rebuilt from an inactive old snapshot).
             $newSnapshot = null;
             if ($newStatut === 'received') {
-                $validated['lines'] = $this->withSourceDetailIds($validated['lines'], $detailIds);
+                $planned = $this->planLocationAwarePurchaseBatches(
+                    $newWarehouseId, $newLocationId, $validated['lines'], $rawLines, (int) $locked->id, $request['supplier_id']
+                );
+                $validated['lines'] = $this->withSourceDetailIds($planned, $detailIds);
                 $newSnapshot = $svc->buildSnapshot($validated, $oldRevision + 1);
                 $svc->applySnapshot($newSnapshot, $locked->id);
+                $this->persistLocationAwarePurchaseDetailBatches($validated['lines']);
             }
 
             $payload = [
@@ -678,8 +758,14 @@ class PurchasesController extends BaseController
             // be healthy location_primary. Locks the transition state first.
             $this->assertLocationNativePurchaseTransitionSafe((int) $locked->warehouse_id, null);
 
+            // Physical reverse from the SNAPSHOT (batch issueMany + general
+            // decrease) — FAILS CLOSED if a batch slice was partially consumed.
             $this->reverseLocationNativePurchaseStock($locked);
 
+            $detailIds = $locked->details()->pluck('id')->all();
+            if ($detailIds && Schema::hasTable('purchase_detail_batches')) {
+                PurchaseDetailBatch::whereIn('purchase_detail_id', $detailIds)->delete();
+            }
             $locked->details()->delete();
             $locked->update(['deleted_at' => Carbon::now()]);
 
@@ -716,7 +802,7 @@ class PurchasesController extends BaseController
 
         $svc = app(LocationAwarePurchaseStockService::class);
         $snapshot = $svc->normalizeSnapshot($purchase->inventory_effect_snapshot); // throws if null/malformed
-        $svc->assertSnapshotArtifactSafeAndLock($snapshot);
+        $svc->assertSnapshotArtifactSafeAndLock($snapshot, ['allow_batch' => true]);
         $svc->reverseSnapshot($snapshot, $purchase->id);
     }
 
@@ -1263,7 +1349,14 @@ class PurchasesController extends BaseController
                     // partial stock.
                     if ($current_Purchase->inventory_location_id !== null) {
                         $this->assertLocationNativePurchaseTransitionSafe((int) $current_Purchase->warehouse_id, null);
+                        // Physical reverse from the SNAPSHOT (batch + general).
+                        // A partially-consumed batch throws here => the WHOLE
+                        // \DB::transaction aborts => zero partial deletes.
                         $this->reverseLocationNativePurchaseStock($current_Purchase);
+                        $nativeDetailIds = $old_purchase_details->pluck('id')->all();
+                        if ($nativeDetailIds && Schema::hasTable('purchase_detail_batches')) {
+                            PurchaseDetailBatch::whereIn('purchase_detail_id', $nativeDetailIds)->delete();
+                        }
                     } else {
 
                     $this->assertLegacyPurchaseTransitionSafe((int) $current_Purchase->warehouse_id, null);

@@ -183,7 +183,8 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
     {
         $body = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'updateLocationAware');
         $this->assertStringContainsString('lockForUpdate()->firstOrFail();', $body);
-        $this->assertStringContainsString('->assertSnapshotArtifactSafeAndLock($oldSnapshot);', $body);
+        // MS5-C — the OLD-snapshot reverse is now batch-artifact-safe.
+        $this->assertStringContainsString("->assertSnapshotArtifactSafeAndLock(\$oldSnapshot, ['allow_batch' => true]);", $body);
         $this->assertStringContainsString('->reverseSnapshot($oldSnapshot, $locked->id);', $body);
         $this->assertStringContainsString('$oldRevision + 1', $body);
         $this->assertStringContainsString("if (\$newStatut === 'received')", $body);

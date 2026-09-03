@@ -636,10 +636,12 @@ class BatchLocationService
             ]);
         }
 
+        // NOTE: CAST(... AS DECIMAL(20,6)) is required — MySQL 8.4 evaluates
+        // `decimal(12,3)_column < -0.0005` (literal scale 4 > column scale 3)
+        // as TRUE for a 0.000 row. The cast normalizes both sides; harmless on
+        // SQLite. Same reason for the negative-aggregate raw compare below.
         $hasNegativeSlice = ProductBatchLocationStock::where('product_batch_id', $batch->id)
-            ->where(function ($q) {
-                $q->where('quantity', '<', -self::EPS)->orWhere('reserved_quantity', '<', -self::EPS);
-            })
+            ->whereRaw('CAST(quantity AS DECIMAL(20,6)) < ? OR CAST(reserved_quantity AS DECIMAL(20,6)) < ?', [-self::EPS, -self::EPS])
             ->exists();
         if ($hasNegativeSlice) {                              // C
             throw ValidationException::withMessages([

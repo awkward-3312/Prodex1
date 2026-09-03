@@ -319,7 +319,15 @@
                             <lucide-icon class="text-25 text-danger" name="x" @click="delete_Product_Detail(detail.detail_id)" />
                           </td>
                         </tr>
-                        <tr v-if="detail.is_batch_tracked" :key="'batches-'+detail.detail_id" :style="{ background: 'transparent' }">
+                        <tr v-if="detail.is_batch_tracked && purchase.statut !== 'received'" :key="'batches-defer-'+detail.detail_id" :style="{ background: 'transparent' }">
+                          <td colspan="9" :style="{ padding: '0 8px 16px 8px', border: 'none' }">
+                            <div :style="{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #94a3b8', borderRadius: '10px', padding: '10px 16px', fontSize: '12px', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }">
+                              <lucide-icon name="package" :style="{ fontSize: '14px', opacity: '0.7' }" />
+                              <span>{{ $t('Batches_Assigned_On_Receipt') || 'Los lotes se asignarán cuando la compra se marque como recibida.' }}</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr v-if="detail.is_batch_tracked && purchase.statut === 'received'" :key="'batches-'+detail.detail_id" :style="{ background: 'transparent' }">
                           <td colspan="9" :style="{ padding: '0 8px 16px 8px', border: 'none' }">
                             <div
                               :style="{
@@ -1100,9 +1108,11 @@ export default {
       );
     },
 
-    // True if any batch-tracked line has missing batches or a qty mismatch
+    // True if any batch-tracked line has missing batches or a qty mismatch.
+    // Batches are ONLY required for a RECEIVED purchase (matches the backend:
+    // pending never creates a batch artifact).
     hasBatchValidationErrors() {
-      if (!Array.isArray(this.details)) return false;
+      if (this.purchase.statut !== 'received' || !Array.isArray(this.details)) return false;
       return this.details.some(d => {
         if (!d || !d.is_batch_tracked) return false;
         if (!Array.isArray(d.batches) || d.batches.length === 0) return true;
@@ -1112,7 +1122,7 @@ export default {
 
     // First detail that failed batch validation — used for the top-level banner
     firstBatchErrorDetail() {
-      if (!Array.isArray(this.details)) return null;
+      if (this.purchase.statut !== 'received' || !Array.isArray(this.details)) return null;
       return this.details.find(d => {
         if (!d || !d.is_batch_tracked) return false;
         if (!Array.isArray(d.batches) || d.batches.length === 0) return true;

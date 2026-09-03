@@ -32,15 +32,9 @@ class PurchaseBatchEngineArchitectureTest extends TestCase
         return substr($src, $start, strlen($m[0][0]) + $end);
     }
 
-    // ---- INACTIVE: controllers never enable the batch flow -------------
-
-    public function test_purchases_controller_does_not_pass_allow_batch(): void
-    {
-        $src = $this->read('app/Http/Controllers/PurchasesController.php');
-        $this->assertStringNotContainsString('allow_batch', $src);
-        $this->assertStringNotContainsString('LocationAwarePurchaseBatchPlanner', $src);
-        $this->assertStringNotContainsString('planPurchaseReceipt', $src);
-    }
+    // ---- INACTIVE for PurchaseReturn / Import (MS5-D / MS5-E) ---------
+    // NOTE: manual PurchasesController IS activated in MS5-C — its wiring is
+    // asserted by PurchaseBatchActivationArchitectureTest.
 
     public function test_purchases_return_controller_does_not_pass_allow_batch(): void
     {

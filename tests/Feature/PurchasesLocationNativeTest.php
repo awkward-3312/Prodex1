@@ -323,16 +323,19 @@ class PurchasesLocationNativeTest extends TestCase
         $this->controller()->store($req);
     }
 
-    public function test_store_batch_tracked_product_fails_closed(): void
+    public function test_store_batch_tracked_product_without_batches_fails_closed(): void
     {
+        // MS5-C: a batch-tracked product on a location_primary warehouse is now
+        // ACCEPTED, but a RECEIVED purchase must carry the batch allocation.
+        // Sending none => 422 (the planner), whole transaction rolls back.
         $this->lp();
         $p = $this->makeProduct(['is_batch_tracked' => true]);
         $req = $this->makeRequest($this->payload([$this->line(['product_id' => $p, 'quantity' => 1])]));
         try {
             $this->controller()->store($req);
-            $this->fail('batch => fail closed');
+            $this->fail('batch product with no batches => fail closed');
         } catch (ValidationException $e) {
-            $this->assertStringContainsString('artifact-aware', implode(' ', $e->errors()['details'] ?? ['']));
+            $this->assertMatchesRegularExpression('/lote/i', json_encode($e->errors()));
         }
         $this->assertSame(0, DB::table('purchases')->count());
     }
