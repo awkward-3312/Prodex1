@@ -332,6 +332,7 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
+import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 import NProgress from "nprogress";
 
 export default {
@@ -656,17 +657,16 @@ export default {
             this.purchase_return.inventory_location_id = null;
             return;
           }
-          const ids = this.inventory_locations.map(l => l.id);
-          // 1) suggested default from the linked Purchase (if still valid)
-          if (this.purchase_return.inventory_location_id && ids.indexOf(this.purchase_return.inventory_location_id) !== -1) {
-            this.Selected_Inventory_Location(this.purchase_return.inventory_location_id);
-            return;
-          }
-          // 2) warehouse default   3) the sole option
-          const def = data && data.default_inventory_location_id;
-          if (def && ids.indexOf(def) !== -1) this.purchase_return.inventory_location_id = def;
-          else if (ids.length === 1) this.purchase_return.inventory_location_id = ids[0];
-          else this.purchase_return.inventory_location_id = null;
+          // MS5-D.1 (D2) precedence: explicit default (quarantine allowed) ->
+          // linked-purchase location ONLY if not quarantine -> sole
+          // non-quarantine location -> empty. The backend seeds
+          // inventory_location_id from the linked Purchase, so it is passed as
+          // a suggestion, never as authorisation to auto-pick quarantine.
+          this.purchase_return.inventory_location_id = resolveAutoInventoryLocation({
+            locations: this.inventory_locations,
+            defaultLocationId: data && data.default_inventory_location_id,
+            linkedLocationId: this.purchase_return.inventory_location_id
+          });
           if (this.purchase_return.inventory_location_id) this.Selected_Inventory_Location(this.purchase_return.inventory_location_id);
         })
         .catch(() => {

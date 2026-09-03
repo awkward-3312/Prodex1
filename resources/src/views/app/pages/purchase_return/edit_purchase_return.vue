@@ -318,6 +318,7 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
+import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 import NProgress from "nprogress";
 
 export default {
@@ -595,15 +596,15 @@ export default {
             this.purchase_return.inventory_location_id = null;
             return;
           }
-          // keep the loaded value (edit of a native return); else default / sole
-          if (this.purchase_return.inventory_location_id) {
-            this.Selected_Inventory_Location(this.purchase_return.inventory_location_id);
-            return;
-          }
-          const def = data && data.default_inventory_location_id;
-          const ids = this.inventory_locations.map(l => l.id);
-          if (def && ids.indexOf(def) !== -1) this.purchase_return.inventory_location_id = def;
-          else if (ids.length === 1) this.purchase_return.inventory_location_id = ids[0];
+          // MS5-D.1 (D2) — a persisted, still-valid return location (quarantine
+          // included) is kept as document state; if it is no longer valid it is
+          // cleared and D2 re-runs (explicit default -> sole non-quarantine ->
+          // empty) over the current options.
+          this.purchase_return.inventory_location_id = resolveAutoInventoryLocation({
+            locations: this.inventory_locations,
+            defaultLocationId: data && data.default_inventory_location_id,
+            persistedLocationId: this.purchase_return.inventory_location_id
+          });
           if (this.purchase_return.inventory_location_id) this.Selected_Inventory_Location(this.purchase_return.inventory_location_id);
         })
         .catch(() => {

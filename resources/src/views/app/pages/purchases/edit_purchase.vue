@@ -844,6 +844,7 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
+import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 
 export default {
   metaInfo: {
@@ -1254,16 +1255,15 @@ export default {
             this.purchase.inventory_location_id = null;
             return;
           }
-          // Keep an already-loaded value (edit of a location-native purchase);
-          // otherwise preselect the default or the sole option.
-          if (this.purchase.inventory_location_id) return;
-          const def = data && data.default_inventory_location_id;
-          const ids = this.inventory_locations.map(l => l.id);
-          if (def && ids.indexOf(def) !== -1) {
-            this.purchase.inventory_location_id = def;
-          } else if (ids.length === 1) {
-            this.purchase.inventory_location_id = ids[0];
-          }
+          // MS5-D.1 (D2) — a persisted, still-valid location (including
+          // quarantine) is kept as document state; if it is no longer valid it
+          // is cleared and D2 re-runs over the current options. A sole
+          // quarantine location without an explicit default stays unselected.
+          this.purchase.inventory_location_id = resolveAutoInventoryLocation({
+            locations: this.inventory_locations,
+            defaultLocationId: data && data.default_inventory_location_id,
+            persistedLocationId: this.purchase.inventory_location_id
+          });
         })
         .catch(() => {
           this.inventory_locations = [];

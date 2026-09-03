@@ -977,6 +977,7 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
+import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 
 export default {
   metaInfo: {
@@ -1441,13 +1442,13 @@ export default {
             this.purchase.inventory_location_id = null;
             return;
           }
-          const def = data && data.default_inventory_location_id;
-          const ids = this.inventory_locations.map(l => l.id);
-          if (def && ids.indexOf(def) !== -1) {
-            this.purchase.inventory_location_id = def;
-          } else if (ids.length === 1) {
-            this.purchase.inventory_location_id = ids[0];
-          }
+          // MS5-D.1 (D2) — never auto-select a quarantine location unless an
+          // explicit default authorises it; a sole quarantine location stays
+          // unselected so the user picks it consciously.
+          this.purchase.inventory_location_id = resolveAutoInventoryLocation({
+            locations: this.inventory_locations,
+            defaultLocationId: data && data.default_inventory_location_id
+          });
         })
         .catch(() => {
           this.inventory_locations = [];
