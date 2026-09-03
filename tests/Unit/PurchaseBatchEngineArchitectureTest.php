@@ -8,9 +8,10 @@ use PHPUnit\Framework\TestCase;
  * MS5-B2 — batch-aware purchase snapshot engine. Architecture contract.
  *
  * The engine (planner + stock service) can represent / apply / reverse
- * location-native batch effects, but B2 is INACTIVE: no controller passes
- * allow_batch=true or a batch plan, so every productive batch flow still fails
- * closed.
+ * location-native batch effects. As of MS5-C/-D/-E every purchase-family
+ * controller path (manual purchase, purchase return, import) is activated;
+ * this suite keeps the ENGINE-level invariants (planner is its own service,
+ * allow_batch is opt-in, IMEI always fails closed).
  */
 class PurchaseBatchEngineArchitectureTest extends TestCase
 {
@@ -32,17 +33,18 @@ class PurchaseBatchEngineArchitectureTest extends TestCase
         return substr($src, $start, strlen($m[0][0]) + $end);
     }
 
-    // ---- INACTIVE for Import only (MS5-E) ----------------------------
-    // NOTE: manual PurchasesController IS activated in MS5-C and
-    // PurchasesReturnController IS activated in MS5-D — their wiring is
-    // asserted by PurchaseBatchActivationArchitectureTest.
+    // ---- Controller activation is asserted elsewhere -----------------
+    // Manual PurchasesController (MS5-C), PurchasesReturnController (MS5-D) and
+    // the IMPORT (MS5-E) are all batch-activated; their wiring is asserted by
+    // PurchaseBatchActivationArchitectureTest and
+    // PurchaseImportBatchLocationNativeArchitectureTest.
 
-    public function test_store_import_does_not_pass_allow_batch(): void
+    public function test_store_import_is_batch_activated(): void
     {
         $src = $this->read('app/Http/Controllers/PurchasesController.php');
         $import = $this->body($src, 'storeImportLocationAware');
-        $this->assertStringNotContainsString('allow_batch', $import);
-        $this->assertStringNotContainsString('LocationAwarePurchaseBatchPlanner', $import);
+        $this->assertStringContainsString("'allow_batch' => true", $import);
+        $this->assertStringContainsString('planLocationAwarePurchaseBatches(', $import);
     }
 
     // ---- Planner is its OWN service, no InventoryService --------------

@@ -112,18 +112,30 @@ class PurchaseBatchActivationArchitectureTest extends TestCase
         }
     }
 
-    public function test_imei_still_fails_closed_and_import_is_not_activated(): void
+    public function test_imei_still_fails_closed_and_import_is_activated(): void
     {
         $stock = $this->read('app/Services/LocationAwarePurchaseStockService.php');
         // IMEI bucket throws regardless of allow_batch.
         $this->assertStringContainsString('$imeiIds', $stock);
 
-        // Import: storeImportLocationAware still no allow_batch / planner (MS5-E).
+        // MS5-E — import IS batch-activated now: storeImportLocationAware passes
+        // allow_batch and folds the shared planner for a RECEIVED import.
         $src = $this->read('app/Http/Controllers/PurchasesController.php');
         $import = $this->fn($src, 'storeImportLocationAware');
-        $this->assertStringNotContainsString('allow_batch', $import);
-        $this->assertStringNotContainsString('planPurchaseReceipt', $import);
-        $this->assertStringNotContainsString('LocationAwarePurchaseBatchPlanner', $import);
+        $this->assertStringContainsString("'allow_batch' => true", $import);
+        $this->assertStringContainsString('planLocationAwarePurchaseBatches(', $import);
+        $this->assertStringContainsString('persistLocationAwarePurchaseDetailBatches(', $import);
+        // planner + snapshot + pivots gated behind === 'received'.
+        $plannerPos = strpos($import, 'planLocationAwarePurchaseBatches(');
+        $guardPos = strpos($import, "=== 'received'");
+        $this->assertNotFalse($plannerPos);
+        $this->assertNotFalse($guardPos);
+        $this->assertLessThan($plannerPos, $guardPos, 'import planner must be gated behind === \'received\'');
+
+        // still location-native pure.
+        $this->assertStringNotContainsString('BatchService', $import);
+        $this->assertStringNotContainsString('product_warehouse', $import);
+        $this->assertStringNotContainsString('SerialNumberService', $import);
     }
 
     public function test_ms5d_purchase_returns_controller_is_batch_activated(): void

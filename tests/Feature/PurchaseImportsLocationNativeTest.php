@@ -18,12 +18,13 @@ use Tests\TestCase;
  * import flow (covered by PurchasesLegacyGoldenMasterTest).
  *
  * The CSV format is productcode;qty — Product.code ONLY, no variant column — so
- * a location-native import CANNOT resolve a ProductVariant: variant / batch /
- * IMEI rows FAIL CLOSED (422). NO product_warehouse / BatchService /
+ * a location-native import CANNOT resolve a ProductVariant: variant / IMEI rows
+ * FAIL CLOSED (422). Batch is activated in MS5-E (see
+ * PurchaseImportsBatchLocationNativeTest). NO product_warehouse / BatchService /
  * SerialNumberService on the native path.
  *
- * NOT production-ready as a package: batch (MS5), serial / IMEI (MS6) and
- * provenance (MS7) are still legacy / pending.
+ * NOT production-ready as a package: serial / IMEI (MS6) and provenance (MS7)
+ * are still legacy / pending.
  */
 class PurchaseImportsLocationNativeTest extends TestCase
 {
@@ -344,7 +345,8 @@ class PurchaseImportsLocationNativeTest extends TestCase
     }
 
     // =====================================================================
-    // VARIANT / BATCH / IMEI — FAIL CLOSED
+    // VARIANT / IMEI — FAIL CLOSED  (batch is now supported, see
+    // PurchaseImportsBatchLocationNativeTest — MS5-E)
     // =====================================================================
 
     public function test_variant_row_fails_closed_no_writes(): void
@@ -364,18 +366,25 @@ class PurchaseImportsLocationNativeTest extends TestCase
         $this->assertSame(0.0, $this->locStock($this->loc, $p));
     }
 
-    public function test_batch_row_fails_closed_no_writes(): void
+    public function test_batch_row_received_without_allocation_is_422_no_writes(): void
     {
+        // MS5-E — a batch-tracked row is accepted, but a RECEIVED import still
+        // needs a valid batches_by_code entry. With none supplied it 422s with
+        // a per-line key and writes nothing (all-or-nothing pre-flight).
         $this->lp();
         $p = $this->makeProduct(['code' => 'B1', 'is_batch_tracked' => true, 'unit_purchase_id' => $this->unit, 'cost' => 1]);
         $this->seedLocationStock($this->loc, $p, 0);
 
-        $this->expectException(ValidationException::class);
         try {
             $this->runImport($this->csvFile([['B1', 3]]), $this->importPayload());
-        } finally {
-            $this->assertNoWrites();
+            $this->fail('expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertTrue(
+                isset($e->errors()['details.0.batches']) || isset($e->errors()['batches_by_code']),
+                'expected a batch-payload validation key'
+            );
         }
+        $this->assertNoWrites();
     }
 
     public function test_imei_row_fails_closed_no_writes(): void

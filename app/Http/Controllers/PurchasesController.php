@@ -2607,17 +2607,20 @@ class PurchasesController extends BaseController
             $total = $qty * $cost;
             $subtotal += $total;
 
-            // MS4 — additive UX hints so the form can warn BEFORE submit when
-            // the chosen warehouse is location_primary. The store endpoint is
-            // still the final guard.
+            // MS4 / MS5-E — additive UX hints so the form can react BEFORE submit
+            // when the chosen warehouse is location_primary. The store endpoint
+            // is still the final guard.
+            //   validation_warning: a row a location-native import CANNOT accept
+            //     (variant / IMEI) — blocks submit.
+            //   batch_required_on_receipt: a supported batch-tracked row that
+            //     needs a batch allocation when the import is RECEIVED — does
+            //     NOT block; the form shows the allocator.
             $isVariant = ((int) ($product->is_variant ?? 0) === 1) || ((string) $product->type === 'is_variant');
             $isBatch = (bool) ($product->is_batch_tracked ?? false);
             $isImei = (int) ($product->is_imei ?? 0) === 1;
             $warning = null;
             if ($isVariant) {
                 $warning = 'variant';
-            } elseif ($isBatch) {
-                $warning = 'batch';
             } elseif ($isImei) {
                 $warning = 'imei';
             }
@@ -2636,6 +2639,7 @@ class PurchasesController extends BaseController
                 'product_id' => $product->id,
                 'product_variant_id' => null,
                 'validation_warning' => $warning,
+                'batch_required_on_receipt' => $isBatch && ! $isVariant && ! $isImei,
             ];
         }
 
@@ -2682,7 +2686,14 @@ class PurchasesController extends BaseController
                 return response()->json(['status' => false, 'msg' => 'Invalid CSV file'], 422);
             }
 
-            return $this->storeImportLocationAware($request, $data, $batchesByCode);
+            // MS5-E — the native path re-derives the batch map with STRICT shape
+            // validation (malformed JSON => 422 batches_by_code). The legacy
+            // path keeps its lenient decode above untouched.
+            return $this->storeImportLocationAware(
+                $request,
+                $data,
+                $this->normalizeImportBatchesByCode($request->input('batches_by_code'))
+            );
         }
 
         \DB::transaction(function () use ($request, $data, $batchesByCode) {
@@ -2780,16 +2791,28 @@ class PurchasesController extends BaseController
     }
 
     // =====================================================================
-    // MS4 — Import purchases location-native (warehouses in MODE_LOCATION_PRIMARY).
+    // MS4 / MS5-E — Import purchases location-native (MODE_LOCATION_PRIMARY).
     //
     // The CSV contract (productcode;qty) identifies a Product by Product.code
     // ONLY — it has NO variant column, so a location-native import CANNOT
-    // resolve a ProductVariant. Every is_variant / is_batch_tracked / is_imei
-    // row FAILS CLOSED (422): resolveImportLinesForLocationNative() pre-flags it
-    // with a clear per-row message and the engine's validateAndLock() is the
-    // second fence. Legacy import (any non-primary mode) keeps its exact current
-    // behaviour, including the historical variant-NULL product_warehouse write.
+    // resolve a ProductVariant. is_variant / is_imei rows FAIL CLOSED (422).
+    //
+    // MS5-E — is_batch_tracked is now SUPPORTED for is_single products. The
+    // physical batch distribution rides in `batches_by_code` (map of
+    // productcode => [{batch_no, qty, expiry_date, mfg_date, unit_cost}]) —
+    // the CSV still only says product + quantity. For a RECEIVED import the
+    // shared LocationAwarePurchaseBatchPlanner freezes a per-line
+    // batch_allocation; buildSnapshot embeds it; applySnapshot runs
+    // BatchLocationService::receiveMany BEFORE InventoryService::increase.
+    // A PENDING import creates NO batch artifact even if batches_by_code was
+    // sent (same as MS5-C). The snapshot (revision 1) is the ONLY source of a
+    // later reverse; purchase_detail_batches pivots are secondary UX/reporting.
+    // After creation it is a normal location-native Purchase — MS5-C
+    // update/destroy revert it from that snapshot.
+    //
     // NO product_warehouse / BatchService / SerialNumberService on this path.
+    // Legacy import (any non-primary mode) keeps its exact current behaviour,
+    // including the historical variant-NULL product_warehouse write.
     // =====================================================================
 
     private function storeImportLocationAware(Request $request, array $data, array $batchesByCode)
@@ -2798,7 +2821,7 @@ class PurchasesController extends BaseController
         $warehouseId = (int) $request->warehouse_id;
         $statut = $request->statut;
 
-        \DB::transaction(function () use ($request, $data, $svc, $warehouseId, $statut) {
+        \DB::transaction(function () use ($request, $data, $batchesByCode, $svc, $warehouseId, $statut) {
             // FAIL CLOSED — location_primary must still be healthy INSIDE the tx
             // (locks inventory_transition_states first). No legacy fallback.
             $this->assertLocationNativePurchaseTransitionSafe($warehouseId, null);
@@ -2809,9 +2832,17 @@ class PurchasesController extends BaseController
             // Resolve + validate EVERY row BEFORE any stock mutation.
             $resolved = $this->resolveImportLinesForLocationNative($data);
 
-            // Full-document validate + lock. Fails closed on unknown/deleted
-            // product, qty <= 0, invalid unit, batch/IMEI, or an is_variant row
-            // (product_variant_id is always null here — the CSV cannot name one).
+            // MS5-E — validate the batches_by_code SHAPE against the resolved
+            // rows BEFORE creating anything: unknown/stale codes, batches for a
+            // non-batch product, and (received only) missing batches / bad
+            // qty / sum mismatch / unparseable dates all 422 here. The planner
+            // is the authoritative fence inside the tx; this is the friendly,
+            // all-or-nothing pre-flight.
+            $this->prevalidateImportBatchInput($resolved, $batchesByCode, $statut);
+
+            // Full-document validate + lock. allow_batch=true — a batch-tracked
+            // is_single line is marked requires_batch (the planner runs only for
+            // a RECEIVED import); is_variant / IMEI still 422.
             $validated = $svc->validateAndLock(
                 LocationAwarePurchaseStockService::DOC_PURCHASE,
                 $warehouseId,
@@ -2821,7 +2852,9 @@ class PurchasesController extends BaseController
                     'product_variant_id' => null,
                     'quantity' => $r['qty'],
                     'purchase_unit_id' => $r['unit_purchase_id'],
-                ], $resolved)
+                ], $resolved),
+                [],
+                ['allow_batch' => true]
             );
 
             $order = new Purchase;
@@ -2874,12 +2907,27 @@ class PurchasesController extends BaseController
             $order->save();
 
             // Physical effect ONLY for a received import. A pending / ordered
-            // import keeps location + header + details, NO snapshot, NO movements.
+            // import keeps location + header + details, NO snapshot, NO batch
+            // artifact, NO movements — the planner NEVER runs for pending, even
+            // if `batches_by_code` was sent (mirrors MS5-C).
             if ($statut === 'received') {
-                $validated['lines'] = $this->withSourceDetailIds($validated['lines'], $detailIds);
+                // RAW lines for the planner: one entry per resolved row (same
+                // order as $validated['lines']), carrying the batch list for
+                // that productcode. A non-batch line's `batches` is [] and the
+                // planner leaves its batch_allocation empty.
+                $rawLines = array_map(
+                    fn ($r) => ['batches' => $batchesByCode[$r['code']] ?? []],
+                    array_values($resolved)
+                );
+
+                $planned = $this->planLocationAwarePurchaseBatches(
+                    $warehouseId, $locationId, $validated['lines'], $rawLines, (int) $order->id, $order->provider_id
+                );
+                $validated['lines'] = $this->withSourceDetailIds($planned, $detailIds);
                 $snapshot = $svc->buildSnapshot($validated, 1);
                 $order->update(['inventory_effect_snapshot' => $snapshot]);
                 $svc->applySnapshot($snapshot, $order->id);
+                $this->persistLocationAwarePurchaseDetailBatches($validated['lines']);
             }
         }, 10);
 
@@ -2890,10 +2938,14 @@ class PurchasesController extends BaseController
      * Resolve each CSV row (productcode;qty) to a real Product + its purchase
      * Unit for the location-native import, validating the WHOLE document before
      * any stock mutation. FAIL CLOSED (422) on: unknown / soft-deleted product,
-     * qty <= 0, a product with variants (the CSV has no variant column), or a
-     * batch / IMEI-tracked product (MS5 / MS6).
+     * qty <= 0, a product with variants (the CSV has no variant column), or an
+     * IMEI-tracked product (MS6).
      *
-     * @return array<int,array{code:string, product:\App\Models\Product, unit_purchase_id:?int, qty:float}>
+     * MS5-E — is_batch_tracked is NO LONGER fail-closed here; the row carries
+     * `is_batch_tracked` so prevalidateImportBatchInput() / the planner can
+     * demand a valid batches_by_code entry for a RECEIVED import.
+     *
+     * @return array<int,array{code:string, product:\App\Models\Product, unit_purchase_id:?int, qty:float, is_batch_tracked:bool}>
      */
     private function resolveImportLinesForLocationNative(array $data): array
     {
@@ -2925,11 +2977,6 @@ class PurchasesController extends BaseController
                     "products.$i" => "Fila $line ($code): es un producto con variantes. La importación de compra por ubicación no puede determinar la variante desde el CSV actual (columnas productcode;qty). FAIL CLOSED.",
                 ]);
             }
-            if ((int) ($product->is_batch_tracked ?? 0) === 1) {
-                throw ValidationException::withMessages([
-                    "products.$i" => "Fila $line ($code): es un producto con control de lote. La entrada de lote por ubicación llega en un hito posterior. FAIL CLOSED.",
-                ]);
-            }
             if ((int) ($product->is_imei ?? 0) === 1) {
                 throw ValidationException::withMessages([
                     "products.$i" => "Fila $line ($code): es un producto serializado (IMEI). La entrada de series por ubicación llega en un hito posterior. FAIL CLOSED.",
@@ -2941,10 +2988,152 @@ class PurchasesController extends BaseController
                 'product' => $product,
                 'unit_purchase_id' => $product->unit_purchase_id,
                 'qty' => $qty,
+                'is_batch_tracked' => (int) ($product->is_batch_tracked ?? 0) === 1,
             ];
         }
 
         return $out;
+    }
+
+    /**
+     * MS5-E — decode + SHAPE-check the import `batches_by_code` payload for the
+     * location-native path ONLY (the legacy import keeps its lenient decode).
+     * Accepts null/'' (=> []), an already-decoded array, or a JSON string.
+     * FAIL CLOSED (422 batches_by_code) on malformed JSON or a non-map value.
+     * Per-entry content is validated later against the resolved CSV rows.
+     *
+     * @return array<string,mixed>
+     */
+    private function normalizeImportBatchesByCode($raw): array
+    {
+        if ($raw === null || $raw === '' || $raw === '[]') {
+            return [];
+        }
+        if (is_array($raw)) {
+            return $raw;
+        }
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+                throw ValidationException::withMessages([
+                    'batches_by_code' => 'El detalle de lotes (batches_by_code) no es un JSON válido.',
+                ]);
+            }
+
+            return $decoded;
+        }
+
+        throw ValidationException::withMessages([
+            'batches_by_code' => 'El detalle de lotes (batches_by_code) tiene un formato no soportado.',
+        ]);
+    }
+
+    /**
+     * MS5-E — all-or-nothing pre-flight for the import batch payload, run inside
+     * the tx BEFORE the Purchase/details/artifacts are written.
+     *
+     *  - a key of batches_by_code that is NOT a resolved CSV productcode => 422
+     *    (stale frontend state / file changed after preview);
+     *  - batches supplied for a NON batch-tracked product, RECEIVED => 422;
+     *  - RECEIVED + batch-tracked row: a non-empty list is required; every
+     *    entry needs a batch_no and qty > 0; SUM(qty) must equal the CSV row
+     *    quantity (same purchase unit); expiry_date / mfg_date must parse.
+     *
+     * PENDING never needs batches; only the stale-code check applies. The
+     * planner re-validates everything authoritatively for RECEIVED.
+     *
+     * @param  array<int,array{code:string, qty:float, is_batch_tracked:bool}>  $resolved
+     * @param  array<string,mixed>  $batchesByCode
+     */
+    private function prevalidateImportBatchInput(array $resolved, array $batchesByCode, string $statut): void
+    {
+        $byCode = [];
+        foreach (array_values($resolved) as $i => $r) {
+            $byCode[$r['code']] = ['i' => $i] + $r;
+        }
+
+        // 1) No orphan / stale codes — regardless of statut.
+        foreach (array_keys($batchesByCode) as $code) {
+            if (! array_key_exists((string) $code, $byCode)) {
+                throw ValidationException::withMessages([
+                    'batches_by_code' => "El detalle de lotes incluye el código '{$code}', que no corresponde a ninguna fila del CSV. Revisa que el archivo no haya cambiado desde la vista previa.",
+                ]);
+            }
+        }
+
+        if ($statut !== 'received') {
+            return; // pending / ordered: no physical batch requirement.
+        }
+
+        $eps = 0.001;
+        foreach ($byCode as $code => $meta) {
+            $entries = $batchesByCode[$code] ?? null;
+            $hasEntries = is_array($entries) && $entries !== [];
+
+            if (! $meta['is_batch_tracked']) {
+                if ($hasEntries) {
+                    throw ValidationException::withMessages([
+                        'batches_by_code' => "El producto '{$code}' no lleva control de lote, pero el detalle de lotes trae asignaciones para él.",
+                    ]);
+                }
+
+                continue;
+            }
+
+            $i = $meta['i'];
+            if (! $hasEntries) {
+                throw ValidationException::withMessages([
+                    "details.$i.batches" => "El producto '{$code}' lleva control de lote y la importación recibida necesita al menos un lote.",
+                ]);
+            }
+
+            $sum = 0.0;
+            $seen = [];
+            foreach ($entries as $b) {
+                $batchNo = is_array($b) ? trim((string) ($b['batch_no'] ?? '')) : '';
+                if ($batchNo === '') {
+                    throw ValidationException::withMessages([
+                        "details.$i.batches" => "Cada lote de '{$code}' necesita un número de lote.",
+                    ]);
+                }
+                $key = mb_strtolower($batchNo);
+                if (isset($seen[$key])) {
+                    throw ValidationException::withMessages([
+                        "details.$i.batches" => "Número de lote duplicado para '{$code}': '{$batchNo}'.",
+                    ]);
+                }
+                $seen[$key] = true;
+
+                $qty = isset($b['qty']) && is_numeric($b['qty']) ? (float) $b['qty'] : null;
+                if ($qty === null || $qty <= 0) {
+                    throw ValidationException::withMessages([
+                        "details.$i.batches" => "La cantidad del lote '{$batchNo}' de '{$code}' debe ser un número mayor que cero.",
+                    ]);
+                }
+                $sum = round($sum + $qty, 3);
+
+                foreach (['expiry_date', 'mfg_date'] as $dateField) {
+                    $val = $b[$dateField] ?? null;
+                    if ($val === null || $val === '' || $val === 'null') {
+                        continue;
+                    }
+                    try {
+                        Carbon::parse((string) $val);
+                    } catch (\Throwable $e) {
+                        throw ValidationException::withMessages([
+                            "details.$i.batches" => "Fecha de lote inválida ('{$dateField}') para '{$code}': {$val}.",
+                        ]);
+                    }
+                }
+            }
+
+            $rowQty = round((float) $meta['qty'], 3);
+            if (abs($sum - $rowQty) > $eps) {
+                throw ValidationException::withMessages([
+                    "details.$i.batches" => "La suma de las cantidades por lote de '{$code}' ({$sum}) no coincide con la cantidad importada ({$rowQty}).",
+                ]);
+            }
+        }
     }
 
     // import Products

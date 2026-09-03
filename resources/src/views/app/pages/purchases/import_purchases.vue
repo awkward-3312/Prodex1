@@ -122,7 +122,7 @@
                   <!-- rows the location-native import cannot accept -->
                   <b-col v-if="location_meta.requires && incompatibleRows.length" md="12" class="mb-3">
                     <b-alert show variant="warning" class="mb-0">
-                      {{ $t('Import_Location_Incompatible_Rows') || 'Algunas filas del CSV no se pueden importar a un almacén por ubicación (productos con variantes, lote o serie/IMEI). Corrige el archivo antes de importar:' }}
+                      {{ $t('Import_Location_Incompatible_Rows') || 'Algunas filas del CSV no se pueden importar a un almacén por ubicación (productos con variantes o serie/IMEI). Corrige el archivo antes de importar:' }}
                       <ul class="mb-0 mt-2" style="padding-left: 18px;">
                         <li v-for="(row, i) in incompatibleRows" :key="'inc-' + i">
                           <code>{{ row.code }}</code> — {{ warningLabel(row.validation_warning) }}
@@ -358,11 +358,12 @@
                                   <div style="display: flex; align-items: center; gap: 8px;">
                                     <lucide-icon name="package" style="font-size: 14px;" />
                                     <span>{{ $t('Batches') || 'Batches' }}</span>
-                                    <span :style="batchCountBadgeStyle">
+                                    <span v-if="purchase.statut === 'received'" :style="batchCountBadgeStyle">
                                       {{ (row.batches || []).length }} {{ $t('items') || 'items' }}
                                     </span>
                                   </div>
                                   <button
+                                    v-if="purchase.statut === 'received'"
                                     type="button"
                                     @click="add_batch(row)"
                                     :style="addBatchBtnStyle"
@@ -372,7 +373,12 @@
                                   </button>
                                 </div>
 
-                                <div v-if="!row.batches || row.batches.length === 0" :style="batchEmptyStyle">
+                                <div v-if="purchase.statut !== 'received'" :style="batchEmptyStyle">
+                                  <lucide-icon name="info" style="margin-right: 6px;" />
+                                  {{ $t('Batches_Assigned_On_Receipt') || 'Los lotes se asignarán cuando la compra se marque como recibida.' }}
+                                </div>
+
+                                <div v-else-if="!row.batches || row.batches.length === 0" :style="batchEmptyStyle">
                                   <lucide-icon name="info" style="margin-right: 6px;" />
                                   {{ $t('Click_Add_To_Start') || 'Click "Add" to create a batch' }}
                                 </div>
@@ -459,7 +465,7 @@
                                   </tbody>
                                 </table>
 
-                                <div v-if="batchQtyMismatch(row)" :style="batchWarnStyle">
+                                <div v-if="purchase.statut === 'received' && batchQtyMismatch(row)" :style="batchWarnStyle">
                                   <lucide-icon name="info" style="margin-right: 6px;" />
                                   {{ $t('Total_batch_qty_mismatch') || 'Total batch quantity does not match the line quantity' }}
                                   ({{ formatNumber(batchTotalQty(row), 2) }} / {{ formatNumber(row.qty, 2) }})
@@ -1009,8 +1015,10 @@ export default {
       };
     },
 
-    // ---- Batch validation ----
+    // ---- Batch validation (only enforced for a RECEIVED import; a pending /
+    // ordered import assigns batches later, exactly like a manual purchase) ----
     hasBatchValidationErrors() {
+      if (this.purchase.statut !== "received") return false;
       if (!Array.isArray(this.previewRows)) return false;
       for (const row of this.previewRows) {
         if (!row.is_batch_tracked) continue;
@@ -1026,6 +1034,7 @@ export default {
       return false;
     },
     firstBatchErrorDetail() {
+      if (this.purchase.statut !== "received") return "";
       if (!Array.isArray(this.previewRows)) return "";
       for (const row of this.previewRows) {
         if (!row.is_batch_tracked) continue;
@@ -1049,11 +1058,13 @@ export default {
       return "";
     },
 
-    // MS4 — CSV rows a location-native import cannot accept (variant / batch / IMEI).
+    // MS4 / MS5-E — CSV rows a location-native import cannot accept. Batch-tracked
+    // is_single products ARE supported now (see the per-row batch allocator), so
+    // only variant / IMEI rows remain incompatible.
     incompatibleRows() {
       if (!Array.isArray(this.previewRows)) return [];
       return this.previewRows.filter(
-        r => r && (r.is_variant || r.is_batch_tracked || r.is_imei)
+        r => r && (r.is_variant || r.is_imei)
       );
     },
 
@@ -1310,6 +1321,14 @@ export default {
           );
           return;
         }
+        if (this.purchase.statut === "received" && this.hasBatchValidationErrors) {
+          this.makeToast(
+            "danger",
+            this.firstBatchErrorDetail || (this.$t("Batch_Validation_Failed") || "Revisa las asignaciones de lote antes de importar."),
+            this.$t("Failed")
+          );
+          return;
+        }
         this.Create_Purchase();
       });
     },
@@ -1386,21 +1405,25 @@ export default {
       );
       data.append("products", this.import_products);
 
-      // Include batches keyed by productcode for batch-tracked products.
+      // Batches keyed by productcode for batch-tracked products. Only sent for a
+      // RECEIVED import — a pending / ordered import assigns lots later, so any
+      // half-entered allocation is intentionally dropped from the payload.
       const batchesByCode = {};
-      for (const row of this.previewRows) {
-        if (!row.is_batch_tracked) continue;
-        const cleaned = (row.batches || [])
-          .filter(b => b && b.batch_no && String(b.batch_no).trim() !== "" && Number(b.qty) > 0)
-          .map(b => ({
-            batch_no: String(b.batch_no).trim(),
-            expiry_date: b.expiry_date || null,
-            mfg_date: b.mfg_date || null,
-            qty: Number(b.qty),
-            unit_cost: b.unit_cost === "" || b.unit_cost == null ? null : Number(b.unit_cost)
-          }));
-        if (cleaned.length) {
-          batchesByCode[row.code] = cleaned;
+      if (this.purchase.statut === "received") {
+        for (const row of this.previewRows) {
+          if (!row.is_batch_tracked) continue;
+          const cleaned = (row.batches || [])
+            .filter(b => b && b.batch_no && String(b.batch_no).trim() !== "" && Number(b.qty) > 0)
+            .map(b => ({
+              batch_no: String(b.batch_no).trim(),
+              expiry_date: b.expiry_date || null,
+              mfg_date: b.mfg_date || null,
+              qty: Number(b.qty),
+              unit_cost: b.unit_cost === "" || b.unit_cost == null ? null : Number(b.unit_cost)
+            }));
+          if (cleaned.length) {
+            batchesByCode[row.code] = cleaned;
+          }
         }
       }
       data.append("batches_by_code", JSON.stringify(batchesByCode));
@@ -1421,11 +1444,28 @@ export default {
           NProgress.done();
           this.makeToast(
             "danger",
-            "An error occurred while processing the CSV file.",
+            this.importErrorMessage(error),
             this.$t("Failed")
           );
           this.SubmitProcessing = false;
         });
+    },
+
+    // Surface the backend's coherent error keys (file / productcode / products.*
+    // for the CSV; batches_by_code / details.*.batches for lots) instead of a
+    // generic message.
+    importErrorMessage(error) {
+      const res = error && error.response && error.response.data;
+      if (res) {
+        if (res.errors && typeof res.errors === "object") {
+          const first = Object.values(res.errors)[0];
+          if (Array.isArray(first) && first.length) return first[0];
+          if (typeof first === "string") return first;
+        }
+        if (res.message && res.message !== "The given data was invalid.") return res.message;
+        if (res.msg) return res.msg;
+      }
+      return this.$t("Import_Failed_Generic") || "An error occurred while processing the CSV file.";
     },
 
     //--------------------------- Inventory location (MS4) ---------------------\\

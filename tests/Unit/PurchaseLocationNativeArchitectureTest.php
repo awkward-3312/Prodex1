@@ -356,7 +356,10 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
     {
         $body = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'store_import_purchases');
         $this->assertStringContainsString('WarehouseInventoryModeResolver::class)->isLocationPrimary(', $body);
-        $this->assertStringContainsString('return $this->storeImportLocationAware($request, $data, $batchesByCode);', $body);
+        $this->assertStringContainsString('return $this->storeImportLocationAware(', $body);
+        // MS5-E — the native path re-derives the batch map with strict shape
+        // validation; the legacy path keeps its lenient decode.
+        $this->assertStringContainsString("\$this->normalizeImportBatchesByCode(\$request->input('batches_by_code'))", $body);
         // legacy import body is still right there after the guard (unchanged).
         $this->assertStringContainsString('$product_warehouse->qte += ', $body, 'legacy import writer must stay');
     }
@@ -389,14 +392,20 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
         $this->assertStringContainsString("if (\$statut === 'received')", $body);
     }
 
-    public function test_ms4_native_import_fails_closed_on_variant_batch_and_imei(): void
+    public function test_ms4_native_import_fails_closed_on_variant_and_imei_not_batch(): void
     {
+        // MS5-E — is_batch_tracked is NO LONGER fail-closed in the resolver;
+        // variant + IMEI still are.
         $body = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'resolveImportLinesForLocationNative');
         $this->assertStringContainsString("(string) \$product->type === 'is_variant'", $body);
-        $this->assertStringContainsString('is_batch_tracked', $body);
         $this->assertStringContainsString('is_imei', $body);
         $this->assertStringContainsString('FAIL CLOSED', $body);
         $this->assertStringContainsString('ValidationException::withMessages', $body);
+
+        // The batch branch that used to throw is gone; the resolver now merely
+        // TAGS the row so the planner / pre-flight can demand a batch payload.
+        $this->assertStringNotContainsString('La entrada de lote por ubicación llega en un hito posterior', $body);
+        $this->assertStringContainsString("'is_batch_tracked' => (int) (\$product->is_batch_tracked", $body);
     }
 
     public function test_ms4_import_frontend_reuses_the_purchases_endpoint(): void
