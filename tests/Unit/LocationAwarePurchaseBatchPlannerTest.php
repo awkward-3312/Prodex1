@@ -460,4 +460,182 @@ class LocationAwarePurchaseBatchPlannerTest extends TestCase
         $this->expectException(\LogicException::class);
         $this->planner()->planPurchaseReceipt($this->wh, $this->loc, $v['lines'], [['batches' => [['batch_no' => 'A', 'qty' => 3]]]]);
     }
+
+    // ================= MS5-B2.1 — DOCUMENT-WIDE RETURN ALLOCATION =========
+
+    private function twoBatches(int $p): array
+    {
+        $a = $this->seedBatch($p, 'A', ['qty' => 10, 'expiry_date' => '2027-03-01']);
+        $b = $this->seedBatch($p, 'B', ['qty' => 10, 'expiry_date' => '2027-06-01']);
+        $this->seedSlice($a, 10);
+        $this->seedSlice($b, 10);
+
+        return [$a, $b];
+    }
+
+    public function test_docwide_two_fefo_lines_share_the_batch_pool(): void
+    {
+        $u = $this->unit('*', 1);
+        $p = $this->product();
+        [$a, $b] = $this->twoBatches($p);
+
+        $plan = $this->planReturn(
+            [$this->line($p, $u, 8, null, 10), $this->line($p, $u, 8, null, 11)],
+            [[], []]
+        );
+
+        // line 1 drains A; line 2 gets what's left of A (2) then B (6).
+        $this->assertSame([$a], array_column($plan[0]['batch_allocation'], 'product_batch_id'));
+        $this->assertSame([8.0], array_column($plan[0]['batch_allocation'], 'quantity_base'));
+        $this->assertSame([$a, $b], array_column($plan[1]['batch_allocation'], 'product_batch_id'));
+        $this->assertSame([2.0, 6.0], array_column($plan[1]['batch_allocation'], 'quantity_base'));
+        $this->assertSame([0, 1], array_column($plan[1]['batch_allocation'], 'bidx'));
+
+        // GLOBAL: A = 10, B = 6.
+        $global = [];
+        foreach ([$plan[0], $plan[1]] as $l) {
+            foreach ($l['batch_allocation'] as $x) {
+                $global[$x['product_batch_id']] = ($global[$x['product_batch_id']] ?? 0) + $x['quantity_base'];
+            }
+        }
+        $this->assertSame([$a => 10.0, $b => 6.0], $global);
+        // DB untouched by the planner.
+        $this->assertSame(10.0, (float) DB::table('product_batch_location_stocks')->where('product_batch_id', $a)->value('quantity'));
+    }
+
+    public function test_docwide_explicit_then_fefo(): void
+    {
+        $u = $this->unit('*', 1);
+        $p = $this->product();
+        [$a, $b] = $this->twoBatches($p);
+
+        $plan = $this->planReturn(
+            [$this->line($p, $u, 8, null, 10), $this->line($p, $u, 8, null, 11)],
+            [['batches' => [['product_batch_id' => $a, 'qty' => 8]]], []]
+        );
+
+        $this->assertSame([$a], array_column($plan[0]['batch_allocation'], 'product_batch_id'));
+        $this->assertSame([$a, $b], array_column($plan[1]['batch_allocation'], 'product_batch_id'));
+        $this->assertSame([2.0, 6.0], array_column($plan[1]['batch_allocation'], 'quantity_base'));
+    }
+
+    public function test_docwide_fefo_line_before_explicit_line_still_reserves_explicit_first(): void
+    {
+        $u = $this->unit('*', 1);
+        $p = $this->product();
+        [$a, $b] = $this->twoBatches($p);
+
+        // FEFO line is FIRST in the document; explicit A8 is SECOND.
+        $plan = $this->planReturn(
+            [$this->line($p, $u, 8, null, 10), $this->line($p, $u, 8, null, 11)],
+            [[], ['batches' => [['product_batch_id' => $a, 'qty' => 8]]]]
+        );
+
+        // explicit reserved A8 in PASS 1 -> the earlier FEFO line only sees A2 + B6.
+        $this->assertSame([$a, $b], array_column($plan[0]['batch_allocation'], 'product_batch_id'));
+        $this->assertSame([2.0, 6.0], array_column($plan[0]['batch_allocation'], 'quantity_base'));
+        $this->assertSame([$a], array_column($plan[1]['batch_allocation'], 'product_batch_id'));
+        $this->assertSame([8.0], array_column($plan[1]['batch_allocation'], 'quantity_base'));
+    }
+
+    public function test_docwide_two_explicit_lines_same_batch_valid(): void
+    {
+        $u = $this->unit('*', 1);
+        $p = $this->product();
+        [$a] = $this->twoBatches($p);
+
+        $plan = $this->planReturn(
+            [$this->line($p, $u, 3, null, 10), $this->line($p, $u, 4, null, 11)],
+            [['batches' => [['product_batch_id' => $a, 'qty' => 3]]], ['batches' => [['product_batch_id' => $a, 'qty' => 4]]]]
+        );
+
+        $this->assertSame(3.0, $plan[0]['batch_allocation'][0]['quantity_base']);
+        $this->assertSame(4.0, $plan[1]['batch_allocation'][0]['quantity_base']);
+        $this->assertSame($a, $plan[0]['batch_allocation'][0]['product_batch_id']);
+        $this->assertSame($a, $plan[1]['batch_allocation'][0]['product_batch_id']);
+    }
+
+    public function test_docwide_two_explicit_lines_overallocate_is_422_in_planner(): void
+    {
+        $u = $this->unit('*', 1);
+        $p = $this->product();
+        [$a] = $this->twoBatches($p);   // A available 10
+
+        try {
+            $this->planReturn(
+                [$this->line($p, $u, 6, null, 10), $this->line($p, $u, 6, null, 11)],   // 6 + 6 > 10
+                [['batches' => [['product_batch_id' => $a, 'qty' => 6]]], ['batches' => [['product_batch_id' => $a, 'qty' => 6]]]]
+            );
+            $this->fail('expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertMatchesRegularExpression('/details\.\d+\.batches/', json_encode(array_keys($e->errors())));
+        }
+        // planner never mutates.
+        $this->assertSame(10.0, (float) DB::table('product_batch_location_stocks')->where('product_batch_id', $a)->value('quantity'));
+    }
+
+    public function test_docwide_two_fefo_lines_globally_insufficient_is_422(): void
+    {
+        $u = $this->unit('*', 1);
+        $p = $this->product();
+        $a = $this->seedBatch($p, 'A', ['qty' => 5, 'expiry_date' => '2027-03-01']);
+        $b = $this->seedBatch($p, 'B', ['qty' => 5, 'expiry_date' => '2027-06-01']);
+        $this->seedSlice($a, 5);
+        $this->seedSlice($b, 5);
+
+        $this->expectException(ValidationException::class);
+        $this->planReturn(
+            [$this->line($p, $u, 7, null, 10), $this->line($p, $u, 7, null, 11)],   // 14 > 10
+            [[], []]
+        );
+    }
+
+    public function test_docwide_variant_pools_are_independent(): void
+    {
+        $u = $this->unit('*', 1);
+        $p = $this->product(['type' => 'is_variant']);
+        $vA = (int) DB::table('product_variants')->insertGetId(['product_id' => $p, 'name' => 'VA', 'created_at' => now(), 'updated_at' => now()]);
+        $vB = (int) DB::table('product_variants')->insertGetId(['product_id' => $p, 'name' => 'VB', 'created_at' => now(), 'updated_at' => now()]);
+        $ba = $this->seedBatch($p, 'A', ['qty' => 6, 'product_variant_id' => $vA, 'expiry_date' => '2027-03-01']);
+        $bb = $this->seedBatch($p, 'B', ['qty' => 6, 'product_variant_id' => $vB, 'expiry_date' => '2027-03-01']);
+        $this->seedSlice($ba, 6);
+        $this->seedSlice($bb, 6);
+
+        $plan = $this->planReturn(
+            [$this->line($p, $u, 5, $vA, 10), $this->line($p, $u, 5, $vB, 11)],
+            [[], []]
+        );
+
+        $this->assertSame([$ba], array_column($plan[0]['batch_allocation'], 'product_batch_id'));
+        $this->assertSame([$bb], array_column($plan[1]['batch_allocation'], 'product_batch_id'));
+        $this->assertSame([5.0], array_column($plan[0]['batch_allocation'], 'quantity_base'));
+    }
+
+    public function test_docwide_two_lines_different_explicit_batches_map_by_ordinal(): void
+    {
+        $u = $this->unit('*', 1);
+        $p = $this->product();
+        [$a, $b] = $this->twoBatches($p);
+
+        $plan = $this->planReturn(
+            [$this->line($p, $u, 4, null, 10), $this->line($p, $u, 3, null, 11)],
+            [['batches' => [['product_batch_id' => $b, 'qty' => 4]]], ['batches' => [['product_batch_id' => $a, 'qty' => 3]]]]
+        );
+
+        $this->assertSame($b, $plan[0]['batch_allocation'][0]['product_batch_id']);
+        $this->assertSame($a, $plan[1]['batch_allocation'][0]['product_batch_id']);
+    }
+
+    public function test_explicit_duplicate_batch_in_one_line_is_422(): void
+    {
+        $u = $this->unit('*', 1);
+        $p = $this->product();
+        [$a] = $this->twoBatches($p);
+
+        $this->expectException(ValidationException::class);
+        $this->planReturn(
+            [$this->line($p, $u, 7, null, 10)],
+            [['batches' => [['product_batch_id' => $a, 'qty' => 3], ['product_batch_id' => $a, 'qty' => 4]]]]
+        );
+    }
 }

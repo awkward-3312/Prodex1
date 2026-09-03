@@ -113,33 +113,157 @@ class LocationAwarePurchaseBatchPlanner
     {
         $this->assertInTransaction();
         $rawLines = array_values($rawLines);
-        $out = [];
+        $lines = array_values($validatedLines);
 
-        foreach (array_values($validatedLines) as $i => $line) {
+        // ---- describe every requires_batch line ---------------------------
+        $batchLines = [];
+        $explicitBatchIds = [];
+        foreach ($lines as $i => $line) {
+            if (empty($line['requires_batch'])) {
+                continue;
+            }
+
+            $raw = $this->rawBatches($rawLines[$i] ?? []);
+            $explicit = array_values(array_filter($raw, fn ($b) => (int) ($b['product_batch_id'] ?? 0) > 0));
+
+            if ($explicit) {
+                $seen = [];
+                foreach ($explicit as $e) {
+                    $bid = (int) $e['product_batch_id'];
+                    if (isset($seen[$bid])) {
+                        // §7 — same batch twice in ONE line is rejected (mirrors
+                        // the receipt's duplicate-batch_no rule).
+                        throw ValidationException::withMessages([
+                            "details.$i.batches" => "El lote {$bid} está repetido en la misma línea de devolución.",
+                        ]);
+                    }
+                    $seen[$bid] = true;
+                    $explicitBatchIds[] = $bid;
+                }
+            }
+
+            $batchLines[$i] = [
+                'line' => $line,
+                'product_id' => (int) $line['product_id'],
+                'variant_id' => $line['product_variant_id'] !== null ? (int) $line['product_variant_id'] : null,
+                'line_base' => round((float) $line['quantity_base'], 3),
+                'mode' => $explicit ? 'explicit' : 'fefo',
+                'explicit' => $explicit,
+            ];
+        }
+
+        if (! $batchLines) {
+            return array_map(fn ($l) => ['batch_allocation' => []] + $l, $lines);
+        }
+
+        // ---- discover every FEFO candidate across the whole document -----
+        $fefoCandidateIds = [];
+        foreach ($batchLines as $meta) {
+            if ($meta['mode'] !== 'fefo') {
+                continue;
+            }
+            foreach ($this->discoverReturnFefoBatchIds($inventoryLocationId, $meta['product_id'], $meta['variant_id'], $warehouseId) as $bid) {
+                $fefoCandidateIds[] = $bid;
+            }
+        }
+
+        // ---- lock the WHOLE document's batches + slices, deterministically
+        $allBatchIds = array_values(array_unique(array_merge($explicitBatchIds, $fefoCandidateIds)));
+        sort($allBatchIds, SORT_NUMERIC);
+
+        $batches = $allBatchIds
+            ? ProductBatch::whereIn('id', $allBatchIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id')
+            : collect();
+        $slices = $allBatchIds
+            ? ProductBatchLocationStock::whereIn('product_batch_id', $allBatchIds)
+                ->where('inventory_location_id', $inventoryLocationId)
+                ->orderBy('product_batch_id')->orderBy('id')
+                ->lockForUpdate()->get()->keyBy('product_batch_id')
+            : collect();
+
+        // ---- VIRTUAL availability pool — from the LOCKED slice only. ------
+        $virtual = [];
+        foreach ($allBatchIds as $bid) {
+            $s = $slices->get($bid);
+            $virtual[$bid] = $s ? round((float) $s->available_quantity, 3) : 0.0;
+        }
+
+        $plannedByLine = [];
+
+        // ---- PASS 1 — EXPLICIT (user intent reserves first) --------------
+        foreach ($batchLines as $i => $meta) {
+            if ($meta['mode'] !== 'explicit') {
+                continue;
+            }
+            $entries = [];
+            foreach ($meta['explicit'] as $e) {
+                $bid = (int) $e['product_batch_id'];
+                $qtyInput = round((float) ($e['qty'] ?? 0), 3);
+                if ($qtyInput <= 0) {
+                    throw ValidationException::withMessages(["details.$i.batches" => 'Cantidad de lote no positiva en la selección explícita.']);
+                }
+                $batch = $batches->get($bid);
+                $this->assertReturnBatchUsable($batch, $bid, $meta['product_id'], $meta['variant_id'], $warehouseId, $i);
+                if (! $slices->get($bid)) {
+                    throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} no tiene existencia en la ubicación de inventario seleccionada."]);
+                }
+
+                $qtyBase = $this->toBase($qtyInput, $meta['line']);
+                $virtual[$bid] = round(($virtual[$bid] ?? 0.0) - $qtyBase, 3);
+                if ($virtual[$bid] < -self::EPS) {
+                    throw ValidationException::withMessages([
+                        "details.$i.batches" => "El lote {$bid} no tiene existencia suficiente para todas las líneas de la devolución (selección explícita del documento).",
+                    ]);
+                }
+
+                $entries[] = $this->returnEntry($batch, $qtyInput, $qtyBase);
+            }
+            $plannedByLine[$i] = $entries;
+        }
+
+        // ---- PASS 2 — FEFO (document ordinal order, virtual remaining) ---
+        foreach ($batchLines as $i => $meta) {
+            if ($meta['mode'] !== 'fefo') {
+                continue;
+            }
+            $remaining = $meta['line_base'];
+            $entries = [];
+            foreach ($this->fefoOrder($batches, $slices, $meta['product_id'], $meta['variant_id']) as $bid) {
+                if ($remaining <= self::EPS) {
+                    break;
+                }
+                $avail = round($virtual[$bid] ?? 0.0, 3);
+                if ($avail <= self::EPS) {
+                    continue;
+                }
+                $take = round(min($remaining, $avail), 3);
+                $virtual[$bid] = round($avail - $take, 3);
+                $entries[] = $this->returnEntry($batches->get($bid), null, $take);
+                $remaining = round($remaining - $take, 3);
+            }
+            if ($remaining > self::EPS) {
+                throw ValidationException::withMessages([
+                    "details.$i.batches" => 'No hay suficiente existencia por lote en la ubicación de inventario seleccionada para todas las líneas de la devolución.',
+                ]);
+            }
+            $plannedByLine[$i] = $entries;
+        }
+
+        // ---- assemble in the ORIGINAL line order ------------------------
+        $out = [];
+        foreach ($lines as $i => $line) {
             if (empty($line['requires_batch'])) {
                 $out[] = ['batch_allocation' => []] + $line;
 
                 continue;
             }
-
-            $lineBase = round((float) $line['quantity_base'], 3);
-            $productId = (int) $line['product_id'];
-            $variantId = $line['product_variant_id'] !== null ? (int) $line['product_variant_id'] : null;
-
-            $raw = $this->rawBatches($rawLines[$i] ?? []);
-            $explicit = array_values(array_filter($raw, fn ($b) => (int) ($b['product_batch_id'] ?? 0) > 0));
-
-            $entries = $explicit
-                ? $this->planReturnExplicit($explicit, $line, $warehouseId, $inventoryLocationId, $productId, $variantId, $i)
-                : $this->planReturnFefo($line, $warehouseId, $inventoryLocationId, $productId, $variantId, $i);
-
+            $entries = $plannedByLine[$i] ?? [];
             $sum = round(array_sum(array_column($entries, 'quantity_base')), 3);
-            if (abs($sum - $lineBase) > self::EPS) {
+            if (abs($sum - $batchLines[$i]['line_base']) > self::EPS) {
                 throw ValidationException::withMessages([
-                    "details.$i.batches" => 'La suma de las cantidades por lote ('.$sum.') no coincide con la cantidad física de la línea ('.$lineBase.').',
+                    "details.$i.batches" => 'La suma de las cantidades por lote ('.$sum.') no coincide con la cantidad física de la línea ('.$batchLines[$i]['line_base'].').',
                 ]);
             }
-
             $out[] = ['batch_allocation' => $this->assignBidx($entries)] + $line;
         }
 
@@ -148,58 +272,10 @@ class LocationAwarePurchaseBatchPlanner
 
     // -----------------------------------------------------------------------
 
-    private function planReturnExplicit(array $explicit, array $line, int $warehouseId, int $locationId, int $productId, ?int $variantId, int $i): array
+    /** Active batch ids of a product (+ variant) that have a slice in $locationId. */
+    private function discoverReturnFefoBatchIds(int $locationId, int $productId, ?int $variantId, int $warehouseId): array
     {
-        $entries = [];
-        foreach ($explicit as $b) {
-            $bid = (int) $b['product_batch_id'];
-            $qtyInput = round((float) ($b['qty'] ?? 0), 3);
-            if ($qtyInput <= 0) {
-                throw ValidationException::withMessages(["details.$i.batches" => 'Cantidad de lote no positiva en la selección explícita.']);
-            }
-            $batch = ProductBatch::whereKey($bid)->lockForUpdate()->first();
-            if (! $batch || $batch->deleted_at !== null) {
-                throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} no existe o fue eliminado."]);
-            }
-            if ((int) $batch->product_id !== $productId) {
-                throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} no corresponde al producto de la línea."]);
-            }
-            $bVariant = $batch->product_variant_id !== null ? (int) $batch->product_variant_id : null;
-            if ($bVariant !== $variantId) {
-                throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} no corresponde a la variante de la línea."]);
-            }
-            if ($batch->warehouse_id !== null && (int) $batch->warehouse_id !== $warehouseId) {
-                throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} pertenece a otro almacén."]);
-            }
-            if (! in_array((string) $batch->status, self::OPERABLE_STATUSES, true)) {
-                throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} está en un estado no operable ({$batch->status})."]);
-            }
-            $slice = ProductBatchLocationStock::where('product_batch_id', $bid)
-                ->where('inventory_location_id', $locationId)
-                ->lockForUpdate()->first();
-            if (! $slice) {
-                throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} no tiene existencia en la ubicación de inventario seleccionada."]);
-            }
-
-            $entries[] = [
-                'product_batch_id' => $bid,
-                'batch_no' => (string) $batch->batch_no,
-                'expiry_date' => $batch->expiry_date ? $batch->expiry_date->toDateString() : null,
-                'mfg_date' => $batch->mfg_date ? $batch->mfg_date->toDateString() : null,
-                'quantity_input' => $qtyInput,
-                'quantity_base' => $this->toBase($qtyInput, $line),
-                'unit_cost' => $batch->unit_cost !== null ? (float) $batch->unit_cost : null,
-            ];
-        }
-
-        return $entries;   // keep the input order for the explicit selection
-    }
-
-    private function planReturnFefo(array $line, int $warehouseId, int $locationId, int $productId, ?int $variantId, int $i): array
-    {
-        $needed = round((float) $line['quantity_base'], 3);
-
-        $candidateBatchIds = ProductBatchLocationStock::query()
+        return ProductBatchLocationStock::query()
             ->where('inventory_location_id', $locationId)
             ->whereHas('batch', function ($q) use ($productId, $variantId, $warehouseId) {
                 $q->where('product_id', $productId)->where('status', 'active')->whereNull('deleted_at');
@@ -209,57 +285,63 @@ class LocationAwarePurchaseBatchPlanner
                 });
             })
             ->pluck('product_batch_id')->map(fn ($x) => (int) $x)->unique()->values()->all();
+    }
 
-        sort($candidateBatchIds, SORT_NUMERIC);
-        $batches = $candidateBatchIds
-            ? ProductBatch::whereIn('id', $candidateBatchIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id')
-            : collect();
-        $slices = $candidateBatchIds
-            ? ProductBatchLocationStock::whereIn('product_batch_id', $candidateBatchIds)
-                ->where('inventory_location_id', $locationId)
-                ->orderBy('product_batch_id')->orderBy('id')
-                ->lockForUpdate()->get()->keyBy('product_batch_id')
-            : collect();
+    /** Locked batch ids for this product+variant, FEFO-ordered (NULL expiry last, then id ASC). */
+    private function fefoOrder($batches, $slices, int $productId, ?int $variantId): array
+    {
+        return $batches
+            ->filter(function ($b) use ($slices, $productId, $variantId) {
+                if ((int) $b->product_id !== $productId || $b->deleted_at !== null) {
+                    return false;
+                }
+                if ((string) $b->status !== 'active') {
+                    return false;
+                }
+                $bVariant = $b->product_variant_id !== null ? (int) $b->product_variant_id : null;
 
-        $ordered = $slices
-            ->filter(fn ($s) => $batches->has($s->product_batch_id) && (float) $s->available_quantity > self::EPS)
-            ->sortBy(function ($s) use ($batches) {
-                $expiry = optional($batches->get($s->product_batch_id))->expiry_date;
+                return $bVariant === $variantId && $slices->has($b->id);
+            })
+            ->sortBy(function ($b) {
+                return ($b->expiry_date ? $b->expiry_date->format('Y-m-d') : '9999-12-31')
+                    .'|'.str_pad((string) $b->id, 12, '0', STR_PAD_LEFT);
+            })
+            ->map(fn ($b) => (int) $b->id)
+            ->values()
+            ->all();
+    }
 
-                return ($expiry ? $expiry->format('Y-m-d') : '9999-12-31')
-                    .'|'.str_pad((string) $s->product_batch_id, 12, '0', STR_PAD_LEFT);
-            });
-
-        $entries = [];
-        $remaining = $needed;
-        foreach ($ordered as $s) {
-            if ($remaining <= self::EPS) {
-                break;
-            }
-            $take = round(min($remaining, (float) $s->available_quantity), 3);
-            if ($take <= 0) {
-                continue;
-            }
-            $batch = $batches->get($s->product_batch_id);
-            $entries[] = [
-                'product_batch_id' => (int) $s->product_batch_id,
-                'batch_no' => (string) $batch->batch_no,
-                'expiry_date' => $batch->expiry_date ? $batch->expiry_date->toDateString() : null,
-                'mfg_date' => $batch->mfg_date ? $batch->mfg_date->toDateString() : null,
-                'quantity_input' => null,
-                'quantity_base' => $take,
-                'unit_cost' => $batch->unit_cost !== null ? (float) $batch->unit_cost : null,
-            ];
-            $remaining = round($remaining - $take, 3);
+    private function assertReturnBatchUsable($batch, int $bid, int $productId, ?int $variantId, int $warehouseId, int $i): void
+    {
+        if (! $batch || $batch->deleted_at !== null) {
+            throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} no existe o fue eliminado."]);
         }
-
-        if ($remaining > self::EPS) {
-            throw ValidationException::withMessages([
-                "details.$i.batches" => 'No hay suficiente existencia por lote en la ubicación de inventario seleccionada para la devolución.',
-            ]);
+        if ((int) $batch->product_id !== $productId) {
+            throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} no corresponde al producto de la línea."]);
         }
+        $bVariant = $batch->product_variant_id !== null ? (int) $batch->product_variant_id : null;
+        if ($bVariant !== $variantId) {
+            throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} no corresponde a la variante de la línea."]);
+        }
+        if ($batch->warehouse_id !== null && (int) $batch->warehouse_id !== $warehouseId) {
+            throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} pertenece a otro almacén."]);
+        }
+        if (! in_array((string) $batch->status, self::OPERABLE_STATUSES, true)) {
+            throw ValidationException::withMessages(["details.$i.batches" => "El lote {$bid} está en un estado no operable ({$batch->status})."]);
+        }
+    }
 
-        return $entries;
+    private function returnEntry($batch, ?float $qtyInput, float $qtyBase): array
+    {
+        return [
+            'product_batch_id' => (int) $batch->id,
+            'batch_no' => (string) $batch->batch_no,
+            'expiry_date' => $batch->expiry_date ? $batch->expiry_date->toDateString() : null,
+            'mfg_date' => $batch->mfg_date ? $batch->mfg_date->toDateString() : null,
+            'quantity_input' => $qtyInput,
+            'quantity_base' => $qtyBase,
+            'unit_cost' => $batch->unit_cost !== null ? (float) $batch->unit_cost : null,
+        ];
     }
 
     // -----------------------------------------------------------------------

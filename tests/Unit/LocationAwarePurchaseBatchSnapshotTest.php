@@ -572,4 +572,41 @@ class LocationAwarePurchaseBatchSnapshotTest extends TestCase
         $this->expectException(ValidationException::class);
         DB::transaction(fn () => $this->svc()->assertSnapshotArtifactSafeAndLock($snap, ['allow_batch' => true]));
     }
+
+    // ===== MS5-B2.1 — planner -> snapshot -> issueMany compose (INACTIVE) ==
+
+    public function test_document_wide_return_fefo_composes_planner_snapshot_issue_many(): void
+    {
+        $u = $this->unit('*', 1);
+        $p = $this->product();
+        $a = $this->seedBatch($p, 'A', 10);   // creates slice = 10
+        $b = $this->seedBatch($p, 'B', 10);
+        $this->seedGeneral($p, 20);
+
+        DB::transaction(function () use ($p, $u, $a, $b) {
+            $snap = $this->buildSnap(Svc::DOC_PURCHASE_RETURN,
+                [$this->line($p, $u, 8, 80), $this->line($p, $u, 8, 81)],
+                [[], []]                       // both FEFO
+            );
+
+            // the frozen plan: detail 80 -> A8 ; detail 81 -> A2 + B6.
+            $this->assertSame([$a], array_column($snap['effects'][0]['batch_allocation'], 'product_batch_id'));
+            $this->assertSame([$a, $b], array_column($snap['effects'][1]['batch_allocation'], 'product_batch_id'));
+            $this->assertSame([2.0, 6.0], array_column($snap['effects'][1]['batch_allocation'], 'quantity_base'));
+
+            $this->svc()->applySnapshot($snap, 40);
+
+            $this->assertSame(0.0, $this->batchQty($a));
+            $this->assertSame(4.0, $this->batchQty($b));
+            $this->assertSame(0.0, $this->slice($a));
+            $this->assertSame(4.0, $this->slice($b));
+            $this->assertSame(4.0, $this->general($p));
+
+            // one batch ledger row per allocation, all issues (loc -> NULL).
+            $this->assertSame(3, $this->batchMovements('PurchaseReturnBatch'));
+            $rows = DB::table('product_batch_location_movements')->orderBy('id')->get();
+            $this->assertSame([$a, $a, $b], $rows->pluck('product_batch_id')->map(fn ($x) => (int) $x)->all());
+            $this->assertSame([8.0, 2.0, 6.0], $rows->pluck('quantity')->map(fn ($x) => (float) $x)->all());
+        });
+    }
 }
