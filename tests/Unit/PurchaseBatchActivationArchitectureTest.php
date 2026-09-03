@@ -112,23 +112,51 @@ class PurchaseBatchActivationArchitectureTest extends TestCase
         }
     }
 
-    public function test_imei_still_fails_closed_and_return_import_are_not_activated(): void
+    public function test_imei_still_fails_closed_and_import_is_not_activated(): void
     {
         $stock = $this->read('app/Services/LocationAwarePurchaseStockService.php');
         // IMEI bucket throws regardless of allow_batch.
         $this->assertStringContainsString('$imeiIds', $stock);
 
-        // PurchaseReturn controller: still no allow_batch / planner.
-        $ret = $this->read('app/Http/Controllers/PurchasesReturnController.php');
-        $this->assertStringNotContainsString('allow_batch', $ret);
-        $this->assertStringNotContainsString('LocationAwarePurchaseBatchPlanner', $ret);
-
-        // Import: storeImportLocationAware still no allow_batch / planner.
+        // Import: storeImportLocationAware still no allow_batch / planner (MS5-E).
         $src = $this->read('app/Http/Controllers/PurchasesController.php');
         $import = $this->fn($src, 'storeImportLocationAware');
         $this->assertStringNotContainsString('allow_batch', $import);
         $this->assertStringNotContainsString('planPurchaseReceipt', $import);
         $this->assertStringNotContainsString('LocationAwarePurchaseBatchPlanner', $import);
+    }
+
+    public function test_ms5d_purchase_returns_controller_is_batch_activated(): void
+    {
+        $ret = $this->read('app/Http/Controllers/PurchasesReturnController.php');
+        // allow_batch on validateAndLock (store + update) and the two reverse
+        // safety asserts (update + shared reverse helper).
+        $this->assertGreaterThanOrEqual(4, substr_count($ret, "'allow_batch' => true"));
+        $this->assertStringContainsString('LocationAwarePurchaseBatchPlanner', $ret);
+        $this->assertStringContainsString('planPurchaseReturnIssue', $ret);
+        $this->assertStringContainsString('PurchaseReturnDetailBatch', $ret);
+
+        // Planner + pivots run ONLY inside the completed branch.
+        foreach (['storeLocationAware', 'updateLocationAware'] as $m) {
+            $body = $this->fn($ret, $m);
+            $plannerPos = strpos($body, 'planLocationAwarePurchaseReturnBatches(');
+            $completedPos = strpos($body, "=== 'completed'");
+            $this->assertNotFalse($plannerPos, "{$m}(): must call the return batch planner");
+            $this->assertNotFalse($completedPos);
+            $this->assertGreaterThan($completedPos, $plannerPos, "{$m}(): planner must be gated behind statut === 'completed'");
+        }
+
+        // Pivot deletes are schema-guarded (MS3 suites omit the batch tables).
+        $this->assertStringContainsString("Schema::hasTable('purchase_return_detail_batches')", $ret);
+        // The physical reverse precedes pivot deletion in update/destroy/bulk.
+        foreach (['updateLocationAware', 'destroyLocationAware'] as $m) {
+            $body = $this->fn($ret, $m);
+            $revPos = strpos($body, $m === 'updateLocationAware' ? 'reverseSnapshot($oldSnapshot' : 'reverseLocationNativePurchaseReturnStock($locked)');
+            $pivotDelPos = strpos($body, 'PurchaseReturnDetailBatch::whereIn(');
+            if ($revPos !== false && $pivotDelPos !== false) {
+                $this->assertLessThan($pivotDelPos, $revPos, "{$m}(): physical reverse must precede pivot deletion");
+            }
+        }
     }
 
     public function test_pos_b1_services_untouched(): void

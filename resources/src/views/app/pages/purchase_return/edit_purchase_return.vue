@@ -119,13 +119,21 @@
                             <span>{{detail.code}}</span>
                             <br>
                             <span class="badge badge-success">{{detail.name}}</span>
-                            <div v-if="detail.is_batch_tracked" class="mt-1">
+                            <div v-if="detail.is_batch_tracked && purchase_return.statut === 'completed'" class="mt-1">
                               <span
                                 class="badge"
                                 style="background:#eef2ff; color:#4f46e5; font-weight:600; letter-spacing:0.3px;"
                                 :title="$t('Auto_FEFO_Hint') || 'Oldest-expiring batches will be auto-allocated (FEFO) when this return is completed.'"
                               >
                                 <lucide-icon name="package" style="margin-right:3px;" />{{ $t('Batches') || 'Batches' }} · FEFO
+                              </span>
+                            </div>
+                            <div v-if="detail.is_batch_tracked && purchase_return.statut !== 'completed'" class="mt-1">
+                              <span
+                                class="badge"
+                                style="background:#f1f5f9; color:#475569; font-weight:600; letter-spacing:0.3px;"
+                              >
+                                <lucide-icon name="package" style="margin-right:3px;" />{{ $t('Batches_Assigned_On_Completion') || 'Los lotes se asignarán cuando la devolución se complete.' }}
                               </span>
                             </div>
                           </td>

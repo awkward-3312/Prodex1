@@ -32,17 +32,10 @@ class PurchaseBatchEngineArchitectureTest extends TestCase
         return substr($src, $start, strlen($m[0][0]) + $end);
     }
 
-    // ---- INACTIVE for PurchaseReturn / Import (MS5-D / MS5-E) ---------
-    // NOTE: manual PurchasesController IS activated in MS5-C — its wiring is
+    // ---- INACTIVE for Import only (MS5-E) ----------------------------
+    // NOTE: manual PurchasesController IS activated in MS5-C and
+    // PurchasesReturnController IS activated in MS5-D — their wiring is
     // asserted by PurchaseBatchActivationArchitectureTest.
-
-    public function test_purchases_return_controller_does_not_pass_allow_batch(): void
-    {
-        $src = $this->read('app/Http/Controllers/PurchasesReturnController.php');
-        $this->assertStringNotContainsString('allow_batch', $src);
-        $this->assertStringNotContainsString('LocationAwarePurchaseBatchPlanner', $src);
-        $this->assertStringNotContainsString('planPurchaseReturnIssue', $src);
-    }
 
     public function test_store_import_does_not_pass_allow_batch(): void
     {

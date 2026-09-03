@@ -156,6 +156,12 @@ class LocationAwarePurchaseBatchPlanner
             return array_map(fn ($l) => ['batch_allocation' => []] + $l, $lines);
         }
 
+        // FAIL CLOSED — a batch-tracked return line on a tenant without the
+        // batch schema cannot be planned (mirrors resolveReceiptBatchId).
+        if (! Schema::hasTable('product_batches') || ! Schema::hasTable('product_batch_location_stocks')) {
+            throw ValidationException::withMessages(['batches' => 'El esquema de lotes no está disponible en este tenant.']);
+        }
+
         // ---- discover every FEFO candidate across the whole document -----
         $fefoCandidateIds = [];
         foreach ($batchLines as $meta) {
