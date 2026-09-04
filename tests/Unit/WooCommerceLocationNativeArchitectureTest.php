@@ -26,6 +26,12 @@ use PHPUnit\Framework\TestCase;
  *   - reverseImportedSale() is native-aware: a native sale reverses through
  *     LocationAwareSaleStockService::reverseSnapshot(), legacy keeps its
  *     exact raw product_warehouse restore loop.
+ *   - MS7-B2-2B.1 — reverseImportedSale() never queries a deleted_at column
+ *     on SaleDetail (sale_details has never had one); it marks the Sale via
+ *     update-style deleted_at assignment (never a real row delete, which
+ *     would destroy inventory_effect_snapshot), and removes SaleDetail rows
+ *     via a genuine hard delete ($sale->details()->delete()), matching
+ *     SalesController::destroy()'s own canonical contract.
  *   - pullProducts() absolute-set and every stock-push implementation
  *     (WooCommerceStockSyncJob, WooCommercePushProducts, WooCommerceSyncStock,
  *     SyncService::syncStock()) are untouched by this milestone.
@@ -134,6 +140,40 @@ class WooCommerceLocationNativeArchitectureTest extends TestCase
     {
         $src = $this->read('app/Services/WooCommerce/SyncService.php');
         $this->assertMatchesRegularExpression('/if \(\$sale->inventory_location_id\) \{.*?reverseSnapshot.*?\} else \{/s', $src);
+    }
+
+    public function test_reverse_imported_sale_never_queries_deleted_at_on_sale_details(): void
+    {
+        // MS7-B2-2B.1 — sale_details has never had a deleted_at column;
+        // pin its absence so it can never silently regress back in.
+        $src = $this->extractFunction($this->read('app/Services/WooCommerce/SyncService.php'), 'reverseImportedSale');
+        $this->assertNotSame('', $src, 'reverseImportedSale() must be found in SyncService.php');
+        $this->assertStringNotContainsString("SaleDetail::where('sale_id', \$sale->id)\n                        ->whereNull('deleted_at')", $src);
+        $this->assertMatchesRegularExpression('/SaleDetail::where\(\'sale_id\', \$sale->id\)(?!\s*->whereNull)/', $src);
+    }
+
+    public function test_reverse_imported_sale_marks_sale_deleted_via_update_not_row_delete(): void
+    {
+        // MS7-B2-2B.1 — Sale has no SoftDeletes trait either; the
+        // canonical way to mark it reversed is an update-style deleted_at
+        // assignment (preserving the row + its inventory_effect_snapshot
+        // audit trail), never a real ->delete() call, which would
+        // hard-delete it.
+        $src = $this->extractFunction($this->read('app/Services/WooCommerce/SyncService.php'), 'reverseImportedSale');
+        $this->assertStringContainsString('$sale->deleted_at = \\Carbon\\Carbon::now();', $src);
+        // A live (non-comment) call to $sale->delete() would hard-delete the
+        // row again — pin its absence, ignoring the explanatory comment
+        // above that intentionally quotes the OLD broken line for context.
+        $liveLines = array_filter(explode("\n", $src), fn ($line) => ! preg_match('/^\s*(\/\/|\*)/', $line));
+        $this->assertStringNotContainsString('$sale->delete();', implode("\n", $liveLines));
+    }
+
+    public function test_reverse_imported_sale_hard_deletes_sale_details_via_canonical_relation(): void
+    {
+        // MS7-B2-2B.1 — matches SalesController::destroy()'s own
+        // `$current->details()->delete()` contract exactly.
+        $src = $this->extractFunction($this->read('app/Services/WooCommerce/SyncService.php'), 'reverseImportedSale');
+        $this->assertStringContainsString('$sale->details()->delete();', $src);
     }
 
     public function test_pull_products_absolute_set_untouched(): void

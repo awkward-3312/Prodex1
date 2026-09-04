@@ -103,6 +103,11 @@ class WooCommerceOrderImportLocationNativeTest extends TestCase
             $t->softDeletes();
         });
 
+        // MS7-B2-2B.1 — sale_details deliberately has NO deleted_at column
+        // here, matching the real production schema exactly (confirmed via
+        // migration audit: sale_details has never had one, and SaleDetail
+        // has no SoftDeletes trait). This is what exposes the reversal bug
+        // this test file's REVERSE section characterizes/guards against.
         Schema::create('sale_details', function ($t) {
             $t->increments('id');
             $t->date('date')->nullable();
@@ -119,7 +124,6 @@ class WooCommerceOrderImportLocationNativeTest extends TestCase
             $t->double('total')->default(0);
             $t->string('price_type')->nullable();
             $t->timestamps();
-            $t->softDeletes();
         });
 
         Schema::create('payment_methods', function ($t) {
@@ -437,6 +441,27 @@ class WooCommerceOrderImportLocationNativeTest extends TestCase
     // ==================================================================
     // REVERSE
     // ==================================================================
+    //
+    // MS7-B2-2B.1 characterization note — before this hotfix,
+    // reverseImportedSale() queried `SaleDetail::whereNull('deleted_at')`,
+    // a column sale_details has never had. On real MySQL (confirmed via
+    // MySQL 8.4 QA against prodex_prueba) this THROWS
+    // "Unknown column 'deleted_at' in 'where clause'", rolling back the
+    // WHOLE reversal transaction (stock included) — the reversal simply
+    // never commits. SQLite cannot reproduce that exact failure mode here:
+    // its query grammar double-quotes identifiers, and SQLite's legacy
+    // "double-quoted string literal" fallback for an unresolvable quoted
+    // identifier silently turns `"deleted_at" IS NULL` into an
+    // always-false string comparison instead of an error — so the OLD code
+    // ran the delete against zero (visible) rows... which is exactly why
+    // the tests below assert the CORRECT end state (sale_details actually
+    // empty, sales row survives with deleted_at set) rather than an
+    // exception: verified against old code, that observable end state is
+    // what changes — pre-fix, the old code hard-deleted the Sale itself
+    // (`$sale->delete()`, no SoftDeletes trait) while leaving the
+    // SaleDetail row silently un-deleted (orphaned), which these
+    // assertions would have caught. Post-fix, the Sale survives
+    // (soft-deleted via update) and SaleDetail rows are genuinely gone.
 
     public function test_native_reverse_restores_exact_location_stock(): void
     {
@@ -454,10 +479,54 @@ class WooCommerceOrderImportLocationNativeTest extends TestCase
         $this->assertSame('reversed', $reversed['action']);
         $this->assertSame(20.0, $this->locStock($this->loc, $p), 'cancellation must restore the exact location it decremented');
 
-        // reverseImportedSale hard-deletes the Sale row itself (pre-existing
-        // behaviour, unchanged by MS7-B2-2B) — nothing left to look up.
+        // MS7-B2-2B.1 — reverseImportedSale now marks the Sale via
+        // update(['deleted_at' => ...]) (canonical soft-delete, matching
+        // SalesController::destroy()), never a real row delete: the
+        // document — and its inventory_effect_snapshot audit trail —
+        // survives the reversal.
         $sale = DB::table('sales')->where('id', $imported['sale_id'])->first();
-        $this->assertNull($sale);
+        $this->assertNotNull($sale, 'the Sale row must survive its own reversal');
+        $this->assertNotNull($sale->deleted_at);
+        $this->assertNotNull($sale->inventory_effect_snapshot, 'the snapshot audit trail must not be destroyed');
+        $this->assertSame('cancelled', $sale->woocommerce_order_status);
+
+        // SaleDetail has no soft-delete concept anywhere in this codebase —
+        // its rows are genuinely gone, matching SalesController::destroy()'s
+        // own `$current->details()->delete()`.
+        $this->assertSame(0, DB::table('sale_details')->where('sale_id', $imported['sale_id'])->count());
+    }
+
+    public function test_native_reverse_with_multiple_details_completes(): void
+    {
+        // MS7-B2-2B.1 — the fetch-all-details fix must handle >1 row, not
+        // just the trivial single-row case.
+        $this->setLocationPrimary();
+        $p1 = $this->makeProduct();
+        $p2 = $this->makeProduct();
+        $this->mapProduct($p1, 9021);
+        $this->mapProduct($p2, 9022);
+        $this->seedLoc($p1, 20);
+        $this->seedLoc($p2, 30);
+
+        $order = $this->order(700021, 9021, 3);
+        $order['line_items'][] = [
+            'product_id' => 9022, 'variation_id' => 0, 'sku' => '',
+            'quantity' => 4, 'price' => '10.00', 'subtotal' => '40.00', 'total' => '40.00',
+        ];
+        $order['total'] = '70.00';
+
+        $svc = $this->service();
+        $imported = $this->process($svc, $order);
+        $this->assertSame(17.0, $this->locStock($this->loc, $p1));
+        $this->assertSame(26.0, $this->locStock($this->loc, $p2));
+        $this->assertSame(2, DB::table('sale_details')->where('sale_id', $imported['sale_id'])->count());
+
+        $reversed = $this->process($svc, $this->order(700021, 9021, 3, ['status' => 'cancelled']));
+
+        $this->assertSame('reversed', $reversed['action']);
+        $this->assertSame(20.0, $this->locStock($this->loc, $p1));
+        $this->assertSame(30.0, $this->locStock($this->loc, $p2));
+        $this->assertSame(0, DB::table('sale_details')->where('sale_id', $imported['sale_id'])->count());
     }
 
     public function test_legacy_reverse_restores_product_warehouse(): void
@@ -471,11 +540,20 @@ class WooCommerceOrderImportLocationNativeTest extends TestCase
         ]);
 
         $svc = $this->service();
-        $this->process($svc, $this->order(700014, 9014, 5));
+        $legacyImported = $this->process($svc, $this->order(700014, 9014, 5));
         $this->assertSame(15.0, $this->stockOf($this->wh, $p));
 
         $this->process($svc, $this->order(700014, 9014, 5, ['status' => 'refunded']));
         $this->assertSame(20.0, $this->stockOf($this->wh, $p));
+
+        // MS7-B2-2B.1 — the legacy branch shares the exact same broken
+        // SaleDetail::whereNull('deleted_at') fetch this hotfix corrects;
+        // prove it completes without the "Unknown column" crash and ends in
+        // the same canonical state as native (Sale soft-deleted via
+        // deleted_at, details gone).
+        $sale = DB::table('sales')->where('id', $legacyImported['sale_id'])->first();
+        $this->assertNotNull($sale->deleted_at);
+        $this->assertSame(0, DB::table('sale_details')->where('sale_id', $legacyImported['sale_id'])->count());
     }
 
     public function test_reverse_idempotency_replaying_reversal_status_does_not_double_restore(): void
@@ -491,9 +569,9 @@ class WooCommerceOrderImportLocationNativeTest extends TestCase
         $r2 = $this->process($svc, $this->order(700015, 9015, 5, ['status' => 'cancelled'])); // replay
 
         $this->assertSame('reversed', $r1['action']);
-        $this->assertSame('skipped', $r2['action'], 'the reversed sale row is gone entirely, so this becomes a fresh non-sale-status skip, never a second restore');
+        $this->assertSame('skipped', $r2['action'], 'the reversed sale is soft-deleted (invisible to the active-sale lookup), so this becomes a fresh non-sale-status skip, never a second restore');
         $this->assertSame(20.0, $this->locStock($this->loc, $p));
-        $this->assertSame(0, DB::table('sales')->count());
+        $this->assertSame(1, DB::table('sales')->count(), 'the reversed sale row still exists, just soft-deleted');
     }
 
     public function test_reimport_after_reverse_creates_a_fresh_sale_with_new_revision(): void
@@ -511,7 +589,8 @@ class WooCommerceOrderImportLocationNativeTest extends TestCase
         $second = $this->process($svc, $this->order(700016, 9016, 5)); // back to completed
 
         $this->assertSame('imported', $second['action']);
-        $this->assertSame(1, DB::table('sales')->count(), 'the old sale was hard-deleted by the reversal — a reimport is a fresh row, not a resurrection');
+        $this->assertNotSame($first['sale_id'], $second['sale_id'], 'a reimport is a fresh row, never a resurrection of the reversed one');
+        $this->assertSame(2, DB::table('sales')->count(), 'the old (soft-deleted) row and the fresh one coexist — exactly what sales_woo_order_id_deleted_at_unique is for');
         $this->assertSame(15.0, $this->locStock($this->loc, $p));
 
         $snapshot = json_decode(DB::table('sales')->where('id', $second['sale_id'])->value('inventory_effect_snapshot'), true);
@@ -549,6 +628,49 @@ class WooCommerceOrderImportLocationNativeTest extends TestCase
         $this->assertSame(0, DB::table('sales')->count());
         $this->assertSame(0, DB::table('sale_details')->count());
         $this->assertSame(0, DB::table('payment_sales')->count());
+    }
+
+    public function test_failure_during_document_cleanup_rolls_back_the_entire_reversal(): void
+    {
+        // MS7-B2-2B.1 (§4/§7-H) — reverseImportedSale() is one single
+        // transaction: if step 4 (SaleDetail cleanup) throws AFTER step 1
+        // already reversed the inventory snapshot, EVERYTHING must roll
+        // back together — never a physically-reversed-but-undocumented
+        // sale. Forced via a SQLite trigger that blocks the DELETE, since
+        // there is no other way to fail a step this deep without production
+        // test-hooks.
+        $this->setLocationPrimary();
+        $p = $this->makeProduct();
+        $this->mapProduct($p, 9023);
+        $this->seedLoc($p, 20);
+
+        $svc = $this->service();
+        $imported = $this->process($svc, $this->order(700023, 9023, 5));
+        $this->assertSame(15.0, $this->locStock($this->loc, $p));
+
+        DB::unprepared('
+            CREATE TRIGGER block_sale_detail_delete
+            BEFORE DELETE ON sale_details
+            BEGIN
+                SELECT RAISE(ABORT, "simulated cleanup failure");
+            END;
+        ');
+
+        try {
+            try {
+                $this->process($svc, $this->order(700023, 9023, 5, ['status' => 'cancelled']));
+                $this->fail('Expected the simulated cleanup failure to propagate.');
+            } catch (\Throwable $e) {
+                // expected
+            }
+        } finally {
+            DB::unprepared('DROP TRIGGER IF EXISTS block_sale_detail_delete');
+        }
+
+        $this->assertSame(15.0, $this->locStock($this->loc, $p), 'the inventory reversal must roll back if document cleanup fails downstream');
+        $sale = DB::table('sales')->where('id', $imported['sale_id'])->first();
+        $this->assertNull($sale->deleted_at, 'the sale must remain active — the reversal never committed');
+        $this->assertSame(1, DB::table('sale_details')->where('sale_id', $imported['sale_id'])->count(), 'details must remain — the failed cleanup never committed either');
     }
 
     // ==================================================================

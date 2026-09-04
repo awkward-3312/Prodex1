@@ -248,9 +248,11 @@ class SyncService
      */
     private function reverseImportedSale(Sale $sale, string $reason, ?string $newWooStatus = null): void
     {
-        DB::transaction(function () use ($sale, $reason, $newWooStatus) {
-            // Restore stock — only if the sale was previously decremented
-            // (i.e. statut was 'completed'). Mirrors SalesController::destroy.
+        DB::transaction(function () use ($sale, $newWooStatus) {
+            // 1) Reverse the physical stock effect — only if the sale was
+            //    previously decremented (i.e. statut was 'completed').
+            //    Mirrors SalesController::reverseLocationNativeSaleGeneral /
+            //    ::destroy().
             //
             // MS7-B2-2B — a location-native Woo sale (inventory_location_id
             // set) never touched product_warehouse in the first place; its
@@ -258,9 +260,10 @@ class SyncService
             // so it must be reversed the SAME way MS7-B1/B2-1/B2-3/B2-4
             // reverse a native document: LocationAwareSaleStockService::
             // reverseSnapshot(). Batch/serial reverse steps are unnecessary
-            // here — a Woo-native Sale can never carry batch/serial
-            // artifacts (order import FAILS CLOSED on those upstream). The
-            // legacy branch (no inventory_location_id) below is unchanged.
+            // here — a Woo-imported Sale (native OR legacy) can never carry
+            // batch/serial artifacts: order import FAILS CLOSED on those
+            // upstream for native, and legacy Woo import never captured
+            // them either (confirmed in the MS7-B2-2A audit).
             if (($sale->statut ?? '') === 'completed') {
                 if ($sale->inventory_location_id) {
                     // A degenerate all-zero-quantity order (no physical
@@ -273,9 +276,16 @@ class SyncService
                         $svc->reverseSnapshot($snapshot, $sale->id);
                     }
                 } else {
-                    $details = SaleDetail::where('sale_id', $sale->id)
-                        ->whereNull('deleted_at')
-                        ->get();
+                    // MS7-B2-2B.1 — sale_details has NEVER had a deleted_at
+                    // column in this codebase's migration history, and
+                    // SaleDetail has no SoftDeletes trait (audited: this was
+                    // the only place in the whole app/ tree that queried
+                    // deleted_at on it — every other reader/writer, e.g.
+                    // SalesController::update()/destroy(), treats SaleDetail
+                    // rows as plain, non-soft-deletable state). Fetch ALL
+                    // details for this sale, not a "non-deleted" subset that
+                    // can structurally never exist.
+                    $details = SaleDetail::where('sale_id', $sale->id)->get();
                     foreach ($details as $d) {
                         $unit = $d->sale_unit_id ? Unit::find($d->sale_unit_id) : null;
                         if (!$unit) {
@@ -306,23 +316,39 @@ class SyncService
                 }
             }
 
-            // Soft-delete payments tied to this sale
+            // 2) Soft-delete payments tied to this sale — PaymentSale DOES
+            //    use SoftDeletes (a real deleted_at column exists), so this
+            //    was already correct; unchanged.
             PaymentSale::where('sale_id', $sale->id)
                 ->whereNull('deleted_at')
                 ->get()
                 ->each(fn ($p) => $p->delete());
 
-            // Soft-delete sale details and the sale itself
-            SaleDetail::where('sale_id', $sale->id)
-                ->whereNull('deleted_at')
-                ->get()
-                ->each(fn ($d) => $d->delete());
-
-            if ($newWooStatus !== null) {
-                $sale->woocommerce_order_status = $newWooStatus;
-            }
+            // 3) Document/status cleanup — MS7-B2-2B.1: Sale has no
+            //    SoftDeletes trait either, so the previous
+            //    `$sale->save(); $sale->delete();` performed a REAL hard
+            //    delete, silently destroying the row — and with it
+            //    inventory_effect_snapshot, woocommerce_order_id/number, the
+            //    entire audit trail — the instant a completed order was
+            //    cancelled/refunded. That contradicted this codebase's own
+            //    canonical way of reversing a Sale: SalesController::destroy()
+            //    marks it via `$current->update(['deleted_at' => now(), ...])`,
+            //    which is also exactly what the
+            //    sales_woo_order_id_deleted_at_unique index (deleted_at is
+            //    PART of the unique key) was built to support — a
+            //    soft-deleted row that survives with a real, distinguishing
+            //    timestamp, coexisting with a later fresh reimport whose row
+            //    has deleted_at = NULL. Preserve the row and its snapshot.
+            $sale->woocommerce_order_status = $newWooStatus ?? $sale->woocommerce_order_status;
+            $sale->deleted_at = \Carbon\Carbon::now();
             $sale->save();
-            $sale->delete();
+
+            // 4) SaleDetail cleanup — SaleDetail has no soft-delete concept
+            //    anywhere in this codebase (see the audit note in step 1
+            //    above); the canonical way to remove a sale's details is a
+            //    real hard delete, exactly like SalesController::destroy()'s
+            //    own `$current->details()->delete()`.
+            $sale->details()->delete();
         }, 3);
 
         $this->log('orders.pull', 'info', 'Reversed imported sale due to Woo status change', [
