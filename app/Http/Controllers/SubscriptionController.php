@@ -102,7 +102,20 @@ class SubscriptionController extends BaseController
         ]);
 
         if (Carbon::parse($subscription->next_billing_date)->isToday()) {
-            $subscription->generateInvoice();
+            // MS7-B2-4 — generateInvoice() is now atomic and can throw (e.g.
+            // insufficient stock, a missing fulfillment location, an
+            // untracked batch/serial product). The subscription record
+            // itself must still be created successfully either way — its
+            // first invoice failing today only means the recurring command
+            // will retry it on its own next run; it never blocks or rolls
+            // back the subscription creation request.
+            try {
+                $subscription->generateInvoice();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error(
+                    "Immediate first-cycle invoice failed for subscription #{$subscription->id}: ".$e->getMessage()
+                );
+            }
         }
 
         return response()->json([

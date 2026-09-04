@@ -3,10 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ErrorLog;
-use App\Models\PaymentSale;
-use App\Models\product_warehouse;
 use App\Models\Subscription;
-use App\Models\Unit;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -21,75 +18,90 @@ class GenerateSubscriptionInvoices extends Command
     {
         $today = Carbon::today();
 
-        $subscriptions = Subscription::whereDate('next_billing_date', '<=', $today)
+        // MS7-B2-4 — only the ids are read here; each subscription is
+        // re-fetched and row-locked INSIDE Subscription::generateInvoice()'s
+        // own transaction, which re-verifies it is still due before doing
+        // anything. This is what makes a double scheduler run (or this
+        // command racing SubscriptionController::store()'s immediate
+        // first-cycle invoice) safe: whichever caller wins the lock first
+        // commits, and the other sees the now-advanced next_billing_date and
+        // no-ops.
+        $subscriptionIds = Subscription::whereDate('next_billing_date', '<=', $today)
             ->where('remaining_cycles', '>', 0)
             ->where('status', 'active')
-            ->get();
+            ->pluck('id');
 
-        foreach ($subscriptions as $subscription) {
-            // 1. Generate invoice
-            $invoice = $subscription->generateInvoice();
+        $processed = 0;
+        $skipped = 0;
+        $failed = 0;
 
-            PaymentSale::create([
-                'sale_id' => $invoice->id,
-                'date' => now(),
-                'montant' => $invoice->GrandTotal,
-                'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
-                'change' => 0,
-                'Reglement' => 'flutterwave',
-                'user_id' => $invoice->user_id ?? 1,
-                'notes' => 'Auto payment for subscription #'.$subscription->id,
-            ]);
-
-            // 2. Decrease product stock
-            $productWarehouse = product_warehouse::where('warehouse_id', $subscription->warehouse_id)
-                ->where('product_id', $subscription->product_id)
-                ->whereNull('deleted_at')
-                ->first();
-
-            if ($productWarehouse) {
-                $unit = Unit::find($subscription->unit_id);
-                $operatorValue = $unit ? $unit->operator_value : 1;
-                $productWarehouse->qte -= ($subscription->quantity / $operatorValue);
-                $productWarehouse->save();
-            }
-
-            // 4. Send SMS on successful charge
-
+        foreach ($subscriptionIds as $subscriptionId) {
             try {
-                app('App\Http\Controllers\SalesController')->Send_Subscription_Payment_Success_SMS($subscription->id, $invoice->id);
-                Log::info("SMS sent after successful payment for subscription #{$subscription->id}");
-            } catch (\Exception $e) {
-                Log::error("Failed sending SMS for subscription #{$subscription->id}: ".$e->getMessage());
+                $subscription = Subscription::find($subscriptionId);
+                if (! $subscription) {
+                    $skipped++;
+                    continue;
+                }
+
+                // Sale + SaleDetail + physical stock effect (native or
+                // legacy) + payment + billing-state advance all happen
+                // atomically inside generateInvoice() — see its own
+                // docblock. A failure anywhere in there throws and rolls
+                // back the whole document; it never leaves an orphaned
+                // Sale, a stock drift, or an advanced billing date behind.
+                $invoice = $subscription->generateInvoice();
+
+                if (! $invoice) {
+                    // Already processed by a concurrent run, or no longer
+                    // eligible by the time the lock was acquired — a safe,
+                    // silent no-op, not a failure.
+                    $skipped++;
+                    continue;
+                }
+
+                $processed++;
+
+                // SMS — non-blocking, AFTER the billing transaction has
+                // committed (an external call must never run while holding
+                // the subscription/stock row locks above).
+                try {
+                    app('App\Http\Controllers\SalesController')->Send_Subscription_Payment_Success_SMS($subscriptionId, $invoice->id);
+                    Log::info("SMS sent after successful payment for subscription #{$subscriptionId}");
+                } catch (\Exception $e) {
+                    Log::error("Failed sending SMS for subscription #{$subscriptionId}: ".$e->getMessage());
+
+                    ErrorLog::create([
+                        'context' => 'SMS after auto-charge success',
+                        'message' => "Failed sending SMS for subscription #{$subscriptionId}",
+                        'details' => json_encode([
+                            'subscription_id' => $subscriptionId,
+                            'client_id' => $subscription->client->id ?? null,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // MS7-B2-4 (§6) — one subscription's failure (insufficient
+                // stock, missing fulfillment location, an untracked
+                // batch/serial product, ...) never corrupts the others: it
+                // was already rolled back inside its own transaction, and
+                // the loop simply continues.
+                $failed++;
+                Log::error("Subscription billing failed for #{$subscriptionId}: ".$e->getMessage());
 
                 ErrorLog::create([
-                    'context' => 'SMS after auto-charge success',
-                    'message' => "Failed sending SMS for subscription #{$subscription->id}",
+                    'context' => 'Subscription auto-billing',
+                    'message' => "Failed billing subscription #{$subscriptionId}",
                     'details' => json_encode([
-                        'subscription_id' => $subscription->id,
-                        'client_id' => $subscription->client->id ?? null,
+                        'subscription_id' => $subscriptionId,
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString(),
                     ]),
                 ]);
             }
-
-            // 4. Update subscription
-            $subscription->remaining_cycles -= 1;
-
-            if ($subscription->remaining_cycles <= 0) {
-                $subscription->status = 'completed';
-            }
-
-            $subscription->next_billing_date = match ($subscription->billing_cycle) {
-                'weekly' => Carbon::parse($subscription->next_billing_date)->addWeek(),
-                'monthly' => Carbon::parse($subscription->next_billing_date)->addMonth(),
-                'yearly' => Carbon::parse($subscription->next_billing_date)->addYear(),
-            };
-
-            $subscription->save();
         }
 
-        $this->info('✅ Subscription invoices generated and processed.');
+        $this->info("✅ Subscription invoices: {$processed} processed, {$skipped} skipped, {$failed} failed.");
     }
 }
