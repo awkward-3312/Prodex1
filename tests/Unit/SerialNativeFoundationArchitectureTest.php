@@ -126,19 +126,15 @@ class SerialNativeFoundationArchitectureTest extends TestCase
         $this->assertStringContainsString('lleva asignación de lotes Y de series a la vez', $src);
     }
 
-    // ===================== NO CONTROLLER ACTIVATION (§32) =====================
+    // ===================== ACTIVATION SCOPE — B1 = manual Purchase only ========
+    // (full B1 wiring assertions live in PurchaseSerialLocationNativeArchitectureTest)
 
-    public function test_no_controller_passes_allow_serial_true(): void
+    public function test_purchase_return_controller_still_does_not_activate_serial(): void
     {
-        foreach ([
-            'app/Http/Controllers/PurchasesController.php',
-            'app/Http/Controllers/PurchasesReturnController.php',
-        ] as $rel) {
-            $src = $this->read($rel);
-            $this->assertStringNotContainsString("'allow_serial' => true", $src, "{$rel} must NOT activate serial-native yet");
-            $this->assertStringNotContainsString('LocationAwarePurchaseSerialPlanner', $src);
-            $this->assertStringNotContainsString('receivePurchaseMany', $src);
-        }
+        $src = $this->read('app/Http/Controllers/PurchasesReturnController.php');
+        $this->assertStringNotContainsString("'allow_serial' => true", $src, 'PurchaseReturn serial-native is MS6-B2, not yet');
+        $this->assertStringNotContainsString('LocationAwarePurchaseSerialPlanner', $src);
+        $this->assertStringNotContainsString('receivePurchaseMany', $src);
     }
 
     public function test_import_native_path_does_not_activate_serial(): void

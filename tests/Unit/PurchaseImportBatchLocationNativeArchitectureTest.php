@@ -158,7 +158,9 @@ class PurchaseImportBatchLocationNativeArchitectureTest extends TestCase
         $this->assertStringNotContainsString('import_only', $src);
         $this->assertStringNotContainsString('is_import_snapshot', $src);
         $reverse = $this->fn($src, 'reverseLocationNativePurchaseStock');
-        $this->assertStringContainsString("assertSnapshotArtifactSafeAndLock(\$snapshot, ['allow_batch' => true])", $reverse);
+        // MS6-B1 — the shared reverse helper is batch- AND serial-artifact-safe
+        // (the import STORE path still does not activate serials — MS6-B3).
+        $this->assertStringContainsString("assertSnapshotArtifactSafeAndLock(\$snapshot, ['allow_batch' => true, 'allow_serial' => true])", $reverse);
     }
 
     public function test_ms5c_manual_and_ms5d_return_paths_untouched(): void

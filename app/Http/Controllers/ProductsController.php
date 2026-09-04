@@ -2020,6 +2020,10 @@ class ProductsController extends BaseController
 
         $item['purchase_unit_id'] = $Product_data['unitPurchase'] ? $Product_data['unitPurchase']->id : '';
         $item['unitPurchase'] = $Product_data['unitPurchase'] ? $Product_data['unitPurchase']->ShortName : '';
+        // Purchase-unit conversion factor — lets a location-native purchase form
+        // require count(serials) == quantity_BASE (MS6-B1). Read-only, additive.
+        $item['purchase_unit_operator'] = $Product_data['unitPurchase'] ? $Product_data['unitPurchase']->operator : '*';
+        $item['purchase_unit_operator_value'] = $Product_data['unitPurchase'] ? (float) $Product_data['unitPurchase']->operator_value : 1;
 
         $item['sale_unit_id'] = $Product_data['unitSale'] ? $Product_data['unitSale']->id : '';
         $item['unitSale'] = $Product_data['unitSale'] ? $Product_data['unitSale']->ShortName : '';

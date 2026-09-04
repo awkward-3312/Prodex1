@@ -410,15 +410,27 @@
                           </td>
                         </tr>
 
+                        <!-- Serial / IMEI + batch on the same product: not supported -->
+                        <tr v-if="detail.is_imei && detail.is_batch_tracked" :key="'serial-batch-conflict-'+detail.detail_id" :style="{ background: 'transparent' }">
+                          <td colspan="9" :style="{ padding: '0 8px 12px 8px', border: 'none' }">
+                            <b-alert show variant="danger" class="mb-0">
+                              {{ $t('Serial_Batch_Incompatible') || 'Este producto está configurado con lote Y serie/IMEI a la vez. La combinación no es compatible: corrige la configuración del producto antes de registrar la compra.' }}
+                            </b-alert>
+                          </td>
+                        </tr>
+
                         <!-- Serial / IMEI entry sub-row -->
-                        <tr v-if="detail.is_imei" :key="'serials-'+detail.detail_id" :style="{ background: 'transparent' }">
+                        <tr v-if="detail.is_imei && !detail.is_batch_tracked" :key="'serials-'+detail.detail_id" :style="{ background: 'transparent' }">
                           <td colspan="9" :style="{ padding: '0 8px 16px 8px', border: 'none' }">
                             <div :style="{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #0ea5e9', borderRadius: '10px', padding: '14px 18px' }">
                               <serial-numbers-field
                                 mode="entry"
                                 v-model="detail.serial_numbers"
-                                :required-count="detail.quantity"
+                                :required-count="serialRequiredCount(detail)"
                               />
+                              <div v-if="purchase.statut !== 'received'" class="text-muted mt-2" :style="{ fontSize: '12px' }">
+                                {{ $t('Serials_Assigned_On_Receive') || 'Los seriales se asignarán cuando la compra se marque como recibida.' }}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -982,6 +994,13 @@ export default {
         if (!Array.isArray(d.batches) || d.batches.length === 0) return true;
         return this.batchQtyMismatch(d);
       }) || null;
+    },
+
+    // A product configured with BOTH batch and serial/IMEI tracking — the
+    // backend rejects the combination (422); block the form the same way.
+    serialBatchConflictDetail() {
+      if (!Array.isArray(this.details)) return null;
+      return this.details.find(d => d && d.is_imei && d.is_batch_tracked) || null;
     }
   },
 
@@ -1010,6 +1029,16 @@ export default {
 
     //--- Submit Validate Update Purchase
     Submit_Purchase() {
+      // A product configured with BOTH batch and serial/IMEI tracking is not
+      // supported by the backend (422) — block before submit.
+      if (this.serialBatchConflictDetail) {
+        this.makeToast(
+          "danger",
+          `${this.$t('Serial_Batch_Incompatible') || 'Lote y serie/IMEI no son compatibles'} (${this.serialBatchConflictDetail.name})`,
+          this.$t("Failed")
+        );
+        return;
+      }
       // Block submission when any active batch-tracked line has missing
       // batches or batch quantities that don't sum to the line quantity.
       if (this.hasBatchValidationErrors) {
@@ -1334,10 +1363,28 @@ export default {
     },
 
     //----------------------------------------- Serial helpers ---------------------\\
+    // MS6-B1 — base-unit quantity for a line, matching the backend unit maths
+    // ('*' multiplies by operator_value, '/' divides).
+    detailBaseQty(detail) {
+      const q = Number(detail && detail.quantity) || 0;
+      const op = detail && detail.purchase_unit_operator;
+      const val = Number(detail && detail.purchase_unit_operator_value);
+      if (!op || !isFinite(val) || val <= 0) return q;
+      return op === '/' ? q / val : q * val;
+    },
+    // Serials required for a line: the PHYSICAL base quantity for a
+    // location-native (location_primary) warehouse — count(serials) ==
+    // quantity_base — the entered document quantity for a legacy one. Kept
+    // mode-dependent so legacy tenants keep their exact current behaviour.
+    serialRequiredCount(detail) {
+      return this.location_meta.requires
+        ? Math.round(this.detailBaseQty(detail))
+        : Math.round(Number(detail && detail.quantity) || 0);
+    },
     serialCountMismatch(detail) {
       if (!detail || !detail.is_imei) return false;
       const count = Array.isArray(detail.serial_numbers) ? detail.serial_numbers.length : 0;
-      return count !== Math.round(Number(detail.quantity) || 0);
+      return count !== this.serialRequiredCount(detail);
     },
 
     //-----------------------------------Verified QTY ------------------------------\\

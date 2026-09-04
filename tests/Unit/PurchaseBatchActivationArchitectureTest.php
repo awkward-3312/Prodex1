@@ -53,11 +53,11 @@ class PurchaseBatchActivationArchitectureTest extends TestCase
         // update reverse of the OLD snapshot + shared reverse helper + destroy.
         $update = $this->fn($src, 'updateLocationAware');
         $this->assertMatchesRegularExpression(
-            "/assertSnapshotArtifactSafeAndLock\(\\\$oldSnapshot, \['allow_batch' => true\]\)/",
+            "/assertSnapshotArtifactSafeAndLock\(\\\$oldSnapshot, \['allow_batch' => true, 'allow_serial' => true\]\)/",
             $update
         );
         $reverse = $this->fn($src, 'reverseLocationNativePurchaseStock');
-        $this->assertStringContainsString("assertSnapshotArtifactSafeAndLock(\$snapshot, ['allow_batch' => true])", $reverse);
+        $this->assertStringContainsString("assertSnapshotArtifactSafeAndLock(\$snapshot, ['allow_batch' => true, 'allow_serial' => true])", $reverse);
         $this->assertStringContainsString('->reverseSnapshot($snapshot, $purchase->id);', $reverse);
     }
 
@@ -84,7 +84,8 @@ class PurchaseBatchActivationArchitectureTest extends TestCase
         foreach (['storeLocationAware', 'updateLocationAware'] as $m) {
             $body = $this->fn($src, $m);
             // planner + snapshot apply + pivots are all inside a `=== 'received'` guard.
-            $plannerPos = strpos($body, 'planLocationAwarePurchaseBatches(');
+            // MS6-B1 — the composed batch+serial planner is what store/update call.
+            $plannerPos = strpos($body, 'planLocationAwarePurchaseArtifacts(');
             $this->assertNotFalse($plannerPos, "{$m}() should invoke the planner for received");
             $guardPos = strpos($body, "=== 'received'");
             $this->assertNotFalse($guardPos);

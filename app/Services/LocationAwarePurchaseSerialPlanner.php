@@ -54,8 +54,14 @@ class LocationAwarePurchaseSerialPlanner
     public function planPurchaseReceipt(int $warehouseId, int $inventoryLocationId, array $validatedLines, array $rawLines, array $context = []): array
     {
         $this->assertInTransaction();
-        $this->assertSerialSchema();
         $rawLines = array_values($rawLines);
+
+        // A cart with no is_imei line: a pure no-op (serial_allocation => []),
+        // and the serial schema is not even required.
+        if (! $this->hasSerialLine($validatedLines)) {
+            return array_map(fn ($l) => ['serial_allocation' => []] + $l, array_values($validatedLines));
+        }
+        $this->assertSerialSchema();
 
         // 1 — document-wide serial map (case-insensitive), reject any repeat.
         $perLine = $this->collectDocumentSerials($validatedLines, $rawLines);
@@ -105,8 +111,12 @@ class LocationAwarePurchaseSerialPlanner
     public function planPurchaseReturnIssue(int $warehouseId, int $inventoryLocationId, array $validatedLines, array $rawLines, array $context = []): array
     {
         $this->assertInTransaction();
-        $this->assertSerialSchema();
         $rawLines = array_values($rawLines);
+
+        if (! $this->hasSerialLine($validatedLines)) {
+            return array_map(fn ($l) => ['serial_allocation' => []] + $l, array_values($validatedLines));
+        }
+        $this->assertSerialSchema();
 
         $perLine = $this->collectDocumentSerials($validatedLines, $rawLines);
 
@@ -384,6 +394,17 @@ class LocationAwarePurchaseSerialPlanner
         }
 
         return array_values($out);
+    }
+
+    private function hasSerialLine(array $validatedLines): bool
+    {
+        foreach ($validatedLines as $line) {
+            if (! empty($line['requires_serial'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function assertSerialSchema(): void

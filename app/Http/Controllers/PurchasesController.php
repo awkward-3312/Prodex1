@@ -31,6 +31,7 @@ use App\Models\Warehouse;
 use App\Services\BatchService;
 use App\Services\InventoryLocationScopeService;
 use App\Services\LocationAwarePurchaseBatchPlanner;
+use App\Services\LocationAwarePurchaseSerialPlanner;
 use App\Services\LocationAwarePurchaseStockService;
 use App\Services\SerialNumberService;
 use App\Services\WarehouseInventoryModeResolver;
@@ -396,22 +397,31 @@ class PurchasesController extends BaseController
     }
 
     // =====================================================================
-    // MS2 / MS5-C — Purchases location-native (warehouses in MODE_LOCATION_PRIMARY).
+    // MS2 / MS5-C / MS6-B1 — Purchases location-native (MODE_LOCATION_PRIMARY).
     //
-    // Scope: is_single / is_variant, manual purchases only, INCLUDING
-    // is_batch_tracked (MS5-C). Import stays legacy (MS5-E). PurchaseReturn
-    // stays legacy (MS5-D). IMEI => the service still fails closed (MS6).
+    // Scope: is_single / is_variant, MANUAL purchases only, INCLUDING
+    // is_batch_tracked (MS5-C) AND is_imei / serial (MS6-B1, incl.
+    // variant+IMEI). Import stays legacy for serials (MS6-B3). PurchaseReturn
+    // stays legacy for serials (MS6-B2). A line that is BOTH batch AND IMEI =>
+    // 422 (no dual artifact tracking).
     //
-    // batch: validateAndLock(allow_batch=true) -> LocationAwarePurchaseBatchPlanner
-    // freezes a per-line batch_allocation -> buildSnapshot embeds it ->
-    // applySnapshot runs BatchLocationService::receiveMany BEFORE
-    // InventoryService::increase (and issueMany BEFORE decrease on a reverse).
-    // The snapshot is the ONLY source of a reverse; purchase_detail_batches are
-    // secondary UX/reporting (pivot.qty = the entered PURCHASE-unit quantity,
-    // never used for the physical reverse). A PENDING purchase creates NO batch
-    // artifact at all. NO legacy product_warehouse / BatchService / SerialNumber
-    // writes on this path. The document identity (inventory_location_id NOT
-    // NULL) — not the warehouse's current mode — governs update/destroy.
+    // artifacts: validateAndLock(allow_batch=true, allow_serial=true) marks each
+    // line requires_batch XOR requires_serial (integer base enforced for serial)
+    // -> LocationAwarePurchaseBatchPlanner freezes batch_allocation ->
+    // LocationAwarePurchaseSerialPlanner freezes serial_allocation (creating
+    // `voided` ProductSerial placeholders for unknown serials, reusing a
+    // matching `voided` row) -> buildSnapshot embeds both -> applySnapshot runs
+    // the CANONICAL order: PHASE A batch receiveMany/issueMany, PHASE B serial
+    // receivePurchaseMany/voidPurchaseMany, PHASE C InventoryService
+    // increase/decrease. The snapshot is the ONLY source of a reverse;
+    // purchase_detail_batches + PurchaseDetail.imei_number are secondary
+    // UX/reporting, NEVER read for the physical reverse. Reverse never
+    // hard-deletes a serial (available@location -> voided@NULL); a downstream
+    // sold/moved serial FAILS the reverse CLOSED. A PENDING purchase creates NO
+    // artifact / placeholder / movement at all. NO legacy product_warehouse /
+    // BatchService / SerialNumberService writes on this path. The document
+    // identity (inventory_location_id NOT NULL) — not the warehouse's current
+    // mode — governs update/destroy.
     // =====================================================================
 
     /**
@@ -460,6 +470,38 @@ class PurchasesController extends BaseController
         );
     }
 
+    /**
+     * MS6-B1 — run the serial planner for a RECEIVED location-native purchase and
+     * fold its per-line serial_allocation into the (already batch-planned)
+     * validated lines. A no-op for a cart with no is_imei line (returns the
+     * lines with serial_allocation => []). Creates `voided` ProductSerial
+     * placeholders for unknown serial numbers INSIDE the document transaction —
+     * a later failure rolls them back. MUST run inside the document transaction,
+     * AFTER planLocationAwarePurchaseBatches (the two planners are independent
+     * but the snapshot phases run batch -> serial -> general).
+     */
+    private function planLocationAwarePurchaseSerials(int $warehouseId, int $locationId, array $validatedLines, array $rawLines, int $sourcePurchaseId, $providerId): array
+    {
+        return app(LocationAwarePurchaseSerialPlanner::class)->planPurchaseReceipt(
+            $warehouseId,
+            $locationId,
+            $validatedLines,
+            $rawLines,
+            [
+                'source_purchase_id' => $sourcePurchaseId,
+                'provider_id' => $providerId !== null ? (int) $providerId : null,
+            ]
+        );
+    }
+
+    /** MS6-B1 — batch plan THEN serial plan, folded into one line array. */
+    private function planLocationAwarePurchaseArtifacts(int $warehouseId, int $locationId, array $validatedLines, array $rawLines, int $sourcePurchaseId, $providerId): array
+    {
+        $planned = $this->planLocationAwarePurchaseBatches($warehouseId, $locationId, $validatedLines, $rawLines, $sourcePurchaseId, $providerId);
+
+        return $this->planLocationAwarePurchaseSerials($warehouseId, $locationId, $planned, $rawLines, $sourcePurchaseId, $providerId);
+    }
+
     /** Raw request details -> LocationAwarePurchaseStockService line shape. */
     private function locationAwarePurchaseLines(Request $request): array
     {
@@ -491,8 +533,11 @@ class PurchasesController extends BaseController
                 'product_id' => $value['product_id'],
                 'product_variant_id' => (isset($value['product_variant_id']) && $value['product_variant_id'] !== '') ? $value['product_variant_id'] : null,
                 'total' => $value['subtotal'] ?? 0,
-                'imei_number' => $this->resolveImeiString($value),
             ]);
+            // imei_number is NOT fillable on PurchaseDetail (the legacy path
+            // writes it via a raw insert). Keep the serial/IMEI text column in
+            // sync on the native path too, for invoice/receipt templates.
+            $d->forceFill(['imei_number' => $this->resolveImeiString($value)])->save();
             $ids[$i] = $d->id;
         }
 
@@ -539,15 +584,17 @@ class PurchasesController extends BaseController
 
             // Validate + lock ALWAYS (pending included): a location_primary
             // purchase can only be saved with a valid location + valid lines.
-            // allow_batch=true — a batch-tracked line is marked requires_batch
-            // (the planner runs only for a RECEIVED purchase); IMEI still 422.
+            // MS6-B1 — allow_batch + allow_serial: a batch-tracked line is
+            // marked requires_batch, an is_imei line requires_serial (integer
+            // base enforced here). A line that is BOTH => 422. The planners run
+            // only for a RECEIVED purchase.
             $validated = $svc->validateAndLock(
                 LocationAwarePurchaseStockService::DOC_PURCHASE,
                 $warehouseId,
                 $locationId,
                 $this->locationAwarePurchaseLines($request),
                 [],
-                ['allow_batch' => true]
+                ['allow_batch' => true, 'allow_serial' => true]
             );
 
             $order = new Purchase;
@@ -573,11 +620,12 @@ class PurchasesController extends BaseController
             $detailIds = $this->persistLocationAwarePurchaseDetails($order->id, $rawLines);
 
             // Physical effect ONLY for a received purchase. A pending purchase
-            // keeps location + header + details, but NO snapshot, NO batch
-            // artifact, NO movements — the planner NEVER runs for pending, even
-            // if the request carried `batches`.
+            // keeps location + header + details (imei_number text included) but
+            // NO snapshot, NO batch/serial artifact, NO placeholder, NO
+            // movements — the planners NEVER run for pending, even if the
+            // request carried `batches` / `serial_numbers`.
             if ($statut === 'received') {
-                $planned = $this->planLocationAwarePurchaseBatches(
+                $planned = $this->planLocationAwarePurchaseArtifacts(
                     $warehouseId, $locationId, $validated['lines'], $rawLines, (int) $order->id, $order->provider_id
                 );
                 $validated['lines'] = $this->withSourceDetailIds($planned, $detailIds);
@@ -648,12 +696,15 @@ class PurchasesController extends BaseController
             }
 
             // (C, D) reverse the currently-applied effect using the OLD snapshot
-            // (old warehouse/location/effects/batch_allocation live inside it —
-            // NEVER the current request). allow_batch=true so a now-batch
-            // product with a batch_allocation reverses via issueMany.
+            // (old warehouse/location/effects/batch_allocation/serial_allocation
+            // live inside it — NEVER the current request). allow_batch +
+            // allow_serial so a now-batch / now-serial product reverses via
+            // issueMany / voidPurchaseMany. A downstream-moved serial
+            // (sold/reserved/damaged/returned_supplier/other location) => 422
+            // TOTAL — details are NOT deleted before a successful reverse.
             if ($hadActiveEffect) {
                 $oldSnapshot = $svc->normalizeSnapshot($oldSnapshotRaw);
-                $svc->assertSnapshotArtifactSafeAndLock($oldSnapshot, ['allow_batch' => true]);
+                $svc->assertSnapshotArtifactSafeAndLock($oldSnapshot, ['allow_batch' => true, 'allow_serial' => true]);
                 $svc->reverseSnapshot($oldSnapshot, $locked->id);
             }
 
@@ -668,7 +719,7 @@ class PurchasesController extends BaseController
                 $newLocationId,
                 $this->locationAwarePurchaseLines($request),
                 $extra,
-                ['allow_batch' => true]
+                ['allow_batch' => true, 'allow_serial' => true]
             );
 
             // Replace details + their batch pivots (the OLD snapshot already
@@ -681,11 +732,14 @@ class PurchasesController extends BaseController
             $detailIds = $this->persistLocationAwarePurchaseDetails($locked->id, $rawLines);
 
             // (B, C) apply a NEW snapshot only when the new statut is received.
-            // The planner uses the CURRENT request; a requires_batch line MUST
-            // carry batches now (never rebuilt from an inactive old snapshot).
+            // The planners use the CURRENT request; a requires_batch line MUST
+            // carry batches and a requires_serial line MUST carry serial_numbers
+            // now (never rebuilt from an inactive old snapshot). If the reverse
+            // above left the old serials `voided`, the serial planner reuses the
+            // SAME product_serial_id (no identity churn — deliberate vs legacy).
             $newSnapshot = null;
             if ($newStatut === 'received') {
-                $planned = $this->planLocationAwarePurchaseBatches(
+                $planned = $this->planLocationAwarePurchaseArtifacts(
                     $newWarehouseId, $newLocationId, $validated['lines'], $rawLines, (int) $locked->id, $request['supplier_id']
                 );
                 $validated['lines'] = $this->withSourceDetailIds($planned, $detailIds);
@@ -791,8 +845,11 @@ class PurchasesController extends BaseController
     /**
      * Shared physical-stock reversal for a location-native purchase being
      * deleted (single destroy AND bulk delete). Received => reverse the exact
-     * historical snapshot; pending => nothing. FAIL CLOSED on a missing/broken
-     * snapshot — never guess, never fall back to the legacy per-warehouse writer.
+     * historical snapshot (batch issueMany -> serial voidPurchaseMany -> general
+     * decrease); pending => nothing (current status wins — a historical snapshot
+     * from a previous received->pending is NOT reversed again). FAIL CLOSED on a
+     * missing/broken snapshot, or a serial that moved downstream — never guess,
+     * never hard-delete, never fall back to the legacy per-warehouse writer.
      */
     private function reverseLocationNativePurchaseStock(Purchase $purchase): void
     {
@@ -802,7 +859,7 @@ class PurchasesController extends BaseController
 
         $svc = app(LocationAwarePurchaseStockService::class);
         $snapshot = $svc->normalizeSnapshot($purchase->inventory_effect_snapshot); // throws if null/malformed
-        $svc->assertSnapshotArtifactSafeAndLock($snapshot, ['allow_batch' => true]);
+        $svc->assertSnapshotArtifactSafeAndLock($snapshot, ['allow_batch' => true, 'allow_serial' => true]);
         $svc->reverseSnapshot($snapshot, $purchase->id);
     }
 
@@ -1500,6 +1557,26 @@ class PurchasesController extends BaseController
             $purchase_data['purchase_has_return'] = 'no';
         }
 
+        // MS6-B1 — for a location-native purchase the serial_numbers shown in the
+        // edit form come from the PHYSICAL snapshot (serial_allocation), the
+        // reverse authority — not the imei_number text (kept only for print).
+        // Indexed by source_detail_id.
+        $snapshotSerialsByDetail = [];
+        $editSnapshot = $purchase->inventory_effect_snapshot;
+        if (! empty($editSnapshot)) {
+            $editSnapshot = is_array($editSnapshot) ? $editSnapshot : json_decode($editSnapshot, true);
+            foreach (($editSnapshot['effects'] ?? []) as $eff) {
+                $sdid = (int) ($eff['source_detail_id'] ?? 0);
+                if ($sdid <= 0) {
+                    continue;
+                }
+                $snapshotSerialsByDetail[$sdid] = array_values(array_filter(array_map(
+                    fn ($a) => (string) ($a['serial_number'] ?? ''),
+                    $eff['serial_allocation'] ?? []
+                ), fn ($s) => $s !== ''));
+            }
+        }
+
         foreach ($purchase['details'] as $detail) {
 
             // -------check if detail has purchase_unit_id Or Null
@@ -1529,6 +1606,10 @@ class PurchasesController extends BaseController
             $data['total'] = $detail->total;
             $data['cost'] = $detail->cost;
             $data['unit_purchase'] = $unit->ShortName;
+            // MS6-B1 — purchase-unit conversion factor so the edit form can
+            // require count(serials) == quantity_BASE for a location-native line.
+            $data['purchase_unit_operator'] = $unit->operator ?? '*';
+            $data['purchase_unit_operator_value'] = (float) ($unit->operator_value ?? 1);
 
             if ($detail->discount_method == '2') {
                 $data['DiscountNet'] = $detail->discount;
@@ -1551,6 +1632,12 @@ class PurchasesController extends BaseController
 
             $data['is_imei'] = $detail['product']['is_imei'];
             $data['imei_number'] = $detail->imei_number;
+            // Native purchases: derive serials from the snapshot; otherwise fall
+            // back to the legacy imei_number text (the frontend does the same).
+            $data['serial_numbers'] = $snapshotSerialsByDetail[(int) $detail->id]
+                ?? (($detail['product']['is_imei'] && $detail->imei_number)
+                    ? array_values(array_filter(array_map('trim', preg_split('/[\r\n,;\t]+/', (string) $detail->imei_number)), fn ($s) => $s !== ''))
+                    : []);
 
             $data['is_batch_tracked'] = (bool) ($detail['product']['is_batch_tracked'] ?? false);
             $data['batches'] = $detail->batches->map(function ($b) {
