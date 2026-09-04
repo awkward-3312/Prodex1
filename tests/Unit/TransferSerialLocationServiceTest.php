@@ -8,9 +8,11 @@ use App\Models\Transfer;
 use App\Models\TransferDetail;
 use App\Models\TransferDetailSerial;
 use App\Models\TransferReceiptItem;
+use App\Models\ProductSerialMovement;
 use App\Services\TransferSerialLocationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class TransferSerialLocationServiceTest extends TestCase
@@ -157,5 +159,93 @@ class TransferSerialLocationServiceTest extends TestCase
         $this->assertSame(1, TransferDetailSerial::where('status', 'received')->where('issue_type', 'resolved_missing')->count());
         $this->assertSame(0, TransferDetailSerial::where('status', 'missing')->count());
         $this->assertSame(5, DB::table('product_serial_movements')->count());
+    }
+
+    // =====================================================================
+    // MS6-B0A — §19 dispatch / receive golden characterization
+    // =====================================================================
+
+    private function transfer(): Transfer
+    {
+        $transfer = new Transfer();
+        $transfer->id = 100;
+        $transfer->from_warehouse_id = 1;
+        $transfer->to_warehouse_id = 3;
+        $transfer->from_inventory_location_id = 5;
+        $transfer->to_inventory_location_id = 9;
+        $transfer->exists = true;
+
+        return $transfer;
+    }
+
+    public function test_dispatch_moves_available_at_source_to_reserved_with_null_location_and_a_TransferDispatch_movement(): void
+    {
+        $transfer = $this->transfer();
+        $detail = TransferDetail::findOrFail(20);
+        $product = Product::findOrFail(10);
+
+        app(TransferSerialLocationService::class)->dispatchDetail($transfer, $detail, $product, 2);
+
+        foreach (['IMEI-A', 'IMEI-B'] as $sn) {
+            $row = ProductSerial::where('serial_number', $sn)->first();
+            $this->assertSame(ProductSerial::STATUS_RESERVED, $row->status);
+            $this->assertNull($row->inventory_location_id, 'in transit => location NULL');
+        }
+        $this->assertSame(2, TransferDetailSerial::where('transfer_detail_id', 20)->where('status', 'in_transit')->count());
+
+        $mv = DB::table('product_serial_movements')->orderBy('id')->first();
+        $this->assertSame(ProductSerialMovement::ACTION_LOCATION_MOVED, $mv->action);
+        $this->assertSame('TransferDispatch', $mv->reference_type);
+        $this->assertSame(100, (int) $mv->reference_id);
+        $this->assertSame(5, (int) $mv->from_inventory_location_id);
+        $this->assertNull($mv->to_inventory_location_id);
+        $this->assertSame(ProductSerial::STATUS_AVAILABLE, $mv->from_status);
+        $this->assertSame(ProductSerial::STATUS_RESERVED, $mv->to_status);
+    }
+
+    public function test_receive_good_restores_reserved_to_available_at_destination_and_sets_warehouse(): void
+    {
+        $transfer = $this->transfer();
+        $detail = TransferDetail::findOrFail(20);
+        $product = Product::findOrFail(10);
+        $service = app(TransferSerialLocationService::class);
+
+        $service->dispatchDetail($transfer, $detail, $product, 2);
+
+        $item = new TransferReceiptItem();
+        $item->id = 777;
+        $item->exists = true;
+        $service->receiveGood($transfer, $detail, 2, $item);
+
+        foreach (['IMEI-A', 'IMEI-B'] as $sn) {
+            $row = ProductSerial::where('serial_number', $sn)->first();
+            $this->assertSame(ProductSerial::STATUS_AVAILABLE, $row->status);
+            $this->assertSame(9, (int) $row->inventory_location_id, 'at destination location');
+            $this->assertSame(3, (int) $row->warehouse_id, 'warehouse_id follows to_warehouse_id');
+        }
+        $this->assertSame(2, TransferDetailSerial::where('status', 'received')->count());
+
+        $mv = DB::table('product_serial_movements')->where('reference_type', 'TransferReceipt')->first();
+        $this->assertNotNull($mv);
+        $this->assertSame(9, (int) $mv->to_inventory_location_id);
+    }
+
+    public function test_dispatch_requires_an_integer_base_quantity(): void
+    {
+        $transfer = $this->transfer();
+        $detail = TransferDetail::findOrFail(20);
+        $product = Product::findOrFail(10);
+
+        $this->expectException(ValidationException::class);
+        try {
+            app(TransferSerialLocationService::class)->dispatchDetail($transfer, $detail, $product, 1.5);
+        } finally {
+            $this->assertSame(0, TransferDetailSerial::count(), 'no pivot created for a fractional base quantity');
+            $this->assertSame(
+                2,
+                ProductSerial::where('status', ProductSerial::STATUS_AVAILABLE)->count(),
+                'source serials untouched'
+            );
+        }
     }
 }
