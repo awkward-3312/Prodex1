@@ -139,6 +139,11 @@ class WooCommerceProductsPullJob implements ShouldQueue
             $state['updated'] = (int) ($state['updated'] ?? 0) + (int) ($result['updated'] ?? 0);
             $state['failed_products'] = (int) ($state['failed_products'] ?? 0) + (int) ($result['errors'] ?? 0);
             $state['processed'] = (int) ($state['processed'] ?? 0) + (int) ($result['processed'] ?? 0);
+            // MS7-B2-2D — informational only: a non-zero count means some
+            // products/variants live in a location_primary warehouse, where
+            // PRODEX (not this remote quantity) is the stock authority.
+            // Never a failure; catalog metadata for those items still synced.
+            $state['native_stock_skipped'] = (int) ($state['native_stock_skipped'] ?? 0) + (int) ($result['native_stock_skipped'] ?? 0);
             $state['synced_products'] = (int) $state['created'] + (int) $state['updated'];
 
             if (!empty($result['remote_total'])) {

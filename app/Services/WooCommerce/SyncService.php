@@ -2398,13 +2398,18 @@ class SyncService
 
     /**
      * Woo -> Stocky: pull variations for a variable product into product_variants and product_warehouse.
+     *
+     * @return int  count of remote variation stock values SKIPPED because
+     *              $isLocationPrimaryWarehouse (MS7-B2-2D) — catalog/mapping
+     *              metadata for the variant is still synced either way.
      */
-    private function pullWooVariationsIntoStocky(Product $product, int $wooProductId, int $defaultWarehouseId, ?callable $shouldCancel = null): void
+    private function pullWooVariationsIntoStocky(Product $product, int $wooProductId, int $defaultWarehouseId, bool $isLocationPrimaryWarehouse, ?callable $shouldCancel = null): int
     {
         if ($wooProductId <= 0 || (int) $product->id <= 0) {
-            return;
+            return 0;
         }
 
+        $nativeStockSkipped = 0;
         $page = 1;
         $per = 100;
         $cap = (int) env('WOO_PULL_VARIATIONS_PAGE_CAP', 50);
@@ -2480,7 +2485,7 @@ class SyncService
                 $price = $v['regular_price'] ?? ($v['price'] ?? null);
                 $priceF = ($price !== null && $price !== '' && is_numeric($price)) ? (float) $price : 0.0;
 
-                DB::transaction(function () use ($product, $varWooId, $sku, $variantName, $priceF, $defaultWarehouseId, $v) {
+                DB::transaction(function () use ($product, $varWooId, $sku, $variantName, $priceF, $defaultWarehouseId, $isLocationPrimaryWarehouse, $v, &$nativeStockSkipped) {
                     // Find existing local variant by Woo variation id, else by code within the product.
                     $pv = ProductVariant::whereNull('deleted_at')
                         ->where('product_id', (int) $product->id)
@@ -2563,23 +2568,35 @@ class SyncService
                     // Apply stock qty to DEFAULT warehouse (if Woo provides it)
                     $qty = $v['stock_quantity'] ?? null;
                     if ($qty !== null && $qty !== '' && is_numeric($qty)) {
-                        $qtyF = (float) $qty;
-                        $pw = product_warehouse::whereNull('deleted_at')
-                            ->where('product_id', (int) $product->id)
-                            ->where('warehouse_id', (int) $defaultWarehouseId)
-                            ->where('product_variant_id', (int) $pv->id)
-                            ->first();
-                        if (!$pw) {
-                            $pw = new product_warehouse();
-                            $pw->product_id = (int) $product->id;
-                            $pw->warehouse_id = (int) $defaultWarehouseId;
-                            $pw->product_variant_id = (int) $pv->id;
+                        if ($isLocationPrimaryWarehouse) {
+                            // MS7-B2-2D — same read-only-external-metadata
+                            // policy as the simple-product site: a Woo
+                            // variation's remote quantity never overwrites
+                            // this variant's physical stock here. Variant
+                            // catalog/mapping metadata above is unaffected —
+                            // only the physical qte write is skipped, and
+                            // ONLY for this exact variant (no cross-variant
+                            // contamination).
+                            $nativeStockSkipped++;
+                        } else {
+                            $qtyF = (float) $qty;
+                            $pw = product_warehouse::whereNull('deleted_at')
+                                ->where('product_id', (int) $product->id)
+                                ->where('warehouse_id', (int) $defaultWarehouseId)
+                                ->where('product_variant_id', (int) $pv->id)
+                                ->first();
+                            if (!$pw) {
+                                $pw = new product_warehouse();
+                                $pw->product_id = (int) $product->id;
+                                $pw->warehouse_id = (int) $defaultWarehouseId;
+                                $pw->product_variant_id = (int) $pv->id;
+                            }
+                            $pw->qte = $qtyF;
+                            if (property_exists($pw, 'manage_stock')) {
+                                $pw->manage_stock = 1;
+                            }
+                            $pw->save();
                         }
-                        $pw->qte = $qtyF;
-                        if (property_exists($pw, 'manage_stock')) {
-                            $pw->manage_stock = 1;
-                        }
-                        $pw->save();
                     }
                 }, 3);
             }
@@ -2589,6 +2606,8 @@ class SyncService
             }
             $page++;
         }
+
+        return $nativeStockSkipped;
     }
 
     private function downloadWooProductImage(string $url, int $wooId): ?string
@@ -2762,12 +2781,24 @@ class SyncService
         $errors = 0;
         $processed = 0;
         $skipped = 0;
+        $nativeStockSkipped = 0;
 
         $page = max(1, $startPage);
         $perPage = 50;
         $defaultCategoryId = $this->ensureDefaultCategoryId();
         $defaultUnitId = $this->ensureDefaultUnitId();
         $defaultWarehouseId = $this->ensureDefaultWarehouseId();
+        // MS7-B2-2D — resolved ONCE, up front: PRODEX is the stock
+        // authority for a location_primary warehouse. A WooCommerce
+        // aggregate `stock_quantity` carries no location distribution,
+        // reserved state, batch/serial identity, provenance, or in-flight
+        // local movements, so it is never a valid representation of this
+        // warehouse's physical stock — it is treated as read-only external
+        // metadata and never written to product_warehouse/
+        // inventory_location_stocks/batch/serial here. Every other
+        // transition mode (legacy_only/shadow_compare/dual_write) keeps
+        // writing product_warehouse.qte exactly as before — unchanged.
+        $isLocationPrimaryWarehouse = app(WarehouseInventoryModeResolver::class)->isLocationPrimary($defaultWarehouseId);
         $indexInPage = max(0, $startIndex);
         $done = false;
         $remoteTotal = null;
@@ -2855,8 +2886,9 @@ class SyncService
 
                     DB::transaction(function () use (
                         $wp, $wooId, $sku, $name,
-                        &$created, &$updated,
+                        &$created, &$updated, &$nativeStockSkipped,
                         $defaultCategoryId, $defaultUnitId, $defaultWarehouseId,
+                        $isLocationPrimaryWarehouse,
                         &$localProductId, $isVariable
                     ) {
                         $product = Product::whereNull('deleted_at')->where('woocommerce_id', $wooId)->first();
@@ -3028,23 +3060,40 @@ class SyncService
                         // Stock (default warehouse)
                         $qty = $wp['stock_quantity'] ?? null;
                         if ($qty !== null && $qty !== '') {
-                            $qtyF = (float) $qty;
-                            $pw = product_warehouse::whereNull('deleted_at')
-                                ->where('product_id', (int) $product->id)
-                                ->where('warehouse_id', (int) $defaultWarehouseId)
-                                ->whereNull('product_variant_id')
-                                ->first();
-                            if (!$pw) {
-                                $pw = new product_warehouse();
-                                $pw->product_id = (int) $product->id;
-                                $pw->warehouse_id = (int) $defaultWarehouseId;
-                                $pw->product_variant_id = null;
+                            if ($isLocationPrimaryWarehouse) {
+                                // MS7-B2-2D — PRODEX is the stock authority
+                                // here; a Woo aggregate quantity is never a
+                                // valid representation of this warehouse's
+                                // physical stock (no location distribution,
+                                // reserved state, batch/serial identity, or
+                                // provenance). Read-only external metadata:
+                                // never product_warehouse.qte,
+                                // inventory_location_stocks, or any
+                                // InventoryService mutation. The qte=0
+                                // compatibility row from
+                                // ensureProductInAllWarehouses() above (or
+                                // any pre-existing row/value) is left
+                                // exactly as it was.
+                                $nativeStockSkipped++;
+                            } else {
+                                $qtyF = (float) $qty;
+                                $pw = product_warehouse::whereNull('deleted_at')
+                                    ->where('product_id', (int) $product->id)
+                                    ->where('warehouse_id', (int) $defaultWarehouseId)
+                                    ->whereNull('product_variant_id')
+                                    ->first();
+                                if (!$pw) {
+                                    $pw = new product_warehouse();
+                                    $pw->product_id = (int) $product->id;
+                                    $pw->warehouse_id = (int) $defaultWarehouseId;
+                                    $pw->product_variant_id = null;
+                                }
+                                $pw->qte = $qtyF;
+                                if (property_exists($pw, 'manage_stock')) {
+                                    $pw->manage_stock = 1;
+                                }
+                                $pw->save();
                             }
-                            $pw->qte = $qtyF;
-                            if (property_exists($pw, 'manage_stock')) {
-                                $pw->manage_stock = 1;
-                            }
-                            $pw->save();
                         }
 
                         $isNew ? $created++ : $updated++;
@@ -3054,7 +3103,7 @@ class SyncService
                     if ($isVariable && $localProductId > 0) {
                         $p = Product::whereKey($localProductId)->first();
                         if ($p) {
-                            $this->pullWooVariationsIntoStocky($p, $wooId, $defaultWarehouseId, $shouldCancel);
+                            $nativeStockSkipped += $this->pullWooVariationsIntoStocky($p, $wooId, $defaultWarehouseId, $isLocationPrimaryWarehouse, $shouldCancel);
                         }
                     }
                 } catch (\Throwable $e) {
@@ -3090,12 +3139,16 @@ class SyncService
             $indexInPage = 0;
         }
 
+        // MS7-B2-2D — one aggregate counter/log line per run (never
+        // per-item), so a catalog pull of thousands of native-warehouse
+        // products never floods the log.
         $this->log('products.pull', 'info', 'Products pull completed', [
             'created' => $created,
             'updated' => $updated,
             'errors' => $errors,
             'processed' => $processed,
             'skipped' => $skipped,
+            'native_stock_skipped' => $nativeStockSkipped,
         ]);
 
         return [
@@ -3104,6 +3157,12 @@ class SyncService
             'errors' => $errors,
             'processed' => $processed,
             'skipped' => $skipped,
+            // Count of remote stock_quantity values NOT applied because the
+            // product/variant's default warehouse is location_primary
+            // (PRODEX is the stock authority there) — catalog metadata for
+            // those same products still synced normally. A non-zero value
+            // here is expected and not a failure.
+            'native_stock_skipped' => $nativeStockSkipped,
             'remote_total' => $remoteTotal,
             'cursor_page' => $page,
             'cursor_index' => $indexInPage,
