@@ -13,6 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class LocationAwareSerialNumberService extends SerialNumberService
 {
+
     /** Request-attribute prefix for the MS5-B1 POS serial preflight selection. */
     public const POS_SERIAL_PREFLIGHT_ATTR = 'prodex_pos_serial_preflight';
 
@@ -267,5 +268,335 @@ class LocationAwareSerialNumberService extends SerialNumberService
                 ]);
             }
         }, 3);
+    }
+
+    // =====================================================================
+    // MS6-B0 — ATOMIC SET operations (INACTIVE: no productive controller
+    // calls them). Consumed by LocationAwarePurchaseStockService::runSnapshot
+    // between the BATCH phase and the GENERAL phase.
+    //
+    // Every method:
+    //   - REQUIRES the caller's outer transaction (never opens its own — the
+    //     snapshot engine's transaction confirms/rolls back the whole set);
+    //   - locks ProductSerial ids ASC and the movement idempotency keys;
+    //   - validates the WHOLE set before mutating ANYTHING;
+    //   - is replay-safe at set level: all keys present + fingerprints match
+    //     => NO-OP; a partial set or a fingerprint mismatch => 422; never a
+    //     silent partial replay.
+    // =====================================================================
+
+    /**
+     * PURCHASE apply. Pre: `voided`, exact product/variant. Post: `available`
+     * at the target warehouse+location, purchase linkage stamped.
+     *
+     * @param  array<int,array{product_serial_id:int, serial_number:string, idempotency_key:string,
+     *   expected_product_id:int, expected_variant_id:?int}>  $allocations
+     * @param  array{warehouse_id:int, inventory_location_id:int, reference_id:int,
+     *   purchase_id?:?int, purchase_detail_id?:?int, provider_id?:?int, cost?:?float}  $context
+     */
+    public function receivePurchaseMany(array $allocations, array $context): void
+    {
+        $this->assertSetPreconditions();
+        $locationId = (int) $context['inventory_location_id'];
+        $warehouseId = (int) $context['warehouse_id'];
+
+        $this->runSerialSet($allocations, [
+            'action' => ProductSerialMovement::ACTION_PURCHASED,
+            'reference_type' => 'Purchase',
+            'reference_id' => (int) $context['reference_id'],
+            'pre_status' => ProductSerial::STATUS_VOIDED,
+            'pre_location' => null,
+            'post_status' => ProductSerial::STATUS_AVAILABLE,
+            'post_location' => $locationId,
+            'movement_from_location' => null,
+            'movement_to_location' => $locationId,
+            'coverage_location' => $locationId,
+            'link' => [
+                'warehouse_id' => $warehouseId,
+                'purchase_id' => $context['purchase_id'] ?? null,
+                'purchase_detail_id' => $context['purchase_detail_id'] ?? null,
+                'provider_id' => $context['provider_id'] ?? null,
+                'cost' => $context['cost'] ?? null,
+            ],
+            'notes' => 'Recepción de compra location-native.',
+        ]);
+    }
+
+    /**
+     * PURCHASE reverse. Pre: `available` at the OLD snapshot location, exact
+     * id + serial_number + product/variant. Post: `voided`, location NULL,
+     * purchase provenance PRESERVED. FAIL CLOSED (no best-effort) if any unit
+     * moved on — the native equivalent of legacy "already moved".
+     *
+     * @param  array{inventory_location_id:int, reference_id:int}  $context  OLD snapshot location
+     */
+    public function voidPurchaseMany(array $allocations, array $context): void
+    {
+        $this->assertSetPreconditions();
+        $oldLocationId = (int) $context['inventory_location_id'];
+
+        $this->runSerialSet($allocations, [
+            'action' => ProductSerialMovement::ACTION_STATUS_CHANGED,
+            'reference_type' => 'PurchaseReversal',
+            'reference_id' => (int) $context['reference_id'],
+            'pre_status' => ProductSerial::STATUS_AVAILABLE,
+            'pre_location' => $oldLocationId,
+            'post_status' => ProductSerial::STATUS_VOIDED,
+            'post_location' => null,
+            'movement_from_location' => $oldLocationId,
+            'movement_to_location' => null,
+            'coverage_location' => $oldLocationId,
+            'link' => [], // purchase_id / purchase_detail_id KEPT for provenance
+            'notes' => 'Reversa de compra location-native: unidad anulada.',
+        ]);
+    }
+
+    /**
+     * PURCHASE RETURN apply. Pre: `available` at the exact location. Post:
+     * `returned_supplier`; inventory_location_id on the ProductSerial is KEPT
+     * (its last physical location) so a reverse can restore it exactly.
+     *
+     * @param  array{inventory_location_id:int, reference_id:int}  $context
+     */
+    public function returnToSupplierMany(array $allocations, array $context): void
+    {
+        $this->assertSetPreconditions();
+        $locationId = (int) $context['inventory_location_id'];
+
+        $this->runSerialSet($allocations, [
+            'action' => ProductSerialMovement::ACTION_PURCHASE_RETURNED,
+            'reference_type' => 'PurchaseReturn',
+            'reference_id' => (int) $context['reference_id'],
+            'pre_status' => ProductSerial::STATUS_AVAILABLE,
+            'pre_location' => $locationId,
+            'post_status' => ProductSerial::STATUS_RETURNED_SUPPLIER,
+            'post_location' => $locationId, // KEEP — do NOT null the ProductSerial location
+            'movement_from_location' => $locationId,
+            'movement_to_location' => null,
+            'coverage_location' => $locationId,
+            'link' => [],
+            'notes' => 'Devolución a proveedor location-native.',
+        ]);
+    }
+
+    /**
+     * PURCHASE RETURN reverse. Pre: `returned_supplier` at the exact location.
+     * Post: `available` at that same (restored) location. FAIL CLOSED — never
+     * best-effort (unlike legacy reverseForPurchaseReturn).
+     *
+     * @param  array{inventory_location_id:int, reference_id:int}  $context
+     */
+    public function reversePurchaseReturnMany(array $allocations, array $context): void
+    {
+        $this->assertSetPreconditions();
+        $locationId = (int) $context['inventory_location_id'];
+
+        $this->runSerialSet($allocations, [
+            'action' => ProductSerialMovement::ACTION_STATUS_CHANGED,
+            'reference_type' => 'PurchaseReturnReversal',
+            'reference_id' => (int) $context['reference_id'],
+            'pre_status' => ProductSerial::STATUS_RETURNED_SUPPLIER,
+            'pre_location' => $locationId,
+            'post_status' => ProductSerial::STATUS_AVAILABLE,
+            'post_location' => $locationId,
+            'movement_from_location' => null,
+            'movement_to_location' => $locationId,
+            'coverage_location' => null, // pre-state has 0 available serials by design
+            'link' => [],
+            'notes' => 'Reversa de devolución a proveedor location-native.',
+        ]);
+    }
+
+    // ------------------------------------------------------------------
+    // Shared set runner
+    // ------------------------------------------------------------------
+
+    /**
+     * @param  array<int,array{product_serial_id:int, serial_number:string, idempotency_key:string,
+     *   expected_product_id?:int, expected_variant_id?:?int}>  $allocations
+     */
+    private function runSerialSet(array $allocations, array $spec): void
+    {
+        $allocations = array_values($allocations);
+        if (empty($allocations)) {
+            return;
+        }
+
+        // ---- idempotency: lock the movement keys, decide replay vs fresh ----
+        $keys = [];
+        foreach ($allocations as $a) {
+            $k = (string) ($a['idempotency_key'] ?? '');
+            if ($k === '') {
+                throw ValidationException::withMessages(['serial_tracking' => 'Falta la clave de idempotencia de un serial.']);
+            }
+            $keys[] = $k;
+        }
+
+        $existing = ProductSerialMovement::whereIn('idempotency_key', $keys)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('idempotency_key');
+
+        $fingerprints = [];
+        foreach ($allocations as $a) {
+            $fingerprints[(string) $a['idempotency_key']] = $this->serialFingerprint($a, $spec);
+        }
+
+        if ($existing->count() > 0) {
+            if ($existing->count() !== count($keys)) {
+                throw ValidationException::withMessages([
+                    'serial_transition' => 'Replay parcial de una operación de series: no se puede continuar. FAIL CLOSED.',
+                ]);
+            }
+            foreach ($keys as $k) {
+                $mv = $existing->get($k);
+                if (! $mv || (string) $mv->idempotency_fingerprint !== $fingerprints[$k]) {
+                    throw ValidationException::withMessages([
+                        'serial_transition' => 'La operación de series no coincide con el movimiento ya registrado (fingerprint). FAIL CLOSED.',
+                    ]);
+                }
+            }
+
+            return; // full, consistent replay => NO-OP.
+        }
+
+        // ---- fresh operation: lock serial rows ASC, validate ALL ----
+        $ids = array_values(array_unique(array_map(fn ($a) => (int) $a['product_serial_id'], $allocations)));
+        sort($ids, SORT_NUMERIC);
+        $rows = ProductSerial::whereIn('id', $ids)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        $this->assertSetCoverageReady($allocations, $spec);
+
+        foreach ($allocations as $a) {
+            $id = (int) $a['product_serial_id'];
+            $row = $rows->get($id);
+            if (! $row) {
+                throw ValidationException::withMessages(['serial_transition' => "El serial {$id} del snapshot ya no existe. FAIL CLOSED."]);
+            }
+            if ((string) $row->serial_number !== (string) $a['serial_number']) {
+                throw ValidationException::withMessages(['serial_transition' => "El serial {$id} no coincide con el número de serie del snapshot. FAIL CLOSED."]);
+            }
+            if (isset($a['expected_product_id']) && (int) $row->product_id !== (int) $a['expected_product_id']) {
+                throw ValidationException::withMessages(['serial_transition' => "El serial {$a['serial_number']} no corresponde al producto del efecto. FAIL CLOSED."]);
+            }
+            if (array_key_exists('expected_variant_id', $a)) {
+                $rowVariant = $row->product_variant_id !== null ? (int) $row->product_variant_id : null;
+                $expVariant = $a['expected_variant_id'] !== null ? (int) $a['expected_variant_id'] : null;
+                if ($rowVariant !== $expVariant) {
+                    throw ValidationException::withMessages(['serial_transition' => "El serial {$a['serial_number']} no corresponde a la variante del efecto. FAIL CLOSED."]);
+                }
+            }
+            if ((string) $row->status !== $spec['pre_status']) {
+                throw ValidationException::withMessages([
+                    'serial_transition' => "El serial {$a['serial_number']} está en estado '{$row->status}' (se esperaba '{$spec['pre_status']}'). FAIL CLOSED.",
+                ]);
+            }
+            $rowLoc = $row->inventory_location_id !== null ? (int) $row->inventory_location_id : null;
+            if ($rowLoc !== $spec['pre_location']) {
+                throw ValidationException::withMessages([
+                    'serial_transition' => "El serial {$a['serial_number']} no está en la ubicación esperada para esta operación. FAIL CLOSED.",
+                ]);
+            }
+        }
+
+        // ---- mutate ALL, then movements ALL ----
+        $userId = function_exists('auth') ? auth()->id() : null;
+        $now = now();
+        foreach ($allocations as $a) {
+            $row = $rows->get((int) $a['product_serial_id']);
+            $from = (string) $row->status;
+
+            $row->status = $spec['post_status'];
+            $row->inventory_location_id = $spec['post_location'];
+            $link = array_merge($spec['link'] ?? [], $a['link'] ?? []);
+            foreach ($link as $col => $val) {
+                if ($val !== null) {
+                    $row->{$col} = $val;
+                }
+            }
+            $row->save();
+
+            ProductSerialMovement::create([
+                'product_serial_id' => (int) $row->id,
+                'serial_number' => (string) $row->serial_number,
+                'action' => $spec['action'],
+                'from_status' => $from,
+                'to_status' => $spec['post_status'],
+                'warehouse_id' => $row->warehouse_id,
+                'from_inventory_location_id' => $spec['movement_from_location'],
+                'to_inventory_location_id' => $spec['movement_to_location'],
+                'reference_type' => $spec['reference_type'],
+                'reference_id' => $spec['reference_id'],
+                'user_id' => $userId,
+                'notes' => $spec['notes'] ?? null,
+                'idempotency_key' => (string) $a['idempotency_key'],
+                'idempotency_fingerprint' => $fingerprints[(string) $a['idempotency_key']],
+                'created_at' => $now,
+            ]);
+        }
+    }
+
+    private function serialFingerprint(array $alloc, array $spec): string
+    {
+        return md5(json_encode([
+            (int) $alloc['product_serial_id'],
+            (string) $alloc['serial_number'],
+            $spec['action'],
+            $spec['pre_status'],
+            $spec['post_status'],
+            $spec['movement_from_location'],
+            $spec['movement_to_location'],
+            $spec['reference_type'],
+            (int) $spec['reference_id'],
+        ]));
+    }
+
+    /**
+     * §23 — pre-state coverage FAIL CLOSED for the (product, variant, location)
+     * groups this set touches. Skipped when coverage_location is null (the
+     * reverse of a return has 0 available serials by design).
+     */
+    private function assertSetCoverageReady(array $allocations, array $spec): void
+    {
+        if (! array_key_exists('coverage_location', $spec) || $spec['coverage_location'] === null) {
+            return;
+        }
+        $locationId = (int) $spec['coverage_location'];
+        $coverage = app(SerialInventoryCoverageService::class);
+
+        $groups = [];
+        foreach ($allocations as $a) {
+            $pid = (int) ($a['expected_product_id'] ?? 0);
+            $vid = array_key_exists('expected_variant_id', $a) && $a['expected_variant_id'] !== null ? (int) $a['expected_variant_id'] : null;
+            if ($pid <= 0) {
+                continue;
+            }
+            $groups[$pid.':'.($vid ?? 0)] = [$pid, $vid];
+        }
+
+        foreach ($groups as [$pid, $vid]) {
+            $c = $coverage->coverageForLocation($locationId, $pid, $vid);
+            if (! $c['is_ready']) {
+                throw ValidationException::withMessages([
+                    'serial_transition' => "Desfase de series para el producto {$pid} en la ubicación {$locationId} "
+                        ."(general {$c['general_quantity']} vs {$c['available_serial_count']} seriales disponibles). FAIL CLOSED.",
+                ]);
+            }
+        }
+    }
+
+    private function assertSetPreconditions(): void
+    {
+        if (! $this->isSupported()) {
+            throw ValidationException::withMessages(['serial_tracking' => 'El esquema de series/IMEI no está disponible en este tenant.']);
+        }
+        if (DB::transactionLevel() <= 0) {
+            throw new \LogicException('LocationAwareSerialNumberService set operations must run inside the caller\'s transaction.');
+        }
     }
 }

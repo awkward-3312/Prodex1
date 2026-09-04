@@ -21,6 +21,15 @@ class ProductSerial extends Model
     const STATUS_DAMAGED = 'damaged';
     const STATUS_RESERVED = 'reserved';
 
+    /**
+     * MS6-B0 — a location-native Purchase RECEIPT that is later reversed drops
+     * the unit to `voided` (row + serial_number + history PRESERVED), never a
+     * hard delete. A later receipt can controllably reactivate the SAME row.
+     * `voided` is NOT `available` and is excluded from every stock/coverage
+     * count. Legacy reverseForPurchaseDetails() still hard-deletes — unchanged.
+     */
+    const STATUS_VOIDED = 'voided';
+
     protected $fillable = [
         'serial_number',
         'product_id', 'product_variant_id', 'warehouse_id', 'inventory_location_id',

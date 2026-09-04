@@ -57,6 +57,13 @@ class LocationAwarePurchaseStockService
     public const REF_PURCHASE_RETURN_BATCH = 'PurchaseReturnBatch';
     public const REF_PURCHASE_RETURN_BATCH_REVERSAL = 'PurchaseReturnBatchReversal';
 
+    // MS6-B0 — serial-artifact ledger reference types (one movement per unit).
+    // (The serial set service also uses these strings.)
+    public const REF_SERIAL_PURCHASE = 'Purchase';
+    public const REF_SERIAL_PURCHASE_REVERSAL = 'PurchaseReversal';
+    public const REF_SERIAL_PURCHASE_RETURN = 'PurchaseReturn';
+    public const REF_SERIAL_PURCHASE_RETURN_REVERSAL = 'PurchaseReturnReversal';
+
     public const SNAPSHOT_VERSION = 1;
 
     /** MS1: sólo productos con inventario físico simple / variante. */
@@ -91,8 +98,14 @@ class LocationAwarePurchaseStockService
         // MS5-B2 — backward-compatible opt-in. allow_batch === false (default):
         // EXACTLY as before, a batch-tracked line fails closed. allow_batch ===
         // true: a batch-tracked line is allowed and marked requires_batch, and
-        // the caller MUST then run the batch layer. IMEI ALWAYS fails closed.
+        // the caller MUST then run the batch layer.
         $allowBatch = (bool) ($options['allow_batch'] ?? false);
+        // MS6-B0 — same opt-in for serials. allow_serial === false (default): an
+        // IMEI line fails closed EXACTLY as before. allow_serial === true: the
+        // line is marked requires_serial, its quantity_base MUST be an integer,
+        // and the caller MUST then run the serial layer. A batch+IMEI product
+        // ALWAYS fails closed (no dual artifact tracking).
+        $allowSerial = (bool) ($options['allow_serial'] ?? false);
 
         // 1. Warehouse (bloqueado, no eliminado).
         $warehouse = DB::table('warehouses')->where('id', $warehouseId)->whereNull('deleted_at')
@@ -226,14 +239,18 @@ class LocationAwarePurchaseStockService
                 ]);
             }
 
-            // (ARTIFACT SAFETY) IMEI ALWAYS fails closed (MS6). Batch fails
-            // closed UNLESS allow_batch — then the line is marked requires_batch
-            // and the caller must run the batch layer.
+            // (ARTIFACT SAFETY) Batch fails closed UNLESS allow_batch. IMEI
+            // fails closed UNLESS allow_serial. A product that is BOTH always
+            // fails closed (no dual artifact tracking).
             $isImei = $hasImei && (int) ($product->is_imei ?? 0) === 1;
             $isBatch = $hasBatch && (int) ($product->is_batch_tracked ?? 0) === 1;
-            if ($isImei) {
-                $imeiIds[$pid] = true;
+
+            if ($isImei && $isBatch) {
+                throw ValidationException::withMessages([
+                    "details.$i" => 'El producto de la línea '.($i + 1).' lleva control de lote Y serie/IMEI a la vez. La combinación no está soportada.',
+                ]);
             }
+
             $requiresBatch = false;
             if ($isBatch) {
                 if ($allowBatch) {
@@ -243,13 +260,29 @@ class LocationAwarePurchaseStockService
                 }
             }
 
+            $requiresSerial = false;
+            $qtyBase = $this->toBaseQuantity($qty, (string) $unit->operator, $operatorValue);
+            if ($isImei) {
+                if ($allowSerial) {
+                    $requiresSerial = true;
+                    if (abs($qtyBase - round($qtyBase)) > self::EPS) {
+                        throw ValidationException::withMessages([
+                            "details.$i.quantity" => 'La línea '.($i + 1).' usa serie/IMEI y sólo admite una cantidad base entera (calculada: '.$qtyBase.').',
+                        ]);
+                    }
+                } else {
+                    $imeiIds[$pid] = true;
+                }
+            }
+
             $normalized[] = [
                 'source_detail_id' => $detailId,
                 'product_id' => $pid,
                 'product_variant_id' => $vid,
                 'quantity' => $qty,
-                'quantity_base' => $this->toBaseQuantity($qty, (string) $unit->operator, $operatorValue),
+                'quantity_base' => $qtyBase,
                 'requires_batch' => $requiresBatch,
+                'requires_serial' => $requiresSerial,
                 'purchase_unit_id' => $unitId,
                 'unit_operator' => (string) $unit->operator,
                 'unit_operator_value' => $operatorValue,
@@ -367,6 +400,94 @@ class LocationAwarePurchaseStockService
         return (string) $v;
     }
 
+    /**
+     * MS6-B0 — normalize + validate a serial_allocation list for ONE effect.
+     * FAIL CLOSED: empty, count != quantity_base, product_serial_id <= 0,
+     * blank serial_number, or a duplicate sidx / serial_number WITHIN the
+     * effect. Returns the list sorted by sidx with sidx re-indexed 0..N-1.
+     *
+     * @throws ValidationException
+     */
+    private function normalizeSerialAllocation($raw, float $effectQtyBase): array
+    {
+        if (! is_array($raw) || $raw === []) {
+            throw ValidationException::withMessages([
+                'inventory_effect_snapshot' => 'Un efecto serializado no tiene asignación de series.',
+            ]);
+        }
+
+        $base = (int) round($effectQtyBase);
+        if (abs($effectQtyBase - $base) > self::EPS) {
+            throw ValidationException::withMessages([
+                'inventory_effect_snapshot' => 'Un efecto serializado tiene cantidad base no entera ('.$effectQtyBase.').',
+            ]);
+        }
+
+        $entries = [];
+        $seenSidx = [];
+        $seenSerial = [];
+        foreach ($raw as $k => $a) {
+            if (! is_array($a)) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'Asignación de serie malformada.']);
+            }
+            $sidx = array_key_exists('sidx', $a) ? (int) $a['sidx'] : (int) $k;
+            $psid = (int) ($a['product_serial_id'] ?? 0);
+            $serialNumber = trim((string) ($a['serial_number'] ?? ''));
+            if ($psid <= 0) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'Asignación de serie sin product_serial_id.']);
+            }
+            if ($serialNumber === '') {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'Asignación de serie sin número de serie.']);
+            }
+            if (isset($seenSidx[$sidx])) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'sidx duplicado en la asignación de series.']);
+            }
+            $sk = mb_strtolower($serialNumber);
+            if (isset($seenSerial[$sk])) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'Número de serie duplicado en la asignación del efecto.']);
+            }
+            $seenSidx[$sidx] = true;
+            $seenSerial[$sk] = true;
+            $entries[] = ['sidx' => $sidx, 'product_serial_id' => $psid, 'serial_number' => $serialNumber];
+        }
+
+        if (count($entries) !== $base) {
+            throw ValidationException::withMessages([
+                'inventory_effect_snapshot' => 'La asignación de series ('.count($entries).') no coincide con la cantidad base del efecto ('.$base.').',
+            ]);
+        }
+
+        usort($entries, fn ($a, $b) => $a['sidx'] <=> $b['sidx']);
+        foreach ($entries as $n => &$e) {
+            $e['sidx'] = $n;
+        }
+        unset($e);
+
+        return $entries;
+    }
+
+    private function buildSerialAllocation($raw, float $effectQtyBase): array
+    {
+        return $this->normalizeSerialAllocation($raw, $effectQtyBase);
+    }
+
+    /** No serial_number may repeat across the WHOLE document's effects. */
+    private function assertSnapshotSerialNumbersUniqueDocumentWide(array $effects): void
+    {
+        $seen = [];
+        foreach ($effects as $e) {
+            foreach ($e['serial_allocation'] ?? [] as $a) {
+                $k = mb_strtolower((string) $a['serial_number']);
+                if (isset($seen[$k])) {
+                    throw ValidationException::withMessages([
+                        'inventory_effect_snapshot' => "El número de serie '{$a['serial_number']}' se repite en el documento.",
+                    ]);
+                }
+                $seen[$k] = true;
+            }
+        }
+    }
+
     // =====================================================================
     // 2 · Construcción del snapshot (plan físico histórico, versionado)
     // =====================================================================
@@ -400,7 +521,16 @@ class LocationAwarePurchaseStockService
             // batch_allocation (frozen by LocationAwarePurchaseBatchPlanner);
             // a non-batch line must NOT carry one.
             $requiresBatch = (bool) ($line['requires_batch'] ?? false);
+            $requiresSerial = (bool) ($line['requires_serial'] ?? false);
             $rawAlloc = $line['batch_allocation'] ?? null;
+            $rawSerial = $line['serial_allocation'] ?? null;
+
+            if ($requiresBatch && $requiresSerial) {
+                throw ValidationException::withMessages([
+                    'inventory_effect_snapshot' => 'Un efecto no puede llevar asignación de lotes Y de series a la vez.',
+                ]);
+            }
+
             if ($requiresBatch) {
                 $effect['batch_allocation'] = $this->buildBatchAllocation($rawAlloc, $qtyBase);
             } elseif (! empty($rawAlloc)) {
@@ -409,8 +539,22 @@ class LocationAwarePurchaseStockService
                 ]);
             }
 
+            // MS6-B0 — a requires_serial line MUST carry a serial_allocation
+            // (frozen by LocationAwarePurchaseSerialPlanner) with exactly
+            // quantity_base entries; a non-serial line must NOT carry one.
+            if ($requiresSerial) {
+                $effect['serial_allocation'] = $this->buildSerialAllocation($rawSerial, $qtyBase);
+            } elseif (! empty($rawSerial)) {
+                throw ValidationException::withMessages([
+                    'inventory_effect_snapshot' => 'Se recibió una asignación de series para un producto que el plan no marcó como serializado.',
+                ]);
+            }
+
             $effects[] = $effect;
         }
+
+        // document-wide serial_number uniqueness across ALL effects.
+        $this->assertSnapshotSerialNumbersUniqueDocumentWide($effects);
 
         // Orden determinístico y ESTABLE — define el índice de efecto que va en
         // la idempotency_key para siempre.
@@ -497,12 +641,27 @@ class LocationAwarePurchaseStockService
 
             // MS5-B2 — accept effects with OR without batch_allocation. When
             // present it is normalized + validated (sum, unique bidx, sorted).
-            if (array_key_exists('batch_allocation', $e) && $e['batch_allocation'] !== null && $e['batch_allocation'] !== []) {
+            $hasBatchAlloc = array_key_exists('batch_allocation', $e) && $e['batch_allocation'] !== null && $e['batch_allocation'] !== [];
+            $hasSerialAlloc = array_key_exists('serial_allocation', $e) && $e['serial_allocation'] !== null && $e['serial_allocation'] !== [];
+            if ($hasBatchAlloc && $hasSerialAlloc) {
+                throw ValidationException::withMessages([
+                    'inventory_effect_snapshot' => 'Un efecto del snapshot lleva asignación de lotes Y de series a la vez. FAIL CLOSED.',
+                ]);
+            }
+            if ($hasBatchAlloc) {
                 $effect['batch_allocation'] = $this->normalizeBatchAllocation($e['batch_allocation'], $qtyBase);
+            }
+            // MS6-B0 — accept effects with OR without serial_allocation. An old
+            // quantity-only snapshot is NEVER reinterpreted as serial even if
+            // the product later became is_imei (see assertSnapshotArtifactSafeAndLock).
+            if ($hasSerialAlloc) {
+                $effect['serial_allocation'] = $this->normalizeSerialAllocation($e['serial_allocation'], $qtyBase);
             }
 
             $effects[] = $effect;
         }
+
+        $this->assertSnapshotSerialNumbersUniqueDocumentWide($effects);
 
         return [
             'version' => self::SNAPSHOT_VERSION,
@@ -529,6 +688,7 @@ class LocationAwarePurchaseStockService
         $this->assertInTransaction();
         $snapshot = $this->normalizeSnapshot($snapshot);
         $allowBatch = (bool) ($options['allow_batch'] ?? false);
+        $allowSerial = (bool) ($options['allow_serial'] ?? false);
 
         $ids = array_values(array_unique(array_map(fn ($e) => (int) $e['product_id'], $snapshot['effects'])));
         sort($ids);
@@ -563,9 +723,23 @@ class LocationAwarePurchaseStockService
             ]);
         }
         if ($nowImei) {
-            throw ValidationException::withMessages([
-                'inventory_effect_snapshot' => 'No se puede revertir con una operación quantity-only: los productos '.implode(', ', $nowImei).' ahora llevan serie/IMEI. Requiere el flujo artifact-aware (MS6).',
-            ]);
+            if (! $allowSerial) {
+                throw ValidationException::withMessages([
+                    'inventory_effect_snapshot' => 'No se puede revertir con una operación quantity-only: los productos '.implode(', ', $nowImei).' ahora llevan serie/IMEI. Requiere el flujo artifact-aware (MS6).',
+                ]);
+            }
+            // allow_serial: a snapshot effect for a now-serialized product MUST
+            // carry a serial_allocation. An old quantity-only effect cannot be
+            // reverted for a product that became is_imei — FAIL CLOSED.
+            $serialProducts = array_flip($nowImei);
+            foreach ($snapshot['effects'] as $e) {
+                if (isset($serialProducts[(int) $e['product_id']]) && empty($e['serial_allocation'])) {
+                    throw ValidationException::withMessages([
+                        'inventory_effect_snapshot' => 'El snapshot del producto '.$e['product_id'].' no trae asignación de series y el producto ahora lleva serie/IMEI. No se puede adivinar. FAIL CLOSED.',
+                    ]);
+                }
+            }
+            $this->assertSnapshotSerialAllocationSafeAndLock($snapshot);
         }
         if ($nowBatch) {
             if (! $allowBatch) {
@@ -685,7 +859,46 @@ class LocationAwarePurchaseStockService
             }
         }
 
-        // ===== PHASE B — ALL GENERAL INVENTORY (unchanged per-effect keys) ====
+        // ===== PHASE B — ALL SERIAL ARTIFACTS (one atomic set) ===============
+        // Canonical order: batch -> serial -> general. One set call for the
+        // whole document; the set is replay-safe and FAIL CLOSED.
+        $serialAllocations = [];
+        foreach ($snapshot['effects'] as $effect) {
+            $sdid = (int) ($effect['source_detail_id'] ?? 0);
+            foreach ($effect['serial_allocation'] ?? [] as $a) {
+                $sidx = (int) $a['sidx'];
+                $entry = [
+                    'product_serial_id' => (int) $a['product_serial_id'],
+                    'serial_number' => (string) $a['serial_number'],
+                    'idempotency_key' => $this->serialIdempotencyKey($documentType, $documentId, $revision, $sdid, $sidx, $operation),
+                    'expected_product_id' => (int) $effect['product_id'],
+                    'expected_variant_id' => $effect['product_variant_id'] !== null ? (int) $effect['product_variant_id'] : null,
+                ];
+                if ($documentType === self::DOC_PURCHASE && $apply) {
+                    // receive: stamp the per-line purchase linkage.
+                    $entry['link'] = [
+                        'purchase_id' => $documentId,
+                        'purchase_detail_id' => $sdid ?: null,
+                    ];
+                }
+                $serialAllocations[] = $entry;
+            }
+        }
+        if ($serialAllocations) {
+            $serial = app(LocationAwareSerialNumberService::class);
+            $serialContext = ['warehouse_id' => $warehouseId, 'inventory_location_id' => $locationId, 'reference_id' => $documentId];
+            if ($documentType === self::DOC_PURCHASE) {
+                $apply
+                    ? $serial->receivePurchaseMany($serialAllocations, $serialContext)
+                    : $serial->voidPurchaseMany($serialAllocations, $serialContext);
+            } else {
+                $apply
+                    ? $serial->returnToSupplierMany($serialAllocations, $serialContext)
+                    : $serial->reversePurchaseReturnMany($serialAllocations, $serialContext);
+            }
+        }
+
+        // ===== PHASE C — ALL GENERAL INVENTORY (unchanged per-effect keys) ====
         foreach ($snapshot['effects'] as $n => $effect) {
             // apply: delta tal cual. reverse: delta negado.
             $delta = $apply ? $effect['delta'] : -$effect['delta'];
@@ -770,6 +983,16 @@ class LocationAwarePurchaseStockService
     }
 
     /**
+     * MS6-B0 — serial-artifact idempotency key (one per unit). Same shape as the
+     * batch key but `:s:` instead of `:b:`; same revision + operation => same
+     * key (set-level replay-safe). < 120 chars.
+     */
+    public function serialIdempotencyKey(string $documentType, int $documentId, int $revision, int $sourceDetailId, int $sidx, string $operation): string
+    {
+        return $documentType.':'.$documentId.':rev:'.$revision.':detail:'.$sourceDetailId.':s:'.$sidx.':'.$operation;
+    }
+
+    /**
      * MS5-B2 — lock + validate the batch identity of every batch_allocation
      * entry against snapshot.warehouse_id / snapshot.inventory_location_id and
      * the effect's product/variant, BEFORE reverseSnapshot()/applySnapshot()
@@ -834,6 +1057,60 @@ class LocationAwarePurchaseStockService
             }
             if (! in_array((string) $b->status, $operable, true)) {
                 throw ValidationException::withMessages(['inventory_effect_snapshot' => 'El lote '.$bid.' está en un estado no operable ('.$b->status.'). FAIL CLOSED.']);
+            }
+        }
+    }
+
+    /**
+     * MS6-B0 — lock + validate the ProductSerial identity of every
+     * serial_allocation entry: id exists, serial_number matches EXACTLY, and
+     * product/variant match the effect. The specific set operation
+     * (receive/void/return/reverse) then validates the exact status + location.
+     * Locks by product_serial_id ASC.
+     *
+     * @throws ValidationException
+     */
+    private function assertSnapshotSerialAllocationSafeAndLock(array $snapshot): void
+    {
+        if (! Schema::hasTable('product_serials')) {
+            throw ValidationException::withMessages([
+                'inventory_effect_snapshot' => 'El esquema de series/IMEI no está disponible en este tenant. FAIL CLOSED.',
+            ]);
+        }
+
+        $expectBy = [];
+        foreach ($snapshot['effects'] as $e) {
+            foreach ($e['serial_allocation'] ?? [] as $a) {
+                $expectBy[(int) $a['product_serial_id']] = [
+                    'serial_number' => (string) $a['serial_number'],
+                    'product_id' => (int) $e['product_id'],
+                    'variant_id' => $e['product_variant_id'] !== null ? (int) $e['product_variant_id'] : null,
+                ];
+            }
+        }
+        if (! $expectBy) {
+            return;
+        }
+
+        $ids = array_keys($expectBy);
+        sort($ids, SORT_NUMERIC);
+        $rows = DB::table('product_serials')->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+
+        foreach ($ids as $sid) {
+            $r = $rows->get($sid);
+            $expect = $expectBy[$sid];
+            if (! $r) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'El serial '.$sid.' del snapshot ya no existe. FAIL CLOSED.']);
+            }
+            if ((string) $r->serial_number !== $expect['serial_number']) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'El serial '.$sid.' no coincide con el número de serie del snapshot. FAIL CLOSED.']);
+            }
+            if ((int) $r->product_id !== $expect['product_id']) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'El serial '.$sid.' no corresponde al producto del efecto. FAIL CLOSED.']);
+            }
+            $rVariant = $r->product_variant_id !== null ? (int) $r->product_variant_id : null;
+            if ($rVariant !== $expect['variant_id']) {
+                throw ValidationException::withMessages(['inventory_effect_snapshot' => 'El serial '.$sid.' no corresponde a la variante del efecto. FAIL CLOSED.']);
             }
         }
     }

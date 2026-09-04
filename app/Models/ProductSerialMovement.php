@@ -27,6 +27,9 @@ class ProductSerialMovement extends Model
         'warehouse_id', 'from_inventory_location_id', 'to_inventory_location_id',
         'reference_type', 'reference_id',
         'user_id', 'notes',
+        // MS6-B0 — native set operations only. Legacy logMovement() never sets
+        // these (they stay NULL for every legacy row).
+        'idempotency_key', 'idempotency_fingerprint',
         'created_at',
     ];
 

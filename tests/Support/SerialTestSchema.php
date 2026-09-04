@@ -9,16 +9,16 @@ use Illuminate\Support\Facades\Schema;
  * MS6-B0A — serial / IMEI ledger tables for the legacy characterization
  * ("golden master") suites.
  *
- * Mirrors the production migrations EXACTLY as of HEAD bf56686:
+ * Mirrors the production migrations:
  *   - 2026_06_22_000001_create_product_serials_table
  *   - 2026_06_22_000002_create_product_serial_movements_table
  *   - 2026_08_21_183000_add_location_tracking_to_batches_and_serials
- *     (product_serials.inventory_location_id, product_serial_movements
- *      .from_/to_inventory_location_id)
+ *   - 2026_09_10_000000_add_serial_native_foundation (MS6-B0):
+ *       product_serial_movements.idempotency_key (nullable UNIQUE) +
+ *       .idempotency_fingerprint, and product_serials.ps_pvls_idx.
  *
- * NOTE the deliberate omissions (they are what MS6-B0 foundation will ADD):
- *   - product_serials has NO deleted_at        (no SoftDeletes today)
- *   - product_serial_movements has NO idempotency_key / unique constraint
+ * NOTE the deliberate omission (unchanged in MS6-B0):
+ *   - product_serials has NO deleted_at   (no SoftDeletes — `voided` status).
  *
  * Complements Tests\Support\LegacyPurchaseTestSchema (which provides
  * products.is_imei but NOT the serial tables — so SerialNumberService
@@ -47,7 +47,9 @@ trait SerialTestSchema
                 $t->text('notes')->nullable();
                 $t->timestamps(6);
                 $t->unique('serial_number', 'ps_serial_number_uq');
-                // NO $t->softDeletes()  — matches production.
+                // MS6-B0 — the native-hot predicate index.
+                $t->index(['product_id', 'product_variant_id', 'inventory_location_id', 'status'], 'ps_pvls_idx');
+                // NO $t->softDeletes()  — `voided` status, not a soft delete.
             });
         }
 
@@ -66,8 +68,10 @@ trait SerialTestSchema
                 $t->unsignedBigInteger('reference_id')->nullable();
                 $t->unsignedInteger('user_id')->nullable();
                 $t->text('notes')->nullable();
+                // MS6-B0 — legacy rows leave these NULL; native set ops write them.
+                $t->string('idempotency_key', 191)->nullable()->unique('psm_idempotency_key_uq');
+                $t->string('idempotency_fingerprint', 64)->nullable();
                 $t->timestamp('created_at', 6)->nullable();
-                // NO idempotency_key, NO unique constraint — matches production.
             });
         }
     }

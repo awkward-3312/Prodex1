@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\Support\SerialTestSchema;
 use Tests\TestCase;
@@ -145,24 +146,62 @@ class SerialLegacyContractTest extends TestCase
     }
 
     // =====================================================================
-    // §24 — movement ledger has NO idempotency key
+    // §24 — movement ledger idempotency key (ADDED by MS6-B0, migration
+    //       2026_09_10_000000_add_serial_native_foundation)
     // =====================================================================
 
-    public function test_product_serial_movements_has_no_idempotency_key_column(): void
+    public function test_product_serial_movements_now_has_a_nullable_unique_idempotency_key(): void
     {
         $this->buildSerialSchema();
-        $this->assertTrue(Schema::hasTable('product_serial_movements'));
-        $this->assertFalse(
-            Schema::hasColumn('product_serial_movements', 'idempotency_key'),
-            'MS6-B0 foundation will ADD product_serial_movements.idempotency_key (nullable unique)'
-        );
+        $this->assertTrue(Schema::hasColumn('product_serial_movements', 'idempotency_key'));
+        $this->assertTrue(Schema::hasColumn('product_serial_movements', 'idempotency_fingerprint'));
+
+        // legacy-shaped row (no key) still inserts.
+        DB::table('product_serial_movements')->insert([
+            'product_serial_id' => 1, 'serial_number' => 'LEGACY', 'action' => 'purchased',
+            'created_at' => now(),
+        ]);
+        DB::table('product_serial_movements')->insert([
+            'product_serial_id' => 2, 'serial_number' => 'LEGACY2', 'action' => 'sold',
+            'created_at' => now(),
+        ]);
+        // two distinct non-null keys are fine.
+        DB::table('product_serial_movements')->insert([
+            'product_serial_id' => 3, 'serial_number' => 'N1', 'action' => 'purchased',
+            'idempotency_key' => 'k-1', 'created_at' => now(),
+        ]);
+        DB::table('product_serial_movements')->insert([
+            'product_serial_id' => 4, 'serial_number' => 'N2', 'action' => 'purchased',
+            'idempotency_key' => 'k-2', 'created_at' => now(),
+        ]);
+        // a duplicate non-null key is rejected.
+        try {
+            DB::table('product_serial_movements')->insert([
+                'product_serial_id' => 5, 'serial_number' => 'N3', 'action' => 'purchased',
+                'idempotency_key' => 'k-1', 'created_at' => now(),
+            ]);
+            $this->fail('expected a unique-constraint violation');
+        } catch (\Illuminate\Database\QueryException $e) {
+            $this->assertTrue(true);
+        }
+        $this->assertSame(4, DB::table('product_serial_movements')->count());
     }
 
-    public function test_production_migration_does_not_define_a_serial_movement_idempotency_key(): void
+    public function test_foundation_migration_adds_the_serial_movement_idempotency_key(): void
     {
-        $mig = $this->read('database/migrations/tenant/2026_06_22_000002_create_product_serial_movements_table.php');
-        $this->assertStringNotContainsString('idempotency_key', $mig);
-        $this->assertStringNotContainsString('->unique(', $mig, 'only plain indexes today, no unique constraint');
+        $mig = $this->read('database/migrations/tenant/2026_09_10_000000_add_serial_native_foundation.php');
+        $this->assertStringContainsString("'product_serial_movements'", $mig);
+        $this->assertStringContainsString("idempotency_key", $mig);
+        $this->assertStringContainsString("->nullable()->unique('psm_idempotency_key_uq')", $mig);
+        $this->assertStringContainsString("idempotency_fingerprint", $mig);
+        $this->assertStringContainsString("'ps_pvls_idx'", $mig);
+        // reversible.
+        $this->assertStringContainsString('public function down()', $mig);
+        $this->assertStringContainsString("dropUnique('psm_idempotency_key_uq')", $mig);
+        $this->assertStringContainsString("dropIndex('ps_pvls_idx')", $mig);
+        // Additive-only: no new table, no soft delete.
+        $this->assertStringNotContainsString('Schema::create', $mig);
+        $this->assertStringNotContainsString('->softDeletes(', $mig);
     }
 
     // =====================================================================
