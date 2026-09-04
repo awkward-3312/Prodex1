@@ -18,10 +18,14 @@ use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Models\WooCommerceLog;
 use App\Models\WooCommerceSetting;
+use App\Services\ExternalChannelInventoryService;
+use App\Services\LocationAwareSaleStockService;
+use App\Services\WarehouseInventoryModeResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class SyncService
@@ -247,35 +251,57 @@ class SyncService
         DB::transaction(function () use ($sale, $reason, $newWooStatus) {
             // Restore stock — only if the sale was previously decremented
             // (i.e. statut was 'completed'). Mirrors SalesController::destroy.
+            //
+            // MS7-B2-2B — a location-native Woo sale (inventory_location_id
+            // set) never touched product_warehouse in the first place; its
+            // physical effect lives entirely in inventory_effect_snapshot,
+            // so it must be reversed the SAME way MS7-B1/B2-1/B2-3/B2-4
+            // reverse a native document: LocationAwareSaleStockService::
+            // reverseSnapshot(). Batch/serial reverse steps are unnecessary
+            // here — a Woo-native Sale can never carry batch/serial
+            // artifacts (order import FAILS CLOSED on those upstream). The
+            // legacy branch (no inventory_location_id) below is unchanged.
             if (($sale->statut ?? '') === 'completed') {
-                $details = SaleDetail::where('sale_id', $sale->id)
-                    ->whereNull('deleted_at')
-                    ->get();
-                foreach ($details as $d) {
-                    $unit = $d->sale_unit_id ? Unit::find($d->sale_unit_id) : null;
-                    if (!$unit) {
-                        $product = Product::find($d->product_id);
-                        if ($product && $product->unit_sale_id) {
-                            $unit = Unit::find($product->unit_sale_id);
+                if ($sale->inventory_location_id) {
+                    // A degenerate all-zero-quantity order (no physical
+                    // effect was ever applied) leaves no snapshot behind —
+                    // nothing to reverse, matching the legacy branch's own
+                    // "loop over zero details, no-op" behaviour.
+                    if ($sale->inventory_effect_snapshot) {
+                        $svc = app(LocationAwareSaleStockService::class);
+                        $snapshot = $svc->normalizeSnapshot($sale->inventory_effect_snapshot);
+                        $svc->reverseSnapshot($snapshot, $sale->id);
+                    }
+                } else {
+                    $details = SaleDetail::where('sale_id', $sale->id)
+                        ->whereNull('deleted_at')
+                        ->get();
+                    foreach ($details as $d) {
+                        $unit = $d->sale_unit_id ? Unit::find($d->sale_unit_id) : null;
+                        if (!$unit) {
+                            $product = Product::find($d->product_id);
+                            if ($product && $product->unit_sale_id) {
+                                $unit = Unit::find($product->unit_sale_id);
+                            }
                         }
-                    }
 
-                    $qty = (float) $d->quantity;
-                    $opv = max((float) ($unit->operator_value ?? 1), 1);
-                    $addQ = ($unit && ($unit->operator ?? '') === '/') ? ($qty / $opv) : ($qty * $opv);
+                        $qty = (float) $d->quantity;
+                        $opv = max((float) ($unit->operator_value ?? 1), 1);
+                        $addQ = ($unit && ($unit->operator ?? '') === '/') ? ($qty / $opv) : ($qty * $opv);
 
-                    $pwQuery = product_warehouse::whereNull('deleted_at')
-                        ->where('warehouse_id', $sale->warehouse_id)
-                        ->where('product_id', $d->product_id);
-                    if ($d->product_variant_id) {
-                        $pwQuery->where('product_variant_id', $d->product_variant_id);
-                    } else {
-                        $pwQuery->whereNull('product_variant_id');
-                    }
-                    $pw = $pwQuery->first();
-                    if ($pw && $unit) {
-                        $pw->qte = max(0, ((float) $pw->qte) + $addQ);
-                        $pw->save();
+                        $pwQuery = product_warehouse::whereNull('deleted_at')
+                            ->where('warehouse_id', $sale->warehouse_id)
+                            ->where('product_id', $d->product_id);
+                        if ($d->product_variant_id) {
+                            $pwQuery->where('product_variant_id', $d->product_variant_id);
+                        } else {
+                            $pwQuery->whereNull('product_variant_id');
+                        }
+                        $pw = $pwQuery->first();
+                        if ($pw && $unit) {
+                            $pw->qte = max(0, ((float) $pw->qte) + $addQ);
+                            $pw->save();
+                        }
                     }
                 }
             }
@@ -322,16 +348,8 @@ class SyncService
         $errors = 0;
         $processed = 0;
 
-        // Pick default warehouse if not provided
-        if (!$warehouseId || $warehouseId <= 0) {
-            $settings = Setting::whereNull('deleted_at')->first();
-            $candidate = $settings ? (int) ($settings->warehouse_id ?? 0) : 0;
-            $warehouseId = $candidate > 0 && Warehouse::where('id', $candidate)->whereNull('deleted_at')->exists()
-                ? $candidate
-                : (int) (Warehouse::whereNull('deleted_at')->min('id') ?? 0);
-        }
-
-        if (!$warehouseId || $warehouseId <= 0) {
+        $warehouseId = $this->resolveOrderWarehouseId($warehouseId);
+        if (!$warehouseId) {
             return ['ok' => false, 'error' => 'No warehouse configured for order import'];
         }
 
@@ -371,361 +389,19 @@ class SyncService
                 foreach ($orders as $order) {
                     $processed++;
 
+                    // MS7-B2-2B — one shared core for both pullOrders() and
+                    // pullSingleOrder(); a single order's failure never
+                    // aborts the batch (per-order try/catch, unchanged).
                     try {
-                        $wooOrderId = (int) ($order['id'] ?? 0);
-                        if ($wooOrderId <= 0) {
-                            $skipped++;
-                            continue;
-                        }
-
-                        $wooStatus = (string) ($order['status'] ?? '');
-
-                        // Idempotency:
-                        // - If an active sale exists => update STATUS ONLY (do not re-import lines/payments/stock).
-                        //   If the new Woo status is a reversal (cancelled/refunded/failed),
-                        //   reverse the imported sale: restore stock + soft-delete payments + soft-delete sale.
-                        // - If a sale exists but is soft-deleted => allow inserting a new sale (do NOT restore).
-                        $existingActiveSale = Sale::whereNull('deleted_at')->where('woocommerce_order_id', $wooOrderId)->first();
-                        if ($existingActiveSale) {
-                            if ($this->isWooReversalStatus($wooStatus)) {
-                                $this->reverseImportedSale($existingActiveSale, 'woo status changed to '.$wooStatus, $wooStatus);
-                                $updated++;
-                                continue;
-                            }
-                            $existingActiveSale->statut = $this->mapWooOrderStatusToStockyStatut($wooStatus);
-                            $existingActiveSale->woocommerce_order_status = $wooStatus;
-                            $existingActiveSale->woocommerce_order_number = (string) ($order['number'] ?? $existingActiveSale->woocommerce_order_number ?? '');
-                            $existingActiveSale->save();
-                            $updated++;
-                            continue;
-                        }
-
-                        // Skip new orders that are in a non-sale status (cancelled / failed / refunded / trash / draft).
-                        if ($this->isWooReversalStatus($wooStatus)) {
-                            $skipped++;
-                            $this->log('orders.pull', 'info', 'Skipped order: non-sale Woo status', [
-                                'woocommerce_order_id' => $wooOrderId,
-                                'woo_status' => $wooStatus,
-                            ]);
-                            continue;
-                        }
-
-                        $wooCustomerId = (int) ($order['customer_id'] ?? 0);
-                        $billing = $order['billing'] ?? [];
-                        $billingEmail = is_array($billing) ? trim((string) ($billing['email'] ?? '')) : '';
-                        $normalizedEmail = $this->normalizeEmail($billingEmail);
-
-                        // Resolve client: prefer woocommerce_id -> fallback to email -> else default client (if configured)
-                        $client = null;
-                        if ($wooCustomerId > 0) {
-                            $client = PosClient::whereNull('deleted_at')->where('woocommerce_id', $wooCustomerId)->first();
-                        }
-                        if (!$client && $normalizedEmail !== '') {
-                            $client = PosClient::whereNull('deleted_at')
-                                ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
-                                ->first();
-                        }
-                        if (!$client) {
-                            $settings = Setting::whereNull('deleted_at')->with('Client')->first();
-                            $defaultClientId = $settings ? (int) ($settings->client_id ?? 0) : 0;
-                            if ($defaultClientId > 0) {
-                                $client = PosClient::whereNull('deleted_at')->find($defaultClientId);
-                            }
-                        }
-
-                        // If no client and we have an email, create one
-                        if (!$client && $normalizedEmail !== '') {
-                            $maxCode = PosClient::max('code') ?? 0;
-                            $newCode = $maxCode + 1;
-
-                            $clientName = '';
-                            if (is_array($billing)) {
-                                $fn = trim((string) ($billing['first_name'] ?? ''));
-                                $ln = trim((string) ($billing['last_name'] ?? ''));
-                                $clientName = trim($fn.' '.$ln);
-                            }
-                            if ($clientName === '') {
-                                $clientName = $billingEmail;
-                            }
-
-                            $validator = Validator::make(
-                                ['email' => $billingEmail],
-                                ['email' => ['required', 'email', Rule::unique('clients', 'email')->whereNull('deleted_at')]]
-                            );
-                            if ($validator->fails()) {
-                                $skipped++;
-                                $errors++;
-                                $this->log('orders.pull', 'warning', 'Skipped order: customer email conflicts with existing client', [
-                                    'woocommerce_order_id' => $wooOrderId,
-                                    'email' => $billingEmail,
-                                    'error' => $validator->errors()->first('email'),
-                                ]);
-                                continue;
-                            }
-
-                            $client = PosClient::create([
-                                'name' => $clientName,
-                                'code' => $newCode,
-                                'email' => $billingEmail,
-                                'phone' => is_array($billing) ? ((string) ($billing['phone'] ?? '')) : '',
-                                'adresse' => is_array($billing) ? $this->joinAddressLines((string) ($billing['address_1'] ?? ''), (string) ($billing['address_2'] ?? '')) : '',
-                                'city' => is_array($billing) ? ((string) ($billing['city'] ?? '')) : '',
-                                'state' => is_array($billing) ? $this->resolveWooStateName((string) ($billing['state'] ?? ''), (string) ($billing['country'] ?? '')) : '',
-                                'zip' => is_array($billing) ? ((string) ($billing['postcode'] ?? '')) : '',
-                                'country' => is_array($billing) ? $this->resolveWooCountryName((string) ($billing['country'] ?? '')) : '',
-                                'woocommerce_id' => $wooCustomerId > 0 ? $wooCustomerId : null,
-                            ]);
-                        }
-
-                        if (!$client) {
-                            $skipped++;
+                        $result = $this->processWooOrder($order, $warehouseId, $userId);
+                        match ($result['action']) {
+                            'imported' => $created++,
+                            'updated', 'reversed' => $updated++,
+                            default => $skipped++,
+                        };
+                        if (!empty($result['counts_as_error'])) {
                             $errors++;
-                            $this->log('orders.pull', 'warning', 'Skipped order: could not resolve customer', [
-                                'woocommerce_order_id' => $wooOrderId,
-                                'customer_id' => $wooCustomerId,
-                                'billing_email' => $billingEmail,
-                            ]);
-                            continue;
                         }
-
-                        $status = (string) ($order['status'] ?? '');
-                        $dateCreated = (string) ($order['date_created'] ?? $order['date_created_gmt'] ?? '');
-                        $date = $dateCreated !== '' ? substr($dateCreated, 0, 10) : now()->toDateString();
-                        $time = $dateCreated !== '' ? substr(str_replace('T', ' ', $dateCreated), 11, 8) : now()->toTimeString();
-
-                        $grandTotal = (float) ($order['total'] ?? 0);
-                        $taxNet = (float) ($order['total_tax'] ?? 0);
-                        $shipping = (float) ($order['shipping_total'] ?? 0);
-                        $discount = (float) ($order['discount_total'] ?? 0);
-
-                        $payment = $this->computePaymentFromWooOrder($order, $grandTotal);
-                        $paidAmount = $payment['paid_amount'];
-                        $paymentStatut = $payment['payment_statut'];
-
-                        $saleStatut = $this->mapWooOrderStatusToStockyStatut($status);
-
-                        $ref = 'WO-'.$wooOrderId;
-                        $notes = $this->composeSaleNotesFromWooOrder($order, $wooOrderId);
-
-                        $lineItems = $order['line_items'] ?? [];
-                        if (!is_array($lineItems) || empty($lineItems)) {
-                            $skipped++;
-                            continue;
-                        }
-
-                        // Build sale detail rows + stock adjustments
-                        $detailRows = [];
-                        $stockAdjustments = [];
-
-                        foreach ($lineItems as $li) {
-                            if (!is_array($li)) {
-                                continue;
-                            }
-
-                            $qty = (float) ($li['quantity'] ?? 0);
-                            if ($qty <= 0) {
-                                continue;
-                            }
-
-                            $wooProductId = (int) ($li['product_id'] ?? 0);
-                            $wooVariationId = (int) ($li['variation_id'] ?? 0);
-                            $sku = trim((string) ($li['sku'] ?? ''));
-
-                            $resolved = $this->resolveLineItemMapping($wooProductId, $wooVariationId, $sku);
-                            $product = $resolved['product'];
-                            $variant = $resolved['variant'];
-
-                            if (!$product) {
-                                $errors++;
-                                $skipped++;
-                                $this->log('orders.pull', 'warning', 'Skipped order: could not map line item product', [
-                                    'woocommerce_order_id' => $wooOrderId,
-                                    'woo_product_id' => $wooProductId,
-                                    'woo_variation_id' => $wooVariationId,
-                                    'sku' => $sku,
-                                ]);
-                                // Abort whole order for safety
-                                throw new \RuntimeException('Order contains unmapped products');
-                            }
-
-                            $unitId = (int) ($product->unit_sale_id ?? 0);
-                            $unit = $unitId > 0 ? Unit::find($unitId) : null;
-
-                            $price = (float) ($li['price'] ?? 0);
-                            if ($price <= 0) {
-                                $subtotal = (float) ($li['subtotal'] ?? $li['total'] ?? 0);
-                                $price = $qty > 0 ? ($subtotal / $qty) : 0;
-                            }
-                            $lineTotal = (float) ($li['total'] ?? $li['subtotal'] ?? 0);
-
-                            $detailRows[] = [
-                                'date' => $date,
-                                'sale_id' => 0, // filled after sale create
-                                'sale_unit_id' => $unitId > 0 ? $unitId : null,
-                                'quantity' => $qty,
-                                'price' => $price,
-                                'TaxNet' => 0,
-                                'tax_method' => '1',
-                                'discount' => 0,
-                                'discount_method' => '1',
-                                'product_id' => (int) $product->id,
-                                'product_variant_id' => $variant ? (int) $variant->id : null,
-                                'total' => $lineTotal,
-                                'price_type' => 'retail',
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ];
-
-                            $stockAdjustments[] = [
-                                'product_id' => (int) $product->id,
-                                'product_variant_id' => $variant ? (int) $variant->id : null,
-                                'unit' => $unit,
-                                'qty' => $qty,
-                            ];
-                        }
-
-                        DB::transaction(function () use (
-                            $wooOrderId,
-                            $order,
-                            $warehouseId,
-                            $userId,
-                            $date,
-                            $time,
-                            $ref,
-                            $client,
-                            $grandTotal,
-                            $taxNet,
-                            $discount,
-                            $shipping,
-                            $paidAmount,
-                            $paymentStatut,
-                            $saleStatut,
-                            $notes,
-                            &$detailRows,
-                            $stockAdjustments,
-                            &$created
-                        ) {
-                            $saleAttrs = [
-                                'date' => $date,
-                                'time' => $time,
-                                'Ref' => $ref,
-                                'is_pos' => 0,
-                                'client_id' => (int) $client->id,
-                                'warehouse_id' => (int) $warehouseId,
-                                'user_id' => (int) $userId,
-                                'GrandTotal' => $grandTotal,
-                                'TaxNet' => $taxNet,
-                                'tax_rate' => 0,
-                                'discount' => $discount,
-                                'discount_Method' => '2',
-                                'shipping' => $shipping,
-                                'statut' => $saleStatut,
-                                'payment_statut' => $paymentStatut,
-                                'paid_amount' => $paidAmount,
-                                'notes' => $notes,
-                                'woocommerce_order_id' => $wooOrderId,
-                                'woocommerce_order_number' => (string) ($order['number'] ?? ''),
-                                'woocommerce_order_status' => (string) ($order['status'] ?? ''),
-                            ];
-
-                            // Ensure idempotency inside transaction too (active only).
-                            // If a sale exists but is soft-deleted, we still insert a new one.
-                            if (Sale::whereNull('deleted_at')->where('woocommerce_order_id', $wooOrderId)->exists()) {
-                                return;
-                            }
-
-                            $sale = Sale::create($saleAttrs);
-
-                            foreach ($detailRows as &$r) {
-                                $r['sale_id'] = (int) $sale->id;
-                            }
-                            unset($r);
-
-                            DB::table('sale_details')->insert($detailRows);
-
-                            // Create a payment_sales record for paid Woo orders (idempotent per sale)
-                            if ($paidAmount > 0) {
-                                // Prefix with WO- so the Ref doesn't collide with manually-created
-                                // payments whose Ref happens to be the same numeric string.
-                                $wooPayRef = 'WO-'.$wooOrderId;
-                                // Idempotency:
-                                // - If an active payment exists for this sale, update it (avoid duplicates).
-                                // - Else if an active payment exists by Ref, update/link it to this sale.
-                                // - If a matching payment is soft-deleted, create a NEW payment (do NOT restore).
-                                $activePaymentForSale = PaymentSale::whereNull('deleted_at')
-                                    ->where('sale_id', $sale->id)
-                                    ->orderByDesc('id')
-                                    ->first();
-                                $activePaymentByRef = PaymentSale::whereNull('deleted_at')->where('Ref', $wooPayRef)->first();
-
-                                if ($activePaymentForSale) {
-                                    $activePaymentForSale->Ref = $wooPayRef;
-                                    $activePaymentForSale->date = $date;
-                                    $activePaymentForSale->montant = $paidAmount;
-                                    $activePaymentForSale->account_id = null;
-                                    $activePaymentForSale->save();
-                                } elseif ($activePaymentByRef) {
-                                    $activePaymentByRef->sale_id = $sale->id;
-                                    $activePaymentByRef->date = $date;
-                                    $activePaymentByRef->montant = $paidAmount;
-                                    $activePaymentByRef->account_id = null;
-                                    $activePaymentByRef->save();
-                                } else {
-                                    $paymentTitle = trim((string) ($order['payment_method_title'] ?? $order['payment_method'] ?? ''));
-                                    $paymentMethodId = null;
-                                    if ($paymentTitle !== '') {
-                                        $pm = PaymentMethod::where('name', $paymentTitle)->first();
-                                        if ($pm) {
-                                            $paymentMethodId = (int) $pm->id;
-                                        }
-                                    }
-                                    if (!$paymentMethodId) {
-                                        // Fallback: first payment method
-                                        $pm = PaymentMethod::orderBy('id')->first();
-                                        $paymentMethodId = $pm ? (int) $pm->id : null;
-                                    }
-
-                                    PaymentSale::create([
-                                        'sale_id' => $sale->id,
-                                        'date' => $date,
-                                        'montant' => $paidAmount,
-                                        // Use Woo order id as idempotency reference
-                                        'Ref' => $wooPayRef,
-                                        'change' => 0,
-                                        'payment_method_id' => $paymentMethodId,
-                                        'user_id' => $userId,
-                                        'notes' => 'Imported from WooCommerce order #'.((string) ($order['number'] ?? $wooOrderId)).($paymentTitle !== '' ? ' ('.$paymentTitle.')' : ''),
-                                        'account_id' => null,
-                                    ]);
-                                }
-                            }
-
-                            // Adjust stock only for completed-like orders
-                            // Adjust stock for completed-like orders (treat soft-deleted as new import)
-                            if ($saleStatut === 'completed') {
-                                foreach ($stockAdjustments as $adj) {
-                                    $pw = product_warehouse::where('deleted_at', '=', null)
-                                        ->where('warehouse_id', $warehouseId)
-                                        ->where('product_id', $adj['product_id']);
-                                    if ($adj['product_variant_id']) {
-                                        $pw->where('product_variant_id', $adj['product_variant_id']);
-                                    }
-                                    $pw = $pw->first();
-
-                                    $unit = $adj['unit'];
-                                    if ($pw && $unit) {
-                                        if ($unit->operator === '/') {
-                                            $pw->qte -= $adj['qty'] / (float) $unit->operator_value;
-                                        } else {
-                                            $pw->qte -= $adj['qty'] * (float) $unit->operator_value;
-                                        }
-                                        $pw->save();
-                                    }
-                                }
-                            }
-
-                            $created++;
-                        }, 3);
                     } catch (\Throwable $e) {
                         $errors++;
                         $this->log('orders.pull', 'error', 'Failed to import order: '.$e->getMessage(), [
@@ -754,7 +430,9 @@ class SyncService
     /**
      * Pull a single WooCommerce order into Stocky sales (idempotent).
      *
-     * This is a focused version of pullOrders() used by the UI per-row sync button.
+     * This is a focused version of pullOrders() used by the UI per-row sync
+     * button — shares the SAME processWooOrder() core (MS7-B2-2B; previously
+     * an independent, byte-for-byte duplicated implementation).
      */
     public function pullSingleOrder(int $wooOrderId, int $userId, ?int $warehouseId = null): array
     {
@@ -762,22 +440,10 @@ class SyncService
             return ['ok' => false, 'error' => 'Invalid WooCommerce order id'];
         }
 
-        // Pick default warehouse if not provided (same as pullOrders)
-        if (!$warehouseId || $warehouseId <= 0) {
-            $settings = Setting::whereNull('deleted_at')->first();
-            $candidate = $settings ? (int) ($settings->warehouse_id ?? 0) : 0;
-            $warehouseId = $candidate > 0 && Warehouse::where('id', $candidate)->whereNull('deleted_at')->exists()
-                ? $candidate
-                : (int) (Warehouse::whereNull('deleted_at')->min('id') ?? 0);
-        }
-        if (!$warehouseId || $warehouseId <= 0) {
+        $warehouseId = $this->resolveOrderWarehouseId($warehouseId);
+        if (!$warehouseId) {
             return ['ok' => false, 'error' => 'No warehouse configured for order import'];
         }
-
-        // Idempotency:
-        // - If an active sale exists => update STATUS ONLY (do not re-import lines/payments/stock).
-        // - If a sale exists but is soft-deleted => allow inserting a new sale (do NOT restore).
-        $existingActiveSale = Sale::whereNull('deleted_at')->where('woocommerce_order_id', $wooOrderId)->first();
 
         $res = $this->client->getNoRetry('orders/'.$wooOrderId, [], 20, 5);
         if (!$res->successful()) {
@@ -790,318 +456,498 @@ class SyncService
         }
 
         try {
-            $wooOrderId = (int) ($order['id'] ?? 0);
-            if ($wooOrderId <= 0) {
-                return ['ok' => false, 'error' => 'Invalid WooCommerce order payload'];
-            }
+            $result = $this->processWooOrder($order, $warehouseId, $userId);
 
-            $wooStatus = (string) ($order['status'] ?? '');
-
-            // If already imported, update status only and exit. If the new Woo
-            // status is a reversal (cancelled/refunded/failed), reverse the
-            // imported sale instead.
-            if ($existingActiveSale) {
-                if ($this->isWooReversalStatus($wooStatus)) {
-                    $this->reverseImportedSale($existingActiveSale, 'woo status changed to '.$wooStatus, $wooStatus);
-                    return ['ok' => true, 'created' => 0, 'updated' => 1, 'skipped' => 0, 'errors' => 0, 'processed' => 1, 'reversed' => true];
-                }
-                $existingActiveSale->statut = $this->mapWooOrderStatusToStockyStatut($wooStatus);
-                $existingActiveSale->woocommerce_order_status = $wooStatus;
-                $existingActiveSale->woocommerce_order_number = (string) ($order['number'] ?? $existingActiveSale->woocommerce_order_number ?? '');
-                $existingActiveSale->save();
-
-                return ['ok' => true, 'created' => 0, 'updated' => 1, 'skipped' => 0, 'errors' => 0, 'processed' => 1, 'already_imported' => true];
-            }
-
-            // Skip new orders that are in a non-sale status.
-            if ($this->isWooReversalStatus($wooStatus)) {
-                $this->log('orders.pull', 'info', 'Skipped order: non-sale Woo status', [
-                    'woocommerce_order_id' => $wooOrderId,
-                    'woo_status' => $wooStatus,
-                ]);
-                return ['ok' => true, 'created' => 0, 'updated' => 0, 'skipped' => 1, 'errors' => 0, 'processed' => 1, 'skipped_reason' => 'non_sale_status'];
-            }
-
-            // Resolve client: prefer woocommerce_id -> fallback to email -> else default client (if configured)
-            $wooCustomerId = (int) ($order['customer_id'] ?? 0);
-            $billing = $order['billing'] ?? [];
-            $billingEmail = is_array($billing) ? trim((string) ($billing['email'] ?? '')) : '';
-            $normalizedEmail = $this->normalizeEmail($billingEmail);
-
-            $client = null;
-            if ($wooCustomerId > 0) {
-                $client = PosClient::whereNull('deleted_at')->where('woocommerce_id', $wooCustomerId)->first();
-            }
-            if (!$client && $normalizedEmail !== '') {
-                $client = PosClient::whereNull('deleted_at')
-                    ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
-                    ->first();
-            }
-            if (!$client) {
-                $settings = Setting::whereNull('deleted_at')->with('Client')->first();
-                $defaultClientId = $settings ? (int) ($settings->client_id ?? 0) : 0;
-                if ($defaultClientId > 0) {
-                    $client = PosClient::whereNull('deleted_at')->find($defaultClientId);
-                }
-            }
-
-            // If no client and we have an email, create one (only if unique)
-            if (!$client && $normalizedEmail !== '') {
-                $validator = Validator::make(
-                    ['email' => $billingEmail],
-                    ['email' => ['required', 'email', Rule::unique('clients', 'email')->whereNull('deleted_at')]]
-                );
-                if ($validator->fails()) {
-                    return ['ok' => false, 'error' => 'Order customer email conflicts with existing client: '.$validator->errors()->first('email')];
-                }
-
-                $maxCode = PosClient::max('code') ?? 0;
-                $newCode = $maxCode + 1;
-
-                $clientName = '';
-                if (is_array($billing)) {
-                    $fn = trim((string) ($billing['first_name'] ?? ''));
-                    $ln = trim((string) ($billing['last_name'] ?? ''));
-                    $clientName = trim($fn.' '.$ln);
-                }
-                if ($clientName === '') {
-                    $clientName = $billingEmail;
-                }
-
-                $client = PosClient::create([
-                    'name' => $clientName,
-                    'code' => $newCode,
-                    'email' => $billingEmail,
-                    'phone' => is_array($billing) ? ((string) ($billing['phone'] ?? '')) : '',
-                    'adresse' => is_array($billing) ? $this->joinAddressLines((string) ($billing['address_1'] ?? ''), (string) ($billing['address_2'] ?? '')) : '',
-                    'city' => is_array($billing) ? ((string) ($billing['city'] ?? '')) : '',
-                    'state' => is_array($billing) ? $this->resolveWooStateName((string) ($billing['state'] ?? ''), (string) ($billing['country'] ?? '')) : '',
-                    'zip' => is_array($billing) ? ((string) ($billing['postcode'] ?? '')) : '',
-                    'country' => is_array($billing) ? $this->resolveWooCountryName((string) ($billing['country'] ?? '')) : '',
-                    'woocommerce_id' => $wooCustomerId > 0 ? $wooCustomerId : null,
-                ]);
-            }
-
-            if (!$client) {
-                return ['ok' => false, 'error' => 'Could not resolve order customer'];
-            }
-
-            $status = (string) ($order['status'] ?? '');
-            $dateCreated = (string) ($order['date_created'] ?? $order['date_created_gmt'] ?? '');
-            $date = $dateCreated !== '' ? substr($dateCreated, 0, 10) : now()->toDateString();
-            $time = $dateCreated !== '' ? substr(str_replace('T', ' ', $dateCreated), 11, 8) : now()->toTimeString();
-
-            $grandTotal = (float) ($order['total'] ?? 0);
-            $taxNet = (float) ($order['total_tax'] ?? 0);
-            $shipping = (float) ($order['shipping_total'] ?? 0);
-            $discount = (float) ($order['discount_total'] ?? 0);
-
-            $payment = $this->computePaymentFromWooOrder($order, $grandTotal);
-            $paidAmount = $payment['paid_amount'];
-            $paymentStatut = $payment['payment_statut'];
-
-            $saleStatut = $this->mapWooOrderStatusToStockyStatut($status);
-            $ref = 'WO-'.$wooOrderId;
-            $notes = $this->composeSaleNotesFromWooOrder($order, $wooOrderId);
-
-            $lineItems = $order['line_items'] ?? [];
-            if (!is_array($lineItems) || empty($lineItems)) {
-                return ['ok' => false, 'error' => 'Order has no line items'];
-            }
-
-            $detailRows = [];
-            $stockAdjustments = [];
-
-            foreach ($lineItems as $li) {
-                if (!is_array($li)) continue;
-                $qty = (float) ($li['quantity'] ?? 0);
-                if ($qty <= 0) continue;
-
-                $wooProductId = (int) ($li['product_id'] ?? 0);
-                $wooVariationId = (int) ($li['variation_id'] ?? 0);
-                $sku = trim((string) ($li['sku'] ?? ''));
-
-                $resolved = $this->resolveLineItemMapping($wooProductId, $wooVariationId, $sku);
-                $product = $resolved['product'];
-                $variant = $resolved['variant'];
-
-                if (!$product) {
-                    return ['ok' => false, 'error' => 'Order contains unmapped products'];
-                }
-
-                $unitId = (int) ($product->unit_sale_id ?? 0);
-                $unit = $unitId > 0 ? Unit::find($unitId) : null;
-
-                $price = (float) ($li['price'] ?? 0);
-                if ($price <= 0) {
-                    $subtotal = (float) ($li['subtotal'] ?? $li['total'] ?? 0);
-                    $price = $qty > 0 ? ($subtotal / $qty) : 0;
-                }
-                $lineTotal = (float) ($li['total'] ?? $li['subtotal'] ?? 0);
-
-                $detailRows[] = [
-                    'date' => $date,
-                    'sale_id' => 0,
-                    'sale_unit_id' => $unitId > 0 ? $unitId : null,
-                    'quantity' => $qty,
-                    'price' => $price,
-                    'TaxNet' => 0,
-                    'tax_method' => '1',
-                    'discount' => 0,
-                    'discount_method' => '1',
-                    'product_id' => (int) $product->id,
-                    'product_variant_id' => $variant ? (int) $variant->id : null,
-                    'total' => $lineTotal,
-                    'price_type' => 'retail',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-
-                $stockAdjustments[] = [
-                    'product_id' => (int) $product->id,
-                    'product_variant_id' => $variant ? (int) $variant->id : null,
-                    'unit' => $unit,
-                    'qty' => $qty,
-                ];
-            }
-
-            DB::transaction(function () use (
-                $wooOrderId,
-                $order,
-                $warehouseId,
-                $userId,
-                $date,
-                $time,
-                $ref,
-                $client,
-                $grandTotal,
-                $taxNet,
-                $discount,
-                $shipping,
-                $paidAmount,
-                $paymentStatut,
-                $saleStatut,
-                $notes,
-                &$detailRows,
-                $stockAdjustments
-            ) {
-                $saleAttrs = [
-                    'date' => $date,
-                    'time' => $time,
-                    'Ref' => $ref,
-                    'is_pos' => 0,
-                    'client_id' => (int) $client->id,
-                    'warehouse_id' => (int) $warehouseId,
-                    'user_id' => (int) $userId,
-                    'GrandTotal' => $grandTotal,
-                    'TaxNet' => $taxNet,
-                    'tax_rate' => 0,
-                    'discount' => $discount,
-                    'discount_Method' => '2',
-                    'shipping' => $shipping,
-                    'statut' => $saleStatut,
-                    'payment_statut' => $paymentStatut,
-                    'paid_amount' => $paidAmount,
-                    'notes' => $notes,
-                    'woocommerce_order_id' => $wooOrderId,
-                    'woocommerce_order_number' => (string) ($order['number'] ?? ''),
-                    'woocommerce_order_status' => (string) ($order['status'] ?? ''),
-                ];
-
-                // Ensure idempotency inside transaction too (active only).
-                if (Sale::whereNull('deleted_at')->where('woocommerce_order_id', $wooOrderId)->exists()) {
-                    return;
-                }
-
-                $sale = Sale::create($saleAttrs);
-
-                foreach ($detailRows as &$r) {
-                    $r['sale_id'] = (int) $sale->id;
-                }
-                unset($r);
-
-                DB::table('sale_details')->insert($detailRows);
-
-                // Create a payment_sales record for paid Woo orders (idempotent per sale)
-                if ($paidAmount > 0) {
-                    // Prefix with WO- so the Ref doesn't collide with manually-created
-                    // payments whose Ref happens to be the same numeric string.
-                    $wooPayRef = 'WO-'.$wooOrderId;
-                    $activePaymentForSale = PaymentSale::whereNull('deleted_at')
-                        ->where('sale_id', $sale->id)
-                        ->orderByDesc('id')
-                        ->first();
-                    $activePaymentByRef = PaymentSale::whereNull('deleted_at')->where('Ref', $wooPayRef)->first();
-
-                    if ($activePaymentForSale) {
-                        $activePaymentForSale->Ref = $wooPayRef;
-                        $activePaymentForSale->date = $date;
-                        $activePaymentForSale->montant = $paidAmount;
-                        $activePaymentForSale->account_id = null;
-                        $activePaymentForSale->save();
-                    } elseif ($activePaymentByRef) {
-                        $activePaymentByRef->sale_id = $sale->id;
-                        $activePaymentByRef->date = $date;
-                        $activePaymentByRef->montant = $paidAmount;
-                        $activePaymentByRef->account_id = null;
-                        $activePaymentByRef->save();
-                    } else {
-                        $paymentTitle = trim((string) ($order['payment_method_title'] ?? $order['payment_method'] ?? ''));
-                        $paymentMethodId = null;
-                        if ($paymentTitle !== '') {
-                            $pm = PaymentMethod::where('name', $paymentTitle)->first();
-                            if ($pm) {
-                                $paymentMethodId = (int) $pm->id;
-                            }
-                        }
-                        if (!$paymentMethodId) {
-                            $pm = PaymentMethod::orderBy('id')->first();
-                            $paymentMethodId = $pm ? (int) $pm->id : null;
-                        }
-
-                        PaymentSale::create([
-                            'sale_id' => $sale->id,
-                            'date' => $date,
-                            'montant' => $paidAmount,
-                            // Use Woo order id as idempotency reference
-                            'Ref' => $wooPayRef,
-                            'change' => 0,
-                            'payment_method_id' => $paymentMethodId,
-                            'user_id' => $userId,
-                            'notes' => 'Imported from WooCommerce order #'.((string) ($order['number'] ?? $wooOrderId)).($paymentTitle !== '' ? ' ('.$paymentTitle.')' : ''),
-                            'account_id' => null,
-                        ]);
-                    }
-                }
-
-                // Adjust stock for completed-like orders (treat soft-deleted as new import)
-                if ($saleStatut === 'completed') {
-                    foreach ($stockAdjustments as $adj) {
-                        $pw = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $warehouseId)
-                            ->where('product_id', $adj['product_id']);
-                        if ($adj['product_variant_id']) {
-                            $pw->where('product_variant_id', $adj['product_variant_id']);
-                        }
-                        $pw = $pw->first();
-
-                        $unit = $adj['unit'];
-                        if ($pw && $unit) {
-                            if ($unit->operator === '/') {
-                                $pw->qte -= $adj['qty'] / (float) $unit->operator_value;
-                            } else {
-                                $pw->qte -= $adj['qty'] * (float) $unit->operator_value;
-                            }
-                            $pw->save();
-                        }
-                    }
-                }
-            }, 3);
-
-            return ['ok' => true, 'created' => 1, 'skipped' => 0, 'errors' => 0, 'processed' => 1];
+            return match ($result['action']) {
+                'imported' => ['ok' => true, 'created' => 1, 'updated' => 0, 'skipped' => 0, 'errors' => 0, 'processed' => 1, 'sale_id' => $result['sale_id']],
+                'updated' => ['ok' => true, 'created' => 0, 'updated' => 1, 'skipped' => 0, 'errors' => 0, 'processed' => 1, 'already_imported' => true, 'sale_id' => $result['sale_id']],
+                'reversed' => ['ok' => true, 'created' => 0, 'updated' => 1, 'skipped' => 0, 'errors' => 0, 'processed' => 1, 'reversed' => true, 'sale_id' => $result['sale_id']],
+                default => ['ok' => true, 'created' => 0, 'updated' => 0, 'skipped' => 1, 'errors' => 0, 'processed' => 1, 'skipped_reason' => $result['reason']],
+            };
         } catch (\Throwable $e) {
             return ['ok' => false, 'error' => $e->getMessage()];
         }
+    }
+
+    /**
+     * MS7-B2-2B — resolve the warehouse an order import runs against: the
+     * caller-supplied id, else Setting.warehouse_id (if still a valid,
+     * non-deleted warehouse), else the lowest-id non-deleted warehouse.
+     * Identical fallback used by pullOrders() and pullSingleOrder().
+     */
+    private function resolveOrderWarehouseId(?int $warehouseId): int
+    {
+        if ($warehouseId && $warehouseId > 0) {
+            return $warehouseId;
+        }
+
+        $settings = Setting::whereNull('deleted_at')->first();
+        $candidate = $settings ? (int) ($settings->warehouse_id ?? 0) : 0;
+
+        return $candidate > 0 && Warehouse::where('id', $candidate)->whereNull('deleted_at')->exists()
+            ? $candidate
+            : (int) (Warehouse::whereNull('deleted_at')->min('id') ?? 0);
+    }
+
+    /**
+     * MS7-B2-2B — the SINGLE shared core for importing one WooCommerce
+     * order, used by BOTH pullOrders() (batch pull) and pullSingleOrder()
+     * (the admin per-row sync button). Previously these were two
+     * independent, byte-for-byte duplicated implementations.
+     *
+     * For a location_primary $warehouseId, the physical stock effect goes
+     * through the SAME native Sale engine MS7-B1/B2-1/B2-3/B2-4 already use
+     * (ExternalChannelInventoryService + LocationAwareSaleStockService);
+     * WooCommerce never chooses the fulfillment location itself — it is
+     * always resolved server-side from the warehouse's own configuration
+     * (FAIL CLOSED if unset/invalid/quarantine). Every other warehouse mode
+     * keeps the exact legacy product_warehouse flow, unchanged.
+     *
+     * @return array{action:string,sale_id:?int,reason:?string,counts_as_error?:bool}
+     *   action: 'imported'|'updated'|'reversed'|'skipped'
+     */
+    private function processWooOrder(array $order, int $warehouseId, int $userId): array
+    {
+        $wooOrderId = (int) ($order['id'] ?? 0);
+        if ($wooOrderId <= 0) {
+            return ['action' => 'skipped', 'sale_id' => null, 'reason' => 'invalid_order_id'];
+        }
+
+        $wooStatus = (string) ($order['status'] ?? '');
+
+        // Idempotency:
+        // - If an active sale exists => update STATUS ONLY (do not re-import lines/payments/stock).
+        //   If the new Woo status is a reversal (cancelled/refunded/failed),
+        //   reverse the imported sale: restore stock + soft-delete payments + soft-delete sale.
+        // - If a sale exists but is soft-deleted => allow inserting a new sale (do NOT restore).
+        $existingActiveSale = Sale::whereNull('deleted_at')->where('woocommerce_order_id', $wooOrderId)->first();
+        if ($existingActiveSale) {
+            if ($this->isWooReversalStatus($wooStatus)) {
+                $this->reverseImportedSale($existingActiveSale, 'woo status changed to '.$wooStatus, $wooStatus);
+
+                return ['action' => 'reversed', 'sale_id' => $existingActiveSale->id, 'reason' => null];
+            }
+            $existingActiveSale->statut = $this->mapWooOrderStatusToStockyStatut($wooStatus);
+            $existingActiveSale->woocommerce_order_status = $wooStatus;
+            $existingActiveSale->woocommerce_order_number = (string) ($order['number'] ?? $existingActiveSale->woocommerce_order_number ?? '');
+            $existingActiveSale->save();
+
+            return ['action' => 'updated', 'sale_id' => $existingActiveSale->id, 'reason' => null];
+        }
+
+        // Skip new orders that are in a non-sale status (cancelled / failed / refunded / trash / draft).
+        if ($this->isWooReversalStatus($wooStatus)) {
+            $this->log('orders.pull', 'info', 'Skipped order: non-sale Woo status', [
+                'woocommerce_order_id' => $wooOrderId,
+                'woo_status' => $wooStatus,
+            ]);
+
+            return ['action' => 'skipped', 'sale_id' => null, 'reason' => 'non_sale_status'];
+        }
+
+        $wooCustomerId = (int) ($order['customer_id'] ?? 0);
+        $billing = $order['billing'] ?? [];
+        $billingEmail = is_array($billing) ? trim((string) ($billing['email'] ?? '')) : '';
+        $normalizedEmail = $this->normalizeEmail($billingEmail);
+
+        // Resolve client: prefer woocommerce_id -> fallback to email -> else default client (if configured)
+        $client = null;
+        if ($wooCustomerId > 0) {
+            $client = PosClient::whereNull('deleted_at')->where('woocommerce_id', $wooCustomerId)->first();
+        }
+        if (!$client && $normalizedEmail !== '') {
+            $client = PosClient::whereNull('deleted_at')
+                ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
+                ->first();
+        }
+        if (!$client) {
+            $settings = Setting::whereNull('deleted_at')->with('Client')->first();
+            $defaultClientId = $settings ? (int) ($settings->client_id ?? 0) : 0;
+            if ($defaultClientId > 0) {
+                $client = PosClient::whereNull('deleted_at')->find($defaultClientId);
+            }
+        }
+
+        // If no client and we have an email, create one
+        if (!$client && $normalizedEmail !== '') {
+            $maxCode = PosClient::max('code') ?? 0;
+            $newCode = $maxCode + 1;
+
+            $clientName = '';
+            if (is_array($billing)) {
+                $fn = trim((string) ($billing['first_name'] ?? ''));
+                $ln = trim((string) ($billing['last_name'] ?? ''));
+                $clientName = trim($fn.' '.$ln);
+            }
+            if ($clientName === '') {
+                $clientName = $billingEmail;
+            }
+
+            $validator = Validator::make(
+                ['email' => $billingEmail],
+                ['email' => ['required', 'email', Rule::unique('clients', 'email')->whereNull('deleted_at')]]
+            );
+            if ($validator->fails()) {
+                $this->log('orders.pull', 'warning', 'Skipped order: customer email conflicts with existing client', [
+                    'woocommerce_order_id' => $wooOrderId,
+                    'email' => $billingEmail,
+                    'error' => $validator->errors()->first('email'),
+                ]);
+
+                return ['action' => 'skipped', 'sale_id' => null, 'reason' => 'client_email_conflict', 'counts_as_error' => true];
+            }
+
+            $client = PosClient::create([
+                'name' => $clientName,
+                'code' => $newCode,
+                'email' => $billingEmail,
+                'phone' => is_array($billing) ? ((string) ($billing['phone'] ?? '')) : '',
+                'adresse' => is_array($billing) ? $this->joinAddressLines((string) ($billing['address_1'] ?? ''), (string) ($billing['address_2'] ?? '')) : '',
+                'city' => is_array($billing) ? ((string) ($billing['city'] ?? '')) : '',
+                'state' => is_array($billing) ? $this->resolveWooStateName((string) ($billing['state'] ?? ''), (string) ($billing['country'] ?? '')) : '',
+                'zip' => is_array($billing) ? ((string) ($billing['postcode'] ?? '')) : '',
+                'country' => is_array($billing) ? $this->resolveWooCountryName((string) ($billing['country'] ?? '')) : '',
+                'woocommerce_id' => $wooCustomerId > 0 ? $wooCustomerId : null,
+            ]);
+        }
+
+        if (!$client) {
+            $this->log('orders.pull', 'warning', 'Skipped order: could not resolve customer', [
+                'woocommerce_order_id' => $wooOrderId,
+                'customer_id' => $wooCustomerId,
+                'billing_email' => $billingEmail,
+            ]);
+
+            return ['action' => 'skipped', 'sale_id' => null, 'reason' => 'customer_unresolved', 'counts_as_error' => true];
+        }
+
+        $status = (string) ($order['status'] ?? '');
+        $dateCreated = (string) ($order['date_created'] ?? $order['date_created_gmt'] ?? '');
+        $date = $dateCreated !== '' ? substr($dateCreated, 0, 10) : now()->toDateString();
+        $time = $dateCreated !== '' ? substr(str_replace('T', ' ', $dateCreated), 11, 8) : now()->toTimeString();
+
+        $grandTotal = (float) ($order['total'] ?? 0);
+        $taxNet = (float) ($order['total_tax'] ?? 0);
+        $shipping = (float) ($order['shipping_total'] ?? 0);
+        $discount = (float) ($order['discount_total'] ?? 0);
+
+        $payment = $this->computePaymentFromWooOrder($order, $grandTotal);
+        $paidAmount = $payment['paid_amount'];
+        $paymentStatut = $payment['payment_statut'];
+
+        $saleStatut = $this->mapWooOrderStatusToStockyStatut($status);
+
+        $ref = 'WO-'.$wooOrderId;
+        $notes = $this->composeSaleNotesFromWooOrder($order, $wooOrderId);
+
+        $lineItems = $order['line_items'] ?? [];
+        if (!is_array($lineItems) || empty($lineItems)) {
+            return ['action' => 'skipped', 'sale_id' => null, 'reason' => 'no_line_items'];
+        }
+
+        // MS7-B2-2B — a channel warehouse in MODE_LOCATION_PRIMARY goes
+        // location-native (the SAME Sale engine MS7-B1/B2-1/B2-3/B2-4 use);
+        // every other mode keeps the exact legacy product_warehouse flow
+        // below untouched. Woo NEVER chooses the fulfillment location
+        // (§4 of the MS7-B2-2B spec) — always server-resolved from
+        // $warehouseId, FAIL CLOSED if unset/invalid/quarantine.
+        $__isNative = app(WarehouseInventoryModeResolver::class)->isLocationPrimary($warehouseId);
+        $__location = null;
+
+        if ($__isNative) {
+            try {
+                $__location = app(ExternalChannelInventoryService::class)->resolveFulfillmentLocation($warehouseId);
+            } catch (ValidationException $e) {
+                throw new \RuntimeException('WooCommerce order import: '.$e->validator->errors()->first());
+            }
+        }
+
+        // Build sale detail rows (legacy bulk shape kept for the legacy
+        // product_warehouse adjustment loop below) and, when native, the raw
+        // lines the location-native engine validates/locks.
+        $detailRows = [];
+        $stockAdjustments = [];
+        $rawLines = [];
+
+        foreach (array_values($lineItems) as $li) {
+            if (!is_array($li)) {
+                continue;
+            }
+
+            $qty = (float) ($li['quantity'] ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $wooProductId = (int) ($li['product_id'] ?? 0);
+            $wooVariationId = (int) ($li['variation_id'] ?? 0);
+            $sku = trim((string) ($li['sku'] ?? ''));
+
+            $resolved = $this->resolveLineItemMapping($wooProductId, $wooVariationId, $sku);
+            $product = $resolved['product'];
+            $variant = $resolved['variant'];
+
+            if (!$product) {
+                $this->log('orders.pull', 'warning', 'Skipped order: could not map line item product', [
+                    'woocommerce_order_id' => $wooOrderId,
+                    'woo_product_id' => $wooProductId,
+                    'woo_variation_id' => $wooVariationId,
+                    'sku' => $sku,
+                ]);
+                // Abort whole order for safety — caught by the caller's
+                // per-order try/catch, no partial write (transaction hasn't
+                // opened yet).
+                throw new \RuntimeException('Order contains unmapped products');
+            }
+
+            $unitId = (int) ($product->unit_sale_id ?? 0);
+            $unit = $unitId > 0 ? Unit::find($unitId) : null;
+
+            $price = (float) ($li['price'] ?? 0);
+            if ($price <= 0) {
+                $subtotal = (float) ($li['subtotal'] ?? $li['total'] ?? 0);
+                $price = $qty > 0 ? ($subtotal / $qty) : 0;
+            }
+            $lineTotal = (float) ($li['total'] ?? $li['subtotal'] ?? 0);
+
+            $detailRows[] = [
+                'date' => $date,
+                'sale_unit_id' => $unitId > 0 ? $unitId : null,
+                'quantity' => $qty,
+                'price' => $price,
+                'TaxNet' => 0,
+                'tax_method' => '1',
+                'discount' => 0,
+                'discount_method' => '1',
+                'product_id' => (int) $product->id,
+                'product_variant_id' => $variant ? (int) $variant->id : null,
+                'total' => $lineTotal,
+                'price_type' => 'retail',
+            ];
+
+            $stockAdjustments[] = [
+                'product_id' => (int) $product->id,
+                'product_variant_id' => $variant ? (int) $variant->id : null,
+                'unit' => $unit,
+                'qty' => $qty,
+            ];
+
+            if ($__isNative && $saleStatut === 'completed') {
+                // MS7-B2-2B (§24) — feed the SAME unit conversion Woo
+                // already resolves for this line into quantity_base,
+                // instead of inventing a second formula.
+                $rawLines[] = [
+                    'product_id' => (int) $product->id,
+                    'product_variant_id' => $variant ? (int) $variant->id : null,
+                    'quantity' => $qty,
+                    'sale_unit_id' => $unitId > 0 ? $unitId : null,
+                    'pack_multiplier' => 1,
+                ];
+            }
+        }
+
+        $validated = null;
+        if ($__isNative && $saleStatut === 'completed' && !empty($rawLines)) {
+            try {
+                $validated = app(LocationAwareSaleStockService::class)->validateAndLock($rawLines);
+            } catch (ValidationException $e) {
+                throw new \RuntimeException('WooCommerce order import: '.$e->validator->errors()->first());
+            }
+
+            // §8-§10 — WooCommerce captures no batch/serial identity on a
+            // line item today; FAIL CLOSED rather than auto-assign one.
+            foreach ($validated['lines'] as $line) {
+                if (($line['requires_batch'] ?? false) || ($line['requires_serial'] ?? false)) {
+                    throw new \RuntimeException('WooCommerce order import: this order requires physical batch or serial/IMEI assignment before it can be completed — no automatic assignment is supported for this channel.');
+                }
+            }
+
+            // Document-wide prevalidation (§11) — check availability against
+            // the EXACT fulfillment location before any Sale/detail write.
+            $readSvc = app(ExternalChannelInventoryService::class);
+            foreach ($validated['lines'] as $line) {
+                $have = $readSvc->availableQuantity($__location->id, $line['product_id'], $line['product_variant_id']);
+                if ($have < $line['quantity_base']) {
+                    throw new \RuntimeException("WooCommerce order import: insufficient stock for product #{$line['product_id']} (need {$line['quantity_base']}, have {$have}).");
+                }
+            }
+        }
+
+        $saleId = null;
+
+        DB::transaction(function () use (
+            $wooOrderId,
+            $order,
+            $warehouseId,
+            $userId,
+            $date,
+            $time,
+            $ref,
+            $client,
+            $grandTotal,
+            $taxNet,
+            $discount,
+            $shipping,
+            $paidAmount,
+            $paymentStatut,
+            $saleStatut,
+            $notes,
+            $detailRows,
+            $stockAdjustments,
+            $__isNative,
+            $__location,
+            $validated,
+            &$saleId
+        ) {
+            // Ensure idempotency inside transaction too (active only).
+            // If a sale exists but is soft-deleted, we still insert a new one.
+            if (Sale::whereNull('deleted_at')->where('woocommerce_order_id', $wooOrderId)->exists()) {
+                return;
+            }
+
+            $sale = Sale::create([
+                'date' => $date,
+                'time' => $time,
+                'Ref' => $ref,
+                'is_pos' => 0,
+                'client_id' => (int) $client->id,
+                'warehouse_id' => (int) $warehouseId,
+                'inventory_location_id' => $__isNative ? $__location->id : null,
+                'user_id' => (int) $userId,
+                'GrandTotal' => $grandTotal,
+                'TaxNet' => $taxNet,
+                'tax_rate' => 0,
+                'discount' => $discount,
+                'discount_Method' => '2',
+                'shipping' => $shipping,
+                'statut' => $saleStatut,
+                'payment_statut' => $paymentStatut,
+                'paid_amount' => $paidAmount,
+                'notes' => $notes,
+                'woocommerce_order_id' => $wooOrderId,
+                'woocommerce_order_number' => (string) ($order['number'] ?? ''),
+                'woocommerce_order_status' => (string) ($order['status'] ?? ''),
+            ]);
+            $saleId = $sale->id;
+
+            // MS7-B2-2B (§23) — per-row creation (not a bulk insert) so each
+            // detail has a real id to use as the native snapshot's
+            // source_detail_id; two line items of the same product/variant
+            // stay distinct rows/effects.
+            $detailIds = [];
+            foreach ($detailRows as $row) {
+                $detail = SaleDetail::create($row + ['sale_id' => $sale->id]);
+                $detailIds[] = $detail->id;
+            }
+
+            // Create a payment_sales record for paid Woo orders (idempotent per sale)
+            if ($paidAmount > 0) {
+                // Prefix with WO- so the Ref doesn't collide with manually-created
+                // payments whose Ref happens to be the same numeric string.
+                $wooPayRef = 'WO-'.$wooOrderId;
+                // Idempotency:
+                // - If an active payment exists for this sale, update it (avoid duplicates).
+                // - Else if an active payment exists by Ref, update/link it to this sale.
+                // - If a matching payment is soft-deleted, create a NEW payment (do NOT restore).
+                $activePaymentForSale = PaymentSale::whereNull('deleted_at')
+                    ->where('sale_id', $sale->id)
+                    ->orderByDesc('id')
+                    ->first();
+                $activePaymentByRef = PaymentSale::whereNull('deleted_at')->where('Ref', $wooPayRef)->first();
+
+                if ($activePaymentForSale) {
+                    $activePaymentForSale->Ref = $wooPayRef;
+                    $activePaymentForSale->date = $date;
+                    $activePaymentForSale->montant = $paidAmount;
+                    $activePaymentForSale->account_id = null;
+                    $activePaymentForSale->save();
+                } elseif ($activePaymentByRef) {
+                    $activePaymentByRef->sale_id = $sale->id;
+                    $activePaymentByRef->date = $date;
+                    $activePaymentByRef->montant = $paidAmount;
+                    $activePaymentByRef->account_id = null;
+                    $activePaymentByRef->save();
+                } else {
+                    $paymentTitle = trim((string) ($order['payment_method_title'] ?? $order['payment_method'] ?? ''));
+                    $paymentMethodId = null;
+                    if ($paymentTitle !== '') {
+                        $pm = PaymentMethod::where('name', $paymentTitle)->first();
+                        if ($pm) {
+                            $paymentMethodId = (int) $pm->id;
+                        }
+                    }
+                    if (!$paymentMethodId) {
+                        // Fallback: first payment method
+                        $pm = PaymentMethod::orderBy('id')->first();
+                        $paymentMethodId = $pm ? (int) $pm->id : null;
+                    }
+
+                    PaymentSale::create([
+                        'sale_id' => $sale->id,
+                        'date' => $date,
+                        'montant' => $paidAmount,
+                        // Use Woo order id as idempotency reference
+                        'Ref' => $wooPayRef,
+                        'change' => 0,
+                        'payment_method_id' => $paymentMethodId,
+                        'user_id' => $userId,
+                        'notes' => 'Imported from WooCommerce order #'.((string) ($order['number'] ?? $wooOrderId)).($paymentTitle !== '' ? ' ('.$paymentTitle.')' : ''),
+                        'account_id' => null,
+                    ]);
+                }
+            }
+
+            // Physical stock effect — native vs legacy, gated on the exact
+            // same 'completed' statut the legacy path always gated on.
+            if ($__isNative) {
+                if ($saleStatut === 'completed' && $validated && !empty($validated['lines'])) {
+                    $svc = app(LocationAwareSaleStockService::class);
+                    $effects = [];
+                    foreach ($validated['lines'] as $line) {
+                        $detailId = $detailIds[$line['_line_index']] ?? null;
+                        if (!$detailId) {
+                            continue;
+                        }
+                        $effects[] = [
+                            'source_detail_id' => $detailId,
+                            'product_id' => $line['product_id'],
+                            'product_variant_id' => $line['product_variant_id'],
+                            'quantity_base' => $line['quantity_base'],
+                        ];
+                    }
+                    if (!empty($effects)) {
+                        $snapshot = $svc->buildSnapshot(LocationAwareSaleStockService::DOC_SALE, $warehouseId, $__location->id, $effects, 1);
+                        $sale->inventory_effect_snapshot = $snapshot;
+                        $sale->save();
+                        $svc->applySnapshot($snapshot, $sale->id);
+                    }
+                }
+                // else: not yet completed — no physical effect to apply
+                // (mirrors the legacy branch's own gating below).
+            } elseif ($saleStatut === 'completed') {
+                foreach ($stockAdjustments as $adj) {
+                    $pw = product_warehouse::where('deleted_at', '=', null)
+                        ->where('warehouse_id', $warehouseId)
+                        ->where('product_id', $adj['product_id']);
+                    if ($adj['product_variant_id']) {
+                        $pw->where('product_variant_id', $adj['product_variant_id']);
+                    }
+                    $pw = $pw->first();
+
+                    $unit = $adj['unit'];
+                    if ($pw && $unit) {
+                        if ($unit->operator === '/') {
+                            $pw->qte -= $adj['qty'] / (float) $unit->operator_value;
+                        } else {
+                            $pw->qte -= $adj['qty'] * (float) $unit->operator_value;
+                        }
+                        $pw->save();
+                    }
+                }
+            }
+        }, 3);
+
+        return ['action' => 'imported', 'sale_id' => $saleId, 'reason' => null];
     }
 
     public static function fromSettings(WooCommerceSetting $settings): self
