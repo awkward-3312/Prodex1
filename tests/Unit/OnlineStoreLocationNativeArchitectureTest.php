@@ -122,11 +122,15 @@ class OnlineStoreLocationNativeArchitectureTest extends TestCase
 
     public function test_out_of_scope_surfaces_are_untouched(): void
     {
+        // Shopify/SyncService.php is deliberately excluded here: MS7-B2-3
+        // (a later, approved sub-milestone) legitimately edits it and
+        // references "MS7-B2-1" in a comment explaining that it reuses this
+        // milestone's ExternalChannelInventoryService pattern — that is
+        // expected cross-milestone reuse, not a scope violation of B2-1.
         foreach ([
             'app/Http/Controllers/DashboardController.php',
             'app/Http/Controllers/ReportController.php',
             'app/Services/WooCommerce/SyncService.php',
-            'app/Services/Shopify/SyncService.php',
             'app/Console/Commands/GenerateSubscriptionInvoices.php',
         ] as $rel) {
             $path = dirname(__DIR__, 2).'/'.$rel;

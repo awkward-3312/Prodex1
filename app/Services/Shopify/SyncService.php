@@ -14,7 +14,11 @@ use App\Models\ShopifyMapping;
 use App\Models\ShopifyStore;
 use App\Models\Warehouse;
 use App\Models\product_warehouse;
+use App\Services\ExternalChannelInventoryService;
+use App\Services\LocationAwareSaleStockService;
+use App\Services\WarehouseInventoryModeResolver;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Shopify sync engine, scoped to a single ShopifyStore.
@@ -687,8 +691,29 @@ class SyncService
         ];
     }
 
+    /**
+     * MS7-B2-3 (§13/§15) — the quantity PUSHED to Shopify for a mapped
+     * product/variant. When the mapped warehouse is location_primary, reads
+     * the EXACT fulfillment location (reserved excluded) — the SAME location
+     * order import uses for fulfillment — never product_warehouse, never an
+     * aggregate of the whole warehouse. Legacy is byte-for-byte unchanged,
+     * including its pre-existing quirk of summing across ALL warehouses when
+     * the store has no warehouse_id mapping at all.
+     */
     private function localQuantity(int $productId, ?int $variantId): float
     {
+        if ($this->store->warehouse_id
+            && app(WarehouseInventoryModeResolver::class)->isLocationPrimary((int) $this->store->warehouse_id)) {
+            try {
+                $locationId = app(ExternalChannelInventoryService::class)
+                    ->resolveFulfillmentLocation((int) $this->store->warehouse_id)->id;
+            } catch (ValidationException $e) {
+                return 0.0;
+            }
+
+            return app(ExternalChannelInventoryService::class)->availableQuantity($locationId, $productId, $variantId);
+        }
+
         $query = product_warehouse::where('product_id', $productId)
             ->whereNull('deleted_at');
 
@@ -1038,6 +1063,15 @@ class SyncService
             throw new \RuntimeException('No warehouse available to receive the order.');
         }
 
+        // MS7-B2-3 — a channel warehouse in MODE_LOCATION_PRIMARY goes
+        // location-native (the SAME Sale engine MS7-B1/MS7-B2-1 already use);
+        // every other mode keeps the exact legacy product_warehouse flow
+        // below untouched. The webhook payload NEVER chooses the fulfillment
+        // location (§22 of the MS7-B2-3 spec) — always server-resolved from
+        // ShopifyStore.warehouse_id / the resolved $warehouseId.
+        $__isNative = app(WarehouseInventoryModeResolver::class)->isLocationPrimary($warehouseId);
+        $__location = null;
+
         // Customer
         $clientId = null;
         if (! empty($order['customer'])) {
@@ -1077,6 +1111,55 @@ class SyncService
             return 'skipped';
         }
 
+        $__validated = null;
+        $__byRawIndex = [];
+        if ($__isNative) {
+            try {
+                $__location = app(ExternalChannelInventoryService::class)->resolveFulfillmentLocation($warehouseId);
+            } catch (ValidationException $e) {
+                throw new \RuntimeException('Shopify order import: '.$e->validator->errors()->first());
+            }
+
+            // Shopify line-item quantities are already treated as base units
+            // 1:1 by the legacy decrement below (no unit/pack conversion
+            // exists in this import path) — mirror that exactly.
+            $rawLines = [];
+            foreach ($resolved as $row) {
+                $rawLines[] = [
+                    'product_id' => $row['product_id'],
+                    'product_variant_id' => $row['variant_id'],
+                    'quantity' => (float) ($row['item']['quantity'] ?? 1),
+                    'sale_unit_id' => null,
+                    'pack_multiplier' => 1,
+                ];
+            }
+
+            try {
+                $__validated = app(LocationAwareSaleStockService::class)->validateAndLock($rawLines);
+            } catch (ValidationException $e) {
+                throw new \RuntimeException('Shopify order import: '.$e->validator->errors()->first());
+            }
+
+            // §9/§10/§11 — Shopify captures NO explicit batch or serial
+            // identity for a line item today; FAIL CLOSED rather than guess
+            // (auto-FEFO / first-available-serial).
+            foreach ($__validated['lines'] as $line) {
+                if (($line['requires_batch'] ?? false) || ($line['requires_serial'] ?? false)) {
+                    throw new \RuntimeException('Shopify order import: this order requires physical batch or serial/IMEI assignment before it can be completed — no automatic assignment is supported for this channel.');
+                }
+            }
+
+            // Pre-check (outside tx) against the EXACT fulfillment location —
+            // never product_warehouse, never an aggregate of the warehouse.
+            $readSvc = app(ExternalChannelInventoryService::class);
+            foreach ($__validated['lines'] as $line) {
+                $have = $readSvc->availableQuantity($__location->id, $line['product_id'], $line['product_variant_id']);
+                if ($have < $line['quantity_base']) {
+                    throw new \RuntimeException("Shopify order import: insufficient stock for product #{$line['product_id']} (need {$line['quantity_base']}, have {$have}).");
+                }
+            }
+        }
+
         $createdAt = ! empty($order['created_at']) ? \Carbon\Carbon::parse($order['created_at']) : now();
         $shippingTotal = 0.0;
         foreach ($order['shipping_lines'] ?? [] as $line) {
@@ -1087,7 +1170,7 @@ class SyncService
         $grandTotal = (float) ($order['total_price'] ?? 0);
 
         $sale = null;
-        DB::transaction(function () use ($order, $resolved, $unresolved, $clientId, $userId, $warehouseId, $createdAt, $shippingTotal, $paymentStatut, $grandTotal, $storeId, $shopifyOrderId, &$sale) {
+        DB::transaction(function () use ($order, $resolved, $unresolved, $clientId, $userId, $warehouseId, $createdAt, $shippingTotal, $paymentStatut, $grandTotal, $storeId, $shopifyOrderId, $__isNative, $__location, $__validated, &$sale) {
             $sale = Sale::create([
                 'date' => $createdAt->format('Y-m-d'),
                 'time' => $createdAt->format('H:i:s'),
@@ -1096,6 +1179,7 @@ class SyncService
                 'is_pos' => 0,
                 'client_id' => $clientId,
                 'warehouse_id' => $warehouseId,
+                'inventory_location_id' => $__isNative ? $__location->id : null,
                 'user_id' => $userId,
                 'tax_rate' => 0,
                 'TaxNet' => (float) ($order['total_tax'] ?? 0),
@@ -1110,12 +1194,18 @@ class SyncService
                     .(empty($unresolved) ? '' : ' — unmatched items: '.json_encode($unresolved, JSON_UNESCAPED_UNICODE)),
             ]);
 
+            // Shopify already reserved/sold this stock on its own side at
+            // checkout — the decrement below (native or legacy) is
+            // unconditional, regardless of the mapped Stocky `statut`. This
+            // mirrors the exact pre-existing legacy behaviour; not gated on
+            // statut === 'completed' the way Admin Sale / OnlineOrder are.
+            $__detailIds = [];
             foreach ($resolved as $row) {
                 $item = $row['item'];
                 $qty = (float) ($item['quantity'] ?? 1);
                 $price = (float) ($item['price'] ?? 0);
 
-                SaleDetail::create([
+                $detail = SaleDetail::create([
                     'date' => $createdAt->format('Y-m-d'),
                     'sale_id' => $sale->id,
                     'product_id' => $row['product_id'],
@@ -1128,6 +1218,11 @@ class SyncService
                     'discount_method' => '2',
                     'total' => round($price * $qty, 2),
                 ]);
+                $__detailIds[] = $detail->id;
+
+                if ($__isNative) {
+                    continue; // GENERAL leg applied once, after this loop, via the snapshot engine.
+                }
 
                 // Decrement stock in the receiving warehouse
                 $stockQuery = product_warehouse::where('product_id', $row['product_id'])
@@ -1142,6 +1237,29 @@ class SyncService
                 if ($stock) {
                     $stock->qte = (float) $stock->qte - $qty;
                     $stock->save();
+                }
+            }
+
+            // GENERAL leg — native only.
+            if ($__isNative && $__validated && ! empty($__validated['lines'])) {
+                $svc = app(LocationAwareSaleStockService::class);
+                $effects = [];
+                foreach ($__validated['lines'] as $line) {
+                    $detailId = $__detailIds[$line['_line_index']] ?? null;
+                    if (! $detailId) {
+                        continue;
+                    }
+                    $effects[] = [
+                        'source_detail_id' => $detailId,
+                        'product_id' => $line['product_id'],
+                        'product_variant_id' => $line['product_variant_id'],
+                        'quantity_base' => $line['quantity_base'],
+                    ];
+                }
+                if (! empty($effects)) {
+                    $snapshot = $svc->buildSnapshot(LocationAwareSaleStockService::DOC_SALE, $warehouseId, $__location->id, $effects, 1);
+                    $sale->update(['inventory_effect_snapshot' => $snapshot]);
+                    $svc->applySnapshot($snapshot, $sale->id);
                 }
             }
 
