@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 /**
  * MS6-B0 — §34: the foundation migration
- * 2026_09_10_000000_add_serial_native_foundation runs up + down against a
+ * 2026_09_03_000000_add_serial_native_foundation runs up + down against a
  * pre-M1 shaped schema.
  */
 class SerialNativeFoundationMigrationTest extends TestCase
@@ -40,7 +40,7 @@ class SerialNativeFoundationMigrationTest extends TestCase
         });
 
         $this->migration = require dirname(__DIR__, 2)
-            .'/database/migrations/tenant/2026_09_10_000000_add_serial_native_foundation.php';
+            .'/database/migrations/tenant/2026_09_03_000000_add_serial_native_foundation.php';
     }
 
     public function test_up_adds_the_key_the_fingerprint_and_the_composite_index(): void

@@ -340,4 +340,129 @@ class LocationAwareSerialSetOperationsTest extends TestCase
             ['warehouse_id' => $this->wh, 'inventory_location_id' => $this->loc, 'reference_id' => 1]
         );
     }
+
+    // =====================================================================
+    // MS6-B0.0.1 — reversePurchaseReturnMany MUST validate coverage too
+    // (post-return healthy state: general == COUNT(available serials), the
+    //  returned units being `returned_supplier` and NOT counted).
+    // =====================================================================
+
+    /**
+     * Seed a "post-return" location: $available serials AVAILABLE, $returned
+     * serials RETURNED_SUPPLIER (at $this->loc), general = $generalQty.
+     *
+     * @return array<int,int> ids of the returned_supplier serials (to reverse)
+     */
+    private function seedPostReturnLocation(int $productId, int $available, int $returned, float $generalQty): array
+    {
+        for ($i = 1; $i <= $available; $i++) {
+            $this->seedSerial("AVL-{$productId}-{$i}", $productId, ProductSerial::STATUS_AVAILABLE, $this->loc);
+        }
+        $ids = [];
+        for ($i = 1; $i <= $returned; $i++) {
+            $ids[] = $this->seedSerial("RSU-{$productId}-{$i}", $productId, ProductSerial::STATUS_RETURNED_SUPPLIER, $this->loc);
+        }
+        $this->generalStock($productId, $generalQty);
+
+        return $ids;
+    }
+
+    private function reverseReturnAllocs(int $productId, array $ids): array
+    {
+        $out = [];
+        foreach (array_values($ids) as $n => $id) {
+            $out[] = $this->alloc($id, "RSU-{$productId}-".($n + 1), "rr:{$productId}:{$n}", $productId);
+        }
+
+        return $out;
+    }
+
+    public function test_A_healthy_purchase_return_reverse(): void
+    {
+        $p = $this->imei('CVA');
+        $ids = $this->seedPostReturnLocation($p, 8, 2, 8.0); // general 8 == available 8
+
+        $this->tx(fn () => $this->svc()->reversePurchaseReturnMany(
+            $this->reverseReturnAllocs($p, $ids),
+            ['inventory_location_id' => $this->loc, 'reference_id' => 940]
+        ));
+
+        $this->assertSame(10, DB::table('product_serials')->where('product_id', $p)
+            ->where('status', ProductSerial::STATUS_AVAILABLE)->where('inventory_location_id', $this->loc)->count());
+        $this->assertSame(0, DB::table('product_serials')->where('status', ProductSerial::STATUS_RETURNED_SUPPLIER)->count());
+        $this->assertSame(2, DB::table('product_serial_movements')->where('reference_type', 'PurchaseReturnReversal')->count());
+        // NOTE: this set-op does NOT move general stock — the snapshot phase C does.
+    }
+
+    public function test_B_drift_general_greater_than_available_is_422_zero_mutations(): void
+    {
+        $p = $this->imei('CVB');
+        $ids = $this->seedPostReturnLocation($p, 8, 2, 9.0); // general 9 != available 8
+
+        try {
+            $this->tx(fn () => $this->svc()->reversePurchaseReturnMany(
+                $this->reverseReturnAllocs($p, $ids),
+                ['inventory_location_id' => $this->loc, 'reference_id' => 941]
+            ));
+            $this->fail('expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('serial_transition', $e->errors());
+        }
+        $this->assertSame(2, DB::table('product_serials')->where('status', ProductSerial::STATUS_RETURNED_SUPPLIER)->count(), 'unchanged');
+        $this->assertSame(0, DB::table('product_serial_movements')->count(), 'no movement');
+    }
+
+    public function test_C_fractional_general_is_422(): void
+    {
+        $p = $this->imei('CVC');
+        $ids = $this->seedPostReturnLocation($p, 8, 2, 8.5); // fractional
+
+        $this->expectException(ValidationException::class);
+        try {
+            $this->tx(fn () => $this->svc()->reversePurchaseReturnMany(
+                $this->reverseReturnAllocs($p, $ids),
+                ['inventory_location_id' => $this->loc, 'reference_id' => 942]
+            ));
+        } finally {
+            $this->assertSame(2, DB::table('product_serials')->where('status', ProductSerial::STATUS_RETURNED_SUPPLIER)->count());
+            $this->assertSame(0, DB::table('product_serial_movements')->count());
+        }
+    }
+
+    public function test_D_full_replay_after_successful_reverse_is_a_noop(): void
+    {
+        $p = $this->imei('CVD');
+        $ids = $this->seedPostReturnLocation($p, 8, 2, 8.0);
+        $allocs = $this->reverseReturnAllocs($p, $ids);
+        $ctx = ['inventory_location_id' => $this->loc, 'reference_id' => 943];
+
+        $this->tx(fn () => $this->svc()->reversePurchaseReturnMany($allocs, $ctx));
+        $mvBefore = DB::table('product_serial_movements')->count();
+
+        $this->tx(fn () => $this->svc()->reversePurchaseReturnMany($allocs, $ctx)); // replay
+
+        $this->assertSame($mvBefore, DB::table('product_serial_movements')->count(), 'no duplicate movement');
+        $this->assertSame(0, DB::table('product_serials')->where('status', ProductSerial::STATUS_RETURNED_SUPPLIER)->count());
+    }
+
+    public function test_E_returned_serial_at_wrong_location_is_422_total_rollback(): void
+    {
+        $p = $this->imei('CVE');
+        $this->generalStock($p, 0);
+        $ok = $this->seedSerial('WL-OK', $p, ProductSerial::STATUS_RETURNED_SUPPLIER, $this->loc);
+        $otherLoc = $this->makeInventoryLocation($this->wh);
+        $bad = $this->seedSerial('WL-BAD', $p, ProductSerial::STATUS_RETURNED_SUPPLIER, $otherLoc); // wrong location
+
+        try {
+            $this->tx(fn () => $this->svc()->reversePurchaseReturnMany([
+                $this->alloc($ok, 'WL-OK', 'wl:1', $p),
+                $this->alloc($bad, 'WL-BAD', 'wl:2', $p),
+            ], ['inventory_location_id' => $this->loc, 'reference_id' => 944]));
+            $this->fail('expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('serial_transition', $e->errors());
+        }
+        $this->assertSame(ProductSerial::STATUS_RETURNED_SUPPLIER, $this->serialRow('WL-OK')->status, 'no partial reverse');
+        $this->assertSame(0, DB::table('product_serial_movements')->count());
+    }
 }

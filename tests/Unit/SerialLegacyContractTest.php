@@ -147,7 +147,7 @@ class SerialLegacyContractTest extends TestCase
 
     // =====================================================================
     // §24 — movement ledger idempotency key (ADDED by MS6-B0, migration
-    //       2026_09_10_000000_add_serial_native_foundation)
+    //       2026_09_03_000000_add_serial_native_foundation)
     // =====================================================================
 
     public function test_product_serial_movements_now_has_a_nullable_unique_idempotency_key(): void
@@ -189,7 +189,7 @@ class SerialLegacyContractTest extends TestCase
 
     public function test_foundation_migration_adds_the_serial_movement_idempotency_key(): void
     {
-        $mig = $this->read('database/migrations/tenant/2026_09_10_000000_add_serial_native_foundation.php');
+        $mig = $this->read('database/migrations/tenant/2026_09_03_000000_add_serial_native_foundation.php');
         $this->assertStringContainsString("'product_serial_movements'", $mig);
         $this->assertStringContainsString("idempotency_key", $mig);
         $this->assertStringContainsString("->nullable()->unique('psm_idempotency_key_uq')", $mig);

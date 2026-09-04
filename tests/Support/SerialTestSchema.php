@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
  *   - 2026_06_22_000001_create_product_serials_table
  *   - 2026_06_22_000002_create_product_serial_movements_table
  *   - 2026_08_21_183000_add_location_tracking_to_batches_and_serials
- *   - 2026_09_10_000000_add_serial_native_foundation (MS6-B0):
+ *   - 2026_09_03_000000_add_serial_native_foundation (MS6-B0):
  *       product_serial_movements.idempotency_key (nullable UNIQUE) +
  *       .idempotency_fingerprint, and product_serials.ps_pvls_idx.
  *

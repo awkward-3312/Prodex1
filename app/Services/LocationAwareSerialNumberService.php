@@ -380,9 +380,16 @@ class LocationAwareSerialNumberService extends SerialNumberService
     }
 
     /**
-     * PURCHASE RETURN reverse. Pre: `returned_supplier` at the exact location.
-     * Post: `available` at that same (restored) location. FAIL CLOSED — never
-     * best-effort (unlike legacy reverseForPurchaseReturn).
+     * PURCHASE RETURN reverse. Pre: `returned_supplier` at the exact (OLD
+     * snapshot) location. Post: `available` at that same (restored) location.
+     * FAIL CLOSED — never best-effort (unlike legacy reverseForPurchaseReturn).
+     *
+     * MS6-B0.0.1 — the coverage gate applies HERE too: a completed return left
+     * `general == COUNT(available serials)` at the location (the returned units
+     * are `returned_supplier`, not counted). Before turning them back to
+     * `available` the location must still be consistent — otherwise the reverse
+     * would silently "cure" (or spread) a drift. general is validated at the
+     * OLD snapshot location.
      *
      * @param  array{inventory_location_id:int, reference_id:int}  $context
      */
@@ -401,7 +408,7 @@ class LocationAwareSerialNumberService extends SerialNumberService
             'post_location' => $locationId,
             'movement_from_location' => null,
             'movement_to_location' => $locationId,
-            'coverage_location' => null, // pre-state has 0 available serials by design
+            'coverage_location' => $locationId,
             'link' => [],
             'notes' => 'Reversa de devolución a proveedor location-native.',
         ]);
@@ -557,9 +564,12 @@ class LocationAwareSerialNumberService extends SerialNumberService
     }
 
     /**
-     * §23 — pre-state coverage FAIL CLOSED for the (product, variant, location)
-     * groups this set touches. Skipped when coverage_location is null (the
-     * reverse of a return has 0 available serials by design).
+     * §23 / MS6-B0.0.1 — pre-state coverage FAIL CLOSED for the
+     * (product, variant, location) groups this set touches. ALL four set
+     * operations validate it (including reversePurchaseReturnMany: a completed
+     * return leaves general == COUNT(available serials), so the reverse must
+     * not be able to silently cure/spread a drift). The guard only no-ops if a
+     * caller explicitly passes no coverage_location.
      */
     private function assertSetCoverageReady(array $allocations, array $spec): void
     {
