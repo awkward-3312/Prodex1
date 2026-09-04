@@ -131,12 +131,33 @@ class CheckoutController extends Controller
             ? collect()
             : ProductVariant::whereIn('id', $variantIds)->get(['id', 'product_id', 'price'])->keyBy('id');
 
-        // Preload stock levels for preorder detection
-        $stockRows = product_warehouse::where('warehouse_id', $warehouseId)
-            ->whereIn('product_id', $ids)
-            ->whereNull('deleted_at')
-            ->get(['product_id', 'product_variant_id', 'qte'])
-            ->keyBy(fn ($r) => $r->product_id . ':' . ($r->product_variant_id ?? 'p'));
+        // Preload stock levels for preorder detection.
+        // MS7-B2-1 — a location_primary warehouse reads the EXACT fulfillment
+        // location (never product_warehouse, never an aggregate of the whole
+        // warehouse) — §3/§4/§13. If no deterministic location is
+        // configured, this is a non-blocking heuristic read (only used to
+        // flag a line as pre-order), so it safely degrades to "no stock
+        // data" rather than falling back to stale legacy figures.
+        $stockRows = collect();
+        if (app(\App\Services\WarehouseInventoryModeResolver::class)->isLocationPrimary($warehouseId)) {
+            try {
+                $location = app(\App\Services\ExternalChannelInventoryService::class)->resolveFulfillmentLocation($warehouseId);
+                $rows = DB::table('inventory_location_stocks')
+                    ->where('inventory_location_id', $location->id)
+                    ->whereIn('product_id', $ids)
+                    ->get(['product_id', 'product_variant_id', 'quantity', 'reserved_quantity']);
+                $stockRows = $rows->keyBy(fn ($r) => $r->product_id . ':' . ($r->product_variant_id ?? 'p'))
+                    ->map(fn ($r) => (object) ['qte' => (float) $r->quantity - (float) $r->reserved_quantity]);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $stockRows = collect();
+            }
+        } else {
+            $stockRows = product_warehouse::where('warehouse_id', $warehouseId)
+                ->whereIn('product_id', $ids)
+                ->whereNull('deleted_at')
+                ->get(['product_id', 'product_variant_id', 'qte'])
+                ->keyBy(fn ($r) => $r->product_id . ':' . ($r->product_variant_id ?? 'p'));
+        }
 
         // Track preorder quantities per product for limit enforcement
         $preorderQtyAccumulator = [];

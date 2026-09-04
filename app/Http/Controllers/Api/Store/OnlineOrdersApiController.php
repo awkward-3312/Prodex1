@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Store;
 
+use App\Http\Controllers\Concerns\GuardsPurchaseTransitionMode;
 use App\Http\Controllers\Controller;
 use App\Models\OnlineOrder;
 use App\Models\Product;
@@ -10,12 +11,19 @@ use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\StoreSetting;
 use App\Models\Unit;
+use App\Models\Warehouse;
+use App\Services\ExternalChannelInventoryService;
+use App\Services\LocationAwareSaleStockService;
+use App\Services\WarehouseInventoryModeResolver;
 use Auth;
 use DB;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class OnlineOrdersApiController extends Controller
 {
+    use GuardsPurchaseTransitionMode;
+
     /**
      * GET /store/orders
      * Query: page, per_page, q (Ref or customer), from, to, sort, dir
@@ -174,63 +182,99 @@ class OnlineOrdersApiController extends Controller
             // Resolve warehouse: order → settings.default_warehouse_id → first warehouse
             $warehouseId = (int) ($order->warehouse_id ?: (DB::table('store_settings')->value('default_warehouse_id') ?: 0));
             if (! $warehouseId) {
-                $warehouseId = (int) Warehouse::value('id');
+                $warehouseId = (int) Warehouse::whereNull('deleted_at')->value('id');
             }
             if (! $warehouseId) {
                 return response()->json(['error' => 'No warehouse configured.'], 422);
             }
 
-            // Pre-check stock (outside tx just to compile the list; final check in tx w/ locks)
-            // Pre-order items are exempt from stock validation
-            $insufficient = [];
-            foreach ($order->items as $it) {
-                if ($it->is_preorder) {
-                    continue;
+            // MS7-B2-1 — a channel warehouse in MODE_LOCATION_PRIMARY goes
+            // location-native (reusing the SAME Sale engine MS7-B1 closed for
+            // Admin Sale); every other mode keeps the exact legacy
+            // product_warehouse flow below untouched. The client NEVER
+            // chooses the fulfillment location (§28) — always server-resolved
+            // from the resolved warehouse.
+            $__isNative = app(WarehouseInventoryModeResolver::class)->isLocationPrimary($warehouseId);
+            $__location = null;
+            $__validated = null;
+            $__fulfillableIndexes = [];
+            $__rawLines = [];
+
+            if ($__isNative) {
+                try {
+                    $__location = app(ExternalChannelInventoryService::class)->resolveFulfillmentLocation($warehouseId);
+                } catch (ValidationException $e) {
+                    return response()->json(['error' => $e->validator->errors()->first()], 422);
                 }
 
-                $product = Product::find($it->product_id);
-                $unit = $this->saleUnitForProduct($product); // may be null
-                $need = $this->requiredBaseQty($it->qty, $unit);
-
-                $pw = product_warehouse::where('deleted_at', '=', null)
-                    ->where('warehouse_id', $warehouseId)
-                    ->where('product_id', $it->product_id)
-                    ->when($it->product_variant_id, function ($q) use ($it) {
-                        $q->where('product_variant_id', $it->product_variant_id);
-                    })
-                    ->first();
-
-                $have = $pw ? (float) $pw->qte : 0.0;
-                if ($have < $need) {
-                    $name = $product ? $product->name : ('#'.$it->product_id);
-                    $insufficient[] = [
+                $itemsList = $order->items->values();
+                foreach ($itemsList as $idx => $it) {
+                    if ($it->is_preorder) {
+                        continue;
+                    }
+                    $product = Product::find($it->product_id);
+                    $unit = $this->saleUnitForProduct($product);
+                    $__rawLines[] = [
                         'product_id' => $it->product_id,
                         'product_variant_id' => $it->product_variant_id,
-                        'name' => $name,
-                        'required' => $need,
-                        'available' => $have,
+                        'quantity' => (float) $it->qty,
+                        'sale_unit_id' => $unit?->id,
+                        'pack_multiplier' => 1,
                     ];
+                    $__fulfillableIndexes[] = $idx;
                 }
-            }
 
-            if (! empty($insufficient)) {
-                return response()->json([
-                    'error' => 'Insufficient stock for one or more items.',
-                    'items' => $insufficient,
-                ], 422);
-            }
+                if (! empty($__rawLines)) {
+                    try {
+                        $__validated = app(LocationAwareSaleStockService::class)->validateAndLock($__rawLines);
+                    } catch (ValidationException $e) {
+                        return response()->json(['error' => $e->validator->errors()->first()], 422);
+                    }
 
-            // Transaction: final check WITH LOCKS, create Sale, details, decrement stock
-            $sale = DB::transaction(function () use ($order, $warehouseId) {
+                    // §8/§9/§10 — the online store captures NO explicit batch
+                    // or serial identity for a line today; FAIL CLOSED rather
+                    // than guess (auto-FEFO / first-available-serial).
+                    foreach ($__validated['lines'] as $line) {
+                        if (($line['requires_batch'] ?? false) || ($line['requires_serial'] ?? false)) {
+                            return response()->json([
+                                'error' => 'Este pedido requiere asignación física de lote o serie/IMEI antes de poder confirmarse.',
+                            ], 422);
+                        }
+                    }
 
-                // Final stock check with row locks (skip pre-order items)
+                    // Pre-check (outside tx) against the EXACT fulfillment
+                    // location — never product_warehouse for a native channel.
+                    $insufficient = [];
+                    $readSvc = app(ExternalChannelInventoryService::class);
+                    foreach ($__validated['lines'] as $line) {
+                        $have = $readSvc->availableQuantity($__location->id, $line['product_id'], $line['product_variant_id']);
+                        if ($have < $line['quantity_base']) {
+                            $insufficient[] = [
+                                'product_id' => $line['product_id'],
+                                'product_variant_id' => $line['product_variant_id'],
+                                'required' => $line['quantity_base'],
+                                'available' => $have,
+                            ];
+                        }
+                    }
+                    if (! empty($insufficient)) {
+                        return response()->json([
+                            'error' => 'Insufficient stock for one or more items.',
+                            'items' => $insufficient,
+                        ], 422);
+                    }
+                }
+            } else {
+                // Pre-check stock (outside tx just to compile the list; final check in tx w/ locks)
+                // Pre-order items are exempt from stock validation
+                $insufficient = [];
                 foreach ($order->items as $it) {
                     if ($it->is_preorder) {
                         continue;
                     }
 
                     $product = Product::find($it->product_id);
-                    $unit = $this->saleUnitForProduct($product);
+                    $unit = $this->saleUnitForProduct($product); // may be null
                     $need = $this->requiredBaseQty($it->qty, $unit);
 
                     $pw = product_warehouse::where('deleted_at', '=', null)
@@ -239,13 +283,66 @@ class OnlineOrdersApiController extends Controller
                         ->when($it->product_variant_id, function ($q) use ($it) {
                             $q->where('product_variant_id', $it->product_variant_id);
                         })
-                        ->lockForUpdate()
                         ->first();
 
                     $have = $pw ? (float) $pw->qte : 0.0;
                     if ($have < $need) {
                         $name = $product ? $product->name : ('#'.$it->product_id);
-                        throw new \RuntimeException("Insufficient stock for {$name} (need {$need}, have {$have}).");
+                        $insufficient[] = [
+                            'product_id' => $it->product_id,
+                            'product_variant_id' => $it->product_variant_id,
+                            'name' => $name,
+                            'required' => $need,
+                            'available' => $have,
+                        ];
+                    }
+                }
+
+                if (! empty($insufficient)) {
+                    return response()->json([
+                        'error' => 'Insufficient stock for one or more items.',
+                        'items' => $insufficient,
+                    ], 422);
+                }
+            }
+
+            // Transaction: final check WITH LOCKS, create Sale, details, decrement stock
+            $sale = DB::transaction(function () use ($order, $warehouseId, $__isNative, $__location, $__validated, $__fulfillableIndexes) {
+                // MS7-B2-1 — idempotency (§6): lock the order row and
+                // re-verify it is still 'pending' INSIDE the transaction, so
+                // two concurrent confirm requests can never both apply.
+                $lockedOrder = OnlineOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+                if ($lockedOrder->status !== 'pending') {
+                    throw new \RuntimeException('This order was already processed.');
+                }
+
+                if ($__isNative) {
+                    $this->assertLocationNativePurchaseTransitionSafe($warehouseId, null);
+                } else {
+                    // Final stock check with row locks (skip pre-order items)
+                    foreach ($order->items as $it) {
+                        if ($it->is_preorder) {
+                            continue;
+                        }
+
+                        $product = Product::find($it->product_id);
+                        $unit = $this->saleUnitForProduct($product);
+                        $need = $this->requiredBaseQty($it->qty, $unit);
+
+                        $pw = product_warehouse::where('deleted_at', '=', null)
+                            ->where('warehouse_id', $warehouseId)
+                            ->where('product_id', $it->product_id)
+                            ->when($it->product_variant_id, function ($q) use ($it) {
+                                $q->where('product_variant_id', $it->product_variant_id);
+                            })
+                            ->lockForUpdate()
+                            ->first();
+
+                        $have = $pw ? (float) $pw->qte : 0.0;
+                        if ($have < $need) {
+                            $name = $product ? $product->name : ('#'.$it->product_id);
+                            throw new \RuntimeException("Insufficient stock for {$name} (need {$need}, have {$have}).");
+                        }
                     }
                 }
 
@@ -260,6 +357,7 @@ class OnlineOrdersApiController extends Controller
                     'is_pos' => 0,
                     'client_id' => $order->client_id,
                     'warehouse_id' => $warehouseId,
+                    'inventory_location_id' => $__isNative ? $__location->id : null,
                     'statut' => 'completed',
                     'shipping_status' => null,
 
@@ -296,8 +394,12 @@ class OnlineOrdersApiController extends Controller
                     ]);
                 }
 
-                // Create details + decrement stock (skip decrement for pre-order items)
-                foreach ($order->items as $it) {
+                // Create details (skip the raw product_warehouse decrement for
+                // a native document — its GENERAL leg is applied once, after
+                // this loop, via the snapshot engine).
+                $__detailIds = [];
+                $itemsList = $order->items->values();
+                foreach ($itemsList as $it) {
                     $product = Product::find($it->product_id);
                     $unit = $this->saleUnitForProduct($product);
                     $need = $this->requiredBaseQty($it->qty, $unit);
@@ -310,7 +412,7 @@ class OnlineOrdersApiController extends Controller
                     $unitPrice = (float) $it->price;
                     $qty = (float) $it->qty;
 
-                    SaleDetail::create([
+                    $detail = SaleDetail::create([
                         'date' => $sale->date,
                         'sale_id' => $sale->id,
                         'sale_unit_id' => $unit ? $unit->id : null,
@@ -324,9 +426,10 @@ class OnlineOrdersApiController extends Controller
                         'product_variant_id' => $it->product_variant_id ?: null,
                         'total' => round($unitPrice * $qty, 2),
                     ]);
+                    $__detailIds[] = $detail->id;
 
                     // Pre-order items: no stock to decrement
-                    if ($it->is_preorder) {
+                    if ($it->is_preorder || $__isNative) {
                         continue;
                     }
 
@@ -345,9 +448,33 @@ class OnlineOrdersApiController extends Controller
                     }
                 }
 
+                // GENERAL leg — native only.
+                if ($__isNative && $__validated && ! empty($__validated['lines'])) {
+                    $svc = app(LocationAwareSaleStockService::class);
+                    $effects = [];
+                    foreach ($__validated['lines'] as $line) {
+                        $originalIdx = $__fulfillableIndexes[$line['_line_index']] ?? null;
+                        $detailId = $originalIdx !== null ? ($__detailIds[$originalIdx] ?? null) : null;
+                        if (! $detailId) {
+                            continue;
+                        }
+                        $effects[] = [
+                            'source_detail_id' => $detailId,
+                            'product_id' => $line['product_id'],
+                            'product_variant_id' => $line['product_variant_id'],
+                            'quantity_base' => $line['quantity_base'],
+                        ];
+                    }
+                    if (! empty($effects)) {
+                        $snapshot = $svc->buildSnapshot(LocationAwareSaleStockService::DOC_SALE, $warehouseId, $__location->id, $effects, 1);
+                        $sale->update(['inventory_effect_snapshot' => $snapshot]);
+                        $svc->applySnapshot($snapshot, $sale->id);
+                    }
+                }
+
                 // Flip online order status
-                $order->status = 'confirmed';
-                $order->save();
+                $lockedOrder->status = 'confirmed';
+                $lockedOrder->save();
 
                 return $sale;
             });

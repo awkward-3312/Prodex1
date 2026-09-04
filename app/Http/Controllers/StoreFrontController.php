@@ -413,8 +413,14 @@ class StoreFrontController extends Controller
     }
 
     /**
-     * Attach stock (qty) to each product and its variants from product_warehouse for the given warehouse.
-     * Product without variants: $p->stock. Variants: $v->stock (fallback to $v->qty if no warehouse row).
+     * Attach stock (qty) to each product and its variants for the given
+     * warehouse. Product without variants: $p->stock. Variants: $v->stock
+     * (fallback to $v->qty if no stock row).
+     *
+     * MS7-B2-1 — a location_primary warehouse reads inventory_location_stocks
+     * at the EXACT resolved fulfillment location (reserved excluded), never
+     * product_warehouse and never an aggregate of the whole warehouse (§3/§4).
+     * Legacy warehouses keep the exact product_warehouse.qte read.
      */
     private function attachStockToProducts($products, ?int $warehouseId): void
     {
@@ -447,28 +453,7 @@ class StoreFrontController extends Controller
         }
         $variantIds = array_values(array_unique(array_filter($variantIds)));
 
-        $q = DB::table('product_warehouse')
-            ->where('warehouse_id', $warehouseId)
-            ->whereIn('product_id', $productIds);
-        if (count($variantIds) > 0) {
-            $q->where(function ($qb) use ($variantIds) {
-                $qb->whereNull('product_variant_id')
-                    ->orWhereIn('product_variant_id', $variantIds);
-            });
-        } else {
-            $q->whereNull('product_variant_id');
-        }
-        $rows = $q->when(Schema::hasColumn('product_warehouse', 'deleted_at'), fn ($qb) => $qb->whereNull('deleted_at'))
-            ->select('product_id', 'product_variant_id', 'qte')
-            ->get();
-
-        $stockMap = [];
-        foreach ($rows as $r) {
-            $pid = (int) $r->product_id;
-            $vid = $r->product_variant_id !== null ? (int) $r->product_variant_id : null;
-            $key = $vid !== null ? "{$pid}:{$vid}" : "{$pid}:p";
-            $stockMap[$key] = (float) $r->qte;
-        }
+        $stockMap = $this->readChannelStockMap($warehouseId, $productIds, $variantIds);
 
         foreach ($items as $p) {
             $pid = (int) $p->id;
@@ -512,19 +497,97 @@ class StoreFrontController extends Controller
     }
 
     /**
+     * MS7-B2-1 — mode-aware stock map for the channel warehouse: exact
+     * fulfillment location (reserved excluded) for location_primary, the
+     * exact product_warehouse read otherwise. Never falls back to legacy
+     * data for a native warehouse whose location can't be resolved (§13) —
+     * an empty map there just means "no stock data", not "assume legacy".
+     *
+     * @return array<string,float> keyed "{product_id}:p" or "{product_id}:{variant_id}"
+     */
+    private function readChannelStockMap(int $warehouseId, array $productIds, array $variantIds = []): array
+    {
+        if (app(\App\Services\WarehouseInventoryModeResolver::class)->isLocationPrimary($warehouseId)) {
+            try {
+                $locationId = app(\App\Services\ExternalChannelInventoryService::class)
+                    ->resolveFulfillmentLocation($warehouseId)->id;
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return [];
+            }
+
+            $rows = DB::table('inventory_location_stocks')
+                ->where('inventory_location_id', $locationId)
+                ->whereIn('product_id', $productIds)
+                ->get(['product_id', 'product_variant_id', 'quantity', 'reserved_quantity']);
+
+            $map = [];
+            foreach ($rows as $r) {
+                $pid = (int) $r->product_id;
+                $vid = $r->product_variant_id !== null ? (int) $r->product_variant_id : null;
+                $key = $vid !== null ? "{$pid}:{$vid}" : "{$pid}:p";
+                $map[$key] = round((float) $r->quantity - (float) $r->reserved_quantity, 3);
+            }
+
+            return $map;
+        }
+
+        $q = DB::table('product_warehouse')
+            ->where('warehouse_id', $warehouseId)
+            ->whereIn('product_id', $productIds);
+        if (count($variantIds) > 0) {
+            $q->where(function ($qb) use ($variantIds) {
+                $qb->whereNull('product_variant_id')
+                    ->orWhereIn('product_variant_id', $variantIds);
+            });
+        } else {
+            $q->whereNull('product_variant_id');
+        }
+        $rows = $q->when(Schema::hasColumn('product_warehouse', 'deleted_at'), fn ($qb) => $qb->whereNull('deleted_at'))
+            ->select('product_id', 'product_variant_id', 'qte')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $r) {
+            $pid = (int) $r->product_id;
+            $vid = $r->product_variant_id !== null ? (int) $r->product_variant_id : null;
+            $key = $vid !== null ? "{$pid}:{$vid}" : "{$pid}:p";
+            $map[$key] = (float) $r->qte;
+        }
+
+        return $map;
+    }
+
+    /**
      * Product IDs that have at least one unit in stock in the given warehouse.
      * Used when hide_out_of_stock is enabled.
+     *
+     * MS7-B2-1 — location_primary reads inventory_location_stocks at the
+     * exact fulfillment location (reserved excluded); legacy is unchanged.
      */
     private function getInStockProductIds(int $warehouseId): array
     {
-        $q = DB::table('product_warehouse')
-            ->where('warehouse_id', $warehouseId)
-            ->where('qte', '>', 0);
-        if (Schema::hasColumn('product_warehouse', 'deleted_at')) {
-            $q->whereNull('deleted_at');
+        if (app(\App\Services\WarehouseInventoryModeResolver::class)->isLocationPrimary($warehouseId)) {
+            try {
+                $locationId = app(\App\Services\ExternalChannelInventoryService::class)
+                    ->resolveFulfillmentLocation($warehouseId)->id;
+                $inStockIds = DB::table('inventory_location_stocks')
+                    ->where('inventory_location_id', $locationId)
+                    ->whereRaw('quantity - reserved_quantity > 0')
+                    ->distinct()
+                    ->pluck('product_id')
+                    ->all();
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $inStockIds = [];
+            }
+        } else {
+            $q = DB::table('product_warehouse')
+                ->where('warehouse_id', $warehouseId)
+                ->where('qte', '>', 0);
+            if (Schema::hasColumn('product_warehouse', 'deleted_at')) {
+                $q->whereNull('deleted_at');
+            }
+            $inStockIds = $q->distinct()->pluck('product_id')->all();
         }
-
-        $inStockIds = $q->distinct()->pluck('product_id')->all();
 
         // Include pre-order products even when out of stock
         $preorderIds = DB::table('products')
