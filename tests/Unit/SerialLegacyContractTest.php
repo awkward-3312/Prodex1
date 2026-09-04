@@ -45,25 +45,27 @@ class SerialLegacyContractTest extends TestCase
     }
 
     // =====================================================================
-    // §20 — Transfer RECEIVE lock order: GENERAL before SERIAL (current)
+    // §20 — Transfer RECEIVE lock order: SERIAL before GENERAL
+    //       (MS6-B0.1 flipped this DELIBERATELY — it is NOT a legacy
+    //        regression; see TransferReceiptLockOrderArchitectureTest for
+    //        the full matrix)
     // =====================================================================
 
-    public function test_transfer_receive_currently_increases_general_before_serial(): void
+    public function test_transfer_receive_serial_precedes_general(): void
     {
         $src = $this->read('app/Services/LocationAwareTransferLogisticsService.php');
         $body = $this->fn($src, 'creditGoodStock');
 
         $generalPos = strpos($body, 'InventoryService::class)->increase(');
         $serialPos = strpos($body, 'TransferSerialLocationService::class)->receiveGood(');
+        $batchPos = strpos($body, 'creditBatchStockIfApplicable($transfer, $detail, $stockQty, $receiptItem);');
 
         $this->assertNotFalse($generalPos, 'expected a general increase in the receive-good path');
         $this->assertNotFalse($serialPos, 'expected a serial receiveGood in the receive-good path');
-        $this->assertLessThan(
-            $serialPos,
-            $generalPos,
-            'CURRENT behaviour: GENERAL increase precedes the SERIAL step on transfer receive. '
-            .'MS6 (next milestone) flips this to SERIAL -> GENERAL.'
-        );
+        $this->assertNotFalse($batchPos, 'expected the batch credit helper in the receive-good path');
+
+        $this->assertLessThan($serialPos, $batchPos, 'BATCH artifacts before SERIAL on transfer receive');
+        $this->assertLessThan($generalPos, $serialPos, 'SERIAL before GENERAL on transfer receive (MS6-B0.1)');
     }
 
     public function test_transfer_DISPATCH_already_does_serial_before_general(): void

@@ -178,13 +178,15 @@ class SerialNativeFoundationArchitectureTest extends TestCase
         $this->assertStringNotContainsString('receivePurchaseMany', $body);
     }
 
-    public function test_transfer_receive_inversion_is_still_documented_not_fixed(): void
+    public function test_transfer_receive_is_now_serial_before_general(): void
     {
+        // MS6-B0.1 flipped this. Full matrix lives in
+        // TransferReceiptLockOrderArchitectureTest.
         $body = $this->fn($this->read('app/Services/LocationAwareTransferLogisticsService.php'), 'creditGoodStock');
         $generalPos = strpos($body, 'InventoryService::class)->increase(');
         $serialPos = strpos($body, 'TransferSerialLocationService::class)->receiveGood(');
         $this->assertNotFalse($generalPos);
         $this->assertNotFalse($serialPos);
-        $this->assertLessThan($serialPos, $generalPos, 'MS6-B0 does NOT reorder transfer receive — still GENERAL -> SERIAL');
+        $this->assertLessThan($generalPos, $serialPos, 'MS6-B0.1: transfer receive is SERIAL -> GENERAL');
     }
 }

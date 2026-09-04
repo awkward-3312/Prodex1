@@ -92,6 +92,7 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
         $sourceIssue = $issueColumn ?: $this->inferResolvedIssueColumn($detail, $receiptItem, $product, $stockQty);
         $variantId = $detail->product_variant_id ? (int) $detail->product_variant_id : null;
 
+        $quarantineLocationId = null;
         if ($sourceIssue === 'quantity_defective') {
             $quarantineLocationId = $this->quarantineLocationIdForTransferDetail($transfer, $detail);
             if (! $quarantineLocationId) {
@@ -99,7 +100,21 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
                     'issue' => 'No se pudo identificar la ubicación de cuarentena de la mercancía defectuosa.',
                 ]);
             }
+        }
 
+        // MS6-B0.1 — canonical lock order: PHASE A batch -> PHASE B serial ->
+        // PHASE C general (was GENERAL -> SERIAL -> BATCH).
+        $this->creditBatchStockIfApplicable($transfer, $detail, $stockQty, $receiptItem);
+
+        app(TransferSerialLocationService::class)->reclassifyIssueToGood(
+            $transfer,
+            $detail,
+            $stockQty,
+            $receiptItem,
+            $sourceIssue
+        );
+
+        if ($sourceIssue === 'quantity_defective') {
             app(InventoryService::class)->move(
                 $quarantineLocationId,
                 (int) $transfer->to_inventory_location_id,
@@ -131,16 +146,6 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
                 ]
             );
         }
-
-        app(TransferSerialLocationService::class)->reclassifyIssueToGood(
-            $transfer,
-            $detail,
-            $stockQty,
-            $receiptItem,
-            $sourceIssue
-        );
-
-        $this->creditBatchStockIfApplicable($transfer, $detail, $stockQty, $receiptItem);
     }
 
     public function notifyDestinationReceivers(Transfer $transfer): void
@@ -241,6 +246,16 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
         }
 
         $stockQty = $this->convertToBaseQuantity($quantity, $unit);
+
+        // MS6-B0.1 — canonical lock order for a receipt WITH artifacts:
+        //   PHASE A  batch artifacts
+        //   PHASE B  serial artifacts
+        //   PHASE C  general InventoryService
+        // (was GENERAL -> SERIAL -> BATCH). All inside the caller's receive
+        // transaction, so a later phase failing rolls the earlier ones back.
+        $this->creditBatchStockIfApplicable($transfer, $detail, $stockQty, $receiptItem);
+        app(TransferSerialLocationService::class)->receiveGood($transfer, $detail, $stockQty, $receiptItem);
+
         app(InventoryService::class)->increase(
             (int) $transfer->to_inventory_location_id,
             (int) $detail->product_id,
@@ -259,9 +274,6 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
                 ],
             ]
         );
-
-        app(TransferSerialLocationService::class)->receiveGood($transfer, $detail, $stockQty, $receiptItem);
-        $this->creditBatchStockIfApplicable($transfer, $detail, $stockQty, $receiptItem);
     }
 
     protected function creditBatchStockIfApplicable(
@@ -353,6 +365,19 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
             if (! $unit) continue;
             $baseQty = $this->convertToBaseQuantity((float) $item->quantity_defective, $unit);
 
+            // MS6-B0.1 — SERIAL artifact BEFORE the general credit to quarantine
+            // (was GENERAL -> SERIAL). Same destination location, order only.
+            $receiptItem = TransferReceiptItem::find($item->id);
+            if ($receiptItem) {
+                app(TransferSerialLocationService::class)->receiveDefective(
+                    $transfer,
+                    $detail,
+                    $baseQty,
+                    $receiptItem,
+                    (int) $quarantine->id
+                );
+            }
+
             app(InventoryService::class)->increase(
                 (int) $quarantine->id,
                 (int) $detail->product_id,
@@ -367,17 +392,6 @@ class LocationAwareTransferLogisticsService extends IdempotentTransferLogisticsS
                     'metadata' => ['transfer_id' => (int) $transfer->id, 'receipt_id' => $receiptId],
                 ]
             );
-
-            $receiptItem = TransferReceiptItem::find($item->id);
-            if ($receiptItem) {
-                app(TransferSerialLocationService::class)->receiveDefective(
-                    $transfer,
-                    $detail,
-                    $baseQty,
-                    $receiptItem,
-                    (int) $quarantine->id
-                );
-            }
 
             DB::table('transfer_quarantine_stock')
                 ->where('transfer_id', $transfer->id)
