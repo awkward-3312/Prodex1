@@ -150,11 +150,12 @@ class PurchaseBatchActivationArchitectureTest extends TestCase
         $this->assertStringContainsString('PurchaseReturnDetailBatch', $ret);
 
         // Planner + pivots run ONLY inside the completed branch.
+        // MS6-B2 — store/update call the composed batch+serial planner.
         foreach (['storeLocationAware', 'updateLocationAware'] as $m) {
             $body = $this->fn($ret, $m);
-            $plannerPos = strpos($body, 'planLocationAwarePurchaseReturnBatches(');
+            $plannerPos = strpos($body, 'planLocationAwarePurchaseReturnArtifacts(');
             $completedPos = strpos($body, "=== 'completed'");
-            $this->assertNotFalse($plannerPos, "{$m}(): must call the return batch planner");
+            $this->assertNotFalse($plannerPos, "{$m}(): must call the return batch+serial planner");
             $this->assertNotFalse($completedPos);
             $this->assertGreaterThan($completedPos, $plannerPos, "{$m}(): planner must be gated behind statut === 'completed'");
         }

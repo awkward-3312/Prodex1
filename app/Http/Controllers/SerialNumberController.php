@@ -209,19 +209,35 @@ class SerialNumberController extends BaseController
     }
 
     /**
-     * Available serials originating from a given purchase (for the purchase-return picker).
-     * Query params: purchase_id (required), product_id, product_variant_id (optional).
+     * MS6-B2 — available serials for a PurchaseReturn's serial-select widget.
+     *
+     * `purchase_id` stays the LEGACY hard filter when present (unchanged
+     * behaviour for every existing caller). `inventory_location_id` is an
+     * OPTIONAL additive filter: a location-native return passes the SELECTED
+     * inventory_location_id so the candidate list only ever shows serials the
+     * backend will actually accept (it always re-validates independently —
+     * this is a UX filter, never the writer). Omitting `purchase_id` (an
+     * unlinked return) resolves candidates by product/variant/location alone,
+     * with NO purchase-origin restriction — never assume purchase_id=0.
      */
     public function forPurchase(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', \App\Models\PurchaseReturn::class);
 
-        $rows = ProductSerial::where('purchase_id', (int) $request->purchase_id)
-            ->where('status', ProductSerial::STATUS_AVAILABLE)
+        $query = ProductSerial::where('status', ProductSerial::STATUS_AVAILABLE)
+            ->when($request->filled('purchase_id') && (int) $request->purchase_id > 0, fn ($q) => $q->where('purchase_id', (int) $request->purchase_id))
             ->when($request->filled('product_id'), fn ($q) => $q->where('product_id', $request->product_id))
-            ->when($request->filled('product_variant_id'), fn ($q) => $q->where('product_variant_id', $request->product_variant_id))
-            ->orderBy('id', 'asc')
-            ->get(['id', 'serial_number', 'status']);
+            ->when($request->filled('inventory_location_id'), fn ($q) => $q->where('inventory_location_id', $request->inventory_location_id));
+
+        // A non-variant line must NOT surface another variant's serials of the
+        // same product — never mix serials across variants.
+        if ($request->filled('product_variant_id')) {
+            $query->where('product_variant_id', $request->product_variant_id);
+        } else {
+            $query->whereNull('product_variant_id');
+        }
+
+        $rows = $query->orderBy('id', 'asc')->get(['id', 'serial_number', 'status']);
 
         return response()->json(['serials' => $this->mapSerials($rows)]);
     }

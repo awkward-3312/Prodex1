@@ -519,8 +519,13 @@ class PurchaseReturnsBatchLocationNativeTest extends TestCase
         $this->assertSame(10.0, $this->locStock($this->loc, $p));
     }
 
-    public function test_store_imei_still_fails_closed(): void
+    public function test_store_imei_without_serial_numbers_is_422(): void
     {
+        // MS6-B2 — IMEI is now ACTIVE for native returns (see
+        // PurchaseReturnSerialLocationNativeArchitectureTest), but it is still
+        // explicit: a requires_serial line with NO serial_numbers still 422s
+        // (count(serials)=0 != quantity_base=1), the same outward behaviour
+        // this test pinned before B2 (then via the allow_serial=false fence).
         $this->lp();
         $p = $this->makeProduct(['is_imei' => 1, 'unit_purchase_id' => $this->unit1]);
         $this->seedLocationStock($this->loc, $p, 10);

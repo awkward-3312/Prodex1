@@ -126,16 +126,9 @@ class SerialNativeFoundationArchitectureTest extends TestCase
         $this->assertStringContainsString('lleva asignación de lotes Y de series a la vez', $src);
     }
 
-    // ===================== ACTIVATION SCOPE — B1 = manual Purchase only ========
-    // (full B1 wiring assertions live in PurchaseSerialLocationNativeArchitectureTest)
-
-    public function test_purchase_return_controller_still_does_not_activate_serial(): void
-    {
-        $src = $this->read('app/Http/Controllers/PurchasesReturnController.php');
-        $this->assertStringNotContainsString("'allow_serial' => true", $src, 'PurchaseReturn serial-native is MS6-B2, not yet');
-        $this->assertStringNotContainsString('LocationAwarePurchaseSerialPlanner', $src);
-        $this->assertStringNotContainsString('receivePurchaseMany', $src);
-    }
+    // ===================== ACTIVATION SCOPE — B1 manual Purchase, B2 manual =====
+    // Return (full B1/B2 wiring assertions live in
+    // PurchaseSerialLocationNativeArchitectureTest / PurchaseReturnSerialLocationNativeArchitectureTest)
 
     public function test_import_native_path_does_not_activate_serial(): void
     {

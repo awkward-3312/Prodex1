@@ -128,19 +128,8 @@ class PurchaseSerialLocationNativeArchitectureTest extends TestCase
         $this->assertStringContainsString('serializado (IMEI)', $resolver);
     }
 
-    // ===================== purchase return: STILL INACTIVE ===============
-
-    public function test_purchase_return_controller_does_not_activate_serial(): void
-    {
-        $src = $this->read('app/Http/Controllers/PurchasesReturnController.php');
-        $this->assertStringNotContainsString("'allow_serial' => true", $src, 'MS6-B2, not yet');
-        $this->assertStringNotContainsString('LocationAwarePurchaseSerialPlanner', $src);
-        // the serial set-ops must not leak into the return controller.
-        $this->assertStringNotContainsString('returnToSupplierMany', $src);
-        $this->assertStringNotContainsString('reversePurchaseReturnMany', $src);
-        // (LocationAwarePurchaseBatchPlanner::planPurchaseReturnIssue — the
-        //  BATCH planner — IS active for returns since MS5; that is fine.)
-    }
+    // ===================== purchase return: MS6-B2 activates it ==========
+    // (full wiring assertions live in PurchaseReturnSerialLocationNativeArchitectureTest)
 
     // ===================== legacy Purchase serial: UNCHANGED =============
 

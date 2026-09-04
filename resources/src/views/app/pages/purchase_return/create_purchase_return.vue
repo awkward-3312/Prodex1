@@ -176,17 +176,30 @@
                           <td>{{currentUser.currency}} {{detail.subtotal.toFixed(priceDecimals)}}</td>
                         </tr>
 
-                        <!-- Serial / IMEI selection (only available serials from this purchase) -->
-                        <tr v-if="detail.is_imei" :key="'s-'+detail.detail_id" style="background: transparent;">
+                        <!-- Serial / IMEI + batch on the same product: not supported -->
+                        <tr v-if="detail.is_imei && detail.is_batch_tracked" :key="'sb-'+detail.detail_id" style="background: transparent;">
+                          <td colspan="9" style="padding: 0 8px 12px 8px; border: none;">
+                            <b-alert show variant="danger" class="mb-0">
+                              {{ $t('Serial_Batch_Incompatible') || 'Este producto está configurado con lote Y serie/IMEI a la vez. La combinación no es compatible: corrige la configuración del producto antes de registrar la devolución.' }}
+                            </b-alert>
+                          </td>
+                        </tr>
+
+                        <!-- Serial / IMEI selection (only available serials, filtered by product/
+                             variant/location — and by the linked purchase when it exists) -->
+                        <tr v-if="detail.is_imei && !detail.is_batch_tracked" :key="'s-'+detail.detail_id" style="background: transparent;">
                           <td colspan="9" style="padding: 0 8px 16px 8px; border: none;">
                             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0ea5e9; border-radius: 10px; padding: 14px 18px;">
                               <serial-numbers-field
                                 mode="select"
                                 v-model="detail.serial_numbers"
-                                :required-count="detail.quantity"
+                                :required-count="serialRequiredCount(detail)"
                                 fetch-url="serial_numbers/for_purchase"
-                                :fetch-params="{ purchase_id: purchase_return.purchase_id, product_id: detail.product_id, product_variant_id: detail.product_variant_id || null }"
+                                :fetch-params="{ purchase_id: purchase_return.purchase_id || null, product_id: detail.product_id, product_variant_id: detail.product_variant_id || null, inventory_location_id: location_meta.requires ? purchase_return.inventory_location_id : null }"
                               />
+                              <div v-if="purchase_return.statut !== 'completed'" class="text-muted mt-2" style="font-size:12px;">
+                                {{ $t('Serials_Assigned_On_Return_Complete') || 'Los seriales se asignarán cuando la devolución se complete.' }}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -373,20 +386,56 @@ export default {
     // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
+    },
+    // A product configured with BOTH batch and serial/IMEI tracking — the
+    // backend rejects the combination (422); block the form the same way.
+    serialBatchConflictDetail() {
+      if (!Array.isArray(this.details)) return null;
+      return this.details.find(d => d && d.is_imei && d.is_batch_tracked) || null;
     }
   },
 
   methods: {
-    
-    //--- Serial / IMEI: a serialized line must have exactly quantity-many serials.
+
+    // MS6-B2 — base-unit quantity for a line, matching the backend unit maths
+    // ('*' multiplies by operator_value, '/' divides). The return form never
+    // lets the user change the purchase unit, so these come straight off the
+    // detail payload (no local units list to fall back on).
+    detailBaseQty(detail) {
+      const q = Number(detail && detail.quantity) || 0;
+      const op = detail && detail.purchase_unit_operator;
+      const val = Number(detail && detail.purchase_unit_operator_value);
+      if (!op || !isFinite(val) || val <= 0) return q;
+      return op === '/' ? q / val : q * val;
+    },
+    // Serials required for a line: the PHYSICAL base quantity for a
+    // location-native (location_primary) warehouse — count(serials) ==
+    // quantity_base — the entered document quantity for a legacy one. Kept
+    // mode-dependent so legacy tenants keep their exact current behaviour.
+    serialRequiredCount(detail) {
+      return this.location_meta.requires
+        ? Math.round(this.detailBaseQty(detail))
+        : Math.round(Number(detail && detail.quantity) || 0);
+    },
+    //--- Serial / IMEI: a serialized line must have exactly quantity_base-many serials.
     serialCountMismatch(detail) {
       if (!detail || !detail.is_imei) return false;
       const count = Array.isArray(detail.serial_numbers) ? detail.serial_numbers.length : 0;
-      return count !== Math.round(Number(detail.quantity) || 0);
+      return count !== this.serialRequiredCount(detail);
     },
 
     //--- Submit Validate Create Return Purchase
     Submit_Return_Purchase() {
+      // A product configured with BOTH batch and serial/IMEI tracking is not
+      // supported by the backend (422) — block before submit.
+      if (this.serialBatchConflictDetail) {
+        this.makeToast(
+          "danger",
+          `${this.$t('Serial_Batch_Incompatible') || 'Lote y serie/IMEI no son compatibles'} (${this.serialBatchConflictDetail.name})`,
+          this.$t("Failed")
+        );
+        return;
+      }
       // Serials are removed from inventory only when the return is completed.
       if (this.purchase_return.statut === 'completed') {
         const bad = this.details.find(d => this.serialCountMismatch(d));
@@ -678,6 +727,16 @@ export default {
     //---- MS3 · refresh per-line stock from the chosen inventory_location ----\\
     Selected_Inventory_Location(locationId) {
       const id = locationId || this.purchase_return.inventory_location_id;
+      // MS6-B2 — a serial selected for the PREVIOUS location is never valid at
+      // the new one: never conserve it silently. serial-numbers-field refetches
+      // its candidate list on its own (fetch-params watcher); the SELECTION
+      // itself must be cleared here, or the payload could still submit stale
+      // serials that this location's candidate list no longer offers.
+      this.details.forEach(d => {
+        if (d && d.is_imei && Array.isArray(d.serial_numbers) && d.serial_numbers.length) {
+          this.$set(d, "serial_numbers", []);
+        }
+      });
       if (!id || !this.location_meta.requires) return;
       axios
         .get("purchase_returns_location_catalog/" + id)

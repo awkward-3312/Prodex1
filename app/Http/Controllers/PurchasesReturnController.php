@@ -26,6 +26,7 @@ use App\Models\Warehouse;
 use App\Services\BatchService;
 use App\Services\InventoryLocationScopeService;
 use App\Services\LocationAwarePurchaseBatchPlanner;
+use App\Services\LocationAwarePurchaseSerialPlanner;
 use App\Services\LocationAwarePurchaseStockService;
 use App\Services\SerialNumberService;
 use App\Services\WarehouseInventoryModeResolver;
@@ -857,7 +858,8 @@ class PurchasesReturnController extends BaseController
     }
 
     // =====================================================================
-    // MS3 — Purchase Returns location-native (warehouses in MODE_LOCATION_PRIMARY).
+    // MS3 / MS5-D / MS6-B2 — Purchase Returns location-native (warehouses in
+    // MODE_LOCATION_PRIMARY).
     //
     // Physical semantics: PurchaseReturn = location -> supplier => NEGATIVE
     // delta. apply = InventoryService::decrease (fails on insufficient stock,
@@ -866,8 +868,8 @@ class PurchasesReturnController extends BaseController
     // 'completed' (Purchases use 'received' — the strings are NOT unified).
     //
     // Scope: is_single / is_variant, manual returns only, INCLUDING
-    // is_batch_tracked (MS5-D). Import stays legacy (MS5-E). serial/IMEI (MS6)
-    // stay legacy — IMEI fails closed in the service. NO legacy product_warehouse
+    // is_batch_tracked (MS5-D) AND is_imei / serial (MS6-B2, incl. variant+IMEI).
+    // Import stays legacy for both (MS5-E / MS6-B3). NO legacy product_warehouse
     // / BatchService / SerialNumberService writes on this path. The document
     // identity (inventory_location_id NOT NULL) governs update/destroy. Same
     // transition-mode boundary guards as Purchases (shared trait).
@@ -875,13 +877,34 @@ class PurchasesReturnController extends BaseController
     // batch (MS5-D): validateAndLock(allow_batch=true) -> for a COMPLETED return
     // LocationAwarePurchaseBatchPlanner::planPurchaseReturnIssue freezes a
     // document-wide per-line batch_allocation (explicit selection reserves
-    // first, then FEFO over the LOCKED per-location slices) -> buildSnapshot
-    // embeds it -> applySnapshot runs BatchLocationService::issueMany BEFORE
-    // InventoryService::decrease (and receiveMany BEFORE increase on a reverse).
-    // The snapshot is the ONLY source of a reverse; purchase_return_detail_batches
-    // are secondary UX/reporting (pivot.qty = the entered PURCHASE-unit quantity,
-    // never used for the physical reverse). A PENDING return creates NO batch
-    // artifact at all, even if the request carried `batches`.
+    // first, then FEFO over the LOCKED per-location slices).
+    //
+    // serial (MS6-B2): validateAndLock(allow_serial=true) marks an is_imei line
+    // requires_serial (integer quantity_base enforced there; a line that is
+    // BOTH requires_batch AND requires_serial => 422). For a COMPLETED return
+    // LocationAwarePurchaseSerialPlanner::planPurchaseReturnIssue resolves the
+    // EXPLICITLY selected serial_numbers against the EXISTING ledger (NO FEFO,
+    // nothing is created) — each must be `available` at the EXACT selected
+    // inventory_location_id, the exact product/variant, and — ONLY when this
+    // Return is linked to a Purchase (purchase_id NOT NULL) — originate from
+    // that Purchase (ProductSerial.purchase_id == PurchaseReturn.purchase_id).
+    // An unlinked Return (purchase_id NULL) imposes no origin restriction. The
+    // physical location is NOT fixed by the linked Purchase — the serial may
+    // have moved internally since receipt; only its CURRENT location matters.
+    //
+    // buildSnapshot folds batch THEN serial (planLocationAwarePurchaseReturnArtifacts,
+    // mapped by ORDINAL) -> applySnapshot runs (PHASE A) BatchLocationService::issueMany,
+    // (PHASE B) LocationAwareSerialNumberService::returnToSupplierMany, (PHASE C)
+    // InventoryService::decrease — and the mirror order on a reverse: batch
+    // receiveMany -> serial reversePurchaseReturnMany -> general increase. The
+    // snapshot is the ONLY source of a reverse (never serial_numbers display /
+    // imei_number text / the candidates endpoint); purchase_return_detail_batches
+    // and PurchaseReturnDetails.imei_number are secondary UX/reporting. A serial
+    // reverse is FAIL CLOSED — a unit that moved downstream (sold/reserved/
+    // damaged/available-elsewhere) blocks update/destroy entirely; it never
+    // hard-deletes the ProductSerial row. A PENDING/non-completed return creates
+    // NO batch/serial artifact at all, even if the request carried
+    // `batches` / `serial_numbers`.
     //
     // TRANSITIONAL DIFFERENCE (documented): a NEW return may be location-native
     // even when it is linked to a LEGACY Purchase whose warehouse is now
@@ -901,6 +924,27 @@ class PurchasesReturnController extends BaseController
         ], array_values($request['details'] ?? []));
     }
 
+    /**
+     * Back-compat: collapse a detail row's serial_numbers (array or delimited
+     * string) into the legacy comma-separated imei_number text column so
+     * existing print templates keep working. Falls back to the raw imei_number.
+     */
+    private function resolveReturnImeiString($value)
+    {
+        $serials = $value['serial_numbers'] ?? null;
+        if (is_string($serials)) {
+            $serials = preg_split('/[\r\n,;\t]+/', $serials) ?: [];
+        }
+        if (is_array($serials)) {
+            $clean = array_values(array_filter(array_map(fn ($s) => trim((string) $s), $serials), fn ($s) => $s !== ''));
+            if (! empty($clean)) {
+                return implode(',', $clean);
+            }
+        }
+
+        return $value['imei_number'] ?? null;
+    }
+
     /** Create PurchaseReturnDetails one by one -> [lineIndex => id]. */
     private function persistLocationAwareReturnDetails(int $returnId, array $rawLines): array
     {
@@ -918,7 +962,7 @@ class PurchasesReturnController extends BaseController
                 'product_id' => $value['product_id'],
                 'product_variant_id' => (isset($value['product_variant_id']) && $value['product_variant_id'] !== '') ? $value['product_variant_id'] : null,
                 'total' => $value['subtotal'] ?? 0,
-                'imei_number' => $value['imei_number'] ?? null,
+                'imei_number' => $this->resolveReturnImeiString($value),
             ]);
             $ids[$i] = $d->id;
         }
@@ -953,6 +997,34 @@ class PurchasesReturnController extends BaseController
             $rawLines,
             []
         );
+    }
+
+    /**
+     * MS6-B2 — run the serial planner for a COMPLETED location-native return
+     * and fold its per-line serial_allocation into the (already batch-planned)
+     * validated lines. A no-op for a cart with no is_imei line. Resolves the
+     * EXPLICITLY selected serial_numbers against the EXISTING ledger — nothing
+     * is created, no FEFO. When this Return is linked to a Purchase
+     * ($sourcePurchaseId not null) each serial must additionally originate from
+     * that Purchase; an unlinked Return imposes no such restriction.
+     */
+    private function planLocationAwarePurchaseReturnSerials(int $warehouseId, int $locationId, array $validatedLines, array $rawLines, ?int $sourcePurchaseId): array
+    {
+        return app(LocationAwarePurchaseSerialPlanner::class)->planPurchaseReturnIssue(
+            $warehouseId, $locationId, $validatedLines, $rawLines,
+            [
+                'require_source_purchase' => $sourcePurchaseId !== null,
+                'source_purchase_id' => $sourcePurchaseId,
+            ]
+        );
+    }
+
+    /** MS6-B2 — batch plan THEN serial plan, folded into one line array. */
+    private function planLocationAwarePurchaseReturnArtifacts(int $warehouseId, int $locationId, array $validatedLines, array $rawLines, ?int $sourcePurchaseId): array
+    {
+        $planned = $this->planLocationAwarePurchaseReturnBatches($warehouseId, $locationId, $validatedLines, $rawLines);
+
+        return $this->planLocationAwarePurchaseReturnSerials($warehouseId, $locationId, $planned, $rawLines, $sourcePurchaseId);
     }
 
     /**
@@ -1025,15 +1097,17 @@ class PurchasesReturnController extends BaseController
 
             // Validate + lock ALWAYS (pending included): a location_primary
             // return can only be saved with a valid location + valid lines.
-            // allow_batch=true — a batch-tracked line is marked requires_batch
-            // (the planner runs only for a COMPLETED return); IMEI still 422.
+            // MS6-B2 — allow_batch + allow_serial: a batch-tracked line is
+            // marked requires_batch, an is_imei line requires_serial (integer
+            // base enforced here). A line that is BOTH => 422. The planners run
+            // only for a COMPLETED return.
             $validated = $svc->validateAndLock(
                 LocationAwarePurchaseStockService::DOC_PURCHASE_RETURN,
                 $warehouseId,
                 $locationId,
                 $this->locationAwareReturnLines($request),
                 [],
-                ['allow_batch' => true]
+                ['allow_batch' => true, 'allow_serial' => true]
             );
 
             $order = new PurchaseReturn;
@@ -1062,8 +1136,9 @@ class PurchasesReturnController extends BaseController
             // the planner NEVER runs for pending, even if the request carried
             // `batches`.
             if ($statut === 'completed') {
-                $planned = $this->planLocationAwarePurchaseReturnBatches(
-                    $warehouseId, $locationId, $validated['lines'], $rawLines
+                $sourcePurchaseId = $order->purchase_id ? (int) $order->purchase_id : null;
+                $planned = $this->planLocationAwarePurchaseReturnArtifacts(
+                    $warehouseId, $locationId, $validated['lines'], $rawLines, $sourcePurchaseId
                 );
                 $validated['lines'] = $this->withReturnSourceDetailIds($planned, $detailIds);
                 $snapshot = $svc->buildSnapshot($validated, 1);
@@ -1127,9 +1202,12 @@ class PurchasesReturnController extends BaseController
             // OLD location — the snapshot carries old wh/location/effects).
             if ($hadActiveEffect) {
                 $oldSnapshot = $svc->normalizeSnapshot($oldSnapshotRaw);
-                // allow_batch=true so a now-batch product with a batch_allocation
-                // reverses via receiveMany (old wh/location/effects live inside).
-                $svc->assertSnapshotArtifactSafeAndLock($oldSnapshot, ['allow_batch' => true]);
+                // MS6-B2 — allow_batch + allow_serial so a now-batch / now-serial
+                // product reverses via receiveMany / reversePurchaseReturnMany
+                // (old wh/location/effects live inside). A downstream-moved
+                // serial (sold/reserved/damaged/available-elsewhere) => 422 TOTAL
+                // — details are NOT deleted before a successful reverse.
+                $svc->assertSnapshotArtifactSafeAndLock($oldSnapshot, ['allow_batch' => true, 'allow_serial' => true]);
                 $svc->reverseSnapshot($oldSnapshot, $locked->id);
             }
 
@@ -1143,7 +1221,7 @@ class PurchasesReturnController extends BaseController
                 $newLocationId,
                 $this->locationAwareReturnLines($request),
                 $extra,
-                ['allow_batch' => true]
+                ['allow_batch' => true, 'allow_serial' => true]
             );
 
             // Replace details + their batch pivots (the OLD snapshot already
@@ -1160,8 +1238,9 @@ class PurchasesReturnController extends BaseController
             // whole tx (incl. the reverse above) rolls back.
             $newSnapshot = null;
             if ($newStatut === 'completed') {
-                $planned = $this->planLocationAwarePurchaseReturnBatches(
-                    $newWarehouseId, $newLocationId, $validated['lines'], $rawLines
+                $sourcePurchaseId = $locked->purchase_id ? (int) $locked->purchase_id : null;
+                $planned = $this->planLocationAwarePurchaseReturnArtifacts(
+                    $newWarehouseId, $newLocationId, $validated['lines'], $rawLines, $sourcePurchaseId
                 );
                 $validated['lines'] = $this->withReturnSourceDetailIds($planned, $detailIds);
                 $newSnapshot = $svc->buildSnapshot($validated, $oldRevision + 1);
@@ -1250,8 +1329,12 @@ class PurchasesReturnController extends BaseController
     /**
      * Shared physical-stock reversal for a location-native return being deleted
      * (single destroy AND bulk delete). completed => reverse the exact
-     * historical snapshot (stock RETURNS to the snapshot's location); anything
-     * else => nothing. FAIL CLOSED on a missing/broken snapshot.
+     * historical snapshot (batch receiveMany -> serial reversePurchaseReturnMany
+     * -> general increase; stock RETURNS to the snapshot's location); anything
+     * else => nothing. FAIL CLOSED on a missing/broken snapshot, or a serial
+     * that moved downstream (sold/reserved/damaged/available-elsewhere) — never
+     * guess, never hard-delete, never fall back to the legacy per-warehouse
+     * writer.
      */
     private function reverseLocationNativePurchaseReturnStock(PurchaseReturn $return): void
     {
@@ -1261,8 +1344,9 @@ class PurchasesReturnController extends BaseController
 
         $svc = app(LocationAwarePurchaseStockService::class);
         $snapshot = $svc->normalizeSnapshot($return->inventory_effect_snapshot); // throws if null/malformed
-        // allow_batch=true — a batch effect reverses via receiveMany + increase.
-        $svc->assertSnapshotArtifactSafeAndLock($snapshot, ['allow_batch' => true]);
+        // MS6-B2 — allow_batch + allow_serial: a batch effect reverses via
+        // receiveMany + increase; a serial effect via reversePurchaseReturnMany.
+        $svc->assertSnapshotArtifactSafeAndLock($snapshot, ['allow_batch' => true, 'allow_serial' => true]);
         $svc->reverseSnapshot($snapshot, $return->id);
     }
 
@@ -1454,6 +1538,10 @@ class PurchasesReturnController extends BaseController
             $data['product_id'] = $detail->product_id;
             $data['unitPurchase'] = $unit->ShortName;
             $data['purchase_unit_id'] = $unit->id;
+            // MS6-B2 — purchase-unit conversion factor so the return form can
+            // require count(serials) == quantity_BASE for a location-native line.
+            $data['purchase_unit_operator'] = $unit->operator ?? '*';
+            $data['purchase_unit_operator_value'] = (float) ($unit->operator_value ?? 1);
 
             $data['is_imei'] = $detail['product']['is_imei'];
             $data['imei_number'] = $detail->imei_number;
@@ -1533,6 +1621,26 @@ class PurchasesReturnController extends BaseController
         if (! $view_records) {
             // Check If User->id === PurchaseReturn->id
             $this->authorizeForUser($request->user('api'), 'check_record', $Purchase_Return);
+        }
+
+        // MS6-B2 — for a location-native return the serial_numbers shown in the
+        // edit form come from the PHYSICAL snapshot (serial_allocation), the
+        // reverse authority — not the imei_number text (kept only for print).
+        // Indexed by source_detail_id.
+        $snapshotSerialsByDetail = [];
+        $editSnapshot = $Purchase_Return->inventory_effect_snapshot;
+        if (! empty($editSnapshot)) {
+            $editSnapshot = is_array($editSnapshot) ? $editSnapshot : json_decode($editSnapshot, true);
+            foreach (($editSnapshot['effects'] ?? []) as $eff) {
+                $sdid = (int) ($eff['source_detail_id'] ?? 0);
+                if ($sdid <= 0) {
+                    continue;
+                }
+                $snapshotSerialsByDetail[$sdid] = array_values(array_filter(array_map(
+                    fn ($a) => (string) ($a['serial_number'] ?? ''),
+                    $eff['serial_allocation'] ?? []
+                ), fn ($s) => $s !== ''));
+            }
         }
 
         $Return_detail['supplier_id'] = $Purchase_Return->provider_id;
@@ -1626,9 +1734,19 @@ class PurchasesReturnController extends BaseController
             $data['product_id'] = $detail->product_id;
             $data['unitPurchase'] = $unit->ShortName;
             $data['purchase_unit_id'] = $unit->id;
+            // MS6-B2 — purchase-unit conversion factor so the return form can
+            // require count(serials) == quantity_BASE for a location-native line.
+            $data['purchase_unit_operator'] = $unit->operator ?? '*';
+            $data['purchase_unit_operator_value'] = (float) ($unit->operator_value ?? 1);
 
             $data['is_imei'] = $detail['product']['is_imei'];
             $data['imei_number'] = $detail->imei_number;
+            // Native returns: derive serials from the snapshot; otherwise fall
+            // back to the legacy imei_number text (the frontend does the same).
+            $data['serial_numbers'] = $snapshotSerialsByDetail[(int) $detail->id]
+                ?? (($detail['product']['is_imei'] && $detail->imei_number)
+                    ? array_values(array_filter(array_map('trim', preg_split('/[\r\n,;\t]+/', (string) $detail->imei_number)), fn ($s) => $s !== ''))
+                    : []);
             $data['is_batch_tracked'] = (bool) ($detail['product']['is_batch_tracked'] ?? false);
 
             if ($detail->discount_method == '2') {
