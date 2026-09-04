@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\GuardsPurchaseTransitionMode;
 use App\Mail\CustomEmail;
+use App\Models\InventoryLocation;
 use App\Services\BatchService;
+use App\Services\InventoryLocationScopeService;
+use App\Services\LocationAwareSaleStockService;
 use App\Services\PromotionEngine;
 use App\Services\SerialNumberService;
 use App\Services\TenantTaxConfigResolver;
+use App\Services\WarehouseInventoryModeResolver;
 use App\Models\Account;
 use App\Models\Client;
 use App\Models\EmailMessage;
@@ -43,9 +48,12 @@ use GuzzleHttp\Client as Client_guzzle;
 use GuzzleHttp\Client as Client_termi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Infobip\Api\SendSmsApi;
 use Infobip\Configuration;
 use Infobip\Model\SmsAdvancedTextualRequest;
@@ -56,6 +64,8 @@ use Twilio\Rest\Client as Client_Twilio;
 
 class SalesController extends BaseController
 {
+    use GuardsPurchaseTransitionMode;
+
     /**
      * Get the effective tax rate for the current tenant.
      * Falls back to tenant configuration or defaults to Honduras SAR (15%).
@@ -243,10 +253,33 @@ class SalesController extends BaseController
             'warehouse_id' => 'required',
         ]);
 
-        // Multi-Pack Selling: a completed sale deducts quantity × pack_multiplier
-        // base units per pack — reject if that would oversell.
-        if ($request->statut === 'completed') {
-            $this->assertPackStockSufficient($request);
+        // MS7-B1 — an Admin Sale (is_pos=0) for a location_primary warehouse
+        // stays on this SAME method but branches at every physical-inventory
+        // write point below to the location-native engine; every other mode
+        // (legacy_only / shadow_compare / dual_write / no row) keeps the
+        // exact legacy behaviour untouched. Every OTHER concern — promotions,
+        // points, payments, commissions, WhatsApp, QuickBooks — is identical
+        // code for both, never duplicated.
+        $__isNativeSale = app(WarehouseInventoryModeResolver::class)->isLocationPrimary((int) $request->warehouse_id);
+        $__nativeLocationId = null;
+        $__nativeByRawIndex = [];
+        if ($__isNativeSale) {
+            $this->assertLocationNativePurchaseTransitionSafe((int) $request->warehouse_id, null);
+            request()->validate(['inventory_location_id' => 'required|integer']);
+            $__nativeLocationId = (int) $request->inventory_location_id;
+            // FAIL CLOSED preflight (batch+IMEI fence, unknown product/variant,
+            // non-positive/fractional base qty) BEFORE any write happens.
+            $__validated = app(LocationAwareSaleStockService::class)->validateAndLock($this->locationAwareSaleLines($request));
+            foreach ($__validated['lines'] as $__line) {
+                $__nativeByRawIndex[(int) $__line['_line_index']] = $__line;
+            }
+        } else {
+            // Multi-Pack Selling: a completed sale deducts quantity × pack_multiplier
+            // base units per pack — reject if that would oversell. Meaningless for
+            // a native sale (InventoryService::decrease is the FAIL CLOSED authority).
+            if ($request->statut === 'completed') {
+                $this->assertPackStockSufficient($request);
+            }
         }
 
         // Re-evaluate promotions server-side so the client can't fabricate a discount.
@@ -264,7 +297,7 @@ class SalesController extends BaseController
         $promotionCodeApplied = trim((string) $request->input('promotion_code', '')) ?: null;
         $appliedPromotions = $promotionResult['applied'] ?? [];
 
-        $sale = \DB::transaction(function () use ($request, $promotionDiscount, $promotionCodeApplied, $appliedPromotions) {
+        $sale = \DB::transaction(function () use ($request, $promotionDiscount, $promotionCodeApplied, $appliedPromotions, $__isNativeSale, $__nativeLocationId, $__nativeByRawIndex) {
             $helpers = new helpers;
             $order = new Sale;
 
@@ -275,6 +308,9 @@ class SalesController extends BaseController
             $order->client_id = $request->client_id;
             $order->GrandTotal = $request->GrandTotal;
             $order->warehouse_id = $request->warehouse_id;
+            if ($__isNativeSale) {
+                $order->inventory_location_id = $__nativeLocationId;
+            }
             $order->tax_rate = $this->getTenantTaxRate();
             $order->TaxNet = $request->TaxNet;
             $order->discount = $request->discount;
@@ -347,7 +383,10 @@ class SalesController extends BaseController
                     'pack_name' => $value['pack_name'] ?? null,
                 ], $warrantyGuarantee);
 
-                if ($order->statut == 'completed') {
+                // MS7-B1 — a native sale NEVER touches product_warehouse; its
+                // GENERAL decrease happens once, after this loop, via the
+                // snapshot engine (InventoryService::decrease).
+                if (! $__isNativeSale && $order->statut == 'completed') {
                     if ($value['product_variant_id'] !== null) {
                         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
                             ->where('warehouse_id', $order->warehouse_id)
@@ -384,15 +423,22 @@ class SalesController extends BaseController
             SaleDetail::insert($orderDetails);
 
             // Apply batch consumption for batch-tracked products (only when completed).
+            // Native uses the auto-fallback (FEFO-capable) entry point — same one
+            // update()/POS already use — legacy keeps its exact original call.
             $batchService = app(BatchService::class);
             if ($batchService->isSupported() && $order->statut === 'completed') {
                 $persistedDetails = SaleDetail::where('sale_id', $order->id)
                     ->orderBy('id', 'asc')
                     ->get();
-                $batchService->applyForSale($order, $inputDetailsForBatches, $persistedDetails);
+                $__isNativeSale
+                    ? $batchService->applyForSaleWithAutoFallback($order, $data, $persistedDetails)
+                    : $batchService->applyForSale($order, $inputDetailsForBatches, $persistedDetails);
             }
 
             // Serial / IMEI: mark selected serials as sold (only on completed sales).
+            // sellOnSale() already self-branches to the location-aware, FAIL-CLOSED
+            // implementation once $order->inventory_location_id is set (native) —
+            // unchanged call site for both.
             $serialService = app(SerialNumberService::class);
             if ($serialService->isSupported() && $order->statut === 'completed') {
                 $persistedSerials = SaleDetail::where('sale_id', $order->id)
@@ -405,6 +451,20 @@ class SalesController extends BaseController
                     }
                     $serialService->sellOnSale($order, $detail, $row['serial_numbers'] ?? null);
                 }
+            }
+
+            // GENERAL leg — native only. Runs unconditionally (independent of
+            // whether batch/serial tracking happens to be enabled tenant-wide)
+            // right after every batch/serial artifact above has had its chance
+            // to run, so their provenance is available to fold into the snapshot.
+            if ($__isNativeSale && $order->statut === 'completed') {
+                $__persistedAll = SaleDetail::where('sale_id', $order->id)->orderBy('id', 'asc')->get();
+                $__snapshot = $this->buildNativeSaleSnapshot(
+                    LocationAwareSaleStockService::DOC_SALE, (int) $order->warehouse_id, (int) $order->inventory_location_id,
+                    $data, $__nativeByRawIndex, $__persistedAll, 1
+                );
+                $order->update(['inventory_effect_snapshot' => $__snapshot]);
+                app(LocationAwareSaleStockService::class)->applySnapshot($__snapshot, $order->id);
             }
 
             $user = Auth::user();
@@ -578,6 +638,174 @@ class SalesController extends BaseController
         ]);
     }
 
+    // =====================================================================
+    // MS7-B1 — Admin Sale location-native (warehouses in MODE_LOCATION_PRIMARY).
+    //
+    // Scope: is_pos = 0 ADMIN sales ONLY. A POS sale (is_pos = 1) always keeps
+    // going through PosController::CreatePOS -> Sale::created ->
+    // PosLocationSaleStockService — this path never touches it, and every
+    // routing check below explicitly excludes is_pos = 1 as a second guard.
+    //
+    // Physical semantics: Admin Sale = location -> customer => NEGATIVE delta.
+    // apply = InventoryService::decrease (FAIL CLOSED, never negative, never
+    // clamps); reverse = increase. The applied effect exists ONLY when
+    // statut == 'completed' (a non-completed sale creates NO physical
+    // artifact, NO snapshot, even if the request carried batches/serials).
+    //
+    // validateAndLock (LocationAwareSaleStockService) marks each line
+    // requires_batch / requires_serial from the product's own flags; a line
+    // that is BOTH => 422 (same fence as native Purchase — one artifact
+    // tracker per line). quantity_base is computed via the SAME
+    // PosLocationSaleStockService::baseQuantity conversion POS already uses —
+    // never a third formula.
+    //
+    // Apply / reverse order is BATCH -> SERIAL -> GENERAL, both directions:
+    //   BATCH  — LocationAwareBatchService::applyForSaleWithAutoFallback /
+    //            reverseForSaleDetails (already location-aware; built for POS,
+    //            reused as-is). SaleDetailBatch pivots are the batch reverse
+    //            authority (written in the SAME transaction as the snapshot).
+    //   SERIAL — LocationAwareSerialNumberService::sellOnSale (apply, already
+    //            location-aware) / reverseForSaleDetails (reverse, MS7-B1,
+    //            FAIL CLOSED). ProductSerial.sale_detail_id is the serial
+    //            reverse authority.
+    //   GENERAL — LocationAwareSaleStockService::applySnapshot / reverseSnapshot
+    //            (InventoryService::decrease/increase), snapshot-replay
+    //            authoritative — the ONLY source of "how much" to reverse.
+    //
+    // NO product_warehouse / legacy BatchService / legacy SerialNumberService
+    // physical writer on this path. Legacy Admin Sale (any non-primary mode,
+    // or is_pos = 1) keeps its exact current behaviour untouched.
+    // =====================================================================
+
+    /** Raw request details -> LocationAwareSaleStockService line shape. */
+    private function locationAwareSaleLines(Request $request): array
+    {
+        return array_map(fn ($v) => [
+            'product_id' => $v['product_id'] ?? null,
+            'product_variant_id' => (isset($v['product_variant_id']) && $v['product_variant_id'] !== '') ? $v['product_variant_id'] : null,
+            'quantity' => $v['quantity'] ?? 0,
+            'sale_unit_id' => $v['sale_unit_id'] ?? null,
+            'pack_multiplier' => $v['pack_multiplier'] ?? 1,
+            'product_type' => $v['product_type'] ?? null,
+        ], array_values($request['details'] ?? []));
+    }
+
+    /**
+     * MS7-B1 — build the GENERAL inventory_effect_snapshot for a completed
+     * native Sale/SaleReturn from the ALREADY-PERSISTED details (this is
+     * called AFTER SaleDetail/SaleReturnDetails rows exist and AFTER the
+     * batch/serial artifacts for them have already been applied by the
+     * caller's normal — unchanged — legacy code path, which self-branches to
+     * native automatically via the LocationAware* singleton bindings).
+     *
+     * $byRawIndex is validateAndLock()'s `lines`, keyed by _line_index (the
+     * position in the raw request `details` array) — NOT every raw line has
+     * an entry (service-type lines are dropped, matching legacy's own
+     * "no physical effect for a service line" behaviour).
+     *
+     * $persistedDetails must be positionally aligned to the raw `details`
+     * array (index 0..n-1 in request order) — a Collection keyed 0..n-1
+     * (`SaleDetail::where(...)->orderBy('id')->get()`, relying on the same
+     * insert-order-equals-id-order assumption the existing legacy batch/
+     * serial code already makes) or a plain array keyed the same way.
+     */
+    private function buildNativeSaleSnapshot(string $documentType, int $warehouseId, int $locationId, array $rawLines, array $byRawIndex, $persistedDetails, int $revision): array
+    {
+        return app(LocationAwareSaleStockService::class)->buildSnapshotFromPersistedDetails(
+            $documentType, $warehouseId, $locationId, $rawLines, $byRawIndex, $persistedDetails, $revision
+        );
+    }
+
+    /**
+     * MS7-B1 — reverse ONLY the GENERAL leg of a location-native Admin Sale's
+     * historical snapshot (InventoryService::increase, snapshot-replay
+     * authoritative). BATCH and SERIAL are deliberately NOT touched here —
+     * every call site already runs the ordinary (self-branching) legacy
+     * BatchService::reverseForSaleDetails / SerialNumberService::
+     * reverseForSaleDetails calls unconditionally, and those already resolve
+     * to the location-aware, FAIL-CLOSED implementation for a native sale via
+     * the LocationAware* singleton bindings — no separate native code path
+     * needed for those two artifact types. FAIL CLOSED on a missing/broken
+     * snapshot — never guess, never fall back to the legacy per-warehouse
+     * writer.
+     */
+    private function reverseLocationNativeSaleGeneral(Sale $sale): void
+    {
+        if ($sale->statut !== 'completed' || empty($sale->inventory_effect_snapshot)) {
+            return;
+        }
+
+        $svc = app(LocationAwareSaleStockService::class);
+        $svc->reverseSnapshot($svc->normalizeSnapshot($sale->inventory_effect_snapshot), $sale->id);
+    }
+
+    // --------- Inventory-location select for the sale form ---------------\\
+
+    /**
+     * GET sales_inventory_locations/{warehouse_id}
+     *
+     * An Admin Sale is an OUTBOUND movement (location -> customer) => the
+     * user's OPERATING scope (InventoryLocationScopeService::allowedLocationIds),
+     * same as PurchaseReturn.
+     */
+    public function inventoryLocationsForWarehouse(Request $request, $warehouseId)
+    {
+        $u = $request->user('api');
+        abort_unless(
+            $u && (Gate::forUser($u)->allows('create', Sale::class) || Gate::forUser($u)->allows('update', Sale::class)),
+            403,
+            'No tienes permiso para consultar ubicaciones de inventario de ventas.'
+        );
+
+        $warehouseId = (int) $warehouseId;
+        $user = auth()->user();
+        if ($user && ! $user->is_all_warehouses) {
+            $ids = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
+            abort_unless(in_array($warehouseId, $ids, true), 403, 'No tienes acceso a este almacén.');
+        }
+
+        $allowedIds = ($user && ! $user->is_all_warehouses && (int) $user->role_id !== 1)
+            ? app(InventoryLocationScopeService::class)->allowedLocationIds($user)
+            : null;
+
+        return response()->json($this->inventoryLocationContextPayload($warehouseId, $allowedIds));
+    }
+
+    /**
+     * GET sales_location_catalog/{location_id}
+     *
+     * Per-location available stock for the Admin Sale form line list —
+     * replaces the legacy product_warehouse.qte read for a location-native
+     * sale. Reuses LocationCatalogReadService (same source as Adjustments /
+     * Damages / PurchaseReturn). UX only — InventoryService is the final
+     * validation.
+     */
+    public function inventoryLocationCatalog(Request $request, $locationId)
+    {
+        $u = $request->user('api');
+        abort_unless(
+            $u && (Gate::forUser($u)->allows('create', Sale::class) || Gate::forUser($u)->allows('update', Sale::class)),
+            403,
+            'No tienes permiso para consultar el catálogo por ubicación.'
+        );
+
+        $locationId = (int) $locationId;
+        $location = InventoryLocation::whereNull('deleted_at')->where('is_active', 1)->whereKey($locationId)->first();
+        abort_if(! $location, 404, 'La ubicación de inventario no existe o está inactiva.');
+
+        $user = auth()->user();
+        if ($user && ! $user->is_all_warehouses) {
+            $ids = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
+            abort_unless(in_array((int) $location->warehouse_id, $ids, true), 403, 'No tienes acceso a este almacén.');
+        }
+        if ($user && ! $user->is_all_warehouses && (int) $user->role_id !== 1) {
+            $allowed = app(InventoryLocationScopeService::class)->allowedLocationIds($user);
+            abort_unless(in_array($locationId, $allowed, true), 403, 'No tienes acceso a esta ubicación de inventario.');
+        }
+
+        return response()->json(app(\App\Services\LocationCatalogReadService::class)->forLocation($locationId));
+    }
+
     /**
      * Back-compat: collapse a detail row's serial_numbers (array or delimited
      * string) into the legacy comma-separated imei_number text column so existing
@@ -618,6 +846,13 @@ class SalesController extends BaseController
             $view_records = $user->hasRecordView();
             $current_Sale = Sale::findOrFail($id);
 
+            // MS7-B1 — route by the PERSISTED document identity, not the
+            // warehouse's current mode. A location-native sale stays
+            // location-native; a legacy (is_pos=0, inventory_location_id
+            // NULL) sale stays legacy even if its warehouse was later
+            // promoted to location_primary.
+            $__isNativeSale = (int) $current_Sale->is_pos !== 1 && $current_Sale->inventory_location_id !== null;
+
              /**
              * Warehouses restriction
              * Allow if:
@@ -657,10 +892,34 @@ class SalesController extends BaseController
                     $new_products_id[] = $new_detail['id'];
                 }
 
+                // MS7-B1 — FAIL CLOSED preflight (batch+IMEI fence, unknown
+                // product/variant, non-positive/fractional base qty) BEFORE
+                // any reversal or write happens. Also resolves/validates the
+                // (possibly new) inventory_location_id up front.
+                $__nativeLocationId = null;
+                $__nativeByRawIndex = [];
+                $__nativeOldRevision = 0;
+                if ($__isNativeSale) {
+                    $this->assertLocationNativePurchaseTransitionSafe((int) $current_Sale->warehouse_id, (int) $request->warehouse_id);
+                    if (! $request->filled('inventory_location_id')) {
+                        throw ValidationException::withMessages(['inventory_location_id' => 'Debes seleccionar una ubicación de inventario.']);
+                    }
+                    $__nativeLocationId = (int) $request->inventory_location_id;
+                    $__nativeValidated = app(LocationAwareSaleStockService::class)->validateAndLock($this->locationAwareSaleLines($request));
+                    foreach ($__nativeValidated['lines'] as $__line) {
+                        $__nativeByRawIndex[(int) $__line['_line_index']] = $__line;
+                    }
+                    if (! empty($current_Sale->inventory_effect_snapshot)) {
+                        $__nativeOldRevision = app(LocationAwareSaleStockService::class)->normalizeSnapshot($current_Sale->inventory_effect_snapshot)['revision'];
+                    }
+                }
+
                 // Reverse batch consumption for the old (completed) state of the sale BEFORE
                 // deleting any detail rows or restoring product_warehouse stock. This releases
                 // ProductBatch.qty and clears sale_detail_batches pivots so the new state can
-                // be reapplied cleanly below.
+                // be reapplied cleanly below. Already location-aware (self-branches to the
+                // native, FAIL-CLOSED implementation via the LocationAware* singleton
+                // bindings) — unchanged call site for both legacy and native.
                 $batchService = app(BatchService::class);
                 if ($batchService->isSupported() && $current_Sale->statut == 'completed') {
                     $batchService->reverseForSaleDetails($old_sale_details);
@@ -672,6 +931,13 @@ class SalesController extends BaseController
                 $serialPayloadPresent = $serialService->payloadHasSerials($new_sale_details);
                 if ($serialService->isSupported() && $serialPayloadPresent && $current_Sale->statut == 'completed') {
                     $serialService->reverseForSaleDetails($old_sale_details);
+                }
+
+                // GENERAL leg — native only. Mirrors the raw product_warehouse
+                // reversal legacy performs unconditionally below when the OLD
+                // state was completed (never gated on $serialPayloadPresent).
+                if ($__isNativeSale) {
+                    $this->reverseLocationNativeSaleGeneral($current_Sale);
                 }
 
                 // Init Data with old Parametre
@@ -699,7 +965,10 @@ class SalesController extends BaseController
                     $oldPackMultiplier = (float) ($value['pack_multiplier'] ?? 0) > 0 ? (float) $value['pack_multiplier'] : 1;
                     $oldPackQty = $value['quantity'] * $oldPackMultiplier;
 
-                    if ($current_Sale->statut == 'completed') {
+                    // MS7-B1 — a native sale's GENERAL leg was already reversed
+                    // in one shot above (reverseLocationNativeSaleGeneral); it
+                    // never touches product_warehouse.
+                    if (! $__isNativeSale && $current_Sale->statut == 'completed') {
 
                         if ($value['product_variant_id'] !== null) {
                             $product_warehouse = product_warehouse::where('deleted_at', '=', null)
@@ -757,7 +1026,10 @@ class SalesController extends BaseController
                             ? (float) $prod_detail['pack_multiplier'] : 1;
                         $newPackQty = $prod_detail['quantity'] * $newPackMultiplier;
 
-                        if ($request['statut'] == 'completed') {
+                        // MS7-B1 — a native sale's GENERAL leg is applied once,
+                        // after this loop, via the snapshot engine; never
+                        // product_warehouse.
+                        if (! $__isNativeSale && $request['statut'] == 'completed') {
 
                             if ($prod_detail['product_variant_id'] !== null) {
                                 $product_warehouse = product_warehouse::where('deleted_at', '=', null)
@@ -829,6 +1101,14 @@ class SalesController extends BaseController
                     }
                 }
 
+                // MS7-B1 — the in-memory warehouse_id/inventory_location_id
+                // below are what applyForSaleWithAutoFallback()/resellSaleSerials()
+                // read to self-branch to the location-aware implementation
+                // (LocationAware* singleton bindings) — set BEFORE either runs.
+                if ($__isNativeSale) {
+                    $current_Sale->inventory_location_id = $__nativeLocationId;
+                }
+
                 // Apply batch consumption for the new (completed) state. If the request
                 // carries explicit batch picks per line, those are consumed; otherwise
                 // the line qty is auto-filled via FEFO. The local sale's warehouse_id is
@@ -847,6 +1127,20 @@ class SalesController extends BaseController
                 if ($serialService->isSupported() && $serialPayloadPresent && $request['statut'] == 'completed') {
                     $current_Sale->warehouse_id = (int) $request->warehouse_id;
                     $serialService->resellSaleSerials($current_Sale, $new_sale_details, $newPersistedDetails);
+                }
+
+                // GENERAL leg — native only. Runs unconditionally (independent
+                // of whether batch/serial tracking happens to be enabled
+                // tenant-wide) right after every batch/serial artifact above
+                // has had its chance to run, so their provenance is available
+                // to fold into the snapshot.
+                $__nativeNewSnapshot = null;
+                if ($__isNativeSale && $request['statut'] == 'completed') {
+                    $__nativeNewSnapshot = $this->buildNativeSaleSnapshot(
+                        LocationAwareSaleStockService::DOC_SALE, (int) $request->warehouse_id, (int) $__nativeLocationId,
+                        $new_sale_details, $__nativeByRawIndex, $newPersistedDetails, $__nativeOldRevision + 1
+                    );
+                    app(LocationAwareSaleStockService::class)->applySnapshot($__nativeNewSnapshot, $current_Sale->id);
                 }
 
                 // -------------------- Loyalty points update (edit) --------------------
@@ -964,7 +1258,7 @@ class SalesController extends BaseController
                     $payment_statut = 'unpaid';
                 }
 
-                $current_Sale->update([
+                $__updatePayload = [
                     'date' => $request['date'],
                     'client_id' => $request['client_id'],
                     'warehouse_id' => $request['warehouse_id'],
@@ -985,7 +1279,16 @@ class SalesController extends BaseController
                     'used_points' => $new_used,
                     'earned_points' => $new_earned,
                     'discount_from_points' => $request['discount_from_points'],
-                ]);
+                ];
+                if ($__isNativeSale) {
+                    $__updatePayload['inventory_location_id'] = $__nativeLocationId;
+                    if ($__nativeNewSnapshot !== null) {
+                        $__updatePayload['inventory_effect_snapshot'] = $__nativeNewSnapshot; // B / C
+                    }
+                    // A (non->non) and D (applied->non-applied): keep the last
+                    // historical snapshot so a later re-apply bumps its revision.
+                }
+                $current_Sale->update($__updatePayload);
             }
 
             return $current_Sale;
@@ -1067,6 +1370,12 @@ class SalesController extends BaseController
             $view_records = $user->hasRecordView();
             $current = \App\Models\Sale::with(['details.product'])->findOrFail($id);
 
+            // MS7-B1 — route by the PERSISTED document identity (never POS).
+            $__isNativeSale = (int) $current->is_pos !== 1 && $current->inventory_location_id !== null;
+            if ($__isNativeSale) {
+                $this->assertLocationNativePurchaseTransitionSafe((int) $current->warehouse_id, null);
+            }
+
             if ($current->sarFiscalDocument()->exists()) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'sale' => ['Las ventas con factura fiscal SAR no pueden eliminarse. Debes anular el documento fiscal.'],
@@ -1107,8 +1416,10 @@ class SalesController extends BaseController
                 $this->authorizeForUser($request->user('api'), 'check_record', $current);
             }
 
-            // Restore stock if sale was completed
-            if ($current->statut === 'completed') {
+            // Restore stock if sale was completed (legacy raw product_warehouse
+            // write — a native sale's GENERAL leg is reversed via the snapshot
+            // engine below instead, right after batch/serial reversal).
+            if (! $__isNativeSale && $current->statut === 'completed') {
                 foreach ($current->details as $d) {
                     $product = $d->product;
                     if (! $product || ($product->type ?? null) === 'is_service') {
@@ -1171,6 +1482,11 @@ class SalesController extends BaseController
             $serialService = app(SerialNumberService::class);
             if ($serialService->isSupported() && $current->statut === 'completed') {
                 $serialService->reverseForSaleDetails($current->details);
+            }
+
+            // GENERAL leg — native only (see reverseLocationNativeSaleGeneral doc).
+            if ($__isNativeSale) {
+                $this->reverseLocationNativeSaleGeneral($current);
             }
 
             // Delete details
@@ -1298,6 +1614,17 @@ class SalesController extends BaseController
                         $this->authorizeForUser($request->user('api'), 'check_record', $current_Sale);
                     }
 
+                    // MS7-B1 — a location-native Admin Sale (never POS) skips the
+                    // raw per-warehouse qte write below and reverses its GENERAL
+                    // snapshot leg instead. BATCH/SERIAL reversal right below
+                    // already self-branches to the location-aware, FAIL-CLOSED
+                    // implementation for a native sale (LocationAware* singleton
+                    // bindings) — runs UNCHANGED for both legacy and native.
+                    $isLocationNativeSale = $current_Sale->inventory_location_id !== null && (int) $current_Sale->is_pos !== 1;
+                    if ($isLocationNativeSale) {
+                        $this->assertLocationNativePurchaseTransitionSafe((int) $current_Sale->warehouse_id, null);
+                    }
+
                     // Pharmacy: reverse batch consumption (adds qty back to product_batches,
                     // removes pivot rows) before warehouse stock is restored below.
                     $batchService = app(BatchService::class);
@@ -1311,7 +1638,12 @@ class SalesController extends BaseController
                         $serialService->reverseForSaleDetails($old_sale_details);
                     }
 
-                    foreach ($old_sale_details as $key => $value) {
+                    // GENERAL leg — native only (see reverseLocationNativeSaleGeneral doc).
+                    if ($isLocationNativeSale) {
+                        $this->reverseLocationNativeSaleGeneral($current_Sale);
+                    }
+
+                    foreach ($isLocationNativeSale ? [] : $old_sale_details as $key => $value) {
 
                         // check if detail has sale_unit_id Or Null
                         if ($value['sale_unit_id'] !== null) {
@@ -2937,6 +3269,8 @@ class SalesController extends BaseController
             $sale['shipping'] = $Sale_data->shipping;
             $sale['statut'] = $Sale_data->statut;
             $sale['notes'] = $Sale_data->notes;
+            // MS7-B1 — the persisted location, if this is a native document.
+            $sale['inventory_location_id'] = $Sale_data->inventory_location_id;
 
             // Preload existing batch pivots for this sale's details so the edit UI can
             // render the same selector the create-sale page uses (optional override).

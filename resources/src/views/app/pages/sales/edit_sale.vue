@@ -93,6 +93,31 @@
                   </validation-provider>
                 </b-col>
 
+                <!-- inventory location (MS7-B1 · sólo almacenes location_primary) -->
+                <b-col v-if="location_meta.requires" lg="4" md="4" sm="12" class="mb-3">
+                  <validation-provider name="inventory_location" :rules="{ required: true }">
+                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                      <v-select
+                        :class="{'is-invalid': !!errors.length}"
+                        :state="errors[0] ? false : (valid ? true : null)"
+                        :disabled="!sale.warehouse_id"
+                        v-model="sale.inventory_location_id"
+                        :reduce="label => label.value"
+                        :placeholder="$t('Choose_Inventory_Location')"
+                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
+                      />
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+                <!-- location_primary but not reconciled: block the form -->
+                <b-col v-if="location_meta.blocked" cols="12" class="mb-3">
+                  <b-alert show variant="danger" class="mb-0">
+                    {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado. No se puede registrar la venta hasta resolverlo.' }}
+                  </b-alert>
+                </b-col>
+
                   <!-- Product -->
                 <b-col md="12" class="mb-5">
                   <h6>{{$t('ProductName')}}</h6>
@@ -322,14 +347,23 @@
                           </td>
                         </tr>
 
+                        <!-- Serial / IMEI + batch on the same product: not supported -->
+                        <tr v-if="detail.is_imei && detail.is_batch_tracked" :key="'serial-batch-conflict-' + detail.detail_id" style="background: transparent;">
+                          <td colspan="9" style="padding: 0 8px 12px 8px; border: none;">
+                            <b-alert show variant="danger" class="mb-0">
+                              {{ $t('Serial_Batch_Incompatible') || 'Este producto está configurado con lote Y serie/IMEI a la vez. La combinación no es compatible: corrige la configuración del producto antes de registrar la venta.' }}
+                            </b-alert>
+                          </td>
+                        </tr>
+
                         <!-- Serial / IMEI selection sub-row -->
-                        <tr v-if="detail.is_imei" :key="'serials-' + detail.detail_id" style="background: transparent;">
+                        <tr v-if="detail.is_imei && !detail.is_batch_tracked" :key="'serials-' + detail.detail_id" style="background: transparent;">
                           <td colspan="9" style="padding: 0 8px 16px 8px; border: none;">
                             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0ea5e9; border-radius: 10px; padding: 14px 18px;">
                               <serial-numbers-field
                                 mode="select"
                                 v-model="detail.serial_numbers"
-                                :required-count="detail.quantity"
+                                :required-count="serialRequiredCount(detail)"
                                 :product-id="detail.product_id"
                                 :product-variant-id="detail.product_variant_id"
                                 :fetch-params="{ product_id: detail.product_id, warehouse_id: sale.warehouse_id, product_variant_id: detail.product_variant_id || null, include_sale_id: sale.id }"
@@ -710,6 +744,7 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
+import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 
 export default {
   metaInfo: {
@@ -748,6 +783,7 @@ export default {
         notes: "",
         client_id: "",
         warehouse_id: "",
+        inventory_location_id: null,
         sales_agent_id: null,
         tax_rate: 0,
         TaxNet: 0,
@@ -755,6 +791,9 @@ export default {
         discount: 0,
         discount_Method: "2", // "1" for percentage, "2" for fixed (default)
       },
+      // MS7-B1 — inventory-location context for the selected warehouse.
+      inventory_locations: [],
+      location_meta: { requires: false, blocked: false, mode: null, status: null },
       total: 0,
       GrandTotal: 0,
       product: {
@@ -856,6 +895,26 @@ export default {
         }
       }
       return "";
+    },
+
+    // Serial / IMEI: a serialized line must have exactly required-many serials selected.
+    hasSerialValidationErrors() {
+      if (!Array.isArray(this.details)) return false;
+      return this.details.some(d => this.serialCountMismatch(d));
+    },
+
+    firstSerialErrorMessage() {
+      if (!Array.isArray(this.details)) return "";
+      const d = this.details.find(x => this.serialCountMismatch(x));
+      if (!d) return "";
+      return this.$t("Serials_Count_Mismatch") + " — " + (d.name || d.code || "");
+    },
+
+    // A product configured with BOTH batch and serial/IMEI tracking — the
+    // backend rejects the combination (422); block the form the same way.
+    serialBatchConflictDetail() {
+      if (!Array.isArray(this.details)) return null;
+      return this.details.find(d => d && d.is_imei && d.is_batch_tracked) || null;
     }
   },
 
@@ -1182,6 +1241,11 @@ export default {
     Selected_Warehouse(value) {
       this.search_input= '';
       this.product_filter = [];
+      // MS7-B1 — reset + reload the inventory-location context for the new warehouse.
+      this.sale.inventory_location_id = null;
+      this.inventory_locations = [];
+      this.location_meta = { requires: false, blocked: false, mode: null, status: null };
+      this.Load_Inventory_Locations(value);
       this.Get_Products_By_Warehouse(value);
       // Refresh available batches for existing batch-tracked lines since batches
       // are warehouse-scoped.
@@ -1192,6 +1256,39 @@ export default {
           }
         }
       }
+    },
+
+    //---- MS7-B1 · inventory locations of the selected warehouse ----\\
+    Load_Inventory_Locations(id) {
+      if (!id) return;
+      axios
+        .get("sales_inventory_locations/" + id)
+        .then(({ data }) => {
+          this.inventory_locations = (data && data.locations) || [];
+          this.location_meta = {
+            requires: !!(data && data.requires_inventory_location),
+            blocked: !!(data && data.blocked),
+            mode: data && data.transition_mode,
+            status: data && data.transition_status
+          };
+          if (!this.location_meta.requires) {
+            this.sale.inventory_location_id = null;
+            return;
+          }
+          // A persisted, still-valid location is kept as document state; if
+          // it is no longer valid it is cleared and D2 re-runs over the
+          // current options. A sole quarantine location without an explicit
+          // default stays unselected.
+          this.sale.inventory_location_id = resolveAutoInventoryLocation({
+            locations: this.inventory_locations,
+            defaultLocationId: data && data.default_inventory_location_id,
+            persistedLocationId: this.sale.inventory_location_id
+          });
+        })
+        .catch(() => {
+          this.inventory_locations = [];
+          this.location_meta = { requires: false, blocked: false, mode: null, status: null };
+        });
     },
 
      //------------------------------------ Get Products By Warehouse -------------------------\\
@@ -1386,11 +1483,33 @@ export default {
       return false;
     },
 
+    // MS7-B1 — base-unit quantity for a line, matching the backend unit maths
+    // ('*' multiplies by operator_value, '/' divides).
+    detailBaseQty(detail) {
+      const q = Number(detail && detail.quantity) || 0;
+      let op = detail && detail.sale_unit_operator;
+      let val = Number(detail && detail.sale_unit_operator_value);
+      if (!op && Array.isArray(this.units)) {
+        const u = this.units.find(x => String(x.id) === String(detail && detail.sale_unit_id));
+        if (u) { op = u.operator; val = Number(u.operator_value); }
+      }
+      if (!op || !isFinite(val) || val <= 0) return q;
+      return op === '/' ? q / val : q * val;
+    },
+    // Serials required for a line: the PHYSICAL base quantity for a
+    // location-native (location_primary) warehouse — count(serials) ==
+    // quantity_base — the entered document quantity for a legacy one. Kept
+    // mode-dependent so legacy tenants keep their exact current behaviour.
+    serialRequiredCount(detail) {
+      return this.location_meta.requires
+        ? Math.round(this.detailBaseQty(detail))
+        : Math.round(Number(detail && detail.quantity) || 0);
+    },
     // Serial / IMEI: a serialized line must have exactly quantity-many serials selected.
     serialCountMismatch(detail) {
       if (!detail || !detail.is_imei) return false;
       const count = Array.isArray(detail.serial_numbers) ? detail.serial_numbers.length : 0;
-      return count !== Math.round(Number(detail.quantity) || 0);
+      return count !== this.serialRequiredCount(detail);
     },
 
     batch_duplicates(detail) {
@@ -1751,9 +1870,19 @@ export default {
         if (count > 0) {
           this.makeToast("warning", this.$t("AddQuantity"), this.$t("Warning"));
           return false;
-        } else {
-          return true;
         }
+
+        // MS7-B1 — never submit a sale that would fall back to legacy.
+        if (this.location_meta.blocked) {
+          this.makeToast("danger", this.$t("Inventory_Location_Warehouse_Not_Ready") || "El almacén de inventario por ubicación no está listo.", this.$t("Failed"));
+          return false;
+        }
+        if (this.location_meta.requires && !this.sale.inventory_location_id) {
+          this.makeToast("warning", this.$t("Choose_Inventory_Location") || "Selecciona una ubicación de inventario.", this.$t("Warning"));
+          return false;
+        }
+
+        return true;
       }
     },
 
@@ -1763,6 +1892,16 @@ export default {
         if (Number(this.GrandTotal) < 0) {
           const msg = this.$t ? `${this.$t('pos.Total_Payable')} ${this.$t('cannot_be_negative') || 'cannot be negative'}` : 'Total Payable cannot be negative';
           this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
+          return;
+        }
+        // A product configured with BOTH batch and serial/IMEI tracking is not
+        // supported by the backend (422) — block before submit.
+        if (this.serialBatchConflictDetail) {
+          this.makeToast(
+            'danger',
+            `${this.$t('Serial_Batch_Incompatible') || 'Lote y serie/IMEI no son compatibles'} (${this.serialBatchConflictDetail.name})`,
+            this.$t('Failed')
+          );
           return;
         }
         // Batch validation (only enforced when completed and the user has
@@ -1807,6 +1946,8 @@ export default {
             client_id: this.sale.client_id,
             GrandTotal: this.GrandTotal,
             warehouse_id: this.sale.warehouse_id,
+            // MS7-B1 — only sent when the warehouse is a healthy location_primary.
+            inventory_location_id: this.location_meta.requires ? this.sale.inventory_location_id : null,
             sales_agent_id: this.sale.sales_agent_id || null,
             statut: this.sale.statut,
             notes: this.sale.notes,
@@ -1999,6 +2140,9 @@ export default {
                   (this.discount_from_points && this.discount_from_points > 0);
               })
               .finally(() => {
+                // MS7-B1 — load the inventory-location context; the loaded
+                // sale.inventory_location_id (if any) is preserved.
+                this.Load_Inventory_Locations(this.sale.warehouse_id);
                 this.Get_Products_By_Warehouse(this.sale.warehouse_id);
                 this.prefillBatchesForTrackedDetails();
                 this.Calcul_Total();

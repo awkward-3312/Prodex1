@@ -15,6 +15,7 @@ class SaleReturn extends Model
         'warehouse_id', 'branch_id', 'inventory_location_id', 'cash_drawer_id',
         'client_id', 'sale_id', 'notes', 'TaxNet', 'tax_rate', 'statut',
         'paid_amount', 'payment_statut', 'refund_mode', 'store_credit_voucher_id', 'store_credit_amount', 'created_at', 'updated_at', 'deleted_at',
+        'inventory_effect_snapshot',
     ];
 
     protected $casts = [
@@ -33,6 +34,8 @@ class SaleReturn extends Model
         'paid_amount' => 'double',
         'store_credit_voucher_id' => 'integer',
         'store_credit_amount' => 'double',
+        // MS7-B1 — the physical plan (base unit) of a location-native return.
+        'inventory_effect_snapshot' => 'array',
     ];
 
     protected static function booted(): void
@@ -40,13 +43,21 @@ class SaleReturn extends Model
         static::creating(function (SaleReturn $return) {
             if (! $return->sale_id) return;
             if (! Schema::hasColumn('sale_returns', 'inventory_location_id')) return;
+            // MS7-B1 — a native SalesReturnController::store already resolved
+            // and set the DESTINATION the user explicitly chose (which may
+            // legitimately differ from the original sale's location — a
+            // customer can return goods to a different valid location).
+            // Only fall back to the historical POS "same location as the
+            // sale" assumption when nothing has set inventory_location_id yet
+            // (e.g. the legacy/POS-only creation path that predates MS7-B1).
+            if ($return->inventory_location_id) return;
 
             $sale = Sale::find($return->sale_id);
             if (! $sale || ! $sale->inventory_location_id) return;
 
-            // A customer return belongs to the physical location that fulfilled
-            // the original POS sale. This is intentionally inherited from the
-            // sale instead of trusting a warehouse/location sent by the browser.
+            // A customer return DEFAULTS to the physical location that
+            // fulfilled the original POS sale, but this is a fallback only —
+            // never overrides an explicit selection.
             $return->branch_id = $sale->branch_id;
             $return->inventory_location_id = $sale->inventory_location_id;
             $return->cash_drawer_id = $sale->cash_drawer_id;

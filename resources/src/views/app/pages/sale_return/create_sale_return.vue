@@ -61,7 +61,32 @@
                     </b-form-group>
                   </validation-provider>
                 </b-col>
-       
+
+                <!-- inventory location — RETURN DESTINATION (MS7-B1 · sólo almacenes location_primary) -->
+                <b-col v-if="location_meta.requires" lg="4" md="4" sm="12" class="mb-3">
+                  <validation-provider name="inventory_location" :rules="{ required: true }">
+                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                      <v-select
+                        :class="{'is-invalid': !!errors.length}"
+                        :state="errors[0] ? false : (valid ? true : null)"
+                        v-model="sale_return.inventory_location_id"
+                        :reduce="label => label.value"
+                        :placeholder="$t('Choose_Inventory_Location')"
+                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
+                      />
+                      <small class="text-muted">{{ $t('Return_Destination_Hint') || 'A dónde entran físicamente los productos devueltos (puede ser distinta a la ubicación de la venta original).' }}</small>
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+                <!-- location_primary but not reconciled: block the form -->
+                <b-col v-if="location_meta.blocked" cols="12" class="mb-3">
+                  <b-alert show variant="danger" class="mb-0">
+                    {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado. No se puede registrar la devolución hasta resolverlo.' }}
+                  </b-alert>
+                </b-col>
+
                 <!-- details product  -->
                 <b-col md="12">
                   <h5>{{$t('list_product_returns')}} *</h5>
@@ -146,8 +171,17 @@
                           </td> -->
                         </tr>
 
+                        <!-- Serial / IMEI + batch on the same product: not supported -->
+                        <tr v-if="detail.is_imei && detail.is_batch_tracked" :key="'sb-'+detail.detail_id" style="background: transparent;">
+                          <td colspan="8" style="padding: 0 8px 12px 8px; border: none;">
+                            <b-alert show variant="danger" class="mb-0">
+                              {{ $t('Serial_Batch_Incompatible') || 'Este producto está configurado con lote Y serie/IMEI a la vez. La combinación no es compatible: corrige la configuración del producto antes de registrar la devolución.' }}
+                            </b-alert>
+                          </td>
+                        </tr>
+
                         <!-- Serial / IMEI selection (only serials sold on this sale) -->
-                        <tr v-if="detail.is_imei" :key="'s-'+detail.detail_id" style="background: transparent;">
+                        <tr v-if="detail.is_imei && !detail.is_batch_tracked" :key="'s-'+detail.detail_id" style="background: transparent;">
                           <td colspan="8" style="padding: 0 8px 16px 8px; border: none;">
                             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0ea5e9; border-radius: 10px; padding: 14px 18px;">
                               <serial-numbers-field
@@ -300,6 +334,7 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
+import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 import NProgress from "nprogress";
 
 export default {
@@ -320,12 +355,18 @@ export default {
         notes: "",
         client_id: "",
         warehouse_id: "",
+        inventory_location_id: null,
         sale_id:"",
         tax_rate: 0,
         TaxNet: 0,
         shipping: 0,
         discount: 0
       },
+      // MS7-B1 — RETURN DESTINATION context for the sale's warehouse. Never
+      // auto-assumed from the original sale's own location (§21/§25) — the
+      // user picks explicitly among this warehouse's locations.
+      inventory_locations: [],
+      location_meta: { requires: false, blocked: false, mode: null, status: null },
       total: 0,
       GrandTotal: 0,
     };
@@ -336,6 +377,12 @@ export default {
     // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
+    },
+    // A product configured with BOTH batch and serial/IMEI tracking — the
+    // backend rejects the combination (422); block the form the same way.
+    serialBatchConflictDetail() {
+      if (!Array.isArray(this.details)) return null;
+      return this.details.find(d => d && d.is_imei && d.is_batch_tracked) || null;
     }
   },
 
@@ -351,6 +398,16 @@ export default {
 
     //--- Submit Validate Create Sale Return
     Submit_sale_return() {
+      // A product configured with BOTH batch and serial/IMEI tracking is not
+      // supported by the backend (422) — block before submit.
+      if (this.serialBatchConflictDetail) {
+        this.makeToast(
+          "danger",
+          `${this.$t('Serial_Batch_Incompatible') || 'Lote y serie/IMEI no son compatibles'} (${this.serialBatchConflictDetail.name})`,
+          this.$t("Failed")
+        );
+        return;
+      }
       // Serial validation only matters when the return is received back into stock.
       if (this.sale_return.statut === 'received') {
         const bad = this.details.find(d => this.serialCountMismatch(d));
@@ -358,6 +415,15 @@ export default {
           this.makeToast("danger", `${this.$t('Serials_Count_Mismatch')} (${bad.name})`, this.$t("Failed"));
           return;
         }
+      }
+      // MS7-B1 — never submit a return that would fall back to legacy.
+      if (this.location_meta.blocked) {
+        this.makeToast("danger", this.$t("Inventory_Location_Warehouse_Not_Ready") || "El almacén de inventario por ubicación no está listo.", this.$t("Failed"));
+        return;
+      }
+      if (this.location_meta.requires && !this.sale_return.inventory_location_id) {
+        this.makeToast("warning", this.$t("Choose_Inventory_Location") || "Selecciona una ubicación de inventario.", this.$t("Warning"));
+        return;
       }
       this.$refs.create_sale_return.validate().then(success => {
         if (!success) {
@@ -603,6 +669,9 @@ export default {
             client_id: this.sale_return.client_id,
             sale_id: this.sale_return.sale_id,
             warehouse_id: this.sale_return.warehouse_id,
+            // MS7-B1 — RETURN DESTINATION; only sent when the warehouse is a
+            // healthy location_primary.
+            inventory_location_id: this.location_meta.requires ? this.sale_return.inventory_location_id : null,
             statut: this.sale_return.statut,
             notes: this.sale_return.notes,
             tax_rate: this.sale_return.tax_rate?this.sale_return.tax_rate:0,
@@ -650,6 +719,9 @@ export default {
           });
           this.sale_return = response.data.sale_return;
           this.sale_return.date = new Date().toISOString().slice(0, 10);
+          // MS7-B1 — load the RETURN DESTINATION context for the sale's
+          // warehouse; never pre-selects the original sale's own location.
+          this.Load_Inventory_Locations(this.sale_return.warehouse_id);
           this.Calcul_Total();
           this.isLoading = false;
         })
@@ -657,6 +729,37 @@ export default {
           setTimeout(() => {
             this.isLoading = false;
           }, 500);
+        });
+    },
+
+    //---- MS7-B1 · inventory locations of the sale's warehouse (return destination) ----\\
+    Load_Inventory_Locations(id) {
+      if (!id) return;
+      axios
+        .get("sale_returns_inventory_locations/" + id)
+        .then(({ data }) => {
+          this.inventory_locations = (data && data.locations) || [];
+          this.location_meta = {
+            requires: !!(data && data.requires_inventory_location),
+            blocked: !!(data && data.blocked),
+            mode: data && data.transition_mode,
+            status: data && data.transition_status
+          };
+          if (!this.location_meta.requires) {
+            this.sale_return.inventory_location_id = null;
+            return;
+          }
+          // Never auto-select a quarantine location unless an explicit
+          // default authorises it; a sole quarantine location stays
+          // unselected so the user picks it consciously.
+          this.sale_return.inventory_location_id = resolveAutoInventoryLocation({
+            locations: this.inventory_locations,
+            defaultLocationId: data && data.default_inventory_location_id
+          });
+        })
+        .catch(() => {
+          this.inventory_locations = [];
+          this.location_meta = { requires: false, blocked: false, mode: null, status: null };
         });
     }
   },

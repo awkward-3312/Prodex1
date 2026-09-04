@@ -270,6 +270,133 @@ class LocationAwareSerialNumberService extends SerialNumberService
         }, 3);
     }
 
+    /**
+     * MS7-B1 — reverse EVERY serial sold on the given SaleDetail rows.
+     * For a LOCATION-NATIVE sale (its Sale row has inventory_location_id) this
+     * is FAIL CLOSED: every serial found via `sale_detail_id` MUST still be
+     * `sold`, or the whole call throws 422 — no silent skip (unlike the
+     * legacy behaviour below, kept byte-for-byte for a non-native sale).
+     * Restores `available` at the serial's CURRENT inventory_location_id
+     * (its last physical location — never guessed, never moved).
+     */
+    public function reverseForSaleDetails($saleDetails): void
+    {
+        $saleDetails = collect($saleDetails);
+        $saleIds = $saleDetails->pluck('sale_id')->filter()->unique();
+        if ($saleIds->isEmpty()) {
+            parent::reverseForSaleDetails($saleDetails);
+            return;
+        }
+
+        $sales = Sale::whereIn('id', $saleIds)->get()->keyBy('id');
+
+        DB::transaction(function () use ($saleDetails, $sales) {
+            foreach ($saleDetails as $detail) {
+                $sale = $sales->get($detail->sale_id);
+                if (! $sale || ! $sale->inventory_location_id) {
+                    parent::reverseForSaleDetails([$detail]);
+                    continue;
+                }
+                if (! $this->isSupported() || ! $this->productIsTracked($detail->product_id)) {
+                    continue;
+                }
+
+                $serials = ProductSerial::where('sale_detail_id', $detail->id)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($serials as $serial) {
+                    if ((string) $serial->status !== ProductSerial::STATUS_SOLD) {
+                        throw ValidationException::withMessages([
+                            'serial_numbers' => "El serial {$serial->serial_number} ya no está en estado 'vendido' (estado actual: {$serial->status}). FAIL CLOSED.",
+                        ]);
+                    }
+
+                    $from = $serial->status;
+                    $serial->status = ProductSerial::STATUS_AVAILABLE;
+                    $serial->sale_id = null;
+                    $serial->sale_detail_id = null;
+                    $serial->client_id = null;
+                    $serial->save();
+
+                    ProductSerialMovement::create([
+                        'product_serial_id' => $serial->id,
+                        'serial_number' => $serial->serial_number,
+                        'action' => ProductSerialMovement::ACTION_STATUS_CHANGED,
+                        'from_status' => $from,
+                        'to_status' => ProductSerial::STATUS_AVAILABLE,
+                        'warehouse_id' => $serial->warehouse_id,
+                        'from_inventory_location_id' => (int) $serial->inventory_location_id,
+                        'to_inventory_location_id' => (int) $serial->inventory_location_id,
+                        'reference_type' => 'SaleReversal',
+                        'reference_id' => (int) $sale->id,
+                        'user_id' => auth()->id(),
+                        'notes' => 'Reversa location-native de venta administrativa: unidad liberada.',
+                        'created_at' => now(),
+                    ]);
+                }
+            }
+        }, 3);
+    }
+
+    /**
+     * MS7-B1 — reverse a location-native SaleReturn (undo: available -> sold
+     * again). FAIL CLOSED — a serial that moved on since the return (sold
+     * again, damaged, etc.) blocks the WHOLE call; never best-effort (unlike
+     * the legacy behaviour below, kept byte-for-byte for a non-native return).
+     */
+    public function reverseForSaleReturn(SaleReturn $return): void
+    {
+        if (! $return->inventory_location_id) {
+            parent::reverseForSaleReturn($return);
+            return;
+        }
+        if (! $this->isSupported()) {
+            return;
+        }
+
+        DB::transaction(function () use ($return) {
+            $serialIds = ProductSerialMovement::where('reference_type', 'SaleReturn')
+                ->where('reference_id', (int) $return->id)
+                ->where('action', ProductSerialMovement::ACTION_SALE_RETURNED)
+                ->pluck('product_serial_id')
+                ->unique()
+                ->all();
+
+            $serials = ProductSerial::whereIn('id', $serialIds)->orderBy('id')->lockForUpdate()->get();
+
+            foreach ($serials as $serial) {
+                if ((string) $serial->status !== ProductSerial::STATUS_AVAILABLE
+                    || (int) $serial->inventory_location_id !== (int) $return->inventory_location_id) {
+                    throw ValidationException::withMessages([
+                        'serial_numbers' => "El serial {$serial->serial_number} ya no está disponible en la ubicación de la devolución (estado: {$serial->status}). FAIL CLOSED.",
+                    ]);
+                }
+
+                $from = $serial->status;
+                $serial->status = ProductSerial::STATUS_SOLD;
+                $serial->save();
+
+                ProductSerialMovement::create([
+                    'product_serial_id' => $serial->id,
+                    'serial_number' => $serial->serial_number,
+                    'action' => ProductSerialMovement::ACTION_STATUS_CHANGED,
+                    'from_status' => $from,
+                    'to_status' => ProductSerial::STATUS_SOLD,
+                    'warehouse_id' => $serial->warehouse_id,
+                    'from_inventory_location_id' => (int) $serial->inventory_location_id,
+                    'to_inventory_location_id' => (int) $serial->inventory_location_id,
+                    'reference_type' => 'SaleReturnReversal',
+                    'reference_id' => (int) $return->id,
+                    'user_id' => auth()->id(),
+                    'notes' => 'Reversa location-native de devolución de venta: unidad vuelve a vendida.',
+                    'created_at' => now(),
+                ]);
+            }
+        }, 3);
+    }
+
     // =====================================================================
     // MS6-B0 — ATOMIC SET operations (INACTIVE: no productive controller
     // calls them). Consumed by LocationAwarePurchaseStockService::runSnapshot

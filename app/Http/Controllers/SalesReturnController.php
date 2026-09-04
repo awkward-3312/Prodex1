@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\GuardsPurchaseTransitionMode;
 use App\Models\Account;
 use App\Models\Client;
+use App\Models\InventoryLocation;
 use App\Models\PaymentMethod;
 use App\Models\PaymentSaleReturns;
 use App\Models\Product;
@@ -22,18 +24,25 @@ use App\Models\User;
 use App\Models\UserWarehouse;
 use App\Models\Warehouse;
 use App\Services\BatchService;
+use App\Services\InventoryLocationScopeService;
+use App\Services\LocationAwareSaleStockService;
 use App\Services\SerialNumberService;
+use App\Services\WarehouseInventoryModeResolver;
 use App\utils\helpers;
 use ArPHP\I18N\Arabic;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use PDF;
 
 class SalesReturnController extends BaseController
 {
+    use GuardsPurchaseTransitionMode;
+
     // ------------ GET ALL Sale Return--------------\\
 
     public function index(request $request)
@@ -195,7 +204,31 @@ class SalesReturnController extends BaseController
             'statut' => 'required',
         ]);
 
-        $createdReturn = \DB::transaction(function () use ($request) {
+        // MS7-B1 — a SaleReturn (never POS) for a location_primary warehouse
+        // stays on this SAME method but branches at every physical-inventory
+        // write point below to the location-native engine; every other
+        // concern (store-credit voucher, ZATCA submit) is identical code for
+        // both, never duplicated. Every other mode keeps the exact legacy
+        // behaviour untouched.
+        $__isNativeReturn = app(WarehouseInventoryModeResolver::class)->isLocationPrimary((int) $request->warehouse_id);
+        $__nativeLocationId = null;
+        $__nativeByRawIndex = [];
+        if ($__isNativeReturn) {
+            $this->assertLocationNativePurchaseTransitionSafe((int) $request->warehouse_id, null);
+            // RETURN DESTINATION — the user explicitly picks where the goods
+            // physically re-enter, never auto-assumed from the referenced
+            // Sale's location (a customer may legitimately return to a
+            // different valid location — §21/§25 of the MS7-B1 spec).
+            request()->validate(['inventory_location_id' => 'required|integer']);
+            $__nativeLocationId = (int) $request->inventory_location_id;
+            $__nativeValidated = app(LocationAwareSaleStockService::class)->validateAndLock($this->locationAwareReturnLines($request));
+            foreach ($__nativeValidated['lines'] as $__line) {
+                $__nativeByRawIndex[(int) $__line['_line_index']] = $__line;
+            }
+            $this->assertReturnWithinSoldQuantity((int) ($request->sale_id ?: 0), null, $__nativeValidated['lines']);
+        }
+
+        $createdReturn = \DB::transaction(function () use ($request, $__isNativeReturn, $__nativeLocationId, $__nativeByRawIndex) {
             $order = new SaleReturn;
 
             $order->date = $request->date;
@@ -204,6 +237,9 @@ class SalesReturnController extends BaseController
             $order->client_id = $request->client_id;
             $order->sale_id = $request->sale_id;
             $order->warehouse_id = $request->warehouse_id;
+            if ($__isNativeReturn) {
+                $order->inventory_location_id = $__nativeLocationId;
+            }
             $order->tax_rate = $request->tax_rate;
             $order->TaxNet = $request->TaxNet;
             $order->discount = $request->discount;
@@ -245,7 +281,10 @@ class SalesReturnController extends BaseController
                     'pack_name' => $value['pack_name'] ?? null,
                 ]);
 
-                if ($order->statut == 'received') {
+                // MS7-B1 — a native return NEVER touches product_warehouse;
+                // its GENERAL increase happens once, after this loop, via the
+                // snapshot engine (InventoryService::increase).
+                if (! $__isNativeReturn && $order->statut == 'received') {
                     if ($value['product_variant_id'] !== null) {
                         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
                             ->where('warehouse_id', $order->warehouse_id)
@@ -284,6 +323,10 @@ class SalesReturnController extends BaseController
             }
 
             // Pharmacy: credit batches when the return is received (mirror sale flow inversely).
+            // Already location-aware (self-branches to the native, location-
+            // aware implementation via the LocationAware* singleton bindings
+            // once $order->inventory_location_id is set) — unchanged call
+            // site for both legacy and native.
             if ($order->statut == 'received') {
                 $batchService = app(BatchService::class);
                 if ($batchService->isSupported()) {
@@ -296,11 +339,29 @@ class SalesReturnController extends BaseController
             }
 
             // Serial / IMEI: return selected serials back to available stock.
+            // returnFromSale() already self-branches — unchanged call site.
             if ($order->statut == 'received') {
                 $serialService = app(SerialNumberService::class);
                 if ($serialService->isSupported()) {
                     $serialService->applyForSaleReturn($order, $data, $persistedDetails);
                 }
+            }
+
+            // GENERAL leg — native only. Runs unconditionally (independent of
+            // whether batch/serial tracking happens to be enabled tenant-
+            // wide) right after every batch/serial artifact above has had its
+            // chance to run, so their provenance is available to fold into
+            // the snapshot.
+            if ($__isNativeReturn && $order->statut == 'received') {
+                // $persistedDetails is already keyed 0..n-1 in the SAME order
+                // as $data (created one at a time in the loop above) — no
+                // re-query / id-order assumption needed.
+                $__snapshot = app(LocationAwareSaleStockService::class)->buildSnapshotFromPersistedDetails(
+                    LocationAwareSaleStockService::DOC_SALE_RETURN, (int) $order->warehouse_id, (int) $order->inventory_location_id,
+                    $data, $__nativeByRawIndex, $persistedDetails, 1
+                );
+                $order->update(['inventory_effect_snapshot' => $__snapshot]);
+                app(LocationAwareSaleStockService::class)->applySnapshot($__snapshot, $order->id);
             }
 
             if ($order->statut == 'received') {
@@ -333,6 +394,154 @@ class SalesReturnController extends BaseController
         ]);
     }
 
+    // =====================================================================
+    // MS7-B1 — SaleReturn location-native helpers (warehouses in
+    // MODE_LOCATION_PRIMARY). See SalesController's own MS7-B1 block for the
+    // full architecture note — same split: GENERAL is snapshot-replay-
+    // authoritative here (LocationAwareSaleStockService); BATCH/SERIAL are
+    // owned by the already-proven LocationAwareBatchService /
+    // LocationAwareSerialNumberService, unchanged call sites, self-branching
+    // on $return->inventory_location_id.
+    // =====================================================================
+
+    /** Raw request details -> LocationAwareSaleStockService line shape. */
+    private function locationAwareReturnLines(Request $request): array
+    {
+        return array_map(fn ($v) => [
+            'product_id' => $v['product_id'] ?? null,
+            'product_variant_id' => (isset($v['product_variant_id']) && $v['product_variant_id'] !== '') ? $v['product_variant_id'] : null,
+            'quantity' => $v['quantity'] ?? 0,
+            'sale_unit_id' => $v['sale_unit_id'] ?? null,
+            'pack_multiplier' => $v['pack_multiplier'] ?? 1,
+        ], array_values($request['details'] ?? []));
+    }
+
+    /**
+     * MS7-B1 §27-29 — native only (legacy never had this guard, and keeps
+     * none). Prevents a SaleReturn from crediting back more of a product/
+     * variant than the referenced Sale actually sold, cumulative across
+     * every OTHER active SaleReturn against the same sale — partial returns
+     * (sold 10, returned 3 then 2 => 5 still returnable) stay valid; a
+     * return attempting to exceed the remaining balance is FAIL CLOSED (422).
+     *
+     * Requires the referenced Sale itself to be native (it must carry an
+     * inventory_effect_snapshot) — a legacy-linked or unlinked return has no
+     * reliable "sold" baseline to compare against and is silently skipped
+     * (matches legacy: no guard at all).
+     */
+    private function assertReturnWithinSoldQuantity(int $saleId, ?int $excludeReturnId, array $validatedLines): void
+    {
+        if ($saleId <= 0) {
+            return;
+        }
+        $sale = Sale::find($saleId);
+        if (! $sale || empty($sale->inventory_effect_snapshot)) {
+            return;
+        }
+
+        $svc = app(LocationAwareSaleStockService::class);
+        $saleSnapshot = $svc->normalizeSnapshot($sale->inventory_effect_snapshot);
+
+        $sold = [];
+        foreach ($saleSnapshot['effects'] as $e) {
+            $key = $e['product_id'].':'.($e['product_variant_id'] ?? 'null');
+            $sold[$key] = ($sold[$key] ?? 0) + (float) $e['quantity_base'];
+        }
+
+        $alreadyReturned = [];
+        $others = SaleReturn::where('sale_id', $saleId)
+            ->whereNull('deleted_at')
+            ->when($excludeReturnId, fn ($q) => $q->where('id', '!=', $excludeReturnId))
+            ->whereNotNull('inventory_effect_snapshot')
+            ->get();
+        foreach ($others as $r) {
+            try {
+                $rs = $svc->normalizeSnapshot($r->inventory_effect_snapshot);
+            } catch (\Throwable $e) {
+                continue; // corrupt/foreign snapshot — never let it block a legitimate return.
+            }
+            foreach ($rs['effects'] as $e) {
+                $key = $e['product_id'].':'.($e['product_variant_id'] ?? 'null');
+                $alreadyReturned[$key] = ($alreadyReturned[$key] ?? 0) + (float) $e['quantity_base'];
+            }
+        }
+
+        foreach ($validatedLines as $line) {
+            $key = $line['product_id'].':'.($line['product_variant_id'] ?? 'null');
+            $soldQty = $sold[$key] ?? 0.0;
+            $returnedSoFar = $alreadyReturned[$key] ?? 0.0;
+            $thisQty = (float) $line['quantity_base'];
+            if ($returnedSoFar + $thisQty > $soldQty + 0.0005) {
+                $remaining = max(0, round($soldQty - $returnedSoFar, 3));
+                throw ValidationException::withMessages([
+                    'details' => "La cantidad a devolver del producto #{$line['product_id']} excede lo vendido en la venta original (disponible para devolución: {$remaining}).",
+                ]);
+            }
+        }
+    }
+
+    /**
+     * GET sale_returns_inventory_locations/{warehouse_id}
+     *
+     * A SaleReturn is an INBOUND movement (customer -> location) => the
+     * user's RECEIVING scope (InventoryLocationScopeService::receivingLocationIds),
+     * same as Purchase.
+     */
+    public function inventoryLocationsForWarehouse(Request $request, $warehouseId)
+    {
+        $u = $request->user('api');
+        abort_unless(
+            $u && (Gate::forUser($u)->allows('create', SaleReturn::class) || Gate::forUser($u)->allows('update', SaleReturn::class)),
+            403,
+            'No tienes permiso para consultar ubicaciones de inventario de devoluciones.'
+        );
+
+        $warehouseId = (int) $warehouseId;
+        $user = auth()->user();
+        if ($user && ! $user->is_all_warehouses) {
+            $ids = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
+            abort_unless(in_array($warehouseId, $ids, true), 403, 'No tienes acceso a este almacén.');
+        }
+
+        $allowedIds = ($user && ! $user->is_all_warehouses && (int) $user->role_id !== 1)
+            ? app(InventoryLocationScopeService::class)->receivingLocationIds($user)
+            : null;
+
+        return response()->json($this->inventoryLocationContextPayload($warehouseId, $allowedIds));
+    }
+
+    /**
+     * GET sale_returns_location_catalog/{location_id}
+     *
+     * Per-location stock catalog for the SaleReturn form — same reader
+     * Purchase/PurchaseReturn/Sale already use.
+     */
+    public function inventoryLocationCatalog(Request $request, $locationId)
+    {
+        $u = $request->user('api');
+        abort_unless(
+            $u && (Gate::forUser($u)->allows('create', SaleReturn::class) || Gate::forUser($u)->allows('update', SaleReturn::class)),
+            403,
+            'No tienes permiso para consultar el catálogo por ubicación.'
+        );
+
+        $locationId = (int) $locationId;
+        $location = InventoryLocation::whereNull('deleted_at')->where('is_active', 1)->whereKey($locationId)->first();
+        abort_if(! $location, 404, 'La ubicación de inventario no existe o está inactiva.');
+
+        $user = auth()->user();
+        if ($user && ! $user->is_all_warehouses) {
+            $ids = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->map(fn ($i) => (int) $i)->all();
+            abort_unless(in_array((int) $location->warehouse_id, $ids, true), 403, 'No tienes acceso a este almacén.');
+        }
+        if ($user && ! $user->is_all_warehouses && (int) $user->role_id !== 1) {
+            $allowed = app(InventoryLocationScopeService::class)->receivingLocationIds($user);
+            abort_unless(in_array($locationId, $allowed, true), 403, 'No tienes acceso a esta ubicación de inventario.');
+        }
+
+        return response()->json(app(\App\Services\LocationCatalogReadService::class)->forLocation($locationId));
+    }
+
     // ------------ Update Return Sale--------------\\
 
     public function update(Request $request, $id)
@@ -349,6 +558,13 @@ class SalesReturnController extends BaseController
             if ($current_SaleReturn->store_credit_voucher_id) {
                 abort(422, 'Esta devolución ya generó un vale de crédito y no puede modificarse sin cancelar el vale.');
             }
+
+            // MS7-B1 — route by the PERSISTED document identity, not the
+            // warehouse's current mode.
+            $__isNativeReturn = $current_SaleReturn->inventory_location_id !== null;
+            $__nativeLocationId = null;
+            $__nativeByRawIndex = [];
+            $__nativeOldRevision = 0;
 
             /**
              * Warehouses restriction
@@ -386,11 +602,51 @@ class SalesReturnController extends BaseController
                 $new_products_id[] = $new_detail['id'];
             }
 
+            // MS7-B1 — FAIL CLOSED preflight (batch+IMEI fence, unknown
+            // product/variant, non-positive/fractional base qty, over-return
+            // vs. the referenced Sale) BEFORE any reversal or write happens.
+            // Also resolves/validates the (possibly new) inventory_location_id.
+            if ($__isNativeReturn) {
+                $this->assertLocationNativePurchaseTransitionSafe((int) $current_SaleReturn->warehouse_id, (int) $request->warehouse_id);
+                if (! $request->filled('inventory_location_id')) {
+                    throw ValidationException::withMessages(['inventory_location_id' => 'Debes seleccionar una ubicación de inventario.']);
+                }
+                $__nativeLocationId = (int) $request->inventory_location_id;
+                $__nativeValidated = app(LocationAwareSaleStockService::class)->validateAndLock($this->locationAwareReturnLines($request));
+                foreach ($__nativeValidated['lines'] as $__line) {
+                    $__nativeByRawIndex[(int) $__line['_line_index']] = $__line;
+                }
+                // Exclude THIS return's own current effect from the cumulative
+                // check (§29) — it is about to be reversed and replanned below,
+                // never double-counted against itself.
+                $this->assertReturnWithinSoldQuantity((int) ($current_SaleReturn->sale_id ?: 0), (int) $current_SaleReturn->id, $__nativeValidated['lines']);
+                if (! empty($current_SaleReturn->inventory_effect_snapshot)) {
+                    $__nativeOldRevision = app(LocationAwareSaleStockService::class)->normalizeSnapshot($current_SaleReturn->inventory_effect_snapshot)['revision'];
+                }
+            }
+
             // Pharmacy: reverse old batch credits (subtract qty back from product_batches)
             // before we touch warehouse stock so the per-batch ledger stays consistent.
+            // Already location-aware — unchanged call site for both.
             $batchService = app(BatchService::class);
             if ($batchService->isSupported() && $current_SaleReturn->statut == 'received') {
                 $batchService->reverseForSaleReturnDetails($old_return_details);
+            }
+
+            // Serial / IMEI — native only (legacy update() never touches the
+            // serial ledger at all; kept byte-for-byte). FAIL CLOSED reverse
+            // of the OLD received state via the new MS7-B1 override.
+            $serialService = app(SerialNumberService::class);
+            if ($__isNativeReturn && $serialService->isSupported() && $current_SaleReturn->statut == 'received') {
+                $serialService->reverseForSaleReturn($current_SaleReturn);
+            }
+
+            // GENERAL leg — native only. Mirrors the raw product_warehouse
+            // reversal legacy performs unconditionally below when the OLD
+            // state was received.
+            if ($__isNativeReturn && $current_SaleReturn->statut == 'received' && ! empty($current_SaleReturn->inventory_effect_snapshot)) {
+                $__saleReturnSvc = app(LocationAwareSaleStockService::class);
+                $__saleReturnSvc->reverseSnapshot($__saleReturnSvc->normalizeSnapshot($current_SaleReturn->inventory_effect_snapshot), $current_SaleReturn->id);
             }
 
             // Init Data with old Parametre
@@ -419,7 +675,10 @@ class SalesReturnController extends BaseController
                 $oldPackQty = $value['quantity'] * $oldPackMultiplier;
 
                 if ($value['sale_unit_id'] !== null) {
-                    if ($current_SaleReturn->statut == 'received') {
+                    // MS7-B1 — a native return's GENERAL leg was already
+                    // reversed in one shot above; it never touches
+                    // product_warehouse.
+                    if (! $__isNativeReturn && $current_SaleReturn->statut == 'received') {
                         if ($value['product_variant_id'] !== null) {
                             $product_warehouse = product_warehouse::where('deleted_at', '=', null)->where('warehouse_id', $current_SaleReturn->warehouse_id)
                                 ->where('product_id', $value['product_id'])->where('product_variant_id', $value['product_variant_id'])
@@ -474,7 +733,10 @@ class SalesReturnController extends BaseController
                         ? (float) $product_detail['pack_multiplier'] : 1;
                     $newPackQty = $product_detail['quantity'] * $newPackMultiplier;
 
-                    if ($request['statut'] == 'received') {
+                    // MS7-B1 — a native return's GENERAL leg is applied once,
+                    // after this loop, via the snapshot engine; never
+                    // product_warehouse.
+                    if (! $__isNativeReturn && $request['statut'] == 'received') {
 
                         if ($product_detail['product_variant_id'] !== null) {
                             $product_warehouse = product_warehouse::where('deleted_at', '=', null)
@@ -536,10 +798,17 @@ class SalesReturnController extends BaseController
 
             }
 
+            // MS7-B1 — set BEFORE the batch/serial calls below read it to
+            // self-branch to the location-aware implementation.
+            if ($__isNativeReturn) {
+                $current_SaleReturn->inventory_location_id = $__nativeLocationId;
+            }
+
             // Pharmacy: re-apply batch credits now that SaleReturnDetails rows exist.
             // Pair input rows with persisted details lockstep; rows skipped above (no_unit==0
             // and not a service) leave gaps that would otherwise misalign indices when
-            // BatchService re-keys via collect()->values().
+            // BatchService re-keys via collect()->values(). Already location-aware —
+            // unchanged call site for both.
             if ($batchService->isSupported() && $request['statut'] == 'received') {
                 $alignedInput = [];
                 $alignedPersisted = [];
@@ -557,6 +826,28 @@ class SalesReturnController extends BaseController
                 );
             }
 
+            // Serial / IMEI — native only (legacy update() never touches the
+            // serial ledger; kept byte-for-byte). returnFromSale() already
+            // self-branches — unchanged call shape, just a native-only guard.
+            if ($__isNativeReturn && $serialService->isSupported() && $request['statut'] == 'received') {
+                $current_SaleReturn->warehouse_id = (int) $request->warehouse_id;
+                $serialService->applyForSaleReturn($current_SaleReturn, $new_return_details, $newPersistedDetails);
+            }
+
+            // GENERAL leg — native only. Runs unconditionally (independent of
+            // whether batch/serial tracking happens to be enabled tenant-
+            // wide) right after every batch/serial artifact above has had its
+            // chance to run, so their provenance is available to fold into
+            // the snapshot.
+            $__nativeNewSnapshot = null;
+            if ($__isNativeReturn && $request['statut'] == 'received') {
+                $__nativeNewSnapshot = app(LocationAwareSaleStockService::class)->buildSnapshotFromPersistedDetails(
+                    LocationAwareSaleStockService::DOC_SALE_RETURN, (int) $request->warehouse_id, (int) $__nativeLocationId,
+                    $new_return_details, $__nativeByRawIndex, $newPersistedDetails, $__nativeOldRevision + 1
+                );
+                app(LocationAwareSaleStockService::class)->applySnapshot($__nativeNewSnapshot, $current_SaleReturn->id);
+            }
+
             $due = $request['GrandTotal'] - $current_SaleReturn->paid_amount;
             if ($due === 0.0 || $due < 0.0) {
                 $payment_statut = 'paid';
@@ -566,7 +857,7 @@ class SalesReturnController extends BaseController
                 $payment_statut = 'unpaid';
             }
 
-            $current_SaleReturn->update([
+            $__updatePayload = [
                 'date' => $request['date'],
                 'notes' => $request['notes'],
                 'statut' => $request['statut'],
@@ -576,7 +867,16 @@ class SalesReturnController extends BaseController
                 'shipping' => $request['shipping'],
                 'GrandTotal' => $request['GrandTotal'],
                 'payment_statut' => $payment_statut,
-            ]);
+            ];
+            if ($__isNativeReturn) {
+                $__updatePayload['inventory_location_id'] = $__nativeLocationId;
+                if ($__nativeNewSnapshot !== null) {
+                    $__updatePayload['inventory_effect_snapshot'] = $__nativeNewSnapshot; // B / C
+                }
+                // A (non->non) and D (received->non-received): keep the last
+                // historical snapshot so a later re-apply bumps its revision.
+            }
+            $current_SaleReturn->update($__updatePayload);
 
             $current_SaleReturn->refresh();
             if ($current_SaleReturn->statut == 'received') {
@@ -602,6 +902,12 @@ class SalesReturnController extends BaseController
             $current_SaleReturn = SaleReturn::findOrFail($id);
             if ($current_SaleReturn->store_credit_voucher_id) {
                 abort(422, 'Esta devolución ya generó un vale de crédito y no puede eliminarse sin cancelar el vale.');
+            }
+
+            // MS7-B1 — route by the PERSISTED document identity.
+            $__isNativeReturn = $current_SaleReturn->inventory_location_id !== null;
+            if ($__isNativeReturn) {
+                $this->assertLocationNativePurchaseTransitionSafe((int) $current_SaleReturn->warehouse_id, null);
             }
 
             /**
@@ -635,12 +941,14 @@ class SalesReturnController extends BaseController
 
             // Pharmacy: subtract back the batch credits before deleting the return so the
             // per-batch ledger mirrors the warehouse stock subtract that follows.
+            // Already location-aware — unchanged call site for both.
             $batchService = app(BatchService::class);
             if ($batchService->isSupported() && $current_SaleReturn->statut == 'received') {
                 $batchService->reverseForSaleReturnDetails($old_return_details);
             }
 
             // Serial / IMEI: re-mark returned serials as sold (undo the return).
+            // reverseForSaleReturn() already self-branches — unchanged call site.
             if ($current_SaleReturn->statut == 'received') {
                 $serialService = app(SerialNumberService::class);
                 if ($serialService->isSupported()) {
@@ -648,7 +956,13 @@ class SalesReturnController extends BaseController
                 }
             }
 
-            foreach ($old_return_details as $key => $value) {
+            // GENERAL leg — native only.
+            if ($__isNativeReturn && $current_SaleReturn->statut == 'received' && ! empty($current_SaleReturn->inventory_effect_snapshot)) {
+                $__saleReturnSvc = app(LocationAwareSaleStockService::class);
+                $__saleReturnSvc->reverseSnapshot($__saleReturnSvc->normalizeSnapshot($current_SaleReturn->inventory_effect_snapshot), $current_SaleReturn->id);
+            }
+
+            foreach ($__isNativeReturn ? [] : $old_return_details as $key => $value) {
 
                 // check if detail has sale_unit_id Or Null
                 if ($value['sale_unit_id'] !== null) {
@@ -751,6 +1065,12 @@ class SalesReturnController extends BaseController
                     abort(422, 'Una de las devoluciones seleccionadas ya generó un vale de crédito.');
                 }
 
+                // MS7-B1 — route by the PERSISTED document identity.
+                $__isNativeReturn = $current_SaleReturn->inventory_location_id !== null;
+                if ($__isNativeReturn) {
+                    $this->assertLocationNativePurchaseTransitionSafe((int) $current_SaleReturn->warehouse_id, null);
+                }
+
                 /**
                  * Warehouses restriction
                  * Allow if:
@@ -781,12 +1101,14 @@ class SalesReturnController extends BaseController
 
                 // Pharmacy: subtract back the batch credits before deleting so the per-batch
                 // ledger mirrors the warehouse stock subtract that follows.
+                // Already location-aware — unchanged call site for both.
                 $batchService = app(BatchService::class);
                 if ($batchService->isSupported() && $current_SaleReturn->statut == 'received') {
                     $batchService->reverseForSaleReturnDetails($old_return_details);
                 }
 
                 // Serial / IMEI: re-mark returned serials as sold (undo the return).
+                // reverseForSaleReturn() already self-branches — unchanged call site.
                 if ($current_SaleReturn->statut == 'received') {
                     $serialService = app(SerialNumberService::class);
                     if ($serialService->isSupported()) {
@@ -794,7 +1116,13 @@ class SalesReturnController extends BaseController
                     }
                 }
 
-                foreach ($old_return_details as $key => $value) {
+                // GENERAL leg — native only.
+                if ($__isNativeReturn && $current_SaleReturn->statut == 'received' && ! empty($current_SaleReturn->inventory_effect_snapshot)) {
+                    $__saleReturnSvc = app(LocationAwareSaleStockService::class);
+                    $__saleReturnSvc->reverseSnapshot($__saleReturnSvc->normalizeSnapshot($current_SaleReturn->inventory_effect_snapshot), $current_SaleReturn->id);
+                }
+
+                foreach ($__isNativeReturn ? [] : $old_return_details as $key => $value) {
 
                     // check if detail has sale_unit_id Or Null
                     if ($value['sale_unit_id'] !== null) {
@@ -1579,6 +1907,8 @@ class SalesReturnController extends BaseController
         $Return_detail['shipping'] = $SaleReturn->shipping;
         $Return_detail['notes'] = $SaleReturn->notes;
         $Return_detail['statut'] = $SaleReturn->statut;
+        // MS7-B1 — the persisted destination location, if this is a native document.
+        $Return_detail['inventory_location_id'] = $SaleReturn->inventory_location_id;
 
         $detail_id = 0;
         foreach ($SaleReturn['details'] as $detail) {

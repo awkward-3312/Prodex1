@@ -62,6 +62,31 @@
                   </validation-provider>
                 </b-col>
 
+                <!-- inventory location — RETURN DESTINATION (MS7-B1 · sólo almacenes location_primary) -->
+                <b-col v-if="location_meta.requires" lg="4" md="4" sm="12" class="mb-3">
+                  <validation-provider name="inventory_location" :rules="{ required: true }">
+                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                      <v-select
+                        :class="{'is-invalid': !!errors.length}"
+                        :state="errors[0] ? false : (valid ? true : null)"
+                        v-model="sale_return.inventory_location_id"
+                        :reduce="label => label.value"
+                        :placeholder="$t('Choose_Inventory_Location')"
+                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
+                      />
+                      <small class="text-muted">{{ $t('Return_Destination_Hint') || 'A dónde entran físicamente los productos devueltos (puede ser distinta a la ubicación de la venta original).' }}</small>
+                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+                <!-- location_primary but not reconciled: block the form -->
+                <b-col v-if="location_meta.blocked" cols="12" class="mb-3">
+                  <b-alert show variant="danger" class="mb-0">
+                    {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado. No se puede registrar la devolución hasta resolverlo.' }}
+                  </b-alert>
+                </b-col>
+
                 <!-- details product  -->
                 <b-col md="12">
                   <h5>{{$t('list_product_returns')}} *</h5>
@@ -102,6 +127,11 @@
                                 :title="$t('Auto_Batch_Mirror_Hint') || 'Original sale batches will be auto-credited proportionally when this return is received.'"
                               >
                                 <lucide-icon name="package" style="margin-right:3px;" />{{ $t('Batches') || 'Batches' }} · Auto
+                              </span>
+                            </div>
+                            <div v-if="detail.is_imei && detail.is_batch_tracked" class="mt-1">
+                              <span class="badge badge-danger" :title="$t('Serial_Batch_Incompatible') || 'Lote y serie/IMEI no son compatibles'">
+                                <lucide-icon name="alert-triangle" style="margin-right:3px;" />{{ $t('Serial_Batch_Incompatible') || 'Lote y serie/IMEI incompatibles' }}
                               </span>
                             </div>
                           </td>
@@ -279,6 +309,7 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
+import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 import NProgress from "nprogress";
 
 export default {
@@ -298,15 +329,21 @@ export default {
         statut: "",
         client_id: "",
         warehouse_id: "",
+        inventory_location_id: null,
         sale_id:"",
         tax_rate: 0,
         TaxNet: 0,
         shipping: 0,
         discount: 0
       },
+      // MS7-B1 — RETURN DESTINATION context for the sale's warehouse. Never
+      // auto-assumed from the original sale's own location (§21/§25) — the
+      // user picks explicitly among this warehouse's locations.
+      inventory_locations: [],
+      location_meta: { requires: false, blocked: false, mode: null, status: null },
       total: 0,
       GrandTotal: 0,
-      
+
     };
   },
 
@@ -315,6 +352,12 @@ export default {
     // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
+    },
+    // A product configured with BOTH batch and serial/IMEI tracking — the
+    // backend rejects the combination (422); block the form the same way.
+    serialBatchConflictDetail() {
+      if (!Array.isArray(this.details)) return null;
+      return this.details.find(d => d && d.is_imei && d.is_batch_tracked) || null;
     }
   },
 
@@ -523,9 +566,30 @@ export default {
           this.makeToast("warning", this.$t("Please_add_return_quantity"), this.$t("Warning"));
 
           return false;
-        } else {
-          return true;
         }
+
+        // A product configured with BOTH batch and serial/IMEI tracking is not
+        // supported by the backend (422) — block before submit.
+        if (this.serialBatchConflictDetail) {
+          this.makeToast(
+            "danger",
+            `${this.$t('Serial_Batch_Incompatible') || 'Lote y serie/IMEI no son compatibles'} (${this.serialBatchConflictDetail.name})`,
+            this.$t("Failed")
+          );
+          return false;
+        }
+
+        // MS7-B1 — never submit a return that would fall back to legacy.
+        if (this.location_meta.blocked) {
+          this.makeToast("danger", this.$t("Inventory_Location_Warehouse_Not_Ready") || "El almacén de inventario por ubicación no está listo.", this.$t("Failed"));
+          return false;
+        }
+        if (this.location_meta.requires && !this.sale_return.inventory_location_id) {
+          this.makeToast("warning", this.$t("Choose_Inventory_Location") || "Selecciona una ubicación de inventario.", this.$t("Warning"));
+          return false;
+        }
+
+        return true;
       }
     },
 
@@ -542,6 +606,9 @@ export default {
             client_id: this.sale_return.client_id,
             sale_id: this.sale_return.sale_id,
             warehouse_id: this.sale_return.warehouse_id,
+            // MS7-B1 — RETURN DESTINATION; only sent when the warehouse is a
+            // healthy location_primary.
+            inventory_location_id: this.location_meta.requires ? this.sale_return.inventory_location_id : null,
             statut: this.sale_return.statut,
             notes: this.sale_return.notes,
             tax_rate: this.sale_return.tax_rate?this.sale_return.tax_rate:0,
@@ -579,6 +646,10 @@ export default {
         .then(response => {
           this.sale_return = response.data.sale_return;
           this.details = response.data.details;
+          // MS7-B1 — load the RETURN DESTINATION context for the sale's
+          // warehouse; the loaded sale_return.inventory_location_id (if any)
+          // is preserved.
+          this.Load_Inventory_Locations(this.sale_return.warehouse_id);
           this.Calcul_Total();
           this.isLoading = false;
         })
@@ -586,6 +657,38 @@ export default {
           setTimeout(() => {
             this.isLoading = false;
           }, 500);
+        });
+    },
+
+    //---- MS7-B1 · inventory locations of the sale's warehouse (return destination) ----\\
+    Load_Inventory_Locations(id) {
+      if (!id) return;
+      axios
+        .get("sale_returns_inventory_locations/" + id)
+        .then(({ data }) => {
+          this.inventory_locations = (data && data.locations) || [];
+          this.location_meta = {
+            requires: !!(data && data.requires_inventory_location),
+            blocked: !!(data && data.blocked),
+            mode: data && data.transition_mode,
+            status: data && data.transition_status
+          };
+          if (!this.location_meta.requires) {
+            this.sale_return.inventory_location_id = null;
+            return;
+          }
+          // A persisted, still-valid location is kept as document state; if
+          // it is no longer valid it is cleared and D2 re-runs over the
+          // current options.
+          this.sale_return.inventory_location_id = resolveAutoInventoryLocation({
+            locations: this.inventory_locations,
+            defaultLocationId: data && data.default_inventory_location_id,
+            persistedLocationId: this.sale_return.inventory_location_id
+          });
+        })
+        .catch(() => {
+          this.inventory_locations = [];
+          this.location_meta = { requires: false, blocked: false, mode: null, status: null };
         });
     }
   },

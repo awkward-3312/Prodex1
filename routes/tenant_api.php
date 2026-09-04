@@ -748,6 +748,9 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::delete('sales/documents/{id}', 'SalesController@deleteDocument');
     Route::post('sales_send_whatsapp', 'SalesController@sales_send_whatsapp');
     Route::get('get_today_sales', 'SalesController@get_today_sales');
+    // MS7-B1 — inventory-location select for the Admin Sale form (location_primary warehouses).
+    Route::get('sales_inventory_locations/{warehouse_id}', 'SalesController@inventoryLocationsForWarehouse');
+    Route::get('sales_location_catalog/{location_id}', 'SalesController@inventoryLocationCatalog');
 
     // -------------------------------  Shipments --------------------------\\
     // ------------------------------------------------------------------\\
@@ -844,6 +847,9 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::post('returns/sale/delete/by_selection', 'SalesReturnController@delete_by_selection');
     Route::get('returns/sale/create_sell_return/{id}', 'SalesReturnController@create_sell_return');
     Route::get('returns/sale/edit_sell_return/{id}/{sale_id}', 'SalesReturnController@edit_sell_return');
+    // MS7-B1 — inventory-location select for the SaleReturn form (location_primary warehouses).
+    Route::get('sale_returns_inventory_locations/{warehouse_id}', 'SalesReturnController@inventoryLocationsForWarehouse');
+    Route::get('sale_returns_location_catalog/{location_id}', 'SalesReturnController@inventoryLocationCatalog');
 
     // ------------------------------- Purchases Return --------------------------\\
     // ------------------------------------------------------------------\\

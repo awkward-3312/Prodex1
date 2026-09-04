@@ -26,6 +26,7 @@ class Sale extends Model
         'quickbooks_realm_id',
         'quickbooks_synced_at',
         'quickbooks_sync_error',
+        'inventory_effect_snapshot',
     ];
 
     protected $casts = [
@@ -54,6 +55,8 @@ class Sale extends Model
         'fiscal_exemption_data' => 'array',
         'quickbooks_synced_at' => 'datetime',
         'woocommerce_order_id' => 'integer',
+        // MS7-B1 — the physical plan (base unit) of a location-native sale.
+        'inventory_effect_snapshot' => 'array',
     ];
 
     public function subscription() { return $this->belongsTo(Subscription::class, 'subscription_id'); }
