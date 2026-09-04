@@ -44,7 +44,8 @@ class PurchaseBatchEngineArchitectureTest extends TestCase
         $src = $this->read('app/Http/Controllers/PurchasesController.php');
         $import = $this->body($src, 'storeImportLocationAware');
         $this->assertStringContainsString("'allow_batch' => true", $import);
-        $this->assertStringContainsString('planLocationAwarePurchaseBatches(', $import);
+        // MS6-B3 — the import now calls the composed batch+serial planner.
+        $this->assertStringContainsString('planLocationAwarePurchaseArtifacts(', $import);
     }
 
     // ---- Planner is its OWN service, no InventoryService --------------

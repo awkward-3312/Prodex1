@@ -473,6 +473,41 @@
                               </div>
                             </td>
                           </tr>
+
+                          <!-- Serial / IMEI entry: only a plain serialized row (not
+                               variant, not also batch-tracked) on a location_primary import -->
+                          <tr v-if="row.is_imei && !row.is_variant && !row.is_batch_tracked && location_meta.requires" :key="'serial-' + idx">
+                            <td colspan="6" style="padding: 0; background: #ffffff;">
+                              <div :style="batchPanelStyle">
+                                <div :style="batchPanelHeaderStyle">
+                                  <div style="display: flex; align-items: center; gap: 8px;">
+                                    <lucide-icon name="scan-barcode" style="font-size: 14px;" />
+                                    <span>{{ $t('Serials_IMEI') || 'Series / IMEI' }}</span>
+                                    <span v-if="purchase.statut === 'received'" :style="batchCountBadgeStyle">
+                                      {{ (row.serial_numbers || []).length }} / {{ serialRequiredCount(row) }}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div v-if="purchase.statut !== 'received'" :style="batchEmptyStyle">
+                                  <lucide-icon name="info" style="margin-right: 6px;" />
+                                  {{ $t('Serials_Assigned_On_Receipt') || 'Los seriales se asignarán cuando la compra se marque como recibida.' }}
+                                </div>
+
+                                <serial-numbers-field
+                                  v-else
+                                  mode="entry"
+                                  v-model="row.serial_numbers"
+                                  :required-count="serialRequiredCount(row)"
+                                />
+
+                                <div v-if="purchase.statut === 'received' && serialBaseIsFractional(row)" :style="batchWarnStyle">
+                                  <lucide-icon name="info" style="margin-right: 6px;" />
+                                  {{ $t('Serial_Fractional_Base') || 'La cantidad base de series/IMEI para esta línea no es un número entero. Corrige la cantidad o la unidad de compra.' }}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
                         </template>
                       </tbody>
                       <tfoot>
@@ -491,6 +526,10 @@
                   <div v-if="hasBatchValidationErrors" :style="globalBatchWarnStyle">
                     <lucide-icon name="info" style="margin-right: 6px; font-size: 16px;" />
                     {{ firstBatchErrorDetail }}
+                  </div>
+                  <div v-if="hasSerialValidationErrors" :style="globalBatchWarnStyle">
+                    <lucide-icon name="info" style="margin-right: 6px; font-size: 16px;" />
+                    {{ firstSerialErrorDetail }}
                   </div>
                 </div>
 
@@ -527,7 +566,7 @@
               <b-button
                 variant="primary"
                 @click="Submit_Purchase"
-                :disabled="SubmitProcessing || !previewRows.length || hasBatchValidationErrors || locationGateBlocked"
+                :disabled="SubmitProcessing || !previewRows.length || hasBatchValidationErrors || hasSerialValidationErrors || locationGateBlocked"
                 :style="submitBtnStyle"
               >
                 <lucide-icon name="check" style="margin-right: 6px;" />
@@ -1058,14 +1097,46 @@ export default {
       return "";
     },
 
-    // MS4 / MS5-E — CSV rows a location-native import cannot accept. Batch-tracked
-    // is_single products ARE supported now (see the per-row batch allocator), so
-    // only variant / IMEI rows remain incompatible.
+    // MS4 / MS5-E / MS6-B3 — CSV rows a location-native import cannot accept.
+    // Batch-tracked and IMEI is_single products ARE supported now (see the
+    // per-row allocators), so only a variant row (no variant column in the
+    // CSV — this also covers variant+IMEI) or a batch+IMEI row (one artifact
+    // tracker per line) remain incompatible.
     incompatibleRows() {
       if (!Array.isArray(this.previewRows)) return [];
       return this.previewRows.filter(
-        r => r && (r.is_variant || r.is_imei)
+        r => r && (r.is_variant || (r.is_imei && r.is_batch_tracked))
       );
+    },
+
+    // ---- Serial validation (only enforced for a RECEIVED import; a pending /
+    // ordered import assigns serials later, exactly like a manual purchase) ----
+    hasSerialValidationErrors() {
+      if (this.purchase.statut !== "received") return false;
+      if (!Array.isArray(this.previewRows)) return false;
+      for (const row of this.previewRows) {
+        if (!(row.is_imei && !row.is_variant && !row.is_batch_tracked)) continue;
+        if (this.serialBaseIsFractional(row)) return true;
+        const serials = Array.isArray(row.serial_numbers) ? row.serial_numbers : [];
+        if (serials.length !== this.serialRequiredCount(row)) return true;
+      }
+      return false;
+    },
+    firstSerialErrorDetail() {
+      if (this.purchase.statut !== "received") return "";
+      if (!Array.isArray(this.previewRows)) return "";
+      for (const row of this.previewRows) {
+        if (!(row.is_imei && !row.is_variant && !row.is_batch_tracked)) continue;
+        if (this.serialBaseIsFractional(row)) {
+          return (this.$t("Serial_Fractional_Base") || "La cantidad base de series/IMEI no es un número entero") + " — " + row.name;
+        }
+        const serials = Array.isArray(row.serial_numbers) ? row.serial_numbers : [];
+        const required = this.serialRequiredCount(row);
+        if (serials.length !== required) {
+          return (this.$t("Serials_Count_Mismatch") || "Serial count does not match the required amount") + " (" + serials.length + " / " + required + ") — " + row.name;
+        }
+      }
+      return "";
     },
 
     // Block submit while the warehouse is location_primary-but-not-ready, or
@@ -1231,6 +1302,27 @@ export default {
       this.$set(batchRow, field, s);
     },
 
+    //------------------------------ Serial handling -------------------------\\
+    // MS6-B3 — base-unit quantity for a row, matching the backend unit maths
+    // ('*' multiplies by operator_value, '/' divides) — the SAME conversion
+    // LocationAwarePurchaseStockService uses, never a re-derived formula.
+    detailBaseQty(row) {
+      const q = Number(row && row.qty) || 0;
+      const op = row && row.purchase_unit_operator;
+      const val = Number(row && row.purchase_unit_operator_value);
+      if (!op || !isFinite(val) || val <= 0) return q;
+      return op === "/" ? q / val : q * val;
+    },
+    // Serials required for a row: quantity_BASE, mode-dependent (only meaningful
+    // for a location_primary import — a legacy import never shows this widget).
+    serialRequiredCount(row) {
+      return this.location_meta.requires ? Math.round(this.detailBaseQty(row)) : 0;
+    },
+    serialBaseIsFractional(row) {
+      const base = this.detailBaseQty(row);
+      return Math.abs(base - Math.round(base)) > 0.0005;
+    },
+
     //------------------------------ Preview CSV -------------------------\\
     fetchPreview() {
       if (!this.import_products) return;
@@ -1253,7 +1345,7 @@ export default {
           }
           const rows = Array.isArray(d.rows) ? d.rows : [];
           this.previewRows = rows.map(r => {
-            return Object.assign({}, r, { batches: [] });
+            return Object.assign({}, r, { batches: [], serial_numbers: [] });
           });
           this.previewSubtotal = Number(d.subtotal) || 0;
           if (!this.previewRows.length) {
@@ -1325,6 +1417,14 @@ export default {
           this.makeToast(
             "danger",
             this.firstBatchErrorDetail || (this.$t("Batch_Validation_Failed") || "Revisa las asignaciones de lote antes de importar."),
+            this.$t("Failed")
+          );
+          return;
+        }
+        if (this.purchase.statut === "received" && this.hasSerialValidationErrors) {
+          this.makeToast(
+            "danger",
+            this.firstSerialErrorDetail || (this.$t("Serial_Validation_Failed") || "Revisa las asignaciones de series/IMEI antes de importar."),
             this.$t("Failed")
           );
           return;
@@ -1428,6 +1528,24 @@ export default {
       }
       data.append("batches_by_code", JSON.stringify(batchesByCode));
 
+      // Serials keyed by productcode for IMEI-tracked products, entirely out
+      // of the CSV. Only sent for a RECEIVED import — a pending / ordered
+      // import assigns serials later, so any half-entered allocation is
+      // intentionally dropped from the payload (mirrors batches_by_code).
+      const serialsByCode = {};
+      if (this.purchase.statut === "received") {
+        for (const row of this.previewRows) {
+          if (!(row.is_imei && !row.is_variant && !row.is_batch_tracked)) continue;
+          const cleaned = (row.serial_numbers || [])
+            .map(s => String(s).trim())
+            .filter(s => s !== "");
+          if (cleaned.length) {
+            serialsByCode[row.code] = cleaned;
+          }
+        }
+      }
+      data.append("serials_by_code", JSON.stringify(serialsByCode));
+
       axios
         .post("store_import_purchases", data)
         .then(response => {
@@ -1471,8 +1589,10 @@ export default {
     //--------------------------- Inventory location (MS4) ---------------------\\
     warningLabel(kind) {
       if (kind === "variant") return this.$t("Has_Variants") || "product has variants";
+      if (kind === "variant_imei") return this.$t("Variant_Imei_Import_Unsupported") || "El importador actual no puede identificar la variante de este producto serializado.";
       if (kind === "batch") return this.$t("Batch_Tracked") || "batch-tracked product";
       if (kind === "imei") return this.$t("Serialized_IMEI") || "serialized (IMEI) product";
+      if (kind === "batch_imei_conflict") return this.$t("Serial_Batch_Incompatible") || "Este producto tiene lote y serial/IMEI activos simultáneamente y no es compatible con la importación por ubicación.";
       return kind || "";
     },
 

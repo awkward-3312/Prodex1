@@ -392,20 +392,23 @@ class PurchaseLocationNativeArchitectureTest extends TestCase
         $this->assertStringContainsString("if (\$statut === 'received')", $body);
     }
 
-    public function test_ms4_native_import_fails_closed_on_variant_and_imei_not_batch(): void
+    public function test_ms4_native_import_fails_closed_on_variant_not_batch_not_imei(): void
     {
-        // MS5-E — is_batch_tracked is NO LONGER fail-closed in the resolver;
-        // variant + IMEI still are.
+        // MS5-E — is_batch_tracked is NO LONGER fail-closed in the resolver.
+        // MS6-B3 — neither is is_imei alone any more; only variant (no variant
+        // column in the CSV) and batch+IMEI on the same product still are.
         $body = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'resolveImportLinesForLocationNative');
         $this->assertStringContainsString("(string) \$product->type === 'is_variant'", $body);
         $this->assertStringContainsString('is_imei', $body);
         $this->assertStringContainsString('FAIL CLOSED', $body);
         $this->assertStringContainsString('ValidationException::withMessages', $body);
+        $this->assertStringContainsString('$isBatchTracked && $isImei', $body);
 
         // The batch branch that used to throw is gone; the resolver now merely
         // TAGS the row so the planner / pre-flight can demand a batch payload.
         $this->assertStringNotContainsString('La entrada de lote por ubicación llega en un hito posterior', $body);
-        $this->assertStringContainsString("'is_batch_tracked' => (int) (\$product->is_batch_tracked", $body);
+        $this->assertStringContainsString("'is_batch_tracked' => \$isBatchTracked", $body);
+        $this->assertStringContainsString("'is_imei' => \$isImei", $body);
     }
 
     public function test_ms4_import_frontend_reuses_the_purchases_endpoint(): void

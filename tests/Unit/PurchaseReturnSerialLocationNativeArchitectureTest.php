@@ -130,14 +130,8 @@ class PurchaseReturnSerialLocationNativeArchitectureTest extends TestCase
         }
     }
 
-    // ===================== import: STILL INACTIVE (unchanged by B2) ======
-
-    public function test_import_native_path_still_does_not_activate_serial(): void
-    {
-        $import = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'storeImportLocationAware');
-        $this->assertStringNotContainsString('allow_serial', $import);
-        $this->assertStringNotContainsString('LocationAwarePurchaseSerialPlanner', $import);
-    }
+    // ===================== import: MS6-B3 activates it (unchanged by B2) ==
+    // (full wiring assertions live in PurchaseImportSerialLocationNativeArchitectureTest)
 
     // ===================== manual Purchase (B1): still active =============
 

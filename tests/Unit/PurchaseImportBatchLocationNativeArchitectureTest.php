@@ -55,8 +55,9 @@ class PurchaseImportBatchLocationNativeArchitectureTest extends TestCase
         $import = $this->fn($this->controller(), 'storeImportLocationAware');
         $this->assertStringContainsString("'allow_batch' => true", $import);
         $this->assertStringContainsString('->validateAndLock(', $import);
-        // reuses the SAME wrapper the manual purchase uses (no duplicated formula).
-        $this->assertStringContainsString('$this->planLocationAwarePurchaseBatches(', $import);
+        // reuses the SAME composed wrapper the manual purchase uses (MS6-B3:
+        // batch THEN serial), no duplicated formula.
+        $this->assertStringContainsString('$this->planLocationAwarePurchaseArtifacts(', $import);
         $this->assertStringContainsString('$this->withSourceDetailIds($planned, $detailIds)', $import);
     }
 
@@ -74,7 +75,7 @@ class PurchaseImportBatchLocationNativeArchitectureTest extends TestCase
     {
         $import = $this->fn($this->controller(), 'storeImportLocationAware');
         $guard = strpos($import, "if (\$statut === 'received')");
-        $planner = strpos($import, 'planLocationAwarePurchaseBatches(');
+        $planner = strpos($import, 'planLocationAwarePurchaseArtifacts(');
         $apply = strpos($import, 'applySnapshot(');
         $pivots = strpos($import, 'persistLocationAwarePurchaseDetailBatches(');
         $this->assertNotFalse($guard);
@@ -196,8 +197,9 @@ class PurchaseImportBatchLocationNativeArchitectureTest extends TestCase
     public function test_import_frontend_treats_batch_rows_as_supported(): void
     {
         $vue = $this->read('resources/src/views/app/pages/purchases/import_purchases.vue');
-        // incompatibleRows no longer lists batch rows.
-        $this->assertMatchesRegularExpression('/incompatibleRows\(\)\s*\{.*?r\.is_variant \|\| r\.is_imei/s', $vue);
+        // incompatibleRows no longer lists plain batch OR plain IMEI rows —
+        // MS6-B3: only variant and batch+IMEI-on-the-same-product remain.
+        $this->assertMatchesRegularExpression('/incompatibleRows\(\)\s*\{.*?r\.is_variant \|\| \(r\.is_imei && r\.is_batch_tracked\)/s', $vue);
         $this->assertDoesNotMatchRegularExpression('/r\.is_variant \|\| r\.is_batch_tracked \|\| r\.is_imei/', $vue);
         // batch requirement is gated on a RECEIVED import.
         $this->assertStringContainsString('this.purchase.statut !== "received"', $vue);

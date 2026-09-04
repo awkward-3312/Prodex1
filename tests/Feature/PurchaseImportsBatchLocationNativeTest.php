@@ -18,7 +18,9 @@ use Tests\TestCase;
  * The CSV contract (productcode;qty) is unchanged; the physical batch
  * distribution rides in `batches_by_code`. RECEIVED folds the shared
  * LocationAwarePurchaseBatchPlanner into a revision-1 snapshot; PENDING creates
- * no artifact. is_variant / IMEI still 422. product_warehouse is never touched.
+ * no artifact. is_variant still 422 (no variant column in the CSV); a plain
+ * IMEI product is importable since MS6-B3 (PurchaseImportsSerialLocationNativeTest)
+ * — batch+IMEI on the same product still 422. product_warehouse never touched.
  */
 class PurchaseImportsBatchLocationNativeTest extends TestCase
 {
@@ -600,8 +602,12 @@ class PurchaseImportsBatchLocationNativeTest extends TestCase
         $this->assertNoWrites();
     }
 
-    public function test_imei_product_is_422_even_with_batches(): void
+    public function test_batch_plus_imei_product_is_422(): void
     {
+        // MS6-B3 — a plain IMEI product is now importable (see
+        // PurchaseImportsSerialLocationNativeTest); a product that is BOTH
+        // batch AND IMEI tracked still 422s — a line carries only ONE
+        // physical artifact tracker.
         $this->lp();
         $p = $this->makeProduct(['code' => 'IM', 'is_imei' => 1, 'is_batch_tracked' => true, 'unit_purchase_id' => $this->unit1, 'cost' => 1]);
         $this->seedLocationStock($this->loc, $p, 0);
@@ -610,7 +616,7 @@ class PurchaseImportsBatchLocationNativeTest extends TestCase
             $this->runImport($this->csvFile([['IM', 3]]), $this->payload('received', ['IM' => [['batch_no' => 'A', 'qty' => 3]]]));
             $this->fail('expected ValidationException');
         } catch (ValidationException $e) {
-            $this->assertStringContainsStringIgnoringCase('serializado', implode(' ', $e->errors()['products.0'] ?? ['']));
+            $this->assertStringContainsStringIgnoringCase('lote', implode(' ', $e->errors()['products.0'] ?? ['']));
         }
         $this->assertNoWrites();
     }

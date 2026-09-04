@@ -126,20 +126,11 @@ class SerialNativeFoundationArchitectureTest extends TestCase
         $this->assertStringContainsString('lleva asignación de lotes Y de series a la vez', $src);
     }
 
-    // ===================== ACTIVATION SCOPE — B1 manual Purchase, B2 manual =====
-    // Return (full B1/B2 wiring assertions live in
-    // PurchaseSerialLocationNativeArchitectureTest / PurchaseReturnSerialLocationNativeArchitectureTest)
-
-    public function test_import_native_path_does_not_activate_serial(): void
-    {
-        $import = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'storeImportLocationAware');
-        $this->assertStringNotContainsString('allow_serial', $import);
-        $this->assertStringNotContainsString('LocationAwarePurchaseSerialPlanner', $import);
-        // the MS4/MS5-E resolver still 422s an IMEI row.
-        $resolver = $this->fn($this->read('app/Http/Controllers/PurchasesController.php'), 'resolveImportLinesForLocationNative');
-        $this->assertStringContainsString("(int) (\$product->is_imei ?? 0) === 1", $resolver);
-        $this->assertStringContainsString('serializado (IMEI)', $resolver);
-    }
+    // ===================== ACTIVATION SCOPE — MS6 COMPLETE ================
+    // B1 manual Purchase, B2 manual Return, B3 import — all active (full
+    // wiring assertions live in PurchaseSerialLocationNativeArchitectureTest /
+    // PurchaseReturnSerialLocationNativeArchitectureTest /
+    // PurchaseImportSerialLocationNativeArchitectureTest).
 
     // ===================== legacy + POS + transfer untouched =====================
 

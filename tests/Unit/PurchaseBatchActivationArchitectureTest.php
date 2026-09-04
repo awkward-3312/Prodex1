@@ -119,15 +119,16 @@ class PurchaseBatchActivationArchitectureTest extends TestCase
         // IMEI bucket throws regardless of allow_batch.
         $this->assertStringContainsString('$imeiIds', $stock);
 
-        // MS5-E — import IS batch-activated now: storeImportLocationAware passes
-        // allow_batch and folds the shared planner for a RECEIVED import.
+        // MS5-E / MS6-B3 — import IS batch- (and now serial-) activated:
+        // storeImportLocationAware passes allow_batch (+ allow_serial) and
+        // folds the shared composed planner for a RECEIVED import.
         $src = $this->read('app/Http/Controllers/PurchasesController.php');
         $import = $this->fn($src, 'storeImportLocationAware');
         $this->assertStringContainsString("'allow_batch' => true", $import);
-        $this->assertStringContainsString('planLocationAwarePurchaseBatches(', $import);
+        $this->assertStringContainsString('planLocationAwarePurchaseArtifacts(', $import);
         $this->assertStringContainsString('persistLocationAwarePurchaseDetailBatches(', $import);
         // planner + snapshot + pivots gated behind === 'received'.
-        $plannerPos = strpos($import, 'planLocationAwarePurchaseBatches(');
+        $plannerPos = strpos($import, 'planLocationAwarePurchaseArtifacts(');
         $guardPos = strpos($import, "=== 'received'");
         $this->assertNotFalse($plannerPos);
         $this->assertNotFalse($guardPos);

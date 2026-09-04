@@ -113,20 +113,8 @@ class PurchaseSerialLocationNativeArchitectureTest extends TestCase
         }
     }
 
-    // ===================== import: serial STILL INACTIVE ==================
-
-    public function test_import_native_path_does_not_activate_serial(): void
-    {
-        $import = $this->fn($this->controller(), 'storeImportLocationAware');
-        $this->assertStringNotContainsString('allow_serial', $import);
-        $this->assertStringNotContainsString('LocationAwarePurchaseSerialPlanner', $import);
-        $this->assertStringNotContainsString('planLocationAwarePurchaseArtifacts', $import);
-
-        // the import resolver still fails an IMEI row closed.
-        $resolver = $this->fn($this->controller(), 'resolveImportLinesForLocationNative');
-        $this->assertStringContainsString("(int) (\$product->is_imei ?? 0) === 1", $resolver);
-        $this->assertStringContainsString('serializado (IMEI)', $resolver);
-    }
+    // ===================== import: MS6-B3 activates it =====================
+    // (full wiring assertions live in PurchaseImportSerialLocationNativeArchitectureTest)
 
     // ===================== purchase return: MS6-B2 activates it ==========
     // (full wiring assertions live in PurchaseReturnSerialLocationNativeArchitectureTest)

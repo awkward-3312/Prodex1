@@ -19,8 +19,10 @@ use Tests\TestCase;
  * increments product_warehouse.qte with ZERO ProductSerial rows — historical
  * drift, characterized here, NOT fixed.
  *
- * The MS5-E native import (location_primary) still 422s any IMEI row — that
- * behaviour is asserted here too and must not change.
+ * MS6-B3 activated IMEI on the native import via the OUT-OF-CSV `serials_by_code`
+ * payload (see PurchaseImportsSerialLocationNativeTest for full coverage); an
+ * IMEI row with NO serials_by_code entry still 422s, now explicitly ("necesita
+ * series") rather than unconditionally — asserted here as the boundary case.
  */
 class PurchaseImportSerialLegacyGoldenMasterTest extends TestCase
 {
@@ -119,8 +121,11 @@ class PurchaseImportSerialLegacyGoldenMasterTest extends TestCase
     // MS5-E native import still FAILS CLOSED on IMEI — must not change
     // =====================================================================
 
-    public function test_native_import_still_fails_closed_on_an_imei_row(): void
+    public function test_native_import_imei_row_without_serials_by_code_is_422(): void
     {
+        // MS6-B3 — IMEI is now importable on the native path (see
+        // PurchaseImportsSerialLocationNativeTest), but explicitly: a
+        // requires_serial row with no serials_by_code entry still 422s.
         $loc = $this->makeInventoryLocation($this->legacyWh);
         DB::table('warehouses')->where('id', $this->legacyWh)->update(['default_inventory_location_id' => $loc]);
         $this->setTransitionMode($this->legacyWh, Mode::MODE_LOCATION_PRIMARY, $loc, 'healthy');
@@ -130,9 +135,9 @@ class PurchaseImportSerialLegacyGoldenMasterTest extends TestCase
 
         try {
             $this->runImport($this->csv([['IMP-NAT', 3]]), $this->payload($this->legacyWh, 'received', $loc));
-            $this->fail('expected ValidationException — IMEI still fail-closed on the native import');
+            $this->fail('expected ValidationException — no serials_by_code entry for an IMEI row');
         } catch (ValidationException $e) {
-            $this->assertStringContainsStringIgnoringCase('serializado', implode(' ', $e->errors()['products.0'] ?? ['']));
+            $this->assertStringContainsStringIgnoringCase('serie', implode(' ', $e->errors()['serials_by_code'] ?? $e->errors()['details.0.serial_numbers'] ?? ['']));
         }
         $this->assertSame(0, DB::table('purchases')->count());
         $this->assertSame(0, $this->serialCount());

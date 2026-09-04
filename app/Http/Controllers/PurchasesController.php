@@ -2694,23 +2694,31 @@ class PurchasesController extends BaseController
             $total = $qty * $cost;
             $subtotal += $total;
 
-            // MS4 / MS5-E — additive UX hints so the form can react BEFORE submit
-            // when the chosen warehouse is location_primary. The store endpoint
-            // is still the final guard.
+            // MS4 / MS5-E / MS6-B3 — additive UX hints so the form can react
+            // BEFORE submit when the chosen warehouse is location_primary. The
+            // store endpoint is still the final guard.
             //   validation_warning: a row a location-native import CANNOT accept
-            //     (variant / IMEI) — blocks submit.
-            //   batch_required_on_receipt: a supported batch-tracked row that
-            //     needs a batch allocation when the import is RECEIVED — does
-            //     NOT block; the form shows the allocator.
+            //     — a variant product (CSV has no variant column: 'variant', or
+            //     'variant_imei' when it is also serialized) or a product with
+            //     BOTH batch AND serial tracking ('batch_imei_conflict') — blocks
+            //     submit. A plain is_imei row is NOT a warning any more (MS6-B3).
+            //   batch_required_on_receipt / serial_required_on_receipt: a
+            //     supported batch-tracked / serialized row that needs an
+            //     allocation when the import is RECEIVED — does NOT block; the
+            //     form shows the corresponding allocator.
             $isVariant = ((int) ($product->is_variant ?? 0) === 1) || ((string) $product->type === 'is_variant');
             $isBatch = (bool) ($product->is_batch_tracked ?? false);
             $isImei = (int) ($product->is_imei ?? 0) === 1;
             $warning = null;
-            if ($isVariant) {
+            if ($isVariant && $isImei) {
+                $warning = 'variant_imei';
+            } elseif ($isVariant) {
                 $warning = 'variant';
-            } elseif ($isImei) {
-                $warning = 'imei';
+            } elseif ($isImei && $isBatch) {
+                $warning = 'batch_imei_conflict';
             }
+
+            $unitPurchase = $product->unitPurchase;
 
             $rows[] = [
                 'code' => $product->code,
@@ -2718,7 +2726,11 @@ class PurchasesController extends BaseController
                 'qty' => $qty,
                 'cost' => $cost,
                 'total' => $total,
-                'unit' => optional($product->unitPurchase)->ShortName,
+                'unit' => optional($unitPurchase)->ShortName,
+                // MS6-B3 — purchase-unit conversion factor so the import preview
+                // can require count(serials) == quantity_BASE.
+                'purchase_unit_operator' => $unitPurchase ? $unitPurchase->operator : '*',
+                'purchase_unit_operator_value' => $unitPurchase ? (float) $unitPurchase->operator_value : 1,
                 'is_batch_tracked' => $isBatch,
                 'is_imei' => $isImei,
                 'is_variant' => $isVariant,
@@ -2727,6 +2739,7 @@ class PurchasesController extends BaseController
                 'product_variant_id' => null,
                 'validation_warning' => $warning,
                 'batch_required_on_receipt' => $isBatch && ! $isVariant && ! $isImei,
+                'serial_required_on_receipt' => $isImei && ! $isVariant && ! $isBatch,
             ];
         }
 
@@ -2773,13 +2786,15 @@ class PurchasesController extends BaseController
                 return response()->json(['status' => false, 'msg' => 'Invalid CSV file'], 422);
             }
 
-            // MS5-E — the native path re-derives the batch map with STRICT shape
-            // validation (malformed JSON => 422 batches_by_code). The legacy
-            // path keeps its lenient decode above untouched.
+            // MS5-E / MS6-B3 — the native path re-derives the batch/serial maps
+            // with STRICT shape validation (malformed JSON => 422). The legacy
+            // path keeps its lenient batch decode above untouched and never
+            // reads serials_by_code at all (no legacy serial writer).
             return $this->storeImportLocationAware(
                 $request,
                 $data,
-                $this->normalizeImportBatchesByCode($request->input('batches_by_code'))
+                $this->normalizeImportBatchesByCode($request->input('batches_by_code')),
+                $this->normalizeImportSerialsByCode($request->input('serials_by_code'))
             );
         }
 
@@ -2878,37 +2893,55 @@ class PurchasesController extends BaseController
     }
 
     // =====================================================================
-    // MS4 / MS5-E — Import purchases location-native (MODE_LOCATION_PRIMARY).
+    // MS4 / MS5-E / MS6-B3 — Import purchases location-native (MODE_LOCATION_PRIMARY).
     //
-    // The CSV contract (productcode;qty) identifies a Product by Product.code
-    // ONLY — it has NO variant column, so a location-native import CANNOT
-    // resolve a ProductVariant. is_variant / is_imei rows FAIL CLOSED (422).
+    // The CSV contract (productcode;qty) is UNCHANGED — identifies a Product by
+    // Product.code ONLY, NO variant column, so a location-native import CANNOT
+    // resolve a ProductVariant. is_variant rows FAIL CLOSED (422), which also
+    // fences variant+IMEI (the variant check runs first). A product that is
+    // BOTH batch AND IMEI tracked FAILS CLOSED too (a line carries only ONE
+    // physical artifact tracker).
     //
-    // MS5-E — is_batch_tracked is now SUPPORTED for is_single products. The
-    // physical batch distribution rides in `batches_by_code` (map of
-    // productcode => [{batch_no, qty, expiry_date, mfg_date, unit_cost}]) —
-    // the CSV still only says product + quantity. For a RECEIVED import the
-    // shared LocationAwarePurchaseBatchPlanner freezes a per-line
-    // batch_allocation; buildSnapshot embeds it; applySnapshot runs
-    // BatchLocationService::receiveMany BEFORE InventoryService::increase.
-    // A PENDING import creates NO batch artifact even if batches_by_code was
-    // sent (same as MS5-C). The snapshot (revision 1) is the ONLY source of a
-    // later reverse; purchase_detail_batches pivots are secondary UX/reporting.
-    // After creation it is a normal location-native Purchase — MS5-C
-    // update/destroy revert it from that snapshot.
+    // MS5-E — is_batch_tracked is SUPPORTED for is_single products via
+    // `batches_by_code` (map of productcode => [{batch_no, qty, expiry_date,
+    // mfg_date, unit_cost}]).
+    //
+    // MS6-B3 — is_imei is SUPPORTED for is_single (non-variant, non-batch)
+    // products via `serials_by_code` (map of productcode => [serial_number,...]
+    // — normalizeImportSerialsByCode()). The CSV still only says product +
+    // quantity; physical distribution rides entirely outside it. For a
+    // RECEIVED import LocationAwarePurchaseSerialPlanner::planPurchaseReceipt
+    // resolves/creates the serial_allocation exactly like manual Purchase
+    // (MS6-B1): count(serials) == quantity_BASE (integer), document-wide
+    // dedup, voided-placeholder reuse, existing active serial => 422.
+    //
+    // planLocationAwarePurchaseArtifacts folds batch THEN serial (mapped by
+    // ORDINAL) -> buildSnapshot embeds both -> applySnapshot runs (PHASE A)
+    // BatchLocationService::receiveMany, (PHASE B)
+    // LocationAwareSerialNumberService::receivePurchaseMany, (PHASE C)
+    // InventoryService::increase. A PENDING/ordered import creates NO batch/
+    // serial artifact even if batches_by_code / serials_by_code was sent (same
+    // as MS5-C / MS6-B1) — imei_number text compatibility is still persisted.
+    // The snapshot (revision 1) is the ONLY source of a later reverse;
+    // purchase_detail_batches pivots and PurchaseDetail.imei_number are
+    // secondary UX/reporting. After creation it is a normal location-native
+    // Purchase, physically indistinguishable from one created by MS6-B1 —
+    // MS6-B1 update/destroy/delete_by_selection revert it from that same
+    // snapshot; no import-only flag anywhere.
     //
     // NO product_warehouse / BatchService / SerialNumberService on this path.
     // Legacy import (any non-primary mode) keeps its exact current behaviour,
-    // including the historical variant-NULL product_warehouse write.
+    // including the historical variant-NULL product_warehouse write and NO
+    // serials_by_code writer at all.
     // =====================================================================
 
-    private function storeImportLocationAware(Request $request, array $data, array $batchesByCode)
+    private function storeImportLocationAware(Request $request, array $data, array $batchesByCode, array $serialsByCode = [])
     {
         $svc = app(LocationAwarePurchaseStockService::class);
         $warehouseId = (int) $request->warehouse_id;
         $statut = $request->statut;
 
-        \DB::transaction(function () use ($request, $data, $batchesByCode, $svc, $warehouseId, $statut) {
+        \DB::transaction(function () use ($request, $data, $batchesByCode, $serialsByCode, $svc, $warehouseId, $statut) {
             // FAIL CLOSED — location_primary must still be healthy INSIDE the tx
             // (locks inventory_transition_states first). No legacy fallback.
             $this->assertLocationNativePurchaseTransitionSafe($warehouseId, null);
@@ -2919,17 +2952,22 @@ class PurchasesController extends BaseController
             // Resolve + validate EVERY row BEFORE any stock mutation.
             $resolved = $this->resolveImportLinesForLocationNative($data);
 
-            // MS5-E — validate the batches_by_code SHAPE against the resolved
-            // rows BEFORE creating anything: unknown/stale codes, batches for a
-            // non-batch product, and (received only) missing batches / bad
-            // qty / sum mismatch / unparseable dates all 422 here. The planner
-            // is the authoritative fence inside the tx; this is the friendly,
-            // all-or-nothing pre-flight.
+            // MS5-E / MS6-B3 — validate the batches_by_code / serials_by_code
+            // SHAPE against the resolved rows BEFORE creating anything:
+            // unknown/stale codes, an allocation for the wrong tracker, and
+            // (received only) missing allocation / bad qty / count mismatch /
+            // unparseable dates all 422 here. The planners are the
+            // authoritative fence inside the tx; this is the friendly,
+            // all-or-nothing pre-flight — nothing is created for row 1 while
+            // row 5 still has an obvious, cheaply-detectable error.
             $this->prevalidateImportBatchInput($resolved, $batchesByCode, $statut);
+            $this->prevalidateImportSerialInput($resolved, $serialsByCode, $statut);
 
-            // Full-document validate + lock. allow_batch=true — a batch-tracked
-            // is_single line is marked requires_batch (the planner runs only for
-            // a RECEIVED import); is_variant / IMEI still 422.
+            // Full-document validate + lock. MS6-B3 — allow_batch + allow_serial:
+            // a batch-tracked is_single line is marked requires_batch, an
+            // is_imei is_single line requires_serial (integer base enforced
+            // there); the planners run only for a RECEIVED import. is_variant
+            // still 422 (resolveImportLinesForLocationNative, above).
             $validated = $svc->validateAndLock(
                 LocationAwarePurchaseStockService::DOC_PURCHASE,
                 $warehouseId,
@@ -2941,7 +2979,7 @@ class PurchasesController extends BaseController
                     'purchase_unit_id' => $r['unit_purchase_id'],
                 ], $resolved),
                 [],
-                ['allow_batch' => true]
+                ['allow_batch' => true, 'allow_serial' => true]
             );
 
             $order = new Purchase;
@@ -2964,6 +3002,10 @@ class PurchasesController extends BaseController
 
             // Details one by one -> real ids. request_products_csv already
             // rejects a duplicate productcode, so each CSV row is its own line.
+            // MS6-B3 — imei_number keeps the serial-list display/print
+            // compatibility (same text contract as manual Purchase); the
+            // snapshot serial_allocation is the physical + reverse authority.
+            // imei_number is NOT fillable on PurchaseDetail — force-fill it.
             $total = 0;
             $detailIds = [];
             foreach (array_values($resolved) as $i => $r) {
@@ -2981,8 +3023,9 @@ class PurchasesController extends BaseController
                     'product_id' => $r['product']->id,
                     'product_variant_id' => null,
                     'total' => $lineTotal,
-                    'imei_number' => null,
                 ]);
+                $rowSerials = $serialsByCode[$r['code']] ?? [];
+                $d->forceFill(['imei_number' => $rowSerials ? implode(',', $rowSerials) : null])->save();
                 $detailIds[$i] = $d->id;
             }
 
@@ -2994,20 +3037,24 @@ class PurchasesController extends BaseController
             $order->save();
 
             // Physical effect ONLY for a received import. A pending / ordered
-            // import keeps location + header + details, NO snapshot, NO batch
-            // artifact, NO movements — the planner NEVER runs for pending, even
-            // if `batches_by_code` was sent (mirrors MS5-C).
+            // import keeps location + header + details (imei_number text
+            // included), NO snapshot, NO batch/serial artifact, NO placeholder,
+            // NO movements — the planners NEVER run for pending, even if
+            // `batches_by_code` / `serials_by_code` was sent (mirrors MS5-C /
+            // MS6-B1).
             if ($statut === 'received') {
-                // RAW lines for the planner: one entry per resolved row (same
-                // order as $validated['lines']), carrying the batch list for
-                // that productcode. A non-batch line's `batches` is [] and the
-                // planner leaves its batch_allocation empty.
+                // RAW lines for the planners: one entry per resolved row (same
+                // order as $validated['lines']), carrying the batch/serial list
+                // for that productcode. A line that doesn't need one gets [].
                 $rawLines = array_map(
-                    fn ($r) => ['batches' => $batchesByCode[$r['code']] ?? []],
+                    fn ($r) => [
+                        'batches' => $batchesByCode[$r['code']] ?? [],
+                        'serial_numbers' => $serialsByCode[$r['code']] ?? [],
+                    ],
                     array_values($resolved)
                 );
 
-                $planned = $this->planLocationAwarePurchaseBatches(
+                $planned = $this->planLocationAwarePurchaseArtifacts(
                     $warehouseId, $locationId, $validated['lines'], $rawLines, (int) $order->id, $order->provider_id
                 );
                 $validated['lines'] = $this->withSourceDetailIds($planned, $detailIds);
@@ -3025,14 +3072,17 @@ class PurchasesController extends BaseController
      * Resolve each CSV row (productcode;qty) to a real Product + its purchase
      * Unit for the location-native import, validating the WHOLE document before
      * any stock mutation. FAIL CLOSED (422) on: unknown / soft-deleted product,
-     * qty <= 0, a product with variants (the CSV has no variant column), or an
-     * IMEI-tracked product (MS6).
+     * qty <= 0, a product with variants (the CSV has no variant column — this
+     * ALSO fences variant+IMEI, since the check runs first and IMEI alone no
+     * longer fails closed), or a product that is BOTH batch AND IMEI tracked
+     * (MS6-B3 — a line can only carry ONE physical artifact tracker).
      *
-     * MS5-E — is_batch_tracked is NO LONGER fail-closed here; the row carries
-     * `is_batch_tracked` so prevalidateImportBatchInput() / the planner can
-     * demand a valid batches_by_code entry for a RECEIVED import.
+     * MS5-E / MS6-B3 — is_batch_tracked / is_imei are NO LONGER fail-closed
+     * alone here; the row carries both flags so prevalidateImportBatchInput() /
+     * prevalidateImportSerialInput() / the planners can demand a valid
+     * batches_by_code / serials_by_code entry for a RECEIVED import.
      *
-     * @return array<int,array{code:string, product:\App\Models\Product, unit_purchase_id:?int, qty:float, is_batch_tracked:bool}>
+     * @return array<int,array{code:string, product:\App\Models\Product, unit_purchase_id:?int, qty:float, is_batch_tracked:bool, is_imei:bool}>
      */
     private function resolveImportLinesForLocationNative(array $data): array
     {
@@ -3064,9 +3114,12 @@ class PurchasesController extends BaseController
                     "products.$i" => "Fila $line ($code): es un producto con variantes. La importación de compra por ubicación no puede determinar la variante desde el CSV actual (columnas productcode;qty). FAIL CLOSED.",
                 ]);
             }
-            if ((int) ($product->is_imei ?? 0) === 1) {
+
+            $isBatchTracked = (int) ($product->is_batch_tracked ?? 0) === 1;
+            $isImei = (int) ($product->is_imei ?? 0) === 1;
+            if ($isBatchTracked && $isImei) {
                 throw ValidationException::withMessages([
-                    "products.$i" => "Fila $line ($code): es un producto serializado (IMEI). La entrada de series por ubicación llega en un hito posterior. FAIL CLOSED.",
+                    "products.$i" => "Fila $line ($code): el producto tiene control de lote Y de serie/IMEI a la vez. La combinación lote+serie no está soportada.",
                 ]);
             }
 
@@ -3075,7 +3128,8 @@ class PurchasesController extends BaseController
                 'product' => $product,
                 'unit_purchase_id' => $product->unit_purchase_id,
                 'qty' => $qty,
-                'is_batch_tracked' => (int) ($product->is_batch_tracked ?? 0) === 1,
+                'is_batch_tracked' => $isBatchTracked,
+                'is_imei' => $isImei,
             ];
         }
 
@@ -3218,6 +3272,180 @@ class PurchasesController extends BaseController
             if (abs($sum - $rowQty) > $eps) {
                 throw ValidationException::withMessages([
                     "details.$i.batches" => "La suma de las cantidades por lote de '{$code}' ({$sum}) no coincide con la cantidad importada ({$rowQty}).",
+                ]);
+            }
+        }
+    }
+
+    /**
+     * MS6-B3 — decode + SHAPE-check the import `serials_by_code` payload for
+     * the location-native path ONLY. Accepts null/''/'[]'/'{}' (=> []), an
+     * already-decoded array, or a JSON string — MUST decode to a MAP of
+     * productcode => list of serials (a flat/global list is rejected: §1/§2).
+     * Each entry normalizes to a plain non-empty string; an object carrying
+     * `serial_number` is accepted for UX but never any other metadata.
+     * FAIL CLOSED (422 serials_by_code) on malformed JSON, a non-map value, or
+     * a malformed entry. Per-entry content against the resolved CSV rows is
+     * validated later by prevalidateImportSerialInput().
+     *
+     * @return array<string,array<int,string>>
+     */
+    private function normalizeImportSerialsByCode($raw): array
+    {
+        if ($raw === null || $raw === '' || $raw === '[]' || $raw === '{}') {
+            return [];
+        }
+        $decoded = $raw;
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw ValidationException::withMessages([
+                    'serials_by_code' => 'El detalle de series (serials_by_code) no es un JSON válido.',
+                ]);
+            }
+        }
+        if (! is_array($decoded)) {
+            throw ValidationException::withMessages([
+                'serials_by_code' => 'El detalle de series (serials_by_code) tiene un formato no soportado.',
+            ]);
+        }
+        if (empty($decoded)) {
+            return [];
+        }
+        if (array_is_list($decoded)) {
+            throw ValidationException::withMessages([
+                'serials_by_code' => 'El detalle de series (serials_by_code) debe ser un mapa de código de producto a lista de series, no una lista global.',
+            ]);
+        }
+
+        $out = [];
+        foreach ($decoded as $code => $entries) {
+            if (! is_array($entries)) {
+                throw ValidationException::withMessages([
+                    'serials_by_code' => "El código '{$code}' no trae una lista de series válida.",
+                ]);
+            }
+            $clean = [];
+            foreach ($entries as $entry) {
+                if (is_string($entry) || is_numeric($entry)) {
+                    $sn = trim((string) $entry);
+                } elseif (is_array($entry) && isset($entry['serial_number'])) {
+                    $sn = trim((string) $entry['serial_number']);
+                } else {
+                    throw ValidationException::withMessages([
+                        'serials_by_code' => "El código '{$code}' trae una entrada de serie con formato inválido.",
+                    ]);
+                }
+                if ($sn === '') {
+                    throw ValidationException::withMessages([
+                        'serials_by_code' => "El código '{$code}' trae un número de serie vacío.",
+                    ]);
+                }
+                $clean[] = $sn;
+            }
+            $out[(string) $code] = $clean;
+        }
+
+        return $out;
+    }
+
+    /**
+     * MS6-B3 — all-or-nothing pre-flight for the import serial payload, run
+     * inside the tx BEFORE the Purchase/details/artifacts are written (mirrors
+     * prevalidateImportBatchInput exactly):
+     *
+     *  - a key of serials_by_code that is NOT a resolved CSV productcode => 422
+     *    (stale frontend state / file changed after preview);
+     *  - serials supplied for a NON is_imei product, RECEIVED => 422 (rejected
+     *    explicitly, never silently ignored);
+     *  - RECEIVED + is_imei row: a non-empty list is required; quantity_base
+     *    (via the SAME LocationAwarePurchaseStockService::toBaseQuantity used
+     *    everywhere else — never a duplicated formula) must be a non-fractional
+     *    integer and count(serials) must equal it EXACTLY (never the CSV/
+     *    document quantity); no duplicate serial within a code, and no
+     *    duplicate ANYWHERE in the document (serial identity is global).
+     *
+     * PENDING never needs serials; only the stale-code check applies. The
+     * planner re-validates identity/status authoritatively for RECEIVED.
+     *
+     * @param  array<int,array{code:string, qty:float, is_batch_tracked:bool, is_imei:bool, unit_purchase_id:?int}>  $resolved
+     * @param  array<string,array<int,string>>  $serialsByCode
+     */
+    private function prevalidateImportSerialInput(array $resolved, array $serialsByCode, string $statut): void
+    {
+        $byCode = [];
+        foreach (array_values($resolved) as $i => $r) {
+            $byCode[$r['code']] = ['i' => $i] + $r;
+        }
+
+        // 1) No orphan / stale codes — regardless of statut.
+        foreach (array_keys($serialsByCode) as $code) {
+            if (! array_key_exists((string) $code, $byCode)) {
+                throw ValidationException::withMessages([
+                    'serials_by_code' => "El detalle de series incluye el código '{$code}', que no corresponde a ninguna fila del CSV. Revisa que el archivo no haya cambiado desde la vista previa.",
+                ]);
+            }
+        }
+
+        if ($statut !== 'received') {
+            return; // pending / ordered: no physical serial requirement.
+        }
+
+        $svc = app(LocationAwarePurchaseStockService::class);
+        $seenDocumentWide = [];
+        foreach ($byCode as $code => $meta) {
+            $entries = $serialsByCode[$code] ?? [];
+            $hasEntries = ! empty($entries);
+
+            if (! $meta['is_imei']) {
+                if ($hasEntries) {
+                    throw ValidationException::withMessages([
+                        'serials_by_code' => "El producto '{$code}' no es serializado (IMEI), pero el detalle de series trae asignaciones para él.",
+                    ]);
+                }
+
+                continue;
+            }
+
+            $i = $meta['i'];
+            if (! $hasEntries) {
+                throw ValidationException::withMessages([
+                    "details.$i.serial_numbers" => "El producto '{$code}' es serializado (IMEI) y la importación recibida necesita series.",
+                ]);
+            }
+
+            $unit = $meta['unit_purchase_id'] ? Unit::find($meta['unit_purchase_id']) : null;
+            $base = $unit
+                ? $svc->toBaseQuantity((float) $meta['qty'], (string) $unit->operator, (float) $unit->operator_value)
+                : round((float) $meta['qty'], 3);
+            $rounded = round($base);
+            if (abs($base - $rounded) > 0.0005) {
+                throw ValidationException::withMessages([
+                    "details.$i.serial_numbers" => "El producto '{$code}' usa serie/IMEI y sólo admite una cantidad base entera (calculada: {$base}).",
+                ]);
+            }
+            $baseInt = (int) $rounded;
+
+            $seenInCode = [];
+            foreach ($entries as $sn) {
+                $key = mb_strtolower($sn);
+                if (isset($seenInCode[$key])) {
+                    throw ValidationException::withMessages([
+                        "details.$i.serial_numbers" => "Número de serie duplicado para '{$code}': '{$sn}'.",
+                    ]);
+                }
+                $seenInCode[$key] = true;
+                if (isset($seenDocumentWide[$key])) {
+                    throw ValidationException::withMessages([
+                        'serials_by_code' => "El serial '{$sn}' está repetido en el documento (códigos '{$seenDocumentWide[$key]}' y '{$code}').",
+                    ]);
+                }
+                $seenDocumentWide[$key] = $code;
+            }
+
+            if (count($entries) !== $baseInt) {
+                throw ValidationException::withMessages([
+                    "details.$i.serial_numbers" => "El producto '{$code}' necesita exactamente {$baseInt} número(s) de serie (recibidos: ".count($entries).').',
                 ]);
             }
         }
