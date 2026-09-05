@@ -54,3 +54,23 @@ if (! function_exists('is_default_tenant_avatar_filename')) {
         return $filename === 'no_avatar.png' || in_array($filename, default_tenant_avatar_filenames(), true);
     }
 }
+
+/**
+ * "Sin avatar propio" for the EXISTING-user backfill (prodex:backfill-default-avatars):
+ * NULL, '' or the legacy 'no_avatar.png' placeholder — the only generic/default
+ * value the codebase has ever written for "no avatar uploaded" before the 4
+ * random defaults existed.
+ *
+ * Deliberately NARROWER than is_default_tenant_avatar_filename(): a user who
+ * already has one of the 4 random defaults (default_avatar_1..4.png) must be
+ * LEFT ALONE here — re-randomizing an already-assigned default would make
+ * the backfill non-idempotent. is_default_tenant_avatar_filename() stays the
+ * (broader) "never delete this file" guard; this is the (narrower) "does this
+ * user still need one assigned" predicate.
+ */
+if (! function_exists('needs_default_tenant_avatar_assignment')) {
+    function needs_default_tenant_avatar_assignment(?string $filename): bool
+    {
+        return ! $filename || $filename === 'no_avatar.png';
+    }
+}

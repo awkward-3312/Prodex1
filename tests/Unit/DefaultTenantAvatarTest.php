@@ -66,6 +66,27 @@ class DefaultTenantAvatarTest extends TestCase
         $this->assertFalse(is_default_tenant_avatar_filename('87654321photo.jpg'));
     }
 
+    // ---- needs_default_tenant_avatar_assignment() — the existing-user backfill predicate ----
+
+    public function test_null_empty_and_legacy_placeholder_need_assignment(): void
+    {
+        $this->assertTrue(needs_default_tenant_avatar_assignment(null));
+        $this->assertTrue(needs_default_tenant_avatar_assignment(''));
+        $this->assertTrue(needs_default_tenant_avatar_assignment('no_avatar.png'));
+    }
+
+    public function test_an_already_assigned_default_does_not_need_assignment(): void
+    {
+        foreach (default_tenant_avatar_filenames() as $filename) {
+            $this->assertFalse(needs_default_tenant_avatar_assignment($filename));
+        }
+    }
+
+    public function test_a_custom_avatar_does_not_need_assignment(): void
+    {
+        $this->assertFalse(needs_default_tenant_avatar_assignment('87654321photo.jpg'));
+    }
+
     // ---- structural: the 3 real tenant-user creation call sites actually use it ----
 
     public function test_user_controller_store_assigns_a_random_default_when_no_file_is_uploaded(): void
