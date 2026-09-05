@@ -1,346 +1,178 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('EditPurchaseReturn')" :folder="$t('ListReturns')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxpurf">
+    <px-page-header :title="$t('EditPurchaseReturn')" :breadcrumbs="[{ label: $t('Purchases') }, { label: $t('ListReturns') }, { label: $t('EditPurchaseReturn') }]">
+      <template #actions>
+        <px-button variant="ghost" icon="arrow-left" @click="$router.push({ name: 'index_purchase_return' })">{{ $t('Cancel') }}</px-button>
+        <px-button variant="primary" icon="check" :loading="SubmitProcessing" :disabled="SubmitProcessing" @click="Submit_purchase_return">{{ $t('submit') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <validation-observer ref="edit_Return" v-if="!isLoading">
-      <b-form @submit.prevent="Submit_purchase_return">
-        <b-row>
-          <b-col lg="12" md="12" sm="12">
-            <b-card>
-              <b-row>
-                 <!-- date  -->
-                <b-col lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider
-                    name="date"
-                    :rules="{ required: true}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('date') + ' ' + '*'">
-                      <b-form-input
-                        :state="getValidationState(validationContext)"
-                        aria-describedby="date-feedback"
-                        type="date"
-                        v-model="purchase_return.date"
-                      ></b-form-input>
-                      <b-form-invalid-feedback
-                        id="OrderTax-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+    <div v-if="isLoading" class="pxpurf__pad">
+      <px-skeleton variant="lines" :rows="10" />
+    </div>
 
-                <!-- Purchase -->
-               <b-col lg="4" md="4" sm="12" class="mb-3">
-                  <b-form-group :label="$t('Purchase')">
-                    <b-form-input
-                      label="Purchase"
-                      v-model="purchase_return.purchase_ref"
-                      disabled="disabled"
-                    ></b-form-input>
-                  </b-form-group>
-                </b-col>
+    <validation-observer v-else ref="edit_Return" tag="div">
+      <px-card class="pxpurf__card">
+        <div class="pxpurf__grid3">
+          <validation-provider ref="dateProvider" name="date" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('date')" required :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" type="date" v-model="purchase_return.date" @input="v.validate" /></template>
+            </px-field>
+          </validation-provider>
 
-                <!-- Status  -->
-                <b-col lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider name="Status" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="purchase_return.statut"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Status')"
-                        :options="
-                            [
-                              {label: 'completed', value: 'completed'},
-                              {label: 'pending', value: 'pending'},
-                            ]"
-                      ></v-select>
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+          <px-field :label="$t('Purchase')">
+            <template #default="{ id }"><px-input :id="id" v-model="purchase_return.purchase_ref" disabled /></template>
+          </px-field>
 
-                <!-- inventory location (MS3 · almacenes location_primary / devoluciones location-native) -->
-                <b-col v-if="location_meta.requires" lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider name="inventory_location" :rules="{ required: true }">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="purchase_return.inventory_location_id"
-                        @input="Selected_Inventory_Location"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Inventory_Location')"
-                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+          <validation-provider ref="statutProvider" name="Status" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Status')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="purchase_return.statut" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Status')" @input="v.validate"
+                  :options="[{ label: 'completed', value: 'completed' }, { label: 'pending', value: 'pending' }]" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-                <b-col v-if="location_meta.blocked" cols="12" class="mb-3">
-                  <b-alert show variant="danger" class="mb-0">
-                    {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado.' }}
-                  </b-alert>
-                </b-col>
+          <validation-provider v-if="location_meta.requires" ref="locProvider" name="inventory_location" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Inventory_Location')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="purchase_return.inventory_location_id" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Inventory_Location')"
+                  @input="val => { Selected_Inventory_Location(val); v.validate(val); }"
+                  :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))" />
+              </template>
+            </px-field>
+          </validation-provider>
+        </div>
 
-                <!-- Order products  -->
-                <b-col md="12">
-                  <h5>{{$t('list_product_returns')}} *</h5>
-                  <div class="table-responsive">
-                    <table class="table table-hover">
-                      <thead class="bg-gray-300">
-                        <tr>
-                          <th scope="col">#</th>
-                          <th scope="col">{{$t('ProductName')}}</th>
-                          <th scope="col">{{$t('Net_Unit_Cost')}}</th>
-                          <th scope="col">{{$t('qty_purchased')}}</th>
-                          <th scope="col">{{$t('Current_stock')}}</th>
-                          <th scope="col">{{$t('Qty_return')}}</th>
-                          <th scope="col">{{$t('Discount')}}</th>
-                          <th scope="col">{{$t('Tax')}}</th>
-                          <th scope="col">{{$t('SubTotal')}}</th>
-                         
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-if="details.length <=0">
-                          <td colspan="9">{{$t('NodataAvailable')}}</td>
-                        </tr>
-                        <template v-for="detail in details">
-                        <tr
-                          :class="{'row_deleted': detail.del === 1 || detail.no_unit === 0}"
-                          :key="detail.detail_id"
-                        >
-                          <td>{{detail.detail_id}}</td>
-                          <td>
-                            <span>{{detail.code}}</span>
-                            <br>
-                            <span class="badge badge-success">{{detail.name}}</span>
-                            <div v-if="detail.is_batch_tracked && purchase_return.statut === 'completed'" class="mt-1">
-                              <span
-                                class="badge"
-                                style="background:#eef2ff; color:#4f46e5; font-weight:600; letter-spacing:0.3px;"
-                                :title="$t('Auto_FEFO_Hint') || 'Oldest-expiring batches will be auto-allocated (FEFO) when this return is completed.'"
-                              >
-                                <lucide-icon name="package" style="margin-right:3px;" />{{ $t('Batches') || 'Batches' }} · FEFO
-                              </span>
-                            </div>
-                            <div v-if="detail.is_batch_tracked && purchase_return.statut !== 'completed'" class="mt-1">
-                              <span
-                                class="badge"
-                                style="background:#f1f5f9; color:#475569; font-weight:600; letter-spacing:0.3px;"
-                              >
-                                <lucide-icon name="package" style="margin-right:3px;" />{{ $t('Batches_Assigned_On_Completion') || 'Los lotes se asignarán cuando la devolución se complete.' }}
-                              </span>
-                            </div>
-                          </td>
-                          <td>{{currentUser.currency}} {{formatNumber(detail.Net_cost, priceDecimals)}}</td>
-                          <td>
-                            <span
-                              class="badge badge-outline-warning"
-                            >{{detail.purchase_quantity}} {{detail.unitPurchase}}</span>
-                          </td>
-                          <td>
-                            <span
-                              class="badge badge-outline-warning"
-                            >{{detail.stock}} {{detail.unitPurchase}}</span>
-                          </td>
-                          <td>
-                            <div class="quantity">
-                              <b-input-group>
-                                <b-input-group-prepend>
-                                  <span v-show="detail.no_unit !== 0"
-                                    class="btn btn-primary btn-sm"
-                                    @click="decrement(detail ,detail.detail_id)"
-                                  >-</span>
-                                </b-input-group-prepend>
-                                <input
-                                  class="form-control"
-                                  @keyup="Verified_Qty(detail,detail.detail_id)"
-                                  :min="0.00"
-                                  v-model.number="detail.quantity"
-                                  :disabled="detail.del === 1 || detail.no_unit === 0"
-                                >
-                                <b-input-group-append>
-                                  <span v-show="detail.no_unit !== 0"
-                                    class="btn btn-primary btn-sm"
-                                    @click="increment(detail ,detail.detail_id)"
-                                  >+</span>
-                                </b-input-group-append>
-                              </b-input-group>
-                            </div>
-                          </td>
-                          <td>{{currentUser.currency}} {{formatNumber(detail.DiscountNet * detail.quantity, priceDecimals)}}</td>
-                          <td>{{currentUser.currency}} {{formatNumber(detail.taxe * detail.quantity , priceDecimals)}}</td>
-                          <td>{{currentUser.currency}} {{detail.subtotal.toFixed(priceDecimals)}}</td>
+        <px-alert v-if="location_meta.blocked" tone="danger" class="pxpurf__gap">
+          {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado.' }}
+        </px-alert>
 
-                        </tr>
+        <div class="pxpurf__lines pxpurf__gap">
+          <h5 class="pxpurf__lineshead">{{ $t('list_product_returns') }} *</h5>
 
-                        <!-- Serial / IMEI + batch on the same product: not supported -->
-                        <tr v-if="detail.is_imei && detail.is_batch_tracked" :key="'sb-'+detail.detail_id" style="background: transparent;">
-                          <td colspan="9" style="padding: 0 8px 12px 8px; border: none;">
-                            <b-alert show variant="danger" class="mb-0">
-                              {{ $t('Serial_Batch_Incompatible') || 'Este producto está configurado con lote Y serie/IMEI a la vez. La combinación no es compatible: corrige la configuración del producto antes de registrar la devolución.' }}
-                            </b-alert>
-                          </td>
-                        </tr>
+          <div class="pxpurf-tbl__wrap pxn-scroll">
+            <table class="pxpurf-tbl">
+              <thead>
+                <tr>
+                  <th style="width:44px">#</th>
+                  <th>{{ $t('ProductName') }}</th>
+                  <th class="is-right">{{ $t('Net_Unit_Cost') }}</th>
+                  <th class="is-right">{{ $t('qty_purchased') }}</th>
+                  <th class="is-right">{{ $t('Current_stock') }}</th>
+                  <th class="is-center">{{ $t('Qty_return') }}</th>
+                  <th class="is-right">{{ $t('Discount') }}</th>
+                  <th class="is-right">{{ $t('Tax') }}</th>
+                  <th class="is-right">{{ $t('SubTotal') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="details.length <= 0"><td colspan="9" class="pxpurf__empty">{{ $t('NodataAvailable') }}</td></tr>
+                <template v-for="detail in details">
+                  <tr :key="detail.detail_id" :class="{ 'pxpurf__rowdead': detail.del === 1 || detail.no_unit === 0 }">
+                    <td class="pxn-num">{{ detail.detail_id }}</td>
+                    <td>
+                      <span class="pxn-mono">{{ detail.code }}</span><br />
+                      <px-badge tone="success">{{ detail.name }}</px-badge>
+                      <div v-if="detail.is_batch_tracked && purchase_return.statut === 'completed'" class="pxpurf__badgeline">
+                        <px-badge tone="info" icon="package"
+                          :title="$t('Auto_FEFO_Hint') || 'Oldest-expiring batches will be auto-allocated (FEFO) when this return is completed.'">
+                          {{ $t('Batches') || 'Batches' }} · FEFO
+                        </px-badge>
+                      </div>
+                      <div v-if="detail.is_batch_tracked && purchase_return.statut !== 'completed'" class="pxpurf__badgeline">
+                        <px-badge tone="neutral" icon="package">
+                          {{ $t('Batches_Assigned_On_Completion') || 'Los lotes se asignarán cuando la devolución se complete.' }}
+                        </px-badge>
+                      </div>
+                    </td>
+                    <td class="is-right pxn-num">{{ currentUser.currency }} {{ formatNumber(detail.Net_cost, priceDecimals) }}</td>
+                    <td class="is-right"><px-badge tone="warning">{{ detail.purchase_quantity }} {{ detail.unitPurchase }}</px-badge></td>
+                    <td class="is-right"><px-badge tone="warning">{{ detail.stock }} {{ detail.unitPurchase }}</px-badge></td>
+                    <td class="is-center">
+                      <span class="pxpurf__stepper">
+                        <button type="button" class="pxpurf__step" v-show="detail.no_unit !== 0" @click="decrement(detail, detail.detail_id)">−</button>
+                        <input class="pxpurf__stepinput" @keyup="Verified_Qty(detail, detail.detail_id)"
+                          :min="0.00" v-model.number="detail.quantity" :disabled="detail.del === 1 || detail.no_unit === 0" />
+                        <button type="button" class="pxpurf__step" v-show="detail.no_unit !== 0" @click="increment(detail, detail.detail_id)">+</button>
+                      </span>
+                    </td>
+                    <td class="is-right pxn-num">{{ currentUser.currency }} {{ formatNumber(detail.DiscountNet * detail.quantity, priceDecimals) }}</td>
+                    <td class="is-right pxn-num">{{ currentUser.currency }} {{ formatNumber(detail.taxe * detail.quantity, priceDecimals) }}</td>
+                    <td class="is-right pxn-num">{{ currentUser.currency }} {{ detail.subtotal.toFixed(priceDecimals) }}</td>
+                  </tr>
 
-                        <!-- Serial / IMEI selection (only available serials, filtered by product/
-                             variant/location — and by the linked purchase when it exists) -->
-                        <tr v-if="detail.is_imei && !detail.is_batch_tracked" :key="'s-'+detail.detail_id" style="background: transparent;">
-                          <td colspan="9" style="padding: 0 8px 16px 8px; border: none;">
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0ea5e9; border-radius: 10px; padding: 14px 18px;">
-                              <serial-numbers-field
-                                mode="select"
-                                v-model="detail.serial_numbers"
-                                :required-count="serialRequiredCount(detail)"
-                                fetch-url="serial_numbers/for_purchase"
-                                :fetch-params="{ purchase_id: purchase_return.purchase_id || null, product_id: detail.product_id, product_variant_id: detail.product_variant_id || null, inventory_location_id: location_meta.requires ? purchase_return.inventory_location_id : null }"
-                              />
-                              <div v-if="purchase_return.statut !== 'completed'" class="text-muted mt-2" style="font-size:12px;">
-                                {{ $t('Serials_Assigned_On_Return_Complete') || 'Los seriales se asignarán cuando la devolución se complete.' }}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                        </template>
-                      </tbody>
-                    </table>
-                  </div>
-                </b-col>
+                  <tr v-if="detail.is_imei && detail.is_batch_tracked" :key="'sb-' + detail.detail_id">
+                    <td colspan="9" class="pxpurf__inlinealert">
+                      <px-alert tone="danger" bare>
+                        {{ $t('Serial_Batch_Incompatible') || 'Este producto está configurado con lote Y serie/IMEI a la vez. La combinación no es compatible: corrige la configuración del producto antes de registrar la devolución.' }}
+                      </px-alert>
+                    </td>
+                  </tr>
 
-                <div class="offset-md-9 col-md-3 mt-4">
-                  <table class="table table-striped table-sm">
-                    <tbody>
-                      <tr>
-                        <td class="bold">{{$t('OrderTax')}}</td>
-                        <td>
-                          <span>{{currentUser.currency}} {{purchase_return.TaxNet.toFixed(priceDecimals)}} ({{formatNumber(purchase_return.tax_rate ,2)}} %)</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="bold">{{$t('Discount')}}</td>
-                        <td>{{currentUser.currency}} {{purchase_return.discount.toFixed(priceDecimals)}}</td>
-                      </tr>
-                      <tr>
-                        <td class="bold">{{$t('Shipping')}}</td>
-                        <td>{{currentUser.currency}} {{purchase_return.shipping.toFixed(priceDecimals)}}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <span class="font-weight-bold">{{$t('Total')}}</span>
-                        </td>
-                        <td>
-                          <span
-                            class="font-weight-bold"
-                          >{{currentUser.currency}} {{GrandTotal.toFixed(priceDecimals)}}</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                  <tr v-if="detail.is_imei && !detail.is_batch_tracked" :key="'s-' + detail.detail_id">
+                    <td colspan="9" class="pxpurf__inlinealert">
+                      <div class="pxpurf__serialbox">
+                        <serial-numbers-field
+                          mode="select"
+                          v-model="detail.serial_numbers"
+                          :required-count="serialRequiredCount(detail)"
+                          fetch-url="serial_numbers/for_purchase"
+                          :fetch-params="{ purchase_id: purchase_return.purchase_id || null, product_id: detail.product_id, product_variant_id: detail.product_variant_id || null, inventory_location_id: location_meta.requires ? purchase_return.inventory_location_id : null }"
+                        />
+                        <div v-if="purchase_return.statut !== 'completed'" class="pxpurf__hint">
+                          {{ $t('Serials_Assigned_On_Return_Complete') || 'Los seriales se asignarán cuando la devolución se complete.' }}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-                 <!-- Order Tax  -->
-                <b-col lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider
-                    name="Order Tax"
-                    :rules="{ regex: /^\d*\.?\d*$/}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('OrderTax')">
-                      <b-input-group append="%">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="OrderTax-feedback"
-                          label="Order Tax"
-                          v-model.number="purchase_return.tax_rate"
-                          @keyup="keyup_OrderTax()"
-                        ></b-form-input>
-                      </b-input-group>
-                      <b-form-invalid-feedback
-                        id="OrderTax-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+        <div class="pxpurf__grid3 pxpurf__gap">
+          <validation-provider name="Order Tax" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('OrderTax')" :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model.number="purchase_return.tax_rate" suffix="%" @input="v.validate($event); keyup_OrderTax()" /></template>
+            </px-field>
+          </validation-provider>
+          <validation-provider name="Discount" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('Discount')" :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model.number="purchase_return.discount" :suffix="currentUser.currency" @input="v.validate($event); keyup_Discount()" /></template>
+            </px-field>
+          </validation-provider>
+          <validation-provider name="Shipping" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('Shipping')" :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model.number="purchase_return.shipping" :suffix="currentUser.currency" @input="v.validate($event); keyup_Shipping()" /></template>
+            </px-field>
+          </validation-provider>
+        </div>
 
-                <!-- Discount -->
-                <b-col lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider
-                    name="Discount"
-                    :rules="{ regex: /^\d*\.?\d*$/}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('Discount')">
-                      <b-input-group :append="currentUser.currency">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="Discount-feedback"
-                          label="Discount"
-                          v-model.number="purchase_return.discount"
-                          @keyup="keyup_Discount()"
-                        ></b-form-input>
-                      </b-input-group>
-                      <b-form-invalid-feedback
-                        id="Discount-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+        <div class="pxpurf__totals pxpurf__gap">
+          <table class="pxpurf-totbl">
+            <tbody>
+              <tr><td>{{ $t('OrderTax') }}</td><td class="is-right pxn-num">{{ currentUser.currency }} {{ purchase_return.TaxNet.toFixed(priceDecimals) }} ({{ formatNumber(purchase_return.tax_rate, 2) }} %)</td></tr>
+              <tr><td>{{ $t('Discount') }}</td><td class="is-right pxn-num">{{ currentUser.currency }} {{ purchase_return.discount.toFixed(priceDecimals) }}</td></tr>
+              <tr><td>{{ $t('Shipping') }}</td><td class="is-right pxn-num">{{ currentUser.currency }} {{ purchase_return.shipping.toFixed(priceDecimals) }}</td></tr>
+              <tr class="pxpurf__totrow"><td>{{ $t('Total') }}</td><td class="is-right pxn-num">{{ currentUser.currency }} {{ GrandTotal.toFixed(priceDecimals) }}</td></tr>
+            </tbody>
+          </table>
+        </div>
 
-                <!-- Shipping  -->
-                <b-col lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider
-                    name="Shipping"
-                    :rules="{ regex: /^\d*\.?\d*$/}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('Shipping')">
-                      <b-input-group :append="currentUser.currency">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="Shipping-feedback"
-                          label="Shipping"
-                          v-model.number="purchase_return.shipping"
-                          @keyup="keyup_Shipping()"
-                        ></b-form-input>
-                      </b-input-group>
-                      <b-form-invalid-feedback
-                        id="Shipping-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+        <px-field :label="$t('Please_provide_any_details')" class="pxpurf__gap">
+          <template #default="{ id }"><px-textarea :id="id" v-model="purchase_return.notes" :rows="4" :placeholder="$t('Afewwords')" /></template>
+        </px-field>
 
-                <b-col md="12">
-                  <b-form-group :label="$t('Please_provide_any_details')">
-                    <textarea
-                      v-model="purchase_return.notes"
-                      rows="4"
-                      class="form-control"
-                      :placeholder="$t('Afewwords')"
-                    ></textarea>
-                  </b-form-group>
-                </b-col>
-
-                <b-col md="12">
-                  <b-form-group>
-                    <b-button variant="primary" @click="Submit_purchase_return" :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                     <div v-once class="typo__p" v-if="SubmitProcessing">
-                      <div class="spinner sm spinner-primary mt-3"></div>
-                    </div>
-                  </b-form-group>
-                </b-col>
-              </b-row>
-            </b-card>
-          </b-col>
-        </b-row>
-      </b-form>
+        <div class="pxpurf__actionbar">
+          <px-button variant="secondary" type="button" @click="$router.push({ name: 'index_purchase_return' })">{{ $t('Cancel') }}</px-button>
+          <px-button variant="primary" icon="check" :loading="SubmitProcessing" :disabled="SubmitProcessing" @click="Submit_purchase_return">{{ $t('submit') }}</px-button>
+        </div>
+      </px-card>
     </validation-observer>
-
   </div>
 </template>
 
@@ -349,10 +181,22 @@ import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Edit Return Purchase"
+  },
+  components: {
+    PxPageHeader, PxCard, PxField, PxInput, PxTextarea, PxButton, PxBadge, PxAlert, "vs-px": VsPx
   },
   data() {
     return {
@@ -402,6 +246,14 @@ export default {
   },
 
   methods: {
+
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.dateProvider) this.$refs.dateProvider.syncValue(this.purchase_return.date);
+        if (this.$refs.statutProvider) this.$refs.statutProvider.syncValue(this.purchase_return.statut);
+        if (this.$refs.locProvider) this.$refs.locProvider.syncValue(this.purchase_return.inventory_location_id);
+      });
+    },
 
     // MS6-B2 — base-unit quantity for a line, matching the backend unit maths
     // ('*' multiplies by operator_value, '/' divides). The return form never
@@ -790,6 +642,7 @@ export default {
           this.Load_Inventory_Locations(this.purchase_return.warehouse_id);
           this.Calcul_Total();
           this.isLoading = false;
+          this.syncValidators();
         })
         .catch(response => {
           setTimeout(() => {
@@ -805,3 +658,39 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxpurf { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxpurf { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxpurf__pad { padding: var(--pxn-space-6) 0; }
+.pxpurf__card { margin-top: var(--pxn-space-5); }
+.pxpurf__grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 820px) { .pxpurf__grid3 { grid-template-columns: minmax(0, 1fr); } }
+.pxpurf__gap { margin-top: var(--pxn-space-6); }
+.pxpurf__lineshead { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxpurf-tbl__wrap { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); overflow-x: auto; }
+.pxpurf-tbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxpurf-tbl th { padding: var(--pxn-space-3) var(--pxn-space-4); text-align: left; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); background: var(--pxn-surface-2); border-bottom: 1px solid var(--pxn-border); white-space: nowrap; }
+.pxpurf-tbl td { padding: var(--pxn-space-3) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink); vertical-align: top; }
+.pxpurf-tbl .is-right { text-align: right; }
+.pxpurf-tbl .is-center { text-align: center; }
+.pxpurf__rowdead { opacity: 0.55; }
+.pxpurf__empty { text-align: center; color: var(--pxn-ink-3); }
+.pxpurf__badgeline { margin-top: var(--pxn-space-2); }
+.pxpurf__inlinealert { padding: 0 var(--pxn-space-3) var(--pxn-space-4) !important; border-bottom: 1px solid var(--pxn-border); }
+.pxpurf__serialbox { background: var(--pxn-info-soft); border: 1px solid var(--pxn-info-border); border-left: 4px solid var(--pxn-info); border-radius: var(--pxn-radius-md); padding: var(--pxn-space-4) var(--pxn-space-5); }
+.pxpurf__hint { margin-top: var(--pxn-space-2); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxpurf__stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-sm); overflow: hidden; }
+.pxpurf__step { border: 0; width: 30px; background: var(--pxn-primary); color: var(--pxn-primary-contrast); font-size: var(--pxn-fs-body); cursor: pointer; }
+.pxpurf__step:hover { background: var(--pxn-primary-hover); }
+.pxpurf__stepinput { width: 64px; text-align: center; border: 0; border-left: 1px solid var(--pxn-border-control); border-right: 1px solid var(--pxn-border-control); background: var(--pxn-surface); color: var(--pxn-ink); font-size: var(--pxn-fs-sm); }
+.pxpurf__stepinput:focus { outline: none; }
+.pxpurf__totals { display: flex; justify-content: flex-end; }
+.pxpurf-totbl { min-width: 300px; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxpurf-totbl td { padding: var(--pxn-space-2) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink-2); }
+.pxpurf-totbl td.is-right { text-align: right; color: var(--pxn-ink); }
+.pxpurf__totrow td { font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxpurf__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+</style>
