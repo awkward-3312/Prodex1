@@ -1,126 +1,91 @@
 <template>
-  <div class="main-content p-2 p-md-4">
-    <breadcumb :page="$t('Tax_Summary_Report')" :folder="$t('Reports')" />
-
-    <!-- Toolbar -->
-    <b-card class="toolbar-card shadow-soft mb-3 border-0">
-      <div class="d-flex flex-wrap align-items-center">
-        <!-- Date range (responsive trigger) -->
-        <div class="filter-block date-range-filter mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{ $t('DateRange') }}</label>
-          <date-range-picker
-            v-model="dateRange"
-            :locale-data="locale"
-            :autoApply="true"
-            :showDropdowns="true"
-            :opens="isMobile ? 'center' : 'right'"
-            :drops="'down'"
-            @update="fetchReport"
-          >
-            <template v-slot:input="picker">
-              <b-button
-                variant="light"
-                class="btn-pill date-btn"
-                :class="{ 'w-100': isMobile }"
-              >
-                <lucide-icon class="mr-1" name="calendar-days" />
-                <span class="d-none d-sm-inline">
-                  {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
-                </span>
-                <span class="d-inline d-sm-none">
-                  {{ fmtShort(picker.startDate) }}–{{ fmtShort(picker.endDate) }}
-                </span>
-              </b-button>
-            </template>
-          </date-range-picker>
-        </div>
-
-        <!-- Quick ranges -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
-          <div class="btn-group quick-ranges">
-            <b-button size="sm" variant="outline-primary" @click="quick('7d')">7D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="quick('30d')">30D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="quick('90d')">90D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="quick('mtd')">{{$t('MTD')}}</b-button>
-            <b-button size="sm" variant="outline-primary" @click="quick('ytd')">{{$t('YTD')}}</b-button>
-          </div>
-        </div>
-
-        <div class="ml-auto mb-2">
-          <b-button variant="primary" class="btn-pill mr-2" @click="fetchReport">
-            <lucide-icon class="mr-1" name="refresh-cw" /> {{$t('Refresh')}}
-          </b-button>
-          <b-button variant="outline-secondary" class="btn-pill mr-2" @click="printTableOnly()">
-            <lucide-icon class="mr-1" name="printer" />{{$t('print')}}
-          </b-button>
-          <b-button variant="success" class="btn-pill" @click="exportPDF">
-            <lucide-icon class="mr-1" name="file-text" /> {{$t('Export_PDF')}}
-          </b-button>
-        </div>
-      </div>
-    </b-card>
-
-    <!-- Loading -->
-    <div v-if="isLoading" class="mb-4">
-      <b-row>
-        <b-col md="4" v-for="n in 6" :key="'skel-'+n" class="mb-3">
-          <b-skeleton-img class="rounded-xl shadow-soft" height="110px" />
-        </b-col>
-      </b-row>
-    </div>
-
-    <!-- Content -->
-    <div v-else>
-      <!-- Chart -->
-      <b-card class="shadow-soft border-0 mb-3">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <h6 class="m-0">{{$t('TaxesOverTime')}}</h6>
-          <small class="text-muted">{{ fmt(dateRange.startDate) }} → {{ fmt(dateRange.endDate) }}</small>
-        </div>
-        <apexchart type="line" height="300" :options="apexLineOptions" :series="apexLineSeries" />
-      </b-card>
-
-      <!-- Table -->
-      <b-card class="shadow-soft border-0 print-table-only">
-        <vue-good-table
-          mode="remote"
-          :rows="rows"
-          :columns="columns"
-          :totalRows="totalRows"
-          styleClass="tableOne table-hover vgt-table"
-          :pagination-options="{enabled:true, mode:'records'}"
-          :search-options="{enabled:true, placeholder:$t('Search_this_table')}"
-          @on-page-change="onPageChange"
-          @on-per-page-change="onPerPageChange"
-          @on-sort-change="onSortChange"
-          @on-search="onSearch"
+  <div class="px-next pxrl">
+    <px-page-header :title="$t('Tax_Summary_Report')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('Tax_Summary_Report') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button>
+          </template>
+        </px-menu>
+        <px-button variant="primary" size="sm" icon="refresh-cw" @click="fetchReport">{{ $t('Refresh') }}</px-button>
+      </template>
+      <template #meta>
+        <date-range-picker
+          v-model="dateRange"
+          :locale-data="locale"
+          :autoApply="true"
+          :showDropdowns="true"
+          :opens="isMobile ? 'center' : 'right'"
+          :drops="'down'"
+          @update="fetchReport"
         >
-          <template slot="table-row" slot-scope="p">
-            <span v-if="['taxable_base','tax_collected'].includes(p.column.field)">
-              {{ money(p.row[p.column.field]) }}
-            </span>
-            <span v-else-if="p.column.field==='effective_rate'">
-              {{ formatRate(p.row.effective_rate) }}
-            </span>
-            <span v-else>
-              {{ p.formattedRow[p.column.field] }}
-            </span>
+          <template v-slot:input="picker">
+            <button type="button" class="pxrl__daterange pxn-ring">
+              <lucide-icon name="calendar-days" :size="14" />
+              {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
+            </button>
           </template>
+        </date-range-picker>
+      </template>
+    </px-page-header>
 
-          <!-- Footer Totals -->
-          <template slot="table-actions-bottom">
-            <div class="d-flex justify-content-end w-100 pt-2">
-              <div class="font-weight-bold">
-                {{$t('Totals')}}:
-                <span class="ml-2">{{$t('Taxable_Base')}} = {{ money(totals.base) }}</span>
-                <span class="ml-3">{{$t('Tax_Collected')}} = {{ money(totals.tax) }}</span>
-              </div>
-            </div>
-          </template>
-        </vue-good-table>
-      </b-card>
+    <div class="pxrl__quickbar">
+      <span class="pxrl__quicklabel">{{ $t('QuickRanges') }}</span>
+      <px-button size="sm" variant="subtle" @click="quick('7d')">7D</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('30d')">30D</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('90d')">90D</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('mtd')">{{ $t('MTD') }}</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('ytd')">{{ $t('YTD') }}</px-button>
     </div>
+
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="lines" :rows="8" />
+    </div>
+
+    <template v-else>
+      <px-card :title="$t('TaxesOverTime')" class="pxrl__chartcard">
+        <apexchart type="line" height="300" :options="apexLineOptions" :series="apexLineSeries" />
+      </px-card>
+
+      <px-toolbar
+        :search="search"
+        :search-placeholder="$t('Search_this_table')"
+        @update:search="onSearchInput"
+      />
+
+      <div class="pxrl__tablewrap">
+        <px-table
+          v-if="rows.length"
+          :columns="columns"
+          :rows="rows"
+          row-key="sale_id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          @sort="onSort"
+        >
+          <template #cell-taxable_base="{ row }"><span class="pxn-num">{{ money(row.taxable_base) }}</span></template>
+          <template #cell-tax_collected="{ row }"><span class="pxn-num">{{ money(row.tax_collected) }}</span></template>
+          <template #cell-effective_rate="{ row }"><span class="pxn-num">{{ formatRate(row.effective_rate) }}</span></template>
+        </px-table>
+
+        <px-empty-state v-else icon="file-text" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+      </div>
+
+      <div v-if="rows.length" class="pxrl__totalrow">
+        <span>{{ $t('Totals') }}</span>
+        <span>{{ $t('Taxable_Base') }}: <b class="pxn-num">{{ money(totals.base) }}</b></span>
+        <span>{{ $t('Tax_Collected') }}: <b class="pxn-num">{{ money(totals.tax) }}</b></span>
+      </div>
+
+      <px-pagination
+        v-if="rows.length"
+        :page="serverParams.page"
+        :per-page="Number(serverParams.perPage)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
 </template>
 
@@ -128,13 +93,9 @@
 import NProgress from "nprogress";
 import moment from "moment";
 import { mapGetters } from "vuex";
-
 import DateRangePicker from "vue2-daterange-picker";
 import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
-
 import VueApexCharts from "vue-apexcharts";
-
-/* PDF export */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -142,14 +103,26 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
   metaInfo: { title: "Tax Summary Report" },
-  components: { "date-range-picker": DateRangePicker, apexchart: VueApexCharts },
+  components: {
+    "date-range-picker": DateRangePicker, apexchart: VueApexCharts,
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxCard, PxEmptyState
+  },
 
   data() {
     const end = new Date(); const start = new Date(); start.setDate(end.getDate() - 29);
     return {
+      _searchTimer: null,
       isLoading: true,
 
       dateRange: { startDate: start, endDate: end },
@@ -165,7 +138,6 @@ export default {
 
       isMobile: false,
 
-      // table state
       serverParams: { page: 1, perPage: 10, sort: { field: "date_time", type: "desc" } },
       limit: 10,
       search: "",
@@ -173,33 +145,34 @@ export default {
       rows: [],
       totals: { base: 0, tax: 0 },
 
-      // chart
-      timeseries: [], // [{ d, taxable_base, tax_collected }]
-      // Optional price format key for frontend display (loaded from system settings/localStorage)
+      timeseries: [],
       price_format_key: null
     };
   },
 
   computed: {
     ...mapGetters(["currentUser"]),
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
     currency(){ return (this.currentUser && this.currentUser.currency) || "USD"; },
-
+    exportMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: this.$t("Export_PDF") || "PDF", icon: "file-text" }
+      ];
+    },
     columns() {
       return [
-        { label: this.$t('ID'),            field:'sale_id',       sortable:true },
-        { label: this.$t('date'),          field:'date_time',     sortable:true },
-        { label: this.$t('User'),          field:'user_name',     sortable:true, tdClass:'text-left', thClass:'text-left' },
-        { label: this.$t('Taxable_Base'),  field:'taxable_base',  type:'number', sortable:true },
-        { label: this.$t('Tax_Collected'), field:'tax_collected', type:'number', sortable:true },
-        { label: this.$t('Effective_Rate')+' %', field:'effective_rate', type:'number', sortable:true },
+        { key:'sale_id',       label: this.$t('ID'),            sortable:true, strong:true },
+        { key:'date_time',     label: this.$t('date'),          sortable:true },
+        { key:'user_name',     label: this.$t('User'),          sortable:true },
+        { key:'taxable_base',  label: this.$t('Taxable_Base'),  sortable:true, align:'right' },
+        { key:'tax_collected', label: this.$t('Tax_Collected'), sortable:true, align:'right' },
+        { key:'effective_rate', label: this.$t('Effective_Rate') + ' %', sortable:true, align:'right' },
       ];
     },
 
-    // ApexCharts options/series
     apexLineOptions(){
       const dates = this.timeseries.map(x => x.d);
       return {
@@ -230,16 +203,6 @@ export default {
   },
 
   methods: {
-    // responsiveness
-    handleResize(){ this.isMobile = window.innerWidth < 576; },
-
-    // formatting
-    fmt(d){ return moment(d).format('YYYY-MM-DD'); },
-    fmtShort(d){ return moment(d).format('MMM D'); },
-    formatRate(v){ if(v === null || v === undefined) return '—'; const n = Number(v); return isNaN(n) ? '—' : n.toFixed(2); },
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing Intl.NumberFormat behavior to preserve current behavior.
     money(v){
       try {
         const n = Number(v || 0);
@@ -258,8 +221,11 @@ export default {
         }
       }
     },
+    formatRate(v){ if(v === null || v === undefined) return '—'; const n = Number(v); return isNaN(n) ? '—' : n.toFixed(2); },
+    handleResize(){ this.isMobile = window.innerWidth < 576; },
+    fmt(d){ return moment(d).format('YYYY-MM-DD'); },
+    fmtShort(d){ return moment(d).format('MMM D'); },
 
-    // quick ranges
     quick(kind){
       const now = moment(); let s, e = now.clone();
       if(kind==='7d')  s = now.clone().subtract(6,'days');
@@ -271,21 +237,28 @@ export default {
       this.fetchReport();
     },
 
-    // table events
-    onPageChange({ currentPage }) { this.serverParams.page = currentPage; this.fetchReport(); },
-    onPerPageChange({ currentPerPage }) { this.serverParams.perPage = currentPerPage; this.limit = currentPerPage; this.serverParams.page = 1; this.fetchReport(); },
-    onSortChange(params){ if (params && params[0]) this.serverParams.sort = params[0]; this.fetchReport(); },
-    onSearch(v){ this.search = v.searchTerm || ''; this.fetchReport(); },
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.serverParams.page = 1; this.fetchReport(); }, 350);
+    },
+    onPage(p) { if (this.serverParams.page !== p) { this.serverParams.page = p; this.fetchReport(); } },
+    onLimit(v) { this.serverParams.perPage = Number(v); this.limit = Number(v); this.serverParams.page = 1; this.fetchReport(); },
+    onSort({ key, dir }) { this.serverParams.sort = { field: key, type: dir }; this.fetchReport(); },
+
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "print") this.printTableOnly();
+      else if (k === "pdf") this.exportPDF();
+    },
 
     // Export PDF (RTL + Vazirmatn + safe totals)
     exportPDF() {
-      // Normalize rows: support either [{children:[]}] or a flat array
       const items =
         Array.isArray(this.rows?.[0]?.children) && this.rows.length === 1
           ? this.rows[0].children
           : (this.rows || []);
 
-      // Totals (fallback if this.totals is missing)
       const tBase = (this.totals && typeof this.totals.base === 'number')
         ? this.totals.base
         : items.reduce((a,b)=> a + Number(b.taxable_base || 0), 0);
@@ -294,7 +267,6 @@ export default {
         ? this.totals.tax
         : items.reduce((a,b)=> a + Number(b.tax_collected || 0), 0);
 
-      // Overall effective rate (optional)
       const overallRate = tBase > 0 ? (tTax / tBase) * 100 : null;
       const fmtRate = (v) => this.formatRate ? this.formatRate(v) : (v == null ? '' : `${Number(v).toFixed(2)}%`);
 
@@ -302,7 +274,6 @@ export default {
       const pageW = doc.internal.pageSize.getWidth();
       const marginX = 40;
 
-      // Use your single Vazirmatn-Bold for normal + bold
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
       try {
         doc.addFont(fontPath, "Vazirmatn", "normal");
@@ -310,7 +281,6 @@ export default {
       } catch(_) { /* ignore if already added */ }
       doc.setFont("Vazirmatn", "normal");
 
-      // RTL?
       const rtl =
         (this.$i18n && ['ar','fa','ur','he'].includes(this.$i18n.locale)) ||
         (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
@@ -318,7 +288,6 @@ export default {
       const title = 'Tax Summary Report';
       const range = `${this.fmt(this.dateRange.startDate)} — ${this.fmt(this.dateRange.endDate)}`;
 
-      // Header
       doc.setFont("Vazirmatn", "bold"); doc.setFontSize(14);
       rtl ? doc.text(title, pageW - marginX, 40, { align:'right' })
           : doc.text(title, marginX, 40);
@@ -327,7 +296,6 @@ export default {
       rtl ? doc.text(range, pageW - marginX, 58, { align:'right' })
           : doc.text(range, marginX, 58);
 
-      // Table
       const head = [[
         this.$t('ID'),
         this.$t('date'),
@@ -363,9 +331,9 @@ export default {
           halign: rtl ? 'right' : 'left'
         },
         columnStyles: {
-          3: { halign:'right' }, // Taxable base
-          4: { halign:'right' }, // Tax collected
-          5: { halign:'right' }, // Effective rate
+          3: { halign:'right' },
+          4: { halign:'right' },
+          5: { halign:'right' },
         },
         foot: [[
           { content: this.$t('Totals'), styles:{ font: 'Vazirmatn', fontStyle:'bold', halign: rtl ? 'right' : 'left' } },
@@ -382,43 +350,25 @@ export default {
 
     //------ Print Table Only
     printTableOnly() {
-      const root = this.$el;
-      if (!root) {
-        window.print();
-        return;
-      }
-
-      const tableCard = root.querySelector(".print-table-only");
-      if (!tableCard) {
-        window.print();
-        return;
-      }
-
-      // Get rows data (this.rows is already a flat array)
       const rowsData = this.rows || [];
 
-      // Manually construct the table HTML from rows data
       let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
-
-      // Table Header
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
         tableHtml += `<th class="text-left">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
-
-      // Table Body
       tableHtml += `<tbody>`;
       rowsData.forEach(row => {
         tableHtml += `<tr>`;
         this.columns.forEach(col => {
           let cellContent = '';
-          if (col.field === 'taxable_base' || col.field === 'tax_collected') {
-            cellContent = this.money(row[col.field]);
-          } else if (col.field === 'effective_rate') {
+          if (col.key === 'taxable_base' || col.key === 'tax_collected') {
+            cellContent = this.money(row[col.key]);
+          } else if (col.key === 'effective_rate') {
             cellContent = this.formatRate(row.effective_rate);
           } else {
-            cellContent = row[col.field] || '';
+            cellContent = row[col.key] || '';
           }
           tableHtml += `<td class="text-left">${cellContent}</td>`;
         });
@@ -426,11 +376,10 @@ export default {
       });
       tableHtml += `</tbody>`;
 
-      // Table Footer (Totals)
       const totalBase = this.totals?.base || rowsData.reduce((sum, row) => sum + parseFloat(row.taxable_base || 0), 0);
       const totalTax = this.totals?.tax || rowsData.reduce((sum, row) => sum + parseFloat(row.tax_collected || 0), 0);
       const overallRate = totalBase > 0 ? (totalTax / totalBase) * 100 : null;
-      
+
       tableHtml += `<tfoot><tr>`;
       tableHtml += `<td class="text-left font-weight-bold" colspan="3">${this.$t('Totals')}</td>`;
       tableHtml += `<td class="text-left font-weight-bold">${this.money(totalBase)}</td>`;
@@ -528,31 +477,30 @@ export default {
   beforeDestroy(){
     window.removeEventListener('resize', this.handleResize);
   },
+
   created(){ this.fetchReport(); }
 };
 </script>
 
-<style scoped>
-.rounded-xl { border-radius:1rem; }
-.shadow-soft { box-shadow:0 12px 24px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.05); }
-.toolbar-card { background:#fff; }
-.btn-pill { border-radius:999px; }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-/* date-range responsiveness */
-.date-range-filter { min-width: 240px; }
-@media (max-width: 575.98px) {
-  .date-range-filter { width: 100%; }
-  .date-btn { justify-content: center; }
-  .daterangepicker {
-    left: 0 !important; right: 0 !important; margin: 0 !important;
-    width: 100vw !important; max-width: 100vw !important;
-  }
-  .daterangepicker .ranges, .daterangepicker .drp-calendar {
-    float: none !important; width: 100% !important;
-  }
-
-  /* Wrap quick range buttons into two columns */
-  .quick-ranges { display:flex !important; flex-wrap:wrap; width:100%; }
-  .quick-ranges .btn { flex:1 1 calc(50% - 6px); margin-bottom:6px; }
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-sm); padding: 0 var(--pxn-space-4);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
 }
+.pxrl__daterange:hover { background: var(--pxn-surface-2); }
+.pxrl__quickbar { display: flex; align-items: center; gap: var(--pxn-space-2); margin-top: var(--pxn-space-4); flex-wrap: wrap; }
+.pxrl__quicklabel { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); margin-right: var(--pxn-space-2); }
+.pxrl__chartcard { margin-top: var(--pxn-space-5); margin-bottom: var(--pxn-space-5); }
+.pxrl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxrl__totalrow { display: flex; align-items: center; justify-content: flex-end; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); flex-wrap: wrap; }
+.pxrl__totalrow > span:first-child { margin-right: auto; font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrl ::v-deep .daterangepicker { z-index: 2055 !important; }
 </style>
