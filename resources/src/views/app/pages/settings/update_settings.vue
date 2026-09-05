@@ -1,21 +1,22 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('update_settings')" :folder="$t('Settings')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxcfg pxupd">
+    <px-page-header
+      :title="$t('update_settings')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('update_settings') }]"
+    />
+    <div v-if="isLoading" class="pxcfg__pad"><px-skeleton variant="lines" :rows="8" /></div>
 
-    <div class="col-md-12" v-if="!isLoading">
-      <div class="card update-card">
-        <div class="card-header">
-          <span>{{$t('Update_Log')}}</span>
+    <template v-else>
+      <px-card :title="$t('Update_Log')" class="pxcfg__card">
+        <px-alert tone="warning" class="pxcfg__alert">{{ $t('Note_update') }}</px-alert>
+
+        <div class="pxcfg__tabbar">
+          <button type="button" class="pxcfg__tab pxn-ring" :class="{ 'is-active': updTab === 'auto' }" @click="updTab = 'auto'">{{ $t('Automatic_Update') }}</button>
+          <button type="button" class="pxcfg__tab pxn-ring" :class="{ 'is-active': updTab === 'manual' }" @click="updTab = 'manual'">{{ $t('Manual_Update') }}</button>
         </div>
-        <div class="card-body">
-          <div class="alert alert-danger">{{$t('Note_update')}}</div>
 
-          <b-tabs active-nav-item-class="nav nav-tabs" content-class="mt-3">
-
-            <!-- ==================== TAB 1: AUTO UPGRADE ==================== -->
-            <b-tab :title="$t('Automatic_Update')" active>
-              <div class="row mt-3">
+        <div v-show="updTab === 'auto'" class="pxcfg__panel">
+              <div class="row">
 
                 <!-- Version Comparison & Actions -->
                 <div class="col-lg-8 col-md-12 mb-4">
@@ -79,30 +80,22 @@
                       <!-- Action Buttons -->
                       <div class="d-flex align-items-center justify-content-between mt-4 pt-3 border-top flex-wrap" style="gap:10px;">
                         <div class="d-flex align-items-center">
-                          <button
-                            class="btn btn-outline-secondary btn-sm d-flex align-items-center"
-                            :disabled="checking"
-                            @click="checkForUpdates"
-                          >
-                            <span v-if="checking" class="spinner-border spinner-border-sm mr-2"></span>
-                            <lucide-icon class="mr-2" name="repeat" v-else />
+                          <px-button variant="secondary" size="sm" icon="repeat" :loading="checking" :disabled="checking" @click="checkForUpdates">
                             {{ $t('Check_for_Updates') }}
-                          </button>
+                          </px-button>
                           <span class="text-muted small ml-3" v-if="lastChecked">
                             {{ lastCheckedText }}
                           </span>
                         </div>
                         <div class="d-flex align-items-center">
-                          <button
+                          <px-button
                             v-if="hasUpdate && !updating"
-                            class="btn btn-primary d-flex align-items-center"
-                            :disabled="SubmitProcessing || !canUpdate"
+                            variant="primary" icon="arrow-up-circle"
+                            :loading="SubmitProcessing" :disabled="SubmitProcessing || !canUpdate"
                             @click="confirmUpdate"
                           >
-                            <span v-if="SubmitProcessing" class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>
-                            <lucide-icon class="mr-2" name="arrow-up-circle" v-else />
                             {{ $t('Update_Now') }} — v{{ latestVersion }}
-                          </button>
+                          </px-button>
                         </div>
                       </div>
                     </div>
@@ -115,14 +108,7 @@
                     <div class="card-body p-4">
                       <div class="d-flex align-items-center justify-content-between mb-3">
                         <h6 class="font-weight-bold mb-0">{{ $t('System_Checks') }}</h6>
-                        <button
-                          class="btn btn-link btn-sm p-0"
-                          :disabled="preflightLoading"
-                          @click="run_preflight"
-                        >
-                          <span v-if="preflightLoading" class="spinner-border spinner-border-sm"></span>
-                          <lucide-icon name="repeat" v-else />
-                        </button>
+                        <px-button variant="ghost" size="sm" icon-only icon="repeat" :loading="preflightLoading" :disabled="preflightLoading" aria-label="Run checks" @click="run_preflight" />
                       </div>
                       <div v-if="preflight" class="preflight-checks">
                         <div class="check-item" v-for="(check, key) in preflightItems" :key="key">
@@ -271,10 +257,9 @@
                 </div>
 
               </div>
-            </b-tab>
+        </div>
 
-            <!-- ==================== TAB 2: MANUAL UPGRADE (original) ==================== -->
-            <b-tab :title="$t('Manual_Update')">
+        <div v-show="updTab === 'manual'" class="pxcfg__panel">
               <div class="col-md-12 mt-3">
                 <h5>Please follow these steps, To Update your application</h5>
                 <div class="allert alert-danger">Note 1: If you have made any changes in the code manually then your changes will be lost.</div>
@@ -327,25 +312,28 @@
                 </ul>
                 <div class="allert alert-danger">Note: If any pages are not loading or blank, make sure you cleared your browser cache.</div>
               </div>
-            </b-tab>
-
-          </b-tabs>
         </div>
-      </div>
-    </div>
+      </px-card>
+    </template>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
 
 export default {
   metaInfo: {
     title: "Update Settings"
   },
+  components: { PxPageHeader, PxButton, PxCard, PxAlert },
   data() {
     return {
       isLoading: true,
+      updTab: 'auto',
       SubmitProcessing: false,
       currentVersion: "",
       latestVersion: "",
@@ -688,19 +676,30 @@ export default {
 };
 </script>
 
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.px-next.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .px-next.pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-5); }
+.pxcfg__alert { margin-bottom: var(--pxn-space-4); }
+.pxcfg__tabbar { display: flex; gap: var(--pxn-space-2); border-bottom: 1px solid var(--pxn-border); }
+.pxcfg__tab { appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; padding: var(--pxn-space-3) var(--pxn-space-4); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium); color: var(--pxn-ink-3); cursor: pointer; transition: color 120ms, border-color 120ms; }
+.pxcfg__tab:hover { color: var(--pxn-ink); }
+.pxcfg__tab.is-active { color: var(--pxn-ink); border-bottom-color: var(--pxn-primary); font-weight: var(--pxn-fw-semibold); }
+.pxcfg__panel { margin-top: var(--pxn-space-4); }
+</style>
+
 <style scoped>
 /* ============================================
-   UPDATE SETTINGS - MODERN UI
+   UPDATE SETTINGS - inner components
    ============================================ */
 
-.update-card {
-  border-radius: 12px;
-}
-
 .inner-card {
-  border: none;
+  border: 1px solid var(--pxn-border, #e7eaf0);
   border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
   transition: box-shadow 0.2s ease;
 }
 .inner-card:hover {

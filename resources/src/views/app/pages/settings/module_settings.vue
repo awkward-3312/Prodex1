@@ -1,219 +1,111 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('module_settings')" :folder="$t('Settings')"/>
+  <div class="px-next pxcfg pxmod">
+    <px-page-header
+      :title="$t('module_settings') || 'Module Settings'"
+      subtitle="Install, manage and configure modules to extend your Stocky application."
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('module_settings') || 'Module Settings' }]"
+    />
 
-    <!-- Loading -->
-    <div v-if="isLoading" class="d-flex justify-content-center align-items-center" style="min-height: 300px;">
-      <div class="spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="lines" :rows="6" />
     </div>
 
-    <div v-if="!isLoading">
-
-      <!-- Header Card -->
-      <div class="module-header-card mb-4">
-        <div class="module-header-content">
-          <div class="module-header-icon">
-            <lucide-icon name="puzzle" style="font-size: 28px;" />
-          </div>
-          <div>
-            <h3 class="module-header-title">{{ $t('module_settings') || 'Module Settings' }}</h3>
-            <p class="module-header-desc">Install, manage and configure modules to extend your Stocky application.</p>
-          </div>
-        </div>
-        <div class="module-header-stats">
-          <div class="stat-item">
-            <span class="stat-number">{{ modules_info.length }}</span>
-            <span class="stat-label">Installed</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-number stat-active">{{ activeCount }}</span>
-            <span class="stat-label">Active</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-number stat-inactive">{{ inactiveCount }}</span>
-            <span class="stat-label">Inactive</span>
-          </div>
-        </div>
+    <template v-else>
+      <div class="pxcfg__stats">
+        <px-stat icon="puzzle" label="Installed" :value="String(modules_info.length)" bordered />
+        <px-stat icon="check-circle" label="Active" :value="String(activeCount)" bordered />
+        <px-stat icon="circle-slash" label="Inactive" :value="String(inactiveCount)" bordered />
       </div>
 
-      <!-- Upload Section -->
-      <div class="upload-card mb-4">
-        <div class="upload-card-header">
-          <lucide-icon name="upload" style="font-size: 18px;" />
-          <span>Install New Module</span>
-        </div>
-        <div class="upload-card-body">
-          <validation-observer ref="ref_Upload_Module">
-            <b-form @submit.prevent="Submit_Upload_Module" enctype="multipart/form-data">
-              <div class="upload-zone"
-                :class="{ 'drag-over': isDragging, 'has-file': module_zip }"
+      <px-card title="Install New Module" class="pxcfg__card">
+        <validation-observer ref="ref_Upload_Module">
+          <form @submit.prevent="Submit_Upload_Module" enctype="multipart/form-data">
+            <validation-provider name="Upload Module" ref="Upload_Module" v-slot="{ errors }">
+              <div
+                class="pxmod__drop"
+                :class="{ 'is-drag': isDragging, 'has-file': module_zip, 'is-invalid': !!errors.length }"
                 @dragover.prevent="isDragging = true"
                 @dragleave.prevent="isDragging = false"
                 @drop.prevent="onFileDrop"
+                @click="$refs.fileInput.click()"
               >
-                <validation-provider name="Upload Module" ref="Upload_Module">
-                  <div slot-scope="{ validate, valid, errors }">
-                    <input
-                      ref="fileInput"
-                      :state="errors[0] ? false : (valid ? true : null)"
-                      :class="{'is-invalid': !!errors.length}"
-                      @change="onFileSelected"
-                      type="file"
-                      accept=".zip"
-                      class="d-none"
-                    >
-                    <div class="upload-zone-content" @click="$refs.fileInput.click()">
-                      <div v-if="!module_zip" class="upload-placeholder">
-                        <div class="upload-icon-circle">
-                          <lucide-icon name="upload" style="font-size: 24px;" />
-                        </div>
-                        <p class="upload-text">Drag & drop your module <strong>.zip</strong> file here</p>
-                        <p class="upload-subtext">or click to browse files</p>
-                      </div>
-                      <div v-else class="upload-selected">
-                        <div class="file-icon-circle">
-                          <lucide-icon name="file-archive" style="font-size: 22px;" />
-                        </div>
-                        <div class="file-details">
-                          <span class="file-name">{{ module_zip.name }}</span>
-                          <span class="file-size">{{ formatFileSize(module_zip.size) }}</span>
-                        </div>
-                        <button type="button" class="file-remove" @click.stop="removeFile">
-                          <lucide-icon name="x" />
-                        </button>
-                      </div>
-                    </div>
-                    <b-form-invalid-feedback v-if="errors[0]" class="text-center mt-2" :state="false">
-                      {{ errors[0] }}
-                    </b-form-invalid-feedback>
+                <input ref="fileInput" @change="onFileSelected" type="file" accept=".zip" class="pxmod__file" />
+                <template v-if="!module_zip">
+                  <div class="pxmod__drop-icon"><lucide-icon name="upload" :size="24" /></div>
+                  <p class="pxmod__drop-text">Drag &amp; drop your module <strong>.zip</strong> file here</p>
+                  <p class="pxcfg__cardnote">or click to browse files</p>
+                </template>
+                <template v-else>
+                  <div class="pxmod__drop-icon"><lucide-icon name="file-archive" :size="22" /></div>
+                  <div class="pxmod__file-details">
+                    <span class="pxmod__file-name">{{ module_zip.name }}</span>
+                    <span class="pxcfg__cardnote">{{ formatFileSize(module_zip.size) }}</span>
                   </div>
-                </validation-provider>
+                  <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="x" aria-label="Quitar" @click.stop.native="removeFile" />
+                </template>
               </div>
+              <div v-if="errors[0]" class="pxmod__err">{{ errors[0] }}</div>
+            </validation-provider>
+          </form>
+        </validation-observer>
+        <template #footer>
+          <px-button variant="primary" icon="upload" :loading="SubmitProcessing" :disabled="SubmitProcessing || !module_zip" @click="Submit_Upload_Module">
+            {{ SubmitProcessing ? 'Installing...' : 'Install Module' }}
+          </px-button>
+        </template>
+      </px-card>
 
-              <div class="text-center mt-3">
-                <b-button
-                  variant="primary"
-                  type="submit"
-                  :disabled="SubmitProcessing || !module_zip"
-                  class="upload-btn"
-                >
-                  <span v-if="!SubmitProcessing">
-                    <lucide-icon class="mr-1" name="upload" /> Install Module
-                  </span>
-                  <span v-else class="d-flex align-items-center justify-content-center">
-                    <div class="spinner spinner-white sm mr-2"></div> Installing...
-                  </span>
-                </b-button>
-              </div>
-            </b-form>
-          </validation-observer>
-        </div>
-      </div>
-
-      <!-- Modules Grid -->
-      <div v-if="modules_info.length > 0">
-        <div class="modules-section-header mb-3">
-          <h4 class="modules-section-title">
-            <lucide-icon class="mr-2" name="settings" style="font-size: 18px;" />
-            Installed Modules
-          </h4>
-          <div class="modules-filter">
-            <button
-              class="filter-btn"
-              :class="{ active: filter === 'all' }"
-              @click="filter = 'all'"
-            >All</button>
-            <button
-              class="filter-btn"
-              :class="{ active: filter === 'active' }"
-              @click="filter = 'active'"
-            >Active</button>
-            <button
-              class="filter-btn"
-              :class="{ active: filter === 'inactive' }"
-              @click="filter = 'inactive'"
-            >Inactive</button>
+      <template v-if="modules_info.length > 0">
+        <div class="pxmod__sectionhead">
+          <h4 class="pxcfg__subhead">Installed Modules</h4>
+          <div class="pxcfg__seg">
+            <px-button size="sm" :variant="filter === 'all' ? 'primary' : 'subtle'" @click="filter = 'all'">All</px-button>
+            <px-button size="sm" :variant="filter === 'active' ? 'primary' : 'subtle'" @click="filter = 'active'">Active</px-button>
+            <px-button size="sm" :variant="filter === 'inactive' ? 'primary' : 'subtle'" @click="filter = 'inactive'">Inactive</px-button>
           </div>
         </div>
 
-        <b-row>
-          <b-col
-            lg="4" md="6" sm="12"
-            v-for="module_item in filteredModules"
-            :key="module_item.module_name"
-            class="mb-4"
-          >
-            <div class="module-card" :class="{ 'module-active': module_item.status, 'module-inactive': !module_item.status }">
-              <!-- Status indicator bar -->
-              <div class="module-status-bar" :class="module_item.status ? 'bar-active' : 'bar-inactive'"></div>
-
-              <div class="module-card-body">
-                <div class="module-card-top">
-                  <div class="module-icon-wrapper" :class="module_item.status ? 'icon-active' : 'icon-inactive'">
-                    <lucide-icon :name="getModuleIcon(module_item.module_name)" :size="22" />
-                  </div>
-                  <div class="module-badge-wrapper">
-                    <span class="module-status-badge" :class="module_item.status ? 'badge-active' : 'badge-inactive'">
-                      {{ module_item.status ? 'Active' : 'Inactive' }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="module-info">
-                  <h5 class="module-name">{{ formatModuleName(module_item.module_name) }}</h5>
-                  <p class="module-description">{{ getModuleDescription(module_item.module_name) }}</p>
-                </div>
-
-                <div class="module-meta">
-                  <div class="meta-item">
-                    <lucide-icon name="tag" style="font-size: 12px;" />
-                    <span>v{{ module_item.current_version }}</span>
-                  </div>
-                </div>
-
-                <div class="module-card-footer">
-                  <div class="module-toggle-wrapper">
-                    <label class="modern-toggle">
-                      <input
-                        type="checkbox"
-                        v-model="module_item.status"
-                        @change="update_status_module(module_item)"
-                        :disabled="togglingModule === module_item.module_name"
-                      >
-                      <span class="toggle-slider"></span>
-                    </label>
-                    <span class="toggle-label" :class="module_item.status ? 'text-success' : 'text-muted'">
-                      {{ module_item.status ? 'Enabled' : 'Disabled' }}
-                    </span>
-                  </div>
-                </div>
-              </div>
+        <div class="pxmod__grid">
+          <div v-for="module_item in filteredModules" :key="module_item.module_name" class="pxmod__card" :class="{ 'is-active': module_item.status }">
+            <div class="pxmod__card-top">
+              <div class="pxmod__card-icon"><lucide-icon :name="getModuleIcon(module_item.module_name)" :size="22" /></div>
+              <px-badge :tone="module_item.status ? 'success' : 'neutral'">{{ module_item.status ? 'Active' : 'Inactive' }}</px-badge>
             </div>
-          </b-col>
-        </b-row>
-      </div>
-
-      <!-- Empty State -->
-      <div v-else class="empty-state">
-        <div class="empty-state-icon">
-          <lucide-icon name="puzzle" style="font-size: 48px;" />
+            <h5 class="pxmod__card-name">{{ formatModuleName(module_item.module_name) }}</h5>
+            <p class="pxmod__card-desc">{{ getModuleDescription(module_item.module_name) }}</p>
+            <div class="pxmod__card-meta"><lucide-icon name="tag" :size="12" /> v{{ module_item.current_version }}</div>
+            <div class="pxmod__card-foot">
+              <px-check type="switch" :modelValue="!!module_item.status" :disabled="togglingModule === module_item.module_name"
+                @change="v => { module_item.status = v; update_status_module(module_item); }">
+                {{ module_item.status ? 'Enabled' : 'Disabled' }}
+              </px-check>
+            </div>
+          </div>
         </div>
-        <h5 class="empty-state-title">No Modules Installed</h5>
-        <p class="empty-state-desc">Upload a module zip file above to get started. Modules add new features and functionality to your Stocky application.</p>
-      </div>
+      </template>
 
-    </div>
+      <px-empty-state v-else icon="puzzle" title="No Modules Installed"
+        description="Upload a module zip file above to get started. Modules add new features and functionality to your Stocky application." />
+    </template>
   </div>
 </template>
 
 <script>
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
   metaInfo: {
     title: "Module Settings"
   },
+  components: { PxPageHeader, PxButton, PxCard, PxStat, PxCheck, PxBadge, PxEmptyState },
   data() {
     return {
       isLoading: true,
@@ -414,579 +306,46 @@ export default {
 };
 </script>
 
-<style scoped>
-/* ========== Header Card ========== */
-.module-header-card {
-  background: linear-gradient(135deg, #4361ee 0%, #7c3aed 100%);
-  border-radius: 12px;
-  padding: 28px 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 20px;
-  box-shadow: 0 4px 20px rgba(67, 97, 238, 0.25);
-}
-.module-header-content {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.module-header-icon {
-  width: 52px;
-  height: 52px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-}
-.module-header-title {
-  color: #fff;
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0;
-}
-.module-header-desc {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
-  margin: 4px 0 0;
-}
-.module-header-stats {
-  display: flex;
-  gap: 24px;
-}
-.stat-item {
-  text-align: center;
-}
-.stat-number {
-  display: block;
-  font-size: 26px;
-  font-weight: 800;
-  color: #fff;
-  line-height: 1.2;
-}
-.stat-active { color: #a7f3d0; }
-.stat-inactive { color: #fecaca; }
-.stat-label {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-/* ========== Upload Card ========== */
-.upload-card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-}
-.upload-card-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 24px;
-  border-bottom: 1px solid #e2e8f0;
-  font-weight: 600;
-  font-size: 15px;
-  color: #1e293b;
-}
-.upload-card-body {
-  padding: 24px;
-}
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-5); }
+.pxcfg__cardnote { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); margin: var(--pxn-space-1) 0 0; }
+.pxcfg__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-4); margin-top: var(--pxn-space-5); }
+@media (max-width: 560px) { .pxcfg__stats { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__subhead { margin: 0; font-size: var(--pxn-fs-md); font-weight: var(--pxn-fw-semibold); }
+.pxcfg__seg { display: flex; gap: var(--pxn-space-2); }
+.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
 
-/* Upload Zone */
-.upload-zone {
-  border: 2px dashed #cbd5e1;
-  border-radius: 12px;
-  transition: all 0.25s ease;
-  background: #f8fafc;
+.pxmod__drop {
+  border: 1px dashed var(--pxn-border-strong, var(--pxn-border)); border-radius: var(--pxn-radius-lg);
+  padding: var(--pxn-space-8) var(--pxn-space-6); text-align: center; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: var(--pxn-space-2);
+  transition: border-color 120ms, background 120ms;
 }
-.upload-zone:hover {
-  border-color: #4361ee;
-  background: rgba(67, 97, 238, 0.03);
-}
-.upload-zone.drag-over {
-  border-color: #4361ee;
-  background: rgba(67, 97, 238, 0.06);
-  transform: scale(1.01);
-}
-.upload-zone.has-file {
-  border-color: #22c55e;
-  border-style: solid;
-  background: rgba(34, 197, 94, 0.04);
-}
-.upload-zone-content {
-  cursor: pointer;
-  padding: 32px 20px;
-}
+.pxmod__drop:hover, .pxmod__drop.is-drag { border-color: var(--pxn-primary); background: var(--pxn-surface-2); }
+.pxmod__drop.has-file { flex-direction: row; justify-content: center; text-align: left; }
+.pxmod__drop.is-invalid { border-color: var(--pxn-danger); }
+.pxmod__file { display: none; }
+.pxmod__drop-icon { width: 44px; height: 44px; border-radius: 50%; background: var(--pxn-surface-2); display: flex; align-items: center; justify-content: center; color: var(--pxn-ink-2); }
+.pxmod__drop-text { margin: 0; font-size: var(--pxn-fs-sm); color: var(--pxn-ink); }
+.pxmod__file-details { display: flex; flex-direction: column; }
+.pxmod__file-name { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); }
+.pxmod__err { text-align: center; margin-top: var(--pxn-space-2); font-size: var(--pxn-fs-xs); color: var(--pxn-danger); }
 
-.upload-placeholder {
-  text-align: center;
-}
-.upload-icon-circle {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: rgba(67, 97, 238, 0.1);
-  color: #4361ee;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 16px;
-}
-.upload-text {
-  font-size: 15px;
-  color: #475569;
-  margin: 0;
-}
-.upload-subtext {
-  font-size: 13px;
-  color: #94a3b8;
-  margin: 4px 0 0;
-}
-
-/* Selected file */
-.upload-selected {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.file-icon-circle {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.file-details {
-  flex: 1;
-  min-width: 0;
-}
-.file-name {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.file-size {
-  display: block;
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 2px;
-}
-.file-remove {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: none;
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-.file-remove:hover {
-  background: rgba(239, 68, 68, 0.16);
-}
-
-/* Upload button */
-.upload-btn {
-  padding: 10px 32px;
-  font-weight: 600;
-  border-radius: 8px;
-  font-size: 14px;
-  min-width: 180px;
-}
-
-/* ========== Module Section Header ========== */
-.modules-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.modules-section-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-  display: flex;
-  align-items: center;
-}
-.modules-filter {
-  display: flex;
-  gap: 4px;
-  background: #f1f5f9;
-  padding: 4px;
-  border-radius: 8px;
-}
-.filter-btn {
-  padding: 6px 16px;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.filter-btn:hover {
-  color: #1e293b;
-}
-.filter-btn.active {
-  background: #fff;
-  color: #4361ee;
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-/* ========== Module Card ========== */
-.module-card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-  transition: all 0.25s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  height: 100%;
-}
-.module-card:hover {
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-}
-
-/* Status bar at top of card */
-.module-status-bar {
-  height: 4px;
-  width: 100%;
-}
-.bar-active {
-  background: linear-gradient(90deg, #22c55e, #16a34a);
-}
-.bar-inactive {
-  background: #e2e8f0;
-}
-
-.module-card-body {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  height: calc(100% - 4px);
-}
-
-.module-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-/* Module icon */
-.module-icon-wrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.icon-active {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-}
-.icon-inactive {
-  background: #f1f5f9;
-  color: #94a3b8;
-}
-
-/* Status badge */
-.module-status-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.badge-active {
-  background: rgba(34, 197, 94, 0.1);
-  color: #16a34a;
-}
-.badge-inactive {
-  background: #f1f5f9;
-  color: #94a3b8;
-}
-
-/* Module info */
-.module-info {
-  flex: 1;
-  margin-bottom: 16px;
-}
-.module-name {
-  font-size: 16px;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 6px;
-}
-.module-description {
-  font-size: 13px;
-  color: #64748b;
-  margin: 0;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Meta */
-.module-meta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
-}
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: #94a3b8;
-}
-
-/* Card footer */
-.module-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.module-toggle-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Modern Toggle Switch */
-.modern-toggle {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  margin: 0;
-  cursor: pointer;
-}
-.modern-toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.toggle-slider {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #cbd5e1;
-  border-radius: 24px;
-  transition: all 0.3s ease;
-}
-.toggle-slider::before {
-  content: '';
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  left: 3px;
-  bottom: 3px;
-  background: #fff;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-}
-.modern-toggle input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-}
-.modern-toggle input:checked + .toggle-slider::before {
-  transform: translateX(20px);
-}
-.modern-toggle input:disabled + .toggle-slider {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.toggle-label {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-/* ========== Empty State ========== */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  background: #fff;
-  border-radius: 12px;
-  border: 2px dashed #e2e8f0;
-}
-.empty-state-icon {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: #f1f5f9;
-  color: #94a3b8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 20px;
-}
-.empty-state-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 8px;
-}
-.empty-state-desc {
-  font-size: 14px;
-  color: #64748b;
-  max-width: 400px;
-  margin: 0 auto;
-  line-height: 1.6;
-}
-
-/* ========== Dark Mode ========== */
-.dark-mode .upload-card,
-[data-theme="dark"] .upload-card {
-  background: #1e293b;
-  border-color: #334155;
-}
-.dark-mode .upload-card-header,
-[data-theme="dark"] .upload-card-header {
-  border-color: #334155;
-  color: #e2e8f0;
-}
-.dark-mode .upload-zone,
-[data-theme="dark"] .upload-zone {
-  border-color: #475569;
-  background: #0f172a;
-}
-.dark-mode .upload-zone:hover,
-[data-theme="dark"] .upload-zone:hover {
-  border-color: #4361ee;
-  background: rgba(67, 97, 238, 0.08);
-}
-.dark-mode .upload-text,
-[data-theme="dark"] .upload-text {
-  color: #cbd5e1;
-}
-.dark-mode .file-name,
-[data-theme="dark"] .file-name {
-  color: #e2e8f0;
-}
-
-.dark-mode .module-card,
-[data-theme="dark"] .module-card {
-  background: #1e293b;
-  border-color: #334155;
-}
-.dark-mode .module-name,
-[data-theme="dark"] .module-name {
-  color: #e2e8f0;
-}
-.dark-mode .module-description,
-[data-theme="dark"] .module-description {
-  color: #94a3b8;
-}
-.dark-mode .modules-section-title,
-[data-theme="dark"] .modules-section-title {
-  color: #e2e8f0;
-}
-.dark-mode .modules-filter,
-[data-theme="dark"] .modules-filter {
-  background: #0f172a;
-}
-.dark-mode .filter-btn,
-[data-theme="dark"] .filter-btn {
-  color: #94a3b8;
-}
-.dark-mode .filter-btn:hover,
-[data-theme="dark"] .filter-btn:hover {
-  color: #e2e8f0;
-}
-.dark-mode .filter-btn.active,
-[data-theme="dark"] .filter-btn.active {
-  background: #334155;
-  color: #818cf8;
-}
-.dark-mode .module-meta,
-[data-theme="dark"] .module-meta {
-  border-color: #334155;
-}
-.dark-mode .icon-inactive,
-[data-theme="dark"] .icon-inactive {
-  background: #334155;
-}
-.dark-mode .badge-inactive,
-[data-theme="dark"] .badge-inactive {
-  background: #334155;
-  color: #94a3b8;
-}
-.dark-mode .bar-inactive,
-[data-theme="dark"] .bar-inactive {
-  background: #334155;
-}
-.dark-mode .empty-state,
-[data-theme="dark"] .empty-state {
-  background: #1e293b;
-  border-color: #334155;
-}
-.dark-mode .empty-state-title,
-[data-theme="dark"] .empty-state-title {
-  color: #e2e8f0;
-}
-.dark-mode .empty-state-icon,
-[data-theme="dark"] .empty-state-icon {
-  background: #334155;
-}
-.dark-mode .toggle-slider,
-[data-theme="dark"] .toggle-slider {
-  background: #475569;
-}
-
-/* ========== Responsive ========== */
-@media (max-width: 768px) {
-  .module-header-card {
-    padding: 20px;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .module-header-stats {
-    width: 100%;
-    justify-content: space-around;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
-  }
-  .upload-zone-content {
-    padding: 24px 16px;
-  }
-  .upload-selected {
-    flex-wrap: wrap;
-  }
-}
+.pxmod__sectionhead { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-4); margin: var(--pxn-space-6) 0 var(--pxn-space-3); flex-wrap: wrap; }
+.pxmod__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-4); }
+@media (max-width: 1000px) { .pxmod__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .pxmod__grid { grid-template-columns: minmax(0, 1fr); } }
+.pxmod__card { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); padding: var(--pxn-space-5); display: flex; flex-direction: column; gap: var(--pxn-space-3); }
+.pxmod__card.is-active { border-color: color-mix(in srgb, var(--pxn-success) 45%, var(--pxn-border)); }
+.pxmod__card-top { display: flex; align-items: center; justify-content: space-between; }
+.pxmod__card-icon { width: 40px; height: 40px; border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); display: flex; align-items: center; justify-content: center; color: var(--pxn-ink-2); }
+.pxmod__card-name { margin: 0; font-size: var(--pxn-fs-md); font-weight: var(--pxn-fw-semibold); }
+.pxmod__card-desc { margin: 0; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); line-height: 1.5; flex: 1; }
+.pxmod__card-meta { display: flex; align-items: center; gap: var(--pxn-space-2); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxmod__card-foot { border-top: 1px solid var(--pxn-border); padding-top: var(--pxn-space-3); }
 </style>

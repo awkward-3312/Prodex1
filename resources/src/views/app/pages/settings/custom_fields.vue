@@ -1,279 +1,143 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('CustomFields')" :folder="$t('Settings')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('CustomFields')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('CustomFields') }]"
+    >
+      <template #actions>
+        <px-button variant="primary" size="sm" icon="plus" @click="New_CustomField(activeEntity)">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="!isLoading">
-      <b-card>
-        <b-tabs v-model="activeTab" content-class="mt-3">
-          <!-- Customers Custom Fields Tab -->
-          <b-tab :title="$t('Customers')">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5>{{ $t('CustomerCustomFields') }}</h5>
-              <b-button variant="primary" @click="New_CustomField('client')">
-                <lucide-icon name="plus" /> {{ $t('Add') }}
-              </b-button>
-            </div>
-
-            <vue-good-table
-              :columns="columns"
-              :rows="customerFields"
-              :rtl="direction"
-              :search-options="{
-                enabled: true,
-                placeholder: $t('SearchThisTable')
-              }"
-              :pagination-options="{
-                enabled: true,
-                mode: 'records',
-                perPage: 10
-              }"
-              styleClass="tableOne vgt-table"
-            >
-              <template slot="table-row" slot-scope="props">
-                <span v-if="props.column.field == 'field_type'">
-                  {{ getFieldTypeLabel(props.row.field_type) }}
-                </span>
-                <span v-else-if="props.column.field == 'is_required'">
-                  <b-badge :variant="props.row.is_required ? 'success' : 'secondary'">
-                    {{ props.row.is_required ? $t('Required') : $t('Optional') }}
-                  </b-badge>
-                </span>
-                <span v-else-if="props.column.field == 'actions'">
-                  <b-button
-                    variant="outline-primary"
-                    size="sm"
-                    @click="Edit_CustomField(props.row)"
-                    class="mr-2"
-                  >
-                    <lucide-icon name="pencil" />
-                  </b-button>
-                  <b-button
-                    variant="outline-danger"
-                    size="sm"
-                    @click="Delete_CustomField(props.row.id)"
-                  >
-                    <lucide-icon name="x" />
-                  </b-button>
-                </span>
-                <span v-else>
-                  {{ props.formattedRow[props.column.field] }}
-                </span>
-              </template>
-            </vue-good-table>
-          </b-tab>
-
-          <!-- Suppliers Custom Fields Tab -->
-          <b-tab :title="$t('Suppliers')">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5>{{ $t('SupplierCustomFields') }}</h5>
-              <b-button variant="primary" @click="New_CustomField('provider')">
-                <lucide-icon name="plus" /> {{ $t('Add') }}
-              </b-button>
-            </div>
-
-            <vue-good-table
-              :columns="columns"
-              :rows="supplierFields"
-              :rtl="direction"
-              :search-options="{
-                enabled: true,
-                placeholder: $t('SearchThisTable')
-              }"
-              :pagination-options="{
-                enabled: true,
-                mode: 'records',
-                perPage: 10
-              }"
-              styleClass="tableOne vgt-table"
-            >
-              <template slot="table-row" slot-scope="props">
-                <span v-if="props.column.field == 'field_type'">
-                  {{ getFieldTypeLabel(props.row.field_type) }}
-                </span>
-                <span v-else-if="props.column.field == 'is_required'">
-                  <b-badge :variant="props.row.is_required ? 'success' : 'secondary'">
-                    {{ props.row.is_required ? $t('Required') : $t('Optional') }}
-                  </b-badge>
-                </span>
-                <span v-else-if="props.column.field == 'actions'">
-                  <b-button
-                    variant="outline-primary"
-                    size="sm"
-                    @click="Edit_CustomField(props.row)"
-                    class="mr-2"
-                  >
-                    <lucide-icon name="pencil" />
-                  </b-button>
-                  <b-button
-                    variant="outline-danger"
-                    size="sm"
-                    @click="Delete_CustomField(props.row.id)"
-                  >
-                    <lucide-icon name="x" />
-                  </b-button>
-                </span>
-                <span v-else>
-                  {{ props.formattedRow[props.column.field] }}
-                </span>
-              </template>
-            </vue-good-table>
-          </b-tab>
-        </b-tabs>
-      </b-card>
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="table" :rows="8" :columns="5" />
     </div>
 
-    <!-- Modal Add/Edit Custom Field -->
-    <validation-observer ref="Create_CustomField">
-      <b-modal
-        hide-footer
-        size="lg"
-        :id="editmode ? 'Edit_CustomField' : 'New_CustomField'"
-        :title="editmode ? $t('Edit') : $t('Add')"
-      >
-        <b-form @submit.prevent="Submit_CustomField">
-          <b-row>
-            <!-- Field Name -->
-            <b-col md="12" sm="12" class="mb-3">
-              <validation-provider
-                name="Field Name"
-                :rules="{ required: true }"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('FieldName') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="name-feedback"
-                    :placeholder="$t('FieldName')"
-                    v-model="customField.name"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="name-feedback">
-                    {{ validationContext.errors[0] }}
-                  </b-form-invalid-feedback>
-                </b-form-group>
+    <template v-else>
+      <div class="pxcfg__tabbar">
+        <button type="button" class="pxcfg__tab pxn-ring" :class="{ 'is-active': activeEntity === 'client' }" @click="activeEntity = 'client'">{{ $t('Customers') }}</button>
+        <button type="button" class="pxcfg__tab pxn-ring" :class="{ 'is-active': activeEntity === 'provider' }" @click="activeEntity = 'provider'">{{ $t('Suppliers') }}</button>
+      </div>
+
+      <div v-show="activeEntity === 'client'" class="pxcfg__panel">
+        <h4 class="pxcfg__subhead">{{ $t('CustomerCustomFields') }}</h4>
+        <px-table v-if="customerFields.length" :columns="columns" :rows="customerFields" row-key="id" has-row-actions>
+          <template #cell-field_type="{ row }">{{ getFieldTypeLabel(row.field_type) }}</template>
+          <template #cell-is_required="{ row }"><px-badge :tone="row.is_required ? 'success' : 'neutral'">{{ row.is_required ? $t('Required') : $t('Optional') }}</px-badge></template>
+          <template #row-actions="{ row }">
+            <div class="pxcfg__rowbtns">
+              <px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Editar" @click="Edit_CustomField(row)" />
+              <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Eliminar" @click="Delete_CustomField(row.id)" />
+            </div>
+          </template>
+        </px-table>
+        <px-empty-state v-else icon="list-plus" title="Sin campos personalizados" description="Agrega un campo para verlo en esta lista." />
+      </div>
+
+      <div v-show="activeEntity === 'provider'" class="pxcfg__panel">
+        <h4 class="pxcfg__subhead">{{ $t('SupplierCustomFields') }}</h4>
+        <px-table v-if="supplierFields.length" :columns="columns" :rows="supplierFields" row-key="id" has-row-actions>
+          <template #cell-field_type="{ row }">{{ getFieldTypeLabel(row.field_type) }}</template>
+          <template #cell-is_required="{ row }"><px-badge :tone="row.is_required ? 'success' : 'neutral'">{{ row.is_required ? $t('Required') : $t('Optional') }}</px-badge></template>
+          <template #row-actions="{ row }">
+            <div class="pxcfg__rowbtns">
+              <px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Editar" @click="Edit_CustomField(row)" />
+              <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Eliminar" @click="Delete_CustomField(row.id)" />
+            </div>
+          </template>
+        </px-table>
+        <px-empty-state v-else icon="list-plus" title="Sin campos personalizados" description="Agrega un campo para verlo en esta lista." />
+      </div>
+    </template>
+
+    <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="lg">
+      <validation-observer ref="Create_CustomField">
+        <form @submit.prevent="Submit_CustomField">
+          <div class="pxcfg__formgrid">
+            <validation-provider ref="nameProvider" name="Field Name" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('FieldName') + ' *'" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="customField.name" :placeholder="$t('FieldName')" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+
+            <div class="pxcfg__grid">
+              <validation-provider ref="typeProvider" name="Field Type" :rules="{ required: true }" v-slot="v">
+                <px-field :label="$t('FieldType') + ' *'" :error="v.errors[0]">
+                  <template #default="{ id }">
+                    <vs-px :input-id="id" v-model="customField.field_type" :reduce="label => label.value" :options="fieldTypes"
+                      :placeholder="$t('PleaseSelect')" @input="val => { onFieldTypeChange(); if ($refs.typeProvider) { $refs.typeProvider.syncValue(val); $refs.typeProvider.validate(); } }" />
+                  </template>
+                </px-field>
               </validation-provider>
-            </b-col>
+              <px-field :label="$t('Required')">
+                <template #default>
+                  <px-check type="switch" :modelValue="!!customField.is_required" @change="v => customField.is_required = v">
+                    {{ customField.is_required ? $t('Required') : $t('Optional') }}
+                  </px-check>
+                </template>
+              </px-field>
+            </div>
 
-            <!-- Field Type -->
-            <b-col md="6" sm="12" class="mb-3">
-              <validation-provider
-                name="Field Type"
-                :rules="{ required: true }"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('FieldType') + ' ' + '*'">
-                  <v-select
-                    :class="{'is-invalid': !!validationContext.errors[0]}"
-                    :state="validationContext.errors[0] ? false : (validationContext.valid ? true : null)"
-                    v-model="customField.field_type"
-                    :reduce="label => label.value"
-                    :options="fieldTypes"
-                    :placeholder="$t('PleaseSelect')"
-                    @input="onFieldTypeChange"
-                  ></v-select>
-                  <b-form-invalid-feedback>
-                    {{ validationContext.errors[0] }}
-                  </b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+            <px-field v-if="customField.field_type === 'select'" :label="$t('SelectOptions')" :hint="$t('EnterOptionsOnePerLine')">
+              <template #default="{ id }">
+                <px-textarea :id="id" v-model="selectOptionsText" :placeholder="$t('EnterOptionsOnePerLine')" :rows="4" @blur="updateSelectOptions" />
+              </template>
+            </px-field>
 
-            <!-- Required -->
-            <b-col md="6" sm="12" class="mb-3">
-              <b-form-group :label="$t('Required')">
-                <b-form-checkbox v-model="customField.is_required" switch>
-                  {{ customField.is_required ? $t('Required') : $t('Optional') }}
-                </b-form-checkbox>
-              </b-form-group>
-            </b-col>
+            <px-field v-else-if="customField.field_type && customField.field_type !== 'select' && customField.field_type !== 'checkbox'" :label="$t('DefaultValue')">
+              <template #default="{ id }">
+                <px-textarea v-if="customField.field_type === 'textarea'" :id="id" v-model="customField.default_value" :placeholder="$t('DefaultValue')" :rows="3" />
+                <px-input v-else :id="id" v-model="customField.default_value"
+                  :type="customField.field_type === 'number' ? 'number' : (customField.field_type === 'date' ? 'date' : 'text')"
+                  :placeholder="$t('DefaultValue')" />
+              </template>
+            </px-field>
 
-            <!-- Default Value / Select Options -->
-            <b-col md="12" sm="12" class="mb-3" v-if="customField.field_type === 'select'">
-              <b-form-group :label="$t('SelectOptions')">
-                <b-form-textarea
-                  v-model="selectOptionsText"
-                  :placeholder="$t('EnterOptionsOnePerLine')"
-                  rows="4"
-                  @blur="updateSelectOptions"
-                ></b-form-textarea>
-                <small class="text-muted">{{ $t('EnterOptionsOnePerLine') }}</small>
-              </b-form-group>
-            </b-col>
-
-            <b-col md="12" sm="12" class="mb-3" v-else-if="customField.field_type !== 'select' && customField.field_type">
-              <b-form-group :label="$t('DefaultValue')">
-                <b-form-input
-                  v-if="customField.field_type === 'text' || customField.field_type === 'number'"
-                  v-model="customField.default_value"
-                  :type="customField.field_type === 'number' ? 'number' : 'text'"
-                  :placeholder="$t('DefaultValue')"
-                ></b-form-input>
-                <b-form-textarea
-                  v-else-if="customField.field_type === 'textarea'"
-                  v-model="customField.default_value"
-                  :placeholder="$t('DefaultValue')"
-                  rows="3"
-                ></b-form-textarea>
-                <b-form-datepicker
-                  v-else-if="customField.field_type === 'date'"
-                  v-model="customField.default_value"
-                  :placeholder="$t('DefaultValue')"
-                ></b-form-datepicker>
-              </b-form-group>
-            </b-col>
-
-            <!-- Sort Order -->
-            <b-col md="6" sm="12" class="mb-3">
-              <b-form-group :label="$t('SortOrder')">
-                <b-form-input
-                  type="number"
-                  v-model.number="customField.sort_order"
-                  :placeholder="$t('SortOrder')"
-                  min="0"
-                ></b-form-input>
-              </b-form-group>
-            </b-col>
-
-            <b-col md="12" class="mt-3">
-              <b-button
-                variant="primary"
-                type="submit"
-                :disabled="SubmitProcessing"
-              >
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
-              </b-button>
-              <b-button
-                variant="secondary"
-                @click="reset_Form"
-                class="ml-2"
-              >
-                {{ $t('Cancel') }}
-              </b-button>
-              <div v-once class="typo__p" v-if="SubmitProcessing">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
-            </b-col>
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
+            <div class="pxcfg__grid">
+              <px-field :label="$t('SortOrder')">
+                <template #default="{ id }"><px-input :id="id" type="number" v-model.number="customField.sort_order" :placeholder="$t('SortOrder')" min="0" /></template>
+              </px-field>
+            </div>
+          </div>
+        </form>
+      </validation-observer>
+      <template #footer="{ close }">
+        <px-button variant="ghost" @click="() => { reset_Form(); close(); }">{{ $t('Cancel') }}</px-button>
+        <px-button variant="primary" icon="check" :loading="SubmitProcessing" :disabled="SubmitProcessing" @click="Submit_CustomField">{{ $t('submit') }}</px-button>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Custom Fields"
+  },
+  components: {
+    PxPageHeader, PxTable, PxButton, PxModal, PxField, PxInput, PxTextarea, PxCheck, PxBadge, PxEmptyState, "vs-px": VsPx
   },
   data() {
     return {
       isLoading: true,
       SubmitProcessing: false,
       editmode: false,
-      activeTab: 0,
+      modalOpen: false,
+      activeEntity: 'client',
       customerFields: [],
       supplierFields: [],
       customField: {
@@ -298,46 +162,12 @@ export default {
   },
   computed: {
     ...mapGetters(["currentUser"]),
-    direction() {
-      if (this.$i18n.locale == "ar") {
-        return "rtl";
-      } else {
-        return "ltr";
-      }
-    },
     columns() {
       return [
-        {
-          label: this.$t("FieldName"),
-          field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("FieldType"),
-          field: "field_type",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Required"),
-          field: "is_required",
-          tdClass: "text-center",
-          thClass: "text-center"
-        },
-        {
-          label: this.$t("SortOrder"),
-          field: "sort_order",
-          tdClass: "text-center",
-          thClass: "text-center"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "name", label: this.$t("FieldName"), strong: true },
+        { key: "field_type", label: this.$t("FieldType") },
+        { key: "is_required", label: this.$t("Required"), align: "center" },
+        { key: "sort_order", label: this.$t("SortOrder"), align: "center" }
       ];
     }
   },
@@ -345,12 +175,10 @@ export default {
     this.Get_CustomFields();
   },
   methods: {
-    //----------------------------------- Get Custom Fields -------------------------------\\
     Get_CustomFields() {
       NProgress.start();
       NProgress.set(0.1);
-      
-      // Get customer fields
+
       axios
         .get("custom-fields?entity_type=client")
         .then(response => {
@@ -360,7 +188,6 @@ export default {
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
         });
 
-      // Get supplier fields
       axios
         .get("custom-fields?entity_type=provider")
         .then(response => {
@@ -375,17 +202,21 @@ export default {
         });
     },
 
-    //----------------------------------- New Custom Field -------------------------------\\
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.nameProvider && this.$refs.nameProvider.syncValue) this.$refs.nameProvider.syncValue(this.customField.name);
+        if (this.$refs.typeProvider && this.$refs.typeProvider.syncValue) this.$refs.typeProvider.syncValue(this.customField.field_type);
+      });
+    },
+
     New_CustomField(entityType) {
       this.reset_Form();
       this.customField.entity_type = entityType;
       this.editmode = false;
-      setTimeout(() => {
-        this.$bvModal.show("New_CustomField");
-      }, 500);
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
-    //----------------------------------- Edit Custom Field -------------------------------\\
     Edit_CustomField(customField) {
       this.reset_Form();
       this.customField = {
@@ -398,10 +229,9 @@ export default {
         sort_order: customField.sort_order || 0,
       };
 
-      // Handle select options
       if (customField.field_type === 'select' && customField.default_value) {
-        const options = Array.isArray(customField.default_value) 
-          ? customField.default_value 
+        const options = Array.isArray(customField.default_value)
+          ? customField.default_value
           : JSON.parse(customField.default_value || '[]');
         this.selectOptionsText = options.join('\n');
       } else {
@@ -409,12 +239,10 @@ export default {
       }
 
       this.editmode = true;
-      setTimeout(() => {
-        this.$bvModal.show("Edit_CustomField");
-      }, 500);
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
-    //----------------------------------- Submit Custom Field -------------------------------\\
     Submit_CustomField() {
       this.$refs.Create_CustomField.validate().then(success => {
         if (!success) {
@@ -437,7 +265,6 @@ export default {
           sort_order: this.customField.sort_order || 0,
         };
 
-        // Handle select options
         if (this.customField.field_type === 'select') {
           const options = this.selectOptionsText
             .split('\n')
@@ -459,7 +286,7 @@ export default {
               this.$t("Success")
             );
             this.SubmitProcessing = false;
-            this.$bvModal.hide(this.editmode ? "Edit_CustomField" : "New_CustomField");
+            this.modalOpen = false;
             this.Get_CustomFields();
           })
           .catch(error => {
@@ -469,7 +296,6 @@ export default {
       });
     },
 
-    //----------------------------------- Delete Custom Field -------------------------------\\
     Delete_CustomField(id) {
       this.$swal({
         title: this.$t("DeleteTitle"),
@@ -499,7 +325,6 @@ export default {
       });
     },
 
-    //----------------------------------- Reset Form -------------------------------\\
     reset_Form() {
       this.customField = {
         id: "",
@@ -514,7 +339,6 @@ export default {
       this.editmode = false;
     },
 
-    //----------------------------------- Field Type Change -------------------------------\\
     onFieldTypeChange() {
       if (this.customField.field_type !== 'select') {
         this.selectOptionsText = "";
@@ -524,23 +348,19 @@ export default {
       }
     },
 
-    //----------------------------------- Update Select Options -------------------------------\\
     updateSelectOptions() {
       // This is handled in Submit_CustomField
     },
 
-    //----------------------------------- Get Field Type Label -------------------------------\\
     getFieldTypeLabel(type) {
       const field = this.fieldTypes.find(f => f.value === type);
       return field ? field.label : type;
     },
 
-    //------ Event Validation State
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
     },
 
-    //------ Toast
     makeToast(variant, msg, title) {
       this.$root.$bvToast.toast(msg, {
         title: title,
@@ -552,3 +372,21 @@ export default {
 };
 </script>
 
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__tabbar { display: flex; gap: var(--pxn-space-2); margin-top: var(--pxn-space-5); border-bottom: 1px solid var(--pxn-border); }
+.pxcfg__tab { appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; padding: var(--pxn-space-3) var(--pxn-space-4); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium); color: var(--pxn-ink-3); cursor: pointer; transition: color 120ms, border-color 120ms; }
+.pxcfg__tab:hover { color: var(--pxn-ink); }
+.pxcfg__tab.is-active { color: var(--pxn-ink); border-bottom-color: var(--pxn-primary); font-weight: var(--pxn-fw-semibold); }
+.pxcfg__panel { margin-top: var(--pxn-space-4); }
+.pxcfg__subhead { margin: 0 0 var(--pxn-space-3); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); }
+.pxcfg__formgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--pxn-space-4); }
+.pxcfg__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 560px) { .pxcfg__grid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__rowbtns { display: flex; gap: var(--pxn-space-2); justify-content: flex-end; }
+.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+</style>
