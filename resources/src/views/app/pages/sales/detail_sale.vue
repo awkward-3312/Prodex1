@@ -5,6 +5,15 @@
       :title="isLoading ? $t('SaleDetail') : ($t('SaleDetail') + (sale.Ref ? ' · ' + sale.Ref : ''))"
       :breadcrumbs="[{ label: $t('Sales') }, { label: $t('ListSales') }, { label: $t('SaleDetail') }]"
     >
+      <template #meta v-if="!isLoading && sale.quotation_id">
+        <!-- Cotización -> Venta POS traceability (Option A). -->
+        <span class="pxsd__origin">
+          {{ $t('Origin') }} ·
+          <a href="javascript:void(0)" @click="$router.push('/app/quotations/detail/' + sale.quotation_id)">
+            {{ $t('Quotation') }} {{ sale.quotation_ref || ('#' + sale.quotation_id) }}
+          </a>
+        </span>
+      </template>
       <template #actions>
         <px-button variant="ghost" icon="arrow-left" @click="$router.push({ name: 'index_sales' })">{{ $t('Back') }}</px-button>
         <px-button
@@ -727,6 +736,10 @@ export default {
 .pxsd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-8); }
 @media (max-width: 620px) { .pxsd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-5); } }
 @media print { .pxsd { padding: 0; background: #fff; } .pxsd__card ::v-deep .pxn-card__body { padding: 0; } }
+
+.pxsd__origin { font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
+.pxsd__origin a { color: var(--pxn-primary); font-weight: var(--pxn-fw-medium); text-decoration: none; }
+.pxsd__origin a:hover { text-decoration: underline; }
 
 .main-content {
   width: 100%;

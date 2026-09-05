@@ -1085,6 +1085,7 @@
     :discount-from-points="discount_from_points"
     :used-points="used_points"
     :draft-sale-id="draft_sale_id"
+    :source-quotation-id="sourceQuotationId"
     :client-credit-limit="selectedClientCreditLimit"
     :client-net-balance="selectedClientNetBalance"
     :is-online="isOnline"
@@ -3634,6 +3635,11 @@ export default {
       draft_sales_page: 1,
       limit: "10",
           draft_sale_id: '',
+      // Cotización -> Venta POS traceability (Option A): set only when the cart
+      // was pre-loaded from a quotation via /app/pos?quotation_id=<id>. Sent to
+      // PosController@CreatePOS so the emitted sale is linked to its source.
+      sourceQuotationId: null,
+      sourceQuotationRef: null,
       openingDraftId: null,
 
       serverParams: {
@@ -5495,6 +5501,7 @@ export default {
             discount_from_points: this.discount_from_points,
             used_points: this.used_points,
             draft_sale_id: this.draft_sale_id || undefined,
+            quotation_id: this.sourceQuotationId || undefined,
             promotion_code: this.promotionCode || null,
             promotion_subtotal: Number(this.total || 0),
             promotion_item_count: this.details.reduce((n, d) => n + Number(d.quantity || 0), 0),
@@ -5532,9 +5539,22 @@ export default {
           .catch(error => {
             NProgress.done();
             this.paymentProcessing = false;
-            this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+            this.showCreatePosError(error);
           });
       }
+    },
+
+    // Cotización -> Venta POS: surface the server's explicit message for
+    // quotation-link failures (not found / forbidden / already converted)
+    // instead of the generic "InvalidData".
+    showCreatePosError(error) {
+      const data = error && error.response && error.response.data;
+      const code = data && data.code;
+      if (code && String(code).indexOf("QUOTATION_") === 0 && data.message) {
+        this.makeToast("danger", data.message, this.$t("Failed"));
+        return;
+      }
+      this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
     },
 
     async processPayment() {
@@ -5597,6 +5617,7 @@ export default {
             discount_from_points: this.discount_from_points,
             used_points: this.used_points,
             draft_sale_id: this.draft_sale_id || undefined,
+            quotation_id: this.sourceQuotationId || undefined,
             promotion_code: this.promotionCode || null,
             promotion_subtotal: Number(this.total || 0),
             promotion_item_count: this.details.reduce((n, d) => n + Number(d.quantity || 0), 0),
@@ -5639,7 +5660,7 @@ export default {
           .catch(error => {
             this.paymentProcessing = false;
             NProgress.done();
-            this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+            this.showCreatePosError(error);
           });
       }
     },
@@ -6772,6 +6793,10 @@ export default {
       this.details = [];
       this.product = {};
       this.draft_sale_id = '';
+      // Cotización -> Venta POS: the cart is cleared, so it is no longer
+      // "from a quotation". The link was already persisted server-side.
+      this.sourceQuotationId = null;
+      this.sourceQuotationRef = null;
       this.paymentLines = [
         {
           amount: 0,
@@ -7064,6 +7089,10 @@ export default {
         .then(response => {
           const data = response.data || {};
 
+          // Remember the source so CreatePOS can persist sales.quotation_id.
+          this.sourceQuotationId = data.quotation_id || id;
+          this.sourceQuotationRef = data.quotation_ref || null;
+
           if (Array.isArray(data.clients)) this.clients = data.clients;
           if (Array.isArray(data.accounts)) this.accounts = data.accounts;
           if (Array.isArray(data.warehouses)) this.warehouses = data.warehouses;
@@ -7141,11 +7170,19 @@ export default {
           }
 
           try {
-            this.makeToast(
-              'info',
-              (data.quotation_ref ? (data.quotation_ref + ' — ') : '') + 'Cotización cargada. Revisa y cobra para registrar la venta.',
-              'POS'
-            );
+            if (data.already_converted && data.linked_sale) {
+              this.makeToast(
+                'warning',
+                'Esta cotización ya generó la venta ' + data.linked_sale.ref + '. No se creará una venta nueva.',
+                'POS'
+              );
+            } else {
+              this.makeToast(
+                'info',
+                (data.quotation_ref ? (data.quotation_ref + ' — ') : '') + 'Cotización cargada. Revisa y cobra para registrar la venta.',
+                'POS'
+              );
+            }
           } catch (e) {}
 
           NProgress.done();

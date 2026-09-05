@@ -370,6 +370,10 @@ export default {
     cardProcessingMode: { type: String, default: 'external_terminal' },
     // Optional: when paying from a loaded draft sale
     draftSaleId: { type: [Number, String], default: null },
+    // Cotización -> Venta POS traceability (Option A): set only when the cart
+    // was pre-loaded from a quotation. Forwarded to /pos/create_pos so the
+    // emitted sale is linked to its source quotation.
+    sourceQuotationId: { type: [Number, String], default: null },
     // POS online/offline state (controls some UI like email/SMS options)
     isOnline: { type: Boolean, default: true },
     // System defaults from settings (used when opening modal and when adding new payment lines)
@@ -1079,6 +1083,7 @@ export default {
           discount_from_points: this.discountFromPoints || 0,
           used_points: this.usedPoints || 0,
           draft_sale_id: this.draftSaleId || null,
+          quotation_id: this.sourceQuotationId || undefined,
           sale_uuid: saleUuid || null,
           // Kitchen routing: only 'send' creates a kitchen ticket on the server (and only
           // when the feature is enabled). 'none' / 'later' leave the sales flow untouched.
@@ -1217,6 +1222,7 @@ export default {
           discount_from_points: this.discountFromPoints || 0,
           used_points: this.usedPoints || 0,
           draft_sale_id: this.draftSaleId || null,
+          quotation_id: this.sourceQuotationId || undefined,
           sale_uuid: saleUuid || null,
           // Kitchen routing: only 'send' creates a kitchen ticket on the server (and only
           // when the feature is enabled). 'none' / 'later' leave the sales flow untouched.

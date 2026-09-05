@@ -15,6 +15,8 @@ const spanishUiMessages = {
   Warehouse_locked_has_lines: 'No se puede cambiar el almacén con productos en la lista.',
   EditProduct: 'Editar producto',
   Barcode_Scanner: 'Escáner de código de barras',
+  Sale_generated: 'Venta generada',
+  Origin: 'Origen',
   Import_Sales: 'Importar ventas',
   Internal_Location_Report: 'Informe de ubicaciones internas',
   Interviews: 'Entrevistas',

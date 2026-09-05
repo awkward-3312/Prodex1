@@ -12,12 +12,16 @@
           variant="secondary" icon="pencil"
           @click="$router.push({ name: 'edit_quotation', params: { id: $route.params.id } })"
         >{{ $t('EditQuote') }}</px-button>
-        <!-- Conversión directa cotización -> venta retirada: la venta final
-             siempre se crea desde el POS (regla de negocio PRODEX). Este botón
-             abre el POS con la cotización precargada; el usuario revisa,
-             cobra y confirma la venta en el flujo normal del POS. -->
+        <!-- Cotización -> Venta POS (regla de negocio PRODEX): la venta final
+             siempre se crea desde el POS. Una vez convertida, la cotización
+             muestra la venta generada en lugar de "Procesar en POS". -->
         <px-button
-          v-if="!isLoading && quote.statut && currentUserPermissions && currentUserPermissions.includes('Pos_view')"
+          v-if="!isLoading && quote.linked_sale"
+          variant="link" icon="check-circle-2"
+          @click="$router.push('/app/sales/detail/' + quote.linked_sale.id)"
+        >{{ $t('Sale_generated') }} · {{ quote.linked_sale.ref }}</px-button>
+        <px-button
+          v-else-if="!isLoading && quote.statut && currentUserPermissions && currentUserPermissions.includes('Pos_view')"
           variant="secondary" icon="shopping-cart"
           @click="$router.push({ path: '/app/pos', query: { quotation_id: $route.params.id } })"
         >{{ $t('Process_in_POS') }}</px-button>
