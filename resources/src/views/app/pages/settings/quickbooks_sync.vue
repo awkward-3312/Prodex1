@@ -1,363 +1,306 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Quickbooks_Sync')" :folder="$t('Settings')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('Quickbooks_Sync')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('Quickbooks_Sync') }]"
+    />
 
-    <b-col md="12" v-if="!isLoading">
-      <b-tabs pills content-class="mt-3">
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="lines" :rows="6" />
+    </div>
 
-        <!-- Connection tab -->
-        <b-tab :title="$t('Connection')" active>
-          <div class="row border rounded p-3 mt-3">
-            <b-col md="12" class="mb-2">
-              <p class="mb-1"><strong>{{ $t('Environment') }}:</strong> {{ status.env }}</p>
-              <p class="mb-1"><strong>{{ $t('Redirect_URI_active') }}:</strong> {{ status.redirect }}</p>
-              <p class="mb-1"><strong>{{ $t('Callback') }}:</strong> {{ status.callback }}</p>
-              <p class="mb-1">
-                <strong>{{ $t('Status') }}:</strong>
-                <span v-if="status.has_token" class="text-success">{{ $t('Connected') }}</span>
-                <span v-else class="text-danger">{{ $t('Disconnected') }}</span>
-              </p>
-              <p v-if="status.token_realm" class="mb-3"><strong>{{ $t('Realm_ID') }}:</strong> {{ status.token_realm }}</p>
+    <template v-else>
+      <div class="pxcfg__tabbar" role="tablist">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          type="button"
+          class="pxcfg__tab"
+          :class="{ 'is-active': qbTab === tab.key }"
+          @click="qbTab = tab.key"
+        >{{ tab.label }}</button>
+      </div>
 
-              <div class="d-flex gap-2">
-                <b-button v-if="!status.has_token" variant="primary" @click="connectBlank">
-                  {{ $t('Connect_to_QuickBooks') }}
-                </b-button>
-                <b-button v-else variant="danger" :disabled="busy" @click="disconnect">
-                  {{ $t('Disconnect') }}
-                </b-button>
-
-                <!-- NEW: Clear cache -->
-                <b-button variant="outline-secondary" size="sm" class="ml-2" @click="Clear_Cache()">
-                  {{ $t('Clear_Cache') }}
-                </b-button>
-              </div>
-            </b-col>
+      <!-- ================= Connection ================= -->
+      <div v-show="qbTab === 'connection'" class="pxcfg__panel">
+        <px-card :title="$t('Connection')" class="pxcfg__card">
+          <div class="pxcfg__deflist">
+            <div class="pxcfg__defrow"><span>{{ $t('Environment') }}</span><b>{{ status.env }}</b></div>
+            <div class="pxcfg__defrow"><span>{{ $t('Redirect_URI_active') }}</span><b>{{ status.redirect }}</b></div>
+            <div class="pxcfg__defrow"><span>{{ $t('Callback') }}</span><b>{{ status.callback }}</b></div>
+            <div class="pxcfg__defrow">
+              <span>{{ $t('Status') }}</span>
+              <px-badge :tone="status.has_token ? 'success' : 'danger'">
+                {{ status.has_token ? $t('Connected') : $t('Disconnected') }}
+              </px-badge>
+            </div>
+            <div v-if="status.token_realm" class="pxcfg__defrow"><span>{{ $t('Realm_ID') }}</span><b>{{ status.token_realm }}</b></div>
           </div>
-        </b-tab>
 
-        <!-- Settings tab (manual .env edit via API) -->
-        <b-tab :title="$t('Settings')">
-          <div class="row border rounded p-3 mt-3">
-            <b-form @submit.prevent="save" style="width:100%">
-              <b-row>
-                 <b-col md="6">
-                  <b-form-group :label="$t('Client_ID')">
-                    <b-form-input v-model.trim="form.client_id" required />
-                    <b-form-text class="text-muted">
-                      {{ $t('From_Intuit_Keys_Identifies_App') }}
-                      {{ $t('Paste_value_exactly_as_in_app_keys') }}
-                    </b-form-text>
-                  </b-form-group>
-                </b-col>
+          <template #footer>
+            <px-button v-if="!status.has_token" variant="primary" icon="link" @click="connectBlank">
+              {{ $t('Connect_to_QuickBooks') }}
+            </px-button>
+            <px-button v-else variant="danger" :disabled="busy" @click="disconnect">
+              {{ $t('Disconnect') }}
+            </px-button>
+            <px-button variant="ghost" size="sm" icon="trash-2" @click="Clear_Cache()">
+              {{ $t('Clear_Cache') }}
+            </px-button>
+          </template>
+        </px-card>
+      </div>
 
-                <b-col md="6">
-                  <b-form-group :label="$t('Client_Secret')">
-                    <b-form-input v-model.trim="form.client_secret" type="password" required />
-                    <b-form-text class="text-muted">
-                      {{ $t('From_Intuit_Keys_Keep_private_rotate') }}
-                    </b-form-text>
-                  </b-form-group>
-                </b-col>
-
-                <b-col md="6">
-                  <b-form-group :label="$t('Redirect_URI')">
-                    <b-form-input v-model.trim="form.redirect" required />
-                    <b-form-text class="text-muted">
-                      {{ $t('Must_match_Intuit_redirect_exactly') }}
-                      {{ $t('Typical') }}: <code>{{ callbackExample }}</code>. {{ $t('Add_this_exact_URL_on_Keys_page_too') }}
-                    </b-form-text>
-                  </b-form-group>
-                </b-col>
-
-                <b-col md="3">
-                  <b-form-group :label="$t('Environment')">
-                    <b-form-select v-model="form.env" :options="envOptions" />
-                    <b-form-text class="text-muted">
-                      <strong>{{ $t('Development') }}</strong> = {{ $t('Sandbox_company_test_data') }}<br>
-                      <strong>{{ $t('Production') }}</strong> = {{ $t('Live_QB_company') }}
-                    </b-form-text>
-                  </b-form-group>
-                </b-col>
-
-                <b-col md="3">
-                  <b-form-group :label="$t('Realm_ID')">
-                    <b-form-input v-model.trim="form.realm_id" />
-                    <b-form-text class="text-muted">
-                      {{ $t('Realm_ID_Hint') }}
-                    </b-form-text>
-                  </b-form-group>
-                </b-col>
-                
-                <b-col md="6">
-                  <b-form-group :label="$t('Income_Account_Name')">
-                    <b-form-input
-                      v-model.trim="form.income_account_name"
-                      :placeholder="$t('Income_Account_Name')"
+      <!-- ================= Settings ================= -->
+      <div v-show="qbTab === 'settings'" class="pxcfg__panel">
+        <px-card :title="$t('Settings')" class="pxcfg__card">
+          <validation-observer ref="qb_settings">
+            <form @submit.prevent="save">
+              <div class="pxcfg__formgrid">
+                <px-field :label="$t('Client_ID')" :hint="$t('From_Intuit_Keys_Identifies_App') + ' ' + $t('Paste_value_exactly_as_in_app_keys')">
+                  <template #default="{ id }"><px-input :id="id" :value="form.client_id" @input="v => form.client_id = tv(v)" /></template>
+                </px-field>
+                <px-field :label="$t('Client_Secret')" :hint="$t('From_Intuit_Keys_Keep_private_rotate')">
+                  <template #default="{ id }"><px-input :id="id" type="password" :value="form.client_secret" @input="v => form.client_secret = tv(v)" /></template>
+                </px-field>
+                <px-field :label="$t('Redirect_URI')">
+                  <template #default="{ id }"><px-input :id="id" :value="form.redirect" @input="v => form.redirect = tv(v)" /></template>
+                  <template #hint>
+                    {{ $t('Must_match_Intuit_redirect_exactly') }}
+                    {{ $t('Typical') }}: <code>{{ callbackExample }}</code>. {{ $t('Add_this_exact_URL_on_Keys_page_too') }}
+                  </template>
+                </px-field>
+                <px-field :label="$t('Environment')">
+                  <template #default>
+                    <vs-px
+                      :options="envOptions.map(o => ({ label: o.text, value: o.value }))"
+                      :reduce="o => o.value"
+                      :value="form.env"
+                      :clearable="false"
+                      @input="v => form.env = v"
                     />
-                    <b-form-text class="text-muted">
-                      {{ $t('Income_Account_Name_Hint') }}
-                    </b-form-text>
-                  </b-form-group>
-                </b-col>
+                  </template>
+                </px-field>
+                <px-field :label="$t('Realm_ID')" :hint="$t('Realm_ID_Hint')">
+                  <template #default="{ id }"><px-input :id="id" :value="form.realm_id" @input="v => form.realm_id = tv(v)" /></template>
+                </px-field>
+                <px-field :label="$t('Income_Account_Name')" :hint="$t('Income_Account_Name_Hint')">
+                  <template #default="{ id }"><px-input :id="id" :placeholder="$t('Income_Account_Name')" :value="form.income_account_name" @input="v => form.income_account_name = tv(v)" /></template>
+                </px-field>
+              </div>
+            </form>
+          </validation-observer>
+          <template #footer>
+            <px-button variant="primary" icon="check" :disabled="busy" @click="save">{{ $t('Save') }}</px-button>
+          </template>
+        </px-card>
+      </div>
 
-              </b-row>
+      <!-- ================= Clients Sync ================= -->
+      <div v-show="qbTab === 'clients'" class="pxcfg__panel">
+        <px-alert v-if="!status.has_token" tone="warning" class="pxcfg__alert" :title="$t('Not_connected_to_QuickBooks')">
+          {{ $t('Please_connect_before_syncing_clients') }}
+          <template #actions>
+            <px-button size="sm" variant="primary" @click="connectBlank">{{ $t('Connect') }}</px-button>
+          </template>
+        </px-alert>
 
-              <b-button type="submit" variant="primary" :disabled="busy">{{ $t('Save') }}</b-button>
-            </b-form>
+        <div class="pxcfg__statgrid">
+          <px-stat :label="$t('Total_Clients')" :value="String(clientStats.total)" icon="users" bordered />
+          <px-stat :label="$t('Synced')" :value="String(clientStats.synced)" icon="check-circle" bordered />
+          <px-stat :label="$t('Not_Synced')" :value="String(clientStats.not_synced)" icon="alert-triangle" bordered />
+          <px-card class="pxcfg__synccard">
+            <px-button
+              variant="primary"
+              :loading="syncingClients"
+              :disabled="syncingClients || !status.has_token || clientStats.not_synced === 0"
+              @click="syncAllClients"
+            >{{ $t('Sync_All_Clients') }}</px-button>
+            <div class="pxcfg__muted">{{ $t('Bulk_sync_unsynced_clients') }}</div>
+          </px-card>
+        </div>
+
+        <div class="pxcfg__progress">
+          <div class="pxcfg__progress-head">
+            <small>{{ $t('Overall_progress') }}</small>
+            <small>{{ syncPercent }}%</small>
           </div>
-        </b-tab>
+          <div class="pxcfg__bar"><div class="pxcfg__bar-fill" :style="{ width: syncPercent + '%' }" /></div>
+        </div>
 
-        <!-- Clients Sync Tab -->
-        <b-tab :title="$t('Clients_Sync')">
-          <div class="row rounded p-3 mt-3 w-100" style="background:#0f172a10;border:1px solid #e5e7eb">
-
-            <!-- If not connected, show an alert with a connect button -->
-            <b-alert
-              v-if="!status.has_token"
-              show
-              variant="warning"
-              class="w-100 mb-3 d-flex align-items-center justify-content-between"
-            >
-              <div>
-                <strong>{{ $t('Not_connected_to_QuickBooks') }}</strong>
-                {{ $t('Please_connect_before_syncing_clients') }}
-              </div>
-              <b-button size="sm" variant="primary" @click="connectBlank">{{ $t('Connect') }}</b-button>
-            </b-alert>
-
-            <!-- Stats + progress -->
-            <b-row class="w-100">
-              <b-col md="3" class="mb-3">
-                <b-card class="h-100 shadow-sm border-0" style="background:linear-gradient(135deg,#eef2ff,#e0e7ff)">
-                  <div class="d-flex align-items-center">
-                    <div class="mr-3" style="font-size:26px">👥</div>
-                    <div>
-                      <div class="text-muted small">{{ $t('Total_Clients') }}</div>
-                      <div class="h4 mb-0">{{ clientStats.total }}</div>
-                    </div>
-                  </div>
-                </b-card>
-              </b-col>
-
-              <b-col md="3" class="mb-3">
-                <b-card class="h-100 shadow-sm border-0" style="background:linear-gradient(135deg,#dcfce7,#bbf7d0)">
-                  <div class="d-flex align-items-center">
-                    <div class="mr-3" style="font-size:26px">✅</div>
-                    <div>
-                      <div class="text-muted small">{{ $t('Synced') }}</div>
-                      <div class="h4 mb-0">{{ clientStats.synced }}</div>
-                    </div>
-                  </div>
-                </b-card>
-              </b-col>
-
-              <b-col md="3" class="mb-3">
-                <b-card class="h-100 shadow-sm border-0" style="background:linear-gradient(135deg,#fee2e2,#fecaca)">
-                  <div class="d-flex align-items-center">
-                    <div class="mr-3" style="font-size:26px">⚠️</div>
-                    <div>
-                      <div class="text-muted small">{{ $t('Not_Synced') }}</div>
-                      <div class="h4 mb-0">{{ clientStats.not_synced }}</div>
-                    </div>
-                  </div>
-                </b-card>
-              </b-col>
-
-              <b-col md="3" class="mb-3">
-                <b-card class="h-100 shadow-sm border-0 d-flex align-items-center justify-content-center">
-                  <div class="text-center">
-                    <b-button
-                      variant="primary"
-                      size="lg"
-                      :disabled="syncingClients || !status.has_token || clientStats.not_synced === 0"
-                      @click="syncAllClients"
-                    >
-                      <span v-if="!syncingClients">{{ $t('Sync_All_Clients') }}</span>
-                      <span v-else><i class="fa fa-spinner fa-spin"></i> {{ $t('Syncing') }}...</span>
-                    </b-button>
-                    <div class="small text-muted mt-2">{{ $t('Bulk_sync_unsynced_clients') }}</div>
-                  </div>
-                </b-card>
-              </b-col>
-            </b-row>
-
-            <!-- Progress -->
-            <div class="w-100 mb-3">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <small class="text-muted">{{ $t('Overall_progress') }}</small>
-                <small class="text-muted">{{ syncPercent }}%</small>
-              </div>
-              <b-progress :value="clientStats.synced" :max="clientStats.total" height="10px"></b-progress>
+        <px-card flush class="pxcfg__card">
+          <div class="pxcfg__cardhead">
+            <div class="pxcfg__search">
+              <px-input
+                :value="search"
+                :placeholder="$t('Search_unsynced_by_name_email')"
+                icon-lead="search"
+                @input="v => search = tv(v)"
+                @keyup.native.enter="loadUnsynced(1)"
+              />
+              <px-button variant="secondary" size="sm" @click="loadUnsynced(1)">{{ $t('Search') }}</px-button>
             </div>
-
-            <!-- Search + table -->
-            <div class="w-100">
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <b-input-group size="sm" class="w-50">
-                  <b-form-input
-                    v-model.trim="search"
-                    :placeholder="$t('Search_unsynced_by_name_email')"
-                    @keyup.enter="loadUnsynced(1)"
-                  />
-                  <b-input-group-append>
-                    <b-button size="sm" variant="outline-secondary" @click="loadUnsynced(1)">{{ $t('Search') }}</b-button>
-                  </b-input-group-append>
-                </b-input-group>
-
-                <div>
-                  <b-button size="sm" variant="outline-secondary" class="mr-2" @click="loadClientStats">{{ $t('Refresh_Stats') }}</b-button>
-                  <b-button size="sm" variant="outline-secondary" @click="loadUnsynced(page)">{{ $t('Refresh_List') }}</b-button>
-                </div>
-              </div>
-
-              <b-table
-                small
-                hover
-                :items="unsynced.items"
-                :fields="unsyncedFields"
-                :busy="unsyncedBusy"
-                primary-key="id"
-                show-empty
-                :empty-text="$t('All_clients_are_synced') + ' 🎉'"
-              >
-                <template #cell(select)="row">
-                  <b-form-checkbox v-model="selectedIds" :value="row.item.id" />
-                </template>
-
-                <template #cell(name)="row">
-                  <div class="font-weight-600">{{ row.item.name || '-' }}</div>
-                  <div class="text-muted small">{{ row.item.email || '-' }}</div>
-                </template>
-
-                 <template #cell(created_at)="row">
-                  <div>{{ fmtDate(row.item.created_at) }}</div>
-                  <div class="text-muted small">{{ fmtTime(row.item.created_at) }}</div>
-                </template>
-
-                <template #cell(actions)="row">
-                  <b-button size="sm" variant="success" :disabled="syncingRowId === row.item.id || !status.has_token"
-                            @click="syncOne(row.item)">
-                    <span v-if="syncingRowId !== row.item.id">{{ $t('Sync') }}</span>
-                    <span v-else><i class="fa fa-spinner fa-spin"></i></span>
-                  </b-button>
-                </template>
-              </b-table>
-
-              <div class="d-flex justify-content-between align-items-center mt-2">
-                <div>
-                  <b-button size="sm" variant="primary" class="mr-2"
-                            :disabled="selectedIds.length === 0 || syncingClients || !status.has_token"
-                            @click="syncSelected">
-                    {{ $t('Sync_Selected') }} ({{ selectedIds.length }})
-                  </b-button>
-                  <b-button size="sm" variant="outline-secondary" @click="selectedIds = []">{{ $t('Clear_Selection') }}</b-button>
-                </div>
-
-                <div>
-                  <b-button size="sm" :disabled="page<=1" @click="loadUnsynced(page-1)">{{ $t('Prev') }}</b-button>
-                  <span class="mx-2">{{ $t('Page') }} {{ page }} / {{ unsynced.last_page || 1 }}</span>
-                  <b-button size="sm" :disabled="page>=unsynced.last_page" @click="loadUnsynced(page+1)">{{ $t('Next') }}</b-button>
-                </div>
-              </div>
-
-              <!-- Last sync report -->
-              <b-alert v-if="syncReport" show :variant="(syncReport.failed_count||0)>0 ? 'warning' : 'success'" class="mt-3">
-                <div class="mb-1">
-                  {{ $t('Synced') }}: <strong>{{ syncReport.synced_count }}</strong>,
-                  {{ $t('Failed') }}: <strong>{{ syncReport.failed_count || 0 }}</strong>
-                </div>
-                <div v-if="(syncReport.failures||[]).length" class="small">
-                  <details>
-                    <summary>{{ $t('Show_failures') }}</summary>
-                    <ul class="mb-0 mt-2">
-                      <li v-for="f in syncReport.failures" :key="f.id">
-                        #{{ f.id }} — {{ f.name || '(' + $t('no_name') + ')' }} — <code>{{ f.error }}</code>
-                      </li>
-                    </ul>
-                  </details>
-                </div>
-              </b-alert>
-            </div>
-
-            <div class="mt-4 text-muted small">
-              <strong>{{ $t('notes') }}:</strong>
-              <ul class="mb-0">
-                <li>{{ $t('Only_clients_without_quickbooks_customer_id_are_candidates') }}</li>
-                <li>{{ $t('If_matching_email_exists_reuse_instead_of_duplicate') }}</li>
-              </ul>
+            <div class="pxcfg__rowbtns">
+              <px-button variant="ghost" size="sm" icon="repeat" @click="loadClientStats">{{ $t('Refresh_Stats') }}</px-button>
+              <px-button variant="ghost" size="sm" icon="repeat" @click="loadUnsynced(page)">{{ $t('Refresh_List') }}</px-button>
             </div>
           </div>
-        </b-tab>
 
+          <px-table
+            v-if="unsynced.items && unsynced.items.length"
+            :columns="unsyncedColumns"
+            :rows="unsynced.items"
+            row-key="id"
+            selectable
+            :selected="selectedIds"
+            has-row-actions
+            @update:selected="v => selectedIds = v"
+          >
+            <template #cell-name="{ row }">
+              <div class="pxcfg__strong">{{ row.name || '-' }}</div>
+              <div class="pxcfg__muted">{{ row.email || '-' }}</div>
+            </template>
+            <template #cell-created_at="{ row }">
+              <div>{{ fmtDate(row.created_at) }}</div>
+              <div class="pxcfg__muted">{{ fmtTime(row.created_at) }}</div>
+            </template>
+            <template #row-actions="{ row }">
+              <px-button
+                variant="ghost" size="sm"
+                :loading="syncingRowId === row.id"
+                :disabled="syncingRowId === row.id || !status.has_token"
+                @click="syncOne(row)"
+              >{{ $t('Sync') }}</px-button>
+            </template>
+          </px-table>
+          <px-empty-state v-else icon="check-circle" :title="$t('All_clients_are_synced') + ' 🎉'" />
 
-
-        <!-- Audit tab -->
-        <b-tab :title="$t('Audit')">
-          <div class="row border rounded p-3 mt-3" style="width:100%">
-            <div class="d-flex align-items-center mb-2">
-              <b-form-select v-model="level" :options="levelOptions" class="mr-2" @change="loadAudits(1)" />
-              <b-button variant="outline-secondary" size="sm" @click="loadAudits(page)">{{ $t('Refresh') }}</b-button>
+          <div class="pxcfg__cardfoot">
+            <div class="pxcfg__rowbtns">
+              <px-button
+                variant="primary" size="sm"
+                :disabled="selectedIds.length === 0 || syncingClients || !status.has_token"
+                @click="syncSelected"
+              >{{ $t('Sync_Selected') }} ({{ selectedIds.length }})</px-button>
+              <px-button variant="ghost" size="sm" @click="selectedIds = []">{{ $t('Clear_Selection') }}</px-button>
             </div>
-
-            <div class="table-responsive">
-              <table class="table table-sm table-striped">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>{{ $t('When') }}</th>
-                    <th>{{ $t('Operation') }}</th>
-                    <th>{{ $t('Level') }}</th>
-                    <th>{{ $t('Sale') }}</th>
-                    <th>{{ $t('Realm_ID') }}</th>
-                    <th>{{ $t('Env') }}</th>
-                    <th>{{ $t('Message') }}</th>
-                    <th>HTTP</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="a in audits.data" :key="a.id">
-                    <td>{{ a.id }}</td>
-                    <td>{{ fmtWhen(a.created_at) }}</td>
-                    <td>{{ a.operation }}</td>
-                    <td><span :class="badge(a.level)">{{ a.level }}</span></td>
-                    <td>{{ a.sale_id || '-' }}</td>
-                    <td>{{ a.realm_id || '-' }}</td>
-                    <td>{{ a.environment }}</td>
-                    <td class="text-truncate" style="max-width:300px">{{ a.message }}</td>
-                    <td>{{ a.http_code || '-' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div class="d-flex justify-content-between align-items-center">
-              <span>{{ $t('Total') }}: {{ audits.total }}</span>
-              <div>
-                <b-button size="sm" :disabled="!audits.prev_page_url" @click="loadAudits(page-1)">{{ $t('Prev') }}</b-button>
-                <span class="mx-2">{{ $t('Page') }} {{ page }} / {{ audits.last_page || 1 }}</span>
-                <b-button size="sm" :disabled="!audits.next_page_url" @click="loadAudits(page+1)">{{ $t('Next') }}</b-button>
-              </div>
+            <div class="pxcfg__pager">
+              <px-button variant="ghost" size="sm" icon-only icon="chevron-left" :disabled="page <= 1" @click="loadUnsynced(page - 1)" />
+              <span>{{ $t('Page') }} {{ page }} / {{ unsynced.last_page || 1 }}</span>
+              <px-button variant="ghost" size="sm" icon-only icon="chevron-right" :disabled="page >= unsynced.last_page" @click="loadUnsynced(page + 1)" />
             </div>
           </div>
-        </b-tab>
+        </px-card>
 
-      </b-tabs>
-    </b-col>
+        <px-alert
+          v-if="syncReport"
+          class="pxcfg__alert"
+          :tone="(syncReport.failed_count || 0) > 0 ? 'warning' : 'success'"
+        >
+          {{ $t('Synced') }}: <strong>{{ syncReport.synced_count }}</strong>,
+          {{ $t('Failed') }}: <strong>{{ syncReport.failed_count || 0 }}</strong>
+          <details v-if="(syncReport.failures || []).length" class="pxcfg__details">
+            <summary>{{ $t('Show_failures') }}</summary>
+            <ul>
+              <li v-for="f in syncReport.failures" :key="f.id">
+                #{{ f.id }} — {{ f.name || '(' + $t('no_name') + ')' }} — <code>{{ f.error }}</code>
+              </li>
+            </ul>
+          </details>
+        </px-alert>
+
+        <div class="pxcfg__cardnote">
+          <strong>{{ $t('notes') }}:</strong>
+          <ul>
+            <li>{{ $t('Only_clients_without_quickbooks_customer_id_are_candidates') }}</li>
+            <li>{{ $t('If_matching_email_exists_reuse_instead_of_duplicate') }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ================= Audit ================= -->
+      <div v-show="qbTab === 'audit'" class="pxcfg__panel">
+        <px-card flush class="pxcfg__card">
+          <div class="pxcfg__cardhead">
+            <vs-px
+              style="min-width: 180px"
+              :options="levelOptions.map(o => ({ label: o.text, value: o.value }))"
+              :reduce="o => o.value"
+              :value="level"
+              :clearable="false"
+              @input="v => { level = v || ''; loadAudits(1); }"
+            />
+            <px-button variant="ghost" size="sm" icon="repeat" @click="loadAudits(page)">{{ $t('Refresh') }}</px-button>
+          </div>
+
+          <div class="pxcfg__table">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>{{ $t('When') }}</th>
+                  <th>{{ $t('Operation') }}</th>
+                  <th>{{ $t('Level') }}</th>
+                  <th>{{ $t('Sale') }}</th>
+                  <th>{{ $t('Realm_ID') }}</th>
+                  <th>{{ $t('Env') }}</th>
+                  <th>{{ $t('Message') }}</th>
+                  <th>HTTP</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="a in audits.data" :key="a.id">
+                  <td>{{ a.id }}</td>
+                  <td>{{ fmtWhen(a.created_at) }}</td>
+                  <td>{{ a.operation }}</td>
+                  <td><px-badge :tone="levelTone(a.level)">{{ a.level }}</px-badge></td>
+                  <td>{{ a.sale_id || '-' }}</td>
+                  <td>{{ a.realm_id || '-' }}</td>
+                  <td>{{ a.environment }}</td>
+                  <td class="pxcfg__truncate">{{ a.message }}</td>
+                  <td>{{ a.http_code || '-' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pxcfg__cardfoot">
+            <span class="pxcfg__muted">{{ $t('Total') }}: {{ audits.total }}</span>
+            <div class="pxcfg__pager">
+              <px-button variant="ghost" size="sm" icon-only icon="chevron-left" :disabled="!audits.prev_page_url" @click="loadAudits(page - 1)" />
+              <span>{{ $t('Page') }} {{ page }} / {{ audits.last_page || 1 }}</span>
+              <px-button variant="ghost" size="sm" icon-only icon="chevron-right" :disabled="!audits.next_page_url" @click="loadAudits(page + 1)" />
+            </div>
+          </div>
+        </px-card>
+      </div>
+    </template>
   </div>
 </template>
 
 <script>
 import NProgress from 'nprogress';
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: 'QuickBooks Sync' },
+  components: { PxPageHeader, PxCard, PxButton, PxField, PxInput, PxBadge, PxAlert, PxStat, PxTable, PxEmptyState, VsPx },
   data() {
     return {
       // page state
       isLoading: true,
       busy: false,
+      qbTab: 'connection',
 
       // connection / settings / audits
       status: { env:'', redirect:'', callback:'', has_token:false, token_realm:null, updated_at:'', connect_url:'' },
@@ -383,14 +326,6 @@ export default {
       clientStats: { total: 0, synced: 0, not_synced: 0 },
       unsyncedBusy: false,
       unsynced: { items: [], last_page: 1, total: 0, current_page: 1 },
-      unsyncedFields: [
-        { key: 'select', label: '' },
-        { key: 'id', label: this.$t('ID'), sortable: true },
-        { key: 'name', label: this.$t('Client'), sortable: true },
-        { key: 'email', label: this.$t('Email'), sortable: true },
-        { key: 'created_at', label: this.$t('Added'), sortable: true },
-        { key: 'actions', label: this.$t('Actions') },
-      ],
       search: '',
       selectedIds: [],
       syncReport: null,
@@ -398,6 +333,13 @@ export default {
   },
 
   computed: {
+    unsyncedColumns() {
+      return [
+        { key: 'id', label: this.$t('ID'), sortable: true },
+        { key: 'name', label: this.$t('Client'), sortable: true },
+        { key: 'created_at', label: this.$t('Added'), sortable: true },
+      ];
+    },
     callbackExample() {
       // For the Settings tab hint — what to put in Intuit App Redirect URIs
       const origin = window.location.origin;
@@ -413,8 +355,14 @@ export default {
 
   methods: {
     // --------------------- helpers ---------------------
+    tv(v) { return typeof v === 'string' ? v.trim() : v; },
     toast(variant, msg, title) {
       this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+    },
+    levelTone(level) {
+      if (level === 'error') return 'danger';
+      if (level === 'warning') return 'warning';
+      return 'success';
     },
 
     fmtWhen(iso) {
@@ -441,14 +389,6 @@ export default {
         timeZone: 'Africa/Casablanca',
         hour: '2-digit', minute: '2-digit', second: '2-digit'
       }).format(new Date(iso));
-    },
-
-    badge(level) {
-      return {
-        'badge badge-danger': level === 'error',
-        'badge badge-warning': level === 'warning',
-        'badge badge-success': level === 'info',
-      };
     },
 
     // --------------------- cache clear ---------------------
@@ -624,3 +564,68 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-4); }
+.pxcfg__panel { padding-top: var(--pxn-space-2); }
+
+.pxcfg__tabbar {
+  display: flex; flex-wrap: wrap; gap: var(--pxn-space-1);
+  border-bottom: 1px solid var(--pxn-border);
+  margin-top: var(--pxn-space-5);
+}
+.pxcfg__tab {
+  appearance: none; background: transparent; border: 0;
+  border-bottom: 2px solid transparent;
+  padding: var(--pxn-space-3) var(--pxn-space-4);
+  font-size: var(--pxn-fs-sm); font-weight: 500; color: var(--pxn-text-muted);
+  cursor: pointer; transition: color .12s ease, border-color .12s ease;
+}
+.pxcfg__tab:hover { color: var(--pxn-text); }
+.pxcfg__tab.is-active { color: var(--pxn-primary); border-bottom-color: var(--pxn-primary); font-weight: 600; }
+
+.pxcfg__deflist { display: grid; gap: var(--pxn-space-2); }
+.pxcfg__defrow { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: var(--pxn-space-4); align-items: baseline; font-size: var(--pxn-fs-sm); }
+.pxcfg__defrow > span { color: var(--pxn-text-muted); }
+.pxcfg__defrow > b { font-weight: 500; word-break: break-word; }
+@media (max-width: 560px) { .pxcfg__defrow { grid-template-columns: minmax(0, 1fr); gap: var(--pxn-space-1); } }
+
+.pxcfg__formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 640px) { .pxcfg__formgrid { grid-template-columns: minmax(0, 1fr); } }
+
+.pxcfg__statgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--pxn-space-4); margin-top: var(--pxn-space-4); }
+@media (max-width: 900px) { .pxcfg__statgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .pxcfg__statgrid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__synccard { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--pxn-space-2); text-align: center; }
+
+.pxcfg__progress { margin-top: var(--pxn-space-5); }
+.pxcfg__progress-head { display: flex; justify-content: space-between; color: var(--pxn-text-muted); margin-bottom: var(--pxn-space-1); }
+.pxcfg__bar { height: 8px; border-radius: 9999px; background: var(--pxn-surface-2); overflow: hidden; }
+.pxcfg__bar-fill { height: 100%; background: var(--pxn-primary); transition: width .2s ease; }
+
+.pxcfg__cardhead { display: flex; flex-wrap: wrap; gap: var(--pxn-space-3); align-items: center; justify-content: space-between; padding: var(--pxn-space-4) var(--pxn-space-4) var(--pxn-space-3); }
+.pxcfg__search { display: flex; gap: var(--pxn-space-2); align-items: center; flex: 1 1 280px; }
+.pxcfg__cardfoot { display: flex; flex-wrap: wrap; gap: var(--pxn-space-3); align-items: center; justify-content: space-between; padding: var(--pxn-space-3) var(--pxn-space-4) var(--pxn-space-4); }
+.pxcfg__rowbtns { display: flex; gap: var(--pxn-space-2); flex-wrap: wrap; }
+.pxcfg__pager { display: flex; align-items: center; gap: var(--pxn-space-2); font-size: var(--pxn-fs-sm); color: var(--pxn-text-muted); }
+
+.pxcfg__strong { font-weight: 600; }
+.pxcfg__muted { color: var(--pxn-text-muted); font-size: var(--pxn-fs-sm); }
+
+.pxcfg__alert { margin-top: var(--pxn-space-4); }
+.pxcfg__details { margin-top: var(--pxn-space-2); font-size: var(--pxn-fs-sm); }
+.pxcfg__details ul { margin: var(--pxn-space-2) 0 0; padding-left: var(--pxn-space-5); }
+.pxcfg__cardnote { margin-top: var(--pxn-space-4); color: var(--pxn-text-muted); font-size: var(--pxn-fs-sm); }
+.pxcfg__cardnote ul { margin: var(--pxn-space-1) 0 0; padding-left: var(--pxn-space-5); }
+
+.pxcfg__table { overflow-x: auto; }
+.pxcfg__table table { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxcfg__table th, .pxcfg__table td { text-align: left; padding: var(--pxn-space-2) var(--pxn-space-3); border-bottom: 1px solid var(--pxn-border); white-space: nowrap; }
+.pxcfg__table th { position: sticky; top: 0; background: var(--pxn-surface); color: var(--pxn-text-muted); font-weight: 600; }
+.pxcfg__truncate { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>

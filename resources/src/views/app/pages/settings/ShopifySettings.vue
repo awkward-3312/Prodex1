@@ -1,112 +1,74 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Shopify_Settings')" :folder="$t('Settings')"/>
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('Shopify_Settings')"
+      subtitle="Synchronize products, inventory, orders and customers with Shopify"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('Shopify_Settings') }]"
+    >
+      <template #meta>
+        <px-badge :tone="connectionTone" :icon="connectionIcon">{{ connectionBadgeText }}</px-badge>
+      </template>
+      <template #actions>
+        <vs-px
+          v-if="stores.length"
+          style="min-width: 240px"
+          :options="storeOptions.map(o => ({ label: o.text, value: o.value }))"
+          :reduce="o => o.value"
+          :value="selectedStoreId"
+          :clearable="false"
+          @input="v => { selectedStoreId = v; onStoreChange(); }"
+        />
+      </template>
+    </px-page-header>
 
-    <div v-else>
-      <b-card no-body class="shopify-settings-card shadow-sm">
-        <div class="shopify-header px-4 pt-4 pb-3">
-          <div class="d-flex align-items-center justify-content-between flex-wrap">
-            <div class="d-flex align-items-center mb-2">
-              <div class="shopify-icon-wrapper mr-3">
-                <lucide-icon class="shopify-icon" name="store" />
-              </div>
-              <div>
-                <h4 class="mb-1 font-weight-bold text-white">{{ $t('Shopify_Settings') }}</h4>
-                <p class="mb-0 small text-white" style="opacity: 0.9;">Synchronize products, inventory, orders and customers with Shopify</p>
-              </div>
-            </div>
-            <div class="d-flex align-items-center mb-2">
-              <b-form-select
-                v-if="stores.length"
-                v-model="selectedStoreId"
-                :options="storeOptions"
-                class="store-selector mr-3"
-                @change="onStoreChange"
-              />
-              <b-badge :variant="connectionBadgeVariant" class="connection-badge px-3 py-2">
-                <lucide-icon :name="connectionIcon" class="mr-2" />
-                {{ connectionBadgeText }}
-              </b-badge>
-            </div>
+    <div v-if="loading" class="pxcfg__pad">
+      <px-skeleton variant="lines" :rows="6" />
+    </div>
+
+    <template v-else>
+      <div class="pxcfg__tabbar" role="tablist">
+        <button
+          v-for="(tab, i) in tabs"
+          :key="tab.key"
+          type="button"
+          class="pxcfg__tab"
+          :class="{ 'is-active': activeTab === i }"
+          :disabled="tab.needsStore && !currentStore"
+          @click="selectTab(i)"
+        >
+          <lucide-icon class="pxcfg__tab-icon" :name="tab.icon" />
+          <span>{{ tab.label }}</span>
+        </button>
+      </div>
+
+      <px-card flush class="pxcfg__card">
+        <div class="pxcfg__panel">
+          <div v-if="tabLoading" class="pxcfg__pad"><px-skeleton variant="lines" :rows="4" /></div>
+          <div v-show="!tabLoading">
+            <StoresTab v-if="activeTab === 0" :stores="stores" :warehouses="warehouses" @ready="onTabReady" @refreshed="reloadStores" @connection="onConnectionUpdate" />
+            <ProductsTab v-else-if="activeTab === 1 && currentStore" :store="currentStore" @ready="onTabReady" />
+            <InventoryTab v-else-if="activeTab === 2 && currentStore" :store="currentStore" @ready="onTabReady" />
+            <CustomersTab v-else-if="activeTab === 3 && currentStore" :store="currentStore" @ready="onTabReady" />
+            <OrdersTab v-else-if="activeTab === 4 && currentStore" :store="currentStore" @ready="onTabReady" />
+            <LogsTab v-else-if="activeTab === 5" :store="currentStore" @ready="onTabReady" />
+            <GuideTab v-else-if="activeTab === 6" @ready="onTabReady" />
           </div>
         </div>
-
-        <b-tabs v-model="activeTab" @input="onTabChange" content-class="shopify-tabs-content position-relative" class="shopify-tabs">
-          <div v-if="tabLoading" class="loading_page spinner spinner-primary mr-3"></div>
-          <b-tab lazy>
-            <template #title>
-              <lucide-icon class="mr-2" name="settings" />
-              {{ $t('Stores') }}
-            </template>
-            <div v-show="!tabLoading" class="px-4 py-3">
-              <StoresTab :stores="stores" :warehouses="warehouses" @ready="onTabReady" @refreshed="reloadStores" @connection="onConnectionUpdate" />
-            </div>
-          </b-tab>
-          <b-tab lazy :disabled="!currentStore">
-            <template #title>
-              <lucide-icon class="mr-2" name="barcode" />
-              {{ $t('Products') }}
-            </template>
-            <div v-show="!tabLoading" class="px-4 py-3">
-              <ProductsTab v-if="currentStore" :store="currentStore" @ready="onTabReady" />
-            </div>
-          </b-tab>
-          <b-tab lazy :disabled="!currentStore">
-            <template #title>
-              <lucide-icon class="mr-2" name="package" />
-              {{ $t('Inventory') }}
-            </template>
-            <div v-show="!tabLoading" class="px-4 py-3">
-              <InventoryTab v-if="currentStore" :store="currentStore" @ready="onTabReady" />
-            </div>
-          </b-tab>
-          <b-tab lazy :disabled="!currentStore">
-            <template #title>
-              <lucide-icon class="mr-2" name="user" />
-              {{ $t('Customers') }}
-            </template>
-            <div v-show="!tabLoading" class="px-4 py-3">
-              <CustomersTab v-if="currentStore" :store="currentStore" @ready="onTabReady" />
-            </div>
-          </b-tab>
-          <b-tab lazy :disabled="!currentStore">
-            <template #title>
-              <lucide-icon class="mr-2" name="shopping-bag" />
-              {{ $t('Orders') }}
-            </template>
-            <div v-show="!tabLoading" class="px-4 py-3">
-              <OrdersTab v-if="currentStore" :store="currentStore" @ready="onTabReady" />
-            </div>
-          </b-tab>
-          <b-tab lazy>
-            <template #title>
-              <lucide-icon class="mr-2" name="clipboard-list" />
-              {{ $t('View_Logs') }}
-            </template>
-            <div v-show="!tabLoading" class="px-4 py-3">
-              <LogsTab :store="currentStore" @ready="onTabReady" />
-            </div>
-          </b-tab>
-          <b-tab lazy>
-            <template #title>
-              <lucide-icon class="mr-2" name="help-circle" />
-              Guide
-            </template>
-            <div v-show="!tabLoading" class="px-4 py-3">
-              <GuideTab @ready="onTabReady" />
-            </div>
-          </b-tab>
-        </b-tabs>
-      </b-card>
-    </div>
+      </px-card>
+    </template>
   </div>
 </template>
 
 <script>
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
+
 export default {
   metaInfo: { title: 'Shopify Settings' },
   components: {
+    PxPageHeader, PxCard, PxBadge, VsPx,
     StoresTab: () => import(/* webpackChunkName: "shopify-stores-tab" */ './shopify/StoresTab.vue'),
     ProductsTab: () => import(/* webpackChunkName: "shopify-products-tab" */ './shopify/ProductsTab.vue'),
     InventoryTab: () => import(/* webpackChunkName: "shopify-inventory-tab" */ './shopify/InventoryTab.vue'),
@@ -127,16 +89,27 @@ export default {
     };
   },
   computed: {
+    tabs() {
+      return [
+        { key: 'stores', label: this.$t('Stores'), icon: 'settings', needsStore: false },
+        { key: 'products', label: this.$t('Products'), icon: 'barcode', needsStore: true },
+        { key: 'inventory', label: this.$t('Inventory'), icon: 'package', needsStore: true },
+        { key: 'customers', label: this.$t('Customers'), icon: 'user', needsStore: true },
+        { key: 'orders', label: this.$t('Orders'), icon: 'shopping-bag', needsStore: true },
+        { key: 'logs', label: this.$t('View_Logs'), icon: 'clipboard-list', needsStore: false },
+        { key: 'guide', label: 'Guide', icon: 'help-circle', needsStore: false },
+      ];
+    },
     storeOptions() {
       return this.stores.map(s => ({ value: s.id, text: s.name + ' (' + s.shop_domain + ')' }));
     },
     currentStore() {
       return this.stores.find(s => s.id === this.selectedStoreId) || null;
     },
-    connectionBadgeVariant() {
+    connectionTone() {
       if (this.connectionOk === true) return 'success';
       if (this.connectionOk === false) return 'danger';
-      return 'secondary';
+      return 'neutral';
     },
     connectionBadgeText() {
       if (this.connectionOk === true) return this.$t('Connected');
@@ -150,6 +123,12 @@ export default {
     },
   },
   methods: {
+    selectTab(i) {
+      if (this.activeTab === i) return;
+      if (this.tabs[i].needsStore && !this.currentStore) return;
+      this.activeTab = i;
+      this.onTabChange();
+    },
     onTabChange() { this.tabLoading = true; },
     onTabReady() { this.tabLoading = false; },
     onStoreChange() {
@@ -188,82 +167,29 @@ export default {
 };
 </script>
 
-<style scoped>
-.shopify-settings-card {
-  border-radius: 12px;
-  overflow: hidden;
-  border: none;
-}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-.shopify-header {
-  background: linear-gradient(135deg, #96bf48 0%, #5e8e3e 100%);
-  color: white !important;
-  border-radius: 0;
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6); }
+.pxcfg__card { margin-top: var(--pxn-space-4); }
+.pxcfg__tabbar {
+  display: flex; flex-wrap: wrap; gap: var(--pxn-space-1);
+  border-bottom: 1px solid var(--pxn-border);
+  margin-top: var(--pxn-space-5);
 }
-
-.shopify-header h4,
-.shopify-header p,
-.shopify-header .text-white {
-  color: white !important;
+.pxcfg__tab {
+  appearance: none; background: transparent; border: 0;
+  border-bottom: 2px solid transparent;
+  padding: var(--pxn-space-3) var(--pxn-space-4);
+  display: inline-flex; align-items: center; gap: var(--pxn-space-2);
+  font-size: var(--pxn-fs-sm); font-weight: 500; color: var(--pxn-text-muted);
+  cursor: pointer; transition: color .12s ease, border-color .12s ease;
 }
-
-.shopify-icon-wrapper {
-  width: 56px;
-  height: 56px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(10px);
-}
-
-.shopify-icon {
-  font-size: 28px;
-  color: white;
-}
-
-.store-selector {
-  min-width: 240px;
-  border-radius: 8px;
-}
-
-.connection-badge {
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.shopify-tabs ::v-deep .nav-tabs {
-  border-bottom: 2px solid #f0f0f0;
-  padding: 0 1rem;
-}
-
-.shopify-tabs ::v-deep .nav-tabs .nav-link {
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: #6c757d;
-  font-weight: 500;
-  padding: 1rem 1.5rem;
-  transition: all 0.3s ease;
-  margin-right: 0.5rem;
-}
-
-.shopify-tabs ::v-deep .nav-tabs .nav-link:hover {
-  color: #5e8e3e;
-  background: rgba(94, 142, 62, 0.05);
-  border-bottom-color: rgba(94, 142, 62, 0.3);
-}
-
-.shopify-tabs ::v-deep .nav-tabs .nav-link.active {
-  color: #5e8e3e;
-  background: transparent;
-  border-bottom-color: #5e8e3e;
-  font-weight: 600;
-}
-
-.shopify-tabs-content {
-  min-height: 400px;
-}
+.pxcfg__tab:hover:not(:disabled) { color: var(--pxn-text); }
+.pxcfg__tab:disabled { opacity: .45; cursor: not-allowed; }
+.pxcfg__tab.is-active { color: var(--pxn-primary); border-bottom-color: var(--pxn-primary); font-weight: 600; }
+.pxcfg__tab-icon { width: 15px; height: 15px; }
+.pxcfg__panel { padding: var(--pxn-space-5); min-height: 380px; }
 </style>

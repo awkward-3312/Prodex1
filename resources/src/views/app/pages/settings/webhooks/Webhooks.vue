@@ -1,218 +1,147 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Webhooks')" :folder="$t('Settings')" />
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('Webhooks')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('Webhooks') }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" size="sm" icon="file-text" @click="$router.push('/app/settings/webhooks/delivery_logs')">{{ $t('Delivery_Logs') || 'Delivery Logs' }}</px-button>
+        <px-button variant="ghost" size="sm" icon="file-text" @click="$router.push('/app/settings/webhooks/incoming_logs')">{{ $t('Incoming_Logs') || 'Incoming Logs' }}</px-button>
+        <px-button v-if="canAdd" variant="primary" size="sm" icon="plus" @click="New_Webhook()">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <px-toolbar :search="search" :search-placeholder="$t('Search_this_table')" @update:search="onSearchInput" />
 
-    <b-card class="wrapper" v-if="!isLoading">
-      <div class="mb-3 d-flex flex-wrap" style="gap: 8px;">
-        <router-link
-          class="btn btn-outline-primary btn-rounded btn-sm"
-          to="/app/settings/webhooks/delivery_logs"
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="table" :rows="8" :columns="4" />
+    </div>
+
+    <template v-else>
+      <div class="pxcfg__tablewrap">
+        <px-table
+          v-if="webhooks.length"
+          :columns="columns"
+          :rows="webhooks"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
         >
-          <lucide-icon name="file-text" />
-          {{ $t("Delivery_Logs") || "Delivery Logs" }}
-        </router-link>
-        <router-link
-          class="btn btn-outline-secondary btn-rounded btn-sm"
-          to="/app/settings/webhooks/incoming_logs"
-        >
-          <lucide-icon name="file-text" />
-          {{ $t("Incoming_Logs") || "Incoming Logs" }}
-        </router-link>
+          <template #cell-events="{ row }">
+            <px-badge v-for="e in (row.events || []).slice(0, 3)" :key="e" tone="info" class="pxcfg__mr">{{ e }}</px-badge>
+            <span v-if="(row.events || []).length > 3">+{{ row.events.length - 3 }}</span>
+          </template>
+          <template #cell-is_active="{ row }">
+            <px-badge :tone="row.is_active ? 'success' : 'neutral'">{{ row.is_active ? ($t('Active') || 'Active') : ($t('Inactive') || 'Inactive') }}</px-badge>
+          </template>
+          <template #row-actions="{ row }">
+            <div class="pxcfg__rowbtns">
+              <px-button v-if="canEdit" variant="ghost" size="sm" icon-only icon="send" aria-label="Send Test" @click="Test_Webhook(row.id)" />
+              <px-button v-if="canEdit" variant="ghost" size="sm" icon-only icon="power" :aria-label="row.is_active ? 'Disable' : 'Enable'" @click="Toggle_Webhook(row)" />
+              <px-button v-if="canEdit" variant="ghost" size="sm" icon-only icon="pencil" aria-label="Edit" @click="Edit_Webhook(row)" />
+              <px-button v-if="canDelete" class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Delete" @click="Remove_Webhook(row.id)" />
+            </div>
+          </template>
+        </px-table>
+        <px-empty-state v-else icon="webhook" title="Sin webhooks" description="Agrega un webhook para verlo en esta lista." />
       </div>
 
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="webhooks"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-          enabled: true,
-          placeholder: $t('Search_this_table'),
-        }"
-        :pagination-options="{
-          enabled: true,
-          mode: 'records',
-          nextLabel: 'next',
-          prevLabel: 'prev',
-        }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button
-            v-if="canAdd"
-            @click="New_Webhook()"
-            class="btn-rounded"
-            variant="btn btn-primary btn-icon m-1"
-          >
-            <lucide-icon name="plus" /> {{ $t("Add") }}
-          </b-button>
-        </div>
+      <px-pagination
+        v-if="webhooks.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'is_active'">
-            <b-badge v-if="props.row.is_active" variant="success">{{ $t("Active") || "Active" }}</b-badge>
-            <b-badge v-else variant="secondary">{{ $t("Inactive") || "Inactive" }}</b-badge>
-          </span>
-
-          <span v-else-if="props.column.field == 'events'">
-            <b-badge
-              v-for="e in (props.row.events || []).slice(0, 3)"
-              :key="e"
-              variant="info"
-              class="mr-1"
-              >{{ e }}</b-badge
-            >
-            <span v-if="(props.row.events || []).length > 3">
-              +{{ props.row.events.length - 3 }}
-            </span>
-          </span>
-
-          <span v-else-if="props.column.field == 'actions'">
-            <a
-              v-if="canEdit"
-              @click="Test_Webhook(props.row.id)"
-              title="Send Test"
-              v-b-tooltip.hover
-            >
-              <lucide-icon class="text-25 text-info" name="send" />
-            </a>
-            <a
-              v-if="canEdit"
-              @click="Toggle_Webhook(props.row)"
-              :title="props.row.is_active ? 'Disable' : 'Enable'"
-              v-b-tooltip.hover
-            >
-              <lucide-icon
-                name="power"
-                :class="props.row.is_active ? 'text-warning' : 'text-success'"
-              />
-            </a>
-            <a v-if="canEdit" @click="Edit_Webhook(props.row)" title="Edit" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a
-              v-if="canDelete"
-              title="Delete"
-              v-b-tooltip.hover
-              @click="Remove_Webhook(props.row.id)"
-            >
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
-
-    <validation-observer ref="ref_create_webhook">
-      <b-modal hide-footer size="lg" id="Webhook_Modal" :title="editmode ? $t('Edit') : $t('Add')">
-        <b-form @submit.prevent="Submit_webhook">
-          <b-row>
-            <b-col md="6">
-              <validation-provider name="Name" :rules="{ required: true }" v-slot="v">
-                <b-form-group :label="$t('Name') + ' *'">
-                  <b-form-input
-                    v-model="webhook.name"
-                    :state="getValidationState(v)"
-                  ></b-form-input>
-                  <b-form-invalid-feedback>{{ v.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+    <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="lg">
+      <validation-observer ref="ref_create_webhook">
+        <form @submit.prevent="Submit_webhook">
+          <div class="pxcfg__formgrid">
+            <div class="pxcfg__grid">
+              <validation-provider ref="nameProvider" name="Name" :rules="{ required: true }" v-slot="v">
+                <px-field :label="$t('Name') + ' *'" :error="v.errors[0]">
+                  <template #default="{ id, invalid }"><px-input :id="id" v-model="webhook.name" :invalid="invalid" @input="v.validate" /></template>
+                </px-field>
               </validation-provider>
-            </b-col>
+              <px-field :label="$t('Status')">
+                <template #default>
+                  <px-check type="switch" :modelValue="!!webhook.is_active" @change="v => webhook.is_active = v">
+                    {{ webhook.is_active ? ($t('Active') || 'Active') : ($t('Inactive') || 'Inactive') }}
+                  </px-check>
+                </template>
+              </px-field>
+            </div>
 
-            <b-col md="6">
-              <b-form-group :label="$t('Status')">
-                <b-form-checkbox v-model="webhook.is_active" switch>
-                  {{ webhook.is_active ? $t("Active") || "Active" : $t("Inactive") || "Inactive" }}
-                </b-form-checkbox>
-              </b-form-group>
-            </b-col>
+            <validation-provider ref="urlProvider" name="URL" :rules="{ required: true, url: true }" v-slot="v">
+              <px-field :label="$t('URL') + ' *'" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="webhook.url" placeholder="https://example.com/webhook" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
 
-            <b-col md="12">
-              <validation-provider name="URL" :rules="{ required: true, url: true }" v-slot="v">
-                <b-form-group :label="$t('URL') + ' *'">
-                  <b-form-input
-                    v-model="webhook.url"
-                    :state="getValidationState(v)"
-                    placeholder="https://example.com/webhook"
-                  ></b-form-input>
-                  <b-form-invalid-feedback>{{ v.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <b-col md="12">
-              <b-form-group :label="$t('Events') + ' *'">
-                <div class="mb-2">
-                  <b-form-checkbox v-model="subscribeAll">
-                    {{ $t("Subscribe_to_all_events") || "Subscribe to all events (*)" }}
-                  </b-form-checkbox>
+            <px-field :label="$t('Events') + ' *'">
+              <template #default>
+                <px-check :modelValue="!!subscribeAll" @change="v => subscribeAll = v">{{ $t('Subscribe_to_all_events') || 'Subscribe to all events (*)' }}</px-check>
+                <div v-if="!subscribeAll" class="pxcfg__eventsgrid">
+                  <label v-for="e in availableEvents" :key="eventValue(e)" class="pxcfg__eventitem">
+                    <input type="checkbox" :value="eventValue(e)" :checked="(webhook.events || []).includes(eventValue(e))" @change="toggleEvent(eventValue(e), $event.target.checked)" />
+                    <span>{{ eventLabel(e) }}</span>
+                  </label>
                 </div>
-                <b-form-checkbox-group
-                  v-if="!subscribeAll"
-                  v-model="webhook.events"
-                  :options="availableEvents"
-                  stacked
-                  class="webhook-events-grid"
-                ></b-form-checkbox-group>
-              </b-form-group>
-            </b-col>
+              </template>
+            </px-field>
 
-            <b-col md="6">
-              <b-form-group :label="$t('Timeout_seconds') || 'Timeout (seconds)'">
-                <b-form-input
-                  type="number"
-                  min="1"
-                  max="60"
-                  v-model.number="webhook.timeout_seconds"
-                ></b-form-input>
-              </b-form-group>
-            </b-col>
-
-            <b-col md="6" v-if="editmode">
-              <b-form-group :label="$t('Secret') || 'Secret'">
-                <b-input-group>
-                  <b-form-input readonly :value="webhook.secret"></b-form-input>
-                  <b-input-group-append>
-                    <b-button variant="warning" @click="Regenerate_Secret">
-                      {{ $t("Regenerate") || "Regenerate" }}
-                    </b-button>
-                  </b-input-group-append>
-                </b-input-group>
-                <small class="text-muted">
-                  {{ $t("Use_this_secret_to_verify_HMAC_SHA256_signatures_sent_in_X-Webhook-Signature") || "Use this secret to verify HMAC-SHA256 signatures (X-Webhook-Signature)." }}
-                </small>
-              </b-form-group>
-            </b-col>
-
-            <b-col md="12" class="mt-3">
-              <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t("submit") }}
-              </b-button>
-              <div v-once class="typo__p" v-if="SubmitProcessing">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
-            </b-col>
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
+            <div class="pxcfg__grid">
+              <px-field :label="$t('Timeout_seconds') || 'Timeout (seconds)'">
+                <template #default="{ id }"><px-input :id="id" type="number" min="1" max="60" v-model.number="webhook.timeout_seconds" /></template>
+              </px-field>
+              <px-field v-if="editmode" :label="$t('Secret') || 'Secret'"
+                :hint="$t('Use_this_secret_to_verify_HMAC_SHA256_signatures_sent_in_X-Webhook-Signature') || 'Use this secret to verify HMAC-SHA256 signatures (X-Webhook-Signature).'">
+                <template #default="{ id }">
+                  <div class="pxcfg__inline">
+                    <px-input :id="id" :value="webhook.secret" readonly />
+                    <px-button variant="secondary" size="sm" @click="Regenerate_Secret">{{ $t('Regenerate') || 'Regenerate' }}</px-button>
+                  </div>
+                </template>
+              </px-field>
+            </div>
+          </div>
+        </form>
+      </validation-observer>
+      <template #footer="{ close }">
+        <px-button variant="ghost" @click="close">{{ $t('Cancel') }}</px-button>
+        <px-button variant="primary" icon="check" :loading="SubmitProcessing" :disabled="SubmitProcessing" @click="Submit_webhook">{{ $t('submit') }}</px-button>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
   metaInfo: { title: "Webhooks" },
+  components: { PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxModal, PxField, PxInput, PxCheck, PxBadge, PxEmptyState },
   data() {
     return {
+      _searchTimer: null,
+      modalOpen: false,
       isLoading: true,
       SubmitProcessing: false,
       serverParams: {
@@ -253,11 +182,10 @@ export default {
     },
     columns() {
       return [
-        { label: this.$t("Name"), field: "name", tdClass: "text-left", thClass: "text-left" },
-        { label: "URL", field: "url", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Events") || "Events", field: "events", sortable: false, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Status"), field: "is_active", tdClass: "text-center", thClass: "text-center" },
-        { label: this.$t("Action"), field: "actions", sortable: false, tdClass: "text-left", thClass: "text-left" },
+        { key: "name", label: this.$t("Name"), strong: true },
+        { key: "url", label: "URL" },
+        { key: "events", label: this.$t("Events") || "Events", sortable: false },
+        { key: "is_active", label: this.$t("Status"), align: "center" },
       ];
     },
   },
@@ -273,28 +201,27 @@ export default {
         secret: "",
       };
     },
+    eventValue(e) { return (e && typeof e === "object") ? (e.value != null ? e.value : e.text) : e; },
+    eventLabel(e) { return (e && typeof e === "object") ? (e.text != null ? e.text : e.value) : e; },
+    toggleEvent(value, checked) {
+      const list = Array.isArray(this.webhook.events) ? this.webhook.events.slice() : [];
+      const i = list.indexOf(value);
+      if (checked && i === -1) list.push(value);
+      else if (!checked && i > -1) list.splice(i, 1);
+      this.webhook.events = list;
+    },
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Webhooks(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Webhooks(1); }, 350);
     },
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Webhooks(1);
-      }
-    },
-    onSortChange(params) {
-      this.updateParams({ sort: { type: params[0].type, field: params[0].field } });
-      this.Get_Webhooks(this.serverParams.page);
-    },
-    onSearch(value) {
-      this.search = value.searchTerm;
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Webhooks(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Webhooks(1); } },
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { type: dir, field: key } });
       this.Get_Webhooks(this.serverParams.page);
     },
     getValidationState({ dirty, validated, valid = null }) {
@@ -303,18 +230,26 @@ export default {
     makeToast(variant, msg, title) {
       this.$root.$bvToast.toast(msg, { title, variant, solid: true });
     },
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.nameProvider && this.$refs.nameProvider.syncValue) this.$refs.nameProvider.syncValue(this.webhook.name);
+        if (this.$refs.urlProvider && this.$refs.urlProvider.syncValue) this.$refs.urlProvider.syncValue(this.webhook.url);
+      });
+    },
     New_Webhook() {
       this.webhook = this.emptyWebhook();
       this.subscribeAll = false;
       this.editmode = false;
-      this.$bvModal.show("Webhook_Modal");
+      this.modalOpen = true;
+      this.syncValidators();
     },
     Edit_Webhook(row) {
       const events = Array.isArray(row.events) ? [...row.events] : [];
       this.webhook = Object.assign(this.emptyWebhook(), row, { events });
       this.subscribeAll = events.length === 1 && events[0] === "*";
       this.editmode = true;
-      this.$bvModal.show("Webhook_Modal");
+      this.modalOpen = true;
+      this.syncValidators();
     },
     Submit_webhook() {
       this.$refs.ref_create_webhook.validate().then((success) => {
@@ -337,7 +272,7 @@ export default {
         })
         .then(() => {
           this.SubmitProcessing = false;
-          this.$bvModal.hide("Webhook_Modal");
+          this.modalOpen = false;
           this.makeToast("success", this.$t("Created_in_successfully") || "Created", this.$t("Success"));
           this.Get_Webhooks(this.serverParams.page);
         })
@@ -362,7 +297,7 @@ export default {
         })
         .then(() => {
           this.SubmitProcessing = false;
-          this.$bvModal.hide("Webhook_Modal");
+          this.modalOpen = false;
           this.makeToast("success", this.$t("Updated_in_successfully") || "Updated", this.$t("Success"));
           this.Get_Webhooks(this.serverParams.page);
         })
@@ -465,16 +400,22 @@ export default {
 };
 </script>
 
-<style scoped>
-.webhook-events-grid {
-  max-height: 240px;
-  overflow-y: auto;
-  padding: 8px 12px;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  background: #fafbfc;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 16px;
-}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__tablewrap { margin-top: var(--pxn-space-5); }
+.pxcfg__mr { margin-right: var(--pxn-space-1); }
+.pxcfg__rowbtns { display: flex; gap: var(--pxn-space-1); justify-content: flex-end; }
+.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__formgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--pxn-space-4); }
+.pxcfg__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 560px) { .pxcfg__grid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__inline { display: flex; gap: var(--pxn-space-2); align-items: center; }
+.pxcfg__eventsgrid { max-height: 240px; overflow-y: auto; padding: var(--pxn-space-3) var(--pxn-space-4); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-2) var(--pxn-space-5); margin-top: var(--pxn-space-3); }
+@media (max-width: 560px) { .pxcfg__eventsgrid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__eventitem { display: flex; align-items: center; gap: var(--pxn-space-3); font-size: var(--pxn-fs-sm); cursor: pointer; margin: 0; }
+.pxcfg__eventitem input { accent-color: var(--pxn-primary); }
 </style>
