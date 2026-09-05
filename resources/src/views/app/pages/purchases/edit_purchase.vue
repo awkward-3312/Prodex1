@@ -1,866 +1,429 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('EditPurchase')" :folder="$t('ListPurchases')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxpuf">
+    <px-page-header
+      :title="$t('EditPurchase')"
+      :breadcrumbs="[{ label: $t('Purchases') }, { label: $t('ListPurchases') }, { label: $t('EditPurchase') }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" icon="arrow-left" @click="$router.push({ name: 'index_purchases' })">{{ $t('Cancel') }}</px-button>
+        <px-button
+          variant="primary" icon="check"
+          :loading="SubmitProcessing"
+          :disabled="SubmitProcessing || hasBatchValidationErrors"
+          :title="hasBatchValidationErrors ? $t('Batch_Qty_Mismatch') : ''"
+          @click="Submit_Purchase"
+        >{{ $t('submit') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <validation-observer ref="edit_purchase" v-if="!isLoading">
-      <b-form @submit.prevent="Submit_Purchase">
-        <b-row>
-          <b-col lg="12" md="12" sm="12">
-            <b-card>
-              <b-row>
+    <div v-if="isLoading" class="pxpuf__pad">
+      <px-skeleton variant="lines" :rows="12" />
+    </div>
 
-                <b-modal hide-footer id="open_scan" size="md" title="Barcode Scanner">
-                  <qrcode-scanner
-                    :qrbox="250" 
-                    :fps="10" 
-                    style="width: 100%; height: calc(100vh - 56px);"
-                    @result="onScan"
-                  />
-                </b-modal>
+    <validation-observer v-else ref="edit_purchase" tag="div">
+      <px-card class="pxpuf__card">
+        <!-- Header fields -->
+        <div class="pxpuf__grid3">
+          <validation-provider ref="dateProvider" name="date" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('date')" required :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" type="date" v-model="purchase.date" @input="v.validate" /></template>
+            </px-field>
+          </validation-provider>
 
+          <validation-provider ref="supplierProvider" name="Supplier" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Supplier')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="purchase.supplier_id" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Supplier')" @input="v.validate"
+                  :options="suppliers.map(s => ({ label: s.name, value: s.id }))" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-                  <!-- date  -->
-                <b-col lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider
-                    name="date"
-                    :rules="{ required: true}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('date') + ' ' + '*'">
-                      <b-form-input
-                        :state="getValidationState(validationContext)"
-                        aria-describedby="date-feedback"
-                        type="date"
-                        v-model="purchase.date"
-                      ></b-form-input>
-                      <b-form-invalid-feedback
-                        id="OrderTax-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
-                <!-- Supplier -->
-                <b-col lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider name="Supplier" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Supplier') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="purchase.supplier_id"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Supplier')"
-                        :options="suppliers.map(suppliers => ({label: suppliers.name, value: suppliers.id}))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+          <validation-provider ref="warehouseProvider" name="warehouse" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('warehouse')" required :error="v.errors[0]"
+              :hint="details.length > 0 ? ($t('Warehouse_locked_has_lines') || 'No se puede cambiar el almacén con productos en la lista.') : ''">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="purchase.warehouse_id" :reduce="o => o.value"
+                  :disabled="details.length > 0" :placeholder="$t('Choose_Warehouse')"
+                  @input="val => { Selected_Warehouse(val); v.validate(val); }"
+                  :options="warehouses.map(w => ({ label: w.name, value: w.id }))" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-                <!-- warehouse -->
-                <b-col lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider name="warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        :disabled="details.length > 0"
-                        @input="Selected_Warehouse"
-                        v-model="purchase.warehouse_id"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Warehouse')"
-                        :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+          <validation-provider v-if="location_meta.requires" ref="locProvider" name="inventory_location" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Inventory_Location')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="purchase.inventory_location_id" :reduce="o => o.value"
+                  :disabled="details.length > 0 || !purchase.warehouse_id" :placeholder="$t('Choose_Inventory_Location')"
+                  @input="v.validate"
+                  :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))" />
+              </template>
+            </px-field>
+          </validation-provider>
+        </div>
 
-                <!-- inventory location (MS2 · almacenes location_primary / compras location-native) -->
-                <b-col v-if="location_meta.requires" lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider name="inventory_location" :rules="{ required: true }">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        :disabled="details.length > 0"
-                        v-model="purchase.inventory_location_id"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Inventory_Location')"
-                        :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+        <px-alert v-if="location_meta.blocked" tone="danger" class="pxpuf__gap">
+          {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado. No se puede registrar la compra hasta resolverlo.' }}
+        </px-alert>
 
-                <b-col v-if="location_meta.blocked" cols="12" class="mb-3">
-                  <b-alert show variant="danger" class="mb-0">
-                    {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado.' }}
-                  </b-alert>
-                </b-col>
+        <!-- Product search -->
+        <div class="pxpuf__search pxpuf__gap">
+          <h5 class="pxpuf__lineshead">{{ $t('ProductName') }}</h5>
+          <div id="autocomplete" class="pxpuf-ac">
+            <button type="button" class="pxpuf-ac__scan" :title="$t('Scan')" @click="showModal">
+              <lucide-icon name="scan-line" />
+            </button>
+            <input
+              :placeholder="$t('Scan_Search_Product_by_Code_Name')"
+              @input="e => search_input = e.target.value"
+              @keyup="search(search_input)"
+              @focus="handleFocus"
+              @blur="handleBlur"
+              ref="product_autocomplete"
+              class="pxpuf-ac__input" />
+            <ul class="pxpuf-ac__list" v-show="focused && product_filter.length">
+              <li class="pxpuf-ac__item" v-for="product_fil in product_filter" :key="product_fil.id" @mousedown="SearchProduct(product_fil)">
+                {{ getResultValue(product_fil) }}
+              </li>
+            </ul>
+          </div>
+        </div>
 
-                <!-- Product -->
-                <b-col md="12" class="mb-5">
-                  <h6>{{$t('ProductName')}}</h6>
-                 
-                  <div id="autocomplete" class="autocomplete">
-                    <div class="input-with-icon">
-                      <img src="/assets_setup/scan.png" alt="Scan" class="scan-icon" @click="showModal">
-                    <input 
-                     :placeholder="$t('Scan_Search_Product_by_Code_Name')"
-                      @input='e => search_input = e.target.value' 
-                      @keyup="search(search_input)"
-                      @focus="handleFocus"
-                      @blur="handleBlur"
-                      ref="product_autocomplete"
-                      class="autocomplete-input" />
-                    </div>
-                    <ul class="autocomplete-result-list" v-show="focused">
-                      <li class="autocomplete-result" v-for="product_fil in product_filter" @mousedown="SearchProduct(product_fil)">{{getResultValue(product_fil)}}</li>
-                    </ul>
+        <!-- Order products -->
+        <div class="pxpuf__lines pxpuf__gap">
+          <h5 class="pxpuf__lineshead">{{ $t('order_products') }} *</h5>
+          <div class="pxpuf-tbl__wrap pxn-scroll">
+            <table class="pxpuf-tbl">
+              <thead>
+                <tr>
+                  <th style="width:44px">#</th>
+                  <th>{{ $t('ProductName') }}</th>
+                  <th class="is-right">{{ $t('Net_Unit_Cost') }}</th>
+                  <th class="is-right">{{ $t('Current_stock') }}</th>
+                  <th class="is-center">{{ $t('Qty') }}</th>
+                  <th class="is-right">{{ $t('Discount') }}</th>
+                  <th class="is-right">{{ $t('Tax') }}</th>
+                  <th class="is-right">{{ $t('SubTotal') }}</th>
+                  <th class="is-center" style="width:72px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="details.length <= 0"><td colspan="9" class="pxpuf__empty">{{ $t('NodataAvailable') }}</td></tr>
+                <template v-for="detail in details">
+                  <tr :key="'detail-' + detail.detail_id" :class="{ 'pxpuf__rowdead': detail.del === 1 || detail.no_unit === 0 }">
+                    <td class="pxn-num">{{ detail.detail_id }}</td>
+                    <td>
+                      <span class="pxn-mono">{{ detail.code }}</span><br />
+                      <px-badge tone="success">{{ detail.name }}</px-badge>
+                      <div v-if="detail.warehouse_location" class="pxpuf__sub">{{ $t('Warehouse_Locations') }}: <strong>{{ detail.warehouse_location }}</strong></div>
+                      <div v-if="detail.is_batch_tracked" class="pxpuf__badgeline">
+                        <px-badge tone="info" icon="flask-conical">{{ $t('Track_Batches_Expiry') }}</px-badge>
+                      </div>
+                    </td>
+                    <td class="is-right pxn-num">{{ currentUser.currency }} {{ formatNumber(detail.Net_cost, priceDecimals) }}</td>
+                    <td class="is-right"><px-badge tone="warning">{{ detail.stock }} {{ detail.unitPurchase }}</px-badge></td>
+                    <td class="is-center">
+                      <span class="pxpuf__stepper">
+                        <button type="button" class="pxpuf__step" v-show="detail.no_unit !== 0" @click="decrement(detail, detail.detail_id)">−</button>
+                        <input class="pxpuf__stepinput" @keyup="Verified_Qty(detail, detail.detail_id)" :min="0.00" v-model.number="detail.quantity" :disabled="detail.del === 1 || detail.no_unit === 0" />
+                        <button type="button" class="pxpuf__step" v-show="detail.no_unit !== 0" @click="increment(detail, detail.detail_id)">+</button>
+                      </span>
+                    </td>
+                    <td class="is-right pxn-num">{{ currentUser.currency }} {{ formatNumber(detail.DiscountNet * detail.quantity, priceDecimals) }}</td>
+                    <td class="is-right pxn-num">{{ currentUser.currency }} {{ formatNumber(detail.taxe * detail.quantity, priceDecimals) }}</td>
+                    <td class="is-right pxn-num">{{ currentUser.currency }} {{ detail.subtotal.toFixed(priceDecimals) }}</td>
+                    <td class="is-center pxpuf__rowactions" v-show="detail.no_unit !== 0">
+                      <lucide-icon class="pxpuf__ico is-edit" name="pencil"
+                        v-if="currentUserPermissions && currentUserPermissions.includes('edit_product_purchase')"
+                        @click="Modal_Updat_Detail(detail)" />
+                      <lucide-icon class="pxpuf__ico is-del" name="x" @click="delete_Product_Detail(detail.detail_id)" />
+                    </td>
+                  </tr>
+
+                  <!-- Batch: deferred until received -->
+                  <tr v-if="detail.is_batch_tracked && detail.no_unit !== 0 && detail.del !== 1 && purchase.statut !== 'received'" :key="'batches-defer-' + detail.detail_id" class="pxpuf__batchrow">
+                    <td colspan="9">
+                      <div class="pxpuf__batchdefer">
+                        <lucide-icon name="package" :size="14" />
+                        <span>{{ $t('Batches_Assigned_On_Receipt') || 'Los lotes se asignarán cuando la compra se marque como recibida.' }}</span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Batch entry -->
+                  <tr v-if="detail.is_batch_tracked && detail.no_unit !== 0 && detail.del !== 1 && purchase.statut === 'received'" :key="'batches-' + detail.detail_id" class="pxpuf__batchrow">
+                    <td colspan="9">
+                      <div class="pxpuf__batchbox">
+                        <div class="pxpuf__batchhead">
+                          <div class="pxpuf__batchtitle">
+                            {{ $t('Batches') }}
+                            <span class="pxpuf__batchsub">
+                              {{ (detail.batches || []).length }} {{ $t('items') || 'items' }}
+                              <template v-if="(detail.batches || []).length">
+                                · {{ $t('Total') }}: <strong>{{ formatNumber(batchTotalQty(detail), 2) }}</strong> / {{ formatNumber(detail.quantity || 0, 2) }}
+                              </template>
+                            </span>
+                          </div>
+                          <px-button size="sm" variant="secondary" icon="plus" @click="add_batch(detail)">{{ $t('Add') }}</px-button>
+                        </div>
+
+                        <table v-if="(detail.batches || []).length" class="pxpuf-batchtbl">
+                          <thead>
+                            <tr>
+                              <th>{{ $t('Batch_No') }}</th>
+                              <th>{{ $t('Expiry_Date') }}</th>
+                              <th>{{ $t('Mfg_Date') }}</th>
+                              <th class="is-right">{{ $t('quantity') }}</th>
+                              <th class="is-right">{{ $t('cost') }}</th>
+                              <th style="width:40px"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="(b, bIdx) in detail.batches" :key="'b-' + detail.detail_id + '-' + bIdx">
+                              <td><input class="pxpuf__bin" v-model="b.batch_no" :placeholder="$t('Batch_No')" /></td>
+                              <td><input class="pxpuf__bin" type="date" v-model="b.expiry_date" /></td>
+                              <td><input class="pxpuf__bin" type="date" v-model="b.mfg_date" /></td>
+                              <td><input class="pxpuf__bin is-right" type="text" inputmode="decimal" lang="en" pattern="[0-9]*[.,]?[0-9]*" :value="b.qty" @input="val => onBatchNumberInput(b, 'qty', val.target ? val.target.value : val)" /></td>
+                              <td><input class="pxpuf__bin is-right" type="text" inputmode="decimal" lang="en" pattern="[0-9]*[.,]?[0-9]*" :value="b.unit_cost" @input="val => onBatchNumberInput(b, 'unit_cost', val.target ? val.target.value : val)" /></td>
+                              <td class="is-center">
+                                <lucide-icon class="pxpuf__ico is-del" name="x" @click="remove_batch(detail, bIdx)" />
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <div v-else class="pxpuf__batchempty">
+                          <lucide-icon name="inbox" :size="20" />
+                          <div>{{ $t('NodataAvailable') }}</div>
+                          <div class="pxpuf__batchemptyhint">{{ $t('Click_Add_To_Start') || 'Click "Add" to create a batch' }}</div>
+                        </div>
+
+                        <div v-if="batchQtyMismatch(detail)" class="pxpuf__batchwarn">
+                          <lucide-icon name="alert-triangle" :size="14" />
+                          <span>{{ $t('Batch_Qty_Mismatch') }}</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr v-if="detail.is_imei && detail.is_batch_tracked" :key="'serial-batch-conflict-' + detail.detail_id" class="pxpuf__batchrow">
+                    <td colspan="9" class="pxpuf__inlinealert">
+                      <px-alert tone="danger" bare>
+                        {{ $t('Serial_Batch_Incompatible') || 'Este producto está configurado con lote Y serie/IMEI a la vez. La combinación no es compatible: corrige la configuración del producto antes de registrar la compra.' }}
+                      </px-alert>
+                    </td>
+                  </tr>
+
+                  <tr v-if="detail.is_imei && !detail.is_batch_tracked" :key="'serials-' + detail.detail_id" class="pxpuf__batchrow">
+                    <td colspan="9" class="pxpuf__inlinealert">
+                      <div class="pxpuf__serialbox">
+                        <serial-numbers-field mode="entry" v-model="detail.serial_numbers" :required-count="serialRequiredCount(detail)" />
+                        <div v-if="purchase.statut !== 'received'" class="pxpuf__hint">
+                          {{ $t('Serials_Assigned_On_Receive') || 'Los seriales se asignarán cuando la compra se marque como recibida.' }}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Extra charges + custom fields -->
+        <div v-if="purchase_extra_charges_enabled || purchase_custom_fields_enabled" class="pxpuf__grid2 pxpuf__gap">
+          <div v-if="purchase_extra_charges_enabled">
+            <px-field :label="$t('Add_Other_Charges')">
+              <template #default>
+                <div class="pxpuf__inline">
+                  <px-input v-model="new_charge.name" :placeholder="$t('Charge_Name')" />
+                  <px-input v-model.number="new_charge.amount" :placeholder="$t('Amount')" />
+                  <px-button variant="secondary" icon-only icon="plus" @click="add_Extra_Charge" />
                 </div>
-                </b-col>
+              </template>
+            </px-field>
+            <div v-for="(charge, index) in extra_charges" :key="'charge_' + index" class="pxpuf__chargerow">
+              <px-input v-if="charge.name_editing" v-model="charge.name" :placeholder="$t('Charge_Name')" />
+              <span v-else class="pxpuf__chargename">{{ charge.name }}</span>
+              <px-input v-model.number="charge.amount" :suffix="currentUser.currency" @input="keyup_Extra_Charge(index)" />
+              <lucide-icon class="pxpuf__ico is-edit" :name="charge.name_editing ? 'check' : 'pencil'" @click="toggle_Edit_Charge(index)" />
+              <lucide-icon class="pxpuf__ico is-del" name="trash-2" @click="remove_Extra_Charge(index)" />
+            </div>
+          </div>
 
-                <!-- Order products  -->
-                <b-col md="12">
-                  <h5>{{$t('order_products')}} *</h5>
-                  <div class="table-responsive">
-                    <table class="table table-hover">
-                      <thead class="bg-gray-300">
-                        <tr>
-                          <th scope="col">#</th>
-                          <th scope="col">{{$t('ProductName')}}</th>
-                          <th scope="col">{{$t('Net_Unit_Cost')}}</th>
-                          <th scope="col">{{$t('CurrentStock')}}</th>
-                          <th scope="col">{{$t('Qty')}}</th>
-                          <th scope="col">{{$t('Discount')}}</th>
-                          <th scope="col">{{$t('Tax')}}</th>
-                          <th scope="col">{{$t('SubTotal')}}</th>
-                          <th scope="col" class="text-center">
-                            <i class="fa fa-trash"></i>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-if="details.length <=0">
-                          <td colspan="9">{{$t('NodataAvailable')}}</td>
-                        </tr>
-                        <template v-for="detail in details">
-                        <tr
-                          :class="{'row_deleted': detail.del === 1 || detail.no_unit === 0}"
-                          :key="'detail-'+detail.detail_id"
-                        >
-                          <td>{{detail.detail_id}}</td>
-                          <td>
-                            <span>{{detail.code}}</span>
-                            <br>
-                            <span class="badge badge-success">{{detail.name}}</span>
-                            <div v-if="detail.warehouse_location" class="text-muted mt-1" style="font-size: 12px;">
-                              {{ $t('Warehouse_Locations') }}: <strong>{{ detail.warehouse_location }}</strong>
-                            </div>
-                            <div v-if="detail.is_batch_tracked" class="text-info mt-1" style="font-size: 12px;">
-                              <i class="fa fa-flask"></i> {{ $t('Track_Batches_Expiry') }}
-                            </div>
-                          </td>
-                          <td>{{currentUser.currency}} {{formatNumber(detail.Net_cost, priceDecimals)}}</td>
-                          <td>
-                            <span
-                              class="badge badge-outline-warning"
-                            >{{detail.stock}} {{detail.unitPurchase}}</span>
-                          </td>
-                          <td>
-                            <div class="quantity">
-                              <b-input-group>
-                                <b-input-group-prepend>
-                                  <span v-show="detail.no_unit !== 0"
-                                    class="btn btn-primary btn-sm"
-                                    @click="decrement(detail ,detail.detail_id)"
-                                  >-</span>
-                                </b-input-group-prepend>
-                                <input
-                                  class="form-control"
-                                  @keyup="Verified_Qty(detail,detail.detail_id)"
-                                  :min="0.00"
-                                  v-model.number="detail.quantity"
-                                  :disabled="detail.del === 1 || detail.no_unit === 0"
-                                >
-                                <b-input-group-append>
-                                  <span v-show="detail.no_unit !== 0"
-                                    class="btn btn-primary btn-sm"
-                                    @click="increment(detail ,detail.detail_id)"
-                                  >+</span>
-                                </b-input-group-append>
-                              </b-input-group>
-                            </div>
-                          </td>
-                          <td>{{currentUser.currency}} {{formatNumber(detail.DiscountNet * detail.quantity, 2)}}</td>
-                          <td>{{currentUser.currency}} {{formatNumber(detail.taxe * detail.quantity, 2)}}</td>
-                          <td>{{currentUser.currency}} {{detail.subtotal.toFixed(priceDecimals)}}</td>
-                          <td v-show="detail.no_unit !== 0">
-                            <lucide-icon class="text-25 text-success" name="pencil" v-if="currentUserPermissions && currentUserPermissions.includes('edit_product_purchase')" @click="Modal_Updat_Detail(detail)" />
-                            <lucide-icon class="text-25 text-danger" name="x" @click="delete_Product_Detail(detail.detail_id)" />
-                          </td>
-                        </tr>
-                        <tr v-if="detail.is_batch_tracked && detail.no_unit !== 0 && detail.del !== 1 && purchase.statut !== 'received'"
-                            :key="'batches-defer-'+detail.detail_id" :style="{ background: 'transparent' }">
-                          <td colspan="9" :style="{ padding: '0 8px 16px 8px', border: 'none' }">
-                            <div :style="{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #94a3b8', borderRadius: '10px', padding: '10px 16px', fontSize: '12px', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }">
-                              <lucide-icon name="package" :style="{ fontSize: '14px', opacity: '0.7' }" />
-                              <span>{{ $t('Batches_Assigned_On_Receipt') || 'Los lotes se asignarán cuando la compra se marque como recibida.' }}</span>
-                            </div>
-                          </td>
-                        </tr>
-                        <tr v-if="detail.is_batch_tracked && detail.no_unit !== 0 && detail.del !== 1 && purchase.statut === 'received'"
-                            :key="'batches-'+detail.detail_id" :style="{ background: 'transparent' }">
-                          <td colspan="9" :style="{ padding: '0 8px 16px 8px', border: 'none' }">
-                            <div
-                              :style="{
-                                background: 'linear-gradient(135deg, #f0f9ff 0%, #eef2ff 100%)',
-                                border: '1px solid #e0e7ff',
-                                borderLeft: '4px solid #6366f1',
-                                borderRadius: '10px',
-                                padding: '14px 18px',
-                                boxShadow: '0 1px 3px rgba(15,23,42,0.04)'
-                              }"
-                            >
-                              <!-- Header -->
-                              <div
-                                :style="{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  marginBottom: '12px',
-                                  flexWrap: 'wrap',
-                                  gap: '8px'
-                                }"
-                              >
-                                <div :style="{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }">
-                                  <div
-                                    :style="{
-                                      width: '32px', height: '32px',
-                                      borderRadius: '8px',
-                                      background: '#6366f1',
-                                      color: '#fff',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      boxShadow: '0 2px 6px rgba(99,102,241,0.35)'
-                                    }"
-                                  >
-                                    <lucide-icon name="receipt-text" :style="{ fontSize: '16px' }" />
-                                  </div>
-                                  <div>
-                                    <div :style="{ fontSize: '14px', fontWeight: '700', color: '#1e293b', lineHeight: '1.1' }">
-                                      {{ $t('Batches') }}
-                                    </div>
-                                    <div :style="{ fontSize: '11px', color: '#64748b', marginTop: '2px' }">
-                                      {{ (detail.batches || []).length }} {{ $t('items') || 'items' }}
-                                      <span v-if="(detail.batches || []).length" :style="{ marginLeft: '6px' }">
-                                        · {{ $t('Total') }}: <strong :style="{ color: '#0f172a' }">{{ formatNumber(batchTotalQty(detail), 2) }}</strong>
-                                        / {{ formatNumber(detail.quantity || 0, 2) }}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  @click="add_batch(detail)"
-                                  :style="{
-                                    background: '#6366f1',
-                                    color: '#fff',
-                                    border: 'none',
-                                    padding: '7px 14px',
-                                    borderRadius: '8px',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    boxShadow: '0 2px 6px rgba(99,102,241,0.25)',
-                                    transition: 'all 0.2s'
-                                  }"
-                                  onmouseover="this.style.background='#4f46e5'; this.style.transform='translateY(-1px)'"
-                                  onmouseout="this.style.background='#6366f1'; this.style.transform='translateY(0)'"
-                                >
-                                  <lucide-icon name="plus" /> {{ $t('Add') }}
-                                </button>
-                              </div>
-
-                              <!-- Batches table -->
-                              <div v-if="(detail.batches || []).length" :style="{ background: '#ffffff', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }">
-                                <table :style="{ width: '100%', marginBottom: '0', borderCollapse: 'separate', borderSpacing: '0', fontSize: '12px' }">
-                                  <thead>
-                                    <tr>
-                                      <th :style="batchThStyle">{{ $t('Batch_No') }}</th>
-                                      <th :style="batchThStyle">{{ $t('Expiry_Date') }}</th>
-                                      <th :style="batchThStyle">{{ $t('Mfg_Date') }}</th>
-                                      <th :style="{ ...batchThStyle, textAlign: 'right' }">{{ $t('quantity') }}</th>
-                                      <th :style="{ ...batchThStyle, textAlign: 'right' }">{{ $t('cost') }}</th>
-                                      <th :style="{ ...batchThStyle, width: '40px', textAlign: 'center' }"></th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    <tr v-for="(b, bIdx) in detail.batches" :key="'b-'+detail.detail_id+'-'+bIdx" :style="{ background: bIdx % 2 === 0 ? '#ffffff' : '#fafbff' }">
-                                      <td :style="batchTdStyle">
-                                        <b-form-input size="sm" v-model="b.batch_no" :placeholder="$t('Batch_No')" :style="batchInputStyle" />
-                                      </td>
-                                      <td :style="batchTdStyle">
-                                        <b-form-input size="sm" type="date" v-model="b.expiry_date" :style="batchInputStyle" />
-                                      </td>
-                                      <td :style="batchTdStyle">
-                                        <b-form-input size="sm" type="date" v-model="b.mfg_date" :style="batchInputStyle" />
-                                      </td>
-                                      <td :style="batchTdStyle">
-                                        <b-form-input
-                                          size="sm"
-                                          type="text"
-                                          inputmode="decimal"
-                                          lang="en"
-                                          pattern="[0-9]*[.,]?[0-9]*"
-                                          :value="b.qty"
-                                          @input="val => onBatchNumberInput(b, 'qty', val)"
-                                          :style="{ ...batchInputStyle, textAlign: 'right', fontWeight: '600' }"
-                                        />
-                                      </td>
-                                      <td :style="batchTdStyle">
-                                        <b-form-input
-                                          size="sm"
-                                          type="text"
-                                          inputmode="decimal"
-                                          lang="en"
-                                          pattern="[0-9]*[.,]?[0-9]*"
-                                          :value="b.unit_cost"
-                                          @input="val => onBatchNumberInput(b, 'unit_cost', val)"
-                                          :style="{ ...batchInputStyle, textAlign: 'right' }"
-                                        />
-                                      </td>
-                                      <td :style="{ ...batchTdStyle, textAlign: 'center' }">
-                                        <button
-                                          type="button"
-                                          @click="remove_batch(detail, bIdx)"
-                                          :style="{
-                                            width: '28px', height: '28px',
-                                            borderRadius: '6px',
-                                            border: '1px solid #fecaca',
-                                            background: '#fef2f2',
-                                            color: '#dc2626',
-                                            cursor: 'pointer',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            transition: 'all 0.2s'
-                                          }"
-                                          onmouseover="this.style.background='#dc2626'; this.style.color='#fff'; this.style.borderColor='#dc2626'"
-                                          onmouseout="this.style.background='#fef2f2'; this.style.color='#dc2626'; this.style.borderColor='#fecaca'"
-                                        >
-                                          <lucide-icon name="x" />
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              </div>
-
-                              <!-- Empty state -->
-                              <div
-                                v-else
-                                :style="{
-                                  background: '#ffffff',
-                                  border: '1px dashed #cbd5e1',
-                                  borderRadius: '8px',
-                                  padding: '24px 16px',
-                                  textAlign: 'center',
-                                  color: '#64748b'
-                                }"
-                              >
-                                <div :style="{ fontSize: '24px', marginBottom: '6px', opacity: '0.5' }">
-                                  <lucide-icon name="inbox" />
-                                </div>
-                                <div :style="{ fontSize: '13px', fontWeight: '500' }">
-                                  {{ $t('NodataAvailable') }}
-                                </div>
-                                <div :style="{ fontSize: '11px', marginTop: '4px', opacity: '0.8' }">
-                                  {{ $t('Click_Add_To_Start') || 'Click "Add" to create a batch' }}
-                                </div>
-                              </div>
-
-                              <!-- Mismatch warning -->
-                              <div
-                                v-if="batchQtyMismatch(detail)"
-                                :style="{
-                                  marginTop: '10px',
-                                  background: '#fef2f2',
-                                  border: '1px solid #fecaca',
-                                  borderLeft: '3px solid #dc2626',
-                                  color: '#991b1b',
-                                  padding: '8px 12px',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px'
-                                }"
-                              >
-                                <lucide-icon name="alert-triangle" :style="{ color: '#dc2626', fontSize: '14px' }" />
-                                <span>{{ $t('Batch_Qty_Mismatch') }}</span>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-
-                        <!-- Serial / IMEI + batch on the same product: not supported -->
-                        <tr v-if="detail.is_imei && detail.is_batch_tracked" :key="'serial-batch-conflict-'+detail.detail_id" :style="{ background: 'transparent' }">
-                          <td colspan="9" :style="{ padding: '0 8px 12px 8px', border: 'none' }">
-                            <b-alert show variant="danger" class="mb-0">
-                              {{ $t('Serial_Batch_Incompatible') || 'Este producto está configurado con lote Y serie/IMEI a la vez. La combinación no es compatible: corrige la configuración del producto antes de registrar la compra.' }}
-                            </b-alert>
-                          </td>
-                        </tr>
-
-                        <!-- Serial / IMEI entry sub-row -->
-                        <tr v-if="detail.is_imei && !detail.is_batch_tracked" :key="'serials-'+detail.detail_id" :style="{ background: 'transparent' }">
-                          <td colspan="9" :style="{ padding: '0 8px 16px 8px', border: 'none' }">
-                            <div :style="{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #0ea5e9', borderRadius: '10px', padding: '14px 18px' }">
-                              <serial-numbers-field
-                                mode="entry"
-                                v-model="detail.serial_numbers"
-                                :required-count="serialRequiredCount(detail)"
-                              />
-                              <div v-if="purchase.statut !== 'received'" class="text-muted mt-2" :style="{ fontSize: '12px' }">
-                                {{ $t('Serials_Assigned_On_Receive') || 'Los seriales se asignarán cuando la compra se marque como recibida.' }}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                        </template>
-                      </tbody>
-                    </table>
-                  </div>
-                </b-col>
-
-                <div class="col-md-9 mt-4">
-                  <b-row>
-                    <!-- Extra Charges (Section 1) -->
-                    <b-col v-if="purchase_extra_charges_enabled" lg="6" md="6" sm="12" class="mb-3">
-                      <b-form-group :label="$t('Add_Other_Charges')">
-                        <div class="d-flex">
-                          <b-form-input
-                            type="text"
-                            v-model="new_charge.name"
-                            :placeholder="$t('Charge_Name')"
-                            class="mr-2"
-                          ></b-form-input>
-                          <b-form-input
-                            v-model.number="new_charge.amount"
-                            :placeholder="$t('Amount')"
-                            class="mr-2"
-                          ></b-form-input>
-                          <b-button variant="primary" @click="add_Extra_Charge">
-                            <lucide-icon name="plus" />
-                          </b-button>
-                        </div>
-                      </b-form-group>
-
-                      <b-form-group
-                        v-for="(charge, index) in extra_charges"
-                        :key="'charge_' + index"
-                        :label="charge.name_editing ? '' : charge.name"
-                      >
-                        <div class="d-flex align-items-center">
-                          <b-form-input
-                            v-if="charge.name_editing"
-                            type="text"
-                            v-model="charge.name"
-                            :placeholder="$t('Charge_Name')"
-                            class="mr-2"
-                          ></b-form-input>
-                          <b-input-group :append="currentUser.currency">
-                            <b-form-input
-                              v-model.number="charge.amount"
-                              @keyup="keyup_Extra_Charge(index)"
-                            ></b-form-input>
-                          </b-input-group>
-                          <a
-                            class="cursor-pointer ml-2 text-success"
-                            :title="charge.name_editing ? $t('submit') : 'Edit'"
-                            @click="toggle_Edit_Charge(index)"
-                          >
-                            <lucide-icon :name="charge.name_editing ? 'check' : 'pencil'" />
-                          </a>
-                          <a
-                            class="cursor-pointer ml-2 text-danger"
-                            title="Delete"
-                            @click="remove_Extra_Charge(index)"
-                          >
-                            <lucide-icon name="trash-2" />
-                          </a>
-                        </div>
-                      </b-form-group>
-                    </b-col>
-
-                    <!-- Custom Fields (Section 2) -->
-                    <b-col v-if="purchase_custom_fields_enabled" lg="6" md="6" sm="12" class="mb-3">
-                      <b-form-group :label="$t('Additional_Fields')">
-                        <div class="d-flex">
-                          <b-form-input
-                            type="text"
-                            v-model="new_field.name"
-                            :placeholder="$t('Field_Name')"
-                            class="mr-2"
-                          ></b-form-input>
-                          <b-form-input
-                            type="text"
-                            v-model="new_field.value"
-                            :placeholder="$t('Field_Value')"
-                            class="mr-2"
-                          ></b-form-input>
-                          <b-button variant="primary" @click="add_Custom_Field">
-                            <lucide-icon name="plus" />
-                          </b-button>
-                        </div>
-                      </b-form-group>
-
-                      <b-form-group
-                        v-for="(field, index) in custom_fields"
-                        :key="'field_' + index"
-                        :label="field.name_editing ? '' : field.name"
-                      >
-                        <div class="d-flex align-items-center">
-                          <b-form-input
-                            v-if="field.name_editing"
-                            type="text"
-                            v-model="field.name"
-                            :placeholder="$t('Field_Name')"
-                            class="mr-2"
-                          ></b-form-input>
-                          <b-form-input
-                            type="text"
-                            v-model="field.value"
-                            :placeholder="$t('Field_Value')"
-                          ></b-form-input>
-                          <a
-                            class="cursor-pointer ml-2 text-success"
-                            :title="field.name_editing ? $t('submit') : 'Edit'"
-                            @click="toggle_Edit_Field(index)"
-                          >
-                            <lucide-icon :name="field.name_editing ? 'check' : 'pencil'" />
-                          </a>
-                          <a
-                            class="cursor-pointer ml-2 text-danger"
-                            title="Delete"
-                            @click="remove_Custom_Field(index)"
-                          >
-                            <lucide-icon name="trash-2" />
-                          </a>
-                        </div>
-                      </b-form-group>
-                    </b-col>
-                  </b-row>
+          <div v-if="purchase_custom_fields_enabled">
+            <px-field :label="$t('Additional_Fields')">
+              <template #default>
+                <div class="pxpuf__inline">
+                  <px-input v-model="new_field.name" :placeholder="$t('Field_Name')" />
+                  <px-input v-model="new_field.value" :placeholder="$t('Field_Value')" />
+                  <px-button variant="secondary" icon-only icon="plus" @click="add_Custom_Field" />
                 </div>
+              </template>
+            </px-field>
+            <div v-for="(field, index) in custom_fields" :key="'field_' + index" class="pxpuf__chargerow">
+              <px-input v-if="field.name_editing" v-model="field.name" :placeholder="$t('Field_Name')" />
+              <span v-else class="pxpuf__chargename">{{ field.name }}</span>
+              <px-input v-model="field.value" :placeholder="$t('Field_Value')" />
+              <lucide-icon class="pxpuf__ico is-edit" :name="field.name_editing ? 'check' : 'pencil'" @click="toggle_Edit_Field(index)" />
+              <lucide-icon class="pxpuf__ico is-del" name="trash-2" @click="remove_Custom_Field(index)" />
+            </div>
+          </div>
+        </div>
 
-                <div class="col-md-3 mt-4">
-                  <table class="table table-striped table-sm">
-                    <tbody>
-                      <tr>
-                        <td class="bold">{{$t('OrderTax')}}</td>
-                        <td>
-                          <span>{{currentUser.currency}} {{purchase.TaxNet.toFixed(priceDecimals)}} ({{formatNumber(purchase.tax_rate ,2)}} %)</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="bold">{{$t('Discount')}}</td>
-                        <td>{{currentUser.currency}} {{purchase.discount.toFixed(priceDecimals)}}</td>
-                      </tr>
-                      <tr>
-                        <td class="bold">{{$t('Shipping')}}</td>
-                        <td>{{currentUser.currency}} {{purchase.shipping.toFixed(priceDecimals)}}</td>
-                      </tr>
-                      <tr v-for="(charge, index) in extra_charges" :key="'sum_charge_' + index">
-                        <td class="bold">{{charge.name}}</td>
-                        <td>{{currentUser.currency}} {{(parseFloat(charge.amount) || 0).toFixed(priceDecimals)}}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <span class="font-weight-bold">{{$t('Total')}}</span>
-                        </td>
-                        <td>
-                          <span
-                            class="font-weight-bold"
-                          >{{currentUser.currency}} {{GrandTotal.toFixed(priceDecimals)}}</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+        <!-- Tax / Discount / Shipping -->
+        <div class="pxpuf__grid3 pxpuf__gap" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_purchase')">
+          <validation-provider name="Order Tax" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('OrderTax')" :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model.number="purchase.tax_rate" suffix="%" @input="v.validate($event); keyup_OrderTax()" /></template>
+            </px-field>
+          </validation-provider>
+          <validation-provider name="Discount" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('Discount')" :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model.number="purchase.discount" :suffix="currentUser.currency" @input="v.validate($event); keyup_Discount()" /></template>
+            </px-field>
+          </validation-provider>
+          <validation-provider name="Shipping" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('Shipping')" :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model.number="purchase.shipping" :suffix="currentUser.currency" @input="v.validate($event); keyup_Shipping()" /></template>
+            </px-field>
+          </validation-provider>
+        </div>
 
-                 <!-- Order Tax  -->
-                <b-col lg="4" md="4" sm="12" class="mb-3" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_purchase')">
-                  <validation-provider
-                    name="Order Tax"
-                    :rules="{ regex: /^\d*\.?\d*$/}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('OrderTax')">
-                      <b-input-group append="%">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="OrderTax-feedback"
-                          label="Order Tax"
-                          v-model.number="purchase.tax_rate"
-                          @keyup="keyup_OrderTax()"
-                        ></b-form-input>
-                      </b-input-group>
-                      <b-form-invalid-feedback
-                        id="OrderTax-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+        <!-- Totals -->
+        <div class="pxpuf__totals pxpuf__gap">
+          <table class="pxpuf-totbl">
+            <tbody>
+              <tr><td>{{ $t('OrderTax') }}</td><td class="is-right pxn-num">{{ currentUser.currency }} {{ purchase.TaxNet.toFixed(priceDecimals) }} ({{ formatNumber(purchase.tax_rate, 2) }} %)</td></tr>
+              <tr><td>{{ $t('Discount') }}</td><td class="is-right pxn-num">{{ currentUser.currency }} {{ purchase.discount.toFixed(priceDecimals) }}</td></tr>
+              <tr><td>{{ $t('Shipping') }}</td><td class="is-right pxn-num">{{ currentUser.currency }} {{ purchase.shipping.toFixed(priceDecimals) }}</td></tr>
+              <tr v-for="(charge, index) in extra_charges" :key="'sum_charge_' + index"><td>{{ charge.name }}</td><td class="is-right pxn-num">{{ currentUser.currency }} {{ (parseFloat(charge.amount) || 0).toFixed(priceDecimals) }}</td></tr>
+              <tr class="pxpuf__totrow"><td>{{ $t('Total') }}</td><td class="is-right pxn-num">{{ currentUser.currency }} {{ GrandTotal.toFixed(priceDecimals) }}</td></tr>
+            </tbody>
+          </table>
+        </div>
 
-                <!-- Discount -->
-                <b-col lg="4" md="4" sm="12" class="mb-3" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_purchase')">
-                  <validation-provider
-                    name="Discount"
-                    :rules="{ regex: /^\d*\.?\d*$/}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('Discount')">
-                      <b-input-group :append="currentUser.currency">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="Discount-feedback"
-                          label="Discount"
-                          v-model.number="purchase.discount"
-                          @keyup="keyup_Discount()"
-                        ></b-form-input>
-                      </b-input-group>
-                      <b-form-invalid-feedback
-                        id="Discount-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+        <!-- Status + Note -->
+        <div class="pxpuf__grid3 pxpuf__gap">
+          <validation-provider ref="statutProvider" name="Status" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Status')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="purchase.statut" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Status')" @input="v.validate"
+                  :options="[{ label: 'received', value: 'received' }, { label: 'pending', value: 'pending' }, { label: 'ordered', value: 'ordered' }]" />
+              </template>
+            </px-field>
+          </validation-provider>
+        </div>
 
-                <!-- Shipping  -->
-                <b-col lg="4" md="4" sm="12" class="mb-3" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_purchase')">
-                  <validation-provider
-                    name="Shipping"
-                    :rules="{ regex: /^\d*\.?\d*$/}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('Shipping')">
-                      <b-input-group :append="currentUser.currency">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="Shipping-feedback"
-                          label="Shipping"
-                          v-model.number="purchase.shipping"
-                          @keyup="keyup_Shipping()"
-                        ></b-form-input>
-                      </b-input-group>
-                      <b-form-invalid-feedback
-                        id="Shipping-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+        <px-field :label="$t('Note')" class="pxpuf__gap">
+          <template #default="{ id }"><px-textarea :id="id" v-model="purchase.notes" :rows="4" :placeholder="$t('Afewwords')" /></template>
+        </px-field>
 
-                 <!-- Status  -->
-                <b-col lg="4" md="4" sm="12" class="mb-3">
-                  <validation-provider name="Status" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="purchase.statut"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Status')"
-                        :options="
-                            [
-                              {label: 'received', value: 'received'},
-                              {label: 'pending', value: 'pending'},
-                               {label: 'ordered', value: 'ordered'}
-                            ]"
-                      ></v-select>
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+        <px-alert v-if="hasBatchValidationErrors" tone="warning" icon="alert-triangle" class="pxpuf__gap">
+          <template v-if="firstBatchErrorDetail && (!firstBatchErrorDetail.batches || firstBatchErrorDetail.batches.length === 0)">
+            {{ $t('Batch_Required_For_Item') || 'Add at least one batch for' }}: <strong>{{ firstBatchErrorDetail.name }}</strong>
+          </template>
+          <template v-else>{{ $t('Batch_Qty_Mismatch') }}</template>
+        </px-alert>
 
-
-                <b-col md="12">
-                  <b-form-group :label="$t('Note')">
-                    <textarea
-                      v-model="purchase.notes"
-                      rows="4"
-                      class="form-control"
-                      :placeholder="$t('Afewwords')"
-                    ></textarea>
-                  </b-form-group>
-                </b-col>
-                <b-col md="12">
-                  <b-form-group>
-                    <b-button
-                      variant="primary"
-                      @click="Submit_Purchase"
-                      :disabled="SubmitProcessing || hasBatchValidationErrors"
-                      :title="hasBatchValidationErrors ? $t('Batch_Qty_Mismatch') : ''"
-                    ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                    <div v-if="hasBatchValidationErrors" class="text-danger mt-2" style="font-size: 13px;">
-                      <lucide-icon name="alert-triangle" style="vertical-align: middle; margin-right: 4px;" />
-                      <template v-if="firstBatchErrorDetail && (!firstBatchErrorDetail.batches || firstBatchErrorDetail.batches.length === 0)">
-                        {{ $t('Batch_Required_For_Item') || 'Add at least one batch for' }}: <strong>{{ firstBatchErrorDetail.name }}</strong>
-                      </template>
-                      <template v-else>
-                        {{ $t('Batch_Qty_Mismatch') }}
-                      </template>
-                    </div>
-                     <div v-once class="typo__p" v-if="SubmitProcessing">
-                      <div class="spinner sm spinner-primary mt-3"></div>
-                    </div>
-                  </b-form-group>
-                </b-col>
-              </b-row>
-            </b-card>
-          </b-col>
-        </b-row>
-      </b-form>
+        <div class="pxpuf__actionbar">
+          <px-button variant="secondary" type="button" @click="$router.push({ name: 'index_purchases' })">{{ $t('Cancel') }}</px-button>
+          <px-button variant="primary" icon="check" :loading="SubmitProcessing" :disabled="SubmitProcessing || hasBatchValidationErrors" @click="Submit_Purchase">{{ $t('submit') }}</px-button>
+        </div>
+      </px-card>
     </validation-observer>
 
-    <!-- Show Modal Update Detail Product -->
-    <validation-observer ref="Update_Detail_purchase">
-      <b-modal hide-footer size="lg" id="form_Update_Detail" :title="detail.name">
-        <b-form @submit.prevent="submit_Update_Detail">
-          <b-row>
-            <!-- Unit Cost -->
-             <b-col lg="6" md="6" sm="12">
-              <validation-provider
-                name="Product Cost"
-                :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('ProductCost') + ' ' + '*'" id="cost-input">
-                  <b-form-input
-                    label="Product Cost"
-                    v-model.number="detail.Unit_cost"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="cost-feedback"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="cost-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+    <!-- Modal: Update line detail -->
+    <px-modal v-model="updateDetailOpen" :title="detail.name || $t('EditProduct')" size="lg">
+      <validation-observer ref="Update_Detail_purchase" tag="div">
+        <div class="pxpuf__grid2">
+          <validation-provider name="Product Cost" :rules="{ required: true, regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('ProductCost')" required :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model.number="detail.Unit_cost" @input="v.validate" /></template>
+            </px-field>
+          </validation-provider>
 
-            <!-- Tax Method -->
-              <b-col lg="6" md="6" sm="12">
-              <validation-provider name="Tax Method" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('TaxMethod') + ' ' + '*'">
-                  <v-select
-                    :class="{'is-invalid': !!errors.length}"
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    v-model="detail.tax_method"
-                    :reduce="label => label.value"
-                    :placeholder="$t('Choose_Method')"
-                    :options="
-                           [
-                            {label: 'Exclusive', value: '1'},
-                            {label: 'Inclusive', value: '2'}
-                           ]"
-                  ></v-select>
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider name="Tax Method" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('TaxMethod')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="detail.tax_method" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Method')" @input="v.validate"
+                  :options="[{ label: 'Exclusive', value: '1' }, { label: 'Inclusive', value: '2' }]" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-            <!-- Tax Rate -->
-              <b-col lg="6" md="6" sm="12">
-              <validation-provider
-                name="Order Tax"
-                :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('OrderTax') + ' ' + '*'">
-                  <b-input-group append="%">
-                    <b-form-input
-                      label="Order Tax"
-                      v-model.number="detail.tax_percent"
-                      :state="getValidationState(validationContext)"
-                      aria-describedby="OrderTax-feedback"
-                    ></b-form-input>
-                  </b-input-group>
-                  <b-form-invalid-feedback id="OrderTax-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider name="Order Tax" :rules="{ required: true, regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('OrderTax')" required :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model.number="detail.tax_percent" suffix="%" @input="v.validate" /></template>
+            </px-field>
+          </validation-provider>
 
-            <!-- Discount Method -->
-              <b-col lg="6" md="6" sm="12">
-              <validation-provider name="Discount Method" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Discount_Method') + ' ' + '*'">
-                  <v-select
-                    v-model="detail.discount_Method"
-                    :reduce="label => label.value"
-                    :placeholder="$t('Choose_Method')"
-                    :class="{'is-invalid': !!errors.length}"
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    :options="
-                           [
-                            {label: 'Percent %', value: '1'},
-                            {label: 'Fixed', value: '2'}
-                           ]"
-                  ></v-select>
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider name="Discount Method" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Discount_Method')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="detail.discount_Method" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Method')" @input="v.validate"
+                  :options="[{ label: 'Percent %', value: '1' }, { label: 'Fixed', value: '2' }]" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-            <!-- Discount Rate -->
-             <b-col lg="6" md="6" sm="12">
-              <validation-provider
-                name="Discount Rate"
-                :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Discount') + ' ' + '*'">
-                  <b-form-input
-                    label="Discount"
-                    v-model.number="detail.discount"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Discount-feedback"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Discount-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider name="Discount Rate" :rules="{ required: true, regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('Discount')" required :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model.number="detail.discount" @input="v.validate" /></template>
+            </px-field>
+          </validation-provider>
 
-            <!-- Serial / IMEI numbers are captured inline in the order table (serial sub-row). -->
+          <validation-provider name="Unit Purchase" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('UnitPurchase')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="detail.purchase_unit_id" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Unit_Purchase')" @input="v.validate"
+                  :options="units.map(u => ({ label: u.name, value: u.id }))" />
+              </template>
+            </px-field>
+          </validation-provider>
+        </div>
+      </validation-observer>
+      <template #footer="{ close }">
+        <px-button variant="secondary" @click="close">{{ $t('Cancel') }}</px-button>
+        <px-button variant="primary" icon="check" :loading="Submit_Processing_detail" :disabled="Submit_Processing_detail" @click="submit_Update_Detail">{{ $t('submit') }}</px-button>
+      </template>
+    </px-modal>
 
-            <b-col md="12">
-               <b-form-group>
-                <b-button variant="primary" type="submit" :disabled="Submit_Processing_detail"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                <div v-once class="typo__p" v-if="Submit_Processing_detail">
-                  <div class="spinner sm spinner-primary mt-3"></div>
-                </div>
-              </b-form-group>
-            </b-col>
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
+    <!-- Modal: Barcode scanner -->
+    <px-modal v-model="scanOpen" :title="$t('Barcode_Scanner') || 'Barcode Scanner'" size="md">
+      <qrcode-scanner v-if="scanOpen" :qrbox="250" :fps="10" style="width: 100%;" @result="onScan" />
+    </px-modal>
   </div>
 </template>
+
 
 <script>
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Edit Purchase"
+  },
+  components: {
+    PxPageHeader, PxCard, PxField, PxInput, PxTextarea, PxButton, PxBadge, PxAlert, PxModal, "vs-px": VsPx
   },
   data() {
     return {
@@ -871,6 +434,8 @@ export default {
       isLoading: true,
       SubmitProcessing:false,
       Submit_Processing_detail:false,
+      scanOpen: false,
+      updateDetailOpen: false,
 
       // ——— Inline styles for batches section ———
       batchThStyle: {
@@ -1006,9 +571,19 @@ export default {
 
   methods: {
 
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.dateProvider) this.$refs.dateProvider.syncValue(this.purchase.date);
+        if (this.$refs.supplierProvider) this.$refs.supplierProvider.syncValue(this.purchase.supplier_id);
+        if (this.$refs.warehouseProvider) this.$refs.warehouseProvider.syncValue(this.purchase.warehouse_id);
+        if (this.$refs.statutProvider) this.$refs.statutProvider.syncValue(this.purchase.statut);
+        if (this.$refs.locProvider) this.$refs.locProvider.syncValue(this.purchase.inventory_location_id);
+      });
+    },
+
        
     showModal() {
-      this.$bvModal.show('open_scan');
+      this.scanOpen = true;
       
     },
 
@@ -1016,7 +591,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      this.scanOpen = false;
     },
 
     handleFocus() {
@@ -1113,7 +688,7 @@ export default {
 
       setTimeout(() => {
         NProgress.done();
-        this.$bvModal.show("form_Update_Detail");
+        this.updateDetailOpen = true;
       }, 1000);
     },
 
@@ -1176,7 +751,7 @@ export default {
        setTimeout(() => {
         NProgress.done();
         this.Submit_Processing_detail = false;
-        this.$bvModal.hide("form_Update_Detail");
+        this.updateDetailOpen = false;
       }, 1000);
     },
 
@@ -1752,6 +1327,7 @@ export default {
           this.Get_Products_By_Warehouse(this.purchase.warehouse_id);
           this.Calcul_Total();
           this.isLoading = false;
+          this.syncValidators();
         })
         .catch(response => {
           setTimeout(() => {
@@ -1767,6 +1343,79 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxpuf { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxpuf { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxpuf__pad { padding: var(--pxn-space-6) 0; }
+.pxpuf__card { margin-top: var(--pxn-space-5); overflow: visible; }
+.pxpuf__grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 820px) { .pxpuf__grid3 { grid-template-columns: minmax(0, 1fr); } }
+.pxpuf__grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 620px) { .pxpuf__grid2 { grid-template-columns: minmax(0, 1fr); } }
+.pxpuf__grid2-full { grid-column: 1 / -1; }
+.pxpuf__gap { margin-top: var(--pxn-space-6); }
+.pxpuf__lineshead { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); margin-bottom: var(--pxn-space-3); }
+.pxpuf__inline { display: flex; align-items: flex-start; gap: var(--pxn-space-2); }
+.pxpuf__inline > *:first-child { flex: 1; min-width: 0; }
+.pxpuf__sub { margin-top: var(--pxn-space-1); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxpuf__search { position: relative; }
+.pxpuf-ac { position: relative; display: flex; align-items: stretch; gap: var(--pxn-space-2); }
+.pxpuf-ac__scan { flex: none; width: 40px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-sm); background: var(--pxn-surface); color: var(--pxn-ink-2); cursor: pointer; }
+.pxpuf-ac__scan:hover { background: var(--pxn-surface-2); color: var(--pxn-ink); }
+.pxpuf-ac__input { flex: 1; height: 40px; padding: 0 var(--pxn-space-4); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-sm); background: var(--pxn-surface); color: var(--pxn-ink); font-size: var(--pxn-fs-sm); }
+.pxpuf-ac__input:focus { outline: none; border-color: var(--pxn-primary); box-shadow: 0 0 0 3px var(--pxn-primary-soft); }
+.pxpuf-ac__list { position: absolute; top: calc(100% + 4px); left: 48px; right: 0; z-index: 60; margin: 0; padding: var(--pxn-space-2); list-style: none; max-height: 280px; overflow-y: auto; background: var(--pxn-surface); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); box-shadow: var(--pxn-shadow-lg); }
+.pxpuf-ac__item { padding: var(--pxn-space-2) var(--pxn-space-3); border-radius: var(--pxn-radius-sm); font-size: var(--pxn-fs-sm); color: var(--pxn-ink); cursor: pointer; }
+.pxpuf-ac__item:hover { background: var(--pxn-primary-soft); color: var(--pxn-primary); }
+.pxpuf-tbl__wrap { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); overflow-x: auto; }
+.pxpuf-tbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxpuf-tbl th { padding: var(--pxn-space-3) var(--pxn-space-4); text-align: left; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); background: var(--pxn-surface-2); border-bottom: 1px solid var(--pxn-border); white-space: nowrap; }
+.pxpuf-tbl td { padding: var(--pxn-space-3) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink); vertical-align: top; }
+.pxpuf-tbl .is-right { text-align: right; }
+.pxpuf-tbl .is-center { text-align: center; }
+.pxpuf__rowdead { opacity: 0.5; }
+.pxpuf__empty { text-align: center; color: var(--pxn-ink-3); }
+.pxpuf__badgeline { margin-top: var(--pxn-space-2); }
+.pxpuf__rowactions { white-space: nowrap; }
+.pxpuf__ico { cursor: pointer; width: 18px; height: 18px; }
+.pxpuf__ico.is-edit { color: var(--pxn-success); margin-right: var(--pxn-space-3); }
+.pxpuf__ico.is-del { color: var(--pxn-danger); }
+.pxpuf__stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-sm); overflow: hidden; }
+.pxpuf__step { border: 0; width: 30px; background: var(--pxn-primary); color: var(--pxn-primary-contrast); font-size: var(--pxn-fs-body); cursor: pointer; }
+.pxpuf__step:hover { background: var(--pxn-primary-hover); }
+.pxpuf__stepinput { width: 64px; text-align: center; border: 0; border-left: 1px solid var(--pxn-border-control); border-right: 1px solid var(--pxn-border-control); background: var(--pxn-surface); color: var(--pxn-ink); font-size: var(--pxn-fs-sm); }
+.pxpuf__stepinput:focus { outline: none; }
+.pxpuf__batchrow td { background: transparent; padding: 0 var(--pxn-space-3) var(--pxn-space-4) !important; border-bottom: 0; }
+.pxpuf__batchdefer { display: flex; align-items: center; gap: var(--pxn-space-2); padding: var(--pxn-space-3) var(--pxn-space-4); background: var(--pxn-surface-2); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxpuf__batchbox { background: var(--pxn-info-soft); border: 1px solid var(--pxn-info-border); border-left: 4px solid var(--pxn-info); border-radius: var(--pxn-radius-md); padding: var(--pxn-space-4) var(--pxn-space-5); }
+.pxpuf__batchhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--pxn-space-3); gap: var(--pxn-space-3); flex-wrap: wrap; }
+.pxpuf__batchtitle { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxpuf__batchsub { font-weight: var(--pxn-fw-regular); color: var(--pxn-ink-3); margin-left: var(--pxn-space-2); font-size: var(--pxn-fs-xs); }
+.pxpuf-batchtbl { width: 100%; border-collapse: collapse; background: var(--pxn-surface); border-radius: var(--pxn-radius-sm); overflow: hidden; }
+.pxpuf-batchtbl th { padding: var(--pxn-space-2) var(--pxn-space-3); text-align: left; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink-3); background: var(--pxn-surface-2); }
+.pxpuf-batchtbl th.is-right { text-align: right; }
+.pxpuf-batchtbl td { padding: var(--pxn-space-2) var(--pxn-space-3); border-top: 1px solid var(--pxn-border); vertical-align: middle; }
+.pxpuf-batchtbl td.is-center { text-align: center; }
+.pxpuf__bin { width: 100%; height: 32px; padding: 0 var(--pxn-space-3); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-sm); background: var(--pxn-surface); color: var(--pxn-ink); font-size: var(--pxn-fs-sm); }
+.pxpuf__bin.is-right { text-align: right; }
+.pxpuf__batchempty { background: var(--pxn-surface); border: 1px dashed var(--pxn-border-control); border-radius: var(--pxn-radius-sm); padding: var(--pxn-space-6) var(--pxn-space-4); text-align: center; color: var(--pxn-ink-3); }
+.pxpuf__batchemptyhint { font-size: var(--pxn-fs-xs); margin-top: var(--pxn-space-1); }
+.pxpuf__batchwarn { margin-top: var(--pxn-space-3); padding: var(--pxn-space-2) var(--pxn-space-3); background: var(--pxn-danger-soft); color: var(--pxn-danger-ink); border: 1px solid var(--pxn-danger-border); border-left: 3px solid var(--pxn-danger); border-radius: var(--pxn-radius-sm); font-size: var(--pxn-fs-xs); display: flex; align-items: center; gap: var(--pxn-space-2); }
+.pxpuf__inlinealert { padding: 0 var(--pxn-space-3) var(--pxn-space-4) !important; border-bottom: 1px solid var(--pxn-border); }
+.pxpuf__serialbox { background: var(--pxn-info-soft); border: 1px solid var(--pxn-info-border); border-left: 4px solid var(--pxn-info); border-radius: var(--pxn-radius-md); padding: var(--pxn-space-4) var(--pxn-space-5); }
+.pxpuf__hint { margin-top: var(--pxn-space-2); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxpuf__chargerow { display: flex; align-items: center; gap: var(--pxn-space-2); margin-top: var(--pxn-space-2); }
+.pxpuf__chargename { flex: 1; font-size: var(--pxn-fs-sm); color: var(--pxn-ink); }
+.pxpuf__totals { display: flex; justify-content: flex-end; }
+.pxpuf-totbl { min-width: 300px; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxpuf-totbl td { padding: var(--pxn-space-2) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink-2); }
+.pxpuf-totbl td.is-right { text-align: right; color: var(--pxn-ink); }
+.pxpuf__totrow td { font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxpuf__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+</style>
 
 <style>
 
