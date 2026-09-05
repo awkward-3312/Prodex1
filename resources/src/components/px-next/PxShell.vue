@@ -459,7 +459,14 @@ export default {
       return (a + b).toUpperCase() || "U";
     },
 
-    // URL de avatar sólo si hay foto propia (no el placeholder por defecto).
+    // URL de avatar: users.avatar, resuelto EXACTAMENTE igual que
+    // views/app/pages/profile.vue ('/images/avatar/' + avatar — la carpeta
+    // global no scoped por tenant donde UserController realmente guarda/lee
+    // los archivos). $imgUrl('avatar', ...) NO sirve aquí: antepone
+    // window.__uploadPath (images/tenants/{id}/…), que no es dónde viven
+    // estos archivos, así que la imagen fallaba y sólo se veían las
+    // iniciales. Fallback de iniciales sólo si no hay avatar propio,
+    // default_avatar_1..4.png, ni no_avatar.png/null (placeholder legacy).
     avatarUrl() {
       if (this.avatarBroken) return null;
       const raw =
@@ -467,7 +474,7 @@ export default {
         (this.currentUser && this.currentUser.avatar) ||
         "";
       if (!raw || raw === "no_avatar.png") return null;
-      return this.$imgUrl("avatar", raw);
+      return "/images/avatar/" + raw;
     },
 
     // Mismo gate que TopNav.vue para el acceso a ajustes del sistema.
