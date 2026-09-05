@@ -19,7 +19,7 @@
         >{{ $t('CreateSale') }}</px-button>
         <px-menu :items="moreMenu" align="end" @select="onMore">
           <template #trigger>
-            <px-button variant="secondary" size="sm" icon="more-horizontal" />
+            <px-button variant="secondary" icon="share-2" trailing-icon="chevron-down">Más</px-button>
           </template>
         </px-menu>
         <px-button v-if="!isLoading" variant="secondary" icon="printer" @click="print">{{ $t('print') }}</px-button>

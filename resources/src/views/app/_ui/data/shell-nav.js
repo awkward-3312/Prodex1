@@ -466,7 +466,8 @@ export const SHELL_EXCLUDED_ROUTES = [
   "/app/pos_",
   "/app/kitchen-display",
   "/app/customer-display",
-  "/app/real-time-sales-counter",
+  // "Contador de ventas en tiempo real" es una pantalla de consulta, no un
+  // contexto operativo fullscreen: vive dentro del shell como el resto de Ventas.
   "/app/reports/sales-3d-dashboard"
 ];
 

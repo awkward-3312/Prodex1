@@ -1,130 +1,70 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Real_time_Sales_Counter')" folder="" />
+  <div class="px-next pxrtc">
+    <px-page-header :title="$t('Real_time_Sales_Counter')" :breadcrumbs="[{ label: $t('Sales') }, { label: $t('Real_time_Sales_Counter') }]">
+      <template #meta>
+        <span class="pxrtc__live" :class="{ 'is-paused': paused, 'is-error': hasError }">
+          <span class="pxrtc__dot"></span>
+          <span v-if="hasError">{{ $t('Connection_error') }}</span>
+          <span v-else-if="paused">{{ $t('Paused') }}</span>
+          <span v-else>{{ $t('Live') }}</span>
+        </span>
+        <span class="pxrtc__clock pxn-num">{{ serverClock }}</span>
+      </template>
+      <template #actions>
+        <px-button variant="ghost" :icon="paused ? 'play' : 'pause'" @click="togglePause">{{ paused ? $t('Resume') : $t('Pause') }}</px-button>
+        <px-button variant="primary" icon="refresh-cw" :loading="isFetching" @click="manualRefresh">{{ $t('Refresh') }}</px-button>
+        <px-button variant="secondary" size="sm" :icon="soundEnabled ? 'volume-2' : 'volume-x'" @click="toggleSound" />
+      </template>
+    </px-page-header>
 
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <p class="pxrtc__lead">{{ $t('Real_time_Sales_Counter_Help') }}</p>
+
+    <div v-if="loading" class="pxrtc__pad">
+      <px-skeleton variant="lines" :rows="4" />
+      <px-skeleton variant="table" :rows="6" :columns="4" />
+    </div>
 
     <div
       v-else-if="!loading && currentUserPermissions && currentUserPermissions.includes('real_time_sales_counter')"
-      class="real-time-sales-counter-page"
       :class="{ 'rts-flash': flashPulse }"
     >
-      <!-- Header -->
-      <div class="rts-header mb-4">
-        <div class="rts-header-inner">
-          <div class="rts-title-row">
-            <div class="rts-title-block">
-              <h1 class="rts-title">{{ $t('Real_time_Sales_Counter') }}</h1>
-              <p class="rts-subtitle">{{ $t('Real_time_Sales_Counter_Help') }}</p>
-            </div>
-            <div class="rts-status-block">
-              <span class="rts-live-badge" :class="{ 'rts-live-badge--paused': paused, 'rts-live-badge--error': hasError }">
-                <span class="rts-live-dot"></span>
-                <span v-if="hasError">{{ $t('Connection_error') }}</span>
-                <span v-else-if="paused">{{ $t('Paused') }}</span>
-                <span v-else>{{ $t('Live') }}</span>
-              </span>
-              <span class="rts-server-time">{{ serverClock }}</span>
-            </div>
-          </div>
-
-          <div class="rts-controls">
-            <div class="rts-control-item rts-control-warehouse">
-              <label class="rts-control-label">{{ $t('Warehouse') }}</label>
-              <v-select
-                v-model="warehouseId"
-                :reduce="opt => opt.value"
-                :placeholder="$t('All') + ' ' + $t('Warehouses')"
-                :options="warehouseOptions"
-                :clearable="true"
-                @input="onWarehouseChange"
-              />
-            </div>
-
-            <div class="rts-control-item">
-              <label class="rts-control-label">{{ $t('Updates_every') }}</label>
-              <select v-model.number="refreshSeconds" class="form-control rts-select" @change="restartTimer">
-                <option :value="10">10 {{ $t('Seconds') }}</option>
-                <option :value="30">30 {{ $t('Seconds') }}</option>
-                <option :value="60">60 {{ $t('Seconds') }}</option>
-                <option :value="120">120 {{ $t('Seconds') }}</option>
-              </select>
-            </div>
-
-            <div class="rts-control-actions">
-              <button type="button" class="rts-btn rts-btn--ghost" @click="togglePause" :title="paused ? $t('Resume') : $t('Pause')">
-                <lucide-icon :name="paused ? 'play' : 'pause'" />
-                <span class="d-none d-md-inline ml-1">{{ paused ? $t('Resume') : $t('Pause') }}</span>
-              </button>
-              <button type="button" class="rts-btn rts-btn--primary" @click="manualRefresh" :disabled="isFetching" :title="$t('Refresh')">
-                <lucide-icon name="refresh-cw" :class="{ 'rts-spin': isFetching }" />
-                <span class="d-none d-md-inline ml-1">{{ $t('Refresh') }}</span>
-              </button>
-              <button type="button" class="rts-btn rts-btn--ghost" :class="{ 'rts-btn--active': soundEnabled }" @click="toggleSound" :title="$t('Sound')">
-                <lucide-icon :name="soundEnabled ? 'volume-2' : 'volume-x'" />
-              </button>
-            </div>
-          </div>
+      <px-card class="pxrtc__filters">
+        <div class="pxrtc__filters-grid">
+          <px-field :label="$t('Warehouse')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="warehouseId" :reduce="opt => opt.value"
+                :placeholder="$t('All') + ' ' + $t('Warehouses')" :options="warehouseOptions" :clearable="true" @input="onWarehouseChange" />
+            </template>
+          </px-field>
+          <px-field :label="$t('Updates_every')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model.number="refreshSeconds" :reduce="opt => opt.value" :clearable="false" @input="restartTimer"
+                :options="[
+                  { label: '10 ' + $t('Seconds'), value: 10 },
+                  { label: '30 ' + $t('Seconds'), value: 30 },
+                  { label: '60 ' + $t('Seconds'), value: 60 },
+                  { label: '120 ' + $t('Seconds'), value: 120 }
+                ]" />
+            </template>
+          </px-field>
         </div>
-      </div>
+      </px-card>
 
       <!-- Stat cards -->
-      <b-row class="rts-cards-row">
-        <b-col md="6" lg="3" class="mb-3">
-          <div class="rts-card rts-card-count" :class="{ 'rts-card--bump': bumpCount }">
-            <div class="rts-card-icon"><lucide-icon name="shopping-cart" /></div>
-            <div class="rts-card-body">
-              <p class="rts-card-label">{{ $t('Sales_today') }}</p>
-              <div class="rts-card-value">{{ todayCount }}</div>
-              <p v-if="todayCount === 0" class="rts-card-hint">{{ $t('No_sales_today') }}</p>
-            </div>
-          </div>
-        </b-col>
-        <b-col md="6" lg="3" class="mb-3">
-          <div class="rts-card rts-card-total" :class="{ 'rts-card--bump': bumpTotal }">
-            <div class="rts-card-icon"><lucide-icon name="dollar-sign" /></div>
-            <div class="rts-card-body">
-              <p class="rts-card-label">{{ $t('Total_Today') }}</p>
-              <div class="rts-card-value rts-card-value--price">
-                {{ formatPriceWithSymbol(currencySymbol, todayTotal, 2) }}
-              </div>
-              <p class="rts-card-hint">
-                <span :class="trendClass">
-                  <lucide-icon :name="trendIcon" />
-                  {{ trendLabel }}
-                </span>
-                <span class="rts-card-hint-muted">{{ $t('vs') }} {{ $t('yesterday') }}</span>
-              </p>
-            </div>
-          </div>
-        </b-col>
-        <b-col md="6" lg="3" class="mb-3">
-          <div class="rts-card rts-card-avg">
-            <div class="rts-card-icon"><lucide-icon name="trending-up" /></div>
-            <div class="rts-card-body">
-              <p class="rts-card-label">{{ $t('Average_Sale') }}</p>
-              <div class="rts-card-value rts-card-value--price">
-                {{ formatPriceWithSymbol(currencySymbol, averageSale, 2) }}
-              </div>
-              <p class="rts-card-hint">{{ formatPriceWithSymbol(currencySymbol, todayPaid, 2) }} {{ $t('paid') }}</p>
-            </div>
-          </div>
-        </b-col>
-        <b-col md="6" lg="3" class="mb-3">
-          <div class="rts-card rts-card-last">
-            <div class="rts-card-icon"><lucide-icon name="clock" /></div>
-            <div class="rts-card-body">
-              <p class="rts-card-label">{{ $t('Last_Sale') }}</p>
-              <div class="rts-card-value rts-card-value--time">{{ lastSaleRelative }}</div>
-              <p v-if="lastSaleAbsolute" class="rts-card-hint">{{ lastSaleAbsolute }}</p>
-            </div>
-          </div>
-        </b-col>
-      </b-row>
+      <div class="pxrtc__kpis">
+        <px-stat bordered :label="$t('Sales_today')" :value="String(todayCount)" icon="shopping-cart"
+          :sub="todayCount === 0 ? $t('No_sales_today') : null" :class="{ 'pxrtc__bump': bumpCount }" />
+        <px-stat bordered :label="$t('Total_Today')" :value="formatPriceWithSymbol(currencySymbol, todayTotal, 2)" icon="dollar-sign"
+          :delta="trendLabel" :delta-tone="trendPct > 0 ? 'up' : (trendPct < 0 ? 'down' : 'neutral')"
+          :sub="$t('vs') + ' ' + $t('yesterday')" :class="{ 'pxrtc__bump': bumpTotal }" />
+        <px-stat bordered :label="$t('Average_Sale')" :value="formatPriceWithSymbol(currencySymbol, averageSale, 2)" icon="trending-up"
+          :sub="formatPriceWithSymbol(currencySymbol, todayPaid, 2) + ' ' + $t('paid')" />
+        <px-stat bordered :label="$t('Last_Sale')" :value="lastSaleRelative" icon="clock" :sub="lastSaleAbsolute || null" />
+      </div>
 
       <!-- Payment status mini stats -->
-      <b-row class="rts-payment-row mb-3">
-        <b-col cols="12">
+      <div class="rts-payment-row mb-3">
+        <div class="pxrtc__wide">
           <div class="rts-payment-bar">
             <div class="rts-payment-item rts-payment-item--paid">
               <span class="rts-payment-dot"></span>
@@ -146,44 +86,25 @@
               <span class="rts-payment-value">{{ formatPriceWithSymbol(currencySymbol, todayDue, 2) }}</span>
             </div>
           </div>
-        </b-col>
-      </b-row>
+        </div>
+      </div>
 
       <!-- Hourly chart -->
-      <b-row class="mb-3">
-        <b-col cols="12">
-          <div class="rts-panel">
-            <div class="rts-panel-header">
-              <h3 class="rts-panel-title">
-                <lucide-icon name="bar-chart-3" class="mr-2" />
-                {{ $t('Hourly_Sales_Today') }}
-              </h3>
-            </div>
-            <div class="rts-panel-body">
-              <apexchart
-                v-if="hourlySeries[0] && hourlySeries[0].data.length"
-                type="bar"
-                :height="260"
-                :options="hourlyOptions"
-                :series="hourlySeries"
-              />
-              <div v-else class="rts-empty">{{ $t('No_sales_today') }}</div>
-            </div>
-          </div>
-        </b-col>
-      </b-row>
+      <px-card :title="$t('Hourly_Sales_Today')" class="pxrtc__gap">
+        <apexchart
+          v-if="hourlySeries[0] && hourlySeries[0].data.length"
+          type="bar"
+          :height="260"
+          :options="hourlyOptions"
+          :series="hourlySeries"
+        />
+        <div v-else class="rts-empty">{{ $t('No_sales_today') }}</div>
+      </px-card>
 
-      <b-row class="mb-3">
-        <b-col lg="7" class="mb-3 mb-lg-0">
-          <div class="rts-panel h-100">
-            <div class="rts-panel-header">
-              <h3 class="rts-panel-title">
-                <lucide-icon name="receipt" class="mr-2" />
-                {{ $t('Recent_Sales') }}
-              </h3>
-              <span class="rts-panel-meta">{{ recentSales.length }}</span>
-            </div>
-            <div class="rts-panel-body p-0">
+      <div class="pxrtc__cols pxrtc__gap">
+        <px-card :title="$t('Recent_Sales')" flush>
+          <template #actions><span class="pxrtc__count">{{ recentSales.length }}</span></template>
+          <div class="rts-panel-body p-0">
               <div v-if="recentSales.length === 0" class="rts-empty p-4">
                 {{ $t('No_sales_today') }}
               </div>
@@ -217,18 +138,10 @@
                 </table>
               </div>
             </div>
-          </div>
-        </b-col>
+        </px-card>
 
-        <b-col lg="5">
-          <div class="rts-panel h-100">
-            <div class="rts-panel-header">
-              <h3 class="rts-panel-title">
-                <lucide-icon name="package" class="mr-2" />
-                {{ $t('Top_Products_Today') }}
-              </h3>
-            </div>
-            <div class="rts-panel-body">
+        <px-card :title="$t('Top_Products_Today')">
+          <div>
               <div v-if="topProducts.length === 0" class="rts-empty">{{ $t('No_sales_today') }}</div>
               <ul v-else class="rts-top-list">
                 <li v-for="(p, idx) in topProducts" :key="p.product_id || idx" class="rts-top-item">
@@ -245,23 +158,14 @@
                   </div>
                 </li>
               </ul>
-            </div>
           </div>
-        </b-col>
-      </b-row>
+        </px-card>
+      </div>
 
       <!-- Sales by Location (per-warehouse rollup of today's sales) -->
-      <b-row class="mb-3">
-        <b-col cols="12">
-          <div class="rts-panel">
-            <div class="rts-panel-header rts-panel-header--accent">
-              <h3 class="rts-panel-title">
-                <lucide-icon name="map-pin" class="mr-2" />
-                {{ $t('Sales_by_Location') }}
-              </h3>
-              <span class="rts-panel-meta">{{ salesByLocation.length }}</span>
-            </div>
-            <div class="rts-panel-body p-0">
+      <px-card :title="$t('Sales_by_Location')" flush class="pxrtc__gap">
+        <template #actions><span class="pxrtc__count">{{ salesByLocation.length }}</span></template>
+        <div>
               <div v-if="salesByLocation.length === 0" class="rts-empty p-4">
                 {{ $t('No_sales_today') }}
               </div>
@@ -287,40 +191,37 @@
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
-        </b-col>
-      </b-row>
+        </div>
+        </px-card>
 
       <!-- Footer -->
-      <div class="rts-footer">
-        <span class="rts-refresh-text">
-          <lucide-icon name="clock" class="mr-1" />
-          {{ $t('Last_updated') }}:
-          {{ lastUpdatedRelative }}
-        </span>
+      <div class="pxrtc__footer">
+        <lucide-icon name="clock" :size="13" />
+        {{ $t('Last_updated') }}: {{ lastUpdatedRelative }}
       </div>
     </div>
 
     <!-- No permission -->
-    <div v-else class="rts-no-access">
-      <div class="rts-no-access-card">
-        <div class="rts-no-access-icon"><lucide-icon name="lock" /></div>
-        <h5 class="rts-no-access-title">{{ $t('No_permission') }}</h5>
-        <p class="rts-no-access-text">{{ $t('You_do_not_have_access_to_this_page') }}</p>
-      </div>
-    </div>
+    <px-empty-state v-else icon="lock" :title="$t('No_permission')" :description="$t('You_do_not_have_access_to_this_page')" />
   </div>
 </template>
 
 <script>
 import { mapGetters } from "vuex";
 import VueApexCharts from "vue-apexcharts";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: "Real-time Sales Counter" },
   components: {
     apexchart: VueApexCharts,
+    PxPageHeader, PxCard, PxStat, PxButton, PxField, PxEmptyState, "vs-px": VsPx
   },
   data() {
     return {
@@ -741,7 +642,37 @@ export default {
 };
 </script>
 
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
 <style scoped>
+.pxrtc { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrtc { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrtc__lead { margin: var(--pxn-space-3) 0 var(--pxn-space-6); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
+.pxrtc__pad { padding: var(--pxn-space-6) 0; display: flex; flex-direction: column; gap: var(--pxn-space-6); }
+.pxrtc__gap { margin-top: var(--pxn-space-6); }
+
+.pxrtc__live { display: inline-flex; align-items: center; gap: var(--pxn-space-2); padding: 2px var(--pxn-space-3); border-radius: var(--pxn-radius-pill); background: var(--pxn-success-soft); color: var(--pxn-success-ink); font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); }
+.pxrtc__live.is-paused { background: var(--pxn-warning-soft); color: var(--pxn-warning-ink); }
+.pxrtc__live.is-error { background: var(--pxn-danger-soft); color: var(--pxn-danger-ink); }
+.pxrtc__dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pxrtc__clock { margin-left: var(--pxn-space-3); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
+
+.pxrtc__filters { margin-bottom: var(--pxn-space-6); }
+.pxrtc__filters-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); max-width: 640px; }
+@media (max-width: 560px) { .pxrtc__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.pxrtc__kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--pxn-space-5); margin-bottom: var(--pxn-space-6); }
+@media (max-width: 1080px) { .pxrtc__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxrtc__kpis { grid-template-columns: minmax(0, 1fr); } }
+.pxrtc__bump { animation: pxrtc-bump 0.5s var(--pxn-ease); }
+@keyframes pxrtc-bump { 0% { transform: scale(1); } 40% { transform: scale(1.03); } 100% { transform: scale(1); } }
+
+.pxrtc__wide { width: 100%; }
+.pxrtc__cols { display: grid; grid-template-columns: 7fr 5fr; gap: var(--pxn-space-6); }
+@media (max-width: 1080px) { .pxrtc__cols { grid-template-columns: minmax(0, 1fr); } }
+.pxrtc__count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--pxn-radius-pill); background: var(--pxn-surface-3); color: var(--pxn-ink-2); font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); }
+.pxrtc__footer { display: flex; align-items: center; gap: var(--pxn-space-2); justify-content: center; margin-top: var(--pxn-space-6); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+
 .real-time-sales-counter-page {
   max-width: 1300px;
   margin: 0 auto;
