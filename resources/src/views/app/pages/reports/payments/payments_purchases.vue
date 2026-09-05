@@ -1,187 +1,128 @@
 <template>
-  <div class="main-content p-2 p-md-4">
-    <breadcumb :page="$t('Payment_Purchases')" :folder="$t('Reports')" />
-
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-
-    <div v-else>
-      <!-- Toolbar -->
-      <b-card class="shadow-soft border-0 mb-3">
-        <div class="toolbar d-flex flex-wrap align-items-center">
-          <!-- Date range (responsive) -->
-          <div class="mr-3 mb-2 d-flex flex-column flex-sm-row align-items-sm-center date-range-filter">
-            <label class="mb-1 mb-sm-0 mr-sm-2 text-muted">{{$t('DateRange')}}</label>
-            <date-range-picker
-              v-model="dateRange"
-              :locale-data="locale"
-              :autoApply="true"
-              :showDropdowns="true"
-              @update="onDateChanged"
-            >
-              <template v-slot:input="picker">
-                <b-button variant="light" class="btn-pill w-100 w-sm-auto date-btn">
-                  <lucide-icon class="mr-1" name="calendar-days" />
-                  {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
-                </b-button>
-              </template>
-            </date-range-picker>
-          </div>
-
-          <!-- Quick ranges -->
-          <div class="mr-3 mb-2">
-            <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
-            <div class="btn-group quick-ranges">
-              <b-button size="sm" variant="outline-primary" @click="quick('7d')">7D</b-button>
-              <b-button size="sm" variant="outline-primary" @click="quick('30d')">30D</b-button>
-              <b-button size="sm" variant="outline-primary" @click="quick('90d')">90D</b-button>
-              <b-button size="sm" variant="outline-primary" @click="quick('mtd')">{{$t('MTD')}}</b-button>
-              <b-button size="sm" variant="outline-primary" @click="quick('ytd')">{{$t('YTD')}}</b-button>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="ml-auto mb-2 d-flex">
-            <b-button size="sm" variant="outline-info" class="btn-pill mr-2" v-b-toggle.sidebar-right>
-              <lucide-icon class="mr-1" name="filter" />{{$t('Filter')}}
-            </b-button>
-            <b-button size="sm" variant="outline-secondary" class="btn-pill mr-2" @click="printTableOnly">
-              <lucide-icon class="mr-1" name="printer" />{{$t('print')}}
-            </b-button>
-            <b-button size="sm" variant="outline-success" class="btn-pill mr-2" @click="exportPDF">
-              <lucide-icon class="mr-1" name="copy" />PDF
-            </b-button>
-            <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger btn-pill mr-2"
-              :data="payments"
-              :columns="excelColumns"
-              :file-name="'payments_purchases'"
-              :file-type="'xlsx'"
-              :sheet-name="'payments_purchases'"
-            >
-              <lucide-icon class="mr-1" name="file-spreadsheet" />EXCEL
-            </vue-excel-xlsx>
-            <b-button variant="primary" size="sm" class="btn-pill" @click="Payments_Purchases(1)">
-              <lucide-icon class="mr-1" name="refresh-cw" />{{$t('Refresh')}}
-            </b-button>
-          </div>
-        </div>
-      </b-card>
-
-      <!-- Charts -->
-      <b-row>
-        <b-col md="8" class="mb-3">
-          <b-card class="shadow-soft border-0">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <h6 class="m-0">{{$t('PaymentsOverTime')}}</h6>
-              <small class="text-muted">{{ fmt(dateRange.startDate) }} → {{ fmt(dateRange.endDate) }}</small>
-            </div>
-            <apexchart type="line" height="320" :options="apexTimeOptions" :series="apexTimeSeries" />
-          </b-card>
-        </b-col>
-        <b-col md="4" class="mb-3">
-          <b-card class="shadow-soft border-0">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <h6 class="m-0">{{$t('PaymentsByMethod')}}</h6>
-              <small class="text-muted">{{$t('ByAmount')}}</small>
-            </div>
-            <apexchart type="bar" height="320" :options="apexMethodOptions" :series="apexMethodSeries" />
-          </b-card>
-        </b-col>
-      </b-row>
-
-      <!-- Table -->
-      <b-card class="shadow-soft border-0">
-        <div class="table-responsive">
-        <vue-good-table
-          mode="remote"
-          :columns="columns"
-          :totalRows="totalRows"
-          :rows="rows"
-          :group-options="{ enabled: true, headerPosition: 'bottom' }"
-          @on-page-change="onPageChange"
-          @on-per-page-change="onPerPageChange"
-          @on-sort-change="onSortChange"
-          @on-search="onSearch"
-          :search-options="{ placeholder: $t('Search_this_table'), enabled: true }"
-          :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
-          styleClass="table-hover tableOne vgt-table mt-2"
-        >
-          <template slot="table-row" slot-scope="props">
-            <span v-if="props.column.field === 'montant'">
-              {{ formatPriceDisplay(props.row.montant, 2) }}
-            </span>
-            <span v-else-if="props.column.field === 'Ref_Purchase' && props.row.purchase_id">
-              <router-link :to="{ name: 'detail_purchase', params: { id: props.row.purchase_id } }" class="text-primary">
-                {{ props.formattedRow[props.column.field] }}
-              </router-link>
-            </span>
-            <span v-else>{{ props.formattedRow[props.column.field] }}</span>
+  <div class="px-next pxrl">
+    <px-page-header :title="$t('Payment_Purchases')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('Payment_Purchases') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button>
           </template>
-        </vue-good-table>
-        </div>
-      </b-card>
+        </px-menu>
+        <px-button variant="primary" size="sm" icon="refresh-cw" @click="Payments_Purchases(serverParams.page)">{{ $t('Refresh') }}</px-button>
+      </template>
+      <template #meta>
+        <date-range-picker
+          v-model="dateRange"
+          :locale-data="locale"
+          :autoApply="true"
+          :showDropdowns="true"
+          @update="Submit_filter_dateRange"
+        >
+          <template v-slot:input="picker">
+            <button type="button" class="pxrl__daterange pxn-ring">
+              <lucide-icon name="calendar-days" :size="14" />
+              {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
+            </button>
+          </template>
+        </date-range-picker>
+      </template>
+    </px-page-header>
+
+    <div class="pxrl__quickbar">
+      <span class="pxrl__quicklabel">{{ $t('QuickRanges') }}</span>
+      <px-button size="sm" variant="subtle" @click="quick('7d')">7D</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('30d')">30D</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('90d')">90D</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('mtd')">{{ $t('MTD') }}</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('ytd')">{{ $t('YTD') }}</px-button>
     </div>
 
-    <!-- Sidebar Filter -->
-    <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
-      <div class="px-3 py-2">
-        <b-row>
-          <!-- Reference -->
-          <b-col md="12">
-            <b-form-group :label="$t('Reference')">
-              <b-form-input :placeholder="$t('Reference')" v-model="Filter_Ref" />
-            </b-form-group>
-          </b-col>
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="lines" :rows="8" />
+    </div>
 
-          <!-- Supplier -->
-          <b-col md="12">
-            <b-form-group :label="$t('Supplier')">
-              <v-select
-                :reduce="o => o.value"
-                :placeholder="$t('Choose_Supplier')"
-                v-model="Filter_Supplier"
-                :options="suppliers.map(s => ({label: s.name, value: s.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Purchase -->
-          <b-col md="12">
-            <b-form-group :label="$t('Purchase')">
-              <v-select
-                :reduce="o => o.value"
-                :placeholder="$t('PleaseSelect')"
-                v-model="Filter_purchase"
-                :options="purchases.map(p => ({label: p.Ref, value: p.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Payment choice -->
-          <b-col md="12">
-            <b-form-group :label="$t('Paymentchoice')">
-              <v-select
-                v-model="Filter_Reg"
-                :reduce="o => o.value"
-                :placeholder="$t('PleaseSelect')"
-                :options="payment_methods.map(m => ({label: m.name, value: m.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <b-col md="6" sm="12">
-            <b-button @click="Payments_Purchases(1)" variant="primary ripple m-1" size="sm" block>
-              <lucide-icon name="filter" /> {{ $t("Filter") }}
-            </b-button>
-          </b-col>
-          <b-col md="6" sm="12">
-            <b-button @click="Reset_Filter" variant="danger ripple m-1" size="sm" block>
-              <lucide-icon name="power" /> {{ $t("Reset") }}
-            </b-button>
-          </b-col>
-        </b-row>
+    <template v-else>
+      <div class="pxrl__cols pxrl__cols--87">
+        <px-card :title="$t('PaymentsOverTime')">
+          <apexchart type="line" height="320" :options="apexTimeOptions" :series="apexTimeSeries" />
+        </px-card>
+        <px-card :title="$t('PaymentsByMethod')">
+          <apexchart type="bar" height="320" :options="apexMethodOptions" :series="apexMethodSeries" />
+        </px-card>
       </div>
-    </b-sidebar>
+
+      <px-toolbar
+        :search="search"
+        :search-placeholder="$t('Search_this_table')"
+        :filter-count="activeFilterCount"
+        @update:search="onSearchInput"
+        @open-filters="filtersOpen = !filtersOpen"
+      />
+
+      <div v-if="filtersOpen" class="pxrl__filters">
+        <div class="pxrl__filters-grid">
+          <px-field :label="$t('Reference')">
+            <template #default="{ id }"><px-input :id="id" v-model="Filter_Ref" :placeholder="$t('Reference')" /></template>
+          </px-field>
+          <px-field :label="$t('Supplier')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="Filter_Supplier" :reduce="o => o.value" :placeholder="$t('Choose_Supplier')"
+                :options="suppliers.map(s => ({ label: s.name, value: s.id }))" />
+            </template>
+          </px-field>
+          <px-field :label="$t('Purchase')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="Filter_purchase" :reduce="o => o.value" :placeholder="$t('PleaseSelect')"
+                :options="purchases.map(p => ({ label: p.Ref, value: p.id }))" />
+            </template>
+          </px-field>
+          <px-field :label="$t('Paymentchoice')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="Filter_Reg" :reduce="o => o.value" :placeholder="$t('PleaseSelect')"
+                :options="payment_methods.map(m => ({ label: m.name, value: m.id }))" />
+            </template>
+          </px-field>
+        </div>
+        <div class="pxrl__filters-act">
+          <px-button size="sm" variant="primary" icon="filter" @click="Payments_Purchases(1)">{{ $t('Filter') }}</px-button>
+          <px-button size="sm" variant="ghost" icon="x" @click="Reset_Filter">{{ $t('Reset') }}</px-button>
+        </div>
+      </div>
+
+      <div class="pxrl__tablewrap">
+        <px-table
+          v-if="payments.length"
+          :columns="columns"
+          :rows="payments"
+          row-key="__rowkey"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          @sort="onSort"
+        >
+          <template #cell-date="{ row }">{{ row.date ? fmt(row.date) : '' }}</template>
+          <template #cell-Ref_Purchase="{ row }">
+            <router-link v-if="row.purchase_id" :to="{ name: 'detail_purchase', params: { id: row.purchase_id } }" class="pxrl__link">{{ row.Ref_Purchase }}</router-link>
+            <span v-else>{{ row.Ref_Purchase }}</span>
+          </template>
+          <template #cell-montant="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.montant, 2) }}</span></template>
+        </px-table>
+
+        <px-empty-state v-else icon="coins" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+      </div>
+
+      <div v-if="payments.length" class="pxrl__totalrow">
+        <span>{{ $t('Total') }}</span>
+        <span class="pxn-num">{{ formatPriceDisplay(totalMontant, 2) }}</span>
+      </div>
+
+      <px-pagination
+        v-if="payments.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
 </template>
 
@@ -198,90 +139,104 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: "Payment Purchases" },
-  components: { "date-range-picker": DateRangePicker, apexchart: VueApexCharts },
+  components: {
+    "date-range-picker": DateRangePicker, apexchart: VueApexCharts,
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxCard,
+    PxField, PxInput, PxEmptyState, "vs-px": VsPx
+  },
 
   data() {
     const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - 29);
+    const start = new Date(); start.setDate(end.getDate() - 29);
     return {
+      _searchTimer: null,
+      filtersOpen: false,
       isLoading: true,
 
-      // table state
       serverParams: { sort: { field: "id", type: "desc" }, page: 1, perPage: 10 },
       limit: "10",
       search: "",
       totalRows: 0,
 
-      // data
-      payments: [],
-      suppliers: [],
-      purchases: [],
-      payment_methods: [],
-      rows: [{ children: [] }],
-
-      // filters
       Filter_Supplier: "",
       Filter_Ref: "",
       Filter_purchase: "",
       Filter_Reg: "",
 
-      // date range
+      payments: [],
+      suppliers: [],
+      purchases: [],
+      payment_methods: [],
+
+      rows: [{ children: [] }],
+
       dateRange: { startDate: start, endDate: end },
       locale: {
-        Label: "Apply",
-        cancelLabel: "Cancel",
+        Label: this.$t("Apply") || "Apply",
+        cancelLabel: this.$t("Cancel") || "Cancel",
         weekLabel: "W",
-        customRangeLabel: "Custom Range",
+        customRangeLabel: this.$t("CustomRange") || "Custom Range",
         daysOfWeek: moment.weekdaysMin(),
         monthNames: moment.monthsShort(),
         firstDay: 1
       },
-      // Optional price format key for frontend display (loaded from system settings/localStorage)
       price_format_key: null
     };
   },
 
   computed: {
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
+    activeFilterCount() {
+      return [this.Filter_Ref, this.Filter_Supplier, this.Filter_purchase, this.Filter_Reg]
+        .filter(v => v !== "" && v !== null && v !== undefined).length;
+    },
+    exportMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
+    totalMontant() {
+      return (this.payments || []).reduce((a, b) => a + (Number(b.montant) || 0), 0);
+    },
     columns() {
       return [
-        { label: this.$t("date"),            field: "date",            tdClass:"text-left", thClass:"text-left" },
-        { label: this.$t("Reference"),       field: "Ref",             tdClass:"text-left", thClass:"text-left" },
-        { label: this.$t("Purchase"),        field: "Ref_Purchase",    tdClass:"text-left", thClass:"text-left" },
-        { label: this.$t("Supplier"),        field: "provider_name",   tdClass:"text-left", thClass:"text-left" },
-        { label: this.$t("ModePaiement"),    field: "payment_method",  tdClass:"text-left", thClass:"text-left" },
-        { label: this.$t("Account"),         field: "account_name",    tdClass:"text-left", thClass:"text-left", sortable:false },
-        { label: this.$t("Amount"),          field: "montant",         // Let headerField return a formatted string; avoid vue-good-table's decimal re-formatting.
-          headerField: this.sumCount, tdClass:"text-left", thClass:"text-left" },
-        { label: this.$t("AddedBy"), field: "user_name", tdClass:"text-left", thClass:"text-left", sortable:false }
+        { key: "date",           label: this.$t("date") },
+        { key: "Ref",            label: this.$t("Reference"), strong: true },
+        { key: "Ref_Purchase",   label: this.$t("Purchase") },
+        { key: "provider_name",  label: this.$t("Supplier") },
+        { key: "payment_method", label: this.$t("ModePaiement") },
+        { key: "account_name",   label: this.$t("Account") },
+        { key: "montant",        label: this.$t("Amount"), align: "right" },
+        { key: "user_name",      label: this.$t("AddedBy") },
       ];
     },
 
-    excelColumns() {
-      return [
-        { label: this.$t("date"),           field: "date" },
-        { label: this.$t("Reference"),      field: "Ref" },
-        { label: this.$t("Purchase"),       field: "Ref_Purchase" },
-        { label: this.$t("Supplier"),       field: "provider_name" },
-        { label: this.$t("ModePaiement"),   field: "payment_method" },
-        { label: this.$t("Account"),        field: "account_name" },
-        { label: this.$t("Amount"),         field: "montant" },
-        { label: this.$t("AddedBy"), field: "user_name" }
-      ];
+    excelColumns(){
+      return this.columns.map(c => ({ label: c.label, field: c.key }));
     },
 
-    // ApexCharts: time series (line)
-    apexTimeOptions() {
+    apexTimeOptions(){
       const map = new Map();
       (this.payments || []).forEach(p => {
-        const d = p.date ? String(p.date).slice(0, 10) : "";
+        const d = p.date ? String(p.date).slice(0,10) : "";
         const amt = Number(p.montant || 0);
         if (!d) return;
         map.set(d, (map.get(d) || 0) + amt);
@@ -297,27 +252,26 @@ export default {
           catch { return v; }
         } } },
         tooltip: { y: { formatter: (v) => {
-          try { return Number(v||0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+          try { return this.formatPriceDisplay(v, 2); }
           catch { return v; }
         } } },
         grid: { padding: { left: 10, right: 10, top: 10, bottom: 10 } }
       };
     },
-    apexTimeSeries() {
+    apexTimeSeries(){
       const map = new Map();
       (this.payments || []).forEach(p => {
-        const d = p.date ? String(p.date).slice(0, 10) : "";
+        const d = p.date ? String(p.date).slice(0,10) : "";
         const amt = Number(p.montant || 0);
         if (!d) return;
         map.set(d, (map.get(d) || 0) + amt);
       });
       const dates = Array.from(map.keys()).sort();
       const vals = dates.map(d => map.get(d));
-      return [ { name: this.$t('Amount'), data: vals } ];
+      return [{ name: this.$t('Amount'), data: vals }];
     },
 
-    // ApexCharts: by method (horizontal bar)
-    apexMethodOptions() {
+    apexMethodOptions(){
       const map = new Map();
       (this.payments || []).forEach(p => {
         const k = p.payment_method || this.$t('Unknown');
@@ -330,13 +284,13 @@ export default {
         dataLabels: { enabled: false },
         xaxis: { categories: cats },
         tooltip: { y: { formatter: (v) => {
-          try { return Number(v||0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+          try { return this.formatPriceDisplay(v, 2); }
           catch { return v; }
         } } },
         grid: { padding: { left: 10, right: 10, top: 10, bottom: 10 } }
       };
     },
-    apexMethodSeries() {
+    apexMethodSeries(){
       const map = new Map();
       (this.payments || []).forEach(p => {
         const k = p.payment_method || this.$t('Unknown');
@@ -344,14 +298,11 @@ export default {
       });
       const cats = Array.from(map.keys());
       const vals = cats.map(k => map.get(k));
-      return [ { name: this.$t('Amount'), data: vals } ];
+      return [{ name: this.$t('Amount'), data: vals }];
     }
   },
 
   methods: {
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing toLocaleString behavior to preserve current behavior.
     formatPriceDisplay(number, dec) {
       try {
         const decimals = this.priceDecimals;
@@ -367,68 +318,48 @@ export default {
         return n.toLocaleString(undefined, { maximumFractionDigits: dec || 2 });
       }
     },
-
     fmt(d){ return moment(d).format("YYYY-MM-DD"); },
-
-    // Group footer helper for vue-good-table.
-    // Returns a formatted string so the footer row inside the table
-    // looks like a normal data row, but uses the global price format.
-    sumCount(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceDisplay(0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].montant) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceDisplay(sum, 2);
+    findLabel(list, id, key='name'){
+      if (!id) return this.$t('All');
+      const x = (list||[]).find(i => String(i.id) === String(id));
+      return x ? (x[key] ?? this.$t('All')) : this.$t('All');
+    },
+    findPurchaseRef(id){
+      if (!id) return this.$t('All');
+      const x = (this.purchases||[]).find(i => String(i.id) === String(id));
+      return x ? (x.Ref || this.$t('All')) : this.$t('All');
     },
 
-    // table helpers
-    updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Payments_Purchases(currentPage);
-      }
-    },
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== String(currentPerPage)) {
-        this.limit = String(currentPerPage);
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Payments_Purchases(1);
-      }
-    },
-    onSortChange(params) {
-      if (params && params[0]) {
-        const field = params[0].field === "Ref_Purchase" ? "purchase_id" : params[0].field;
-        this.updateParams({ sort: { type: params[0].type, field } });
-        this.Payments_Purchases(this.serverParams.page);
-      }
-    },
-    onSearch(value) {
-      this.search = value.searchTerm || "";
-      this.Payments_Purchases(this.serverParams.page);
-    },
-
-    // date handling
-    onDateChanged() { this.Payments_Purchases(1); },
     quick(kind){
-      const now = moment(); let s,e;
-      if(kind==='7d'){ s=now.clone().subtract(6,'days'); e=now; }
-      if(kind==='30d'){ s=now.clone().subtract(29,'days'); e=now; }
-      if(kind==='90d'){ s=now.clone().subtract(89,'days'); e=now; }
-      if(kind==='mtd'){ s=now.clone().startOf('month'); e=now; }
-      if(kind==='ytd'){ s=now.clone().startOf('year');  e=now; }
+      const now = moment(); let s, e = now.clone();
+      if (kind==='7d')  s = now.clone().subtract(6,'days');
+      if (kind==='30d') s = now.clone().subtract(29,'days');
+      if (kind==='90d') s = now.clone().subtract(89,'days');
+      if (kind==='mtd'){ s = now.clone().startOf('month'); e = now; }
+      if (kind==='ytd'){ s = now.clone().startOf('year');  e = now; }
       this.dateRange = { startDate: s.toDate(), endDate: e.toDate() };
       this.Payments_Purchases(1);
     },
 
-    // Reset sidebar filters
-    Reset_Filter() {
+    updateParams(newProps){ this.serverParams = Object.assign({}, this.serverParams, newProps); },
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Payments_Purchases(1); }, 350);
+    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Payments_Purchases(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Payments_Purchases(1); } },
+    onSort({ key, dir }) {
+      const field = key === 'Ref_Purchase' ? 'purchase_id' : key;
+      this.updateParams({ sort: { type: dir, field } });
+      this.Payments_Purchases(this.serverParams.page);
+    },
+
+    Submit_filter_dateRange(){
+      this.Payments_Purchases(1);
+    },
+
+    Reset_Filter(){
       this.search = "";
       this.Filter_Supplier = "";
       this.Filter_Ref = "";
@@ -437,52 +368,64 @@ export default {
       this.Payments_Purchases(1);
     },
 
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "print") this.printTableOnly();
+      else if (k === "pdf") this.Payment_PDF();
+      else if (k === "xlsx") this.exportCsv();
+    },
+
+    exportCsv() {
+      const head = this.columns.map(c => c.label);
+      const lines = [head.join(",")].concat(
+        (this.payments || []).map(r =>
+          this.columns.map(c => {
+            let v = r[c.key];
+            if (c.key === "date") v = r.date ? this.fmt(r.date) : "";
+            return `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+          }).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "payments_purchases.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+
     //------ Print Table Only - Print ALL payments data with all columns
     printTableOnly() {
-      const title = `${this.$t("Reports")} / ${this.$t("Payment_Purchases")}`;
+      const title = `${this.$t("Reports")} / ${this.$t("SalesInvoice")}`;
       const payments = Array.isArray(this.payments) ? this.payments : [];
-      
-      // Build table header with all columns
+
       let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
       tableHTML += '<thead><tr>';
-      
+
       this.columns.forEach(col => {
         tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
       });
       tableHTML += '</tr></thead><tbody>';
-      
-      // Build table rows with all data - format each cell according to column type
+
       payments.forEach(payment => {
         tableHTML += '<tr>';
         this.columns.forEach(col => {
           let cellValue = '';
-          
-          if (col.field === 'date') {
+
+          if (col.key === 'date') {
             cellValue = payment.date ? this.fmt(payment.date) : '';
-          } else if (col.field === 'Ref') {
-            cellValue = payment.Ref || '';
-          } else if (col.field === 'Ref_Purchase') {
-            cellValue = payment.Ref_Purchase || '';
-          } else if (col.field === 'provider_name') {
-            cellValue = payment.provider_name || '';
-          } else if (col.field === 'payment_method') {
-            cellValue = payment.payment_method || '';
-          } else if (col.field === 'account_name') {
-            cellValue = payment.account_name || '';
-          } else if (col.field === 'montant') {
+          } else if (col.key === 'montant') {
             cellValue = this.formatPriceDisplay(payment.montant, 2);
-          } else if (col.field === 'user_name') {
-            cellValue = payment.user_name || '';
           } else {
-            // Default: get value directly from payment object
-            cellValue = payment[col.field] || '';
+            cellValue = payment[col.key] || '';
           }
-          
+
           tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
         });
         tableHTML += '</tr>';
       });
-      
+
       tableHTML += '</tbody></table>';
 
       const w = window.open("", "_blank");
@@ -506,8 +449,7 @@ export default {
     <title>${title}</title>
     ${links}
     <style>
-      /* Force visibility in print (some global POS print CSS hides body) */
-      @media print { 
+      @media print {
         body, body * { visibility: visible !important; }
         @page { size: A4 landscape; margin: 0.3cm; }
       }
@@ -533,51 +475,74 @@ export default {
       }, 400);
     },
 
-    // --- font + RTL helpers (safe to reuse in other reports)
+    // ---------- fetch ----------
+    Payments_Purchases(page){
+      NProgress.start(); NProgress.set(0.1);
+
+      const provider_id = this.Filter_Supplier || '';
+      const purchase_id = this.Filter_purchase || '';
+      const method_id  = this.Filter_Reg     || '';
+      const ref        = this.Filter_Ref     || '';
+      const from       = this.fmt(this.dateRange.startDate);
+      const to         = this.fmt(this.dateRange.endDate);
+
+      const url = "payment_purchase?" + new URLSearchParams({
+        page: String(page),
+        Ref: ref,
+        provider_id,
+        purchase_id,
+        payment_method_id: method_id,
+        SortField: this.serverParams.sort.field,
+        SortType: this.serverParams.sort.type,
+        search: this.search || '',
+        limit: this.limit,
+        to, from
+      }).toString();
+
+      axios.get(url)
+        .then(({data})=>{
+          this.payments = (data.payments || []).map((p, i) => Object.assign({ __rowkey: p.id != null ? `p-${p.id}-${i}` : `r-${i}` }, p));
+          this.suppliers = data.suppliers || [];
+          this.purchases = data.purchases || [];
+          this.payment_methods = data.payment_methods || [];
+          this.totalRows = Number(data.totalRows || 0);
+          this.rows[0].children = this.payments;
+          NProgress.done();
+          this.isLoading = false;
+        })
+        .catch(()=>{ NProgress.done(); setTimeout(()=>{ this.isLoading=false; }, 300); });
+    },
+
+
+    // ---------- shared font + RTL helpers ----------
     useVazirmatn(pdf){
-      // Put Vazirmatn-Bold.ttf in: /public/fonts/Vazirmatn-Bold.ttf
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
       try {
         pdf.addFont(fontPath, "Vazirmatn", "normal");
         pdf.addFont(fontPath, "Vazirmatn", "bold");
-      } catch(e) { /* ignore if already added */ }
+      } catch(e){ /* ignore if already added */ }
       pdf.setFont("Vazirmatn", "normal");
     },
     isRTL(){
-      return (this.$i18n && ['ar','fa','ur','he'].includes(this.$i18n.locale)) ||
-            (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+      return (this.$i18n && ['ar','fa','ur','he'].includes(this.$i18n.locale))
+          || (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
     },
 
-    // keep your existing behavior but safer fallbacks
-    findLabel(list, id, key='name'){
-      if (!id) return this.$t('All');
-      const x = (list||[]).find(i => String(i.id) === String(id));
-      return x ? (x[key] ?? this.$t('All')) : this.$t('All');
-    },
-    findPurchaseRef(id){
-      if (!id) return this.$t('All');
-      const x = (this.purchases||[]).find(i => String(i.id) === String(id));
-      return x ? (x.Ref || this.$t('All')) : this.$t('All');
-    },
-
-    // --- Export PDF (Arabic-safe, shows filters & date range)
-    async exportPDF(){
+    // ---------- EXPORT PDF (Payments Sales) ----------
+    async Payment_PDF(){
       NProgress.start(); NProgress.set(0.2);
       try{
-        // date helpers (fallback if this.fmt isn't defined)
         const fmtLocal = (d) => {
           if (!d) return '';
           if (this.fmt) return this.fmt(d);
           return (d instanceof Date) ? d.toISOString().slice(0,10) : String(d);
         };
-
         const from = this.startDate || fmtLocal(this.dateRange?.startDate);
         const to   = this.endDate   || fmtLocal(this.dateRange?.endDate);
 
-        // fetch ALL filtered rows
         const qs = new URLSearchParams({
           page: '1',
-          limit: '-1', // all rows
+          limit: '-1',
           SortField: this.serverParams?.sort?.field || 'id',
           SortType:  this.serverParams?.sort?.type  || 'desc',
           search: this.search || '',
@@ -591,23 +556,20 @@ export default {
         const { data } = await axios.get(`payment_purchase?${qs}`).catch(()=>({data:{}}));
         const items = Array.isArray(data?.payments) ? data.payments : [];
 
-        // Build PDF
         const pdf = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
         this.useVazirmatn(pdf);
         const rtl = this.isRTL();
         const margin = 40;
         const pageW = pdf.internal.pageSize.getWidth();
 
-        // Title
         pdf.setFont('Vazirmatn','bold'); pdf.setFontSize(16);
         const title = 'Payment Purchases';
         rtl ? pdf.text(title, pageW - margin, 40, { align:'right' })
             : pdf.text(title, margin, 40);
 
-        // Header (filters + range), auto-wrap for long text
         pdf.setFont('Vazirmatn','normal'); pdf.setFontSize(10);
-        const supplierLabel = this.findLabel(this.suppliers, this.Filter_Supplier, 'name');
-        const purchaseLabel = this.findPurchaseRef(this.Filter_purchase);
+        const customerLabel = this.findLabel(this.suppliers, this.Filter_Supplier, 'name');
+        const saleLabel     = this.findPurchaseRef(this.Filter_purchase);
         const methodLabel   = this.findLabel(this.payment_methods, this.Filter_Reg, 'name');
         const refFilter     = this.Filter_Ref || this.$t('All');
         const range         = `${from || '—'} — ${to || '—'}`;
@@ -615,20 +577,19 @@ export default {
         const headerText = [
           `${this.$t('DateRange')}: ${range}`,
           `${this.$t('Reference')}: ${refFilter}`,
-          `${this.$t('Supplier')}: ${supplierLabel}`,
-          `${this.$t('Purchase')}: ${purchaseLabel}`,
-          `${this.$t('ModePaiement')}: ${methodLabel}`,
+          `${this.$t('Supplier')}: ${customerLabel}`,
+          `${this.$t('Purchase')}: ${saleLabel}`,
+          `${this.$t('ModePaiement')}: ${methodLabel}`
         ].join('   •   ');
 
         const wrapped = pdf.splitTextToSize(headerText, pageW - margin*2);
         rtl ? pdf.text(wrapped, pageW - margin, 58, { align:'right' })
             : pdf.text(wrapped, margin, 58);
 
-        // Table
         const head = [[
           this.$t('date'),
           this.$t('Reference'),
-          this.$t('Purchase'),
+          this.$t('Sale'),
           this.$t('Supplier'),
           this.$t('ModePaiement'),
           this.$t('Account'),
@@ -670,18 +631,16 @@ export default {
             halign: rtl ? 'right' : 'left',
           },
           columnStyles: {
-            6: { halign: 'right' } // Amount column
+            6: { halign:'right' },
           },
-          // Totals row
           foot: [[
-            { content: this.$t('Totals'), colSpan: 7, styles:{ halign: 'right', fontStyle:'bold' } },
-            { content: total.toFixed(this.priceDecimals),  styles:{ halign: 'right', fontStyle:'bold' } }
+            { content: this.$t('Totals'), colSpan: 7, styles:{ halign:'right', fontStyle:'bold' } },
+            { content: total.toFixed(this.priceDecimals),  styles:{ halign:'right', fontStyle:'bold' } }
           ]],
           didDrawPage: (d) => {
-            // page x / N
             pdf.setFont('Vazirmatn','normal'); pdf.setFontSize(8);
             pdf.text(`${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`,
-              pageW - margin, pdf.internal.pageSize.getHeight() - 14, { align:'right' });
+                    pageW - margin, pdf.internal.pageSize.getHeight() - 14, { align:'right' });
           }
         });
 
@@ -690,76 +649,37 @@ export default {
         NProgress.done();
       }
     },
-
-
-
-
-    // Fetch
-    Payments_Purchases(page) {
-      NProgress.start(); NProgress.set(0.1);
-
-      const params =
-        "page=" + page +
-        "&Ref=" + encodeURIComponent(this.Filter_Ref || "") +
-        "&provider_id=" + encodeURIComponent(this.Filter_Supplier || "") +
-        "&purchase_id=" + encodeURIComponent(this.Filter_purchase || "") +
-        "&payment_method_id=" + encodeURIComponent(this.Filter_Reg || "") +
-        "&SortField=" + encodeURIComponent(this.serverParams.sort.field) +
-        "&SortType=" + encodeURIComponent(this.serverParams.sort.type) +
-        "&search=" + encodeURIComponent(this.search || "") +
-        "&limit=" + encodeURIComponent(this.limit) +
-        "&to=" + encodeURIComponent(this.fmt(this.dateRange.endDate)) +
-        "&from=" + encodeURIComponent(this.fmt(this.dateRange.startDate));
-
-      axios.get("payment_purchase?" + params)
-        .then(({data}) => {
-          this.payments = data.payments || [];
-          this.suppliers = data.suppliers || [];
-          this.purchases = data.purchases || [];
-          this.payment_methods = data.payment_methods || [];
-          this.totalRows = Number(data.totalRows || 0);
-          this.rows[0].children = this.payments;
-
-          this.isLoading = false; NProgress.done();
-        })
-        .catch(() => {
-          this.isLoading = false; NProgress.done();
-        });
-    }
   },
 
-  created() { this.Payments_Purchases(1); }
+  created(){ this.Payments_Purchases(1); }
 };
 </script>
 
-<style scoped>
-.shadow-soft{ box-shadow:0 12px 24px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.05); }
-.btn-pill{ border-radius:999px; }
-.w-100.w-sm-auto{ width:100%; }
-@media (min-width: 576px){ .w-sm-auto{ width:auto; } }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-/* date-range responsiveness */
-.date-range-filter { min-width: 240px; }
-@media (max-width: 575.98px) {
-  .toolbar { flex-direction: column; align-items: stretch !important; }
-  .toolbar > div { width: 100% !important; margin-right: 0 !important; }
-  .toolbar .ml-auto { margin-left: 0 !important; }
-  .toolbar .ml-auto.d-flex { flex-wrap: wrap; gap: 8px; }
-  .toolbar .ml-auto .btn { flex: 1 1 calc(50% - 8px); min-width: 120px; }
-
-  .date-range-filter { width: 100%; }
-  .date-btn { justify-content: center; }
-  .daterangepicker {
-    left: 0 !important; right: 0 !important; margin: 0 !important;
-    width: 100vw !important; max-width: 100vw !important;
-  }
-  .daterangepicker .ranges, .daterangepicker .drp-calendar {
-    float: none !important; width: 100% !important;
-  }
-
-  /* Wrap quick range buttons into two columns */
-  .quick-ranges { display:flex !important; flex-wrap:wrap; width:100%; }
-  .quick-ranges .btn { flex:1 1 calc(50% - 6px); margin-bottom:6px; }
-
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-sm); padding: 0 var(--pxn-space-4);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
 }
+.pxrl__daterange:hover { background: var(--pxn-surface-2); }
+.pxrl__quickbar { display: flex; align-items: center; gap: var(--pxn-space-2); margin-top: var(--pxn-space-4); flex-wrap: wrap; }
+.pxrl__quicklabel { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); margin-right: var(--pxn-space-2); }
+.pxrl__cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); margin-top: var(--pxn-space-5); }
+.pxrl__cols--87 { grid-template-columns: 2fr 1fr; }
+@media (max-width: 900px) { .pxrl__cols, .pxrl__cols--87 { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxrl__filters-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 560px) { .pxrl__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+.pxrl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxrl__link { color: var(--pxn-primary); }
+.pxrl__totalrow { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrl ::v-deep .daterangepicker { z-index: 2055 !important; }
 </style>

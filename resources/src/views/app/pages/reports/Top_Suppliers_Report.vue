@@ -1,14 +1,20 @@
 <template>
-  <div class="main-content p-2 p-md-4">
-    <breadcumb :page="$t('Top_Suppliers_Report')" :folder="$t('Reports')" />
+  <div class="px-next pxrp">
+    <px-page-header :title="$t('Top_Suppliers_Report')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('Top_Suppliers_Report') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button>
+          </template>
+        </px-menu>
+        <px-button variant="primary" size="sm" icon="refresh-cw" @click="fetchReport">{{ $t('Refresh') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <!-- Toolbar -->
-    <b-card class="shadow-soft border-0 mb-3">
-      <div class="d-flex flex-wrap align-items-center">
-
-        <!-- Date range (responsive) -->
-        <div class="mr-3 mb-2 d-flex flex-column date-range-filter">
-          <label class="mb-1 d-block text-muted">{{$t('DateRange')}}</label>
+    <px-card class="pxrp__filters">
+      <div class="pxrp__filterrow">
+        <div class="pxrp__field">
+          <label class="pxrp__label">{{ $t('DateRange') }}</label>
           <date-range-picker
             v-model="dateRange"
             :locale-data="locale"
@@ -19,142 +25,98 @@
             @update="fetchReport"
           >
             <template v-slot:input="picker">
-              <b-button variant="light" class="btn-pill date-btn" :class="{ 'w-100': isMobile }">
-                <lucide-icon class="mr-1" name="calendar-days" />
-                <span class="d-none d-sm-inline">
-                  {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
-                </span>
-                <span class="d-inline d-sm-none">
-                  {{ fmtShort(picker.startDate) }}–{{ fmtShort(picker.endDate) }}
-                </span>
-              </b-button>
+              <button type="button" class="pxrp__daterange pxn-ring">
+                <lucide-icon name="calendar-days" :size="14" />
+                {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
+              </button>
             </template>
           </date-range-picker>
         </div>
-
-        <!-- Quick ranges -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
-          <div class="btn-group quick-ranges">
-            <b-button size="sm" variant="outline-primary" @click="quick('7d')">7D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="quick('30d')">30D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="quick('90d')">90D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="quick('mtd')">{{$t('MTD')}}</b-button>
-            <b-button size="sm" variant="outline-primary" @click="quick('ytd')">{{$t('YTD')}}</b-button>
+        <div class="pxrp__field">
+          <label class="pxrp__label">{{ $t('QuickRanges') }}</label>
+          <div class="pxrp__quick">
+            <px-button size="sm" variant="subtle" @click="quick('7d')">7D</px-button>
+            <px-button size="sm" variant="subtle" @click="quick('30d')">30D</px-button>
+            <px-button size="sm" variant="subtle" @click="quick('90d')">90D</px-button>
+            <px-button size="sm" variant="subtle" @click="quick('mtd')">{{ $t('MTD') }}</px-button>
+            <px-button size="sm" variant="subtle" @click="quick('ytd')">{{ $t('YTD') }}</px-button>
           </div>
         </div>
-
-        <!-- Warehouse -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
-          <v-select class="w-280"
+        <div class="pxrp__field pxrp__field--wh">
+          <label class="pxrp__label">{{ $t('warehouse') }}</label>
+          <vs-px
             v-model="warehouse_id"
             @input="fetchReport"
             :reduce="o => o.value"
-            :options="warehouses.map(w => ({label:w.name, value:w.id}))"
-            :clearable="true"
+            :options="warehouses.map(w => ({ label: w.name, value: w.id }))"
             :placeholder="$t('Choose_Warehouse')"
           />
         </div>
-
-        <div class="ml-auto mb-2 d-flex">
-          <b-button variant="primary" class="btn-pill mr-2" @click="fetchReport">
-            <lucide-icon class="mr-1" name="refresh-cw" /> {{$t('Refresh')}}
-          </b-button>
-          <b-button variant="outline-secondary" class="btn-pill mr-2" @click="printTableOnly()">
-            <lucide-icon class="mr-1" name="printer" />{{$t('print')}}
-          </b-button>
-          <b-button variant="success" class="btn-pill" @click="exportPDF">
-            <lucide-icon class="mr-1" name="file-text" /> {{$t('Export_PDF')}}
-          </b-button>
-        </div>
       </div>
-    </b-card>
+    </px-card>
 
-    <!-- Loading -->
-    <div v-if="isLoading" class="mb-4">
-      <b-row>
-        <b-col md="4" v-for="n in 6" :key="'skel-'+n">
-          <b-skeleton-img class="rounded-xl shadow-soft" height="110px" />
-        </b-col>
-      </b-row>
+    <div v-if="isLoading" class="pxrp__pad">
+      <px-skeleton variant="lines" :rows="8" />
     </div>
 
-    <!-- Content -->
-    <div v-else>
-      <!-- KPIs -->
-      <b-row>
-        <b-col md="3" sm="6" class="mb-3">
-          <StatTile icon="users" :label="$t('Vendors')" :value="num(kpis.vendors_count)" theme="blue"/>
-        </b-col>
-        <b-col md="3" sm="6" class="mb-3">
-          <StatTile icon="file-text" :label="$t('Purchases')" :value="num(kpis.total_purchases)" theme="teal"/>
-        </b-col>
-        <b-col md="3" sm="6" class="mb-3">
-          <StatTile icon="package" :label="$t('QtyPurchased')" :value="formatQty(kpis.total_qty)" theme="indigo"/>
-        </b-col>
-        <b-col md="3" sm="6" class="mb-3">
-          <StatTile icon="banknote" :label="$t('TotalSpend')" :value="money(kpis.total_spend)" theme="green"/>
-        </b-col>
-      </b-row>
+    <template v-else>
+      <div class="pxrp__kpis">
+        <px-stat bordered icon="users" :label="$t('Vendors')" :value="num(kpis.vendors_count)" />
+        <px-stat bordered icon="file-text" :label="$t('Purchases')" :value="num(kpis.total_purchases)" />
+        <px-stat bordered icon="package" :label="$t('QtyPurchased')" :value="formatQty(kpis.total_qty)" />
+        <px-stat bordered icon="banknote" :label="$t('TotalSpend')" :value="money(kpis.total_spend)" />
+      </div>
 
-      <!-- Charts -->
-      <b-row>
-        <b-col md="8" class="mb-3">
-          <b-card class="shadow-soft border-0">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <h6 class="m-0">{{$t('TopSuppliersByValue')}}</h6>
-              <small class="text-muted">{{labelRange}}</small>
-            </div>
-            <apexchart type="bar" height="320" :options="apexValueOptions" :series="apexValueSeries" />
-          </b-card>
-        </b-col>
-        <b-col md="4" class="mb-3">
-          <b-card class="shadow-soft border-0">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <h6 class="m-0">{{$t('TopSuppliersByQty')}}</h6>
-              <small class="text-muted">{{$t('ByQuantity')}}</small>
-            </div>
-            <apexchart type="bar" height="320" :options="apexQtyOptions" :series="apexQtySeries" />
-          </b-card>
-        </b-col>
-      </b-row>
+      <div class="pxrp__cols pxrp__cols--87 pxrp__gap">
+        <px-card :title="$t('TopSuppliersByValue')">
+          <apexchart type="bar" height="320" :options="apexValueOptions" :series="apexValueSeries" />
+        </px-card>
+        <px-card :title="$t('TopSuppliersByQty')">
+          <apexchart type="bar" height="320" :options="apexQtyOptions" :series="apexQtySeries" />
+        </px-card>
+      </div>
 
-      <!-- Table -->
-      <b-card class="shadow-soft border-0 print-table-only">
-        <vue-good-table
-          mode="remote"
-          :rows="rows"
+      <px-toolbar
+        :search="search"
+        :search-placeholder="$t('Search_this_table')"
+        @update:search="onSearchInput"
+      />
+
+      <div class="pxrp__tablewrap">
+        <px-table
+          v-if="rows.length"
           :columns="columns"
-          :totalRows="totalRows"
-          styleClass="tableOne table-hover vgt-table"
-          :pagination-options="{enabled:true, mode:'records'}"
-          :search-options="{enabled:true, placeholder:$t('Search_this_table')}"
-          @on-page-change="onPageChange"
-          @on-per-page-change="onPerPageChange"
-          @on-sort-change="onSortChange"
-          @on-search="onSearch"
+          :rows="rows"
+          row-key="supplier"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          @sort="onSort"
         >
-          <template slot="table-row" slot-scope="p">
-            <span v-if="p.column.field==='value_sum' || p.column.field==='avg_value'">{{ money(p.row[p.column.field]) }}</span>
-            <span v-else-if="p.column.field==='qty_sum'">{{ formatQty(p.row.qty_sum) }}</span>
-            <span v-else>{{ p.formattedRow[p.column.field] }}</span>
-          </template>
+          <template #cell-orders_count="{ row }"><span class="pxn-num">{{ num(row.orders_count) }}</span></template>
+          <template #cell-qty_sum="{ row }"><span class="pxn-num">{{ formatQty(row.qty_sum) }}</span></template>
+          <template #cell-value_sum="{ row }"><span class="pxn-num">{{ money(row.value_sum) }}</span></template>
+          <template #cell-avg_value="{ row }"><span class="pxn-num">{{ money(row.avg_value) }}</span></template>
+        </px-table>
 
-          <!-- Totals footer -->
-          <template slot="table-actions-bottom">
-            <div class="d-flex justify-content-end w-100 pt-2">
-              <div class="font-weight-bold">
-                {{$t('Totals')}}:
-                <span class="ml-2">{{$t('Purchases')}} = {{ num(sumField(rows, 'orders_count')) }}</span>
-                <span class="ml-3">{{$t('QtyPurchased')}} = {{ formatQty(sumField(rows, 'qty_sum')) }}</span>
-                <span class="ml-3">{{$t('TotalSpend')}} = {{ money(sumField(rows, 'value_sum')) }}</span>
-              </div>
-            </div>
-          </template>
-        </vue-good-table>
-      </b-card>
-    </div>
+        <px-empty-state v-else icon="trending-up" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+      </div>
+
+      <div v-if="rows.length" class="pxrp__totalrow">
+        <span>{{ $t('Totals') }}</span>
+        <span>{{ $t('Purchases') }}: <b class="pxn-num">{{ num(sumField(rows, 'orders_count')) }}</b></span>
+        <span>{{ $t('QtyPurchased') }}: <b class="pxn-num">{{ formatQty(sumField(rows, 'qty_sum')) }}</b></span>
+        <span>{{ $t('TotalSpend') }}: <b class="pxn-num">{{ money(sumField(rows, 'value_sum')) }}</b></span>
+      </div>
+
+      <px-pagination
+        v-if="rows.length"
+        :page="serverParams.page"
+        :per-page="Number(serverParams.perPage)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
 </template>
 
@@ -164,11 +126,7 @@ import { mapGetters } from "vuex";
 import DateRangePicker from "vue2-daterange-picker";
 import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
 import moment from "moment";
-
-// ECharts v4 + vue-echarts v4
 import VueApexCharts from "vue-apexcharts";
-
-// PDF
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -176,31 +134,27 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
-
-const StatTile = {
-  name: "StatTile",
-  functional: true,
-  props: { icon:String, label:String, value:[String,Number], theme:{type:String,default:'blue'} },
-  render(h,{props}){
-    return h("div",{class:["stat-card",`theme-${props.theme}`,"shadow-soft","rounded-xl"]},[
-      h("div",{class:"stat-inner"},[
-        h("div",{class:"stat-icon"},[h('lucide-icon', { props: { name: props.icon } })]),
-        h("div",{class:"stat-content"},[
-          h("div",{class:"stat-label"},props.label),
-          h("div",{class:"stat-value"},props.value)
-        ])
-      ])
-    ])
-  }
-};
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: "Top Suppliers Report" },
-  components: { apexchart: VueApexCharts, "date-range-picker": DateRangePicker, StatTile },
+  components: {
+    apexchart: VueApexCharts, "date-range-picker": DateRangePicker,
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxCard, PxStat, PxEmptyState, "vs-px": VsPx
+  },
   data(){
     const end = new Date(), start = new Date(); start.setDate(end.getDate()-29);
     return {
-      // state
+      _searchTimer: null,
       warehouses: [], warehouse_id:null,
       isLoading:true,
       kpis:{vendors_count:0,total_purchases:0,total_qty:0,total_spend:0},
@@ -208,7 +162,6 @@ export default {
       rows:[], totalRows:0,
       serverParams:{page:1, perPage:10, sort:{field:'value_sum', type:'desc'}},
       limit:10, search:'',
-      // date range
       dateRange:{startDate:start, endDate:end},
       locale:{
         Label: this.$t("Apply") || "Apply",
@@ -220,25 +173,29 @@ export default {
         firstDay: 1
       },
       isMobile:false,
-      // Optional price format key for frontend display (loaded from system settings/localStorage)
       price_format_key: null
     }
   },
   computed:{
     ...mapGetters(["currentUser"]),
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
     currency(){ return (this.currentUser && this.currentUser.currency) || "USD"; },
     labelRange(){ return `${this.fmt(this.dateRange.startDate)} → ${this.fmt(this.dateRange.endDate)}`; },
+    exportMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: this.$t("Export_PDF") || "PDF", icon: "file-text" }
+      ];
+    },
     columns(){
       return [
-        {label:this.$t('Supplier'),        field:'supplier',      sortable:true, tdClass:'text-left', thClass:'text-left'},
-        {label:this.$t('Purchases'),       field:'orders_count',  type:'number', sortable:true},
-        {label:this.$t('QtyPurchased'),    field:'qty_sum',       type:'number', sortable:true},
-        {label:this.$t('TotalSpend'),      field:'value_sum',     type:'number', sortable:true},
-        {label:this.$t('AvgPerPurchase'),  field:'avg_value',     type:'number', sortable:true}
+        {key:'supplier',      label:this.$t('Supplier'),        sortable:true, strong:true},
+        {key:'orders_count',  label:this.$t('Purchases'),       sortable:true, align:'right'},
+        {key:'qty_sum',       label:this.$t('QtyPurchased'),    sortable:true, align:'right'},
+        {key:'value_sum',     label:this.$t('TotalSpend'),      sortable:true, align:'right'},
+        {key:'avg_value',     label:this.$t('AvgPerPurchase'),  sortable:true, align:'right'}
       ]
     },
     apexValueOptions(){
@@ -267,13 +224,9 @@ export default {
     }
   },
   methods:{
-    // formatters
     fmt(d){ return moment(d).format('YYYY-MM-DD'); },
     fmtShort(d){ return moment(d).format('MMM D'); },
     num(v){ const n = Number(v||0); return isNaN(n)?'0':n.toLocaleString(); },
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing Intl.NumberFormat behavior to preserve current behavior.
     money(v){
       try {
         const n = Number(v || 0);
@@ -295,10 +248,8 @@ export default {
     shortMoney(v){ return new Intl.NumberFormat(undefined,{notation:'compact',maximumFractionDigits:1}).format(Number(v||0)); },
     formatQty(v){ return Number(v||0).toLocaleString(undefined,{maximumFractionDigits:2}); },
 
-    // responsive behavior
     handleResize(){ this.isMobile = window.innerWidth < 576; },
 
-    // quick range helpers
     quick(kind){
       const now = moment(); let s = now.clone().subtract(29,'days'), e = now.clone();
       if(kind==='7d')  s = now.clone().subtract(6,'days');
@@ -310,19 +261,26 @@ export default {
       this.fetchReport();
     },
 
-    // table events
-    onPageChange({currentPage}){ this.serverParams.page = currentPage; this.fetchReport(); },
-    onPerPageChange({currentPerPage}){ this.serverParams.perPage = currentPerPage; this.limit=currentPerPage; this.serverParams.page=1; this.fetchReport(); },
-    onSortChange(params){ if(params && params[0]) this.serverParams.sort = params[0]; this.fetchReport(); },
-    onSearch(v){ this.search = v.searchTerm || ''; this.fetchReport(); },
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.serverParams.page = 1; this.fetchReport(); }, 350);
+    },
+    onPage(p) { if (this.serverParams.page !== p) { this.serverParams.page = p; this.fetchReport(); } },
+    onLimit(v) { this.serverParams.perPage = Number(v); this.limit = Number(v); this.serverParams.page = 1; this.fetchReport(); },
+    onSort({ key, dir }) { this.serverParams.sort = { field: key, type: dir }; this.fetchReport(); },
 
-    // footer sum helper over current rows array
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "print") this.printTableOnly();
+      else if (k === "pdf") this.exportPDF();
+    },
+
     sumField(rows, key){
       if(!Array.isArray(rows)) return 0;
       return rows.reduce((acc,r)=> acc + Number(r[key]||0), 0);
     },
 
-    // API
     fetchReport(){
       NProgress.start(); NProgress.set(0.1); this.isLoading=true;
       const qs = new URLSearchParams({
@@ -354,13 +312,12 @@ export default {
       try{
         NProgress.start(); NProgress.set(0.2);
 
-        // Fetch ALL rows using current filters/sort
         const qs = new URLSearchParams({
           from: this.fmt(this.dateRange.startDate),
           to:   this.fmt(this.dateRange.endDate),
           warehouse_id: this.warehouse_id || '',
           page: '1',
-          limit: '100000', // export all
+          limit: '100000',
           SortField: this.serverParams?.sort?.field || 'value_sum',
           SortType:  this.serverParams?.sort?.type  || 'desc',
           search: this.search || ''
@@ -371,11 +328,9 @@ export default {
         const items = Array.isArray(d.rows) ? d.rows : [];
         const k = d.kpis || this.kpis;
 
-        // --- PDF (with Vazirmatn for Arabic/RTL) ---
         const doc = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
         const fontPath = "/fonts/Vazirmatn-Bold.ttf";
         try {
-          // Use the same bold TTF for both weights if you only have Bold
           doc.addFont(fontPath, "Vazirmatn", "normal");
           doc.addFont(fontPath, "Vazirmatn", "bold");
         } catch(_) { /* ignore if already added */ }
@@ -397,7 +352,6 @@ export default {
           return w ? (w.name || `#${id}`) : `#${id}`;
         })();
 
-        // Header (RTL aware)
         doc.setFont("Vazirmatn","bold"); doc.setFontSize(14);
         rtl ? doc.text(title, pageW - marginX, 40, { align:'right' })
             : doc.text(title, marginX, 40);
@@ -411,7 +365,6 @@ export default {
         rtl ? doc.text(line2, pageW - marginX, 74, { align:'right' })
             : doc.text(line2, marginX, 74);
 
-        // Table
         const head = [[
           this.$t('Supplier'),
           this.$t('Purchases'),
@@ -443,7 +396,7 @@ export default {
             { content: tPurchases.toLocaleString(), styles:{ halign:'right', fontStyle:'bold' } },
             { content: tQty.toLocaleString(undefined,{maximumFractionDigits:2}), styles:{ halign:'right', fontStyle:'bold' } },
             { content: this.money(tValue), styles:{ halign:'right', fontStyle:'bold' } },
-            '' // avg blank
+            ''
           ]],
           margin: { left: marginX, right: marginX }
         });
@@ -456,43 +409,25 @@ export default {
 
     //------ Print Table Only
     printTableOnly() {
-      const root = this.$el;
-      if (!root) {
-        window.print();
-        return;
-      }
-
-      const tableCard = root.querySelector(".print-table-only");
-      if (!tableCard) {
-        window.print();
-        return;
-      }
-
-      // Get rows data (this.rows is already a flat array)
       const rowsData = this.rows || [];
 
-      // Manually construct the table HTML from rows data
       let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
-
-      // Table Header
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
         tableHtml += `<th class="text-left">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
-
-      // Table Body
       tableHtml += `<tbody>`;
       rowsData.forEach(row => {
         tableHtml += `<tr>`;
         this.columns.forEach(col => {
           let cellContent = '';
-          if (col.field === 'value_sum' || col.field === 'avg_value') {
-            cellContent = this.money(row[col.field]);
-          } else if (col.field === 'qty_sum') {
+          if (col.key === 'value_sum' || col.key === 'avg_value') {
+            cellContent = this.money(row[col.key]);
+          } else if (col.key === 'qty_sum') {
             cellContent = this.formatQty(row.qty_sum);
           } else {
-            cellContent = row[col.field] || '';
+            cellContent = row[col.key] || '';
           }
           tableHtml += `<td class="text-left">${cellContent}</td>`;
         });
@@ -500,19 +435,17 @@ export default {
       });
       tableHtml += `</tbody>`;
 
-      // Table Footer (Totals)
       const totalPurchases = rowsData.reduce((sum, row) => sum + parseFloat(row.orders_count || 0), 0);
       const totalQty = rowsData.reduce((sum, row) => sum + parseFloat(row.qty_sum || 0), 0);
       const totalValue = rowsData.reduce((sum, row) => sum + parseFloat(row.value_sum || 0), 0);
-      
+
       tableHtml += `<tfoot><tr>`;
       tableHtml += `<td class="text-left font-weight-bold">${this.$t('Totals')}</td>`;
       tableHtml += `<td class="text-left font-weight-bold">${totalPurchases.toLocaleString()}</td>`;
       tableHtml += `<td class="text-left font-weight-bold">${this.formatQty(totalQty)}</td>`;
       tableHtml += `<td class="text-left font-weight-bold">${this.money(totalValue)}</td>`;
-      tableHtml += `<td></td>`; // AvgPerPurchase column
+      tableHtml += `<td></td>`;
       tableHtml += `</tr></tfoot>`;
-
       tableHtml += `</table>`;
 
       const w = window.open("", "_blank");
@@ -576,8 +509,6 @@ export default {
         w.close();
       }, 400);
     },
-
-   
   },
   created(){ this.fetchReport(); },
   mounted(){
@@ -590,40 +521,35 @@ export default {
 };
 </script>
 
-<style scoped>
-.rounded-xl{border-radius:1rem;}
-.shadow-soft{box-shadow:0 12px 24px rgba(0,0,0,.06),0 2px 6px rgba(0,0,0,.05);}
-.btn-pill{border-radius:999px;}
-.w-280{width:280px;}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-.stat-card{padding:14px 16px;min-height:100px;background:#fff;}
-.stat-inner{display:flex;align-items:center;}
-.stat-icon{width:48px;height:48px;border-radius:12px;background:#f8f9fa;display:flex;align-items:center;justify-content:center;margin-right:12px;}
-.stat-icon i{font-size:22px;}
-.stat-label{font-size:.85rem;font-weight:600;color:#666;}
-.stat-value{font-size:1.3rem;font-weight:700;color:#333;}
-.theme-blue .stat-icon{color:#0b5fff;}
-.theme-teal .stat-icon{color:#138f7a;}
-.theme-indigo .stat-icon{color:#3949ab;}
-.theme-green .stat-icon{color:#2e7d32;}
-
-/* Responsive date range picker */
-.date-range-filter { min-width: 240px; }
-.date-btn { display: inline-flex; align-items: center; }
-@media (max-width: 575.98px) {
-  .date-range-filter { width: 100%; }
-  .daterangepicker {
-    left: 0 !important;
-    right: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-  }
-  .daterangepicker .ranges, .daterangepicker .drp-calendar {
-    float: none !important; width: 100% !important;
-  }
-
-  /* Wrap quick range buttons into two columns */
-  .quick-ranges { display:flex !important; flex-wrap:wrap; width:100%; }
-  .quick-ranges .btn { flex: 1 1 calc(50% - 6px); margin-bottom:6px; }
+<style lang="scss" scoped>
+.pxrp { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrp { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrp__pad { padding: var(--pxn-space-6) 0; }
+.pxrp__filters { margin-top: var(--pxn-space-5); }
+.pxrp__filterrow { display: flex; flex-wrap: wrap; gap: var(--pxn-space-6); align-items: flex-start; }
+.pxrp__field { display: flex; flex-direction: column; gap: var(--pxn-space-2); }
+.pxrp__field--wh { min-width: 240px; }
+.pxrp__label { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); }
+.pxrp__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-md); padding: 0 var(--pxn-space-5);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
 }
+.pxrp__daterange:hover { background: var(--pxn-surface-2); }
+.pxrp__quick { display: flex; flex-wrap: wrap; gap: var(--pxn-space-2); }
+.pxrp__kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--pxn-space-5); margin-top: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxrp__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .pxrp__kpis { grid-template-columns: minmax(0, 1fr); } }
+.pxrp__cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+.pxrp__cols--87 { grid-template-columns: 2fr 1fr; }
+@media (max-width: 900px) { .pxrp__cols, .pxrp__cols--87 { grid-template-columns: minmax(0, 1fr); } }
+.pxrp__gap { margin-top: var(--pxn-space-5); margin-bottom: var(--pxn-space-5); }
+.pxrp__tablewrap { margin-top: var(--pxn-space-5); }
+.pxrp__totalrow { display: flex; align-items: center; justify-content: flex-end; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); flex-wrap: wrap; }
+.pxrp__totalrow > span:first-child { margin-right: auto; font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrp ::v-deep .daterangepicker { z-index: 2055 !important; }
 </style>

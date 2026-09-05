@@ -1,67 +1,88 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('SuppliersReport')" :folder="$t('Reports')"/>
+  <div class="px-next pxrl">
+    <px-page-header :title="$t('SuppliersReport')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('SuppliersReport') }]">
+      <template #actions>
+        <px-button variant="secondary" size="sm" icon="printer" @click="printTableOnly()">{{ $t('print') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
 
-    <b-card class="wrapper print-table-only" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="rows"
-        :group-options="{
-          enabled: true,
-          headerPosition: 'bottom',
-        }"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        placeholder: $t('Search_this_table'),
-        enabled: true,
-      }"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="tableOne table-hover vgt-table mt-4"
-      >
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
-            <lucide-icon name="printer" /> {{ $t("print") }}
-          </b-button>
-        </div>
-       <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a title="PDF" class="cursor-pointer" v-b-tooltip.hover @click="Download_PDF(props.row , props.row.id)">
-              <lucide-icon class="text-25 text-success" name="copy" />
-            </a>
-            <router-link title="Report" :to="'/app/reports/detail_supplier/'+props.row.id">
-             <lucide-icon class="text-25 text-info" name="eye" />
-            </router-link>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="7" />
+    </div>
+
+    <template v-else>
+      <div class="pxrl__tablewrap">
+        <px-table
+          v-if="providers.length"
+          :columns="columns"
+          :rows="providers"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-total_amount="{ row }"><span class="pxn-num">{{ formatNumber(row.total_amount || 0, priceDecimals) }}</span></template>
+          <template #cell-total_paid="{ row }"><span class="pxn-num">{{ formatNumber(row.total_paid || 0, priceDecimals) }}</span></template>
+          <template #cell-due="{ row }"><span class="pxn-num">{{ formatNumber(row.due || 0, priceDecimals) }}</span></template>
+          <template #cell-return_Due="{ row }"><span class="pxn-num">{{ formatNumber(row.return_Due || 0, priceDecimals) }}</span></template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
+
+        <px-empty-state v-else icon="truck" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+      </div>
+
+      <div v-if="providers.length" class="pxrl__totalrow">
+        <span>{{ $t('Total') }}</span>
+        <span>{{ $t('Amount') }}: <b class="pxn-num">{{ formatNumber(sum('total_amount'), priceDecimals) }}</b></span>
+        <span>{{ $t('Paid') }}: <b class="pxn-num">{{ formatNumber(sum('total_paid'), priceDecimals) }}</b></span>
+        <span>{{ $t('Total_Sale_Due') }}: <b class="pxn-num">{{ formatNumber(sum('due'), priceDecimals) }}</b></span>
+        <span>{{ $t('Total_Sell_Return_Due') }}: <b class="pxn-num">{{ formatNumber(sum('return_Due'), priceDecimals) }}</b></span>
+      </div>
+
+      <px-pagination
+        v-if="providers.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
 </template>
 
 
 <script>
 import NProgress from "nprogress";
-import { mapActions, mapGetters } from "vuex";
+import { mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
   metaInfo: {
     title: "Report Providers"
   },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxEmptyState
+  },
   data() {
     return {
+      _searchTimer: null,
       isLoading: true,
       serverParams: {
         sort: {
@@ -76,11 +97,9 @@ export default {
       totalRows: "",
       providers: [],
       provider: {},
-       rows: [{
-          total_purchase: 'Total',
-         
+      rows: [{
+          total_sales: 'Total',
           children: [
-             
           ],
       },],
     };
@@ -88,155 +107,47 @@ export default {
 
   computed: {
     ...mapGetters(["currentUser"]),
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
+    rowActions() {
+      return [
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "detail", label: this.$t("Report") || "Reporte", icon: "eye" }
+      ];
+    },
     columns() {
       return [
-        {
-          label: this.$t("SupplierName"),
-          field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Phone"),
-          field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Purchases"),
-          field: "total_purchase",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("TotalAmount"),
-          field: "total_amount",
-          type: "decimal",
-          headerField: this.sumCount,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Paid"),
-          field: "total_paid",
-          type: "decimal",
-          headerField: this.sumCount2,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Total_Purchase_Due"),
-          field: "due",
-          type: "decimal",
-          headerField: this.sumCount3,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Total_Purchase_Return_Due"),
-          field: "return_Due",
-          type: "decimal",
-          headerField: this.sumCount4,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "name", label: this.$t("SupplierName"), strong: true },
+        { key: "phone", label: this.$t("Phone") },
+        { key: "total_purchase", label: this.$t("Purchases"), align: "right" },
+        { key: "total_amount", label: this.$t("Amount"), align: "right" },
+        { key: "total_paid", label: this.$t("Paid"), align: "right" },
+        { key: "due", label: this.$t("Total_Purchase_Due"), align: "right" },
+        { key: "return_Due", label: this.$t("Total_Purchase_Return_Due"), align: "right" },
       ];
     }
   },
 
   methods: {
-
-    sumCount(rowObj) {
-        if (!rowObj || !rowObj.children || !Array.isArray(rowObj.children)) {
-            console.error('Invalid input for sumCount');
-            return 0; // or whatever default value is appropriate
-        }
-
-        let sum = 0;
-        for (let i = 0; i < rowObj.children.length; i++) {
-            if (typeof rowObj.children[i].total_amount === 'number') {
-                sum += rowObj.children[i].total_amount;
-            } else {
-                console.error('Invalid total_amount at index', i);
-            }
-        }
-        return sum;
-    },
-    sumCount2(rowObj) {
-        if (!rowObj || !rowObj.children || !Array.isArray(rowObj.children)) {
-            console.error('Invalid input for sumCount2');
-            return 0; // or whatever default value is appropriate
-        }
-
-        let sum = 0;
-        for (let i = 0; i < rowObj.children.length; i++) {
-            if (typeof rowObj.children[i].total_paid === 'number') {
-                sum += rowObj.children[i].total_paid;
-            } else {
-                console.error('Invalid total_paid at index', i);
-            }
-        }
-        return sum;
-    },
-    sumCount3(rowObj) {
-        if (!rowObj || !rowObj.children || !Array.isArray(rowObj.children)) {
-            console.error('Invalid input for sumCount3');
-            return 0; // or whatever default value is appropriate
-        }
-
-        let sum = 0;
-        for (let i = 0; i < rowObj.children.length; i++) {
-            if (typeof rowObj.children[i].due === 'number') {
-                sum += rowObj.children[i].due;
-            } else {
-                console.error('Invalid due at index', i);
-            }
-        }
-        return sum;
-    },
-    sumCount4(rowObj) {
-        if (!rowObj || !rowObj.children || !Array.isArray(rowObj.children)) {
-            console.error('Invalid input for sumCount4');
-            return 0; // or whatever default value is appropriate
-        }
-
-        let sum = 0;
-        for (let i = 0; i < rowObj.children.length; i++) {
-            if (typeof rowObj.children[i].return_Due === 'number') {
-                sum += rowObj.children[i].return_Due;
-            } else {
-                console.error('Invalid return_Due at index', i);
-            }
-        }
-        return sum;
+    sum(field) {
+      return (this.providers || []).reduce((acc, r) => acc + (typeof r[field] === 'number' ? r[field] : (parseFloat(r[field]) || 0)), 0);
     },
 
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "pdf") this.Download_PDF(row, row.id);
+      else if (k === "detail") this.$router.push('/app/reports/detail_supplier/' + row.id);
+    },
 
-    //--------------------------- Download_PDF -------------------------------\\
+     //--------------------------- Download_PDF-------------------------------\\
     Download_PDF(provider , id) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
-     
+
        axios
         .get("report/provider_pdf/" + id, {
-          responseType: "blob", // important
+          responseType: "blob",
           headers: {
             "Content-Type": "application/json"
           }
@@ -248,53 +159,29 @@ export default {
           link.setAttribute("download", "report-" + provider.name + ".pdf");
           document.body.appendChild(link);
           link.click();
-          // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
         })
         .catch(() => {
-          // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
         });
     },
 
-    //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Provider_Report(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Provider_Report(1); }, 350);
     },
 
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Provider_Report(1);
-      }
-    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Provider_Report(p); } },
 
-    //---- Event on Sort Change
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Provider_Report(1); } },
 
-    onSortChange(params) {
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
-      this.Get_Provider_Report(this.serverParams.page);
-    },
-
-    //---- Event on Search
-
-    onSearch(value) {
-      this.search = value.searchTerm;
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { type: dir, field: key } });
       this.Get_Provider_Report(this.serverParams.page);
     },
 
@@ -302,7 +189,7 @@ export default {
     formatNumber(number, dec) {
       const value = (typeof number === "string"
         ? number
-        : number.toString()
+        : Number(number || 0).toString()
       ).split(".");
       if (dec <= 0) return value[0];
       let formated = value[1] || "";
@@ -312,81 +199,51 @@ export default {
       return `${value[0]}.${formated}`;
     },
 
-    //------ Print Table Only
+    //------ Print Table Only - Print ALL customers data with all columns
     printTableOnly() {
-      const root = this.$el;
-      if (!root) {
-        window.print();
-        return;
-      }
+      const title = `${this.$t("Reports")} / ${this.$t("CustomersReport")}`;
+      const providers = Array.isArray(this.rows[0]?.children) ? this.rows[0].children : [];
 
-      const tableCard = root.querySelector(".print-table-only");
-      if (!tableCard) {
-        window.print();
-        return;
-      }
+      let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
+      tableHTML += '<thead><tr>';
 
-      // Get providers data from rows[0].children or this.providers
-      const providersData = Array.isArray(this.rows[0]?.children) && this.rows[0].children.length > 0 
-        ? this.rows[0].children 
-        : (this.providers || []);
-
-      // Manually construct the table HTML from providers data
-      let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
-
-      // Table Header
-      tableHtml += `<thead><tr>`;
-      this.columns.filter(col => col.field !== 'actions').forEach(col => {
-        tableHtml += `<th class="text-left">${col.label}</th>`;
+      this.columns.forEach(col => {
+        tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
       });
-      tableHtml += `</tr></thead>`;
+      tableHTML += '</tr></thead><tbody>';
 
-      // Table Body
-      tableHtml += `<tbody>`;
-      providersData.forEach(row => {
-        tableHtml += `<tr>`;
-        this.columns.filter(col => col.field !== 'actions').forEach(col => {
-          let cellContent = row[col.field];
-          if (['total_amount', 'total_paid', 'due', 'return_Due'].includes(col.field)) {
-            cellContent = this.formatNumber(row[col.field], this.priceDecimals);
+      providers.forEach(client => {
+        tableHTML += '<tr>';
+        this.columns.forEach(col => {
+          let cellValue = '';
+
+          if (col.key === 'name') {
+            cellValue = client.name || '';
+          } else if (col.key === 'phone') {
+            cellValue = client.phone || '';
+          } else if (col.key === 'total_purchase') {
+            cellValue = client.total_purchase || 0;
+          } else if (col.key === 'total_amount' || col.key === 'total_paid' || col.key === 'due' || col.key === 'return_Due') {
+            cellValue = this.formatNumber(client[col.key] || 0, this.priceDecimals);
+          } else {
+            cellValue = client[col.key] || '';
           }
-          tableHtml += `<td class="text-left">${cellContent || ''}</td>`;
+
+          tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
         });
-        tableHtml += `</tr>`;
+        tableHTML += '</tr>';
       });
-      tableHtml += `</tbody>`;
 
-      // Table Footer (Totals)
-      const totalAmount = this.sumCount(this.rows[0]);
-      const totalPaid = this.sumCount2(this.rows[0]);
-      const totalDue = this.sumCount3(this.rows[0]);
-      const totalReturnDue = this.sumCount4(this.rows[0]);
-
-      tableHtml += `<tfoot><tr>`;
-      tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
-      tableHtml += `<td colspan="2"></td>`; // Span for SupplierName, Phone
-      tableHtml += `<td class="text-left font-weight-bold">${this.formatNumber(totalAmount, this.priceDecimals)}</td>`;
-      tableHtml += `<td class="text-left font-weight-bold">${this.formatNumber(totalPaid, this.priceDecimals)}</td>`;
-      tableHtml += `<td class="text-left font-weight-bold">${this.formatNumber(totalDue, this.priceDecimals)}</td>`;
-      tableHtml += `<td class="text-left font-weight-bold">${this.formatNumber(totalReturnDue, this.priceDecimals)}</td>`;
-      tableHtml += `</tr></tfoot>`;
-
-      tableHtml += `</table>`;
+      tableHTML += '</tbody></table>';
 
       const w = window.open("", "_blank");
       if (!w) {
-        window.print();
+        alert("Please allow popups to print");
         return;
       }
 
-      const title = `${this.$t("Reports")} / ${this.$t("SuppliersReport")}`;
       const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
         .map(l => l.outerHTML)
-        .join("\n");
-
-      const inlineStyles = Array.from(document.querySelectorAll("style"))
-        .filter(s => !((s.textContent || "").includes("@media print")))
-        .map(s => s.outerHTML)
         .join("\n");
 
       const doc = w.document;
@@ -399,19 +256,22 @@ export default {
     <base href="${window.location.origin}/" />
     <title>${title}</title>
     ${links}
-    ${inlineStyles}
     <style>
-      @media print { body, body * { visibility: visible !important; } }
-      body { margin: 0.3cm; }
-      .print-header { font-weight: 600; margin-bottom: 8px; }
+      @media print {
+        body, body * { visibility: visible !important; }
+        @page { size: A4 landscape; margin: 0.3cm; }
+      }
+      body { margin: 0.3cm; font-family: Arial, sans-serif; }
+      .print-header { font-weight: 600; margin-bottom: 10px; font-size: 14px; }
       table { width: 100%; border-collapse: collapse; }
-      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-      th { background-color: #f2f2f2; }
+      th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 10px; }
+      th { background-color: #f5f5f5; font-weight: bold; }
+      tr:nth-child(even) { background-color: #f9f9f9; }
     </style>
   </head>
   <body>
     <div class="print-header">${title}</div>
-    ${tableHtml}
+    ${tableHTML}
   </body>
 </html>`);
       doc.close();
@@ -424,9 +284,7 @@ export default {
     },
 
     //--------------------------- Get Customer Report -------------\\
-
     Get_Provider_Report(page) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       axios
@@ -446,12 +304,10 @@ export default {
           this.providers = response.data.report;
           this.totalRows = response.data.totalRows;
           this.rows[0].children = this.providers;
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
         })
         .catch(response => {
-          // Complete the animation of theprogress bar.
           NProgress.done();
           setTimeout(() => {
             this.isLoading = false;
@@ -464,6 +320,18 @@ export default {
 
   created: function() {
     this.Get_Provider_Report(1);
+
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxrl__totalrow { display: flex; align-items: center; justify-content: flex-end; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); flex-wrap: wrap; }
+.pxrl__totalrow > span:first-child { margin-right: auto; font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+</style>
