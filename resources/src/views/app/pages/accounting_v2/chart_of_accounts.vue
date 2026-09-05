@@ -1,199 +1,164 @@
 <template>
   <!-- NEW FEATURE - SAFE ADDITION -->
-  <div class="main-content">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <div>
-        <h4 class="mb-1">{{ $t('Chart_of_Accounts_Title') }}</h4>
-        <div class="text-muted small">{{ $t('Chart_of_Accounts_Subtitle') }}</div>
-      </div>
-    </div>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div class="card wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="rows"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: $t('Next'), prevLabel: $t('Prev') }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button @click="openCreate()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
-            <lucide-icon name="plus" />
-            {{ $t('Add') }}
-          </b-button>
-          <b-button @click="openImport()" class="btn-rounded" variant="btn btn-outline-primary btn-icon m-1">
-            <lucide-icon name="upload" />
-            {{ $t('Import_Chart_of_Accounts') }}
-          </b-button>
-        </div>
+  <div class="px-next pxac">
+    <px-page-header :title="$t('Chart_of_Accounts_Title')" :subtitle="$t('Chart_of_Accounts_Subtitle')">
+      <template #actions>
+        <px-button variant="secondary" icon="upload" @click="openImport">{{ $t('Import_Chart_of_Accounts') }}</px-button>
+        <px-button variant="primary" icon="plus" @click="openCreate">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'parent'">{{ parentName(props.row.parent_id) }}</span>
-          <span v-else-if="props.column.field == 'active'">
-            <span class="badge" :class="props.row.is_active ? 'badge-success' : 'badge-secondary'">{{ props.row.is_active ? $t('Yes') : $t('No') }}</span>
-          </span>
-          <span v-else-if="props.column.field == 'actions'">
-            <a @click="openEdit(props.row)" :title="$t('Edit')" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success cursor-pointer" name="pencil" />
-            </a>
-            <a :title="$t('Delete')" v-b-tooltip.hover @click="confirmRemove(props.row)">
-              <lucide-icon class="text-25 text-danger cursor-pointer" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
+
+    <div v-if="isLoading" class="pxac__pad">
+      <px-skeleton variant="table" :rows="10" :columns="5" />
     </div>
+
+    <template v-else>
+      <div class="pxac__tablewrap">
+        <px-table
+          v-if="rows.length"
+          :columns="columns"
+          :rows="rows"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-parent="{ row }">{{ parentName(row.parent_id) }}</template>
+          <template #cell-active="{ row }">
+            <px-badge :tone="row.is_active ? 'success' : 'neutral'">{{ row.is_active ? $t('Yes') : $t('No') }}</px-badge>
+          </template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
+
+        <px-empty-state
+          v-else
+          icon="database"
+          :title="$t('No_accounts_yet') || 'Sin cuentas todavía'"
+          :description="$t('Chart_of_Accounts_Subtitle')"
+        >
+          <px-button variant="primary" icon="plus" size="sm" @click="openCreate">{{ $t('Add') }}</px-button>
+        </px-empty-state>
+      </div>
+
+      <px-pagination
+        v-if="rows.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
     <!-- Create / Edit Modal -->
-    <div class="modal fade" tabindex="-1" role="dialog" :class="{ show: showModal }" :style="{ display: showModal ? 'block' : 'none' }">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ editing ? $t('Edit_Account') : $t('New_Account') }}</h5>
-            <button type="button" class="close" @click="closeModal"><span>&times;</span></button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>{{ $t('Code') }}</label>
-              <input v-model.trim="form.code" class="form-control" :placeholder="$t('Example_Code')" />
-            </div>
-            <div class="form-group">
-              <label>{{ $t('Name') }}</label>
-              <input v-model.trim="form.name" class="form-control" :placeholder="$t('Example_Name')" />
-            </div>
-            <div class="form-row">
-              <div class="form-group col-md-6">
-                <label>{{ $t('Type') }}</label>
-                <select v-model="form.type" class="form-control">
-                  <option disabled value="">{{ $t('Select_Type') }}</option>
-                  <option value="asset">{{ $t('Asset') }}</option>
-                  <option value="liability">{{ $t('Liability') }}</option>
-                  <option value="equity">{{ $t('Equity') }}</option>
-                  <option value="income">{{ $t('Income') }}</option>
-                  <option value="expense">{{ $t('Expense') }}</option>
-                </select>
-              </div>
-              <div class="form-group col-md-6">
-                <label>{{ $t('Parent') }}</label>
-                <select v-model="form.parent_id" class="form-control">
-                  <option :value="null">{{ $t('None') }}</option>
-                  <option v-for="p in rows" :key="p.id" :value="p.id">{{ p.code }} — {{ p.name }}</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>{{ $t('Status') }}</label>
-              <select v-model.number="form.is_active" class="form-control">
-                <option :value="1">{{ $t('Active') }}</option>
-                <option :value="0">{{ $t('Inactive') }}</option>
-              </select>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" @click="closeModal" :disabled="btnLoading">{{ $t('Cancel') }}</button>
-            <button type="button" class="btn btn-primary" @click="save" :disabled="btnLoading || !canSave">
-              <span v-if="btnLoading" class="spinner-border spinner-border-sm mr-2"></span>
-              <span>{{ btnLoading ? $t('Saving') : $t('Save') }}</span>
-            </button>
-          </div>
-        </div>
+    <px-modal v-model="showModal" size="md" :title="editing ? $t('Edit_Account') : $t('New_Account')">
+      <div class="pxac__formgrid">
+        <px-field :label="$t('Code')" class="pxac__wide">
+          <template #default="{ id }"><px-input :id="id" v-model.trim="form.code" :placeholder="$t('Example_Code')" /></template>
+        </px-field>
+        <px-field :label="$t('Name')" class="pxac__wide">
+          <template #default="{ id }"><px-input :id="id" v-model.trim="form.name" :placeholder="$t('Example_Name')" /></template>
+        </px-field>
+        <px-field :label="$t('Type')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="form.type" :reduce="o => o.value" :placeholder="$t('Select_Type')"
+              :options="typeOptions" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Parent')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="form.parent_id" :reduce="o => o.value" :placeholder="$t('None')"
+              :options="parentOptions" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Status')" class="pxac__wide">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model.number="form.is_active" :reduce="o => o.value" :clearable="false"
+              :options="[{ label: $t('Active'), value: 1 }, { label: $t('Inactive'), value: 0 }]" />
+          </template>
+        </px-field>
       </div>
-    </div>
+
+      <template #footer="{ close }">
+        <div class="pxac__actionbar">
+          <px-button variant="secondary" :disabled="btnLoading" @click="close">{{ $t('Cancel') }}</px-button>
+          <px-button variant="primary" icon="check" :loading="btnLoading" :disabled="btnLoading || !canSave" @click="save">
+            {{ btnLoading ? $t('Saving') : $t('Save') }}
+          </px-button>
+        </div>
+      </template>
+    </px-modal>
 
     <!-- Import CSV Modal -->
-    <div class="modal fade" tabindex="-1" role="dialog" :class="{ show: showImport }" :style="{ display: showImport ? 'block' : 'none' }">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ $t('Import_Chart_of_Accounts') }}</h5>
-            <button type="button" class="close" @click="closeImport"><span>&times;</span></button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <input type="file" accept=".csv,text/csv" @change="onImportFileChange" />
-              <small class="form-text text-muted">{{ $t('Only_CSV_allowed') }}</small>
-            </div>
-
-            <div v-if="importErrors.length" class="alert alert-danger" style="max-height: 220px; overflow-y: auto;">
-              <ul class="mb-0 pl-3">
-                <li v-for="(err, i) in importErrors" :key="i">{{ err }}</li>
-              </ul>
-            </div>
-
-            <table class="table table-bordered table-sm mt-3 mb-0">
-              <tbody>
-                <tr>
-                  <td>{{ $t('Code') }}</td>
-                  <th><span class="badge badge-outline-success">{{ $t('Field_is_required') }}</span></th>
-                </tr>
-                <tr>
-                  <td>{{ $t('Name') }}</td>
-                  <th><span class="badge badge-outline-success">{{ $t('Field_is_required') }}</span></th>
-                </tr>
-                <tr>
-                  <td>{{ $t('Type') }} (asset, liability, equity, income, expense)</td>
-                  <th><span class="badge badge-outline-success">{{ $t('Field_is_required') }}</span></th>
-                </tr>
-                <tr>
-                  <td>{{ $t('Parent_Code') }}</td>
-                  <th><span class="badge badge-outline-secondary">{{ $t('Optional') }}</span></th>
-                </tr>
-                <tr>
-                  <td>{{ $t('Active') }} (1/0)</td>
-                  <th><span class="badge badge-outline-secondary">{{ $t('Optional') }}</span></th>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="modal-footer">
-            <b-button :href="'/import/exemples/chart_of_accounts.csv'" variant="info" size="sm">{{ $t('Download_exemple') }}</b-button>
-            <button type="button" class="btn btn-outline-secondary" @click="closeImport" :disabled="importLoading">{{ $t('Cancel') }}</button>
-            <button type="button" class="btn btn-primary" @click="submitImport" :disabled="importLoading || !importFile">
-              <span v-if="importLoading" class="spinner-border spinner-border-sm mr-2"></span>
-              <span>{{ $t('submit') }}</span>
-            </button>
-          </div>
-        </div>
+    <px-modal v-model="showImport" size="md" :title="$t('Import_Chart_of_Accounts')">
+      <div class="pxac__import">
+        <input type="file" accept=".csv,text/csv" @change="onImportFileChange" />
+        <p class="pxac__hint">{{ $t('Only_CSV_allowed') }}</p>
       </div>
-    </div>
 
-    <!-- Delete Confirm Modal -->
-    <div class="modal fade" tabindex="-1" role="dialog" :class="{ show: confirmOpen }" :style="{ display: confirmOpen ? 'block' : 'none' }">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ $t('Delete_Account_Title') }}</h5>
-            <button type="button" class="close" @click="confirmOpen=false"><span>&times;</span></button>
-          </div>
-          <div class="modal-body">
-            <p class="mb-0">
-              {{ $t('Delete_Account_Question') }}
-              <strong>{{ toDelete ? `${toDelete.code} — ${toDelete.name}` : '' }}</strong>?
-            </p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" @click="confirmOpen=false">{{ $t('Cancel') }}</button>
-            <button type="button" class="btn btn-danger" @click="remove()">{{ $t('Delete') }}</button>
-          </div>
+      <px-alert v-if="importErrors.length" tone="danger" :title="$t('Error')" class="pxac__importerr">
+        <ul class="pxac__errlist">
+          <li v-for="(err, i) in importErrors" :key="i">{{ err }}</li>
+        </ul>
+      </px-alert>
+
+      <table class="pxac__reqtbl">
+        <tbody>
+          <tr><td>{{ $t('Code') }}</td><td><px-badge tone="success">{{ $t('Field_is_required') }}</px-badge></td></tr>
+          <tr><td>{{ $t('Name') }}</td><td><px-badge tone="success">{{ $t('Field_is_required') }}</px-badge></td></tr>
+          <tr><td>{{ $t('Type') }} (asset, liability, equity, income, expense)</td><td><px-badge tone="success">{{ $t('Field_is_required') }}</px-badge></td></tr>
+          <tr><td>{{ $t('Parent_Code') }}</td><td><px-badge tone="neutral">{{ $t('Optional') }}</px-badge></td></tr>
+          <tr><td>{{ $t('Active') }} (1/0)</td><td><px-badge tone="neutral">{{ $t('Optional') }}</px-badge></td></tr>
+        </tbody>
+      </table>
+
+      <template #footer="{ close }">
+        <div class="pxac__actionbar">
+          <px-button variant="link" icon="download" @click="downloadExample">{{ $t('Download_exemple') }}</px-button>
+          <px-button variant="secondary" :disabled="importLoading" @click="close">{{ $t('Cancel') }}</px-button>
+          <px-button variant="primary" icon="check" :loading="importLoading" :disabled="importLoading || !importFile" @click="submitImport">
+            {{ $t('submit') }}
+          </px-button>
         </div>
-      </div>
-    </div>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   name: "ChartOfAccountsV2",
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxBadge,
+    PxField, PxInput, PxModal, PxAlert, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
+      _searchTimer: null,
       isLoading: true,
       rows: [],
       totalRows: "",
@@ -218,14 +183,33 @@ export default {
     };
   },
   computed: {
+    rowActions() {
+      return [
+        { key: "edit", label: this.$t("Edit"), icon: "pencil" },
+        { key: "delete", label: this.$t("Delete"), icon: "x", tone: "danger" }
+      ];
+    },
+    typeOptions() {
+      return [
+        { label: this.$t('Asset'), value: 'asset' },
+        { label: this.$t('Liability'), value: 'liability' },
+        { label: this.$t('Equity'), value: 'equity' },
+        { label: this.$t('Income'), value: 'income' },
+        { label: this.$t('Expense'), value: 'expense' }
+      ];
+    },
+    parentOptions() {
+      return [{ label: this.$t('None'), value: null }].concat(
+        (this.rows || []).map(p => ({ label: `${p.code} — ${p.name}`, value: p.id }))
+      );
+    },
     columns() {
       return [
-        { label: this.$t('Code'), field: 'code', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Name'), field: 'name', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Parent'), field: 'parent', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Type'), field: 'type', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Active'), field: 'active', sortable: false, tdClass: 'text-center', thClass: 'text-center' },
-        { label: this.$t('Action'), field: 'actions', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
+        { key: 'code', label: this.$t('Code'), sortable: true, strong: true },
+        { key: 'name', label: this.$t('Name'), sortable: true },
+        { key: 'parent', label: this.$t('Parent') },
+        { key: 'type', label: this.$t('Type'), sortable: true },
+        { key: 'active', label: this.$t('Active') },
       ];
     },
     canSave() { return this.form.code && this.form.name && this.form.type; }
@@ -235,14 +219,22 @@ export default {
   },
   methods: {
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
-    onPageChange({ currentPage }) { if (this.serverParams.page !== currentPage) { this.updateParams({ page: currentPage }); this.Get_Coa(currentPage); } },
-    onPerPageChange({ currentPerPage }) { if (this.limit !== currentPerPage) { this.limit = currentPerPage; this.updateParams({ page: 1, perPage: currentPerPage }); this.Get_Coa(1); } },
-    onSortChange(params) {
-      if (!params || !params.length) return;
-      this.updateParams({ sort: { type: params[0].type, field: params[0].field } });
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Coa(1); }, 350);
+    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Coa(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Coa(1); } },
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { type: dir, field: key } });
       this.Get_Coa(this.serverParams.page);
     },
-    onSearch(value) { this.search = value.searchTerm; this.Get_Coa(this.serverParams.page); },
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.openEdit(row);
+      else if (k === "delete") this.confirmRemove(row);
+    },
     async Get_Coa(page) {
       NProgress.start(); NProgress.set(0.1);
       axios.get(
@@ -285,6 +277,9 @@ export default {
       this.showImport = true;
     },
     closeImport() { if (!this.importLoading) this.showImport = false; },
+    downloadExample() {
+      window.open('/import/exemples/chart_of_accounts.csv', '_blank', 'noopener');
+    },
     onImportFileChange(e) {
       this.importFile = (e.target.files && e.target.files[0]) || null;
       this.importErrors = [];
@@ -336,10 +331,24 @@ export default {
 };
 </script>
 
-<style scoped>
-.sortable { cursor: pointer; }
-.modal { background: rgba(0,0,0,.35); }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxac { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxac { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxac__pad { padding: var(--pxn-space-6) 0; }
+.pxac__tablewrap { margin-top: var(--pxn-space-5); }
+.pxac__formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 520px) { .pxac__formgrid { grid-template-columns: minmax(0, 1fr); } }
+.pxac__wide { grid-column: 1 / -1; }
+.pxac__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); align-items: center; }
+.pxac__import { display: flex; flex-direction: column; gap: var(--pxn-space-2); }
+.pxac__hint { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxac__importerr { margin-top: var(--pxn-space-4); }
+.pxac__errlist { margin: 0; padding-left: var(--pxn-space-6); }
+.pxac__reqtbl { width: 100%; border-collapse: collapse; margin-top: var(--pxn-space-4); font-size: var(--pxn-fs-sm); }
+.pxac__reqtbl td { padding: var(--pxn-space-2) var(--pxn-space-3); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink-2); }
+.pxac__reqtbl tr:last-child td { border-bottom: 0; }
+.pxac__reqtbl td:last-child { text-align: right; white-space: nowrap; }
+.pxac__confirmtext { font-size: var(--pxn-fs-body); color: var(--pxn-ink-2); }
 </style>
-
-
-

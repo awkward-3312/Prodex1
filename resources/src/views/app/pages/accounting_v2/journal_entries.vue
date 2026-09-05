@@ -1,174 +1,182 @@
 <template>
   <!-- NEW FEATURE - SAFE ADDITION -->
-  <div class="main-content">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <div>
-        <h4 class="mb-1">{{ $t('Journal_Entries_Title') }}</h4>
-        <div class="text-muted small">{{ $t('Journal_Entries_Subtitle') }}</div>
+  <div class="px-next pxac">
+    <px-page-header :title="$t('Journal_Entries_Title')" :subtitle="$t('Journal_Entries_Subtitle')">
+      <template #actions>
+        <px-button variant="primary" icon="plus" @click="openCreate">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
+
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
+
+    <div v-if="isLoading" class="pxac__pad">
+      <px-skeleton variant="table" :rows="10" :columns="5" />
+    </div>
+
+    <template v-else>
+      <div class="pxac__tablewrap">
+        <px-table
+          v-if="rows.length"
+          :columns="columns"
+          :rows="rows"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-date="{ row }">{{ formatDisplayDate(row.date) }}</template>
+          <template #cell-status="{ row }">
+            <px-badge :tone="row.status === 'posted' ? 'success' : 'warning'">{{ statusLabel(row.status) }}</px-badge>
+          </template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions(row)" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
+
+        <px-empty-state
+          v-else
+          icon="clipboard-list"
+          :title="$t('No_Data') || 'Sin asientos todavía'"
+          :description="$t('Journal_Entries_Subtitle')"
+        >
+          <px-button variant="primary" icon="plus" size="sm" @click="openCreate">{{ $t('Add') }}</px-button>
+        </px-empty-state>
       </div>
-    </div>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div class="card wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="rows"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: $t('Next'), prevLabel: $t('Prev') }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button @click="openCreate()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
-            <lucide-icon name="plus" />
-            {{ $t('Add') }}
-          </b-button>
-        </div>
-
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'status'">
-            <span class="badge" :class="props.row.status==='posted' ? 'badge-success' : 'badge-warning'">{{ statusLabel(props.row.status) }}</span>
-          </span>
-          <span v-else-if="props.column.field == 'actions'">
-            <a @click="view(props.row)" :title="$t('View')" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-primary cursor-pointer mr-2" name="eye" />
-            </a>
-            <a v-if="props.row.status!=='posted'" @click="post(props.row)" :title="$t('Post')" v-b-tooltip.hover :disabled="postingId===props.row.id">
-              <lucide-icon class="text-25 text-success cursor-pointer mr-2" name="check" v-if="postingId!==props.row.id" />
-              <span v-else class="spinner-border spinner-border-sm text-success mr-2"></span>
-            </a>
-            <a v-if="props.row.status!=='posted'" @click="tryEdit(props.row)" :title="$t('Edit')" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-primary" name="pencil" />
-            </a>
-            <a v-if="props.row.status!=='posted'" @click="tryDelete(props.row)" :title="$t('Delete')" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
-    </div>
+      <px-pagination
+        v-if="rows.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
     <!-- Create / Edit Modal -->
-    <div class="modal fade" tabindex="-1" role="dialog" :class="{ show: showModal }" :style="{ display: showModal ? 'block' : 'none' }">
-      <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ editing ? $t('Edit_Entry') : $t('New_Entry') }}</h5>
-            <button type="button" class="close" @click="closeModal"><span>&times;</span></button>
-          </div>
-          <div class="modal-body">
-            <div class="form-row">
-              <div class="form-group col-md-4">
-                <label>{{ $t('Date') }}</label>
-                <input v-model="entry.date" type="date" class="form-control" />
-              </div>
-              <div class="form-group col-md-8">
-                <label>{{ $t('Description') }}</label>
-                <input v-model.trim="entry.description" class="form-control" :placeholder="$t('Description_Placeholder')" />
-              </div>
-            </div>
+    <px-modal v-model="showModal" size="lg" :title="editing ? $t('Edit_Entry') : $t('New_Entry')">
+      <div class="pxac__je-head">
+        <px-field :label="$t('Date')" class="pxac__je-date">
+          <template #default="{ id }"><px-input :id="id" type="date" v-model="entry.date" /></template>
+        </px-field>
+        <px-field :label="$t('Description')" class="pxac__je-desc">
+          <template #default="{ id }"><px-input :id="id" v-model.trim="entry.description" :placeholder="$t('Description_Placeholder')" /></template>
+        </px-field>
+      </div>
 
-            <div class="table-responsive border rounded">
-              <table class="table table-sm mb-0">
-                <thead>
-                  <tr class="bg-light">
-                    <th style="width: 40%;">{{ $t('Account') }}</th>
-                    <th style="width: 20%;" class="text-right">{{ $t('Debit') }}</th>
-                    <th style="width: 20%;" class="text-right">{{ $t('Credit') }}</th>
-                    <th style="width: 18%;">{{ $t('Memo') }}</th>
-                    <th style="width: 2%;"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(l,idx) in entry.lines" :key="idx">
-                    <td>
-                      <select v-model="l.coa_id" class="form-control" :class="{ 'is-invalid': showErrors && !l.coa_id }">
-                        <option :value="null" disabled>{{ $t('Select_Account') }}</option>
-                        <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.code }} — {{ a.name }}</option>
-                      </select>
-                    </td>
-                    <td><input v-model.number="l.debit" @input="onAmountChange(idx, 'debit')" type="text" min="0" step="0.01" class="form-control text-right" :class="{ 'is-invalid': showErrors && !validRow(l) }" /></td>
-                    <td><input v-model.number="l.credit" @input="onAmountChange(idx, 'credit')" type="text" min="0" step="0.01" class="form-control text-right" :class="{ 'is-invalid': showErrors && !validRow(l) }" /></td>
-                    <td><input v-model.trim="l.memo" class="form-control" /></td>
-                    <td class="text-right">
-                      <button class="btn btn-link p-0" @click="removeLine(idx)" :disabled="entry.lines.length <= 1"><lucide-icon class="text-danger" name="x" /></button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+      <div class="pxac__je-tblwrap pxn-scroll">
+        <table class="pxac__je-tbl">
+          <thead>
+            <tr>
+              <th class="pxac__je-col-acct">{{ $t('Account') }}</th>
+              <th class="is-right">{{ $t('Debit') }}</th>
+              <th class="is-right">{{ $t('Credit') }}</th>
+              <th>{{ $t('Memo') }}</th>
+              <th class="pxac__je-col-x"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(l, idx) in entry.lines" :key="idx">
+              <td>
+                <vs-px v-model="l.coa_id" :reduce="o => o.value" :placeholder="$t('Select_Account')"
+                  :invalid="showErrors && !l.coa_id"
+                  :options="accounts.map(a => ({ label: `${a.code} — ${a.name}`, value: a.id }))" />
+              </td>
+              <td><px-input v-model.number="l.debit" type="text" class="is-right" :invalid="showErrors && !validRow(l)" @input="onAmountChange(idx, 'debit')" /></td>
+              <td><px-input v-model.number="l.credit" type="text" class="is-right" :invalid="showErrors && !validRow(l)" @input="onAmountChange(idx, 'credit')" /></td>
+              <td><px-input v-model.trim="l.memo" /></td>
+              <td class="is-right">
+                <px-button variant="ghost" size="sm" icon-only icon="x" :disabled="entry.lines.length <= 1" @click="removeLine(idx)" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-            <div class="d-flex justify-content-between align-items-center mt-2">
-              <button class="btn btn-outline-secondary btn-sm" @click="addLine"><lucide-icon name="plus" /> {{ $t('Add_Line') }}</button>
-              <div>
-                <span class="mr-3">{{ $t('Total_Debit') }}: <strong>{{ toMoney(totals.debit) }}</strong></span>
-                <span>{{ $t('Total_Credit') }}: <strong>{{ toMoney(totals.credit) }}</strong></span>
-                <span class="ml-3 badge" :class="balanced ? 'badge-success' : 'badge-warning'">{{ balanced ? $t('Balanced') : $t('Not_Balanced') }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" @click="closeModal" :disabled="btnLoading">{{ $t('Cancel') }}</button>
-            <button type="button" class="btn btn-primary" :disabled="btnLoading || !entry.date || !linesValid" @click="save">
-              <span v-if="btnLoading" class="spinner-border spinner-border-sm mr-2"></span>
-              <span>{{ btnLoading ? $t('Saving') : $t('Save') }}</span>
-            </button>
-          </div>
+      <div class="pxac__je-foot">
+        <px-button variant="secondary" size="sm" icon="plus" @click="addLine">{{ $t('Add_Line') }}</px-button>
+        <div class="pxac__je-totals">
+          <span>{{ $t('Total_Debit') }}: <strong class="pxn-num">{{ toMoney(totals.debit) }}</strong></span>
+          <span>{{ $t('Total_Credit') }}: <strong class="pxn-num">{{ toMoney(totals.credit) }}</strong></span>
+          <px-badge :tone="balanced ? 'success' : 'warning'">{{ balanced ? $t('Balanced') : $t('Not_Balanced') }}</px-badge>
         </div>
       </div>
-    </div>
+
+      <template #footer="{ close }">
+        <div class="pxac__actionbar">
+          <px-button variant="secondary" :disabled="btnLoading" @click="close">{{ $t('Cancel') }}</px-button>
+          <px-button variant="primary" icon="check" :loading="btnLoading" :disabled="btnLoading || !entry.date || !linesValid" @click="save">
+            {{ btnLoading ? $t('Saving') : $t('Save') }}
+          </px-button>
+        </div>
+      </template>
+    </px-modal>
 
     <!-- View Modal -->
-    <div class="modal fade" tabindex="-1" role="dialog" :class="{ show: showView }" :style="{ display: showView ? 'block' : 'none' }">
-      <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ $t('Journal_Number', { number: current && current.id }) }}</h5>
-            <button type="button" class="close" @click="showView=false"><span>&times;</span></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-2"><strong>{{ $t('Date') }}:</strong> {{ current && current.date }}</div>
-            <div class="mb-3"><strong>{{ $t('Description') }}:</strong> {{ current && (current.description || '-') }}</div>
-            <div class="table-responsive border rounded">
-              <table class="table table-sm mb-0">
-                <thead><tr class="bg-light"><th>{{ $t('Account') }}</th><th class="text-right">{{ $t('Debit') }}</th><th class="text-right">{{ $t('Credit') }}</th><th>{{ $t('Memo') }}</th></tr></thead>
-                <tbody>
-                  <tr v-for="(l,idx) in (current && current.lines || [])" :key="idx">
-                    <td>{{ accountName(l.coa_id) }}</td>
-                    <td class="text-right">{{ toMoney(l.debit) }}</td>
-                    <td class="text-right">{{ toMoney(l.credit) }}</td>
-                    <td>{{ l.memo || '' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" @click="showView=false">{{ $t('Close') }}</button>
-          </div>
-        </div>
+    <px-modal v-model="showView" size="lg" :title="$t('Journal_Number', { number: current && current.id })">
+      <div class="pxac__je-viewmeta">
+        <div><strong>{{ $t('Date') }}:</strong> {{ current && current.date }}</div>
+        <div><strong>{{ $t('Description') }}:</strong> {{ current && (current.description || '-') }}</div>
       </div>
-    </div>
+      <div class="pxac__je-tblwrap pxn-scroll">
+        <table class="pxac__je-tbl">
+          <thead>
+            <tr><th>{{ $t('Account') }}</th><th class="is-right">{{ $t('Debit') }}</th><th class="is-right">{{ $t('Credit') }}</th><th>{{ $t('Memo') }}</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(l, idx) in (current && current.lines || [])" :key="idx">
+              <td>{{ accountName(l.coa_id) }}</td>
+              <td class="is-right pxn-num">{{ toMoney(l.debit) }}</td>
+              <td class="is-right pxn-num">{{ toMoney(l.credit) }}</td>
+              <td>{{ l.memo || '' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <template #footer="{ close }">
+        <div class="pxac__actionbar">
+          <px-button variant="secondary" @click="close">{{ $t('Close') }}</px-button>
+        </div>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
+import Util from '../../../../utils';
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   name: "JournalEntriesV2",
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxBadge,
+    PxField, PxInput, PxModal, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
+      _searchTimer: null,
       isLoading: true,
       rows: [],
       accounts: [],
@@ -189,6 +197,7 @@ export default {
       btnLoading: false,
       postingId: null,
       showErrors: false,
+      price_format_key: null,
     };
   },
   computed: {
@@ -198,11 +207,10 @@ export default {
     },
     columns() {
       return [
-        { label: this.$t('Date'), field: 'date', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Description'), field: 'description', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Source'), field: 'reference_type', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Status'), field: 'status', sortable: false, tdClass: 'text-center', thClass: 'text-center' },
-        { label: this.$t('Action'), field: 'actions', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
+        { key: 'date', label: this.$t('Date'), sortable: true },
+        { key: 'description', label: this.$t('Description'), sortable: true },
+        { key: 'reference_type', label: this.$t('Source') },
+        { key: 'status', label: this.$t('Status') },
       ];
     },
     totals() {
@@ -219,10 +227,35 @@ export default {
   },
   methods: {
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
-    onPageChange({ currentPage }) { if (this.serverParams.page !== currentPage) { this.updateParams({ page: currentPage }); this.Get_Journals(currentPage); } },
-    onPerPageChange({ currentPerPage }) { if (this.limit !== currentPerPage) { this.limit = currentPerPage; this.updateParams({ page: 1, perPage: currentPerPage }); this.Get_Journals(1); } },
-    onSortChange(params) { if (!params || !params.length) return; this.updateParams({ sort: { type: params[0].type, field: params[0].field } }); this.Get_Journals(this.serverParams.page); },
-    onSearch(value) { this.search = value.searchTerm; this.Get_Journals(this.serverParams.page); },
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Journals(1); }, 350);
+    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Journals(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Journals(1); } },
+    onSort({ key, dir }) { this.updateParams({ sort: { type: dir, field: key } }); this.Get_Journals(this.serverParams.page); },
+    formatDisplayDate(value) {
+      if (!value) return '';
+      const dateFormat = this.$store.getters.getDateFormat || Util.getDateFormat(this.$store);
+      return Util.formatDisplayDate(value, dateFormat);
+    },
+    rowActions(row) {
+      const items = [{ key: "view", label: this.$t("View"), icon: "eye" }];
+      if (row.status !== 'posted') {
+        items.push({ key: "post", label: this.$t("Post"), icon: "check" });
+        items.push({ key: "edit", label: this.$t("Edit"), icon: "pencil" });
+        items.push({ key: "delete", label: this.$t("Delete"), icon: "x", tone: "danger" });
+      }
+      return items;
+    },
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "view") this.view(row);
+      else if (k === "post") this.post(row);
+      else if (k === "edit") this.tryEdit(row);
+      else if (k === "delete") this.tryDelete(row);
+    },
     async Get_Journals(page) {
       NProgress.start(); NProgress.set(0.1);
       axios.get(
@@ -349,9 +382,37 @@ export default {
 };
 </script>
 
-<style scoped>
-.modal { background: rgba(0,0,0,.35); }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxac { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxac { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxac__pad { padding: var(--pxn-space-6) 0; }
+.pxac__tablewrap { margin-top: var(--pxn-space-5); }
+.pxac__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); align-items: center; }
+
+.pxac__je-head { display: grid; grid-template-columns: 200px 1fr; gap: var(--pxn-space-4); margin-bottom: var(--pxn-space-5); }
+@media (max-width: 520px) { .pxac__je-head { grid-template-columns: minmax(0, 1fr); } }
+
+.pxac__je-tblwrap { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); overflow-x: auto; }
+.pxac__je-tbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxac__je-tbl th {
+  padding: var(--pxn-space-3) var(--pxn-space-3); text-align: left;
+  font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--pxn-ink-3); background: var(--pxn-surface-2); border-bottom: 1px solid var(--pxn-border); white-space: nowrap;
+}
+.pxac__je-tbl td { padding: var(--pxn-space-2) var(--pxn-space-3); border-bottom: 1px solid var(--pxn-border); vertical-align: middle; }
+.pxac__je-tbl tr:last-child td { border-bottom: 0; }
+.pxac__je-tbl .is-right { text-align: right; }
+.pxac__je-tbl ::v-deep .pxn-input.is-right input,
+.pxac__je-tbl ::v-deep input.is-right { text-align: right; }
+.pxac__je-tbl ::v-deep .pxn-input[aria-invalid="true"],
+.pxac__je-tbl ::v-deep .vs__dropdown-toggle.is-invalid,
+.pxac__je-tbl ::v-deep .is-invalid .vs__dropdown-toggle { border-color: var(--pxn-danger); }
+.pxac__je-col-acct { width: 38%; }
+.pxac__je-col-x { width: 36px; }
+
+.pxac__je-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-4); margin-top: var(--pxn-space-4); flex-wrap: wrap; }
+.pxac__je-totals { display: flex; align-items: center; gap: var(--pxn-space-5); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); flex-wrap: wrap; }
+.pxac__je-viewmeta { display: flex; flex-direction: column; gap: var(--pxn-space-2); margin-bottom: var(--pxn-space-4); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
 </style>
-
-
-
