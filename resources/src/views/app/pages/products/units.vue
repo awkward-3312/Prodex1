@@ -24,8 +24,8 @@
         :pagination-options="{
         enabled: true,
         mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
+        nextLabel: 'Siguiente',
+        prevLabel: 'Anterior',
       }"
         styleClass="table-hover tableOne vgt-table"
       >
@@ -36,12 +36,24 @@
           </b-button>
         </div>
 
+        <template slot="emptystate">
+          <PxEmptyState
+            icon="ruler"
+            :title="$t('No_units_yet')"
+            :description="$t('No_units_desc')"
+          >
+            <b-button class="btn btn-sm btn-primary" @click="New_Unit()">
+              <lucide-icon name="plus" /> {{ $t('Add') }}
+            </b-button>
+          </PxEmptyState>
+        </template>
+
         <template slot="table-row" slot-scope="props">
           <span v-if="props.column.field == 'actions'">
-            <a @click="Edit_Unit(props.row)" title="Edit" v-b-tooltip.hover>
+            <a @click="Edit_Unit(props.row)" :title="$t('Edit')" v-b-tooltip.hover>
               <lucide-icon class="text-25 text-success" name="pencil" />
             </a>
-            <a title="Delete" v-b-tooltip.hover @click="Remove_Unit(props.row.id)">
+            <a :title="$t('Delete')" v-b-tooltip.hover @click="Remove_Unit(props.row.id)">
               <lucide-icon class="text-25 text-danger" name="x" />
             </a>
           </span>
@@ -161,10 +173,12 @@
 
 <script>
 import NProgress from "nprogress";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
+  components: { PxEmptyState },
   metaInfo: {
-    title: "Unit"
+    title: "Unidades"
   },
   data() {
     return {

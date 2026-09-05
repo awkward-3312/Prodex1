@@ -25,8 +25,8 @@
         :pagination-options="{
         enabled: true,
         mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
+        nextLabel: 'Siguiente',
+        prevLabel: 'Anterior',
       }"
         styleClass="table-hover tableOne vgt-table"
       >
@@ -40,12 +40,24 @@
           </b-button>
         </div>
 
+        <template slot="emptystate">
+          <PxEmptyState
+            icon="award"
+            :title="$t('No_brands_yet')"
+            :description="$t('No_brands_desc')"
+          >
+            <b-button class="btn btn-sm btn-primary" @click="New_Brand()">
+              <lucide-icon name="plus" /> {{ $t('Add') }}
+            </b-button>
+          </PxEmptyState>
+        </template>
+
         <template slot="table-row" slot-scope="props">
           <span v-if="props.column.field == 'actions'">
-            <a @click="Edit_Brand(props.row)" title="Edit" v-b-tooltip.hover>
+            <a @click="Edit_Brand(props.row)" :title="$t('Edit')" v-b-tooltip.hover>
               <lucide-icon class="text-25 text-success" name="pencil" />
             </a>
-            <a title="Delete" v-b-tooltip.hover @click="Delete_Brand(props.row.id)">
+            <a :title="$t('Delete')" v-b-tooltip.hover @click="Delete_Brand(props.row.id)">
               <lucide-icon class="text-25 text-danger" name="x" />
             </a>
           </span>
@@ -142,10 +154,12 @@
 
 <script>
 import NProgress from "nprogress";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
+  components: { PxEmptyState },
   metaInfo: {
-    title: "Brand"
+    title: "Marcas"
   },
   data() {
     return {

@@ -7,12 +7,12 @@
         <div class="d-flex align-items-center">
           <div class="hero-icon mr-3"><lucide-icon name="upload" /></div>
           <div>
-            <h3 class="mb-1">Import Products</h3>
-            <div class="text-muted small">Bulk add items from an Excel file.</div>
+            <h3 class="mb-1">{{ $t('ImportProducts') }}</h3>
+            <div class="text-muted small">{{ $t('BulkAddItemsFromExcel') }}</div>
           </div>
         </div>
         <router-link :to="{ name: 'index_products' }" class="btn btn-outline-secondary btn-sm mt-3 mt-sm-0">
-          <lucide-icon name="chevron-left" /> Back to list
+          <lucide-icon name="chevron-left" /> {{ $t('BackToList') }}
         </router-link>
       </div>
     </div>
@@ -24,17 +24,17 @@
           <!-- Always outline-primary for Single (as requested) -->
           <b-button :variant="importType==='single' ? 'primary' : 'outline-primary'" 
             @click="switchType('single')">
-            <lucide-icon class="mr-1" name="store" />Single Products
+            <lucide-icon class="mr-1" name="store" />{{ $t('SingleProducts') }}
           </b-button>
           <!-- Variant toggles to solid primary when active -->
           <b-button :variant="importType==='variant' ? 'primary' : 'outline-primary'"
                     @click="switchType('variant')">
-            <lucide-icon class="mr-1" name="library" />Variant Products
+            <lucide-icon class="mr-1" name="library" />{{ $t('VariantProducts') }}
           </b-button>
           <!-- Service products tab -->
           <b-button :variant="importType==='service' ? 'primary' : 'outline-primary'"
                     @click="switchType('service')">
-            <lucide-icon class="mr-1" name="wrench" />Service Products
+            <lucide-icon class="mr-1" name="wrench" />{{ $t('ServiceProducts') }}
           </b-button>
         </b-button-group>
       </div>
@@ -53,9 +53,9 @@
             <input ref="file" type="file" class="d-none" @change="onFileSelected" :accept="accept" />
             <div class="dz-inner text-center">
               <div class="dz-icon mb-2"><lucide-icon name="download" /></div>
-              <h5 class="mb-2">Click or drop your Excel file here</h5>
+              <h5 class="mb-2">{{ $t('Click_Or_Drop_Excel') }}</h5>
               <div class="text-muted small">
-                Allowed formats: XLSX, XLS · Max size: 20MB
+                {{ $t('Allowed_Format_Excel') }}
               </div>
 
               <!-- Selected file pill -->
@@ -66,7 +66,7 @@
                   <div class="file-size text-muted small">{{ prettySize }}</div>
                 </div>
                 <b-button size="sm" variant="outline-danger" @click.stop="clearFile">
-                  Remove
+                  {{ $t('Remove') }}
                 </b-button>
               </div>
             </div>
@@ -76,13 +76,13 @@
           <b-card class="mt-3">
             <div class="d-flex align-items-center mb-2">
               <lucide-icon class="mr-2 text-primary" name="info" />
-              <h6 class="mb-0">Example format</h6>
+              <h6 class="mb-0">{{ $t('ExampleFormat') }}</h6>
             </div>
 
             <!-- Single example -->
             <div v-if="importType==='single'">
               <p class="small text-muted mb-2">
-                Create one row per product. Columns in <span class="badge badge-success-soft">green</span> are required.
+                {{ $t('ImportSingleExampleIntro') }} <span class="badge badge-success-soft">{{ $t('green') }}</span> {{ $t('AreRequired') }}
               </p>
               <div class="table-responsive">
                 <table class="table table-sm table-bordered example-table">
@@ -136,18 +136,18 @@
                 </table>
               </div>
               <ul class="mini-notes mt-2">
-                <li><strong>code</strong> must be unique across products and variants.</li>
-                <li><strong>unit</strong> must already exist (use its short name if available).</li>
-                <li><strong>category</strong> will be created automatically if missing.</li>
-                <li><strong>sub_category</strong> is optional. Will be created under its category if missing.</li>
+                <li><strong>code</strong> {{ $t('ImportNoteCodeUnique') }}</li>
+                <li><strong>unit</strong> {{ $t('ImportNoteUnitExists') }}</li>
+                <li><strong>category</strong> {{ $t('ImportNoteCategoryAuto') }}</li>
+                <li><strong>sub_category</strong> {{ $t('ImportNoteSubCategoryOptional') }}</li>
               </ul>
             </div>
 
             <!-- Variant example -->
             <div v-else-if="importType==='variant'">
               <p class="small text-muted mb-2">
-                Create one row per variant. Repeat the product columns for each variant of the same product_code.
-                Columns in <span class="badge badge-success-soft">green</span> are required.
+                {{ $t('ImportVariantExampleIntro') }}
+                {{ $t('ColumnsIn') }} <span class="badge badge-success-soft">{{ $t('green') }}</span> {{ $t('AreRequired') }}
               </p>
               <div class="table-responsive">
                 <table class="table table-sm table-bordered example-table">
@@ -214,18 +214,18 @@
                 </table>
               </div>
               <ul class="mini-notes mt-2">
-                <li><strong>product_code</strong>  Parent product code used to group variants.</li>
-                <li><strong>variant_code</strong> must be unique globally (cannot match any product or variant code).</li>
-                <li><strong>unit</strong> must already exist (use its short name if available).</li>
-                <li><strong>category</strong> will be created automatically if missing.</li>
-                <li><strong>sub_category</strong> is optional. Will be created under its category if missing.</li>
+                <li><strong>product_code</strong> {{ $t('ImportNoteProductCodeGroups') }}</li>
+                <li><strong>variant_code</strong> {{ $t('ImportNoteVariantCodeUnique') }}</li>
+                <li><strong>unit</strong> {{ $t('ImportNoteUnitExists') }}</li>
+                <li><strong>category</strong> {{ $t('ImportNoteCategoryAuto') }}</li>
+                <li><strong>sub_category</strong> {{ $t('ImportNoteSubCategoryOptional') }}</li>
               </ul>
             </div>
 
             <!-- Service products example -->
             <div v-else-if="importType==='service'">
               <p class="small text-muted mb-2">
-                Create one row per service. Columns in <span class="badge badge-success-soft">green</span> are required.
+                {{ $t('ImportServiceExampleIntro') }} <span class="badge badge-success-soft">{{ $t('green') }}</span> {{ $t('AreRequired') }}
               </p>
               <div class="table-responsive">
                 <table class="table table-sm table-bordered example-table">
@@ -272,10 +272,10 @@
                 </table>
               </div>
               <ul class="mini-notes mt-2">
-                <li><strong>code</strong> must be unique across products and variants.</li>
-                <li><strong>unit</strong> must already exist (use its short name if available).</li>
-                <li><strong>category</strong> will be created automatically if missing.</li>
-                <li><strong>sub_category</strong> is optional. Will be created under its category if missing.</li>
+                <li><strong>code</strong> {{ $t('ImportNoteCodeUnique') }}</li>
+                <li><strong>unit</strong> {{ $t('ImportNoteUnitExists') }}</li>
+                <li><strong>category</strong> {{ $t('ImportNoteCategoryAuto') }}</li>
+                <li><strong>sub_category</strong> {{ $t('ImportNoteSubCategoryOptional') }}</li>
               </ul>
             </div>
           </b-card>
@@ -285,7 +285,7 @@
             <div class="d-flex align-items-start">
               <lucide-icon class="mr-2 mt-1" name="x" />
               <div>
-                <div class="font-weight-bold mb-1">Import failed. Fix the issues below:</div>
+                <div class="font-weight-bold mb-1">{{ $t('Import_Failed_Fix_Below') }}</div>
                 <ul class="mb-0 pl-3">
                   <li v-for="(err, idx) in errorMessages" :key="'err-'+idx">{{ err }}</li>
                 </ul>
@@ -298,7 +298,7 @@
             <div class="d-flex align-items-start">
               <lucide-icon class="mr-2 mt-1" name="info" />
               <div>
-                <div class="font-weight-bold mb-1">Warnings</div>
+                <div class="font-weight-bold mb-1">{{ $t('Warnings') }}</div>
                 <ul class="mb-0 pl-3">
                   <li v-for="(w, idx) in warningMessages" :key="'warn-'+idx">{{ w }}</li>
                 </ul>
@@ -309,7 +309,7 @@
           <!-- Progress -->
           <div v-if="uploading" class="mt-3">
             <div class="d-flex justify-content-between mb-1">
-              <small class="text-muted">Uploading</small>
+              <small class="text-muted">{{ $t('Uploading') }}</small>
               <small>{{ progress }}%</small>
             </div>
             <b-progress :value="progress" height="8px"></b-progress>
@@ -324,14 +324,14 @@
               :disabled="!canSubmit || uploading"
               @click="submit"
             >
-              <span v-if="!uploading"><lucide-icon class="mr-1" name="upload" />Import now</span>
+              <span v-if="!uploading"><lucide-icon class="mr-1" name="upload" />{{ $t('Import_now') }}</span>
               <span v-else class="d-inline-flex align-items-center">
-                <span class="spinner sm spinner-white mr-2"></span>Processing…
+                <span class="spinner sm spinner-white mr-2"></span>{{ $t('Processing') }}
               </span>
             </b-button>
 
             <a :href="exampleHref" class="btn btn-outline-info btn-sm mr-2 mb-2" target="_blank" rel="noopener">
-              <lucide-icon class="mr-1" name="file-spreadsheet" />Download example
+              <lucide-icon class="mr-1" name="file-spreadsheet" />{{ $t('Download_exemple') }}
             </a>
 
             <b-button
@@ -341,7 +341,7 @@
               :disabled="!file || uploading"
               @click="clearFile"
             >
-              <lucide-icon class="mr-1" name="power" />Reset
+              <lucide-icon class="mr-1" name="power" />{{ $t('Reset') }}
             </b-button>
           </div>
         </b-col>
@@ -349,7 +349,7 @@
         <!-- Guide column -->
         <b-col md="12" class="mb-4">
           <b-card class="mb-3">
-            <h6 class="mb-2">Required & optional columns</h6>
+            <h6 class="mb-2">{{ $t('RequiredAndOptionalColumns') }}</h6>
 
             <!-- Singles -->
             <div v-if="importType==='single'">
@@ -360,11 +360,11 @@
                 </span>
               </div>
               <ul class="mini-notes mt-3">
-                <li><strong>code</strong> — Must be unique across products and variants.</li>
-                <li><strong>unit</strong> — Unit must already exist · Use the unit short name when possible.</li>
-                <li><strong>category</strong> — Will be created if missing.</li>
-                <li><strong>sub_category</strong> — Optional. Will be created under its category if it doesn't exist.</li>
-                <li><strong>wholesale price</strong> and <strong>min price</strong> are optional.</li>
+                <li><strong>code</strong> — {{ $t('ImportGuideCodeUnique') }}</li>
+                <li><strong>unit</strong> — {{ $t('ImportGuideUnitExists') }}</li>
+                <li><strong>category</strong> — {{ $t('ImportGuideCategoryAuto') }}</li>
+                <li><strong>sub_category</strong> — {{ $t('ImportGuideSubCategoryOptional') }}</li>
+                <li><strong>wholesale price</strong> {{ $t('And') }} <strong>min price</strong> {{ $t('AreOptional') }}</li>
               </ul>
             </div>
 
@@ -377,11 +377,11 @@
                 </span>
               </div>
               <ul class="mini-notes mt-3">
-                <li><strong>code</strong> — Must be unique across products and variants.</li>
-                <li><strong>unit</strong> — Unit must already exist · Use the unit short name when possible.</li>
-                <li><strong>category</strong> — Will be created if missing.</li>
-                <li><strong>sub_category</strong> — Optional. Will be created under its category if it doesn't exist.</li>
-                <li><strong>wholesale price</strong> and <strong>min price</strong> are optional. Cost is always 0 for services.</li>
+                <li><strong>code</strong> — {{ $t('ImportGuideCodeUnique') }}</li>
+                <li><strong>unit</strong> — {{ $t('ImportGuideUnitExists') }}</li>
+                <li><strong>category</strong> — {{ $t('ImportGuideCategoryAuto') }}</li>
+                <li><strong>sub_category</strong> — {{ $t('ImportGuideSubCategoryOptional') }}</li>
+                <li><strong>wholesale price</strong> {{ $t('And') }} <strong>min price</strong> {{ $t('AreOptional') }} {{ $t('CostAlwaysZeroForServices') }}</li>
               </ul>
             </div>
 
@@ -394,12 +394,12 @@
                 </span>
               </div>
               <ul class="mini-notes mt-3">
-                <li><strong>product_code</strong> — Parent product code used to group variants.</li>
-                <li><strong>variant_code</strong> — Variant code must be globally unique.</li>
-                <li><strong>unit</strong> — Unit must already exist · Use the unit short name when possible.</li>
-                <li><strong>category</strong> — Will be created if missing.</li>
-                <li><strong>sub_category</strong> — Optional. Will be created under its category if it doesn't exist.</li>
-                <li><strong>variant wholesale</strong> and <strong>variant min price</strong> are optional.</li>
+                <li><strong>product_code</strong> — {{ $t('ImportNoteProductCodeGroups') }}</li>
+                <li><strong>variant_code</strong> — {{ $t('ImportGuideVariantCodeUnique') }}</li>
+                <li><strong>unit</strong> — {{ $t('ImportGuideUnitExists') }}</li>
+                <li><strong>category</strong> — {{ $t('ImportGuideCategoryAuto') }}</li>
+                <li><strong>sub_category</strong> — {{ $t('ImportGuideSubCategoryOptional') }}</li>
+                <li><strong>variant wholesale</strong> {{ $t('And') }} <strong>variant min price</strong> {{ $t('AreOptional') }}</li>
               </ul>
             </div>
           </b-card>
@@ -408,8 +408,8 @@
             <div class="d-flex">
               <div class="tip-badge mr-2"><lucide-icon name="info" /></div>
               <div>
-                <strong>Heads up</strong>
-                <div class="small text-muted">Large files may take longer to process.</div>
+                <strong>{{ $t('HeadsUp') }}</strong>
+                <div class="small text-muted">{{ $t('LargeFilesMayTakeLonger') }}</div>
               </div>
             </div>
           </b-alert>
@@ -425,7 +425,7 @@ import NProgress from 'nprogress';
 
 export default {
   metaInfo: {
-    title: "Import Products"
+    title: "Importar productos"
   },
   data() {
     return {

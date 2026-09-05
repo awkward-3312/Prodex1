@@ -285,6 +285,7 @@ import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
 
 export default {
+  metaInfo: { title: "Imprimir código de barras" },
   components: {
     barcode: VueBarcode
   },

@@ -12,7 +12,7 @@
         :totalRows="totalRows"
         :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
         :select-options="{ enabled: true, clearSelectionText: '' }"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
+        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'Siguiente', prevLabel: 'Anterior' }"
         styleClass="table-hover tableOne vgt-table"
         @on-page-change="onPageChange"
         @on-per-page-change="onPerPageChange"
@@ -31,6 +31,18 @@
             <lucide-icon name="plus" /> {{$t('Add')}}
           </b-button>
         </div>
+
+        <template slot="emptystate">
+          <PxEmptyState
+            icon="folder-tree"
+            :title="$t('No_subcategories_yet')"
+            :description="$t('No_subcategories_desc')"
+          >
+            <b-button class="btn btn-sm btn-primary" @click="openCreate">
+              <lucide-icon name="plus" /> {{ $t('Add') }}
+            </b-button>
+          </PxEmptyState>
+        </template>
 
         <template slot="table-row" slot-scope="props">
           <!-- Actions -->
@@ -124,11 +136,13 @@
 
 <script>
 import NProgress from 'nprogress'
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 const API = 'subcategories'
 
 export default {
-  metaInfo: { title: 'SubCategory' },
+  components: { PxEmptyState },
+  metaInfo: { title: 'Subcategorías' },
 
   data() {
     return {

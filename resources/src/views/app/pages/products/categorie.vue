@@ -12,7 +12,7 @@
         :totalRows="totalRows"
         :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
         :select-options="{ enabled: true, clearSelectionText: '' }"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
+        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'Siguiente', prevLabel: 'Anterior' }"
         styleClass="table-hover tableOne vgt-table"
         @on-page-change="onPageChange"
         @on-per-page-change="onPerPageChange"
@@ -31,6 +31,18 @@
             <lucide-icon name="plus" /> {{$t('Add')}}
           </b-button>
         </div>
+
+        <template slot="emptystate">
+          <PxEmptyState
+            icon="folder-tree"
+            :title="$t('No_categories_yet')"
+            :description="$t('No_categories_desc')"
+          >
+            <b-button class="btn btn-sm btn-primary" @click="openCreate">
+              <lucide-icon name="plus" /> {{ $t('Add') }}
+            </b-button>
+          </PxEmptyState>
+        </template>
 
         <template slot="table-row" slot-scope="props">
           <!-- Icon cell -->
@@ -137,6 +149,7 @@
 <script>
 import NProgress from 'nprogress'
 import 'bootstrap-icons/font/bootstrap-icons.css'
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 const API = 'categories' // base endpoint
 
@@ -163,7 +176,8 @@ const makeBiOptions = () => [
 ];
 
 export default {
-  metaInfo: { title: 'Category' },
+  components: { PxEmptyState },
+  metaInfo: { title: 'Categorías' },
 
   data() {
     return {

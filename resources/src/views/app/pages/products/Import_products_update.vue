@@ -7,12 +7,12 @@
         <div class="d-flex align-items-center">
           <div class="hero-icon mr-3"><lucide-icon name="pencil" /></div>
           <div>
-            <h3 class="mb-1">Import Products (Update Only)</h3>
-            <div class="text-muted small">Update cost and retail price for existing products via CSV import.</div>
+            <h3 class="mb-1">{{ $t('ImportProductsUpdateOnly') }}</h3>
+            <div class="text-muted small">{{ $t('ImportUpdateSubtitle') }}</div>
           </div>
         </div>
         <router-link :to="{ name: 'index_products' }" class="btn btn-outline-secondary btn-sm mt-3 mt-sm-0">
-          <lucide-icon name="chevron-left" /> Back to list
+          <lucide-icon name="chevron-left" /> {{ $t('BackToList') }}
         </router-link>
       </div>
     </div>
@@ -32,9 +32,9 @@
             <input ref="file" type="file" class="d-none" @change="onFileSelected" :accept="accept" />
             <div class="dz-inner text-center">
               <div class="dz-icon mb-2"><lucide-icon name="download" /></div>
-              <h5 class="mb-2">Click or drop your CSV/Excel file here</h5>
+              <h5 class="mb-2">{{ $t('Click_Or_Drop_CSV_Excel') }}</h5>
               <div class="text-muted small">
-                Allowed formats: CSV, XLSX, XLS · Max size: 20MB
+                {{ $t('Allowed_Format_CSV_Excel') }}
               </div>
 
               <!-- Selected file pill -->
@@ -45,7 +45,7 @@
                   <div class="file-size text-muted small">{{ prettySize }}</div>
                 </div>
                 <b-button size="sm" variant="outline-danger" @click.stop="clearFile">
-                  Remove
+                  {{ $t('Remove') }}
                 </b-button>
               </div>
             </div>
@@ -55,13 +55,13 @@
           <b-card class="mt-3">
             <div class="d-flex align-items-center mb-2">
               <lucide-icon class="mr-2 text-primary" name="info" />
-              <h6 class="mb-0">File Format</h6>
+              <h6 class="mb-0">{{ $t('FileFormat') }}</h6>
             </div>
 
             <p class="small text-muted mb-2">
-              Your file must have exactly 3 columns: <span class="badge badge-success-soft">code</span>, 
-              <span class="badge badge-success-soft">cost</span>, and 
-              <span class="badge badge-success-soft">retail_price</span>. Products are matched by code.
+              {{ $t('ImportUpdateFileMustHave3Columns') }} <span class="badge badge-success-soft">code</span>,
+              <span class="badge badge-success-soft">cost</span>, {{ $t('And') }}
+              <span class="badge badge-success-soft">retail_price</span>. {{ $t('ProductsMatchedByCode') }}
             </p>
             <div class="table-responsive">
               <table class="table table-sm table-bordered example-table">
@@ -92,10 +92,10 @@
               </table>
             </div>
             <ul class="mini-notes mt-2">
-              <li><strong>code</strong> — Must match an existing product code exactly.</li>
-              <li><strong>cost</strong> — Product cost (numeric value).</li>
-              <li><strong>retail_price</strong> — Product retail/selling price (numeric value).</li>
-              <li>Only products with matching codes will be updated. Other fields are ignored.</li>
+              <li><strong>code</strong> — {{ $t('ImportUpdateNoteCodeMatch') }}</li>
+              <li><strong>cost</strong> — {{ $t('ImportUpdateNoteCost') }}</li>
+              <li><strong>retail_price</strong> — {{ $t('ImportUpdateNoteRetailPrice') }}</li>
+              <li>{{ $t('ImportUpdateNoteOnlyMatching') }}</li>
             </ul>
           </b-card>
 
@@ -104,7 +104,7 @@
             <div class="d-flex align-items-start">
               <lucide-icon class="mr-2 mt-1" name="x" />
               <div>
-                <div class="font-weight-bold mb-1">Import failed. Fix the issues below:</div>
+                <div class="font-weight-bold mb-1">{{ $t('Import_Failed_Fix_Below') }}</div>
                 <ul class="mb-0 pl-3">
                   <li v-for="(err, idx) in errorMessages" :key="'err-'+idx">{{ err }}</li>
                 </ul>
@@ -119,12 +119,12 @@
               <div>
                 <div class="font-weight-bold mb-1">{{ successMessage }}</div>
                 <div v-if="importResults" class="small">
-                  <div>Updated: {{ importResults.updated }} product(s)</div>
+                  <div>{{ $t('Updated') }}: {{ importResults.updated }} {{ $t('ProductsLower') }}</div>
                   <div v-if="importResults.not_found > 0" class="text-warning">
-                    Not found: {{ importResults.not_found }} code(s)
+                    {{ $t('NotFound') }}: {{ importResults.not_found }} {{ $t('CodesLower') }}
                   </div>
                   <div v-if="importResults.errors > 0" class="text-danger">
-                    Errors: {{ importResults.errors }}
+                    {{ $t('Errors') }}: {{ importResults.errors }}
                   </div>
                 </div>
               </div>
@@ -136,7 +136,7 @@
             <div class="d-flex align-items-start">
               <lucide-icon class="mr-2 mt-1" name="info" />
               <div>
-                <div class="font-weight-bold mb-1">Warnings</div>
+                <div class="font-weight-bold mb-1">{{ $t('Warnings') }}</div>
                 <ul class="mb-0 pl-3">
                   <li v-for="(w, idx) in warningMessages" :key="'warn-'+idx">{{ w }}</li>
                 </ul>
@@ -147,7 +147,7 @@
           <!-- Progress -->
           <div v-if="uploading" class="mt-3">
             <div class="d-flex justify-content-between mb-1">
-              <small class="text-muted">Uploading</small>
+              <small class="text-muted">{{ $t('Uploading') }}</small>
               <small>{{ progress }}%</small>
             </div>
             <b-progress :value="progress" height="8px"></b-progress>
@@ -162,14 +162,14 @@
               :disabled="!canSubmit || uploading"
               @click="submit"
             >
-              <span v-if="!uploading"><lucide-icon class="mr-1" name="upload" />Update Products</span>
+              <span v-if="!uploading"><lucide-icon class="mr-1" name="upload" />{{ $t('UpdateProducts') }}</span>
               <span v-else class="d-inline-flex align-items-center">
-                <span class="spinner sm spinner-white mr-2"></span>Processing…
+                <span class="spinner sm spinner-white mr-2"></span>{{ $t('Processing') }}
               </span>
             </b-button>
 
             <a :href="exampleHref" class="btn btn-outline-info btn-sm mr-2 mb-2" target="_blank" rel="noopener">
-              <lucide-icon class="mr-1" name="file-spreadsheet" />Download example
+              <lucide-icon class="mr-1" name="file-spreadsheet" />{{ $t('Download_exemple') }}
             </a>
 
             <b-button
@@ -179,7 +179,7 @@
               :disabled="!file || uploading"
               @click="clearFile"
             >
-              <lucide-icon class="mr-1" name="power" />Reset
+              <lucide-icon class="mr-1" name="power" />{{ $t('Reset') }}
             </b-button>
           </div>
         </b-col>
@@ -187,13 +187,13 @@
         <!-- Info column -->
         <b-col md="12" class="mb-4">
           <b-card class="mb-3">
-            <h6 class="mb-2">Important Notes</h6>
+            <h6 class="mb-2">{{ $t('ImportantNotes') }}</h6>
             <ul class="mini-notes">
-              <li>This import will <strong>only update</strong> cost and retail_price fields.</li>
-              <li>Products are matched by their <strong>code</strong> field.</li>
-              <li>If a code doesn't exist, that row will be skipped.</li>
-              <li>All other product fields remain unchanged.</li>
-              <li>You can use CSV or Excel format (.csv, .xlsx, .xls).</li>
+              <li v-html="$t('ImportUpdateOnlyUpdatesFields')"></li>
+              <li v-html="$t('ImportUpdateMatchedByCode')"></li>
+              <li>{{ $t('ImportUpdateSkippedIfMissing') }}</li>
+              <li>{{ $t('ImportUpdateOtherFieldsUnchanged') }}</li>
+              <li>{{ $t('ImportUpdateCsvOrExcel') }}</li>
             </ul>
           </b-card>
 
@@ -201,8 +201,8 @@
             <div class="d-flex">
               <div class="tip-badge mr-2"><lucide-icon name="info" /></div>
               <div>
-                <strong>Heads up</strong>
-                <div class="small text-muted">Large files may take longer to process. Make sure your product codes match exactly.</div>
+                <strong>{{ $t('HeadsUp') }}</strong>
+                <div class="small text-muted">{{ $t('LargeFilesMayTakeLongerCodesMatch') }}</div>
               </div>
             </div>
           </b-alert>
@@ -218,7 +218,7 @@ import NProgress from 'nprogress';
 
 export default {
   metaInfo: {
-    title: "Import Products (Update Only)"
+    title: "Actualizar productos (solo actualización)"
   },
   data() {
     return {
@@ -423,8 +423,8 @@ export default {
 
         if (!ok) {
           const msgs = this.collectErrorsFromResponse(data);
-          this.errorMessages = msgs.length ? msgs : ['Import failed. Please review your file and try again.'];
-          this.toast('Check the error list and fix your file.', 'Import failed', 'danger');
+          this.errorMessages = msgs.length ? msgs : [this.$t('ImportFailedReviewFile')];
+          this.toast(this.$t('Check_the_error_list_and_fix_your_file'), this.$t('Import_failed'), 'danger');
           return;
         }
 
@@ -434,8 +434,8 @@ export default {
           not_found: data.not_found || 0,
           errors: data.errors || 0
         };
-        this.successMessage = data.message || 'Products updated successfully!';
-        this.toast(this.successMessage, 'Success', 'success');
+        this.successMessage = data.message || this.$t('ProductsUpdatedSuccessfully');
+        this.toast(this.successMessage, this.$t('Success'), 'success');
         
         // Redirect to products index after showing success message
         setTimeout(() => {
@@ -444,7 +444,7 @@ export default {
 
       } catch (err) {
         this.errorMessages = this.collectErrorsFromAxios(err);
-        this.toast('Check the error list and fix your file.', 'Import failed', 'danger');
+        this.toast(this.$t('Check_the_error_list_and_fix_your_file'), this.$t('Import_failed'), 'danger');
       } 
       finally {
         NProgress.done();
