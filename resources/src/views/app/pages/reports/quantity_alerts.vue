@@ -1,63 +1,56 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('ProductQuantityAlerts')" :folder="$t('Reports')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-
-    <b-card class="print-table-only" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="products"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        :pagination-options="{
-          enabled: true,
-          mode: 'records',
-          nextLabel: 'next',
-          prevLabel: 'prev',
-        }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="table-actions" class="mt-2 mb-3 quantity_alert_warehouse">
-          <!-- warehouse -->
-          <b-form-group :label="$t('warehouse')">
-            <v-select
-              @input="Selected_Warehouse"
-              v-model="warehouse_id"
-              :reduce="label => label.value"
-              :placeholder="$t('Choose_Warehouse')"
-              :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-            />
-          </b-form-group>
-        </div>
-
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
-            <lucide-icon name="printer" /> {{ $t("print") }}
-          </b-button>
-          <b-button @click="stock_alert_PDF()" size="sm" variant="outline-success ripple m-1">
-            <lucide-icon name="copy" /> PDF
-          </b-button>
-           <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="products"
-              :columns="columns"
-              :file-name="'Alerts_report'"
-              :file-type="'xlsx'"
-              :sheet-name="'Alerts_report'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
-        </div>
-
-      <template slot="table-row" slot-scope="props">
-        <div v-if="props.column.field == 'stock_alert'">
-          <span class="badge badge-outline-danger">{{props.row.stock_alert}}</span>
-        </div>
+  <div class="px-next pxrl">
+    <px-page-header :title="$t('ProductQuantityAlerts')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('ProductQuantityAlerts') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button>
+          </template>
+        </px-menu>
       </template>
-    </vue-good-table>
-    </b-card>
+    </px-page-header>
+
+    <px-toolbar :filter-count="warehouse_id ? 1 : 0" @open-filters="filtersOpen = !filtersOpen" :searchable="false" />
+
+    <div v-if="filtersOpen" class="pxrl__filters">
+      <div class="pxrl__filters-grid">
+        <px-field :label="$t('warehouse')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="warehouse_id" :reduce="o => o.value" :placeholder="$t('Choose_Warehouse')"
+              :options="warehouses.map(w => ({ label: w.name, value: w.id }))" @input="Selected_Warehouse" />
+          </template>
+        </px-field>
+      </div>
+    </div>
+
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="5" />
+    </div>
+
+    <template v-else>
+      <div class="pxrl__tablewrap">
+        <px-table
+          v-if="products.length"
+          :columns="columns"
+          :rows="products"
+          row-key="__rowkey"
+        >
+          <template #cell-stock_alert="{ row }"><px-badge tone="danger">{{ row.stock_alert }}</px-badge></template>
+          <template #cell-quantity="{ row }"><span class="pxn-num">{{ row.quantity }}</span></template>
+        </px-table>
+
+        <px-empty-state v-else icon="shield" :title="$t('No_report_rows') || 'Sin alertas'" :description="$t('No_report_rows_desc')" />
+      </div>
+
+      <px-pagination
+        v-if="products.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
 </template>
 
@@ -65,13 +58,28 @@
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Products Alert"
   },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxBadge,
+    PxField, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
+      filtersOpen: false,
       isLoading: true,
       serverParams: {
         sort: {
@@ -90,98 +98,75 @@ export default {
   },
 
   computed: {
+    exportMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
     columns() {
       return [
-        {
-          label: this.$t("ProductCode"),
-          field: "code",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("ProductName"),
-          field: "name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Quantity"),
-          field: "quantity",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("AlertQuantity"),
-          field: "stock_alert",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "code", label: this.$t("ProductCode"), strong: true },
+        { key: "name", label: this.$t("ProductName") },
+        { key: "warehouse", label: this.$t("warehouse") },
+        { key: "quantity", label: this.$t("Quantity"), align: "right" },
+        { key: "stock_alert", label: this.$t("AlertQuantity") }
       ];
     }
   },
 
   methods: {
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "print") this.printTableOnly();
+      else if (k === "pdf") this.stock_alert_PDF();
+      else if (k === "xlsx") this.exportCsv();
+    },
+
+    exportCsv() {
+      const head = this.columns.map(c => c.label);
+      const lines = [head.join(",")].concat(
+        (this.products || []).map(r => this.columns.map(c => `"${String(r[c.key] == null ? "" : r[c.key]).replace(/"/g, '""')}"`).join(","))
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "Alerts_report.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
 
     //------ Print Table Only
     printTableOnly() {
-      const root = this.$el;
-      if (!root) {
-        window.print();
-        return;
-      }
-
-      const tableCard = root.querySelector(".print-table-only");
-      if (!tableCard) {
-        window.print();
-        return;
-      }
-
-      // Get products data
       const productsData = this.products || [];
 
-      // Manually construct the table HTML from products data
       let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
-
-      // Table Header
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
         tableHtml += `<th class="text-left">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
-
-      // Table Body
       tableHtml += `<tbody>`;
       productsData.forEach(row => {
         tableHtml += `<tr>`;
         this.columns.forEach(col => {
-          let cellContent = row[col.field] || '';
+          let cellContent = row[col.key] || '';
           tableHtml += `<td class="text-left">${cellContent}</td>`;
         });
         tableHtml += `</tr>`;
       });
       tableHtml += `</tbody>`;
 
-      // Table Footer (Totals)
       const totalQuantity = productsData.reduce((sum, product) => sum + parseFloat(product.quantity || 0), 0);
       const totalStockAlert = productsData.reduce((sum, product) => sum + parseFloat(product.stock_alert || 0), 0);
       tableHtml += `<tfoot><tr>`;
       tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
-      tableHtml += `<td colspan="2"></td>`; // Span for ProductCode, ProductName, warehouse
+      tableHtml += `<td colspan="2"></td>`;
       tableHtml += `<td class="text-left font-weight-bold">${totalQuantity.toFixed(2)}</td>`;
       tableHtml += `<td class="text-left font-weight-bold">${totalStockAlert.toFixed(2)}</td>`;
       tableHtml += `</tr></tfoot>`;
-
       tableHtml += `</table>`;
 
       const w = window.open("", "_blank");
@@ -234,7 +219,7 @@ export default {
       }, 400);
     },
 
-      //----------------------------------- Sales PDF ------------------------------\\
+      //----------------------------------- Alerts PDF ------------------------------\\
     stock_alert_PDF() {
       var self = this;
       let pdf = new jsPDF("p", "pt");
@@ -262,7 +247,6 @@ export default {
         product.stock_alert
       ]));
 
-      // Calculate totals
       let totalquantity = self.products.reduce((sum, product) => sum + parseFloat(product.quantity || 0), 0);
       let totalstock_alert = self.products.reduce((sum, product) => sum + parseFloat(product.stock_alert || 0), 0);
 
@@ -294,11 +278,9 @@ export default {
           const pageW = pdf.internal.pageSize.getWidth();
           const pageH = pdf.internal.pageSize.getHeight();
 
-          // Header banner
           pdf.setFillColor(26,86,219);
           pdf.rect(0, 0, pageW, 60, 'F');
 
-          // Title
           pdf.setTextColor(255);
           pdf.setFont('Vazirmatn', 'bold');
           pdf.setFontSize(16);
@@ -306,29 +288,13 @@ export default {
           rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
               : pdf.text(title, marginX, 38);
 
-          // Reset text color
           pdf.setTextColor(33);
 
-          // Footer page numbers
           pdf.setFontSize(8);
           const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
           rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
               : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
-        },
-        styles: {
-          font: "Vazirmatn", 
-          halign: rtl ? 'right' : 'left', 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
-             footStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
+        }
       });
 
       pdf.save("Stock_alert_report.pdf");
@@ -336,31 +302,17 @@ export default {
     },
 
 
-    //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Stock_Alerts(currentPage);
-      }
-    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Stock_Alerts(p); } },
 
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Stock_Alerts(1);
-      }
-    },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Stock_Alerts(1); } },
 
     //---------------------- Event Select Warehouse ------------------------------\\
     Selected_Warehouse(value) {
-      if (value === null) {
+      if (value === null || value === undefined) {
         this.warehouse_id = "";
       }
       this.Get_Stock_Alerts(1);
@@ -368,7 +320,6 @@ export default {
 
     //----------------------------- Get Stock Alerts-------------------\\
     Get_Stock_Alerts(page) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       axios
@@ -381,15 +332,13 @@ export default {
             this.limit
         )
         .then(response => {
-          this.products = response.data.products.data;
+          this.products = (response.data.products.data || []).map((p, i) => Object.assign({ __rowkey: `${p.code || 'p'}-${p.warehouse || ''}-${i}` }, p));
           this.warehouses = response.data.warehouses;
           this.totalRows = response.data.products.total;
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
         })
         .catch(response => {
-          // Complete the animation of theprogress bar.
           NProgress.done();
           setTimeout(() => {
             this.isLoading = false;
@@ -405,3 +354,15 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxrl__filters-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 560px) { .pxrl__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__tablewrap { margin-top: var(--pxn-space-5); }
+</style>

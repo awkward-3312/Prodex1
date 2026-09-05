@@ -1,100 +1,95 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('product_report')" :folder="$t('Reports')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-col md="12" class="text-center" v-if="!isLoading">
-        <date-range-picker 
-          v-model="dateRange" 
-          :startDate="startDate" 
-          :endDate="endDate" 
-           @update="Submit_filter_dateRange"
-          :locale-data="locale" > 
-
-          <template v-slot:input="picker" style="min-width: 350px;">
-              {{ picker.startDate.toJSON().slice(0, 10)}} - {{ picker.endDate.toJSON().slice(0, 10)}}
-          </template>        
+  <div class="px-next pxrl">
+    <px-page-header :title="$t('product_report')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('product_report') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button>
+          </template>
+        </px-menu>
+      </template>
+      <template #meta>
+        <date-range-picker
+          v-model="dateRange"
+          :startDate="startDate"
+          :endDate="endDate"
+          @update="Submit_filter_dateRange"
+          :locale-data="locale"
+        >
+          <template v-slot:input="picker">
+            <button type="button" class="pxrl__daterange pxn-ring">
+              <lucide-icon name="calendar-days" :size="14" />
+              {{ picker.startDate.toJSON().slice(0, 10) }} — {{ picker.endDate.toJSON().slice(0, 10) }}
+            </button>
+          </template>
         </date-range-picker>
-      </b-col>
+      </template>
+    </px-page-header>
 
-      <vue-good-table
-        v-if="!isLoading"
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="rows"
-        :group-options="{
-          enabled: true,
-          headerPosition: 'bottom',
-        }"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-search="onSearch_products"
-          :search-options="{
-            placeholder: $t('Search_this_table'),
-            enabled: true,
-        }"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="mt-5 table-hover tableOne vgt-table print-table-only"
-      >
-      <div slot="table-actions" class="mt-2 mb-3">
-        <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
-          <lucide-icon name="printer" /> {{ $t("print") }}
-        </b-button>
-        <b-button @click="export_PDF()" size="sm" variant="outline-success ripple m-1">
-          <lucide-icon name="copy" /> PDF
-        </b-button>
-         <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="products"
-              :columns="columns"
-              :file-name="'product_report'"
-              :file-type="'xlsx'"
-              :sheet-name="'product_report'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
+    <px-toolbar
+      :search="search_products"
+      :search-placeholder="$t('Search_this_table')"
+      :filter-count="warehouse_id ? 1 : 0"
+      @update:search="onSearchInput"
+      @open-filters="filtersOpen = !filtersOpen"
+    />
 
-           <!-- warehouse -->
-          <b-form-group :label="$t('warehouse')">
-            <v-select
-              @input="Selected_Warehouse"
-              v-model="warehouse_id"
-              :reduce="label => label.value"
-              :placeholder="$t('Choose_Warehouse')"
-              :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-            />
-          </b-form-group>
-
+    <div v-if="filtersOpen" class="pxrl__filters">
+      <div class="pxrl__filters-grid">
+        <px-field :label="$t('warehouse')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="warehouse_id" :reduce="o => o.value" :placeholder="$t('Choose_Warehouse')"
+              :options="warehouses.map(w => ({ label: w.name, value: w.id }))" @input="Selected_Warehouse" />
+          </template>
+        </px-field>
       </div>
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <router-link title="Report" :to="'/app/reports/detail_product/'+props.row.id">
-              <b-button variant="primary">{{$t('Reports')}}</b-button>
-            </router-link>
-          </span>
-          <span v-else-if="props.column.field == 'sold_amount'">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.sold_amount, 2) }}
-          </span>
-          <span v-else>
-            {{ props.formattedRow[props.column.field] }}
-          </span>
-        </template>
-
-      </vue-good-table>
-      <!-- </b-card> -->
     </div>
+
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="5" />
+    </div>
+
+    <template v-else>
+      <div class="pxrl__tablewrap">
+        <px-table
+          v-if="products.length"
+          :columns="columns"
+          :rows="products"
+          row-key="id"
+          has-row-actions
+        >
+          <template #cell-sold_qty="{ row }"><span class="pxn-num">{{ row.sold_qty }}</span></template>
+          <template #cell-sold_amount="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, row.sold_amount, 2) }}</span></template>
+          <template #row-actions="{ row }">
+            <px-button variant="ghost" size="sm" icon="eye" @click="$router.push('/app/reports/detail_product/' + row.id)">{{ $t('Reports') }}</px-button>
+          </template>
+        </px-table>
+
+        <px-empty-state v-else icon="package" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+      </div>
+
+      <div v-if="products.length" class="pxrl__totalrow">
+        <span>{{ $t('Total') }}</span>
+        <span>{{ $t('Sales') }}: <b class="pxn-num">{{ totalSoldQty.toLocaleString() }}</b></span>
+        <span>{{ $t('TotalAmount') }}: <b class="pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, totalSoldAmount, 2) }}</b></span>
+      </div>
+
+      <px-pagination
+        v-if="products.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
+  </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import DateRangePicker from 'vue2-daterange-picker'
-//you need to import the CSS manually
 import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
 import moment from 'moment'
 import jsPDF from "jspdf";
@@ -104,14 +99,29 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Products Report"
   },
-  components: { DateRangePicker },
+  components: {
+    "date-range-picker": DateRangePicker,
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu,
+    PxField, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
+      _searchTimer: null,
+      filtersOpen: false,
       isLoading: true,
       serverParams: {
         sort: {
@@ -131,82 +141,55 @@ export default {
       warehouses: [],
       warehouse_id: "",
       search_products:"",
-      // Optional price format key for frontend display (loaded from system settings/Vuex store)
       price_format_key: null,
       today_mode: true,
-      startDate: "", 
-      endDate: "", 
-      dateRange: { 
-       startDate: "", 
-       endDate: "" 
-      }, 
-      locale:{ 
-          //separator between the two ranges apply
-          Label: "Apply", 
-          cancelLabel: "Cancel", 
-          weekLabel: "W", 
-          customRangeLabel: "Custom Range", 
-          daysOfWeek: moment.weekdaysMin(), 
-          //array of days - see moment documenations for details 
-          monthNames: moment.monthsShort(), //array of month names - see moment documenations for details 
-          firstDay: 1 //ISO first day of week - see moment documenations for details
+      startDate: "",
+      endDate: "",
+      dateRange: {
+       startDate: "",
+       endDate: ""
+      },
+      locale:{
+          Label: "Apply",
+          cancelLabel: "Cancel",
+          weekLabel: "W",
+          customRangeLabel: "Custom Range",
+          daysOfWeek: moment.weekdaysMin(),
+          monthNames: moment.monthsShort(),
+          firstDay: 1
         },
     };
   },
 
   computed: {
     ...mapGetters(["currentUser"]),
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
+    exportMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
     columns() {
       return [
-        {
-          label: this.$t("ProductCode"),
-          field: "code",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("ProductName"),
-          field: "name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Sales"),
-          field: "sold_qty",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-
-        {
-          label: this.$t("TotalAmount"),
-          field: "sold_amount",
-          headerField: this.sumSoldAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "code", label: this.$t("ProductCode"), strong: true },
+        { key: "name", label: this.$t("ProductName") },
+        { key: "sold_qty", label: this.$t("Sales"), align: "right" },
+        { key: "sold_amount", label: this.$t("TotalAmount"), align: "right" },
       ];
+    },
+    totalSoldQty() {
+      return (this.products || []).reduce((sum, p) => sum + (Number(p.sold_qty) || 0), 0);
+    },
+    totalSoldAmount() {
+      return (this.products || []).reduce((sum, p) => sum + (Number(p.sold_amount) || 0), 0);
     }
   },
 
   methods: {
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing toLocaleString behavior to preserve current behavior.
     formatPriceDisplay(number, dec) {
       try {
         const decimals = this.priceDecimals;
@@ -229,80 +212,68 @@ export default {
       return safeSymbol ? `${safeSymbol} ${value}` : value;
     },
 
-    // Group footer helpers for vue-good-table
-    sumSoldQty(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return '0';
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].sold_qty) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return sum.toLocaleString();
+    onSearchInput(v) {
+      this.search_products = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_products_report(1); }, 350);
     },
 
-    sumSoldAmount(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].sold_amount) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "print") this.printTableOnly();
+      else if (k === "pdf") this.export_PDF();
+      else if (k === "xlsx") this.exportCsv();
     },
 
-    onSearch_products(value) {
-      this.search_products = value.searchTerm;
-      this.Get_products_report(1);
+    exportCsv() {
+      const head = this.columns.map(c => c.label);
+      const lines = [head.join(",")].concat(
+        (this.products || []).map(r => this.columns.map(c => `"${String(r[c.key] == null ? "" : r[c.key]).replace(/"/g, '""')}"`).join(","))
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "product_report.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     },
 
     //------ Print Table Only - Print ALL product data with all columns
     printTableOnly() {
       const title = `${this.$t("Reports")} / ${this.$t("product_report")}`;
       const products = Array.isArray(this.rows[0]?.children) ? this.rows[0].children : [];
-      
-      // Build table header with all columns (excluding actions)
+
       let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
       tableHTML += '<thead><tr>';
-      
-      // Filter out the actions column for printing
-      this.columns.filter(col => col.field !== 'actions').forEach(col => {
+
+      this.columns.forEach(col => {
         tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
       });
       tableHTML += '</tr></thead><tbody>';
-      
-      // Build table rows with all data - format each cell according to column type
+
       products.forEach(product => {
         tableHTML += '<tr>';
-        this.columns.filter(col => col.field !== 'actions').forEach(col => {
+        this.columns.forEach(col => {
           let cellValue = '';
-          
-          if (col.field === 'code') {
+
+          if (col.key === 'code') {
             cellValue = product.code || '';
-          } else if (col.field === 'name') {
+          } else if (col.key === 'name') {
             cellValue = product.name || '';
-          } else if (col.field === 'sold_qty') {
+          } else if (col.key === 'sold_qty') {
             cellValue = product.sold_qty || 0;
-          } else if (col.field === 'sold_amount') {
-            // Format monetary values using formatPriceWithSymbol
+          } else if (col.key === 'sold_amount') {
             cellValue = this.formatPriceWithSymbol(this.currentUser?.currency, product.sold_amount, 2);
           } else {
-            // Default: get value directly from product object
-            cellValue = product[col.field] || '';
+            cellValue = product[col.key] || '';
           }
-          
+
           tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
         });
         tableHTML += '</tr>';
       });
-      
+
       tableHTML += '</tbody></table>';
 
       const w = window.open("", "_blank");
@@ -326,8 +297,7 @@ export default {
     <title>${title}</title>
     ${links}
     <style>
-      /* Force visibility in print (some global POS print CSS hides body) */
-      @media print { 
+      @media print {
         body, body * { visibility: visible !important; }
         @page { size: A4 landscape; margin: 0.3cm; }
       }
@@ -379,7 +349,6 @@ export default {
         product.sold_amount
       ]));
 
-      // Calculate totals
       let totalsold_qty = self.products.reduce((sum, product) => sum + parseFloat(product.sold_qty || 0), 0);
       let totalsold_amount = self.products.reduce((sum, product) => sum + parseFloat(product.sold_amount || 0), 0);
 
@@ -410,11 +379,9 @@ export default {
           const pageW = pdf.internal.pageSize.getWidth();
           const pageH = pdf.internal.pageSize.getHeight();
 
-          // Header banner
           pdf.setFillColor(26,86,219);
           pdf.rect(0, 0, pageW, 60, 'F');
 
-          // Title
           pdf.setTextColor(255);
           pdf.setFont('Vazirmatn', 'bold');
           pdf.setFontSize(16);
@@ -422,51 +389,25 @@ export default {
           rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
               : pdf.text(title, marginX, 38);
 
-          // Reset text color
           pdf.setTextColor(33);
 
-          // Footer page numbers
           pdf.setFontSize(8);
           const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
           rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
               : pdf.text(pn, pageW - marginX, pageH - 14, { align: 'right' });
-        },
-        headStyles: {
-          fillColor: [26,86,219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
-             footStyles: {
-               fillColor: [26,86,219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
+        }
       });
 
       pdf.save("Products Report.pdf");
     },
 
-    //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_products_report(currentPage);
-      }
-    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_products_report(p); } },
 
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_products_report(1);
-      }
-    },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_products_report(1); } },
 
    //----------------------------- Submit Date Picker -------------------\\
    Submit_filter_dateRange() {
@@ -480,8 +421,8 @@ export default {
     get_data_loaded() {
       var self = this;
       if (self.today_mode) {
-        let startDate = new Date("01/01/2000");  // Set start date to "01/01/2000"
-        let endDate = new Date();  // Set end date to current date
+        let startDate = new Date("01/01/2000");
+        let endDate = new Date();
 
         self.startDate = startDate.toISOString();
         self.endDate = endDate.toISOString();
@@ -493,7 +434,7 @@ export default {
 
     //---------------------- Event Select Warehouse ------------------------------\\
     Selected_Warehouse(value) {
-      if (value === null) {
+      if (value === null || value === undefined) {
         this.warehouse_id = "";
       }
       this.Get_products_report(1);
@@ -502,7 +443,6 @@ export default {
 
     //----------------------------- Get_products_report------------------\\
     Get_products_report(page) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       this.get_data_loaded();
@@ -527,7 +467,6 @@ export default {
           this.products = response.data.products;
           this.totalRows = response.data.totalRows;
           this.rows[0].children = this.products;
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
           this.today_mode = false;
@@ -549,3 +488,26 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-sm); padding: 0 var(--pxn-space-4);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
+}
+.pxrl__daterange:hover { background: var(--pxn-surface-2); }
+.pxrl__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxrl__filters-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 560px) { .pxrl__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxrl__totalrow { display: flex; align-items: center; justify-content: flex-end; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+.pxrl__totalrow > span:first-child { margin-right: auto; font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrl ::v-deep .daterangepicker { z-index: 2055 !important; }
+</style>
