@@ -1,83 +1,40 @@
 <template>
-  <div class="main-content">
-    <breadcumb class="no-print" :page="$t('DetailQuote')" :folder="$t('ListQuotations')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3 no-print"></div>
+  <div class="px-next pxqtd">
+    <px-page-header
+      class="no-print"
+      :title="isLoading ? $t('DetailQuote') : ($t('DetailQuote') + (quote.Ref ? ' · ' + quote.Ref : ''))"
+      :breadcrumbs="[{ label: $t('Sales') }, { label: $t('ListQuotations') }, { label: $t('DetailQuote') }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" icon="arrow-left" @click="$router.push({ name: 'index_quotation' })">{{ $t('Back') }}</px-button>
+        <px-button
+          v-if="!isLoading && currentUserPermissions && currentUserPermissions.includes('Quotations_edit')"
+          variant="secondary" icon="pencil"
+          @click="$router.push({ name: 'edit_quotation', params: { id: $route.params.id } })"
+        >{{ $t('EditQuote') }}</px-button>
+        <px-button
+          v-if="!isLoading && quote.statut && currentUserPermissions && currentUserPermissions.includes('Quotations_edit')"
+          variant="secondary" icon="plus"
+          @click="$router.push({ name: 'change_to_sale', params: { id: $route.params.id } })"
+        >{{ $t('CreateSale') }}</px-button>
+        <px-menu :items="moreMenu" align="end" @select="onMore">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="more-horizontal" />
+          </template>
+        </px-menu>
+        <px-button v-if="!isLoading" variant="secondary" icon="printer" @click="print">{{ $t('print') }}</px-button>
+        <px-button
+          v-if="!isLoading && currentUserPermissions && currentUserPermissions.includes('Quotations_delete')"
+          variant="danger" icon="x" @click="Remove_Quote"
+        >{{ $t('Del') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <b-card v-if="!isLoading" class="print-card">
-      <b-row class="no-print">
-        <b-col md="12" class="mb-4">
-          <div class="action-buttons-wrapper">
-            <!-- Navigation Actions Group -->
-            <div class="button-group navigation-actions">
-              <router-link
-                :to="{ name: 'index_quotation' }"
-                class="action-btn btn-back"
-                title="Back"
-              >
-                <lucide-icon name="chevron-left" />
-                <span>{{$t('Back')}}</span>
-              </router-link>
-            </div>
+    <div v-if="isLoading" class="pxqtd__pad no-print">
+      <px-skeleton variant="lines" :rows="10" />
+    </div>
 
-            <!-- Primary Actions Group -->
-            <div class="button-group primary-actions">
-              <router-link
-                v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_edit')"
-                title="Edit"
-                class="action-btn btn-edit"
-                :to="{ name:'edit_quotation', params: { id: $route.params.id } }"
-              >
-                <lucide-icon name="pencil" />
-                <span>{{$t('EditQuote')}}</span>
-              </router-link>
-
-              <router-link
-                v-if="quote.statut && currentUserPermissions && currentUserPermissions.includes('Quotations_edit')"
-                title="Create Sale"
-                class="action-btn btn-create"
-                :to="{ name:'change_to_sale', params: { id:$route.params.id } }"
-              >
-                <lucide-icon name="plus" />
-                <span>{{$t('CreateSale')}}</span>
-              </router-link>
-
-              <button
-                v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_delete')"
-                @click="Remove_Quote()"
-                class="action-btn btn-delete"
-                title="Delete"
-              >
-                <lucide-icon name="x" />
-                <span>{{$t('Del')}}</span>
-              </button>
-            </div>
-
-            <!-- Communication Actions Group -->
-            <div class="button-group communication-actions">
-              <button @click="SendEmail()" class="action-btn btn-email" title="Send Email">
-                <lucide-icon name="mail" />
-                <span>{{$t('Email')}}</span>
-              </button>
-              <button @click="Quote_SMS()" class="action-btn btn-sms" title="Send SMS">
-                <lucide-icon name="message-square" />
-                <span>SMS</span>
-              </button>
-            </div>
-
-            <!-- Export & Print Actions Group -->
-            <div class="button-group export-actions">
-              <button @click="Quote_PDF()" class="action-btn btn-pdf" title="Download PDF">
-                <lucide-icon name="file-text" />
-                <span>PDF</span>
-              </button>
-              <button @click="print()" class="action-btn btn-print" title="Print">
-                <lucide-icon name="receipt" />
-                <span>{{$t('print')}}</span>
-              </button>
-            </div>
-          </div>
-        </b-col>
-      </b-row>
+    <px-card v-if="!isLoading" flush class="print-card pxqtd__card">
       <div class="invoice" id="print_Invoice">
         <div class="invoice-print">
           <!-- Header Section -->
@@ -268,7 +225,7 @@
           </div>
         </div>
       </div>
-    </b-card>
+    </px-card>
   </div>
 </template>
 
@@ -282,13 +239,25 @@ import {
   getPriceDecimals
 } from "../../../../utils/priceFormat";
 import Util from "../../../../utils/index";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
 
 export default {
+  components: { PxPageHeader, PxCard, PxButton, PxMenu },
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
     // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
+    },
+    moreMenu() {
+      return [
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "email", label: this.$t("Email"), icon: "mail" },
+        { key: "sms", label: "SMS", icon: "message-square" }
+      ];
     },
 
     // Sum of line totals before order-level tax/discount/shipping
@@ -328,6 +297,12 @@ export default {
   },
 
   methods: {
+    onMore(item) {
+      const k = item && item.key;
+      if (k === "pdf") this.Quote_PDF();
+      else if (k === "email") this.SendEmail();
+      else if (k === "sms") this.Quote_SMS();
+    },
     //------------------------------ Print -------------------------\\
     print() {
       // Fetch HTML from quotation_pdf.blade.php template and print it
@@ -637,7 +612,21 @@ export default {
 };
 </script>
 
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
 <style scoped>
+.pxqtd {
+  min-height: 100%;
+  background: var(--pxn-bg);
+  padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9);
+}
+@media (max-width: 620px) { .pxqtd { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxqtd__pad { padding: var(--pxn-space-6) 0; }
+.pxqtd__card { margin-top: var(--pxn-space-5); }
+.pxqtd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-8); }
+@media (max-width: 620px) { .pxqtd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-5); } }
+@media print { .pxqtd { padding: 0; background: #fff; } .pxqtd__card ::v-deep .pxn-card__body { padding: 0; } }
+
 .main-content {
   width: 100%;
   max-width: 100%;
