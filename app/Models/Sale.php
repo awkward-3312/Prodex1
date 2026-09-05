@@ -27,6 +27,8 @@ class Sale extends Model
         'quickbooks_synced_at',
         'quickbooks_sync_error',
         'inventory_effect_snapshot',
+        // Cotización -> Venta POS traceability (Option A).
+        'quotation_id',
     ];
 
     protected $casts = [
@@ -42,6 +44,7 @@ class Sale extends Model
         'cash_drawer_id' => 'integer',
         'sales_agent_id' => 'integer',
         'subscription_id' => 'integer',
+        'quotation_id' => 'integer',
         'discount' => 'double',
         'promotion_discount' => 'double',
         'store_credit_amount' => 'double',
@@ -60,6 +63,8 @@ class Sale extends Model
     ];
 
     public function subscription() { return $this->belongsTo(Subscription::class, 'subscription_id'); }
+    /** Cotización -> Venta POS traceability (Option A). */
+    public function quotation() { return $this->belongsTo('App\Models\Quotation', 'quotation_id'); }
     public function user() { return $this->belongsTo('App\Models\User'); }
     public function details() { return $this->hasMany('App\Models\SaleDetail'); }
     public function saleDetails() { return $this->hasMany('App\Models\SaleDetail'); }

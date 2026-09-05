@@ -1856,6 +1856,16 @@ class SalesController extends BaseController
         $sale_details['payment_status'] = $sale_data->payment_statut;
         $sale_details['discount_from_points'] = $sale_data->discount_from_points ?? 0;
 
+        // Cotización -> Venta POS traceability (Option A): when this sale was
+        // produced by processing a quotation through the POS, expose the source
+        // so the detail screen can show "Origen · Cotización QT_XXXX".
+        $sale_details['quotation_id'] = $sale_data->quotation_id;
+        $sale_details['quotation_ref'] = null;
+        if ($sale_data->quotation_id) {
+            $__srcQuote = Quotation::find($sale_data->quotation_id);
+            $sale_details['quotation_ref'] = $__srcQuote ? $__srcQuote->Ref : null;
+        }
+
         if (SaleReturn::where('sale_id', $id)->where('deleted_at', '=', null)->exists()) {
             $sellReturn = SaleReturn::where('sale_id', $id)->where('deleted_at', '=', null)->first();
             $sale_details['salereturn_id'] = $sellReturn->id;

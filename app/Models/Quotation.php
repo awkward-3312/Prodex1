@@ -44,4 +44,16 @@ class Quotation extends Model
     {
         return $this->belongsTo('App\Models\Warehouse');
     }
+
+    /**
+     * Cotización -> Venta POS traceability (Option A).
+     *
+     * The sale produced by processing this quotation through the POS.
+     * sales.quotation_id is UNIQUE, so this is at most one row and is also
+     * the source of truth for "this quotation has been converted".
+     */
+    public function sale()
+    {
+        return $this->hasOne('App\Models\Sale', 'quotation_id')->whereNull('deleted_at');
+    }
 }

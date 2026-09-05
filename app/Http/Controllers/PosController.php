@@ -123,6 +123,56 @@ class PosController extends BaseController
             $request->input('cash_drawer_id') ? (int) $request->input('cash_drawer_id') : null
         );
 
+        // ---------------------------------------------------------------------
+        // Cotización -> Venta POS traceability (Option A)
+        //
+        // When the POS cart was pre-loaded from a quotation (via
+        // /app/pos?quotation_id=<id> -> data_quotation_prefill), the frontend
+        // sends quotation_id here. NEVER trust it blindly — validate it
+        // server-side, then persist sales.quotation_id inside the creation
+        // transaction so the emitted sale is permanently linked to its source.
+        // A quotation converts exactly once (DB UNIQUE + the check below).
+        // ---------------------------------------------------------------------
+        $__sourceQuotationId = null;
+        if ($request->filled('quotation_id')) {
+            $__sourceQuotationId = (int) $request->input('quotation_id');
+
+            $__quotation = \App\Models\Quotation::whereNull('deleted_at')->find($__sourceQuotationId);
+            if (! $__quotation) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'QUOTATION_NOT_FOUND',
+                    'message' => 'La cotización de origen no existe.',
+                ], 422);
+            }
+
+            // Warehouse restriction — same rule as data_quotation_prefill /
+            // SalesController::Elemens_Change_To_Sale.
+            $__userAuth = auth()->user();
+            if (! $__userAuth->is_all_warehouses) {
+                $__whIds = UserWarehouse::where('user_id', $__userAuth->id)->pluck('warehouse_id')->toArray();
+                if (empty($__quotation->warehouse_id) || ! in_array($__quotation->warehouse_id, $__whIds)) {
+                    return response()->json([
+                        'success' => false,
+                        'code' => 'QUOTATION_FORBIDDEN',
+                        'message' => 'No tienes permiso para procesar esta cotización (restricción de almacén).',
+                    ], 403);
+                }
+            }
+
+            // Already converted? Reject the second attempt.
+            $__existingSale = Sale::whereNull('deleted_at')->where('quotation_id', $__sourceQuotationId)->first();
+            if ($__existingSale) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'QUOTATION_ALREADY_CONVERTED',
+                    'message' => 'Esta cotización ya generó la venta '.$__existingSale->Ref.'.',
+                    'sale_id' => $__existingSale->id,
+                    'sale_ref' => $__existingSale->Ref,
+                ], 409);
+            }
+        }
+
         // Multi-Pack Selling: a pack line consumes pack_multiplier base units per
         // pack — reject if that would oversell (unless overselling is allowed).
         $this->assertPackStockSufficient($request);
@@ -176,7 +226,7 @@ class PosController extends BaseController
         $appliedPromotions = $promotionResult['applied'] ?? [];
 
         try {
-            $sale = \DB::transaction(function () use ($request, $totalPaid, $saleUuid, $promotionDiscount, $promotionCodeApplied, $appliedPromotions) {
+            $sale = \DB::transaction(function () use ($request, $totalPaid, $saleUuid, $promotionDiscount, $promotionCodeApplied, $appliedPromotions, $__sourceQuotationId) {
                 $helpers = new helpers;
                 $user = Auth::user();
                 // New way: Check user's record_view field (user-level boolean)
@@ -205,6 +255,10 @@ class PosController extends BaseController
                 $order->user_id = Auth::user()->id;
                 if (! empty($saleUuid)) {
                     $order->sale_uuid = $saleUuid;
+                }
+                // Cotización -> Venta POS traceability (validated above).
+                if ($__sourceQuotationId !== null) {
+                    $order->quotation_id = $__sourceQuotationId;
                 }
                 $order->save();
 
@@ -584,6 +638,22 @@ class PosController extends BaseController
                 } catch (\Throwable $lookupError) {
                     // Fallback to original behavior below if lookup fails for any reason.
                 }
+            }
+
+            // Cotización -> Venta POS: a concurrent request already converted this
+            // quotation — the sales_quotation_id_unique constraint fired here.
+            if ($__sourceQuotationId !== null && str_contains($e->getMessage(), 'sales_quotation_id_unique')) {
+                $already = Sale::whereNull('deleted_at')->where('quotation_id', $__sourceQuotationId)->first();
+
+                return response()->json([
+                    'success' => false,
+                    'code' => 'QUOTATION_ALREADY_CONVERTED',
+                    'message' => $already
+                        ? 'Esta cotización ya generó la venta '.$already->Ref.'.'
+                        : 'Esta cotización ya fue convertida en una venta.',
+                    'sale_id' => optional($already)->id,
+                    'sale_ref' => optional($already)->Ref,
+                ], 409);
             }
 
             return response()->json([
@@ -2071,10 +2141,16 @@ class PosController extends BaseController
         $paymentSettings = PaymentSetting::current();
         $payment_methods = PaymentMethod::where('deleted_at', '=', null)->get(['id', 'name']);
 
+        // Cotización -> Venta POS: if this quotation was already converted, tell
+        // the POS so it can warn (the definitive block is in CreatePOS).
+        $__linkedSale = Sale::whereNull('deleted_at')->where('quotation_id', $quotation->id)->first(['id', 'Ref']);
+
         return response()->json([
             'source' => 'quotation',
             'quotation_id' => $quotation->id,
             'quotation_ref' => $quotation->Ref,
+            'already_converted' => (bool) $__linkedSale,
+            'linked_sale' => $__linkedSale ? ['id' => $__linkedSale->id, 'ref' => $__linkedSale->Ref] : null,
             'stripe_key' => $paymentSettings->stripe_key,
             'card_processing_mode' => $paymentSettings->effectiveCardProcessingMode(),
             'brands' => $brands,

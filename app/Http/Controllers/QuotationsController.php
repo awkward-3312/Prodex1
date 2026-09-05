@@ -521,6 +521,14 @@ class QuotationsController extends BaseController
         $quote['warehouse'] = $quotation_data['warehouse']->name;
         $quote['GrandTotal'] = number_format($quotation_data['GrandTotal'], helpers::price_decimals(), '.', '');
 
+        // Cotización -> Venta POS traceability (Option A): if this quotation has
+        // already been processed through the POS, expose the linked sale so the
+        // detail screen can show "Venta generada" instead of "Procesar en POS".
+        $linkedSale = \App\Models\Sale::whereNull('deleted_at')
+            ->where('quotation_id', $quotation_data->id)
+            ->first(['id', 'Ref']);
+        $quote['linked_sale'] = $linkedSale ? ['id' => $linkedSale->id, 'ref' => $linkedSale->Ref] : null;
+
         $batchesByDetail = app(BatchService::class)->batchesForQuotationDetails($quotation_data['details']);
 
         foreach ($quotation_data['details'] as $detail) {

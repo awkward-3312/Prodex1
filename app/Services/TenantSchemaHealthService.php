@@ -55,6 +55,8 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_09_02_000000_add_inventory_location_to_purchases_and_returns.php',
         'database/migrations/tenant/2026_09_03_000000_add_serial_native_foundation.php',
         'database/migrations/tenant/2026_09_04_000000_add_inventory_effect_snapshot_to_sales_and_returns.php',
+        // Cotización -> Venta POS traceability (Option A).
+        'database/migrations/tenant/2026_09_05_000000_add_quotation_id_to_sales.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -213,6 +215,10 @@ class TenantSchemaHealthService
         $this->requireColumns($schema, $missing, 'purchase_returns', ['inventory_location_id', 'inventory_effect_snapshot']);
         $this->requireColumns($schema, $missing, 'sales', ['inventory_effect_snapshot']);
         $this->requireColumns($schema, $missing, 'sale_returns', ['inventory_effect_snapshot']);
+
+        // Cotización -> Venta POS traceability (Option A): sales.quotation_id is
+        // the source of truth for "this sale came from a quotation".
+        $this->requireColumns($schema, $missing, 'sales', ['quotation_id']);
 
         return $missing;
     }
