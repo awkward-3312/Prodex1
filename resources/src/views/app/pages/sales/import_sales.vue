@@ -402,7 +402,7 @@ import NProgress from "nprogress";
 
 export default {
   metaInfo: {
-    title: "Import Sales"
+    title: "Importar ventas"
   },
   data() {
     return {

@@ -54,6 +54,14 @@
          
         </div>
 
+        <template slot="emptystate">
+          <PxEmptyState
+            icon="undo-2"
+            :title="$t('No_sale_returns_yet')"
+            :description="$t('No_sale_returns_desc')"
+          />
+        </template>
+
         <template slot="table-row" slot-scope="props">
           <span v-if="props.column.field == 'actions'">
             <div>
@@ -496,10 +504,12 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
+  components: { PxEmptyState },
   metaInfo: {
-    title: "Sale Return"
+    title: "Devolución de ventas"
   },
 
   data() {

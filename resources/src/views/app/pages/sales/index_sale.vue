@@ -62,6 +62,22 @@
           </router-link>
         </div>
 
+        <template slot="emptystate">
+          <PxEmptyState
+            icon="shopping-cart"
+            :title="$t('No_sales_yet')"
+            :description="$t('No_sales_desc')"
+          >
+            <router-link
+              v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')"
+              class="btn btn-sm btn-primary"
+              to="/app/sales/store"
+            >
+              <lucide-icon name="plus" /> {{ $t('Add') }}
+            </router-link>
+          </PxEmptyState>
+        </template>
+
         <template slot="table-row" slot-scope="props">
           <span v-if="props.column.field == 'actions'">
             <div>
@@ -1791,13 +1807,15 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 export default {
   components: {
     vueEasyPrint,
-    barcode: VueBarcode
+    barcode: VueBarcode,
+    PxEmptyState
   },
   metaInfo: {
-    title: "Sales"
+    title: "Ventas"
   },
   data() {
     return {

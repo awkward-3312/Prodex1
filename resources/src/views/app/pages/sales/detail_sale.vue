@@ -361,7 +361,7 @@ export default {
     },
   },
   metaInfo: {
-    title: "Detail Sale"
+    title: "Detalle de venta"
   },
 
   data() {

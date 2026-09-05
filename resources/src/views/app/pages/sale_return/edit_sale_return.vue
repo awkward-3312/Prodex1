@@ -314,7 +314,7 @@ import NProgress from "nprogress";
 
 export default {
   metaInfo: {
-    title: "Edit Return"
+    title: "Editar devolución"
   },
   data() {
     return {

@@ -339,7 +339,7 @@ import NProgress from "nprogress";
 
 export default {
   metaInfo: {
-    title: "Create Sale Return"
+    title: "Nueva devolución"
   },
   data() {
     return {

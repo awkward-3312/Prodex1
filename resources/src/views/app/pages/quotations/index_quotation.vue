@@ -63,6 +63,22 @@
           </router-link>
         </div>
 
+        <template slot="emptystate">
+          <PxEmptyState
+            icon="file-text"
+            :title="$t('No_quotations_yet')"
+            :description="$t('No_quotations_desc')"
+          >
+            <router-link
+              v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_add')"
+              class="btn btn-sm btn-primary"
+              to="/app/quotations/store"
+            >
+              <lucide-icon name="plus" /> {{ $t('Add') }}
+            </router-link>
+          </PxEmptyState>
+        </template>
+
         <template slot="table-row" slot-scope="props">
           <span v-if="props.column.field == 'date'">
             {{ formatDisplayDate(props.row.date) }}
@@ -251,10 +267,12 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
+  components: { PxEmptyState },
   metaInfo: {
-    title: "Quotation"
+    title: "Cotizaciones"
   },
   data() {
     return {

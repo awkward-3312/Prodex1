@@ -748,7 +748,7 @@ import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocatio
 
 export default {
   metaInfo: {
-    title: "Edit Sale"
+    title: "Editar venta"
   },
   data() {
     return {

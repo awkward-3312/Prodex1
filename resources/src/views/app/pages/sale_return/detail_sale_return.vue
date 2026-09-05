@@ -265,7 +265,7 @@ export default {
     },
   },
   metaInfo: {
-    title: "Detail Sale Return"
+    title: "Detalle de devolución"
   },
 
   data() {
