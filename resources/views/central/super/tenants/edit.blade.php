@@ -118,8 +118,50 @@
         </div>
     </div>
 
-    {{-- Domains --}}
+    {{-- Login logo (Super Admin only — the tenant cannot manage this) --}}
     <div class="col-lg-5">
+        <div class="content-card mb-4">
+            <div class="card-header-custom">
+                <h2><i class="bi bi-image me-2 text-muted"></i>{{ __('super.tenants.login_logo') }}</h2>
+            </div>
+            <div class="card-body-custom">
+                <p class="form-hint mb-3">{{ __('super.tenants.login_logo_desc') }}</p>
+
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <img src="{{ $tenant->loginLogoUrl() }}" alt="{{ __('super.tenants.login_logo_current') }}"
+                         style="max-width:96px;max-height:96px;object-fit:contain;border:1px solid #e5e7eb;border-radius:12px;padding:8px;background:#fff;">
+                    @unless($tenant->hasCustomLoginLogo())
+                        <p class="text-muted mb-0 fs-xs3">{{ __('super.tenants.login_logo_fallback_hint') }}</p>
+                    @endunless
+                </div>
+
+                <form method="POST" action="{{ route('super.tenants.login-logo.update', $tenant) }}" enctype="multipart/form-data">
+                    @csrf
+                    <div class="form-group">
+                        <input type="file" name="login_logo" class="form-control @error('login_logo') is-invalid @enderror" accept="image/png,image/jpeg,image/webp" required>
+                        <p class="form-hint">{{ __('super.tenants.login_logo_hint') }}</p>
+                        @error('login_logo')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-upload"></i>
+                        {{ $tenant->hasCustomLoginLogo() ? __('super.tenants.login_logo_change') : __('super.tenants.login_logo_upload') }}
+                    </button>
+                </form>
+
+                @if($tenant->hasCustomLoginLogo())
+                <form method="POST" action="{{ route('super.tenants.login-logo.destroy', $tenant) }}" class="mt-2"
+                      data-swal-confirm="{{ json_encode(['title' => __('super.tenants.login_logo_remove'), 'text' => __('super.tenants.login_logo_remove_confirm'), 'icon' => 'warning', 'confirmButtonText' => 'Yes, remove', 'confirmButtonColor' => '#ef4444']) }}">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i> {{ __('super.tenants.login_logo_remove') }}
+                    </button>
+                </form>
+                @endif
+            </div>
+        </div>
+
         <div class="content-card">
             <div class="card-header-custom">
                 <h2><i class="bi bi-globe me-2 text-muted"></i>{{ __('super.tenants.domains') }}</h2>

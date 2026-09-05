@@ -207,6 +207,10 @@ Route::middleware(['web', 'auth.central'])->prefix('super')->name('super.')->gro
         Route::post('/tenants/{tenant}/domains', [\App\Http\Controllers\Central\Super\DomainController::class, 'store'])->name('tenants.domains.store');
         Route::delete('/tenants/{tenant}/domains/{domainId}', [\App\Http\Controllers\Central\Super\DomainController::class, 'destroy'])->name('tenants.domains.destroy');
 
+        // Per-tenant /login logo — Super Admin only (see TenantBrandingController).
+        Route::post('/tenants/{tenant}/login-logo', [\App\Http\Controllers\Central\Super\TenantBrandingController::class, 'update'])->name('tenants.login-logo.update');
+        Route::delete('/tenants/{tenant}/login-logo', [\App\Http\Controllers\Central\Super\TenantBrandingController::class, 'destroy'])->name('tenants.login-logo.destroy');
+
         // Custom domains (user-owned apex / subdomains pointed at this app via CNAME or A record)
         Route::post('/tenants/{tenant}/custom-domains', [\App\Http\Controllers\Central\Super\CustomDomainController::class, 'store'])->name('tenants.custom-domains.store');
         Route::post('/tenants/{tenant}/custom-domains/{id}/verify', [\App\Http\Controllers\Central\Super\CustomDomainController::class, 'verify'])->name('tenants.custom-domains.verify');

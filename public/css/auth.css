@@ -38,32 +38,21 @@
 }
 
 .auth-hero {
-  background: linear-gradient(140deg, #7a4dff 0%, #6237ff 45%, #4f2bf8 100%);
-  color: #fff;
+  background: #eef1ff;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: 80px clamp(40px, 8vw, 100px);
+  padding: 0;
+  overflow: hidden;
 }
 
-.auth-page .hero-content {
-  max-width: 440px;
-  display: grid;
-  gap: 1rem;
-  text-align: left;
-}
-
-.auth-page .hero-title {
-  font-size: clamp(1.8rem, 4vw, 2.8rem);
-  font-weight: 700;
-  margin: 0;
-}
-
-.auth-page .hero-subtitle {
-  font-size: clamp(0.9rem, 2vw, 1rem);
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.6;
+.auth-hero .hero-illustration {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
 }
 
 .auth-panel {
@@ -83,6 +72,16 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.auth-page .tenant-login-logo {
+  display: block;
+  max-height: 56px;
+  max-width: 220px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  margin: 0 0 1.25rem;
 }
 
 .auth-page .panel-title {
@@ -261,6 +260,11 @@
     border-radius: 18px;
     padding: 1.25rem;
     gap: 1.2rem;
+  }
+  .auth-page .tenant-login-logo {
+    max-height: 44px;
+    max-width: 160px;
+    margin-bottom: 1rem;
   }
   .auth-page .panel-title {
     font-size: 1.4rem;

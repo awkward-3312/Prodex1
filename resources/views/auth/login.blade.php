@@ -16,17 +16,13 @@
   <body class="auth-login">
     <div class="auth-page">
       <section class="auth-hero">
-        <div class="hero-content">
-          <h1 class="hero-title">{{ $app_settings->login_hero_title ?? '¡Bienvenido de nuevo!' }}</h1>
-          <p class="hero-subtitle">
-            {{ $app_settings->login_hero_subtitle ?? 'Inicia sesión para acceder a tu cuenta y mantener tus operaciones sincronizadas.' }}
-          </p>
-        </div>
+        <img class="hero-illustration" src="{{ global_asset('images/auth/login-illustration.png') }}" alt="PRODEX">
       </section>
 
       <section class="auth-panel">
         <div class="auth-panel-inner">
           <header>
+            <img class="tenant-login-logo" src="{{ tenancy()->tenant->loginLogoUrl() }}" alt="{{ $app_settings->app_name ?? 'PRODEX' }}">
             <h2 class="panel-title">{{ $app_settings->login_panel_title ?? 'Iniciar sesión' }}</h2>
             <p class="panel-subtitle">
               {{ $app_settings->login_panel_subtitle ?? 'Accede a tu panel y administra todo desde un solo lugar.' }}

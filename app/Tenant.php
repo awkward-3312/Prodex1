@@ -153,6 +153,38 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         return $base ? "{$base}/login" : '';
     }
 
+    // ── Login branding ─────────────────────────────────────────────────
+    // login_logo_path is Super-Admin-only: stored on the CENTRAL tenant
+    // record (stancl/tenancy's `data` JSON column, via HasDataColumn — no
+    // migration needed, same mechanism already used by country_code/
+    // locale/owner_phone). The tenant's own (per-database) Settings model
+    // is never involved, so a tenant user has no way to change it.
+
+    /**
+     * Absolute URL for the logo this tenant's /login page shows above
+     * "Sign In". Falls back to the platform-wide default tenant logo
+     * (Super Admin > General Settings > Branding), then to the bundled
+     * PRODEX default — never a broken image or empty slot.
+     */
+    public function loginLogoUrl(): string
+    {
+        if (! empty($this->login_logo_path)) {
+            return global_asset($this->login_logo_path);
+        }
+
+        $general = \App\Models\Central\GeneralSetting::instance();
+        if (! empty($general->tenant_logo_path)) {
+            return global_asset($general->tenant_logo_path);
+        }
+
+        return global_asset('images/tenant-default/settings/logo-default.png');
+    }
+
+    public function hasCustomLoginLogo(): bool
+    {
+        return ! empty($this->login_logo_path);
+    }
+
     // ── Database credentials ──────────────────────────────────────────
     // tenancy_db_password uses Laravel's `encrypted` cast so reads return plaintext
     // transparently — required because stancl/tenancy's DatabaseConfig reads the

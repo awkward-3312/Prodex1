@@ -89,11 +89,29 @@ abstract class TestCase extends BaseTestCase
             $table->string('website')->nullable();
             $table->string('logo_path')->nullable();
             $table->string('favicon_path')->nullable();
+            $table->string('tenant_logo_path')->nullable();
+            $table->string('tenant_favicon_path')->nullable();
+            $table->string('currency_code', 10)->nullable();
+            $table->string('currency_symbol', 10)->nullable();
+            $table->string('tenant_app_name')->nullable();
+            $table->string('tenant_company_name')->nullable();
+            $table->string('tenant_currency_code', 10)->nullable();
+            $table->string('tenant_currency_symbol', 10)->nullable();
+            $table->string('tenant_default_language', 10)->nullable();
+            $table->string('tenant_footer_text')->nullable();
+            $table->string('tenant_page_title_suffix')->nullable();
+            $table->string('tenant_developed_by')->nullable();
             $table->string('landing_template', 32)->default('landing-two');
             $table->string('landing_font', 100)->nullable();
             $table->string('landing_heading_font', 100)->nullable();
             $table->text('dashboard_footer_text')->nullable();
             $table->timestamps();
+        });
+
+        Schema::connection('central')->create('tenants', function ($table) {
+            $table->string('id')->primary();
+            $table->timestamps();
+            $table->json('data')->nullable();
         });
 
         Schema::connection('central')->create('plans', function ($table) {
