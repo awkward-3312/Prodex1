@@ -1,224 +1,137 @@
 <template>
-  <div class="main-content import-products-update">
-    <!-- Hero -->
-    <div class="hero shadow-sm mb-4">
-      <div class="hero-bg"></div>
-      <div class="hero-body d-flex align-items-center justify-content-between flex-wrap">
-        <div class="d-flex align-items-center">
-          <div class="hero-icon mr-3"><lucide-icon name="pencil" /></div>
-          <div>
-            <h3 class="mb-1">{{ $t('ImportProductsUpdateOnly') }}</h3>
-            <div class="text-muted small">{{ $t('ImportUpdateSubtitle') }}</div>
+  <div class="px-next pximpu">
+    <px-page-header
+      :title="$t('ImportProductsUpdateOnly')"
+      :breadcrumbs="[{ label: $t('Products') }, { label: $t('ImportProductsUpdateOnly') }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" icon="arrow-left" @click="$router.push({ name: 'index_products' })">{{ $t('BackToList') }}</px-button>
+      </template>
+    </px-page-header>
+
+    <p class="pximpu__lead">{{ $t('ImportUpdateSubtitle') }}</p>
+
+    <px-card class="pximpu__sec">
+      <!-- Dropzone -->
+      <div
+        class="pximpu-dz"
+        :class="{ 'is-dragover': isDragOver, 'has-file': file }"
+        @dragover.prevent="onDragOver"
+        @dragleave.prevent="onDragLeave"
+        @drop.prevent="onDrop"
+        @click="browse"
+      >
+        <input ref="file" type="file" class="pximpu-dz__input" @change="onFileSelected" :accept="accept" />
+        <div class="pximpu-dz__icon"><lucide-icon name="upload" :size="26" /></div>
+        <p class="pximpu-dz__title">{{ $t('Click_Or_Drop_CSV_Excel') }}</p>
+        <p class="pximpu-dz__sub">{{ $t('Allowed_Format_CSV_Excel') }}</p>
+        <div v-if="file" class="pximpu-dz__file" @click.stop>
+          <span class="pximpu-dz__filedot"></span>
+          <div class="pximpu-dz__filemeta">
+            <div class="pximpu-dz__filename">{{ fileName }}</div>
+            <div class="pximpu-dz__filesize">{{ prettySize }}</div>
+          </div>
+          <px-button size="sm" variant="danger" icon="x" @click="clearFile()">{{ $t('Remove') }}</px-button>
+        </div>
+      </div>
+
+      <!-- File format -->
+      <px-card class="pximpu__example" flush>
+        <div class="pximpu__example-head"><lucide-icon name="info" :size="15" /> {{ $t('FileFormat') }}</div>
+        <p class="pximpu__example-p">
+          {{ $t('ImportUpdateFileMustHave3Columns') }}
+          <span class="pximpu__req-badge">code</span>,
+          <span class="pximpu__req-badge">cost</span>, {{ $t('And') }}
+          <span class="pximpu__req-badge">retail_price</span>. {{ $t('ProductsMatchedByCode') }}
+        </p>
+        <div class="pximpu-extbl__wrap pxn-scroll">
+          <table class="pximpu-extbl">
+            <thead>
+              <tr><th class="req">code</th><th class="req">cost</th><th class="req">retail_price</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>PROD-001</td><td>10.50</td><td>19.99</td></tr>
+              <tr><td>PROD-002</td><td>5.25</td><td>12.50</td></tr>
+              <tr><td>PROD-003</td><td>8.00</td><td>15.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="pximpu__notes">
+          <li><strong>code</strong> — {{ $t('ImportUpdateNoteCodeMatch') }}</li>
+          <li><strong>cost</strong> — {{ $t('ImportUpdateNoteCost') }}</li>
+          <li><strong>retail_price</strong> — {{ $t('ImportUpdateNoteRetailPrice') }}</li>
+          <li>{{ $t('ImportUpdateNoteOnlyMatching') }}</li>
+        </ul>
+      </px-card>
+
+      <px-alert v-if="errorMessages.length" tone="danger" :title="$t('Import_Failed_Fix_Below')" class="pximpu__panel">
+        <ul class="pximpu__msglist">
+          <li v-for="(err, idx) in errorMessages" :key="'err-' + idx">{{ err }}</li>
+        </ul>
+      </px-alert>
+
+      <px-alert v-if="successMessage" tone="success" :title="successMessage" class="pximpu__panel">
+        <div v-if="importResults" class="pximpu__results">
+          <div>{{ $t('Updated') }}: {{ importResults.updated }} {{ $t('ProductsLower') }}</div>
+          <div v-if="importResults.not_found > 0" class="pximpu__results-warn">
+            {{ $t('NotFound') }}: {{ importResults.not_found }} {{ $t('CodesLower') }}
+          </div>
+          <div v-if="importResults.errors > 0" class="pximpu__results-err">
+            {{ $t('Errors') }}: {{ importResults.errors }}
           </div>
         </div>
-        <router-link :to="{ name: 'index_products' }" class="btn btn-outline-secondary btn-sm mt-3 mt-sm-0">
-          <lucide-icon name="chevron-left" /> {{ $t('BackToList') }}
-        </router-link>
+      </px-alert>
+
+      <px-alert v-if="warningMessages.length" tone="warning" :title="$t('Warnings')" class="pximpu__panel">
+        <ul class="pximpu__msglist">
+          <li v-for="(w, idx) in warningMessages" :key="'warn-' + idx">{{ w }}</li>
+        </ul>
+      </px-alert>
+
+      <div v-if="uploading" class="pximpu__progress">
+        <div class="pximpu__progress-row"><span>{{ $t('Uploading') }}</span><span class="pxn-num">{{ progress }}%</span></div>
+        <div class="pximpu__progress-track"><div class="pximpu__progress-bar" :style="{ width: progress + '%' }"></div></div>
       </div>
-    </div>
 
-    <b-card class="shadow-sm">
-      <b-row>
-        <!-- Upload column -->
-        <b-col md="12" class="mb-4">
-          <div
-            class="dropzone"
-            :class="{ 'is-dragover': isDragOver, 'has-file': file }"
-            @dragover.prevent="onDragOver"
-            @dragleave.prevent="onDragLeave"
-            @drop.prevent="onDrop"
-            @click="browse"
-          >
-            <input ref="file" type="file" class="d-none" @change="onFileSelected" :accept="accept" />
-            <div class="dz-inner text-center">
-              <div class="dz-icon mb-2"><lucide-icon name="download" /></div>
-              <h5 class="mb-2">{{ $t('Click_Or_Drop_CSV_Excel') }}</h5>
-              <div class="text-muted small">
-                {{ $t('Allowed_Format_CSV_Excel') }}
-              </div>
+      <div class="pximpu__actions">
+        <px-button variant="primary" icon="upload" :loading="uploading" :disabled="!canSubmit || uploading" @click="submit">
+          {{ uploading ? $t('Processing') : $t('UpdateProducts') }}
+        </px-button>
+        <px-button variant="secondary" icon="file-spreadsheet" @click="downloadExample">{{ $t('Download_exemple') }}</px-button>
+        <px-button variant="ghost" icon="x" :disabled="!file || uploading" @click="clearFile()">{{ $t('Reset') }}</px-button>
+      </div>
+    </px-card>
 
-              <!-- Selected file pill -->
-              <div v-if="file" class="file-pill mt-3 d-inline-flex align-items-center">
-                <div class="file-dot mr-2"></div>
-                <div class="file-meta mr-3">
-                  <div class="file-name">{{ fileName }}</div>
-                  <div class="file-size text-muted small">{{ prettySize }}</div>
-                </div>
-                <b-button size="sm" variant="outline-danger" @click.stop="clearFile">
-                  {{ $t('Remove') }}
-                </b-button>
-              </div>
-            </div>
-          </div>
+    <px-card :title="$t('ImportantNotes')" class="pximpu__guide">
+      <ul class="pximpu__notes">
+        <li v-html="$t('ImportUpdateOnlyUpdatesFields')"></li>
+        <li v-html="$t('ImportUpdateMatchedByCode')"></li>
+        <li>{{ $t('ImportUpdateSkippedIfMissing') }}</li>
+        <li>{{ $t('ImportUpdateOtherFieldsUnchanged') }}</li>
+        <li>{{ $t('ImportUpdateCsvOrExcel') }}</li>
+      </ul>
+    </px-card>
 
-          <!-- Example format -->
-          <b-card class="mt-3">
-            <div class="d-flex align-items-center mb-2">
-              <lucide-icon class="mr-2 text-primary" name="info" />
-              <h6 class="mb-0">{{ $t('FileFormat') }}</h6>
-            </div>
-
-            <p class="small text-muted mb-2">
-              {{ $t('ImportUpdateFileMustHave3Columns') }} <span class="badge badge-success-soft">code</span>,
-              <span class="badge badge-success-soft">cost</span>, {{ $t('And') }}
-              <span class="badge badge-success-soft">retail_price</span>. {{ $t('ProductsMatchedByCode') }}
-            </p>
-            <div class="table-responsive">
-              <table class="table table-sm table-bordered example-table">
-                <thead class="thead-light">
-                  <tr>
-                    <th class="req">code</th>
-                    <th class="req">cost</th>
-                    <th class="req">retail_price</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>PROD-001</td>
-                    <td>10.50</td>
-                    <td>19.99</td>
-                  </tr>
-                  <tr>
-                    <td>PROD-002</td>
-                    <td>5.25</td>
-                    <td>12.50</td>
-                  </tr>
-                  <tr>
-                    <td>PROD-003</td>
-                    <td>8.00</td>
-                    <td>15.00</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <ul class="mini-notes mt-2">
-              <li><strong>code</strong> — {{ $t('ImportUpdateNoteCodeMatch') }}</li>
-              <li><strong>cost</strong> — {{ $t('ImportUpdateNoteCost') }}</li>
-              <li><strong>retail_price</strong> — {{ $t('ImportUpdateNoteRetailPrice') }}</li>
-              <li>{{ $t('ImportUpdateNoteOnlyMatching') }}</li>
-            </ul>
-          </b-card>
-
-          <!-- MULTI-ERROR PANEL -->
-          <b-alert v-if="errorMessages.length" show variant="danger" class="mt-3">
-            <div class="d-flex align-items-start">
-              <lucide-icon class="mr-2 mt-1" name="x" />
-              <div>
-                <div class="font-weight-bold mb-1">{{ $t('Import_Failed_Fix_Below') }}</div>
-                <ul class="mb-0 pl-3">
-                  <li v-for="(err, idx) in errorMessages" :key="'err-'+idx">{{ err }}</li>
-                </ul>
-              </div>
-            </div>
-          </b-alert>
-
-          <!-- Success message -->
-          <b-alert v-if="successMessage" show variant="success" class="mt-3">
-            <div class="d-flex align-items-start">
-              <lucide-icon class="mr-2 mt-1" name="check" />
-              <div>
-                <div class="font-weight-bold mb-1">{{ successMessage }}</div>
-                <div v-if="importResults" class="small">
-                  <div>{{ $t('Updated') }}: {{ importResults.updated }} {{ $t('ProductsLower') }}</div>
-                  <div v-if="importResults.not_found > 0" class="text-warning">
-                    {{ $t('NotFound') }}: {{ importResults.not_found }} {{ $t('CodesLower') }}
-                  </div>
-                  <div v-if="importResults.errors > 0" class="text-danger">
-                    {{ $t('Errors') }}: {{ importResults.errors }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </b-alert>
-
-          <!-- Optional warnings list -->
-          <b-alert v-if="warningMessages.length" show variant="warning" class="mt-3">
-            <div class="d-flex align-items-start">
-              <lucide-icon class="mr-2 mt-1" name="info" />
-              <div>
-                <div class="font-weight-bold mb-1">{{ $t('Warnings') }}</div>
-                <ul class="mb-0 pl-3">
-                  <li v-for="(w, idx) in warningMessages" :key="'warn-'+idx">{{ w }}</li>
-                </ul>
-              </div>
-            </div>
-          </b-alert>
-
-          <!-- Progress -->
-          <div v-if="uploading" class="mt-3">
-            <div class="d-flex justify-content-between mb-1">
-              <small class="text-muted">{{ $t('Uploading') }}</small>
-              <small>{{ progress }}%</small>
-            </div>
-            <b-progress :value="progress" height="8px"></b-progress>
-          </div>
-
-          <!-- Actions -->
-          <div class="d-flex flex-wrap align-items-center mt-3">
-            <b-button
-              variant="primary"
-              size="sm"
-              class="mr-2 mb-2"
-              :disabled="!canSubmit || uploading"
-              @click="submit"
-            >
-              <span v-if="!uploading"><lucide-icon class="mr-1" name="upload" />{{ $t('UpdateProducts') }}</span>
-              <span v-else class="d-inline-flex align-items-center">
-                <span class="spinner sm spinner-white mr-2"></span>{{ $t('Processing') }}
-              </span>
-            </b-button>
-
-            <a :href="exampleHref" class="btn btn-outline-info btn-sm mr-2 mb-2" target="_blank" rel="noopener">
-              <lucide-icon class="mr-1" name="file-spreadsheet" />{{ $t('Download_exemple') }}
-            </a>
-
-            <b-button
-              variant="outline-secondary"
-              size="sm"
-              class="mb-2"
-              :disabled="!file || uploading"
-              @click="clearFile"
-            >
-              <lucide-icon class="mr-1" name="power" />{{ $t('Reset') }}
-            </b-button>
-          </div>
-        </b-col>
-
-        <!-- Info column -->
-        <b-col md="12" class="mb-4">
-          <b-card class="mb-3">
-            <h6 class="mb-2">{{ $t('ImportantNotes') }}</h6>
-            <ul class="mini-notes">
-              <li v-html="$t('ImportUpdateOnlyUpdatesFields')"></li>
-              <li v-html="$t('ImportUpdateMatchedByCode')"></li>
-              <li>{{ $t('ImportUpdateSkippedIfMissing') }}</li>
-              <li>{{ $t('ImportUpdateOtherFieldsUnchanged') }}</li>
-              <li>{{ $t('ImportUpdateCsvOrExcel') }}</li>
-            </ul>
-          </b-card>
-
-          <b-alert show variant="light" class="border">
-            <div class="d-flex">
-              <div class="tip-badge mr-2"><lucide-icon name="info" /></div>
-              <div>
-                <strong>{{ $t('HeadsUp') }}</strong>
-                <div class="small text-muted">{{ $t('LargeFilesMayTakeLongerCodesMatch') }}</div>
-              </div>
-            </div>
-          </b-alert>
-        </b-col>
-      </b-row>
-    </b-card>
+    <px-alert tone="info" bare class="pximpu__tip">
+      <lucide-icon name="info" :size="13" /> <strong>{{ $t('HeadsUp') }}</strong> — {{ $t('LargeFilesMayTakeLongerCodesMatch') }}
+    </px-alert>
   </div>
 </template>
 
 <script>
 import NProgress from 'nprogress';
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
 // axios assumed globally available
 
 export default {
   metaInfo: {
     title: "Actualizar productos (solo actualización)"
+  },
+  components: {
+    PxPageHeader, PxCard, PxButton, PxAlert
   },
   data() {
     return {
@@ -265,6 +178,9 @@ export default {
       if (this.$root && this.$root.$bvToast) {
         this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
       }
+    },
+    downloadExample() {
+      window.open(this.exampleHref, '_blank', 'noopener');
     },
 
     // ---------- DnD + browse ----------
@@ -436,7 +352,7 @@ export default {
         };
         this.successMessage = data.message || this.$t('ProductsUpdatedSuccessfully');
         this.toast(this.successMessage, this.$t('Success'), 'success');
-        
+
         // Redirect to products index after showing success message
         setTimeout(() => {
           this.$router.push({ name: 'index_products' });
@@ -445,7 +361,7 @@ export default {
       } catch (err) {
         this.errorMessages = this.collectErrorsFromAxios(err);
         this.toast(this.$t('Check_the_error_list_and_fix_your_file'), this.$t('Import_failed'), 'danger');
-      } 
+      }
       finally {
         NProgress.done();
         this.uploading = false;
@@ -456,128 +372,69 @@ export default {
 };
 </script>
 
-<style scoped>
-/* Hero */
-.hero{position:relative;border-radius:12px;overflow:hidden}
-.hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,#e6f0ff 0%,#f7fbff 60%,#ffffff 100%);opacity:.9}
-.hero-body{position:relative;padding:1.1rem 1.1rem}
-.hero-icon{width:44px;height:44px;border-radius:12px;background:#2667ff10;color:#2667ff;display:inline-grid;place-items:center;font-size:20px}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-/* Dropzone */
-.dropzone{border:2px dashed #cfd8e3;border-radius:14px;padding:28px 18px;cursor:pointer;transition:all .15s ease;background:#fbfdff}
-.dropzone:hover{border-color:#9cb4ff;background:#f7fbff;box-shadow:0 1px 6px rgba(38,103,255,.08)}
-.dropzone.is-dragover{border-color:#2667ff;background:#f1f6ff}
-.dropzone.has-file{border-color:#cfd8e3}
-.dz-icon{font-size:28px;color:#2667ff}
+<style lang="scss" scoped>
+.pximpu { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pximpu { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pximpu__lead { margin: var(--pxn-space-3) 0 var(--pxn-space-6); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
 
-/* File pill */
-.file-pill{border:1px solid #e6ebf2;border-radius:999px;padding:8px 12px;background:#fff}
-.file-dot{width:10px;height:10px;background:#2667ff;border-radius:999px}
-.file-name{font-weight:600}
+.pximpu__sec { margin-bottom: var(--pxn-space-6); }
+.pximpu__sec ::v-deep .pxn-card__body { display: flex; flex-direction: column; gap: var(--pxn-space-5); }
 
-/* Example badges */
-.badge-success-soft{background:#eaf7ef;color:#0a7a2d;border:1px solid #cdebd7;font-weight:600}
+.pximpu-dz {
+  border: 2px dashed var(--pxn-border-strong); border-radius: var(--pxn-radius-lg);
+  padding: var(--pxn-space-8) var(--pxn-space-6); cursor: pointer; text-align: center;
+  background: var(--pxn-surface-2);
+  transition: border-color var(--pxn-dur-1) var(--pxn-ease), background-color var(--pxn-dur-1) var(--pxn-ease);
+}
+.pximpu-dz:hover { border-color: var(--pxn-primary-border); background: var(--pxn-primary-softer); }
+.pximpu-dz.is-dragover { border-color: var(--pxn-primary); background: var(--pxn-primary-soft); }
+.pximpu-dz__input { display: none; }
+.pximpu-dz__icon { color: var(--pxn-primary); }
+.pximpu-dz__title { margin: var(--pxn-space-3) 0 var(--pxn-space-2); font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pximpu-dz__sub { margin: 0; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pximpu-dz__file {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  margin-top: var(--pxn-space-4); padding: var(--pxn-space-2) var(--pxn-space-3);
+  border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-pill); background: var(--pxn-surface); cursor: default;
+}
+.pximpu-dz__filedot { width: 8px; height: 8px; border-radius: 50%; background: var(--pxn-primary); }
+.pximpu-dz__filename { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium); color: var(--pxn-ink); }
+.pximpu-dz__filesize { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 
-/* Example table */
-.example-table th.req{background:#eaf7ef;border-color:#cdebd7}
-.example-table thead th{font-weight:600}
+.pximpu__example { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
+.pximpu__example ::v-deep .pxn-card__body { display: block; padding: var(--pxn-space-5); }
+.pximpu__example-head { display: flex; align-items: center; gap: var(--pxn-space-2); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pximpu__example-p { margin: var(--pxn-space-3) 0; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pximpu__req-badge {
+  display: inline-block; padding: 1px var(--pxn-space-2); border-radius: var(--pxn-radius-xs);
+  background: var(--pxn-success-soft); color: var(--pxn-success-ink);
+  font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold);
+}
+.pximpu-extbl__wrap { overflow-x: auto; border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-sm); }
+.pximpu-extbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); white-space: nowrap; }
+.pximpu-extbl th, .pximpu-extbl td { padding: var(--pxn-space-2) var(--pxn-space-4); border: 1px solid var(--pxn-border); text-align: left; }
+.pximpu-extbl th { background: var(--pxn-surface-2); font-weight: var(--pxn-fw-semibold); }
+.pximpu-extbl th.req { background: var(--pxn-success-soft); color: var(--pxn-success-ink); }
 
-/* Notes */
-.mini-notes{padding-left:18px;margin:0}
-.mini-notes li{margin-bottom:6px}
+.pximpu__notes { margin: var(--pxn-space-3) 0 0; padding-left: var(--pxn-space-6); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+.pximpu__notes li { margin-bottom: var(--pxn-space-2); }
 
-/* Tip badge */
-.tip-badge{width:28px;height:28px;border-radius:8px;background:#f1f5ff;color:#2667ff;display:inline-grid;place-items:center;font-size:14px}
-</style>
+.pximpu__panel { margin: 0; }
+.pximpu__msglist { margin: 0; padding-left: var(--pxn-space-6); font-size: var(--pxn-fs-sm); }
+.pximpu__msglist li { margin-bottom: var(--pxn-space-1); }
+.pximpu__results { font-size: var(--pxn-fs-sm); display: flex; flex-direction: column; gap: 2px; }
+.pximpu__results-warn { color: var(--pxn-warning-ink); }
+.pximpu__results-err { color: var(--pxn-danger-ink); }
 
-<!-- Non-scoped dark-mode overrides. The scoped block above gets a
-     [data-v-xxxx] attribute on every selector and beats the global
-     dark-theme rules in _dark.scss. Re-declare this page's surfaces
-     (without `scoped`) so .dark-theme on <body> can reach them. -->
-<style>
-.dark-theme .import-products-update .hero-bg {
-  background: linear-gradient(135deg, #1a1a1a 0%, #232323 60%, #292929 100%);
-  opacity: 1;
-}
-.dark-theme .import-products-update .hero-icon {
-  background: rgba(38, 103, 255, 0.18);
-  color: #93c5fd;
-}
+.pximpu__progress-row { display: flex; justify-content: space-between; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); margin-bottom: var(--pxn-space-2); }
+.pximpu__progress-track { height: 8px; border-radius: var(--pxn-radius-pill); background: var(--pxn-surface-3); overflow: hidden; }
+.pximpu__progress-bar { height: 100%; background: var(--pxn-primary); transition: width var(--pxn-dur-1) var(--pxn-ease); }
 
-/* Dropzone */
-.dark-theme .import-products-update .dropzone {
-  background: #1f1f1f;
-  border-color: #2f2f2f;
-  color: #d8d8d8;
-}
-.dark-theme .import-products-update .dropzone:hover {
-  background: rgba(38, 103, 255, 0.08);
-  border-color: #93c5fd;
-  box-shadow: 0 1px 6px rgba(38, 103, 255, 0.18);
-}
-.dark-theme .import-products-update .dropzone.is-dragover {
-  background: rgba(38, 103, 255, 0.14);
-  border-color: #93c5fd;
-}
-.dark-theme .import-products-update .dropzone.has-file {
-  border-color: #2f2f2f;
-}
-.dark-theme .import-products-update .dz-icon {
-  color: #93c5fd;
-}
+.pximpu__actions { display: flex; gap: var(--pxn-space-3); flex-wrap: wrap; }
 
-/* File pill */
-.dark-theme .import-products-update .file-pill {
-  background: #292929;
-  border-color: #2f2f2f;
-  color: #d8d8d8;
-}
-.dark-theme .import-products-update .file-name {
-  color: #d8d8d8;
-}
+.pximpu__guide { margin-bottom: var(--pxn-space-5); }
 
-/* Example table — keep the green "required" cells (saturated text on
-   pastel reads on both modes), only patch the surrounding chrome. */
-.dark-theme .import-products-update .example-table {
-  color: #d8d8d8;
-}
-.dark-theme .import-products-update .example-table thead.thead-light th {
-  background: #292929;
-  color: #d8d8d8;
-  border-color: #2a2a2a;
-}
-.dark-theme .import-products-update .example-table th,
-.dark-theme .import-products-update .example-table td {
-  border-color: #2a2a2a;
-}
-.dark-theme .import-products-update .example-table th.req {
-  background: rgba(16, 185, 129, 0.18);
-  color: #6ee7b7;
-  border-color: rgba(16, 185, 129, 0.35);
-}
-.dark-theme .import-products-update .badge-success-soft {
-  background: rgba(16, 185, 129, 0.18);
-  color: #6ee7b7;
-  border-color: rgba(16, 185, 129, 0.35);
-}
-
-/* "Heads up" alert (b-alert variant="light" with .border) — default
-   light variant fills white-on-light, unreadable on dark. */
-.dark-theme .import-products-update .alert-light {
-  background: #232323 !important;
-  border-color: #2f2f2f !important;
-  color: #d8d8d8 !important;
-}
-.dark-theme .import-products-update .tip-badge {
-  background: rgba(38, 103, 255, 0.18);
-  color: #93c5fd;
-}
-
-/* Bulleted notes / strong tags so the "code", "cost", etc. terms stay
-   readable on the dark surface. */
-.dark-theme .import-products-update .mini-notes,
-.dark-theme .import-products-update .mini-notes li,
-.dark-theme .import-products-update .mini-notes strong {
-  color: #d8d8d8;
-}
+.pximpu__tip ::v-deep svg { vertical-align: -2px; margin-right: var(--pxn-space-2); }
 </style>

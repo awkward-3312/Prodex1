@@ -1,431 +1,236 @@
 <template>
-  <div class="main-content import-products">
-    <!-- Hero -->
-    <div class="hero shadow-sm mb-4">
-      <div class="hero-bg"></div>
-      <div class="hero-body d-flex align-items-center justify-content-between flex-wrap">
-        <div class="d-flex align-items-center">
-          <div class="hero-icon mr-3"><lucide-icon name="upload" /></div>
-          <div>
-            <h3 class="mb-1">{{ $t('ImportProducts') }}</h3>
-            <div class="text-muted small">{{ $t('BulkAddItemsFromExcel') }}</div>
+  <div class="px-next pximp">
+    <px-page-header
+      :title="$t('ImportProducts')"
+      :breadcrumbs="[{ label: $t('Products') }, { label: $t('ImportProducts') }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" icon="arrow-left" @click="$router.push({ name: 'index_products' })">{{ $t('BackToList') }}</px-button>
+      </template>
+    </px-page-header>
+
+    <p class="pximp__lead">{{ $t('BulkAddItemsFromExcel') }}</p>
+
+    <px-card class="pximp__sec">
+      <px-tabs :tabs="typeTabs" :value="importType" @input="switchType" />
+
+      <!-- Dropzone -->
+      <div
+        class="pximp-dz"
+        :class="{ 'is-dragover': isDragOver, 'has-file': file }"
+        @dragover.prevent="onDragOver"
+        @dragleave.prevent="onDragLeave"
+        @drop.prevent="onDrop"
+        @click="browse"
+      >
+        <input ref="file" type="file" class="pximp-dz__input" @change="onFileSelected" :accept="accept" />
+        <div class="pximp-dz__icon"><lucide-icon name="upload" :size="26" /></div>
+        <p class="pximp-dz__title">{{ $t('Click_Or_Drop_Excel') }}</p>
+        <p class="pximp-dz__sub">{{ $t('Allowed_Format_Excel') }}</p>
+        <div v-if="file" class="pximp-dz__file" @click.stop>
+          <span class="pximp-dz__filedot"></span>
+          <div class="pximp-dz__filemeta">
+            <div class="pximp-dz__filename">{{ fileName }}</div>
+            <div class="pximp-dz__filesize">{{ prettySize }}</div>
           </div>
+          <px-button size="sm" variant="danger" icon="x" @click="clearFile()">{{ $t('Remove') }}</px-button>
         </div>
-        <router-link :to="{ name: 'index_products' }" class="btn btn-outline-secondary btn-sm mt-3 mt-sm-0">
-          <lucide-icon name="chevron-left" /> {{ $t('BackToList') }}
-        </router-link>
-      </div>
-    </div>
-
-    <b-card class="shadow-sm">
-      <!-- Type selector (single stays outline, variant becomes solid when active) -->
-      <div class="d-flex justify-content-center mb-3">
-        <b-button-group size="sm" class="seg">
-          <!-- Always outline-primary for Single (as requested) -->
-          <b-button :variant="importType==='single' ? 'primary' : 'outline-primary'" 
-            @click="switchType('single')">
-            <lucide-icon class="mr-1" name="store" />{{ $t('SingleProducts') }}
-          </b-button>
-          <!-- Variant toggles to solid primary when active -->
-          <b-button :variant="importType==='variant' ? 'primary' : 'outline-primary'"
-                    @click="switchType('variant')">
-            <lucide-icon class="mr-1" name="library" />{{ $t('VariantProducts') }}
-          </b-button>
-          <!-- Service products tab -->
-          <b-button :variant="importType==='service' ? 'primary' : 'outline-primary'"
-                    @click="switchType('service')">
-            <lucide-icon class="mr-1" name="wrench" />{{ $t('ServiceProducts') }}
-          </b-button>
-        </b-button-group>
       </div>
 
-      <b-row>
-        <!-- Upload column -->
-        <b-col md="12" class="mb-4">
-          <div
-            class="dropzone"
-            :class="{ 'is-dragover': isDragOver, 'has-file': file }"
-            @dragover.prevent="onDragOver"
-            @dragleave.prevent="onDragLeave"
-            @drop.prevent="onDrop"
-            @click="browse"
-          >
-            <input ref="file" type="file" class="d-none" @change="onFileSelected" :accept="accept" />
-            <div class="dz-inner text-center">
-              <div class="dz-icon mb-2"><lucide-icon name="download" /></div>
-              <h5 class="mb-2">{{ $t('Click_Or_Drop_Excel') }}</h5>
-              <div class="text-muted small">
-                {{ $t('Allowed_Format_Excel') }}
-              </div>
+      <!-- Example format -->
+      <px-card class="pximp__example" flush>
+        <div class="pximp__example-head"><lucide-icon name="info" :size="15" /> {{ $t('ExampleFormat') }}</div>
 
-              <!-- Selected file pill -->
-              <div v-if="file" class="file-pill mt-3 d-inline-flex align-items-center">
-                <div class="file-dot mr-2"></div>
-                <div class="file-meta mr-3">
-                  <div class="file-name">{{ fileName }}</div>
-                  <div class="file-size text-muted small">{{ prettySize }}</div>
-                </div>
-                <b-button size="sm" variant="outline-danger" @click.stop="clearFile">
-                  {{ $t('Remove') }}
-                </b-button>
-              </div>
-            </div>
+        <template v-if="importType === 'single'">
+          <p class="pximp__example-p">
+            {{ $t('ImportSingleExampleIntro') }}
+            <span class="pximp__req-badge">{{ $t('green') }}</span> {{ $t('AreRequired') }}
+          </p>
+          <div class="pximp-extbl__wrap pxn-scroll">
+            <table class="pximp-extbl">
+              <thead>
+                <tr>
+                  <th class="req">name</th><th class="req">code</th><th class="req">cost</th>
+                  <th class="req">category</th><th>sub_category</th><th class="req">unit</th>
+                  <th class="req">Retail price</th><th>Wholesale price</th><th>Min price</th>
+                  <th>brand</th><th>Stock alert</th><th>note</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Blue T-Shirt</td><td>TSHIRT-BLUE</td><td>8.00</td><td>Apparel</td><td>T-Shirts</td>
+                  <td>pc</td><td>19.90</td><td>17.00</td><td>15.00</td><td>Acme</td><td>5</td><td>Summer collection</td>
+                </tr>
+                <tr>
+                  <td>Coffee Mug</td><td>MUG-COF-01</td><td>2.20</td><td>Home</td><td>Kitchen</td>
+                  <td>pc</td><td>6.50</td><td>6.00</td><td>5.75</td><td></td><td>0</td><td></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+          <ul class="pximp__notes">
+            <li><strong>code</strong> {{ $t('ImportNoteCodeUnique') }}</li>
+            <li><strong>unit</strong> {{ $t('ImportNoteUnitExists') }}</li>
+            <li><strong>category</strong> {{ $t('ImportNoteCategoryAuto') }}</li>
+            <li><strong>sub_category</strong> {{ $t('ImportNoteSubCategoryOptional') }}</li>
+          </ul>
+        </template>
 
-          <!-- Example format (non-technical) -->
-          <b-card class="mt-3">
-            <div class="d-flex align-items-center mb-2">
-              <lucide-icon class="mr-2 text-primary" name="info" />
-              <h6 class="mb-0">{{ $t('ExampleFormat') }}</h6>
-            </div>
-
-            <!-- Single example -->
-            <div v-if="importType==='single'">
-              <p class="small text-muted mb-2">
-                {{ $t('ImportSingleExampleIntro') }} <span class="badge badge-success-soft">{{ $t('green') }}</span> {{ $t('AreRequired') }}
-              </p>
-              <div class="table-responsive">
-                <table class="table table-sm table-bordered example-table">
-                  <thead class="thead-light">
-                    <tr>
-                      <th class="req">name</th>
-                      <th class="req">code</th>
-                      
-                      <th class="req">cost</th>
-                      <th class="req">category</th>
-                      <th>sub_category</th>
-                      <th class="req">unit</th>
-                      <th class="req">Retail price</th>
-                      <th>Wholesale price</th>
-                      <th>Min price</th>
-                      <th>brand</th>
-                      <th>Stock alert</th>
-                      <th>note</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Blue T-Shirt</td>
-                      <td>TSHIRT-BLUE</td>
-                      <td>8.00</td>
-                      <td>Apparel</td>
-                      <td>T-Shirts</td>
-                      <td>pc</td>
-                      <td>19.90</td>
-                      <td>17.00</td>
-                      <td>15.00</td>
-                      <td>Acme</td>
-                      <td>5</td>
-                      <td>Summer collection</td>
-                    </tr>
-                    <tr>
-                      <td>Coffee Mug</td>
-                      <td>MUG-COF-01</td>
-                      <td>2.20</td>
-                      <td>Home</td>
-                      <td>Kitchen</td>
-                      <td>pc</td>
-                      <td>6.50</td>
-                      <td>6.00</td>
-                      <td>5.75</td>
-                      <td></td>
-                      <td>0</td>
-                      <td></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <ul class="mini-notes mt-2">
-                <li><strong>code</strong> {{ $t('ImportNoteCodeUnique') }}</li>
-                <li><strong>unit</strong> {{ $t('ImportNoteUnitExists') }}</li>
-                <li><strong>category</strong> {{ $t('ImportNoteCategoryAuto') }}</li>
-                <li><strong>sub_category</strong> {{ $t('ImportNoteSubCategoryOptional') }}</li>
-              </ul>
-            </div>
-
-            <!-- Variant example -->
-            <div v-else-if="importType==='variant'">
-              <p class="small text-muted mb-2">
-                {{ $t('ImportVariantExampleIntro') }}
-                {{ $t('ColumnsIn') }} <span class="badge badge-success-soft">{{ $t('green') }}</span> {{ $t('AreRequired') }}
-              </p>
-              <div class="table-responsive">
-                <table class="table table-sm table-bordered example-table">
-                  <thead class="thead-light">
-                    <tr>
-                      <th class="req">product name</th>
-                      <th class="req">product code</th>
-                      <th class="req">category</th>
-                      <th>sub_category</th>
-                      <th class="req">unit</th>
-                      <th>brand</th>
-                      <th class="req">variant name</th>
-                      <th class="req">variant code</th>
-                      <th class="req">variant cost</th>
-                      <th class="req">variant price</th>
-                      <th>variant wholesale</th>
-                      <th>variant min price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>T-Shirt</td>
-                      <td>TSHIRT-100</td>
-                      <td>Apparel</td>
-                      <td>T-Shirts</td>
-                      <td>pc</td>
-                      <td>Acme</td>
-                      <td>Small</td>
-                      <td>TSHIRT-100-S</td>
-                      <td>7.50</td>
-                      <td>14.90</td>
-                      <td>13.00</td>
-                      <td>12.00</td>
-                    </tr>
-                    <tr>
-                      <td>T-Shirt</td>
-                      <td>TSHIRT-100</td>
-                      <td>Apparel</td>
-                      <td>T-Shirts</td>
-                      <td>pc</td>
-                      <td>Acme</td>
-                      <td>Medium</td>
-                      <td>TSHIRT-100-M</td>
-                      <td>7.50</td>
-                      <td>14.90</td>
-                      <td>13.00</td>
-                      <td>12.00</td>
-                    </tr>
-                    <tr>
-                      <td>T-Shirt</td>
-                      <td>TSHIRT-100</td>
-                      <td>Apparel</td>
-                      <td>T-Shirts</td>
-                      <td>pc</td>
-                      <td>Acme</td>
-                      <td>Large</td>
-                      <td>TSHIRT-100-L</td>
-                      <td>7.50</td>
-                      <td>14.90</td>
-                      <td>13.00</td>
-                      <td>12.00</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <ul class="mini-notes mt-2">
-                <li><strong>product_code</strong> {{ $t('ImportNoteProductCodeGroups') }}</li>
-                <li><strong>variant_code</strong> {{ $t('ImportNoteVariantCodeUnique') }}</li>
-                <li><strong>unit</strong> {{ $t('ImportNoteUnitExists') }}</li>
-                <li><strong>category</strong> {{ $t('ImportNoteCategoryAuto') }}</li>
-                <li><strong>sub_category</strong> {{ $t('ImportNoteSubCategoryOptional') }}</li>
-              </ul>
-            </div>
-
-            <!-- Service products example -->
-            <div v-else-if="importType==='service'">
-              <p class="small text-muted mb-2">
-                {{ $t('ImportServiceExampleIntro') }} <span class="badge badge-success-soft">{{ $t('green') }}</span> {{ $t('AreRequired') }}
-              </p>
-              <div class="table-responsive">
-                <table class="table table-sm table-bordered example-table">
-                  <thead class="thead-light">
-                    <tr>
-                      <th class="req">name</th>
-                      <th class="req">code</th>
-                      <th class="req">Retail price</th>
-                      <th class="req">category</th>
-                      <th>sub_category</th>
-                      <th class="req">unit</th>
-                      <th>Wholesale price</th>
-                      <th>Min price</th>
-                      <th>brand</th>
-                      <th>note</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Consulting Hour</td>
-                      <td>SRV-CONS-01</td>
-                      <td>120.00</td>
-                      <td>Services</td>
-                      <td>IT Consulting</td>
-                      <td>hr</td>
-                      <td>100.00</td>
-                      <td>90.00</td>
-                      <td></td>
-                      <td>Professional consulting</td>
-                    </tr>
-                    <tr>
-                      <td>Delivery Fee</td>
-                      <td>SRV-DEL-01</td>
-                      <td>15.00</td>
-                      <td>Services</td>
-                      <td></td>
-                      <td>pc</td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <ul class="mini-notes mt-2">
-                <li><strong>code</strong> {{ $t('ImportNoteCodeUnique') }}</li>
-                <li><strong>unit</strong> {{ $t('ImportNoteUnitExists') }}</li>
-                <li><strong>category</strong> {{ $t('ImportNoteCategoryAuto') }}</li>
-                <li><strong>sub_category</strong> {{ $t('ImportNoteSubCategoryOptional') }}</li>
-              </ul>
-            </div>
-          </b-card>
-
-          <!-- MULTI-ERROR PANEL -->
-          <b-alert v-if="errorMessages.length" show variant="danger" class="mt-3">
-            <div class="d-flex align-items-start">
-              <lucide-icon class="mr-2 mt-1" name="x" />
-              <div>
-                <div class="font-weight-bold mb-1">{{ $t('Import_Failed_Fix_Below') }}</div>
-                <ul class="mb-0 pl-3">
-                  <li v-for="(err, idx) in errorMessages" :key="'err-'+idx">{{ err }}</li>
-                </ul>
-              </div>
-            </div>
-          </b-alert>
-
-          <!-- Optional warnings list -->
-          <b-alert v-if="warningMessages.length" show variant="warning" class="mt-3">
-            <div class="d-flex align-items-start">
-              <lucide-icon class="mr-2 mt-1" name="info" />
-              <div>
-                <div class="font-weight-bold mb-1">{{ $t('Warnings') }}</div>
-                <ul class="mb-0 pl-3">
-                  <li v-for="(w, idx) in warningMessages" :key="'warn-'+idx">{{ w }}</li>
-                </ul>
-              </div>
-            </div>
-          </b-alert>
-
-          <!-- Progress -->
-          <div v-if="uploading" class="mt-3">
-            <div class="d-flex justify-content-between mb-1">
-              <small class="text-muted">{{ $t('Uploading') }}</small>
-              <small>{{ progress }}%</small>
-            </div>
-            <b-progress :value="progress" height="8px"></b-progress>
+        <template v-else-if="importType === 'variant'">
+          <p class="pximp__example-p">
+            {{ $t('ImportVariantExampleIntro') }}
+            {{ $t('ColumnsIn') }} <span class="pximp__req-badge">{{ $t('green') }}</span> {{ $t('AreRequired') }}
+          </p>
+          <div class="pximp-extbl__wrap pxn-scroll">
+            <table class="pximp-extbl">
+              <thead>
+                <tr>
+                  <th class="req">product name</th><th class="req">product code</th><th class="req">category</th>
+                  <th>sub_category</th><th class="req">unit</th><th>brand</th>
+                  <th class="req">variant name</th><th class="req">variant code</th><th class="req">variant cost</th>
+                  <th class="req">variant price</th><th>variant wholesale</th><th>variant min price</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>T-Shirt</td><td>TSHIRT-100</td><td>Apparel</td><td>T-Shirts</td><td>pc</td><td>Acme</td>
+                  <td>Small</td><td>TSHIRT-100-S</td><td>7.50</td><td>14.90</td><td>13.00</td><td>12.00</td>
+                </tr>
+                <tr>
+                  <td>T-Shirt</td><td>TSHIRT-100</td><td>Apparel</td><td>T-Shirts</td><td>pc</td><td>Acme</td>
+                  <td>Medium</td><td>TSHIRT-100-M</td><td>7.50</td><td>14.90</td><td>13.00</td><td>12.00</td>
+                </tr>
+                <tr>
+                  <td>T-Shirt</td><td>TSHIRT-100</td><td>Apparel</td><td>T-Shirts</td><td>pc</td><td>Acme</td>
+                  <td>Large</td><td>TSHIRT-100-L</td><td>7.50</td><td>14.90</td><td>13.00</td><td>12.00</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+          <ul class="pximp__notes">
+            <li><strong>product_code</strong> {{ $t('ImportNoteProductCodeGroups') }}</li>
+            <li><strong>variant_code</strong> {{ $t('ImportNoteVariantCodeUnique') }}</li>
+            <li><strong>unit</strong> {{ $t('ImportNoteUnitExists') }}</li>
+            <li><strong>category</strong> {{ $t('ImportNoteCategoryAuto') }}</li>
+            <li><strong>sub_category</strong> {{ $t('ImportNoteSubCategoryOptional') }}</li>
+          </ul>
+        </template>
 
-          <!-- Actions -->
-          <div class="d-flex flex-wrap align-items-center mt-3">
-            <b-button
-              variant="primary"
-              size="sm"
-              class="mr-2 mb-2"
-              :disabled="!canSubmit || uploading"
-              @click="submit"
-            >
-              <span v-if="!uploading"><lucide-icon class="mr-1" name="upload" />{{ $t('Import_now') }}</span>
-              <span v-else class="d-inline-flex align-items-center">
-                <span class="spinner sm spinner-white mr-2"></span>{{ $t('Processing') }}
-              </span>
-            </b-button>
-
-            <a :href="exampleHref" class="btn btn-outline-info btn-sm mr-2 mb-2" target="_blank" rel="noopener">
-              <lucide-icon class="mr-1" name="file-spreadsheet" />{{ $t('Download_exemple') }}
-            </a>
-
-            <b-button
-              variant="outline-secondary"
-              size="sm"
-              class="mb-2"
-              :disabled="!file || uploading"
-              @click="clearFile"
-            >
-              <lucide-icon class="mr-1" name="power" />{{ $t('Reset') }}
-            </b-button>
+        <template v-else-if="importType === 'service'">
+          <p class="pximp__example-p">
+            {{ $t('ImportServiceExampleIntro') }}
+            <span class="pximp__req-badge">{{ $t('green') }}</span> {{ $t('AreRequired') }}
+          </p>
+          <div class="pximp-extbl__wrap pxn-scroll">
+            <table class="pximp-extbl">
+              <thead>
+                <tr>
+                  <th class="req">name</th><th class="req">code</th><th class="req">Retail price</th>
+                  <th class="req">category</th><th>sub_category</th><th class="req">unit</th>
+                  <th>Wholesale price</th><th>Min price</th><th>brand</th><th>note</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Consulting Hour</td><td>SRV-CONS-01</td><td>120.00</td><td>Services</td><td>IT Consulting</td>
+                  <td>hr</td><td>100.00</td><td>90.00</td><td></td><td>Professional consulting</td>
+                </tr>
+                <tr>
+                  <td>Delivery Fee</td><td>SRV-DEL-01</td><td>15.00</td><td>Services</td><td></td>
+                  <td>pc</td><td></td><td></td><td></td><td></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </b-col>
+          <ul class="pximp__notes">
+            <li><strong>code</strong> {{ $t('ImportNoteCodeUnique') }}</li>
+            <li><strong>unit</strong> {{ $t('ImportNoteUnitExists') }}</li>
+            <li><strong>category</strong> {{ $t('ImportNoteCategoryAuto') }}</li>
+            <li><strong>sub_category</strong> {{ $t('ImportNoteSubCategoryOptional') }}</li>
+          </ul>
+        </template>
+      </px-card>
 
-        <!-- Guide column -->
-        <b-col md="12" class="mb-4">
-          <b-card class="mb-3">
-            <h6 class="mb-2">{{ $t('RequiredAndOptionalColumns') }}</h6>
+      <px-alert v-if="errorMessages.length" tone="danger" :title="$t('Import_Failed_Fix_Below')" class="pximp__panel">
+        <ul class="pximp__msglist">
+          <li v-for="(err, idx) in errorMessages" :key="'err-' + idx">{{ err }}</li>
+        </ul>
+      </px-alert>
 
-            <!-- Singles -->
-            <div v-if="importType==='single'">
-              <div class="chip-grid">
-                <span v-for="c in singlesGuide" :key="c.key"
-                      class="chip" :class="c.required ? 'chip-req' : 'chip-opt'">
-                  {{ c.label }}
-                </span>
-              </div>
-              <ul class="mini-notes mt-3">
-                <li><strong>code</strong> — {{ $t('ImportGuideCodeUnique') }}</li>
-                <li><strong>unit</strong> — {{ $t('ImportGuideUnitExists') }}</li>
-                <li><strong>category</strong> — {{ $t('ImportGuideCategoryAuto') }}</li>
-                <li><strong>sub_category</strong> — {{ $t('ImportGuideSubCategoryOptional') }}</li>
-                <li><strong>wholesale price</strong> {{ $t('And') }} <strong>min price</strong> {{ $t('AreOptional') }}</li>
-              </ul>
-            </div>
+      <px-alert v-if="warningMessages.length" tone="warning" :title="$t('Warnings')" class="pximp__panel">
+        <ul class="pximp__msglist">
+          <li v-for="(w, idx) in warningMessages" :key="'warn-' + idx">{{ w }}</li>
+        </ul>
+      </px-alert>
 
-            <!-- Service products -->
-            <div v-else-if="importType==='service'">
-              <div class="chip-grid">
-                <span v-for="c in serviceGuide" :key="c.key"
-                      class="chip" :class="c.required ? 'chip-req' : 'chip-opt'">
-                  {{ c.label }}
-                </span>
-              </div>
-              <ul class="mini-notes mt-3">
-                <li><strong>code</strong> — {{ $t('ImportGuideCodeUnique') }}</li>
-                <li><strong>unit</strong> — {{ $t('ImportGuideUnitExists') }}</li>
-                <li><strong>category</strong> — {{ $t('ImportGuideCategoryAuto') }}</li>
-                <li><strong>sub_category</strong> — {{ $t('ImportGuideSubCategoryOptional') }}</li>
-                <li><strong>wholesale price</strong> {{ $t('And') }} <strong>min price</strong> {{ $t('AreOptional') }} {{ $t('CostAlwaysZeroForServices') }}</li>
-              </ul>
-            </div>
+      <div v-if="uploading" class="pximp__progress">
+        <div class="pximp__progress-row"><span>{{ $t('Uploading') }}</span><span class="pxn-num">{{ progress }}%</span></div>
+        <div class="pximp__progress-track"><div class="pximp__progress-bar" :style="{ width: progress + '%' }"></div></div>
+      </div>
 
-            <!-- Variants -->
-            <div v-else>
-              <div class="chip-grid">
-                <span v-for="c in variantsGuide" :key="c.key"
-                      class="chip" :class="c.required ? 'chip-req' : 'chip-opt'">
-                  {{ c.label }}
-                </span>
-              </div>
-              <ul class="mini-notes mt-3">
-                <li><strong>product_code</strong> — {{ $t('ImportNoteProductCodeGroups') }}</li>
-                <li><strong>variant_code</strong> — {{ $t('ImportGuideVariantCodeUnique') }}</li>
-                <li><strong>unit</strong> — {{ $t('ImportGuideUnitExists') }}</li>
-                <li><strong>category</strong> — {{ $t('ImportGuideCategoryAuto') }}</li>
-                <li><strong>sub_category</strong> — {{ $t('ImportGuideSubCategoryOptional') }}</li>
-                <li><strong>variant wholesale</strong> {{ $t('And') }} <strong>variant min price</strong> {{ $t('AreOptional') }}</li>
-              </ul>
-            </div>
-          </b-card>
+      <div class="pximp__actions">
+        <px-button variant="primary" icon="upload" :loading="uploading" :disabled="!canSubmit || uploading" @click="submit">
+          {{ uploading ? $t('Processing') : $t('Import_now') }}
+        </px-button>
+        <px-button variant="secondary" icon="file-spreadsheet" @click="downloadExample">{{ $t('Download_exemple') }}</px-button>
+        <px-button variant="ghost" icon="x" :disabled="!file || uploading" @click="clearFile()">{{ $t('Reset') }}</px-button>
+      </div>
+    </px-card>
 
-          <b-alert show variant="light" class="border">
-            <div class="d-flex">
-              <div class="tip-badge mr-2"><lucide-icon name="info" /></div>
-              <div>
-                <strong>{{ $t('HeadsUp') }}</strong>
-                <div class="small text-muted">{{ $t('LargeFilesMayTakeLonger') }}</div>
-              </div>
-            </div>
-          </b-alert>
-        </b-col>
-      </b-row>
-    </b-card>
+    <px-card :title="$t('RequiredAndOptionalColumns')" class="pximp__guide">
+      <div class="pximp__chips">
+        <span
+          v-for="c in activeGuide"
+          :key="c.key"
+          class="pximp__chip"
+          :class="c.required ? 'is-req' : 'is-opt'"
+        >{{ c.label }}</span>
+      </div>
+      <ul class="pximp__notes" v-if="importType === 'single'">
+        <li><strong>code</strong> — {{ $t('ImportGuideCodeUnique') }}</li>
+        <li><strong>unit</strong> — {{ $t('ImportGuideUnitExists') }}</li>
+        <li><strong>category</strong> — {{ $t('ImportGuideCategoryAuto') }}</li>
+        <li><strong>sub_category</strong> — {{ $t('ImportGuideSubCategoryOptional') }}</li>
+        <li><strong>wholesale price</strong> {{ $t('And') }} <strong>min price</strong> {{ $t('AreOptional') }}</li>
+      </ul>
+      <ul class="pximp__notes" v-else-if="importType === 'service'">
+        <li><strong>code</strong> — {{ $t('ImportGuideCodeUnique') }}</li>
+        <li><strong>unit</strong> — {{ $t('ImportGuideUnitExists') }}</li>
+        <li><strong>category</strong> — {{ $t('ImportGuideCategoryAuto') }}</li>
+        <li><strong>sub_category</strong> — {{ $t('ImportGuideSubCategoryOptional') }}</li>
+        <li><strong>wholesale price</strong> {{ $t('And') }} <strong>min price</strong> {{ $t('AreOptional') }} {{ $t('CostAlwaysZeroForServices') }}</li>
+      </ul>
+      <ul class="pximp__notes" v-else>
+        <li><strong>product_code</strong> — {{ $t('ImportNoteProductCodeGroups') }}</li>
+        <li><strong>variant_code</strong> — {{ $t('ImportGuideVariantCodeUnique') }}</li>
+        <li><strong>unit</strong> — {{ $t('ImportGuideUnitExists') }}</li>
+        <li><strong>category</strong> — {{ $t('ImportGuideCategoryAuto') }}</li>
+        <li><strong>sub_category</strong> — {{ $t('ImportGuideSubCategoryOptional') }}</li>
+        <li><strong>variant wholesale</strong> {{ $t('And') }} <strong>variant min price</strong> {{ $t('AreOptional') }}</li>
+      </ul>
+    </px-card>
+
+    <px-alert tone="info" bare class="pximp__tip">
+      <lucide-icon name="info" :size="13" /> <strong>{{ $t('HeadsUp') }}</strong> — {{ $t('LargeFilesMayTakeLonger') }}
+    </px-alert>
   </div>
 </template>
 
 <script>
 import NProgress from 'nprogress';
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxTabs from "@/components/px-next/PxTabs.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
 // axios assumed globally available
 
 export default {
   metaInfo: {
     title: "Importar productos"
+  },
+  components: {
+    PxPageHeader, PxCard, PxTabs, PxButton, PxAlert
   },
   data() {
     return {
@@ -501,6 +306,18 @@ export default {
     };
   },
   computed: {
+    typeTabs() {
+      return [
+        { value: 'single', label: this.$t('SingleProducts'), icon: 'store' },
+        { value: 'variant', label: this.$t('VariantProducts'), icon: 'library' },
+        { value: 'service', label: this.$t('ServiceProducts'), icon: 'wrench' }
+      ];
+    },
+    activeGuide() {
+      if (this.importType === 'single') return this.singlesGuide;
+      if (this.importType === 'service') return this.serviceGuide;
+      return this.variantsGuide;
+    },
     canSubmit() {
       return !!this.file && this.errorMessages.length === 0;
     },
@@ -519,6 +336,9 @@ export default {
       if (this.$root && this.$root.$bvToast) {
         this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
       }
+    },
+    downloadExample() {
+      window.open(this.exampleHref, '_blank', 'noopener');
     },
     switchType(type) {
       this.importType = type;
@@ -693,7 +513,7 @@ export default {
       } catch (err) {
         this.errorMessages = this.collectErrorsFromAxios(err);
         this.toast('Check the error list and fix your file.', 'Import failed', 'danger');
-      } 
+      }
       finally {
         NProgress.done();
         this.uploading = false;
@@ -704,152 +524,73 @@ export default {
 };
 </script>
 
-<style scoped>
-/* Hero */
-.hero{position:relative;border-radius:12px;overflow:hidden}
-.hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,#e6f0ff 0%,#f7fbff 60%,#ffffff 100%);opacity:.9}
-.hero-body{position:relative;padding:1.1rem 1.1rem}
-.hero-icon{width:44px;height:44px;border-radius:12px;background:#2667ff10;color:#2667ff;display:inline-grid;place-items:center;font-size:20px}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-/* Segmented control */
-.seg .btn{min-width:160px}
+<style lang="scss" scoped>
+.pximp { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pximp { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pximp__lead { margin: var(--pxn-space-3) 0 var(--pxn-space-6); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
 
-/* Dropzone */
-.dropzone{border:2px dashed #cfd8e3;border-radius:14px;padding:28px 18px;cursor:pointer;transition:all .15s ease;background:#fbfdff}
-.dropzone:hover{border-color:#9cb4ff;background:#f7fbff;box-shadow:0 1px 6px rgba(38,103,255,.08)}
-.dropzone.is-dragover{border-color:#2667ff;background:#f1f6ff}
-.dropzone.has-file{border-color:#cfd8e3}
-.dz-icon{font-size:28px;color:#2667ff}
+.pximp__sec { margin-bottom: var(--pxn-space-6); }
+.pximp__sec ::v-deep .pxn-card__body { display: flex; flex-direction: column; gap: var(--pxn-space-5); }
 
-/* File pill */
-.file-pill{border:1px solid #e6ebf2;border-radius:999px;padding:8px 12px;background:#fff}
-.file-dot{width:10px;height:10px;background:#2667ff;border-radius:999px}
-.file-name{font-weight:600}
+.pximp-dz {
+  border: 2px dashed var(--pxn-border-strong); border-radius: var(--pxn-radius-lg);
+  padding: var(--pxn-space-8) var(--pxn-space-6); cursor: pointer; text-align: center;
+  background: var(--pxn-surface-2);
+  transition: border-color var(--pxn-dur-1) var(--pxn-ease), background-color var(--pxn-dur-1) var(--pxn-ease);
+}
+.pximp-dz:hover { border-color: var(--pxn-primary-border); background: var(--pxn-primary-softer); }
+.pximp-dz.is-dragover { border-color: var(--pxn-primary); background: var(--pxn-primary-soft); }
+.pximp-dz__input { display: none; }
+.pximp-dz__icon { color: var(--pxn-primary); }
+.pximp-dz__title { margin: var(--pxn-space-3) 0 var(--pxn-space-2); font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pximp-dz__sub { margin: 0; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pximp-dz__file {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  margin-top: var(--pxn-space-4); padding: var(--pxn-space-2) var(--pxn-space-3);
+  border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-pill); background: var(--pxn-surface); cursor: default;
+}
+.pximp-dz__filedot { width: 8px; height: 8px; border-radius: 50%; background: var(--pxn-primary); }
+.pximp-dz__filename { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium); color: var(--pxn-ink); }
+.pximp-dz__filesize { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 
-/* Example badges */
-.badge-success-soft{background:#eaf7ef;color:#0a7a2d;border:1px solid #cdebd7;font-weight:600}
+.pximp__example { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
+.pximp__example ::v-deep .pxn-card__body { display: block; padding: var(--pxn-space-5); }
+.pximp__example-head { display: flex; align-items: center; gap: var(--pxn-space-2); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pximp__example-p { margin: var(--pxn-space-3) 0; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pximp__req-badge {
+  display: inline-block; padding: 1px var(--pxn-space-2); border-radius: var(--pxn-radius-xs);
+  background: var(--pxn-success-soft); color: var(--pxn-success-ink);
+  font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold);
+}
+.pximp-extbl__wrap { overflow-x: auto; border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-sm); }
+.pximp-extbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); white-space: nowrap; }
+.pximp-extbl th, .pximp-extbl td { padding: var(--pxn-space-2) var(--pxn-space-4); border: 1px solid var(--pxn-border); text-align: left; }
+.pximp-extbl th { background: var(--pxn-surface-2); font-weight: var(--pxn-fw-semibold); }
+.pximp-extbl th.req { background: var(--pxn-success-soft); color: var(--pxn-success-ink); }
 
-/* Example table */
-.example-table th.req{background:#eaf7ef;border-color:#cdebd7}
-.example-table thead th{font-weight:600}
+.pximp__notes { margin: var(--pxn-space-3) 0 0; padding-left: var(--pxn-space-6); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+.pximp__notes li { margin-bottom: var(--pxn-space-2); }
 
-/* Chips grid */
-.chip-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-gap:8px}
-@media (min-width:992px){.chip-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.chip{display:inline-block;padding:6px 10px;border-radius:999px;font-size:.85rem;font-weight:600;border:1px solid transparent;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
-.chip-req{color:#0a7a2d;background:#eaf7ef;border-color:#cdebd7}
-.chip-opt{color:#475569;background:#f5f7fb;border-color:#e6e9f2}
+.pximp__panel { margin: 0; }
+.pximp__msglist { margin: 0; padding-left: var(--pxn-space-6); font-size: var(--pxn-fs-sm); }
+.pximp__msglist li { margin-bottom: var(--pxn-space-1); }
 
-/* Notes */
-.mini-notes{padding-left:18px;margin:0}
-.mini-notes li{margin-bottom:6px}
+.pximp__progress-row { display: flex; justify-content: space-between; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); margin-bottom: var(--pxn-space-2); }
+.pximp__progress-track { height: 8px; border-radius: var(--pxn-radius-pill); background: var(--pxn-surface-3); overflow: hidden; }
+.pximp__progress-bar { height: 100%; background: var(--pxn-primary); transition: width var(--pxn-dur-1) var(--pxn-ease); }
 
-/* Tip badge */
-.tip-badge{width:28px;height:28px;border-radius:8px;background:#f1f5ff;color:#2667ff;display:inline-grid;place-items:center;font-size:14px}
-</style>
+.pximp__actions { display: flex; gap: var(--pxn-space-3); flex-wrap: wrap; }
 
-<!-- Non-scoped dark-mode overrides. The scoped block above gets a
-     [data-v-xxxx] attribute on every selector, which beats the global
-     dark-theme rules in _dark.scss. Re-declare the page's surfaces
-     here (without `scoped`) so .dark-theme on <body> can actually reach
-     them. -->
-<style>
-.dark-theme .import-products .hero-bg {
-  background: linear-gradient(135deg, #1a1a1a 0%, #232323 60%, #292929 100%);
-  opacity: 1;
+.pximp__guide { margin-bottom: var(--pxn-space-5); }
+.pximp__chips { display: flex; flex-wrap: wrap; gap: var(--pxn-space-2); margin-bottom: var(--pxn-space-4); }
+.pximp__chip {
+  display: inline-block; padding: 4px var(--pxn-space-3); border-radius: var(--pxn-radius-pill);
+  font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold);
 }
-.dark-theme .import-products .hero-icon {
-  background: rgba(38, 103, 255, 0.18);
-  color: #93c5fd;
-}
+.pximp__chip.is-req { background: var(--pxn-success-soft); color: var(--pxn-success-ink); }
+.pximp__chip.is-opt { background: var(--pxn-surface-2); color: var(--pxn-ink-2); border: 1px solid var(--pxn-border); }
 
-/* Dropzone */
-.dark-theme .import-products .dropzone {
-  background: #1f1f1f;
-  border-color: #2f2f2f;
-  color: #d8d8d8;
-}
-.dark-theme .import-products .dropzone:hover {
-  background: rgba(38, 103, 255, 0.08);
-  border-color: #93c5fd;
-  box-shadow: 0 1px 6px rgba(38, 103, 255, 0.18);
-}
-.dark-theme .import-products .dropzone.is-dragover {
-  background: rgba(38, 103, 255, 0.14);
-  border-color: #93c5fd;
-}
-.dark-theme .import-products .dropzone.has-file {
-  border-color: #2f2f2f;
-}
-.dark-theme .import-products .dz-icon {
-  color: #93c5fd;
-}
-
-/* File pill */
-.dark-theme .import-products .file-pill {
-  background: #292929;
-  border-color: #2f2f2f;
-  color: #d8d8d8;
-}
-.dark-theme .import-products .file-name {
-  color: #d8d8d8;
-}
-
-/* Example table — keep the green "required" cells (saturated text on
-   pastel reads on both modes), only patch the surrounding chrome. */
-.dark-theme .import-products .example-table {
-  color: #d8d8d8;
-}
-.dark-theme .import-products .example-table thead.thead-light th {
-  background: #292929;
-  color: #d8d8d8;
-  border-color: #2a2a2a;
-}
-.dark-theme .import-products .example-table th,
-.dark-theme .import-products .example-table td {
-  border-color: #2a2a2a;
-}
-.dark-theme .import-products .example-table th.req {
-  background: rgba(16, 185, 129, 0.18);
-  color: #6ee7b7;
-  border-color: rgba(16, 185, 129, 0.35);
-}
-.dark-theme .import-products .badge-success-soft {
-  background: rgba(16, 185, 129, 0.18);
-  color: #6ee7b7;
-  border-color: rgba(16, 185, 129, 0.35);
-}
-
-/* Chip grid (column guide) — chip-opt was light-gray-on-light-gray
-   which becomes invisible on dark; brighten both border and text. */
-.dark-theme .import-products .chip-opt {
-  background: #292929;
-  color: rgba(216, 216, 216, 0.85);
-  border-color: #2f2f2f;
-}
-.dark-theme .import-products .chip-req {
-  background: rgba(16, 185, 129, 0.18);
-  color: #6ee7b7;
-  border-color: rgba(16, 185, 129, 0.35);
-}
-
-/* Tip "Heads up" alert (b-alert variant="light" with .border). The
-   default light variant fills white-on-light. */
-.dark-theme .import-products .alert-light {
-  background: #232323 !important;
-  border-color: #2f2f2f !important;
-  color: #d8d8d8 !important;
-}
-.dark-theme .import-products .tip-badge {
-  background: rgba(38, 103, 255, 0.18);
-  color: #93c5fd;
-}
-
-/* Bulleted notes / strong tags should pick up the heading color so the
-   key terms still read against the dark surface. */
-.dark-theme .import-products .mini-notes,
-.dark-theme .import-products .mini-notes li,
-.dark-theme .import-products .mini-notes strong {
-  color: #d8d8d8;
-}
+.pximp__tip ::v-deep svg { vertical-align: -2px; margin-right: var(--pxn-space-2); }
 </style>
