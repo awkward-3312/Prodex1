@@ -1,11 +1,15 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('SystemSettings')" :folder="$t('Settings')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxcfg pxsys">
+    <px-page-header
+      :title="$t('SystemSettings')"
+      :subtitle="$t('System_Settings_Help') || 'Company, appearance, localization, POS, fiscal and system preferences.'"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('SystemSettings') }]"
+    />
+    <px-skeleton v-if="isLoading" variant="lines" :rows="8" />
 
     <!-- System Settings with Vertical Tabs -->
     <div v-if="!isLoading">
-      <b-card no-body class="settings-container">
+      <div class="settings-container">
           <b-row no-gutters>
             <!-- Mobile Tab Selector (visible only on small screens) -->
             <b-col 
@@ -3804,7 +3808,7 @@
 
           </b-col>
         </b-row>
-        </b-card>
+        </div>
 
         <!-- POS Keyboard Shortcuts Guide (read-only reference) -->
         <b-modal
@@ -3843,9 +3847,10 @@ import { mapActions, mapGetters } from "vuex";
 import { cachePriceFormat, cachePriceDecimals } from "../../../../utils/priceFormat";
 import draggable from "vuedraggable";
 import { posShortcutsEnabled, setPosShortcutsEnabled, POS_SHORTCUTS } from "../../../../mixins/posKeyboardShortcuts";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 
 export default {
-  components: { draggable },
+  components: { draggable, PxPageHeader },
   metaInfo: {
     title: "System Settings"
   },
@@ -6136,6 +6141,8 @@ export default {
 };
 </script>
 
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
 <style scoped>
 .settings-container {
   border-radius: 0.5rem;
@@ -7036,5 +7043,116 @@ export default {
   font-weight: 500;
   color: #212529;
   font-size: 0.9375rem;
+}
+
+/* ============================================================
+   px-next retheme — flat px-next surfaces, tokens, no purple
+   ============================================================ */
+.pxsys.pxcfg {
+  min-height: 100%;
+  background: var(--pxn-bg);
+  padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9);
+}
+@media (max-width: 620px) {
+  .pxsys.pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); }
+}
+
+.pxsys .settings-container {
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-lg, 12px);
+  box-shadow: none;
+  background: var(--pxn-surface);
+  margin-top: var(--pxn-space-5);
+}
+
+.pxsys .settings-sidebar {
+  background: var(--pxn-surface-2, var(--pxn-surface));
+  border-right: 1px solid var(--pxn-border);
+}
+
+.pxsys .settings-header {
+  background: var(--pxn-surface);
+  color: var(--pxn-text);
+  border-bottom: 1px solid var(--pxn-border);
+  padding: var(--pxn-space-5) var(--pxn-space-6);
+}
+.pxsys .settings-header h5 { color: var(--pxn-text); font-weight: 600; }
+
+.pxsys .settings-nav { padding: var(--pxn-space-3) 0; }
+.pxsys .settings-nav-item {
+  color: var(--pxn-text-muted);
+  border-left: 2px solid transparent;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+.pxsys .settings-nav-item:hover {
+  background: var(--pxn-surface-2, rgba(0,0,0,0.03));
+  color: var(--pxn-text);
+  border-left-color: var(--pxn-border-strong, var(--pxn-border));
+}
+.pxsys .settings-nav-item.active {
+  background: var(--pxn-primary-soft, rgba(0,0,0,0.04));
+  color: var(--pxn-primary);
+  border-left-color: var(--pxn-primary);
+  font-weight: 600;
+}
+.pxsys .settings-nav-item.active::before { border-right-color: var(--pxn-bg); }
+
+.pxsys .settings-content { background: var(--pxn-surface); }
+.pxsys .settings-content-header { border-bottom: 1px solid var(--pxn-border); }
+.pxsys .settings-content-header h4 { color: var(--pxn-text); font-weight: 600; }
+.pxsys .settings-content-header p { color: var(--pxn-text-muted); }
+
+.pxsys .tab-content label { color: var(--pxn-text); font-weight: 600; }
+.pxsys .tab-content .form-control,
+.pxsys .tab-content .vs__dropdown-toggle,
+.pxsys .mobile-tab-select {
+  border-radius: var(--pxn-radius-md, 8px);
+  border: 1px solid var(--pxn-border);
+  background: var(--pxn-surface);
+  color: var(--pxn-text);
+}
+.pxsys .tab-content .form-control:focus,
+.pxsys .tab-content .vs__dropdown-toggle:focus,
+.pxsys .mobile-tab-select:focus {
+  border-color: var(--pxn-primary);
+  box-shadow: 0 0 0 3px var(--pxn-ring, rgba(37,99,235,0.25));
+  outline: none;
+}
+
+.pxsys .invoice-logo-preview-box {
+  background: var(--pxn-surface-2, var(--pxn-surface));
+  border: 1px dashed var(--pxn-border);
+  border-radius: var(--pxn-radius-md, 8px);
+}
+.pxsys .customize-toggle-row {
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-md, 10px);
+  background: var(--pxn-surface-2, var(--pxn-surface));
+}
+.pxsys .customize-toggle-title { color: var(--pxn-text); }
+.pxsys .customize-toggle-hint { color: var(--pxn-text-muted); }
+
+.pxsys .system-actions-card {
+  background: var(--pxn-surface-2, var(--pxn-surface));
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-md, 8px);
+}
+.pxsys .system-actions-card h5 { color: var(--pxn-text); }
+
+.pxsys .settings-footer { border-top: 1px solid var(--pxn-border); }
+.pxsys .submit-btn {
+  background: var(--pxn-primary);
+  border: 1px solid var(--pxn-primary);
+  box-shadow: none;
+  border-radius: var(--pxn-radius-md, 8px);
+}
+.pxsys .submit-btn:hover {
+  transform: none;
+  background: var(--pxn-primary-hover, var(--pxn-primary));
+  box-shadow: none;
+}
+.pxsys .mobile-tab-selector {
+  background: var(--pxn-surface);
+  border-bottom: 1px solid var(--pxn-border);
 }
 </style>
