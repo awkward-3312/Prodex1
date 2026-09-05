@@ -32,6 +32,18 @@
           </router-link>
         </div>
 
+        <template slot="emptystate">
+          <PxEmptyState
+            icon="tag"
+            :title="$t('No_promotions_yet')"
+            :description="$t('No_promotions_desc')"
+          >
+            <b-button @click="New_Promotion()" class="btn btn-sm btn-primary">
+              <lucide-icon name="plus" /> Agregar
+            </b-button>
+          </PxEmptyState>
+        </template>
+
         <template slot="table-row" slot-scope="props">
           <span v-if="props.column.field === 'kind'">
             <b-badge :variant="props.row.kind === 'discount' ? 'info' : 'success'">{{ promotionTypeLabel(props.row.kind) }}</b-badge>
@@ -62,8 +74,10 @@
 
 <script>
 import NProgress from "nprogress";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
+  components: { PxEmptyState },
   metaInfo: { title: "Promociones" },
   data() {
     return {

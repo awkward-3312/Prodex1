@@ -418,7 +418,7 @@
               <div class="pf-preview-name">{{ form.name || ($t('UntitledPromotion') || 'Untitled promotion') }}</div>
               <div class="pf-preview-desc" v-if="form.description">{{ form.description }}</div>
               <div class="pf-preview-meta">
-                <span class="pf-tag pf-tag-kind" :data-kind="form.kind">{{ form.kind }}</span>
+                <span class="pf-tag pf-tag-kind" :data-kind="form.kind">{{ form.kind === 'discount' ? $t('Discount') : $t('Promotion') }}</span>
                 <span class="pf-tag pf-tag-code" v-if="form.code">{{ form.code }}</span>
                 <span class="pf-tag" :class="form.is_active ? 'pf-tag-active' : 'pf-tag-draft'">
                   {{ form.is_active ? ($t('Active') || 'Active') : ($t('Draft') || 'Draft') }}
@@ -512,7 +512,7 @@ const emptyForm = () => ({
 });
 
 export default {
-  metaInfo: { title: "Promotion" },
+  metaInfo: { title: "Promoción" },
 
   data() {
     return {

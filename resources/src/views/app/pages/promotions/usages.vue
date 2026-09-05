@@ -113,7 +113,7 @@
     </b-card>
 
     <b-card class="wrapper" v-if="!isLoading">
-      <h5 class="mb-3">{{ $t('Details') || 'Details' }}</h5>
+      <h5 class="mb-3">{{ $t('Details') }}</h5>
       <vue-good-table
         mode="remote"
         :columns="columns"
@@ -124,9 +124,17 @@
         @on-sort-change="onSortChange"
         @on-search="onSearch"
         :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
+        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'Siguiente', prevLabel: 'Anterior' }"
         styleClass="table-hover tableOne vgt-table"
       >
+        <template slot="emptystate">
+          <PxEmptyState
+            icon="bar-chart-3"
+            :title="$t('No_promotion_usages_yet')"
+            :description="$t('No_promotion_usages_desc')"
+          />
+        </template>
+
         <template slot="table-row" slot-scope="props">
           <span v-if="props.column.field === 'promotion'">
             <strong>{{ props.row.promotion ? props.row.promotion.name : '—' }}</strong>
@@ -162,9 +170,11 @@
 <script>
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
-  metaInfo: { title: "Promotion Usage Report" },
+  components: { PxEmptyState },
+  metaInfo: { title: "Informe de uso de promociones" },
 
   data() {
     return {

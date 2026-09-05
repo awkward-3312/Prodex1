@@ -25,8 +25,8 @@
         :pagination-options="{
         enabled: true,
         mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
+        nextLabel: 'Siguiente',
+        prevLabel: 'Anterior',
       }"
         :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >

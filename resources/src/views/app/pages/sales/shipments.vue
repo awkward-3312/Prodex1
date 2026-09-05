@@ -24,8 +24,8 @@
         :pagination-options="{
         enabled: true,
         mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
+        nextLabel: 'Siguiente',
+        prevLabel: 'Anterior',
       }"
         :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >
@@ -44,6 +44,14 @@
               <lucide-icon name="file-spreadsheet" /> EXCEL
           </vue-excel-xlsx>
         </div>
+
+        <template slot="emptystate">
+          <PxEmptyState
+            icon="truck"
+            :title="$t('No_shipments_yet')"
+            :description="$t('No_shipments_desc')"
+          />
+        </template>
 
         <template slot="table-row" slot-scope="props">
           <span v-if="props.column.field == 'actions'">
@@ -178,10 +186,12 @@ import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
+  components: { PxEmptyState },
   metaInfo: {
-    title: "Shipment"
+    title: "Envíos"
   },
   data() {
     return {

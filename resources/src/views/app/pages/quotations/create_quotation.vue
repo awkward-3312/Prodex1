@@ -350,8 +350,8 @@
                         :placeholder="$t('Choose_Status')"
                         :options="
                                 [
-                                  {label: 'Sent', value: 'sent'},
-                                  {label: 'Pending', value: 'pending'}
+                                  {label: $t('Sent'), value: 'sent'},
+                                  {label: $t('Pending'), value: 'pending'}
                                 ]"
                       ></v-select>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
@@ -547,7 +547,7 @@ import NProgress from "nprogress";
 
 export default {
   metaInfo: {
-    title: "Create Quotation"
+    title: "Nueva cotización"
   },
   data() {
     return {

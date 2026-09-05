@@ -305,7 +305,7 @@ export default {
     },
   },
   metaInfo: {
-    title: "Detail Quotation"
+    title: "Detalle de cotización"
   },
 
   data() {
