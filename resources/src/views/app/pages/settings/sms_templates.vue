@@ -1,326 +1,91 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('sms_templates')" :folder="$t('Settings')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('sms_templates')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('sms_templates') }]"
+    />
 
-    <div id="section_notifications_template" v-else>
-
-   <!-- Language selector for templates -->
-   <div class="row mt-3">
-     <div class="col-md-12">
-       <div class="form-group">
-         <label class="font-weight-bold">{{ $t('Template_Language') || 'Template language' }}</label>
-         <b-form-select
-           v-model="selectedLocale"
-           :options="languageOptions"
-           value-field="locale"
-           text-field="name"
-           class="form-control w-auto d-inline-block"
-           @change="onLocaleChange"
-         />
-         <p class="text-muted small mt-1 mb-0">{{ $t('Edit_templates_per_language') || 'Templates are saved per language. When sending SMS, the system default language is used.' }}</p>
-       </div>
-     </div>
-   </div>
-
-   <!-- Notification Client -->
-  <div class="row mt-5">
-    <div class="col-md-12">
-
-      <div class="card">
-        <div class="card-header">
-          <h4>{{$t('Notification_Client')}}</h4>
-        </div>
-        <!--begin::form-->
-        <div class="card-body">
-
-          <b-tabs active-nav-item-class="nav nav-tabs" content-class="mt-3">
-
-            <!-- Sell -->
-            <b-tab :title="$t('Sale')">
-
-              <form @submit.prevent="update_sms_body('sale')">
-                  <div class="row">
-                    <div class=" col-md-12">
-                      <span> <strong>{{$t('Available_Tags')}} : </strong></span>
-                      <p>
-                        {contact_name},{business_name},{invoice_number},{invoice_url},{total_amount},{paid_amount},{due_amount}
-                      </p>
-                    </div>
-                    <hr>
-                    <div class="form-group col-md-12">
-                      <label for="sms_body_sale">{{$t('sms_body')}} </label>
-                      <textarea type="text" v-model="sms_body_sale" class="form-control" style=" height: 200px!important;"
-                        name="sms_body_sale" id="sms_body_sale" :placeholder="$t('sms_body')"></textarea>
-                    </div>
-
-                  </div>
-
-                  <div class="row mt-3">
-                    <div class="col-md-6">
-                      <button type="submit" :disabled="Submit_Processing" class="btn btn-primary">
-                        <span v-if="Submit_Processing" class="spinner-border spinner-border-sm" role="status"
-                          aria-hidden="true"></span> <lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}
-                      </button>
-                    </div>
-                  </div>
-              </form>
-
-            </b-tab>
-
-            <!-- Quotation -->
-            <b-tab :title="$t('Quote')">
-
-              <form @submit.prevent="update_sms_body('quotation')">
-                  <div class="row">
-                    <div class=" col-md-12">
-                      <span> <strong>{{$t('Available_Tags')}} : </strong></span>
-                      <p>
-                        {contact_name},{business_name},{quotation_number},{quotation_url},{total_amount}
-                      </p>
-                    </div>
-                    <hr>
-                    <div class="form-group col-md-12">
-                      <label for="sms_body_quotation">{{$t('sms_body')}} </label>
-                      <textarea type="text" v-model="sms_body_quotation" class="form-control"
-                        style=" height: 200px!important;" name="sms_body_quotation" id="sms_body_quotation"
-                        :placeholder="$t('sms_body')"></textarea>
-                    </div>
-
-                  </div>
-
-                  <div class="row mt-3">
-                    <div class="col-md-6">
-                      <button type="submit" :disabled="Submit_Processing" class="btn btn-primary">
-                        <span v-if="Submit_Processing" class="spinner-border spinner-border-sm" role="status"
-                          aria-hidden="true"></span> <lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}
-                      </button>
-                    </div>
-                  </div>
-              </form>
-
-            </b-tab>
-
-            <!-- Payment Received -->
-            <b-tab :title="$t('PaiementsReceived')">
-
-              <form @submit.prevent="update_sms_body('payment_received')">
-                  <div class="row">
-                    <div class=" col-md-12">
-                      <span> <strong>{{$t('Available_Tags')}} : </strong></span>
-                      <p>
-                        {contact_name},{business_name},{payment_number},{paid_amount}
-                      </p>
-                    </div>
-                    <hr>
-                    <div class="form-group col-md-12">
-                      <label for="sms_body_payment_received">{{$t('sms_body')}} </label>
-                      <textarea type="text" v-model="sms_body_payment_received" class="form-control"
-                        style=" height: 200px!important;" name="sms_body_payment_received" id="sms_body_payment_received"
-                        :placeholder="$t('sms_body')"></textarea>
-                    </div>
-
-                  </div>
-
-                  <div class="row mt-3">
-                    <div class="col-md-6">
-                      <button type="submit" :disabled="Submit_Processing" class="btn btn-primary">
-                        <span v-if="Submit_Processing" class="spinner-border spinner-border-sm" role="status"
-                          aria-hidden="true"></span> <lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}
-                      </button>
-                    </div>
-                  </div>
-              </form>
-
-            </b-tab>
-
-            <!-- Payment Received -->
-            <b-tab title="Subscription Reminder">
-              <form @submit.prevent="update_sms_body('subscription_reminder')">
-                <div class="row">
-                  <div class="col-md-12">
-                    <span><strong>{{$t('Available_Tags')}}: </strong></span>
-                    <p>
-                      {client_name}, {business_name}, {next_billing_date}
-                    </p>
-                  </div>
-                  <hr>
-                  <div class="form-group col-md-12">
-                    <label for="sms_body_subscription_reminder">{{$t('sms_body')}}</label>
-                    <textarea type="text" v-model="sms_body_subscription_reminder" class="form-control"
-                      style="height: 200px!important;" name="sms_body_subscription_reminder" id="sms_body_subscription_reminder"
-                      :placeholder="$t('sms_body')"></textarea>
-                  </div>
-                </div>
-                <div class="row mt-3">
-                  <div class="col-md-6">
-                    <button type="submit" :disabled="Submit_Processing" class="btn btn-primary">
-                      <span v-if="Submit_Processing" class="spinner-border spinner-border-sm" role="status"
-                        aria-hidden="true"></span>
-                      <lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </b-tab>
-
-            <!-- Asset validation due -->
-            <b-tab :title="$t('Asset_Validation_Due') || 'Asset validation due'">
-              <form @submit.prevent="update_sms_body('asset_validation_due')">
-                <div class="row">
-                  <div class="col-md-12">
-                    <span><strong>{{$t('Available_Tags')}}: </strong></span>
-                    <p>
-                      {asset_name},{asset_tag},{next_validation},{business_name}
-                    </p>
-                  </div>
-                  <hr>
-                  <div class="form-group col-md-12">
-                    <label for="sms_body_asset_validation_due">{{$t('sms_body')}}</label>
-                    <textarea type="text" v-model="sms_body_asset_validation_due" class="form-control"
-                      style="height: 200px!important;" name="sms_body_asset_validation_due" id="sms_body_asset_validation_due"
-                      :placeholder="$t('sms_body')"></textarea>
-                  </div>
-                </div>
-                <div class="row mt-3">
-                  <div class="col-md-6">
-                    <button type="submit" :disabled="Submit_Processing" class="btn btn-primary">
-                      <span v-if="Submit_Processing" class="spinner-border spinner-border-sm" role="status"
-                        aria-hidden="true"></span>
-                      <lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </b-tab>
-
-
-          </b-tabs>
-
-
-        </div>
-      </div>
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="lines" :rows="8" />
     </div>
-  </div>
 
-
-  <!-- {{-- Notification Supplier --}} -->
-  <div class="row mt-5">
-    <div class="col-md-12">
-
-      <div class="card">
-        <div class="card-header">
-          <h4>{{$t('Notification_Supplier')}}</h4>
+    <template v-else>
+      <px-card class="pxcfg__card">
+        <div class="pxcfg__grid pxcfg__grid--3">
+          <px-field :label="$t('Template_Language') || 'Template language'"
+            :hint="$t('Edit_templates_per_language') || 'Templates are saved per language. When sending SMS, the system default language is used.'">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="selectedLocale" :reduce="o => o.value" :clearable="false"
+                :options="languageOptions.map(l => ({ label: l.name, value: l.locale }))" @input="onLocaleChange" />
+            </template>
+          </px-field>
         </div>
-        <!--begin::form-->
-        <div class="card-body">
+      </px-card>
 
-          <b-tabs active-nav-item-class="nav nav-tabs" content-class="mt-3">
-
-            <!-- Purchase -->
-            <b-tab :title="$t('Purchase')">
-
-              <form @submit.prevent="update_sms_body('purchase')">
-                <div class="row">
-                  <div class=" col-md-12">
-                    <span> <strong>{{$t('Available_Tags')}} : </strong></span>
-                    <p>
-                      {contact_name},{business_name},{invoice_number},{invoice_url},{total_amount},{paid_amount},{due_amount}
-                    </p>
-                  </div>
-                  <hr>
-                  <div class="form-group col-md-12">
-                    <label for="sms_body_purchase">{{$t('sms_body')}} </label>
-                    <textarea type="text" v-model="sms_body_purchase" class="form-control"
-                      style=" height: 200px!important;" name="sms_body_purchase" id="sms_body_purchase"
-                      :placeholder="$t('sms_body')"></textarea>
-                  </div>
-
-                </div>
-
-                <div class="row mt-3">
-                  <div class="col-md-6">
-                    <button type="submit" :disabled="Submit_Processing" class="btn btn-primary">
-                      <span v-if="Submit_Processing" class="spinner-border spinner-border-sm" role="status"
-                        aria-hidden="true"></span> <lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}
-                    </button>
-                  </div>
-                </div>
-              </form>
-
-            </b-tab>
-
-            <!-- Payment Sent -->
-            <b-tab :title="$t('PaiementsSent')">
-
-              <form @submit.prevent="update_sms_body('payment_sent')">
-                <div class="row">
-                  <div class=" col-md-12">
-                    <span> <strong>{{$t('Available_Tags')}} : </strong></span>
-                    <p>
-                      {contact_name},{business_name},{payment_number},{paid_amount}
-                    </p>
-                  </div>
-                  <hr>
-                  <div class="form-group col-md-12">
-                    <label for="sms_body_payment_sent">{{$t('sms_body')}}</label>
-                    <textarea type="text" v-model="sms_body_payment_sent" class="form-control"
-                      style=" height: 200px!important;" name="sms_body_payment_sent" id="sms_body_payment_sent"
-                      :placeholder="$t('sms_body')"></textarea>
-                  </div>
-
-                </div>
-
-                <div class="row mt-3">
-                  <div class="col-md-6">
-                    <button type="submit" :disabled="Submit_Processing" class="btn btn-primary">
-                      <span v-if="Submit_Processing" class="spinner-border spinner-border-sm" role="status"
-                        aria-hidden="true"></span> <lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}
-                    </button>
-                  </div>
-                </div>
-              </form>
-
-            </b-tab>
-
-          </b-tabs>
-
+      <px-card :title="$t('Notification_Client')" class="pxcfg__card">
+        <div class="pxcfg__tabbar">
+          <button v-for="t in clientTabs" :key="t.key" type="button" class="pxcfg__tab pxn-ring"
+            :class="{ 'is-active': clientTab === t.key }" @click="clientTab = t.key">{{ t.label }}</button>
         </div>
-      </div>
-    </div>
-  </div>
+        <div v-for="t in clientTabs" v-show="clientTab === t.key" :key="'cp-' + t.key" class="pxcfg__panel">
+          <p class="pxcfg__tags"><strong>{{ $t('Available_Tags') }}:</strong> <code>{{ t.tags }}</code></p>
+          <form @submit.prevent="update_sms_body(t.key)">
+            <px-field :label="$t('sms_body')">
+              <template #default="{ id }"><px-textarea :id="id" :value="bodies[t.key]" @input="v => setBody(t.key, v)" :rows="8" :placeholder="$t('sms_body')" /></template>
+            </px-field>
+            <px-button class="pxcfg__mt" variant="primary" icon="check" type="submit" :loading="Submit_Processing" :disabled="Submit_Processing" @click="update_sms_body(t.key)">{{ $t('submit') }}</px-button>
+          </form>
+        </div>
+      </px-card>
 
-</div>
-
-
-
+      <px-card :title="$t('Notification_Supplier')" class="pxcfg__card">
+        <div class="pxcfg__tabbar">
+          <button v-for="t in supplierTabs" :key="t.key" type="button" class="pxcfg__tab pxn-ring"
+            :class="{ 'is-active': supplierTab === t.key }" @click="supplierTab = t.key">{{ t.label }}</button>
+        </div>
+        <div v-for="t in supplierTabs" v-show="supplierTab === t.key" :key="'sp-' + t.key" class="pxcfg__panel">
+          <p class="pxcfg__tags"><strong>{{ $t('Available_Tags') }}:</strong> <code>{{ t.tags }}</code></p>
+          <form @submit.prevent="update_sms_body(t.key)">
+            <px-field :label="$t('sms_body')">
+              <template #default="{ id }"><px-textarea :id="id" :value="bodies[t.key]" @input="v => setBody(t.key, v)" :rows="8" :placeholder="$t('sms_body')" /></template>
+            </px-field>
+            <px-button class="pxcfg__mt" variant="primary" icon="check" type="submit" :loading="Submit_Processing" :disabled="Submit_Processing" @click="update_sms_body(t.key)">{{ $t('submit') }}</px-button>
+          </form>
+        </div>
+      </px-card>
+    </template>
   </div>
 </template>
 
 <script>
-import { mapActions, mapGetters } from "vuex";
+import { mapActions } from "vuex";
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "SMS Templates"
   },
+  components: { PxPageHeader, PxButton, PxCard, PxField, PxTextarea, "vs-px": VsPx },
   data() {
     return {
-      
       isLoading: true,
-      Submit_Processing :false,
+      Submit_Processing: false,
+      clientTab: 'sale',
+      supplierTab: 'purchase',
       sms_body_sale: '',
       sms_body_quotation: '',
       sms_body_payment_received: '',
       sms_body_subscription_reminder: '',
-
       sms_body_purchase: '',
-      sms_body_payment_sent:'',
+      sms_body_payment_sent: '',
       sms_body_asset_validation_due: '',
-
-      sms_body:'',
-
+      sms_body: '',
       selectedLocale: 'en',
       languages: [],
     };
@@ -331,66 +96,83 @@ export default {
       const list = (this.languages && this.languages.length) ? this.languages : [{ name: 'English', locale: 'en' }];
       return list.filter(l => l.is_active == true || l.is_active === 1 || l.is_active === '1').map(l => ({ name: l.name, locale: l.locale }));
     },
+    clientTabs() {
+      return [
+        { key: 'sale', label: this.$t('Sale'), tags: '{contact_name},{business_name},{invoice_number},{invoice_url},{total_amount},{paid_amount},{due_amount}' },
+        { key: 'quotation', label: this.$t('Quote'), tags: '{contact_name},{business_name},{quotation_number},{quotation_url},{total_amount}' },
+        { key: 'payment_received', label: this.$t('PaiementsReceived'), tags: '{contact_name},{business_name},{payment_number},{paid_amount}' },
+        { key: 'subscription_reminder', label: 'Subscription Reminder', tags: '{client_name}, {business_name}, {next_billing_date}' },
+        { key: 'asset_validation_due', label: this.$t('Asset_Validation_Due') || 'Asset validation due', tags: '{asset_name},{asset_tag},{next_validation},{business_name}' }
+      ];
+    },
+    supplierTabs() {
+      return [
+        { key: 'purchase', label: this.$t('Purchase'), tags: '{contact_name},{business_name},{invoice_number},{invoice_url},{total_amount},{paid_amount},{due_amount}' },
+        { key: 'payment_sent', label: this.$t('PaiementsSent'), tags: '{contact_name},{business_name},{payment_number},{paid_amount}' }
+      ];
+    },
+    bodies() {
+      return {
+        sale: this.sms_body_sale,
+        quotation: this.sms_body_quotation,
+        payment_received: this.sms_body_payment_received,
+        subscription_reminder: this.sms_body_subscription_reminder,
+        asset_validation_due: this.sms_body_asset_validation_due,
+        purchase: this.sms_body_purchase,
+        payment_sent: this.sms_body_payment_sent
+      };
+    }
   },
 
   methods: {
     ...mapActions(["refreshUserPermissions"]),
 
+    setBody(key, val) { this['sms_body_' + key] = val; },
+
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
-        title: title,
-        variant: variant,
-        solid: true
-      });
+      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
     },
 
-     //---------------------------------- update_sms_body_sale ----------------\\
     update_sms_body(sms_body_type) {
-        this.Submit_Processing = true;
-        NProgress.start();
-        NProgress.set(0.1);
+      this.Submit_Processing = true;
+      NProgress.start();
+      NProgress.set(0.1);
 
-        if(sms_body_type == 'sale'){
-          this.sms_body = this.sms_body_sale;
-        }else if(sms_body_type == 'quotation'){
-          this.sms_body = this.sms_body_quotation;
-        }else if(sms_body_type == 'payment_received'){
-          this.sms_body = this.sms_body_payment_received;
-        }else if(sms_body_type == 'purchase'){
-          this.sms_body = this.sms_body_purchase;
-        }else if(sms_body_type == 'payment_sent'){
-          this.sms_body = this.sms_body_payment_sent;
-        }else if(sms_body_type == 'subscription_reminder'){
-          this.sms_body = this.sms_body_subscription_reminder;
-        } else if (sms_body_type == 'asset_validation_due') {
-          this.sms_body = this.sms_body_asset_validation_due;
-        }
+      if (sms_body_type == 'sale') {
+        this.sms_body = this.sms_body_sale;
+      } else if (sms_body_type == 'quotation') {
+        this.sms_body = this.sms_body_quotation;
+      } else if (sms_body_type == 'payment_received') {
+        this.sms_body = this.sms_body_payment_received;
+      } else if (sms_body_type == 'purchase') {
+        this.sms_body = this.sms_body_purchase;
+      } else if (sms_body_type == 'payment_sent') {
+        this.sms_body = this.sms_body_payment_sent;
+      } else if (sms_body_type == 'subscription_reminder') {
+        this.sms_body = this.sms_body_subscription_reminder;
+      } else if (sms_body_type == 'asset_validation_due') {
+        this.sms_body = this.sms_body_asset_validation_due;
+      }
 
-        axios
-          .put("/update_sms_body", {
-            sms_body: this.sms_body,
-            sms_body_type: sms_body_type,
-            locale: this.selectedLocale,
-          })
-          .then(response => {
-            Fire.$emit("Event_sms");
-            this.makeToast(
-              "success",
-              this.$t("Successfully_Updated"),
-              this.$t("Success")
-            );
-            NProgress.done();
-            this.Submit_Processing = false;
-          })
-          .catch(error => {
-            NProgress.done();
-            this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-            this.Submit_Processing = false;
-          });
+      axios
+        .put("/update_sms_body", {
+          sms_body: this.sms_body,
+          sms_body_type: sms_body_type,
+          locale: this.selectedLocale,
+        })
+        .then(response => {
+          Fire.$emit("Event_sms");
+          this.makeToast("success", this.$t("Successfully_Updated"), this.$t("Success"));
+          NProgress.done();
+          this.Submit_Processing = false;
+        })
+        .catch(error => {
+          NProgress.done();
+          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+          this.Submit_Processing = false;
+        });
     },
 
-
-     //---------------------------------- get_sms_template ----------------\\
     get_sms_template() {
       const locale = this.selectedLocale || 'en';
       axios
@@ -428,13 +210,8 @@ export default {
     onLocaleChange() {
       this.isLoading = true;
       this.get_sms_template();
-    },   
-
-
-   
+    },
   }, //end Methods
-
-  //----------------------------- Created function-------------------
 
   created: function() {
     this.fetchLanguages();
@@ -446,3 +223,22 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-5); }
+.pxcfg__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 640px) { .pxcfg__grid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__mt { margin-top: var(--pxn-space-4); }
+.pxcfg__tabbar { display: flex; gap: var(--pxn-space-2); border-bottom: 1px solid var(--pxn-border); flex-wrap: wrap; }
+.pxcfg__tab { appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; white-space: nowrap; padding: var(--pxn-space-3) var(--pxn-space-4); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium); color: var(--pxn-ink-3); cursor: pointer; transition: color 120ms, border-color 120ms; }
+.pxcfg__tab:hover { color: var(--pxn-ink); }
+.pxcfg__tab.is-active { color: var(--pxn-ink); border-bottom-color: var(--pxn-primary); font-weight: var(--pxn-fw-semibold); }
+.pxcfg__panel { margin-top: var(--pxn-space-4); }
+.pxcfg__tags { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); margin: 0 0 var(--pxn-space-3); }
+.pxcfg__tags code { font-family: var(--pxn-font-mono, monospace); overflow-wrap: anywhere; }
+</style>

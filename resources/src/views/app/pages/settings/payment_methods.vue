@@ -1,111 +1,101 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Payment_Methods')" :folder="$t('Settings')"/>
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('Payment_Methods')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('Payment_Methods') }]"
+    >
+      <template #actions>
+        <px-button variant="primary" size="sm" icon="plus" @click="New_Method()">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="methods"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-          enabled: true,
-          placeholder: $t('Search_this_table'),  
-        }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button
-            @click="New_Method()"
-            class="btn-rounded"
-            variant="btn btn-primary btn-icon m-1"
-          >
-            <lucide-icon name="plus" />
-            {{$t('Add')}}
-          </b-button>
-        </div>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
 
-        <template slot="table-row" slot-scope="props">
-        <span v-if="props.column.field == 'actions'">
-          <template v-if="[1, 2, 3].includes(props.row.id)">
-              <span class="text-warning">{{$t('You_cant_edit_or_remove_default_payment_choices')}}</span>
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="table" :rows="8" :columns="2" />
+    </div>
+
+    <template v-else>
+      <div class="pxcfg__tablewrap">
+        <px-table
+          v-if="methods.length"
+          :columns="columns"
+          :rows="methods"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #row-actions="{ row }">
+            <span v-if="[1, 2, 3].includes(row.id)" class="pxcfg__warn">{{ $t('You_cant_edit_or_remove_default_payment_choices') }}</span>
+            <div v-else class="pxcfg__rowbtns">
+              <px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Edit" @click="Edit_Method(row)" />
+              <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Delete" @click="Remove_Method(row.id)" />
+            </div>
           </template>
-          <template v-else>
-              <a @click="Edit_Method(props.row)" title="Edit" v-b-tooltip.hover>
-                  <lucide-icon class="text-25 text-success" name="pencil" />
-              </a>
-              <a title="Delete" v-b-tooltip.hover @click="Remove_Method(props.row.id)">
-                  <lucide-icon class="text-25 text-danger" name="x" />
-              </a>
-          </template>
-      </span>
+        </px-table>
+        <px-empty-state v-else icon="credit-card" title="Sin métodos de pago" description="Agrega un método para verlo en esta lista." />
+      </div>
+
+      <px-pagination
+        v-if="methods.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
     </template>
-      </vue-good-table>
-    </b-card>
 
-    <validation-observer ref="ref_create_method">
-      <b-modal hide-footer size="md" id="New_Method" :title="editmode?$t('Edit'):$t('Add')">
-        <b-form @submit.prevent="Submit_method">
-          <b-row>
-         
-            <!-- Name -->
-            <b-col md="12">
-              <validation-provider
-                name="Name"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Name') + ' ' + '*'">
-                  <b-form-input
-                    :placeholder="$t('Enter_Payment_Method')"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Name-feedback"
-                    label="Name"
-                    v-model="method.name"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-             <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
-
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
+    <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
+      <validation-observer ref="ref_create_method">
+        <form @submit.prevent="Submit_method">
+          <validation-provider ref="nameProvider" name="Name" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Name') + ' *'" :error="v.errors[0]">
+              <template #default="{ id, invalid }">
+                <px-input :id="id" v-model="method.name" :placeholder="$t('Enter_Payment_Method')" :invalid="invalid" @input="v.validate" />
+              </template>
+            </px-field>
+          </validation-provider>
+        </form>
+      </validation-observer>
+      <template #footer="{ close }">
+        <px-button variant="ghost" @click="close">{{ $t('Cancel') }}</px-button>
+        <px-button variant="primary" icon="check" :loading="SubmitProcessing" :disabled="SubmitProcessing" @click="Submit_method">{{ $t('submit') }}</px-button>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 
 <script>
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
   metaInfo: {
     title: "Payment Methods"
   },
+  components: { PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxModal, PxField, PxInput, PxEmptyState },
   data() {
     return {
+      _searchTimer: null,
+      modalOpen: false,
       isLoading: true,
-      SubmitProcessing:false,
+      SubmitProcessing: false,
       serverParams: {
         columnFilters: {},
         sort: {
@@ -120,7 +110,6 @@ export default {
       limit: "10",
       methods: [],
       editmode: false,
-
       method: {
         id: "",
         name: "",
@@ -130,73 +119,38 @@ export default {
   computed: {
     columns() {
       return [
-       
-        {
-          label: "Payment Method",
-          field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "name", label: "Payment Method", strong: true }
       ];
     }
   },
 
   methods: {
-    //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
-
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.get_methods(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.get_methods(1); }, 350);
     },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.get_methods(1);
-      }
-    },
-
-
-    //---- Event on Sort Change
-    onSortChange(params) {
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.get_methods(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.get_methods(1); } },
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { type: dir, field: key } });
       this.get_methods(this.serverParams.page);
     },
-
-    //---- Event on Search
-
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.get_methods(this.serverParams.page);
-    },
-
-    //---- Validation State Form
 
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
     },
 
-    //------------- Submit Validation Create & Edit Category
+    syncValidators() {
+      this.$nextTick(() => {
+        const p = this.$refs.nameProvider;
+        if (p && p.syncValue) p.syncValue(this.method.name);
+      });
+    },
+
     Submit_method() {
       this.$refs.ref_create_method.validate().then(success => {
         if (!success) {
@@ -215,7 +169,6 @@ export default {
       });
     },
 
-    //------ Toast
     makeToast(variant, msg, title) {
       this.$root.$bvToast.toast(msg, {
         title: title,
@@ -224,26 +177,23 @@ export default {
       });
     },
 
-    //------------------------------ Modal  (create method) -------------------------------\\
     New_Method() {
       this.reset_Form();
       this.editmode = false;
-      this.$bvModal.show("New_Method");
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
-    //------------------------------ Modal (Update method) -------------------------------\\
     Edit_Method(method) {
       this.get_methods(this.serverParams.page);
       this.reset_Form();
-      this.method = method;
+      this.method = Object.assign({}, method);
       this.editmode = true;
-      this.$bvModal.show("New_Method");
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
-    //--------------------------Get ALL methods ---------------------------\\
-
     get_methods(page) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       axios
@@ -262,13 +212,10 @@ export default {
         .then(response => {
           this.methods = response.data.methods;
           this.totalRows = response.data.totalRows;
-
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
         })
         .catch(response => {
-          // Complete the animation of theprogress bar.
           NProgress.done();
           setTimeout(() => {
             this.isLoading = false;
@@ -276,7 +223,6 @@ export default {
         });
     },
 
-    //----------------------------------Create new methods ----------------\\
     Store_method() {
       this.SubmitProcessing = true;
       axios
@@ -298,7 +244,6 @@ export default {
         });
     },
 
-    //---------------------------------- Update method ----------------\\
     Update_method() {
       this.SubmitProcessing = true;
       axios
@@ -320,8 +265,6 @@ export default {
         });
     },
 
-    //--------------------------- reset Form ----------------\\
-
     reset_Form() {
       this.method = {
         id: "",
@@ -329,7 +272,6 @@ export default {
       };
     },
 
-    //--------------------------- Remove method----------------\\
     Remove_Method(id) {
       this.$swal({
         title: this.$t("Delete_Title"),
@@ -350,7 +292,6 @@ export default {
                 this.$t("Deleted_in_successfully"),
                 "success"
               );
-
               Fire.$emit("event_delete_method");
             })
             .catch(() => {
@@ -363,10 +304,7 @@ export default {
         }
       });
     },
-
   }, //end Methods
-
-  //----------------------------- Created function-------------------
 
   created: function() {
     this.get_methods(1);
@@ -374,7 +312,7 @@ export default {
     Fire.$on("event_method", () => {
       setTimeout(() => {
         this.get_methods(this.serverParams.page);
-        this.$bvModal.hide("New_Method");
+        this.modalOpen = false;
       }, 500);
     });
 
@@ -386,3 +324,15 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__tablewrap { margin-top: var(--pxn-space-5); }
+.pxcfg__rowbtns { display: flex; gap: var(--pxn-space-2); justify-content: flex-end; }
+.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__warn { font-size: var(--pxn-fs-xs); color: var(--pxn-warning); }
+</style>

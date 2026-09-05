@@ -1,239 +1,87 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('mail_settings')" :folder="$t('Settings')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('mail_settings')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('mail_settings') }]"
+    />
 
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="lines" :rows="6" />
+    </div>
 
-    <!-- mail_settings -->
-    <validation-observer ref="form_config_mail" v-if="!isLoading">
-      <b-form @submit.prevent="Submit_config_mail">
-        <b-row class="mt-5">
-          <b-col lg="12" md="12" sm="12">
-            <b-card no-body :header="$t('mail_settings')">
-              <b-card-body>
-                <b-row>
-
-                   <!-- MAIL_MAILER  -->
-                  <b-col lg="4" md="4" sm="12">
-                    <validation-provider
-                      name="MAIL_MAILER"
-                      :rules="{ required: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group label="MAIL_MAILER *">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="MAIL_MAILER-feedback"
-                          label="MAIL_MAILER"
-                          placeholder="MAIL_MAILER"
-                          v-model="server.mail_mailer"
-                        ></b-form-input>
-                        <b-form-invalid-feedback
-                          id="MAIL_MAILER-feedback"
-                        >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                      <p class="text-danger">Supported: "smtp", "sendmail", "mailgun", "ses","postmark", "log"</p>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- HOST  -->
-                  <b-col lg="4" md="4" sm="12">
-                    <validation-provider
-                      name="HOST"
-                      :rules="{ required: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group label="MAIL_HOST *">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="HOST-feedback"
-                          label="HOST"
-                          placeholder="MAIL_HOST"
-                          v-model="server.host"
-                        ></b-form-input>
-                        <b-form-invalid-feedback
-                          id="HOST-feedback"
-                        >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- PORT  -->
-                  <b-col lg="4" md="4" sm="12">
-                    <validation-provider
-                      name="PORT"
-                      :rules="{ required: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group label="MAIL_PORT *">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="PORT-feedback"
-                          label="PORT"
-                          placeholder="MAIL_PORT"
-                          v-model="server.port"
-                        ></b-form-input>
-                        <b-form-invalid-feedback
-                          id="PORT-feedback"
-                        >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Sender Name  -->
-                  <b-col lg="4" md="4" sm="12">
-                    <validation-provider
-                      name="sender"
-                      :rules="{ required: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group label="Sender Name *">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="sender-feedback"
-                          label="Sender"
-                          placeholder="Sender Name"
-                          v-model="server.sender_name"
-                        ></b-form-input>
-                        <b-form-invalid-feedback
-                          id="sender-feedback"
-                        >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Sender Email  -->
-                  <b-col lg="4" md="4" sm="12">
-                    <validation-provider
-                      name="sender_email"
-                      :rules="{ required: true, email: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group label="Sender Email *">
-                        <b-form-input
-                          type="email"
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="sender_email-feedback"
-                          label="Sender Email"
-                          placeholder="Sender Email"
-                          v-model="server.sender_email"
-                        ></b-form-input>
-                        <b-form-invalid-feedback
-                          id="sender_email-feedback"
-                        >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Username  -->
-                  <b-col lg="4" md="4" sm="12">
-                    <validation-provider
-                      name="Username"
-                      :rules="{ required: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group label="MAIL_USERNAME *">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="Username-feedback"
-                          label="Username"
-                          placeholder="MAIL_USERNAME"
-                          v-model="server.username"
-                        ></b-form-input>
-                        <b-form-invalid-feedback
-                          id="Username-feedback"
-                        >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Password  -->
-                  <b-col lg="4" md="4" sm="12">
-                    <validation-provider
-                      name="Password"
-                      :rules="{ required: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group label="MAIL_PASSWORD *">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="Password-feedback"
-                          label="Password"
-                          placeholder="MAIL_PASSWORD"
-                          v-model="server.password"
-                        ></b-form-input>
-                        <b-form-invalid-feedback
-                          id="Password-feedback"
-                        >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- encryption  -->
-                  <b-col lg="4" md="4" sm="12">
-                    <validation-provider
-                      name="encryption"
-                      :rules="{ required: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group label="MAIL_ENCRYPTION *">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="encryption-feedback"
-                          label="encryption"
-                          placeholder="MAIL_ENCRYPTION"
-                          v-model="server.encryption"
-                        ></b-form-input>
-                        <b-form-invalid-feedback
-                          id="encryption-feedback"
-                        >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <b-col md="12">
-                    <b-form-group class="d-flex align-items-center">
-                      <b-button variant="primary" type="submit">
-                        <lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}
-                      </b-button>
-
-                      <b-button
-                        variant="outline-secondary"
-                        class="ml-2"
-                        :disabled="isTesting"
-                        @click.prevent="Test_config_mail"
-                      >
-                        <span v-if="!isTesting">
-                          Save & Test Mail
-                        </span>
-                        <span v-else>
-                          {{$t('Loading')}}...
-                        </span>
-                      </b-button>
-                    </b-form-group>
-                  </b-col>
-                </b-row>
-              </b-card-body>
-            </b-card>
-          </b-col>
-        </b-row>
-      </b-form>
+    <validation-observer v-else ref="form_config_mail">
+      <form @submit.prevent="Submit_config_mail">
+        <px-card :title="$t('mail_settings')" class="pxcfg__card">
+          <div class="pxcfg__grid pxcfg__grid--3">
+            <validation-provider ref="mailerProvider" name="MAIL_MAILER" :rules="{ required: true }" v-slot="v">
+              <px-field label="MAIL_MAILER *" hint='Soportados: "smtp", "sendmail", "mailgun", "ses", "postmark", "log"' :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="server.mail_mailer" placeholder="MAIL_MAILER" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <validation-provider ref="hostProvider" name="HOST" :rules="{ required: true }" v-slot="v">
+              <px-field label="MAIL_HOST *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="server.host" placeholder="MAIL_HOST" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <validation-provider ref="portProvider" name="PORT" :rules="{ required: true }" v-slot="v">
+              <px-field label="MAIL_PORT *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="server.port" placeholder="MAIL_PORT" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <validation-provider ref="senderProvider" name="sender" :rules="{ required: true }" v-slot="v">
+              <px-field label="Sender Name *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="server.sender_name" placeholder="Sender Name" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <validation-provider ref="senderEmailProvider" name="sender_email" :rules="{ required: true, email: true }" v-slot="v">
+              <px-field label="Sender Email *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" type="email" v-model="server.sender_email" placeholder="Sender Email" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <validation-provider ref="usernameProvider" name="Username" :rules="{ required: true }" v-slot="v">
+              <px-field label="MAIL_USERNAME *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="server.username" placeholder="MAIL_USERNAME" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <validation-provider ref="passwordProvider" name="Password" :rules="{ required: true }" v-slot="v">
+              <px-field label="MAIL_PASSWORD *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="server.password" placeholder="MAIL_PASSWORD" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <validation-provider ref="encryptionProvider" name="encryption" :rules="{ required: true }" v-slot="v">
+              <px-field label="MAIL_ENCRYPTION *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="server.encryption" placeholder="MAIL_ENCRYPTION" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+          </div>
+          <template #footer>
+            <px-button variant="primary" icon="check" type="submit" @click="Submit_config_mail">{{ $t('submit') }}</px-button>
+            <px-button variant="secondary" :disabled="isTesting" @click="Test_config_mail">
+              {{ isTesting ? $t('Loading') + '...' : 'Save & Test Mail' }}
+            </px-button>
+          </template>
+        </px-card>
+      </form>
     </validation-observer>
-
   </div>
 </template>
 
 <script>
-import { mapActions, mapGetters } from "vuex";
+import { mapActions } from "vuex";
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
 
 export default {
   metaInfo: {
     title: "Mail Settings"
   },
+  components: { PxPageHeader, PxButton, PxCard, PxField, PxInput },
   data() {
     return {
-      
       isLoading: true,
       isTesting: false,
       server: {
@@ -242,9 +90,9 @@ export default {
         username: "",
         password: "",
         encryption: "",
-        sender_name:"",
-        sender_email:"",
-        mail_mailer:"",
+        sender_name: "",
+        sender_email: "",
+        mail_mailer: "",
       }
     };
   },
@@ -252,7 +100,20 @@ export default {
   methods: {
     ...mapActions(["refreshUserPermissions"]),
 
-    //------------- Submit Validation SMTP
+    syncValidators() {
+      this.$nextTick(() => {
+        const map = {
+          mailerProvider: "mail_mailer", hostProvider: "host", portProvider: "port",
+          senderProvider: "sender_name", senderEmailProvider: "sender_email",
+          usernameProvider: "username", passwordProvider: "password", encryptionProvider: "encryption"
+        };
+        Object.keys(map).forEach(ref => {
+          const p = this.$refs[ref];
+          if (p && p.syncValue) p.syncValue(this.server[map[ref]]);
+        });
+      });
+    },
+
     Submit_config_mail() {
       this.$refs.form_config_mail.validate().then(success => {
         if (!success) {
@@ -262,12 +123,11 @@ export default {
             this.$t("Failed")
           );
         } else {
-            this.Update_config_mail();
+          this.Update_config_mail();
         }
       });
     },
 
-    //------ Toast
     makeToast(variant, msg, title) {
       this.$root.$bvToast.toast(msg, {
         title: title,
@@ -280,7 +140,6 @@ export default {
       return dirty || validated ? valid : null;
     },
 
-    //---------------------------------- Update SMTP ----------------\\
     Update_config_mail(silent = false) {
       NProgress.start();
       NProgress.set(0.1);
@@ -316,24 +175,22 @@ export default {
         });
     },
 
-    //---------------------------------- GET SMTP ----------------\\ 
     get_config_mail() {
       axios
         .get("get_config_mail")
         .then(response => {
           this.server = response.data.server;
           this.isLoading = false;
+          this.syncValidators();
         })
         .catch(error => {
           this.isLoading = false;
         });
     },
 
-    //---------------------------------- TEST SMTP ----------------\\
     Test_config_mail() {
       if (this.isTesting) return;
-      
-      // First validate the form
+
       this.$refs.form_config_mail.validate().then(success => {
         if (!success) {
           this.makeToast(
@@ -344,22 +201,18 @@ export default {
           return;
         }
 
-        // Save first, then test
         this.isTesting = true;
         NProgress.start();
         NProgress.set(0.1);
 
-        // Save settings first (silently, without showing success toast)
         this.Update_config_mail(true)
           .then(() => {
-            // After saving, test the mail
             return axios.post("test_config_mail");
           })
           .then(response => {
             const msg =
               (response.data && (response.data.message || response.data.msg)) ||
               this.$t("Successfully_Updated");
-
             this.makeToast("success", msg, this.$t("Success"));
           })
           .catch(error => {
@@ -374,19 +227,26 @@ export default {
           });
       });
     },
-
-   
   }, //end Methods
-
-  //----------------------------- Created function-------------------
 
   created: function() {
     this.get_config_mail();
 
     Fire.$on("Event_Smtp", () => {
-      this.get_config_mail(); 
+      this.get_config_mail();
     });
-
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-5); }
+.pxcfg__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 900px) { .pxcfg__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .pxcfg__grid { grid-template-columns: minmax(0, 1fr); } }
+</style>

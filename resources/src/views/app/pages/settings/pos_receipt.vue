@@ -1,68 +1,56 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('POS_Receipt')" :folder="$t('Settings')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('POS_Receipt')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('POS_Receipt') }]"
+    />
+    <div v-if="isLoading" class="pxcfg__pad"><px-skeleton variant="lines" :rows="10" /></div>
 
     <validation-observer ref="Submit_Pos_Settings" v-if="!isLoading">
-      <b-form @submit.prevent="Submit_Pos_Settings">
-        <b-row class="mt-5">
-          <b-col lg="12" md="12" sm="12">
-            <b-card no-body :header="$t('POS_Receipt')">
-              <b-card-body>
-                <b-row>
-                  <b-col cols="12" class="mb-4">
-                    <b-alert show variant="info" class="mb-0">
-                      POS receipt configuration – choose a layout and toggle what appears on the printed receipt.
-                    </b-alert>
-                  </b-col>
-                </b-row>
+      <form @submit.prevent="Submit_Pos_Settings">
+        <px-card :title="$t('POS_Receipt')" class="pxcfg__card">
+          <px-alert tone="info" class="pxcfg__alert">
+            POS receipt configuration – choose a layout and toggle what appears on the printed receipt.
+          </px-alert>
 
-                <b-row>
-                  <!-- POS receipt layout selection (preview) -->
-                  <b-col lg="12" md="12" sm="12" class="mb-2">
-                    <b-form-group label="POS receipt layout">
-                      <b-form-radio-group
-                        v-model="pos_settings.receipt_layout"
-                        :options="[
-                          { value: 1, text: 'Layout 1 - Standard' },
-                          { value: 2, text: 'Layout 2 - Compact' },
-                          { value: 3, text: 'Layout 3 - Detailed' },
-                          { value: 4, text: 'Layout 4 - Bilingual (AR+EN)' },
-                          { value: 5, text: 'Layout 5 - Minimal' },
-                        ]"
-                        buttons
-                        button-variant="outline-primary"
-                        size="sm"
-                      />
-                    </b-form-group>
-                  </b-col>
+          <div class="pxcfg__grid">
+            <px-field label="POS receipt layout">
+              <template #default>
+                <div class="pxcfg__seg pxcfg__seg--wrap">
+                  <px-button
+                    v-for="opt in [
+                      { value: 1, text: 'Layout 1 - Standard' },
+                      { value: 2, text: 'Layout 2 - Compact' },
+                      { value: 3, text: 'Layout 3 - Detailed' },
+                      { value: 4, text: 'Layout 4 - Bilingual (AR+EN)' },
+                      { value: 5, text: 'Layout 5 - Minimal' }
+                    ]"
+                    :key="opt.value" size="sm"
+                    :variant="Number(pos_settings.receipt_layout) === opt.value ? 'primary' : 'subtle'"
+                    @click="pos_settings.receipt_layout = opt.value">{{ opt.text }}</px-button>
+                </div>
+              </template>
+            </px-field>
+            <px-field :label="$t('POS_receipt_layout_default')">
+              <template #default="{ id }">
+                <vs-px :input-id="id" v-model="pos_settings.receipt_layout" :reduce="o => o.value" :clearable="false"
+                  :options="[
+                    { label: $t('Layout_1_Standard'), value: 1 },
+                    { label: $t('Layout_2_Compact'), value: 2 },
+                    { label: $t('Layout_3_Detailed'), value: 3 },
+                    { label: $t('Layout_4_Bilingual'), value: 4 },
+                    { label: $t('Layout_5_Minimal'), value: 5 }
+                  ]" />
+              </template>
+            </px-field>
+          </div>
 
-                  <!-- Select default POS layout -->
-                  <b-col lg="12" md="12" sm="12" class="mb-3">
-                    <b-form-group :label="$t('POS_receipt_layout_default')">
-                      <b-form-select
-                        v-model="pos_settings.receipt_layout"
-                        :options="[
-                          { value: 1, text: $t('Layout_1_Standard') },
-                          { value: 2, text: $t('Layout_2_Compact') },
-                          { value: 3, text: $t('Layout_3_Detailed') },
-                          { value: 4, text: $t('Layout_4_Bilingual') },
-                          { value: 5, text: $t('Layout_5_Minimal') },
-                        ]"
-                      />
-                    </b-form-group>
-                  </b-col>
-
-                  <!-- Live receipt demo -->
-                  <b-col lg="12" md="12" sm="12" class="mb-4">
-                    <b-card>
-                      <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0">Receipt preview</h6>
-                        <b-button size="sm" variant="outline-primary" @click="printPosDemo">
-                          <lucide-icon class="mr-1" name="receipt" /> Print demo receipt
-                        </b-button>
-                      </div>
-                      <div class="pos-receipt-demo" id="pos-receipt-demo">
+          <div class="pxcfg__preview">
+            <div class="pxcfg__preview-head">
+              <h4 class="pxcfg__subhead">Receipt preview</h4>
+              <px-button size="sm" variant="secondary" icon="receipt" @click="printPosDemo">Print demo receipt</px-button>
+            </div>
+            <div class="pos-receipt-demo" id="pos-receipt-demo">
                         <!-- Layout 1 demo (Standard) -->
                         <div v-if="currentReceiptLayout === 1" class="receipt-layout-1">
                           <div class="info text-center mb-2">
@@ -680,357 +668,59 @@
                           </div>
                         </div>
                       </div>
-                    </b-card>
-                  </b-col>
+          </div>
 
-                  <!-- Note to customer -->
-                  <b-col lg="12" md="12" sm="12">
-                    <validation-provider
-                      name="note"
-                      :rules="{ required: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group :label="$t('Note_to_customer') + ' ' + '*'">
-                        <textarea
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="note-feedback"
-                          class="form-control"
-                          :placeholder="$t('Note_to_customer')"
-                          v-model="pos_settings.note_customer"
-                          rows="4"
-                        ></textarea>
-                        <b-form-invalid-feedback id="note-feedback">
-                          {{ validationContext.errors[0] }}
-                        </b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
+          <validation-provider ref="noteProvider" name="note" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Note_to_customer') + ' *'" class="pxcfg__mt" :error="v.errors[0]">
+              <template #default="{ id, invalid }">
+                <px-textarea :id="id" v-model="pos_settings.note_customer" :rows="4" :placeholder="$t('Note_to_customer')" :invalid="invalid" @input="v.validate" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-                  <!-- Receipt-related toggles -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Logo')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_logo"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
+          <h4 class="pxcfg__subhead">Elementos del recibo</h4>
+          <div class="pxcfg__toggles">
+            <div v-for="tg in receiptToggles" :key="tg.key" class="pxcfg__toggle">
+              <div class="pxcfg__toggle-title">{{ $t(tg.label) }}</div>
+              <px-check type="switch" :modelValue="Number(pos_settings[tg.key]) === 1" @change="v => pos_settings[tg.key] = v ? 1 : 0" />
+            </div>
+          </div>
 
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Store_Name')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_store_name"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
+          <h4 class="pxcfg__subhead">{{ $t('Receipt_Settings') }}</h4>
+          <div class="pxcfg__grid">
+            <px-field :label="$t('Receipt_Paper_Size')">
+              <template #default="{ id }">
+                <vs-px :input-id="id" v-model="pos_settings.receipt_paper_size" :reduce="o => o.value" :clearable="false"
+                  :options="[
+                    { label: $t('Paper_58mm'), value: 58 },
+                    { label: $t('Paper_80mm'), value: 80 },
+                    { label: $t('Paper_88mm'), value: 88 }
+                  ]" />
+              </template>
+            </px-field>
+            <px-field :label="$t('Logo_Size')">
+              <template #default="{ id }">
+                <vs-px :input-id="id" v-model="logoSizeType" :reduce="o => o.value" :clearable="false"
+                  :options="[
+                    { label: $t('Small') + ' (40px)', value: 'small' },
+                    { label: $t('Medium') + ' (60px)', value: 'medium' },
+                    { label: $t('Large') + ' (80px)', value: 'large' },
+                    { label: $t('Custom'), value: 'custom' }
+                  ]" />
+              </template>
+            </px-field>
+            <px-field v-if="logoSizeType === 'custom'" :label="$t('Custom_Logo_Size') + ' (px)'" :hint="$t('Logo_Size_Description')">
+              <template #default="{ id }">
+                <px-input :id="id" type="number" v-model="pos_settings.logo_size" placeholder="Enter size in pixels" min="20" max="200" />
+              </template>
+            </px-field>
+          </div>
 
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Reference')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_reference"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Date')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_date"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Seller')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_seller"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Phone')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_phone"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Address')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_address"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Email')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_email"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Customer')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_customer"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Warehouse')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_Warehouse"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Tax')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_tax"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Discount')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_discount"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Product_Discount')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_product_discount"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Shipping')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_shipping"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_barcode')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_barcode"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Note_to_customer')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_note"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <!-- Show Paid / Due / Payments / ZATCA -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Paid_Line')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_paid"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Due_Line')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_due"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Payments_Table')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_payments"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_ZATCA_QR')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.show_zatca_qr"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                  <!-- Footer: Receipt Paper Size and Logo Size -->
-                  <b-col md="12" class="mt-4 mb-3">
-                    <hr class="my-4">
-                    <h6 class="mb-3">{{$t('Receipt_Settings')}}</h6>
-                  </b-col>
-
-                  <!-- Receipt Paper Size -->
-                  <b-col md="6" class="mt-3 mb-3">
-                    <b-form-group :label="$t('Receipt_Paper_Size')">
-                      <b-form-select
-                        v-model="pos_settings.receipt_paper_size"
-                        :options="[
-                          { value: 58, text: $t('Paper_58mm') },
-                          { value: 80, text: $t('Paper_80mm') },
-                          { value: 88, text: $t('Paper_88mm') },
-                        ]"
-                      />
-                    </b-form-group>
-                  </b-col>
-
-                  <!-- Logo Size -->
-                  <b-col md="6" class="mt-3 mb-3">
-                    <b-form-group :label="$t('Logo_Size')">
-                      <b-form-select
-                        v-model="logoSizeType"
-                        :options="[
-                          { value: 'small', text: $t('Small') + ' (40px)' },
-                          { value: 'medium', text: $t('Medium') + ' (60px)' },
-                          { value: 'large', text: $t('Large') + ' (80px)' },
-                          { value: 'custom', text: $t('Custom') },
-                        ]"
-                      />
-                    </b-form-group>
-                  </b-col>
-
-                  <!-- Custom Logo Size Input -->
-                  <b-col md="6" class="mt-3 mb-3" v-if="logoSizeType === 'custom'">
-                    <b-form-group :label="$t('Custom_Logo_Size') + ' (px)'">
-                      <b-form-input
-                        type="number"
-                        v-model="pos_settings.logo_size"
-                        placeholder="Enter size in pixels"
-                        min="20"
-                        max="200"
-                      />
-                      <small class="text-muted">{{$t('Logo_Size_Description')}}</small>
-                    </b-form-group>
-                  </b-col>
-
-                  <!-- Submit -->
-                  <b-col md="12" class="mt-4">
-                    <b-form-group>
-                      <b-button variant="primary" type="submit">
-                        <lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}
-                      </b-button>
-                    </b-form-group>
-                  </b-col>
-                </b-row>
-              </b-card-body>
-            </b-card>
-          </b-col>
-        </b-row>
-      </b-form>
+          <template #footer>
+            <px-button variant="primary" icon="check" type="submit" @click="Submit_Pos_Settings">{{ $t('submit') }}</px-button>
+          </template>
+        </px-card>
+      </form>
     </validation-observer>
   </div>
 </template>
@@ -1039,10 +729,20 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import VueBarcode from "vue-barcode";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   components: {
     barcode: VueBarcode,
+    PxPageHeader, PxButton, PxCard, PxField, PxInput, PxTextarea, PxCheck, PxAlert, "vs-px": VsPx,
   },
   metaInfo: {
     title: "POS Receipt"
@@ -1051,6 +751,28 @@ export default {
     return {
       isLoading: true,
       logoSizeType: 'medium', // Track the selected logo size type
+      receiptToggles: [
+        { key: 'show_logo', label: 'Show_Logo' },
+        { key: 'show_store_name', label: 'Show_Store_Name' },
+        { key: 'show_reference', label: 'Show_Reference' },
+        { key: 'show_date', label: 'Show_Date' },
+        { key: 'show_seller', label: 'Show_Seller' },
+        { key: 'show_phone', label: 'Show_Phone' },
+        { key: 'show_address', label: 'Show_Address' },
+        { key: 'show_email', label: 'Show_Email' },
+        { key: 'show_customer', label: 'Show_Customer' },
+        { key: 'show_Warehouse', label: 'Show_Warehouse' },
+        { key: 'show_tax', label: 'Show_Tax' },
+        { key: 'show_discount', label: 'Show_Discount' },
+        { key: 'show_product_discount', label: 'Show_Product_Discount' },
+        { key: 'show_shipping', label: 'Show_Shipping' },
+        { key: 'show_barcode', label: 'Show_barcode' },
+        { key: 'show_note', label: 'Show_Note_to_customer' },
+        { key: 'show_paid', label: 'Show_Paid_Line' },
+        { key: 'show_due', label: 'Show_Due_Line' },
+        { key: 'show_payments', label: 'Show_Payments_Table' },
+        { key: 'show_zatca_qr', label: 'Show_ZATCA_QR' },
+      ],
       setting: {
         vat_number: '',
       },
@@ -1281,6 +1003,30 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.px-next.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .px-next.pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-5); }
+.pxcfg__alert { margin-bottom: var(--pxn-space-4); }
+.pxcfg__mt { margin-top: var(--pxn-space-4); }
+.pxcfg__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 640px) { .pxcfg__grid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__seg { display: flex; gap: var(--pxn-space-2); }
+.pxcfg__seg--wrap { flex-wrap: wrap; }
+.pxcfg__subhead { margin: var(--pxn-space-6) 0 var(--pxn-space-3); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); }
+.pxcfg__preview { margin-top: var(--pxn-space-5); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface-2); }
+.pxcfg__preview-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--pxn-space-3); }
+.pxcfg__preview-head .pxcfg__subhead { margin: 0; }
+.pxcfg__toggles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-3); }
+@media (max-width: 900px) { .pxcfg__toggles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxcfg__toggles { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-4); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
+.pxcfg__toggle-title { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium); color: var(--pxn-ink); }
+</style>
 
 <style scoped>
 .pos-receipt-demo {

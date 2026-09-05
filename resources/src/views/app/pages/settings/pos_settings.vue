@@ -1,272 +1,158 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Pos_Settings')" :folder="$t('Settings')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('Pos_Settings')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('Pos_Settings') }]"
+    />
 
-     <!-- POS behaviour / display Settings (same as System Settings -> POS Settings tab) -->
-    <validation-observer ref="Submit_Pos_Settings" v-if="!isLoading">
-      <b-form @submit.prevent="Submit_Pos_Settings">
-        <b-row class="mt-5">
-          <b-col lg="12" md="12" sm="12">
-            <b-card no-body :header="$t('Pos_Settings')">
-              <b-card-body>
-                <b-row>
-                  <!-- Quick Add Customer -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Quick_Add_Customer')}}
-                      <input type="checkbox" v-model="pos_settings.quick_add_customer">
-                      <span class="slider"></span>
-                    </label>
-                    <small class="text-muted d-block mt-2">
-                      {{$t('Enable_Quick_Add_Customer_popup_in_POS')}}
-                    </small>
-                  </b-col>
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="lines" :rows="10" />
+    </div>
 
-                  <!-- Barcode Scanning Sound -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Barcode_Scanning_Sound')}}
-                      <input type="checkbox" v-model="pos_settings.barcode_scanning_sound">
-                      <span class="slider"></span>
-                    </label>
-                    <small class="text-muted d-block mt-2">
-                      {{$t('Enable_sound_when_scanning_barcodes_in_POS')}}
-                    </small>
-                  </b-col>
+    <validation-observer v-else ref="Submit_Pos_Settings">
+      <form @submit.prevent="Submit_Pos_Settings">
+        <px-card :title="$t('Pos_Settings')" class="pxcfg__card">
+          <div class="pxcfg__toggles">
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Quick_Add_Customer') }}</div>
+                <div class="pxcfg__toggle-hint">{{ $t('Enable_Quick_Add_Customer_popup_in_POS') }}</div>
+              </div>
+              <px-check type="switch" :modelValue="!!pos_settings.quick_add_customer" @change="v => pos_settings.quick_add_customer = v" />
+            </div>
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Barcode_Scanning_Sound') }}</div>
+                <div class="pxcfg__toggle-hint">{{ $t('Enable_sound_when_scanning_barcodes_in_POS') }}</div>
+              </div>
+              <px-check type="switch" :modelValue="!!pos_settings.barcode_scanning_sound" @change="v => pos_settings.barcode_scanning_sound = v" />
+            </div>
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Show_Product_Images_in_POS') }}</div>
+                <div class="pxcfg__toggle-hint">{{ $t('Show_hide_product_images_in_POS_product_listing') }}</div>
+              </div>
+              <px-check type="switch" :modelValue="!!pos_settings.show_product_images" @change="v => pos_settings.show_product_images = v" />
+            </div>
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Show_Stock_Quantity_in_POS') }}</div>
+                <div class="pxcfg__toggle-hint">{{ $t('Show_hide_stock_quantity_in_POS') }}</div>
+              </div>
+              <px-check type="switch" :modelValue="!!pos_settings.show_stock_quantity" @change="v => pos_settings.show_stock_quantity = v" />
+            </div>
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Enable_Print_Invoice') }}</div>
+              </div>
+              <px-check type="switch" :modelValue="Number(pos_settings.is_printable) === 1" @change="v => pos_settings.is_printable = v ? 1 : 0" />
+            </div>
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Enable_Hold_Sales') }}</div>
+                <div class="pxcfg__toggle-hint">{{ $t('Enable_disable_Hold_Sales_feature_in_POS') }}</div>
+              </div>
+              <px-check type="switch" :modelValue="!!pos_settings.enable_hold_sales" @change="v => pos_settings.enable_hold_sales = v" />
+            </div>
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Enable_Customer_Points_in_POS') }}</div>
+                <div class="pxcfg__toggle-hint">{{ $t('Enable_disable_customer_points_system_in_POS') }}</div>
+              </div>
+              <px-check type="switch" :modelValue="!!pos_settings.enable_customer_points" @change="v => pos_settings.enable_customer_points = v" />
+            </div>
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Show_Categories_in_POS') }}</div>
+                <div class="pxcfg__toggle-hint">{{ $t('Show_hide_categories_in_POS') }}</div>
+              </div>
+              <px-check type="switch" :modelValue="!!pos_settings.show_categories" @change="v => pos_settings.show_categories = v" />
+            </div>
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Show_Brands_in_POS') }}</div>
+                <div class="pxcfg__toggle-hint">{{ $t('Show_hide_brands_in_POS') }}</div>
+              </div>
+              <px-check type="switch" :modelValue="!!pos_settings.show_brands" @change="v => pos_settings.show_brands = v" />
+            </div>
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Allow_Overselling') || 'Allow Overselling' }}</div>
+                <div class="pxcfg__toggle-hint">{{ $t('Allow_Overselling_Help') || 'When enabled, the POS allows selling products even when stock is zero or negative. Stock can go negative after the sale.' }}</div>
+              </div>
+              <px-check type="switch" :modelValue="!!pos_settings.allow_overselling" @change="v => pos_settings.allow_overselling = v" />
+            </div>
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Enable_Keyboard_Shortcuts') || 'Enable Keyboard Shortcuts' }}</div>
+                <div class="pxcfg__toggle-hint">
+                  {{ $t('Enable_Keyboard_Shortcuts_Help') || 'Per-device setting. In the POS press Shift + ? at any time to view shortcuts.' }}
+                  <a href="#" class="pxcfg__link" @click.prevent="shortcutsModalOpen = true">{{ $t('View_Shortcuts') || 'View shortcuts' }}</a>
+                </div>
+              </div>
+              <px-check type="switch" :modelValue="!!enable_keyboard_shortcuts" @change="v => { enable_keyboard_shortcuts = v; onToggleKeyboardShortcuts(); }" />
+            </div>
+          </div>
 
-                  <!-- Show Product Images in POS -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Product_Images_in_POS')}}
-                      <input type="checkbox" v-model="pos_settings.show_product_images">
-                      <span class="slider"></span>
-                    </label>
-                    <small class="text-muted d-block mt-2">
-                      {{$t('Show_hide_product_images_in_POS_product_listing')}}
-                    </small>
-                  </b-col>
+          <h4 class="pxcfg__subhead">{{ $t('Cash_Drawer_Settings') }}</h4>
+          <px-alert tone="info" bare class="pxcfg__alert">{{ $t('Cash_Drawer_Auto_Open_Help') }}</px-alert>
+          <div class="pxcfg__grid">
+            <div class="pxcfg__toggle">
+              <div class="pxcfg__toggle-copy">
+                <div class="pxcfg__toggle-title">{{ $t('Cash_Drawer_Auto_Open') }}</div>
+              </div>
+              <px-check type="switch" :modelValue="pos_settings.cash_drawer_auto_open === true" @change="v => pos_settings.cash_drawer_auto_open = v" />
+            </div>
+            <px-field :label="$t('Cash_Drawer_Printer_Name')" :hint="$t('Cash_Drawer_Printer_Name_Help')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="pos_settings.cash_drawer_printer_name" :placeholder="$t('Leave_blank_for_default_receipt_printer')" maxlength="192" />
+              </template>
+            </px-field>
+          </div>
 
-                  <!-- Show Stock Quantity in POS -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Stock_Quantity_in_POS')}}
-                      <input type="checkbox" v-model="pos_settings.show_stock_quantity">
-                      <span class="slider"></span>
-                    </label>
-                    <small class="text-muted d-block mt-2">
-                      {{$t('Show_hide_stock_quantity_in_POS')}}
-                    </small>
-                  </b-col>
+          <h4 class="pxcfg__subhead">Presentación</h4>
+          <div class="pxcfg__grid">
+            <validation-provider ref="pppProvider" name="products_per_page" :rules="{ required: true }" v-slot="v">
+              <px-field label="How many items do you want to display in POS *" :error="v.errors[0]">
+                <template #default="{ id, invalid }">
+                  <px-input :id="id" v-model="pos_settings.products_per_page" :invalid="invalid" @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
+            <px-field :label="$t('Invoice_Format')" :hint="$t('Invoice_Format_help')">
+              <template #default>
+                <div class="pxcfg__seg">
+                  <px-button v-for="opt in invoiceFormatOptions" :key="opt.value" size="sm"
+                    :variant="invoice_format === opt.value ? 'primary' : 'subtle'" @click="invoice_format = opt.value">
+                    {{ $t(opt.textKey) }}
+                  </px-button>
+                </div>
+              </template>
+            </px-field>
+          </div>
 
-                  <!-- Enable Print Invoice automatically -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Enable_Print_Invoice')}}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.is_printable"
-                        :true-value="1"
-                        :false-value="0"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-
-                
-
-                  <!-- Enable Hold Sales -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Enable_Hold_Sales')}}
-                      <input type="checkbox" v-model="pos_settings.enable_hold_sales">
-                      <span class="slider"></span>
-                    </label>
-                    <small class="text-muted d-block mt-2">
-                      {{$t('Enable_disable_Hold_Sales_feature_in_POS')}}
-                    </small>
-                  </b-col>
-
-                  <!-- Enable Customer Points in POS -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Enable_Customer_Points_in_POS')}}
-                      <input type="checkbox" v-model="pos_settings.enable_customer_points">
-                      <span class="slider"></span>
-                    </label>
-                    <small class="text-muted d-block mt-2">
-                      {{$t('Enable_disable_customer_points_system_in_POS')}}
-                    </small>
-                  </b-col>
-
-                  <!-- Show Categories in POS -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Categories_in_POS')}}
-                      <input type="checkbox" v-model="pos_settings.show_categories">
-                      <span class="slider"></span>
-                    </label>
-                    <small class="text-muted d-block mt-2">
-                      {{$t('Show_hide_categories_in_POS')}}
-                    </small>
-                  </b-col>
-
-                  <!-- Show Brands in POS -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Show_Brands_in_POS')}}
-                      <input type="checkbox" v-model="pos_settings.show_brands">
-                      <span class="slider"></span>
-                    </label>
-                    <small class="text-muted d-block mt-2">
-                      {{$t('Show_hide_brands_in_POS')}}
-                    </small>
-                  </b-col>
-
-                  <!-- Allow Overselling: when ON, POS lets cashiers add and complete sales
-                       even when stock is zero or negative. Default OFF preserves the
-                       existing strict stock-check behavior. -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Allow_Overselling') || 'Allow Overselling'}}
-                      <input type="checkbox" v-model="pos_settings.allow_overselling">
-                      <span class="slider"></span>
-                    </label>
-                    <small class="text-muted d-block mt-2">
-                      {{$t('Allow_Overselling_Help') || 'When enabled, the POS allows selling products even when stock is zero or negative. Stock can go negative after the sale.'}}
-                    </small>
-                  </b-col>
-
-                  <!-- Enable Keyboard Shortcuts in POS (per-device, stored in localStorage) -->
-                  <b-col md="4" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{$t('Enable_Keyboard_Shortcuts') || 'Enable Keyboard Shortcuts'}}
-                      <input type="checkbox" v-model="enable_keyboard_shortcuts" @change="onToggleKeyboardShortcuts">
-                      <span class="slider"></span>
-                    </label>
-                    <small class="text-muted d-block mt-2">
-                      {{$t('Enable_Keyboard_Shortcuts_Help') || 'Per-device setting. In the POS press Shift + ? at any time to view shortcuts.'}}
-                      <a href="#" class="ml-1" @click.prevent="$bvModal.show('pos-shortcuts-guide')">
-                        <lucide-icon name="info" />
-                        {{$t('View_Shortcuts') || 'View shortcuts'}}
-                      </a>
-                    </small>
-                  </b-col>
-
-                  <!-- Cash drawer auto-open (QZ Tray + ESC/POS) -->
-                  <b-col md="12" class="mt-4 mb-2">
-                    <hr class="my-4">
-                    <h6 class="mb-3">{{ $t('Cash_Drawer_Settings') }}</h6>
-                    <b-alert show variant="light" class="small">
-                      {{ $t('Cash_Drawer_Auto_Open_Help') }}
-                    </b-alert>
-                  </b-col>
-                  <b-col md="6" class="mt-3 mb-3">
-                    <label class="switch switch-primary mr-3">
-                      {{ $t('Cash_Drawer_Auto_Open') }}
-                      <input
-                        type="checkbox"
-                        v-model="pos_settings.cash_drawer_auto_open"
-                        :true-value="true"
-                        :false-value="false"
-                      >
-                      <span class="slider"></span>
-                    </label>
-                  </b-col>
-                  <b-col md="6" class="mt-3 mb-3">
-                    <b-form-group :label="$t('Cash_Drawer_Printer_Name')">
-                      <b-form-input
-                        v-model="pos_settings.cash_drawer_printer_name"
-                        :placeholder="$t('Leave_blank_for_default_receipt_printer')"
-                        maxlength="192"
-                      />
-                      <small class="text-muted">{{ $t('Cash_Drawer_Printer_Name_Help') }}</small>
-                    </b-form-group>
-                  </b-col>
-
-                  <!-- Products per page in POS -->
-                  <b-col lg="6" md="6" sm="12" class="mt-3 mb-3">
-                    <validation-provider
-                      name="products_per_page"
-                      :rules="{ required: true }"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group label="How many items do you want to display in POS *">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          aria-describedby="products_per_page-feedback"
-                          label="How many items do you want to display in POS."
-                          placeholder="How many items do you want to display in POS."
-                          v-model="pos_settings.products_per_page"
-                          type="text"
-                        ></b-form-input>
-                        <b-form-invalid-feedback id="products_per_page-feedback">
-                          {{ validationContext.errors[0] }}
-                        </b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                    <!-- Invoice format: Thermal vs A4 -->
-                    <b-col lg="12" md="12" sm="12" class="mb-3">
-                    <b-form-group :label="$t('Invoice_Format')">
-                      <b-form-radio-group
-                        v-model="invoice_format"
-                        :options="invoiceFormatOptions.map(opt => ({ value: opt.value, text: $t(opt.textKey) }))"
-                        buttons
-                        button-variant="outline-primary"
-                        size="sm"
-                      />
-                      <small class="text-muted d-block mt-1">
-                        {{ $t('Invoice_Format_help') }}
-                      </small>
-                    </b-form-group>
-                  </b-col>
-
-                  <!-- Submit -->
-                  <b-col md="12" class="mt-4">
-                    <div class="d-flex justify-content-end">
-                      <b-button variant="primary" type="submit" size="lg">
-                        {{$t('submit')}}
-                      </b-button>
-                    </div>
-                  </b-col>
-                </b-row>
-              </b-card-body>
-            </b-card>
-          </b-col>
-        </b-row>
-      </b-form>
+          <template #footer>
+            <px-button variant="primary" size="lg" type="submit" @click="Submit_Pos_Settings">{{ $t('submit') }}</px-button>
+          </template>
+        </px-card>
+      </form>
     </validation-observer>
 
-    <!-- POS Keyboard Shortcuts Guide (read-only reference) -->
-    <b-modal
-      id="pos-shortcuts-guide"
-      :title="$t('POS_Keyboard_Shortcuts') || 'POS Keyboard Shortcuts'"
-      size="md"
-      ok-only
-      :ok-title="$t('Close') || 'Close'"
-      ok-variant="secondary"
-    >
-      <p class="text-muted small mb-3">
-        {{$t('Shortcuts_Guide_Intro') || 'These shortcuts are available on the POS screen when “Enable Keyboard Shortcuts” is ON. They are ignored while typing in form fields (except F-keys and Esc).'}}
-      </p>
-      <table class="table table-sm table-striped mb-0">
-        <thead>
-          <tr>
-            <th style="width:45%">{{$t('Shortcut') || 'Shortcut'}}</th>
-            <th>{{$t('Action') || 'Action'}}</th>
-          </tr>
-        </thead>
+    <px-modal v-model="shortcutsModalOpen" :title="$t('POS_Keyboard_Shortcuts') || 'POS Keyboard Shortcuts'" size="md">
+      <p class="pxcfg__cardnote">{{ $t('Shortcuts_Guide_Intro') || 'These shortcuts are available on the POS screen when “Enable Keyboard Shortcuts” is ON. They are ignored while typing in form fields (except F-keys and Esc).' }}</p>
+      <table class="pxcfg__table">
+        <thead><tr><th style="width:45%">{{ $t('Shortcut') || 'Shortcut' }}</th><th>{{ $t('Action') || 'Action' }}</th></tr></thead>
         <tbody>
           <tr v-for="s in posShortcutsList" :key="s.id">
-            <td><kbd>{{ s.keys }}</kbd></td>
+            <td><kbd class="pxcfg__kbd">{{ s.keys }}</kbd></td>
             <td>{{ $t(s.descriptionKey) || s.descriptionFallback }}</td>
           </tr>
         </tbody>
       </table>
-    </b-modal>
-
+      <template #footer="{ close }">
+        <px-button variant="secondary" @click="close">{{ $t('Close') || 'Close' }}</px-button>
+      </template>
+    </px-modal>
   </div>
 </template>
 
@@ -274,42 +160,49 @@
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { posShortcutsEnabled, setPosShortcutsEnabled, POS_SHORTCUTS } from "../../../../mixins/posKeyboardShortcuts";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
 
 export default {
   metaInfo: {
     title: "POS Settings"
   },
+  components: { PxPageHeader, PxButton, PxCard, PxField, PxInput, PxCheck, PxAlert, PxModal },
   data() {
     return {
-      
       isLoading: true,
-     
-      pos_settings:{
-        note_customer:"",
+      shortcutsModalOpen: false,
+      pos_settings: {
+        note_customer: "",
         show_logo: "",
         show_store_name: "",
         show_reference: "",
         show_date: "",
         show_seller: "",
-        show_note:"",
-        show_barcode:"",
-        show_discount:"",
-        show_tax:"",
-        show_shipping:"",
-        show_phone:"",
-        show_email:"",
-        show_address:"",
-        show_customer:"",
-        show_Warehouse:"",
-        is_printable:'',
-        products_per_page:'',
+        show_note: "",
+        show_barcode: "",
+        show_discount: "",
+        show_tax: "",
+        show_shipping: "",
+        show_phone: "",
+        show_email: "",
+        show_address: "",
+        show_customer: "",
+        show_Warehouse: "",
+        is_printable: '',
+        products_per_page: '',
         receipt_layout: 1,
         receipt_paper_size: 80,
         show_paid: "",
         show_due: "",
         show_payments: "",
         show_zatca_qr: "",
-        // POS behaviour/display settings (from System Settings -> POS Settings tab)
         quick_add_customer: false,
         barcode_scanning_sound: false,
         show_product_images: false,
@@ -323,24 +216,19 @@ export default {
         cash_drawer_printer_name: "",
       },
 
-      // Preferred invoice format for POS printing ('thermal' or 'a4')
       invoice_format: "thermal",
       invoiceFormatOptions: [
         { value: "thermal", textKey: "Invoice_Thermal" },
         { value: "a4", textKey: "Invoice_A4" },
       ],
 
-      // Per-device toggle for POS keyboard shortcuts (stored in localStorage,
-      // not in the backend pos_settings table — fully additive feature).
       enable_keyboard_shortcuts: false,
-
     };
   },
 
   computed: {
     ...mapGetters(["currentUser"]),
 
-    // Normalize POS receipt layout selection (1, 2, or 3) for demo preview
     currentReceiptLayout() {
       const raw = this.pos_settings && this.pos_settings.receipt_layout != null
         ? this.pos_settings.receipt_layout
@@ -349,7 +237,6 @@ export default {
       return [1, 2, 3].includes(n) ? n : 1;
     },
 
-    // List of POS keyboard shortcuts shown in the help modal
     posShortcutsList() {
       return POS_SHORTCUTS;
     },
@@ -358,7 +245,6 @@ export default {
   methods: {
     ...mapActions(["refreshUserPermissions"]),
 
-     //------------- Submit Validation Pos Setting
     Submit_Pos_Settings() {
       this.$refs.Submit_Pos_Settings.validate().then(success => {
         if (!success) {
@@ -373,7 +259,6 @@ export default {
       });
     },
 
-    //------ Toast
     makeToast(variant, msg, title) {
       this.$root.$bvToast.toast(msg, {
         title: title,
@@ -386,14 +271,10 @@ export default {
       return dirty || validated ? valid : null;
     },
 
-    // Persist the keyboard-shortcuts toggle to localStorage. Does not touch
-    // the backend pos_settings payload, so existing customers / installations
-    // are unaffected by this feature.
     onToggleKeyboardShortcuts() {
       setPosShortcutsEnabled(this.enable_keyboard_shortcuts);
     },
 
-    //---------------------------------- Update_Pos_Settings ----------------\\
     Update_Pos_Settings() {
       NProgress.start();
       NProgress.set(0.1);
@@ -414,8 +295,8 @@ export default {
           show_phone: this.pos_settings.show_phone,
           show_email: this.pos_settings.show_email,
           show_address: this.pos_settings.show_address,
-          show_customer: this.pos_settings.show_customer,  
-          show_Warehouse: this.pos_settings.show_Warehouse,  
+          show_customer: this.pos_settings.show_customer,
+          show_Warehouse: this.pos_settings.show_Warehouse,
           is_printable: this.pos_settings.is_printable,
           receipt_paper_size: this.pos_settings.receipt_paper_size,
           show_paid: this.pos_settings.show_paid,
@@ -452,7 +333,6 @@ export default {
         });
     },
 
-    // Print the live POS receipt demo using the same print CSS as real POS receipts
     printPosDemo() {
       try {
         const el = document.getElementById("pos-receipt-demo");
@@ -473,8 +353,6 @@ export default {
       }
     },
 
-
- //---------------------------------- Get_pos_Settings ----------------\\ 
     get_pos_Settings() {
       axios
         .get("get_pos_Settings_api")
@@ -487,7 +365,6 @@ export default {
         });
     },
 
-    //---------------------------------- Get global SETTINGS (for invoice_format) ----------------\\
     Get_Settings() {
       axios
         .get("get_Settings_data")
@@ -504,45 +381,42 @@ export default {
           // Silent fail – POS Settings page will fall back to default 'thermal'
         });
     },
-
-   
   }, //end Methods
-
-  //----------------------------- Created function-------------------
 
   created: function() {
     this.get_pos_Settings();
     this.Get_Settings();
 
-    // Load per-device keyboard shortcuts preference from localStorage
     this.enable_keyboard_shortcuts = posShortcutsEnabled();
 
     Fire.$on("Event_Pos_Settings", () => {
       this.get_pos_Settings();
       this.Get_Settings();
     });
-
   }
 };
 </script>
 
-<style scoped>
-.pos-receipt-demo {
-  /* Approximate 88mm receipt width at 96dpi: ~332px */
-  width: 330px;
-  max-width: 100%;
-  margin: 0 auto;
-  background: #ffffff;
-  padding: 10px;
-  border: 1px dashed #dee2e6;
-  font-size: 11px;
-}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-.pos-receipt-demo .info {
-  text-align: center;
-}
-
-.pos-receipt-demo .table_data {
-  width: 100%;
-}
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-5); }
+.pxcfg__cardnote { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); margin: 0 0 var(--pxn-space-3); }
+.pxcfg__toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-3); }
+@media (max-width: 700px) { .pxcfg__toggles { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__toggle { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--pxn-space-4); padding: var(--pxn-space-4) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
+.pxcfg__toggle-title { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxcfg__toggle-hint { margin-top: var(--pxn-space-1); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxcfg__link { color: var(--pxn-primary); margin-left: var(--pxn-space-2); }
+.pxcfg__subhead { margin: var(--pxn-space-6) 0 var(--pxn-space-3); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); }
+.pxcfg__alert { margin-bottom: var(--pxn-space-4); }
+.pxcfg__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 640px) { .pxcfg__grid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__seg { display: flex; gap: var(--pxn-space-2); }
+.pxcfg__table { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxcfg__table th, .pxcfg__table td { padding: var(--pxn-space-2) var(--pxn-space-3); border-bottom: 1px solid var(--pxn-border); text-align: left; }
+.pxcfg__kbd { font-family: var(--pxn-font-mono, monospace); font-size: var(--pxn-fs-xs); background: var(--pxn-surface-2); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-sm); padding: 1px var(--pxn-space-2); }
 </style>
