@@ -1,111 +1,159 @@
 <template>
-  <div>
-    <breadcumb :page="$t('Commission_Receipts')" :folder="$t('Commissions')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div v-else>
-      <b-card class="shadow-soft border-0">
-        <vue-good-table
-          mode="remote"
-          :columns="columns"
-          :totalRows="totalRows"
-          :rows="receipts"
-          @on-page-change="onPageChange"
-          @on-per-page-change="onPerPageChange"
-          @on-sort-change="onSortChange"
-          @on-search="onSearch"
-          :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
-          :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
-          styleClass="tableOne table-hover vgt-table"
-        >
-          <div slot="table-actions" class="mt-2 mb-3">
-            <b-button v-if="currentUserPermissions && currentUserPermissions.includes('commissions_add')" variant="primary" size="sm" @click="openCreateModal()">
-              <lucide-icon name="plus" /> {{ $t('Add') }}
-            </b-button>
-          </div>
-          <template slot="table-row" slot-scope="props">
-            <span v-if="props.column.field === 'paid_at'">{{ formatDate(props.row.paid_at) }}</span>
-            <span v-else-if="props.column.field === 'amount'">{{ formatMoney(props.row.amount) }}</span>
-            <span v-else-if="props.column.field === 'agent'">{{ props.row.sales_agent ? props.row.sales_agent.name : '—' }}</span>
-            <span v-else-if="props.column.field === 'actions'">
-              <b-button variant="link" size="sm" class="p-0" @click="viewReceipt(props.row)"><lucide-icon class="text-info" name="eye" /></b-button>
-            </span>
-            <span v-else>{{ props.formattedRow[props.column.field] }}</span>
-          </template>
-        </vue-good-table>
-      </b-card>
-    </div>
-    <b-modal size="lg" :title="$t('Commission_Receipt')" hide-footer id="view_modal">
-      <div v-if="viewReceiptData">
-        <p><strong>Ref:</strong> {{ viewReceiptData.Ref }}</p>
-        <p><strong>Agent:</strong> {{ viewReceiptData.sales_agent ? viewReceiptData.sales_agent.name : '—' }}</p>
-        <p><strong>Amount:</strong> {{ formatMoney(viewReceiptData.amount) }}</p>
-        <p><strong>Paid At:</strong> {{ formatDate(viewReceiptData.paid_at) }}</p>
-      </div>
-    </b-modal>
+  <div class="px-next pxcm">
+    <px-page-header :title="$t('Commission_Receipts')" :breadcrumbs="[{ label: $t('Commissions') }, { label: $t('Commission_Receipts') }]">
+      <template #actions>
+        <px-button
+          v-if="currentUserPermissions && currentUserPermissions.includes('commissions_add')"
+          variant="primary" icon="plus" @click="openCreateModal()"
+        >{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <b-modal :title="$t('Add') + ' ' + $t('Commission_Receipt')" hide-footer id="create_modal" @show="onCreateModalShow" @hidden="resetCreateForm">
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
+
+    <div v-if="isLoading" class="pxcm__pad">
+      <px-skeleton variant="table" :rows="8" :columns="5" />
+    </div>
+
+    <template v-else>
+      <div class="pxcm__tablewrap">
+        <px-table
+          v-if="receipts.length"
+          :columns="columns"
+          :rows="receipts"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-paid_at="{ row }">{{ formatDate(row.paid_at) }}</template>
+          <template #cell-amount="{ row }"><span class="pxn-num">{{ formatMoney(row.amount) }}</span></template>
+          <template #cell-agent="{ row }">{{ row.sales_agent ? row.sales_agent.name : '—' }}</template>
+          <template #row-actions="{ row }">
+            <px-button variant="ghost" size="sm" icon-only icon="eye" :title="$t('View')" @click="viewReceipt(row)" />
+          </template>
+        </px-table>
+
+        <px-empty-state
+          v-else
+          icon="receipt"
+          :title="$t('No_commission_receipts_yet') || 'Sin recibos de comisión todavía'"
+        >
+          <px-button
+            v-if="currentUserPermissions && currentUserPermissions.includes('commissions_add')"
+            variant="primary" icon="plus" size="sm" @click="openCreateModal()"
+          >{{ $t('Add') }}</px-button>
+        </px-empty-state>
+      </div>
+
+      <px-pagination
+        v-if="receipts.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
+
+    <!-- View Modal -->
+    <px-modal v-model="viewOpen" size="md" :title="$t('Commission_Receipt')">
+      <div v-if="viewReceiptData" class="pxcm__viewlist">
+        <div><strong>Ref:</strong> {{ viewReceiptData.Ref }}</div>
+        <div><strong>{{ $t('Sales_Agent') }}:</strong> {{ viewReceiptData.sales_agent ? viewReceiptData.sales_agent.name : '—' }}</div>
+        <div><strong>{{ $t('Amount') }}:</strong> <span class="pxn-num">{{ formatMoney(viewReceiptData.amount) }}</span></div>
+        <div><strong>{{ $t('Paid_At') }}:</strong> {{ formatDate(viewReceiptData.paid_at) }}</div>
+      </div>
+      <template #footer="{ close }">
+        <div class="pxcm__actionbar"><px-button variant="secondary" @click="close">{{ $t('Close') }}</px-button></div>
+      </template>
+    </px-modal>
+
+    <!-- Create Modal -->
+    <px-modal v-model="createOpen" size="md" :title="`${$t('Add')} ${$t('Commission_Receipt')}`">
       <b-form @submit.prevent="submitCreateReceipt">
-        <b-form-group :label="$t('Sales_Agent')" label-for="create_agent">
-          <v-select
-            id="create_agent"
-            v-model="createForm.sales_agent_id"
-            :reduce="a => a.id"
-            :options="agentsList"
-            label="name"
-            :placeholder="$t('PleaseSelect')"
-            @input="onCreateAgentSelect"
-          />
-        </b-form-group>
-        <b-form-group v-if="createForm.sales_agent_id" :label="$t('Approved_Commissions') || 'Approved commissions'">
-          <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
-            <label v-for="c in approvedCommissions" :key="c.id" class="checkbox checkbox-outline-primary d-block mb-1">
-              <input type="checkbox" :value="c.id" v-model="createForm.commission_ids">
-              <span>{{ c.sale ? c.sale.Ref : '' }} — {{ formatMoney(c.commission_amount) }}</span>
-              <span class="checkmark"></span>
-            </label>
-            <span v-if="!approvedCommissions.length" class="text-muted">{{ $t('NodataAvailable') }}</span>
-          </div>
-          <small class="text-muted">{{ $t('Total') }}: {{ formatMoney(createForm.amount) }}</small>
-        </b-form-group>
-        <b-form-group :label="$t('Ref')" label-for="create_ref">
-          <b-form-input id="create_ref" v-model="createForm.Ref" maxlength="192" />
-        </b-form-group>
-        <b-form-group :label="$t('Amount')" label-for="create_amount">
-          <b-form-input id="create_amount" v-model.number="createForm.amount" type="number" step="0.01" min="0" required />
-        </b-form-group>
-        <b-form-group :label="$t('Paid_At')" label-for="create_paid_at">
-          <b-form-input id="create_paid_at" v-model="createForm.paid_at" type="date" required />
-        </b-form-group>
-        <b-form-group :label="$t('Payment_Method') || 'Payment method'" label-for="create_payment">
-          <v-select
-            id="create_payment"
-            v-model="createForm.payment_method_id"
-            :reduce="p => p.id"
-            :options="paymentMethodsList"
-            label="name"
-            :placeholder="$t('PleaseSelect')"
-          />
-        </b-form-group>
-        <b-form-group :label="$t('Notes')" label-for="create_notes">
-          <b-form-textarea id="create_notes" v-model="createForm.notes" rows="2" />
-        </b-form-group>
-        <div class="d-flex justify-content-end mt-3">
-          <b-button type="button" variant="secondary" @click="$bvModal.hide('create_modal')">{{ $t('Cancel') }}</b-button>
-          <b-button type="submit" variant="primary" class="ml-2" :disabled="!createForm.sales_agent_id || !createForm.commission_ids.length || !createForm.amount">{{ $t('Submit') }}</b-button>
+        <px-field :label="$t('Sales_Agent')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="createForm.sales_agent_id" :reduce="a => a.id" :options="agentsList" label="name"
+              :placeholder="$t('PleaseSelect')" @input="onCreateAgentSelect" />
+          </template>
+        </px-field>
+
+        <px-field v-if="createForm.sales_agent_id" :label="$t('Approved_Commissions') || 'Approved commissions'" class="pxcm__gap">
+          <template #default>
+            <div class="pxcm__checkbox-list pxn-scroll">
+              <label v-for="c in approvedCommissions" :key="c.id" class="pxcm__checkbox-item">
+                <input type="checkbox" :value="c.id" v-model="createForm.commission_ids">
+                <span>{{ c.sale ? c.sale.Ref : '' }} — {{ formatMoney(c.commission_amount) }}</span>
+              </label>
+              <span v-if="!approvedCommissions.length" class="pxcm__muted">{{ $t('NodataAvailable') }}</span>
+            </div>
+            <p class="pxcm__hint">{{ $t('Total') }}: <span class="pxn-num">{{ formatMoney(createForm.amount) }}</span></p>
+          </template>
+        </px-field>
+
+        <div class="pxcm__formgrid pxcm__gap">
+          <px-field :label="$t('Ref')">
+            <template #default="{ id }"><px-input :id="id" v-model="createForm.Ref" maxlength="192" /></template>
+          </px-field>
+          <px-field :label="$t('Amount')" required>
+            <template #default="{ id }"><px-input :id="id" v-model.number="createForm.amount" type="number" step="0.01" min="0" /></template>
+          </px-field>
+          <px-field :label="$t('Paid_At')" required>
+            <template #default="{ id }"><px-input :id="id" v-model="createForm.paid_at" type="date" /></template>
+          </px-field>
+          <px-field :label="$t('Payment_Method') || 'Payment method'">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="createForm.payment_method_id" :reduce="p => p.id" :options="paymentMethodsList" label="name" :placeholder="$t('PleaseSelect')" />
+            </template>
+          </px-field>
+        </div>
+
+        <px-field :label="$t('Notes')" class="pxcm__gap">
+          <template #default="{ id }"><px-textarea :id="id" v-model="createForm.notes" :rows="2" /></template>
+        </px-field>
+
+        <div class="pxcm__actionbar">
+          <px-button variant="secondary" type="button" @click="createOpen = false">{{ $t('Cancel') }}</px-button>
+          <px-button variant="primary" type="submit" icon="check"
+            :disabled="!createForm.sales_agent_id || !createForm.commission_ids.length || !createForm.amount">{{ $t('Submit') }}</px-button>
         </div>
       </b-form>
-    </b-modal>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton,
+    PxField, PxInput, PxTextarea, PxModal, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
+      _searchTimer: null,
       isLoading: true,
+      viewOpen: false,
+      createOpen: false,
       receipts: [],
       totalRows: 0,
       serverParams: { sort: { field: 'paid_at', type: 'desc' }, page: 1, perPage: 10 },
@@ -130,21 +178,29 @@ export default {
     'createForm.commission_ids'() {
       this.updateCreateAmountFromSelection();
     },
+    createOpen(v) {
+      if (v) this.onCreateModalShow();
+      else this.resetCreateForm();
+    },
   },
   computed: {
     ...mapGetters(['currentUserPermissions']),
     columns() {
       return [
-        { label: this.$t('Ref'), field: 'Ref' },
-        { label: this.$t('Sales_Agent'), field: 'agent' },
-        { label: this.$t('Amount'), field: 'amount' },
-        { label: this.$t('Paid_At'), field: 'paid_at' },
-        { label: this.$t('Action'), field: 'actions', sortable: false },
+        { key: 'Ref', label: this.$t('Ref'), strong: true },
+        { key: 'agent', label: this.$t('Sales_Agent') },
+        { key: 'amount', label: this.$t('Amount'), align: 'right' },
+        { key: 'paid_at', label: this.$t('Paid_At') },
       ];
     },
   },
   created() { this.load(); },
   methods: {
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.load(1); }, 350);
+    },
     load(page) {
       page = page || 1;
       NProgress.start();
@@ -156,20 +212,19 @@ export default {
         this.isLoading = false;
       }).catch(() => { NProgress.done(); this.isLoading = false; });
     },
-    onPageChange(p) { this.load(p.currentPage); },
-    onPerPageChange(p) { this.limit = String(p.currentPerPage); this.load(1); },
-    onSortChange(params) { if (params.length) { this.serverParams.sort = { field: params[0].field, type: params[0].type }; this.load(1); } },
-    onSearch(p) { this.search = p.searchTerm || ''; this.load(1); },
+    onPage(p) { if (this.serverParams.page !== p) { this.serverParams.page = p; this.load(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.load(1); } },
+    onSort({ key, dir }) { this.serverParams.sort = { field: key, type: dir }; this.load(1); },
     formatDate(v) { return v ? new Date(v).toLocaleDateString() : '—'; },
     formatMoney(v) { return v != null ? Number(v).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'; },
     viewReceipt(row) {
       axios.get('commission_receipts/' + row.id).then((res) => {
         this.viewReceiptData = (res.data.data || res.data);
-        this.$bvModal.show('view_modal');
+        this.viewOpen = true;
       });
     },
     openCreateModal() {
-      this.$bvModal.show('create_modal');
+      this.createOpen = true;
     },
     onCreateModalShow() {
       this.resetCreateForm();
@@ -231,7 +286,7 @@ export default {
         notes: this.createForm.notes || undefined,
       }).then(() => {
         NProgress.done();
-        this.$bvModal.hide('create_modal');
+        this.createOpen = false;
         this.$toast.success(this.$t('Created_successfully') || 'Created successfully');
         this.load(1);
       }).catch((err) => {
@@ -243,3 +298,21 @@ export default {
   },
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcm { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcm { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcm__pad { padding: var(--pxn-space-6) 0; }
+.pxcm__tablewrap { margin-top: var(--pxn-space-5); }
+.pxcm__gap { margin-top: var(--pxn-space-5); }
+.pxcm__formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 480px) { .pxcm__formgrid { grid-template-columns: minmax(0, 1fr); } }
+.pxcm__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+.pxcm__viewlist { display: flex; flex-direction: column; gap: var(--pxn-space-3); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+.pxcm__checkbox-list { max-height: 200px; overflow-y: auto; border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); padding: var(--pxn-space-3); }
+.pxcm__checkbox-item { display: flex; align-items: center; gap: var(--pxn-space-3); padding: var(--pxn-space-2) 0; font-size: var(--pxn-fs-sm); color: var(--pxn-ink); cursor: pointer; }
+.pxcm__muted { color: var(--pxn-ink-3); font-size: var(--pxn-fs-sm); }
+.pxcm__hint { margin-top: var(--pxn-space-2); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+</style>
