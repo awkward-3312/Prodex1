@@ -19,13 +19,29 @@
         <img class="hero-illustration" src="{{ global_asset('images/auth/login-illustration.png') }}" alt="PRODEX">
       </section>
 
+      @php
+          // login_panel_title/subtitle are tenant-customizable (SettingsController),
+          // but every tenant's settings row was seeded with these literal English
+          // strings at creation (2026_03_24_203803_create_settings_table). An
+          // untouched seed value should follow the current locale (SetLocale
+          // middleware) instead of staying stuck in English; an actually
+          // customized value is left exactly as the tenant set it.
+          $panelTitleSeedDefault = 'Sign In';
+          $panelSubtitleSeedDefault = 'Access your dashboard and manage everything from one place.';
+          $panelTitle = (! empty($app_settings->login_panel_title) && $app_settings->login_panel_title !== $panelTitleSeedDefault)
+              ? $app_settings->login_panel_title
+              : __('auth.login_panel_title');
+          $panelSubtitle = (! empty($app_settings->login_panel_subtitle) && $app_settings->login_panel_subtitle !== $panelSubtitleSeedDefault)
+              ? $app_settings->login_panel_subtitle
+              : __('auth.login_panel_subtitle');
+      @endphp
       <section class="auth-panel">
         <div class="auth-panel-inner">
           <header>
             <img class="tenant-login-logo" src="{{ tenancy()->tenant->loginLogoUrl() }}" alt="{{ $app_settings->app_name ?? 'PRODEX' }}">
-            <h2 class="panel-title">{{ $app_settings->login_panel_title ?? 'Iniciar sesión' }}</h2>
+            <h2 class="panel-title">{{ $panelTitle }}</h2>
             <p class="panel-subtitle">
-              {{ $app_settings->login_panel_subtitle ?? 'Accede a tu panel y administra todo desde un solo lugar.' }}
+              {{ $panelSubtitle }}
             </p>
           </header>
 
