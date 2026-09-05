@@ -1,706 +1,298 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('ListSales')" :folder="$t('Sales')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div v-else>
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="sales"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        placeholder: $t('Search_this_table'),
-        enabled: true,
-      }"
-        :select-options="{ 
-          enabled: true ,
-          clearSelectionText: '',
-        }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'Siguiente',
-        prevLabel: 'Anterior',
-      }"
-        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
-      >
-        <div slot="selected-row-actions" v-if="currentUserPermissions.includes('Sales_delete')">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
-            <lucide-icon name="filter" />
-            {{ $t("Filter") }}
-          </b-button>
-          <b-button @click="Sales_PDF()" size="sm" variant="outline-success ripple m-1">
-            <lucide-icon name="copy" /> PDF
-          </b-button>
-          <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="sales"
-              :columns="columns"
-              :file-name="'sales'"
-              :file-type="'xlsx'"
-              :sheet-name="'sales'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
-          <router-link
-            class="btn-sm btn btn-primary ripple btn-icon m-1"
-            v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')"
-            to="/app/sales/store"
-          >
-            <span class="ul-btn__icon">
-              <lucide-icon name="plus" />
-            </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
-          </router-link>
-        </div>
+  <div class="px-next pxsl">
+    <px-page-header :title="$t('ListSales')" :breadcrumbs="[{ label: $t('Sales') }, { label: $t('ListSales') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">Exportar</px-button>
+          </template>
+        </px-menu>
+        <px-button
+          v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')"
+          variant="primary" icon="plus" @click="$router.push('/app/sales/store')"
+        >{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-        <template slot="emptystate">
-          <PxEmptyState
-            icon="shopping-cart"
-            :title="$t('No_sales_yet')"
-            :description="$t('No_sales_desc')"
-          >
-            <router-link
-              v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')"
-              class="btn btn-sm btn-primary"
-              to="/app/sales/store"
-            >
-              <lucide-icon name="plus" /> {{ $t('Add') }}
-            </router-link>
-          </PxEmptyState>
-        </template>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      :filter-count="activeFilterCount"
+      @update:search="onSearchInput"
+      @open-filters="filtersOpen = !filtersOpen"
+    />
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <div>
-              <b-dropdown
-                id="dropdown-right"
-                variant="link"
-                text="right align"
-                toggle-class="text-decoration-none"
-                size="lg"
-                right
-                no-caret
-              >
-                <template v-slot:button-content class="_r_btn border-0">
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                </template>
-                <b-navbar-nav>
-                  <b-dropdown-item title="Show" :to="'/app/sales/detail/'+props.row.id">
-                    <lucide-icon class="nav-icon font-weight-bold mr-2" name="eye" />
-                    {{$t('SaleDetail')}}
-                  </b-dropdown-item>
-                </b-navbar-nav>
-
-                 <b-dropdown-item 
-                  title="Edit"
-                  v-if="currentUserPermissions.includes('Sales_edit') && props.row.sale_has_return == 'no'"
-                  :to="'/app/sales/edit/'+props.row.id"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="pen" />
-                  {{$t('EditSale')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  title="Sell Return"
-                  v-if="currentUserPermissions.includes('Sale_Returns_add') && props.row.sale_has_return == 'no' && props.row.statut == 'completed'"
-                  :to="'/app/sales/sale_return/'+props.row.id"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="arrow-left" />
-                  {{$t('Sell_Return')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  title="Sell Return"
-                  v-if="currentUserPermissions.includes('Sale_Returns_add') && props.row.sale_has_return == 'yes'"
-                  :to="'/app/sale_return/edit/'+props.row.salereturn_id+'/'+props.row.id"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="arrow-left" />
-                  {{$t('Sell_Return')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  v-if="currentUserPermissions.includes('payment_sales_view')"
-                  @click="Show_Payments(props.row.id , props.row)"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="wallet" />
-                  {{$t('ShowPayment')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  v-if="currentUserPermissions.includes('payment_sales_add') && props.row.statut =='completed'"
-                  @click="New_Payment(props.row)"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="plus" />
-                  {{$t('AddPayment')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  v-if="currentUserPermissions.includes('shipment')"
-                  @click="Edit_Shipment(props.row.id)"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="pen" />
-                  {{$t('Edit_Shipping')}}
-                </b-dropdown-item>
-
-
-                <b-dropdown-item title="Invoice" @click="Invoice_POS(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="file-text" />
-                  {{$t('Invoice_POS')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item title="PDF" @click="Invoice_PDF(props.row , props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="file-text" />
-                  {{$t('DownloadPdf')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item title=" WhatsApp Notification" @click="Send_WhatsApp(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="mail" />
-                  WhatsApp Notification
-                </b-dropdown-item>
-
-                <b-dropdown-item title="Email" @click="Send_Email(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="mail" />
-                  {{$t('email_notification')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item title="SMS" @click="Sale_SMS(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="message-square" />
-                  {{$t('sms_notification')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item title="Attach Documents" @click="Manage_Documents(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="file" />
-                  {{$t('Attach_Documents')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  v-if="currentUserPermissions.includes('Sales_delete') && props.row.fiscal_status === 'issued'"
-                  title="Anular factura SAR"
-                  @click="Void_Sar_Invoice(props.row)"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="file-x-2" />
-                  Anular factura SAR
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  title="Delete"
-                  v-if="currentUserPermissions.includes('Sales_delete') && !props.row.fiscal_number"
-                  @click="Remove_Sale(props.row.id , props.row.sale_has_return)"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="x" />
-                  {{$t('DeleteSale')}}
-                </b-dropdown-item>
-              </b-dropdown>
-            </div>
-          </span>
-          <span v-else-if="props.column.field == 'date'">
-            {{ formatDisplayDate(props.row.date) }}
-          </span>
-          <div v-else-if="props.column.field == 'statut'">
-            <span
-              v-if="props.row.statut == 'completed'"
-              class="badge badge-outline-success"
-            >{{$t('complete')}}</span>
-            <span
-              v-else-if="props.row.statut == 'pending'"
-              class="badge badge-outline-info"
-            >{{$t('Pending')}}</span>
-            <span v-else class="badge badge-outline-warning">{{$t('Ordered')}}</span>
-          </div>
-
-          <div v-else-if="props.column.field == 'payment_status'">
-            <span
-              v-if="props.row.payment_status == 'paid'"
-              class="badge badge-outline-success"
-            >{{$t('Paid')}}</span>
-            <span
-              v-else-if="props.row.payment_status == 'partial'"
-              class="badge badge-outline-primary"
-            >{{$t('partial')}}</span>
-            <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
-          </div>
-          <div v-else-if="props.column.field == 'shipping_status'">
-            <span
-              v-if="props.row.shipping_status == 'ordered'"
-              class="badge badge-outline-warning"
-            >{{$t('Ordered')}}</span>
-
-            <span
-              v-else-if="props.row.shipping_status == 'packed'"
-              class="badge badge-outline-info"
-            >{{$t('Packed')}}</span>
-
-            <span
-              v-else-if="props.row.shipping_status == 'shipped'"
-              class="badge badge-outline-secondary"
-            >{{$t('Shipped')}}</span>
-
-             <span
-              v-else-if="props.row.shipping_status == 'delivered'"
-              class="badge badge-outline-success"
-            >{{$t('Delivered')}}</span>
-
-            <span v-else-if="props.row.shipping_status == 'cancelled'" class="badge badge-outline-danger">{{$t('Cancelled')}}</span>
-          </div>
-          <span v-else-if="props.column.field == 'GrandTotal'">
-            {{ formatPriceWithSymbol(currentUser.currency, props.row.GrandTotal, 2) }}
-          </span>
-          <span v-else-if="props.column.field == 'paid_amount'">
-            {{ formatPriceWithSymbol(currentUser.currency, props.row.paid_amount, 2) }}
-          </span>
-          <span v-else-if="props.column.field == 'due'">
-            {{ formatPriceWithSymbol(currentUser.currency, props.row.due, 2) }}
-          </span>
-           <div v-else-if="props.column.field == 'Ref'">
-              <router-link
-                :to="'/app/sales/detail/'+props.row.id"
-              >
-                <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-              </router-link> <br>
-              <small v-if="props.row.sale_has_return == 'yes'"><lucide-icon class="text-15 text-danger" name="arrow-left" /></small>
-            </div>
-            <div v-else-if="props.column.field == 'documents'">
-              <span v-if="props.row.documents_count > 0" class="badge badge-info">
-                <lucide-icon name="file" /> {{props.row.documents_count}}
-              </span>
-              <span v-else class="text-muted">-</span>
-            </div>
-        </template>
-      </vue-good-table>
+    <div v-if="filtersOpen" class="pxsl__filters">
+      <div class="pxsl__filters-grid">
+        <px-field :label="$t('date')"><template #default="{ id }"><px-input :id="id" type="date" v-model="Filter_date" /></template></px-field>
+        <px-field :label="$t('Reference')"><template #default="{ id }"><px-input :id="id" v-model="Filter_Ref" :placeholder="$t('Reference')" /></template></px-field>
+        <px-field :label="$t('Customer')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_Client" :reduce="o => o.value" :placeholder="$t('Choose_Customer')"
+              :options="customers.map(c => ({ label: c.name, value: c.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('warehouse')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_warehouse" :reduce="o => o.value" :placeholder="$t('Choose_Warehouse')"
+              :options="warehouses.map(w => ({ label: w.name, value: w.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Status')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_status" :reduce="o => o.value" :placeholder="$t('Choose_Status')"
+              :options="[{ label: 'completed', value: 'completed' }, { label: 'Pending', value: 'pending' }, { label: 'Ordered', value: 'ordered' }]" />
+          </template>
+        </px-field>
+        <px-field :label="$t('PaymentStatus')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_Payment" :reduce="o => o.value" :placeholder="$t('Choose_Status')"
+              :options="[{ label: 'Paid', value: 'paid' }, { label: 'partial', value: 'partial' }, { label: 'UnPaid', value: 'unpaid' }]" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Shipping_status')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_shipping" :reduce="o => o.value" :placeholder="$t('Choose_Status')"
+              :options="[{ label: 'Ordered', value: 'ordered' }, { label: 'Packed', value: 'packed' }, { label: 'Shipped', value: 'shipped' }, { label: 'Delivered', value: 'delivered' }, { label: 'Cancelled', value: 'cancelled' }]" />
+          </template>
+        </px-field>
+      </div>
+      <div class="pxsl__filters-act">
+        <px-button size="sm" variant="primary" icon="filter" @click="applyFilters">{{ $t('Filter') }}</px-button>
+        <px-button size="sm" variant="ghost" icon="x" @click="Reset_Filter">{{ $t('Reset') }}</px-button>
+      </div>
     </div>
 
-    <!-- Sidebar Filter -->
-    <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
-      <div class="px-3 py-2">
-        <b-row>
-          <!-- date  -->
-          <b-col md="12">
-            <b-form-group :label="$t('date')">
-              <b-form-input type="date" v-model="Filter_date"></b-form-input>
-            </b-form-group>
-          </b-col>
+    <div v-if="isLoading" class="pxsl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="6" />
+    </div>
 
-          <!-- Reference -->
-          <b-col md="12">
-            <b-form-group :label="$t('Reference')">
-              <b-form-input label="Reference" :placeholder="$t('Reference')" v-model="Filter_Ref"></b-form-input>
-            </b-form-group>
-          </b-col>
-
-          <!-- Customer  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Customer')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Customer')"
-                v-model="Filter_Client"
-                :options="customers.map(customers => ({label: customers.name, value: customers.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- warehouse -->
-          <b-col md="12">
-            <b-form-group :label="$t('warehouse')">
-              <v-select
-                v-model="Filter_warehouse"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Warehouse')"
-                :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Status  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Status')">
-              <v-select
-                v-model="Filter_status"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Status')"
-                :options="
-                      [
-                        {label: 'completed', value: 'completed'},
-                        {label: 'Pending', value: 'pending'},
-                        {label: 'Ordered', value: 'ordered'},
-                      ]"
-              ></v-select>
-            </b-form-group>
-          </b-col>
-
-          <!-- Payment Status  -->
-          <b-col md="12">
-            <b-form-group :label="$t('PaymentStatus')">
-              <v-select
-                v-model="Filter_Payment"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Status')"
-                :options="
-                      [
-                        {label: 'Paid', value: 'paid'},
-                        {label: 'partial', value: 'partial'},
-                        {label: 'UnPaid', value: 'unpaid'},
-                      ]"
-              ></v-select>
-            </b-form-group>
-          </b-col>
-
-           <!-- Shipping Status  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Shipping_status')">
-              <v-select
-                v-model="Filter_shipping"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Status')"
-                :options="
-                      [
-                        {label: 'Ordered', value: 'ordered'},
-                        {label: 'Packed', value: 'packed'},
-                        {label: 'Shipped', value: 'shipped'},
-                        {label: 'Delivered', value: 'delivered'},
-                        {label: 'Cancelled', value: 'cancelled'},
-                      ]"
-              ></v-select>
-            </b-form-group>
-          </b-col>
-
-          <b-col md="6" sm="12">
-            <b-button
-              @click="Get_Sales(serverParams.page)"
-              variant="primary btn-block ripple m-1"
-              size="sm"
-            >
-              <lucide-icon name="filter" />
-              {{ $t("Filter") }}
-            </b-button>
-          </b-col>
-          <b-col md="6" sm="12">
-            <b-button @click="Reset_Filter()" variant="danger ripple btn-block m-1" size="sm">
-              <lucide-icon name="power" />
-              {{ $t("Reset") }}
-            </b-button>
-          </b-col>
-        </b-row>
-      </div>
-    </b-sidebar>
-
-    <!-- Modal Show Payments-->
-    <b-modal hide-footer size="lg" id="Show_payment" :title="$t('ShowPayment')">
-      <b-row>
-        <b-col lg="12" md="12" sm="12" class="mt-3">
-          <div class="table-responsive">
-            <table class="table table-hover table-bordered table-md">
-              <thead>
-                <tr>
-                  <th scope="col">{{$t('date')}}</th>
-                  <th scope="col">{{$t('Reference')}}</th>
-                  <th scope="col">{{$t('Amount')}}</th>
-                  <th scope="col">{{$t('PayeBy')}}</th>
-                  <th scope="col">{{$t('Action')}}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="payments.length <= 0">
-                  <td colspan="5">{{$t('NodataAvailable')}}</td>
-                </tr>
-                <tr v-for="payment in payments">
-                  <td>{{payment.date}}</td>
-                  <td>{{payment.Ref}}</td>
-                  <td>{{ formatPriceWithSymbol(currentUser.currency, payment.montant, 2) }}</td>
-                  <td>{{payment.payment_method?payment.payment_method.name:'---'}}</td>
-                  <td>
-                    <div role="group" aria-label="Basic example" class="btn-group">
-                      <span
-                        title="Print"
-                        class="btn btn-icon btn-info btn-sm"
-                        @click="Payment_Sale_PDF(payment,payment.id)"
-                      >
-                        <lucide-icon name="receipt" />
-                      </span>
-                      <span
-                        v-if="currentUserPermissions.includes('payment_sales_edit')"
-                        title="Edit"
-                        class="btn btn-icon btn-success btn-sm"
-                        @click="Edit_Payment(payment)"
-                      >
-                        <lucide-icon name="pen" />
-                      </span>
-                      <span
-                        title="Email"
-                        class="btn btn-icon btn-primary btn-sm"
-                        @click="Send_Email_Payment(payment.id)"
-                      >
-                        <lucide-icon name="mail" />
-                      </span>
-                      <span
-                        title="SMS"
-                        class="btn btn-icon btn-secondary btn-sm"
-                        @click="Payment_Sale_SMS(payment.id)"
-                      >
-                        <lucide-icon name="message-square" />
-                      </span>
-                      <span
-                        v-if="currentUserPermissions.includes('payment_sales_delete')"
-                        title="Delete"
-                        class="btn btn-icon btn-danger btn-sm"
-                        @click="Remove_Payment(payment.id)"
-                      >
-                        <lucide-icon name="x" />
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+    <template v-else>
+      <transition name="pxsl-bulk">
+        <div v-if="selectedIds.length" class="pxsl__bulk">
+          <span><b class="pxn-num">{{ selectedIds.length }}</b> {{ $t('selected') }}</span>
+          <div class="pxsl__bulk-act">
+            <px-button v-if="currentUserPermissions.includes('Sales_delete')" size="sm" variant="danger" icon="trash-2" @click="delete_by_selected">{{ $t('Del') }}</px-button>
+            <px-button size="sm" variant="ghost" @click="selectedIds = []">{{ $t('Cancel') }}</px-button>
           </div>
-        </b-col>
-      </b-row>
-    </b-modal>
+        </div>
+      </transition>
 
-    <!-- Modal Add Payment-->
+      <div class="pxsl__tablewrap">
+        <px-table
+          v-if="sales.length"
+          :columns="columns"
+          :rows="sales"
+          row-key="id"
+          selectable
+          :selected.sync="selectedIds"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-date="{ row }">{{ formatDisplayDate(row.date) }}</template>
+          <template #cell-Ref="{ row }">
+            <router-link class="pxsl__link" :to="'/app/sales/detail/' + row.id">{{ row.Ref }}</router-link>
+            <lucide-icon v-if="row.sale_has_return == 'yes'" name="arrow-left" :size="13" class="pxsl__ret" />
+          </template>
+          <template #cell-statut="{ row }">
+            <px-badge :tone="row.statut === 'completed' ? 'success' : (row.statut === 'pending' ? 'info' : 'warning')">
+              {{ row.statut === 'completed' ? $t('complete') : (row.statut === 'pending' ? $t('Pending') : $t('Ordered')) }}
+            </px-badge>
+          </template>
+          <template #cell-payment_status="{ row }">
+            <px-badge :tone="row.payment_status === 'paid' ? 'success' : (row.payment_status === 'partial' ? 'info' : 'warning')">
+              {{ row.payment_status === 'paid' ? $t('Paid') : (row.payment_status === 'partial' ? $t('partial') : $t('Unpaid')) }}
+            </px-badge>
+          </template>
+          <template #cell-shipping_status="{ row }">
+            <px-badge v-if="row.shipping_status" :tone="shipTone(row.shipping_status)">{{ shipLabel(row.shipping_status) }}</px-badge>
+            <span v-else class="pxsl__muted">—</span>
+          </template>
+          <template #cell-GrandTotal="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser.currency, row.GrandTotal, 2) }}</span></template>
+          <template #cell-paid_amount="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser.currency, row.paid_amount, 2) }}</span></template>
+          <template #cell-due="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser.currency, row.due, 2) }}</span></template>
+          <template #cell-documents="{ row }">
+            <px-badge v-if="row.documents_count > 0" tone="info" icon="file">{{ row.documents_count }}</px-badge>
+            <span v-else class="pxsl__muted">—</span>
+          </template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions(row)" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
+
+        <px-empty-state
+          v-else
+          icon="shopping-cart"
+          :title="$t('No_sales_yet')"
+          :description="$t('No_sales_desc')"
+        >
+          <px-button
+            v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')"
+            size="sm" variant="primary" icon="plus" @click="$router.push('/app/sales/store')"
+          >{{ $t('Add') }}</px-button>
+        </px-empty-state>
+      </div>
+
+      <px-pagination
+        v-if="sales.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
+
+
+    <!-- Show payments -->
+    <px-modal v-model="showPaymentOpen" :title="$t('ShowPayment')" size="lg">
+      <div class="pxsl-tbl__wrap pxn-scroll">
+        <table class="pxsl-tbl">
+          <thead>
+            <tr>
+              <th>{{ $t('date') }}</th><th>{{ $t('Reference') }}</th><th class="is-right">{{ $t('Amount') }}</th>
+              <th>{{ $t('PayeBy') }}</th><th class="is-right">{{ $t('Action') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="payments.length <= 0"><td colspan="5" class="pxsl__empty">{{ $t('NodataAvailable') }}</td></tr>
+            <tr v-for="payment in payments" :key="payment.id">
+              <td>{{ payment.date }}</td>
+              <td class="pxn-mono">{{ payment.Ref }}</td>
+              <td class="is-right pxn-num">{{ formatPriceWithSymbol(currentUser.currency, payment.montant, 2) }}</td>
+              <td>{{ payment.payment_method ? payment.payment_method.name : '---' }}</td>
+              <td class="is-right">
+                <div class="pxsl__rowbtns">
+                  <px-button size="sm" variant="ghost" icon-only icon="printer" :title="$t('print')" @click="Payment_Sale_PDF(payment, payment.id)" />
+                  <px-button v-if="currentUserPermissions.includes('payment_sales_edit')" size="sm" variant="ghost" icon-only icon="pencil" :title="$t('Edit')" @click="Edit_Payment(payment)" />
+                  <px-button size="sm" variant="ghost" icon-only icon="mail" title="Email" @click="Send_Email_Payment(payment.id)" />
+                  <px-button size="sm" variant="ghost" icon-only icon="message-square" title="SMS" @click="Payment_Sale_SMS(payment.id)" />
+                  <px-button v-if="currentUserPermissions.includes('payment_sales_delete')" size="sm" variant="ghost" icon-only icon="x" :title="$t('Delete')" @click="Remove_Payment(payment.id)" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <template #footer="{ close }">
+        <span class="pxsl__grow" />
+        <px-button variant="secondary" @click="close">{{ $t('Close') || 'Cerrar' }}</px-button>
+      </template>
+    </px-modal>
+
+    <!-- Add / edit payment -->
     <validation-observer ref="Add_payment">
-      <b-modal
-        hide-footer
-        size="lg"
-        id="Add_Payment"
-        :title="EditPaiementMode?$t('EditPayment'):$t('AddPayment')"
-      >
+      <px-modal v-model="addPaymentOpen" :title="EditPaiementMode ? $t('EditPayment') : $t('AddPayment')" size="lg">
         <b-form @submit.prevent="Submit_Payment">
-          <h1 class="text-center mt-3 mb-3">{{client_name}}</h1>
-          <b-row>
-            <!-- date -->
-            <b-col lg="4" md="12" sm="12">
-              <validation-provider
-                name="date"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('date')">
-                  <b-form-input
-                    label="date"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="date-feedback"
-                    v-model="payment.date"
-                    type="date"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="date-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <p class="pxsl__modaltitle">{{ client_name }}</p>
+          <div class="pxsl__grid3">
+            <validation-provider ref="pDateProvider" name="date" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('date')" required :error="v.errors[0]">
+                <template #default="{ id }"><px-input :id="id" type="date" v-model="payment.date" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
 
-            <!-- Reference  -->
-            <b-col lg="4" md="12" sm="12">
-              <b-form-group :label="$t('Reference')">
-                <b-form-input
-                  disabled="disabled"
-                  label="Reference"
-                  :placeholder="$t('Reference')"
-                  v-model="payment.Ref"
-                ></b-form-input>
-              </b-form-group>
-            </b-col>
+            <px-field :label="$t('Reference')">
+              <template #default="{ id }"><px-input :id="id" v-model="payment.Ref" disabled /></template>
+            </px-field>
 
-             <!-- Payment choice -->
-             <b-col lg="4" md="12" sm="12">
-              <validation-provider name="Payment choice" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')">
-                  <v-select
-                    :class="{'is-invalid': !!errors.length}"
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    v-model="payment.payment_method_id"
-                    @input="Selected_PaymentMethod"
-                    :disabled="EditPaiementMode"
-                    :reduce="label => label.value"
-                    :placeholder="$t('PleaseSelect')"
-                    :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
+            <validation-provider ref="pMethodProvider" name="Payment choice" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('Paymentchoice')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="payment.payment_method_id" :reduce="o => o.value"
+                    :disabled="EditPaiementMode" :placeholder="$t('PleaseSelect')"
+                    @input="val => { Selected_PaymentMethod(val); v.validate(val); }"
+                    :options="payment_methods.map(m => ({ label: m.name, value: m.id }))" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-                  ></v-select>
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Received  Amount  -->
-            <b-col lg="4" md="12" sm="12">
-                <validation-provider
-                  name="Received Amount"
-                  :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                  v-slot="validationContext"
-                >
-                <b-form-group :label="$t('Received_Amount')">
-                  <b-form-input
-                    @keyup="Verified_Received_Amount(payment.received_amount)"
-                    label="Received_Amount"
-                    :placeholder="$t('Received_Amount')"
-                    v-model.number="payment.received_amount"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Received_Amount-feedback"
+            <validation-provider ref="pRecvProvider" name="Received Amount" :rules="{ required: true, regex: /^\d*\.?\d*$/ }" v-slot="v">
+              <px-field :label="$t('Received_Amount')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <px-input :id="id" v-model.number="payment.received_amount" :placeholder="$t('Received_Amount')"
                     :disabled="EditPaiementMode && (payment.payment_method_id == '1' || payment.payment_method_id == 1)"
-                  ></b-form-input>
-                  <b-form-invalid-feedback
-                    id="Received_Amount-feedback"
-                  >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+                    @input="v.validate($event); Verified_Received_Amount(payment.received_amount)" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-            <!-- Paying Amount  -->
-            <b-col lg="4" md="12" sm="12">
-              <validation-provider
-                name="Amount"
-                :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Paying_Amount')">
-                  <b-form-input
-                   @keyup="Verified_paidAmount(payment.montant)"
-                    label="Amount"
-                    :placeholder="$t('Paying_Amount')"
-                    v-model.number="payment.montant"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Amount-feedback"
+            <validation-provider ref="pAmtProvider" name="Amount" :rules="{ required: true, regex: /^\d*\.?\d*$/ }" v-slot="v">
+              <px-field :label="$t('Paying_Amount')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <px-input :id="id" v-model.number="payment.montant" :placeholder="$t('Paying_Amount')"
                     :disabled="EditPaiementMode && (payment.payment_method_id == '1' || payment.payment_method_id == 1)"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Amount-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+                    @input="v.validate($event); Verified_paidAmount(payment.montant)" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-            <!-- change Amount  -->
-            <b-col lg="4" md="12" sm="12">
-              <label>{{$t('Change')}} :</label>
-              <p
-                class="change_amount"
-              >{{parseFloat(payment.received_amount - payment.montant).toFixed(priceDecimals)}}</p>
-            </b-col>
+            <px-field :label="$t('Change')">
+              <template #default>
+                <p class="pxsl__change pxn-num">{{ parseFloat(payment.received_amount - payment.montant).toFixed(priceDecimals) }}</p>
+              </template>
+            </px-field>
 
-            <!-- Account -->
-            <b-col lg="6" md="6" sm="12">
-              <validation-provider name="Account">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
-                  <v-select
-                    :class="{'is-invalid': !!errors.length}"
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    v-model="payment.account_id"
-                    :reduce="label => label.value"
-                    :placeholder="$t('Choose_Account')"
-                    :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
-                  />
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+            <px-field :label="$t('Account')" class="pxsl__span2">
+              <template #default="{ id }">
+                <vs-px :input-id="id" v-model="payment.account_id" :reduce="o => o.value" :placeholder="$t('Choose_Account')"
+                  :options="accounts.map(a => ({ label: a.account_name, value: a.id }))" />
+              </template>
+            </px-field>
 
-            <!-- Note -->
-            <b-col lg="6" md="6" sm="12">
-              <b-form-group :label="$t('Note')">
-                <b-form-textarea id="textarea" v-model="payment.notes" rows="3" max-rows="6"></b-form-textarea>
-              </b-form-group>
-            </b-col>
-            <b-col md="12" class="mt-3">
-              <b-button
-                variant="primary"
-                type="submit"
-                :disabled="paymentProcessing"
-              ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-              <div v-once class="typo__p" v-if="paymentProcessing">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
-            </b-col>
-          </b-row>
+            <px-field :label="$t('Note')" class="pxsl__span2">
+              <template #default="{ id }"><px-textarea :id="id" v-model="payment.notes" :rows="3" /></template>
+            </px-field>
+          </div>
+
+          <div class="pxsl__actionbar">
+            <px-button variant="secondary" type="button" @click="addPaymentOpen = false">{{ $t('Cancel') }}</px-button>
+            <px-button variant="primary" type="submit" icon="check" :loading="paymentProcessing">{{ $t('submit') }}</px-button>
+          </div>
         </b-form>
-      </b-modal>
+      </px-modal>
     </validation-observer>
 
-     <!-- Modal Edit Shipment -->
+    <!-- Edit shipment -->
     <validation-observer ref="shipment_ref">
-      <b-modal hide-footer size="md" id="modal_shipment" :title="$t('Edit')">
+      <px-modal v-model="shipmentOpen" :title="$t('Edit')" size="md">
         <b-form @submit.prevent="Submit_Shipment">
-          <b-row>
-            <!-- Status  -->
-            <b-col md="12">
-              <validation-provider name="Status" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' ' + '*'">
-                  <v-select
-                    :class="{'is-invalid': !!errors.length}"
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    v-model="shipment.status"
-                    :reduce="label => label.value"
-                    :placeholder="$t('Choose_Status')"
-                    :options="
-                                [
-                                  {label: 'Ordered', value: 'ordered'},
-                                  {label: 'Packed', value: 'packed'},
-                                  {label: 'Shipped', value: 'shipped'},
-                                  {label: 'Delivered', value: 'delivered'},
-                                  {label: 'Cancelled', value: 'cancelled'},
-                                ]"
-                  ></v-select>
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider ref="shipStatusProvider" name="Status" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Status')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="shipment.status" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Status')" @input="v.validate"
+                  :options="[
+                    { label: $t('Ordered'), value: 'ordered' }, { label: $t('Packed'), value: 'packed' },
+                    { label: $t('Shipped'), value: 'shipped' }, { label: $t('Delivered'), value: 'delivered' },
+                    { label: $t('Cancelled'), value: 'cancelled' }
+                  ]" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-            <b-col md="12">
-              <b-form-group :label="$t('delivered_to')">
-                <b-form-input
-                  label="delivered_to"
-                  v-model="shipment.delivered_to"
-                  :placeholder="$t('delivered_to')"
-                ></b-form-input>
-              </b-form-group>
-            </b-col>
+          <px-field :label="$t('delivered_to')" class="pxsl__gap">
+            <template #default="{ id }"><px-input :id="id" v-model="shipment.delivered_to" :placeholder="$t('delivered_to')" /></template>
+          </px-field>
+          <px-field :label="$t('Adress')" class="pxsl__gap">
+            <template #default="{ id }"><px-textarea :id="id" v-model="shipment.shipping_address" :rows="4" :placeholder="$t('Enter_Address')" /></template>
+          </px-field>
+          <px-field :label="$t('Please_provide_any_details')" class="pxsl__gap">
+            <template #default="{ id }"><px-textarea :id="id" v-model="shipment.shipping_details" :rows="4" :placeholder="$t('Please_provide_any_details')" /></template>
+          </px-field>
 
-            <b-col md="12">
-              <b-form-group :label="$t('Adress')">
-                <textarea
-                  v-model="shipment.shipping_address"
-                  rows="4"
-                  class="form-control"
-                  :placeholder="$t('Enter_Address')"
-                ></textarea>
-              </b-form-group>
-            </b-col>
-
-            <b-col md="12">
-              <b-form-group :label="$t('Please_provide_any_details')">
-                <textarea
-                  v-model="shipment.shipping_details"
-                  rows="4"
-                  class="form-control"
-                  :placeholder="$t('Please_provide_any_details')"
-                ></textarea>
-              </b-form-group>
-            </b-col>
-
-            <b-col md="12" class="mt-3">
-              <b-button
-                variant="primary"
-                type="submit"
-                :disabled="Submit_Processing_shipment"
-              ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-              <div v-once class="typo__p" v-if="Submit_Processing_shipment">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
-            </b-col>
-          </b-row>
+          <div class="pxsl__actionbar">
+            <px-button variant="secondary" type="button" @click="shipmentOpen = false">{{ $t('Cancel') }}</px-button>
+            <px-button variant="primary" type="submit" icon="check" :loading="Submit_Processing_shipment">{{ $t('submit') }}</px-button>
+          </div>
         </b-form>
-      </b-modal>
+      </px-modal>
     </validation-observer>
 
     <!-- Modal Show Invoice POS-->
-    <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Invoice_POS')" @shown="onInvoiceModalShown">
+    <px-modal v-model="invoiceOpen" size="sm" :title="$t('Invoice_POS')">
       <div id="invoice-POS">
         <div style="max-width:400px;margin:0px auto">
 
@@ -1707,15 +1299,10 @@
         <lucide-icon name="receipt" />
         {{$t('print')}}
       </button>
-    </b-modal>
+    </px-modal>
 
     <!-- Modal Manage Documents -->
-    <b-modal
-      hide-footer
-      size="lg"
-      id="Manage_Documents"
-      :title="$t('Attach_Documents')"
-    >
+    <px-modal v-model="documentsOpen" size="lg" :title="$t('Attach_Documents')">
       <b-row>
         <!-- Upload Section -->
         <b-col lg="12" md="12" sm="12" class="mb-3">
@@ -1790,7 +1377,7 @@
           </div>
         </b-col>
       </b-row>
-    </b-modal>
+    </px-modal>
   </div>
 </template>
 
@@ -1808,11 +1395,25 @@ import {
   getPriceDecimals
 } from "../../../../utils/priceFormat";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 export default {
   components: {
     vueEasyPrint,
     barcode: VueBarcode,
-    PxEmptyState
+    PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu,
+    PxKebab, PxBadge, PxField, PxInput, PxTextarea, PxModal, "vs-px": VsPx
   },
   metaInfo: {
     title: "Ventas"
@@ -1836,9 +1437,16 @@ export default {
       },
       selectedIds: [],
       search: "",
+      _searchTimer: null,
       totalRows: "",
       barcodeFormat: "CODE128",
       showDropdown: false,
+      filtersOpen: false,
+      invoiceOpen: false,
+      addPaymentOpen: false,
+      showPaymentOpen: false,
+      documentsOpen: false,
+      shipmentOpen: false,
       EditPaiementMode: false,
       Filter_Client: "",
       Filter_Ref: "",
@@ -2022,89 +1630,28 @@ export default {
 
     columns() {
       return [
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Created_by"),
-          field: "created_by",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Customer"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Status"),
-          field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Total"),
-          field: "GrandTotal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Paid"),
-          field: "paid_amount",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Due"),
-          field: "due",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("PaymentStatus"),
-          field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Shipping_status"),
-          field: "shipping_status",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Documents"),
-          field: "documents",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "date", label: this.$t("date"), sortable: true },
+        { key: "Ref", label: this.$t("Reference"), sortable: true, strong: true },
+        { key: "created_by", label: this.$t("Created_by"), sortable: true },
+        { key: "client_name", label: this.$t("Customer"), sortable: true },
+        { key: "warehouse_name", label: this.$t("warehouse"), sortable: true },
+        { key: "statut", label: this.$t("Status"), sortable: true },
+        { key: "GrandTotal", label: this.$t("Total"), sortable: false, align: "right" },
+        { key: "paid_amount", label: this.$t("Paid"), sortable: false, align: "right" },
+        { key: "due", label: this.$t("Due"), sortable: false, align: "right" },
+        { key: "payment_status", label: this.$t("PaymentStatus"), sortable: true },
+        { key: "shipping_status", label: this.$t("Shipping_status"), sortable: true },
+        { key: "documents", label: this.$t("Documents"), sortable: false }
+      ];
+    },
+    activeFilterCount() {
+      return [this.Filter_date, this.Filter_Ref, this.Filter_Client, this.Filter_warehouse, this.Filter_status, this.Filter_Payment, this.Filter_shipping]
+        .filter(v => v !== "" && v != null).length;
+    },
+    exportMenu() {
+      return [
+        { key: "pdf", label: "PDF de la lista", icon: "file-text" },
+        { key: "xlsx", label: "Excel (CSV)", icon: "file-spreadsheet" }
       ];
     }
   },
@@ -2113,6 +1660,9 @@ export default {
       if(val){
         this.$nextTick(() => { this.renderZatcaQr(); this.renderInvoiceUrlQr(); });
       }
+    },
+    invoiceOpen(v) {
+      if (v) this.$nextTick(() => { setTimeout(() => this.onInvoiceModalShown(), 60); });
     }
   },
   methods: {
@@ -2153,6 +1703,98 @@ export default {
     //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
+    },
+
+    // ---- px-next list events
+    shipLabel(s) {
+      const m = { ordered: this.$t("Ordered"), packed: this.$t("Packed"), shipped: this.$t("Shipped"), delivered: this.$t("Delivered"), cancelled: this.$t("Cancelled") };
+      return m[s] || s;
+    },
+    shipTone(s) {
+      const m = { ordered: "warning", packed: "info", shipped: "neutral", delivered: "success", cancelled: "danger" };
+      return m[s] || "neutral";
+    },
+    rowActions(row) {
+      const p = this.currentUserPermissions || [];
+      const items = [{ key: "view", label: this.$t("SaleDetail"), icon: "eye" }];
+      if (p.includes("Sales_edit") && row.sale_has_return == "no") items.push({ key: "edit", label: this.$t("EditSale"), icon: "pencil" });
+      if (p.includes("Sale_Returns_add") && row.sale_has_return == "no" && row.statut == "completed") items.push({ key: "return", label: this.$t("Sell_Return"), icon: "arrow-left" });
+      if (p.includes("Sale_Returns_add") && row.sale_has_return == "yes") items.push({ key: "return_edit", label: this.$t("Sell_Return"), icon: "arrow-left" });
+      if (p.includes("payment_sales_view")) items.push({ key: "showpay", label: this.$t("ShowPayment"), icon: "wallet" });
+      if (p.includes("payment_sales_add") && row.statut == "completed") items.push({ key: "addpay", label: this.$t("AddPayment"), icon: "plus" });
+      if (p.includes("shipment")) items.push({ key: "shipedit", label: this.$t("Edit_Shipping"), icon: "truck" });
+      items.push({ key: "invoice", label: this.$t("Invoice_POS"), icon: "file-text" });
+      items.push({ key: "pdf", label: this.$t("DownloadPdf"), icon: "file-text" });
+      items.push({ key: "whatsapp", label: "WhatsApp", icon: "message-circle" });
+      items.push({ key: "email", label: this.$t("email_notification"), icon: "mail" });
+      items.push({ key: "sms", label: this.$t("sms_notification"), icon: "message-square" });
+      items.push({ key: "docs", label: this.$t("Attach_Documents"), icon: "file" });
+      if (p.includes("Sales_delete") && row.fiscal_status === "issued") items.push({ key: "voidsar", label: "Anular factura SAR", icon: "file-x-2", tone: "danger" });
+      if (p.includes("Sales_delete") && !row.fiscal_number) items.push({ key: "delete", label: this.$t("DeleteSale"), icon: "x", tone: "danger" });
+      return items;
+    },
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "view") this.$router.push("/app/sales/detail/" + row.id);
+      else if (k === "edit") this.$router.push("/app/sales/edit/" + row.id);
+      else if (k === "return") this.$router.push("/app/sales/sale_return/" + row.id);
+      else if (k === "return_edit") this.$router.push("/app/sale_return/edit/" + row.salereturn_id + "/" + row.id);
+      else if (k === "showpay") this.Show_Payments(row.id, row);
+      else if (k === "addpay") this.New_Payment(row);
+      else if (k === "shipedit") this.Edit_Shipment(row.id);
+      else if (k === "invoice") this.Invoice_POS(row.id);
+      else if (k === "pdf") this.Invoice_PDF(row, row.id);
+      else if (k === "whatsapp") this.Send_WhatsApp(row.id);
+      else if (k === "email") this.Send_Email(row.id);
+      else if (k === "sms") this.Sale_SMS(row.id);
+      else if (k === "docs") this.Manage_Documents(row.id);
+      else if (k === "voidsar") this.Void_Sar_Invoice(row);
+      else if (k === "delete") this.Remove_Sale(row.id, row.sale_has_return);
+    },
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Sales(1); }, 350);
+    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Sales(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Sales(1); } },
+    onSort({ key, dir }) {
+      let field = key;
+      if (key === "client_name") field = "client_id";
+      else if (key === "warehouse_name") field = "warehouse_id";
+      else if (key === "created_by") field = "user_id";
+      this.updateParams({ sort: { type: dir, field: field } });
+      this.Get_Sales(this.serverParams.page);
+    },
+    applyFilters() { this.updateParams({ page: 1 }); this.Get_Sales(this.serverParams.page); },
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "pdf") this.Sales_PDF();
+      else if (k === "xlsx") this.exportCsv();
+    },
+    exportCsv() {
+      const head = [this.$t("date"), this.$t("Reference"), this.$t("Customer"), this.$t("warehouse"), this.$t("Status"), this.$t("Total"), this.$t("Paid"), this.$t("Due"), this.$t("PaymentStatus")];
+      const lines = [head.join(",")].concat(
+        (this.sales || []).map(r =>
+          [r.date, r.Ref, r.client_name, r.warehouse_name, r.statut, r.GrandTotal, r.paid_amount, r.due, r.payment_status]
+            .map(c => `"${String(c == null ? "" : c).replace(/"/g, '""')}"`).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "Sales.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+    syncPaymentValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.pDateProvider) this.$refs.pDateProvider.syncValue(this.payment.date);
+        if (this.$refs.pMethodProvider) this.$refs.pMethodProvider.syncValue(this.payment.payment_method_id);
+        if (this.$refs.pRecvProvider) this.$refs.pRecvProvider.syncValue(this.payment.received_amount);
+        if (this.$refs.pAmtProvider) this.$refs.pAmtProvider.syncValue(this.payment.montant);
+      });
     },
 
     //---- Event Page Change
@@ -2548,7 +2190,7 @@ export default {
           setTimeout(() => {
             // Complete the animation of the  progress bar.
             NProgress.done();
-            this.$bvModal.show("Show_invoice");
+            this.invoiceOpen = true;
             this.$nextTick(() => {
               const qrReady = this.awaitQrReady();
               if (autoPrintable) {
@@ -3098,8 +2740,9 @@ export default {
         setTimeout(() => {
           // Complete the animation of the  progress bar.
           NProgress.done();
-          this.$bvModal.show("Add_Payment");
+          this.addPaymentOpen = true;
         }, 500);
+        this.syncPaymentValidators();
       }
     },
     //------------------------------------Edit Payment ------------------------------\\
@@ -3124,8 +2767,9 @@ export default {
       setTimeout(() => {
         // Complete the animation of the  progress bar.
         NProgress.done();
-        this.$bvModal.show("Add_Payment");
+        this.addPaymentOpen = true;
       }, 1000);
+        this.syncPaymentValidators();
      
     },
     //-------------------------------Show All Payment with Sale ---------------------\\
@@ -3254,7 +2898,7 @@ export default {
           setTimeout(() => {
             // Complete the animation of the  progress bar.
             NProgress.done();
-            this.$bvModal.show("Show_payment");
+            this.showPaymentOpen = true;
           }, 500);
         })
         .catch(() => {
@@ -3295,7 +2939,7 @@ export default {
           this.documents = response.data.documents || [];
           setTimeout(() => {
             NProgress.done();
-            this.$bvModal.show("Manage_Documents");
+            this.documentsOpen = true;
           }, 500);
         })
         .catch(error => {
@@ -3421,7 +3065,8 @@ export default {
 
                  setTimeout(() => {
                     NProgress.done();
-                    this.$bvModal.show("modal_shipment");
+                    this.shipmentOpen = true;
+                    this.$nextTick(() => { if (this.$refs.shipStatusProvider) this.$refs.shipStatusProvider.syncValue(this.shipment.status); });
                 }, 1000);
             })
             .catch(error => {
@@ -3589,7 +3234,7 @@ export default {
       setTimeout(() => {
         this.Get_Sales(this.serverParams.page);
         NProgress.done();
-        this.$bvModal.hide("Add_Payment");
+        this.addPaymentOpen = false;
       }, 800);
     });
 
@@ -3598,8 +3243,8 @@ export default {
 
       setTimeout(() => {
         NProgress.done();
-        this.$bvModal.hide("Add_Payment");
-        this.$bvModal.hide("Show_payment");
+        this.addPaymentOpen = false;
+        this.showPaymentOpen = false;
         this.Get_Sales(this.serverParams.page);
       }, 800);
     });
@@ -3608,7 +3253,7 @@ export default {
     Fire.$on("Delete_Facture_sale", () => {
       setTimeout(() => {
         NProgress.done();
-        this.$bvModal.hide("Show_payment");
+        this.showPaymentOpen = false;
         this.Get_Sales(this.serverParams.page);
       }, 800);
     });
@@ -3625,12 +3270,51 @@ export default {
      Fire.$on("event_update_shipment", () => {
       setTimeout(() => {
         this.Get_Sales(this.serverParams.page);
-        this.$bvModal.hide("modal_shipment");
+        this.shipmentOpen = false;
       }, 800);
     });
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxsl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxsl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxsl__pad { padding: var(--pxn-space-6) 0; }
+.pxsl__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxsl__filters-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxsl__filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxsl__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxsl__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+.pxsl__bulk { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-5); margin-top: var(--pxn-space-4); padding: var(--pxn-space-4) var(--pxn-space-5); background: var(--pxn-primary-soft); border: 1px solid var(--pxn-primary-border); border-radius: var(--pxn-radius-md); font-size: var(--pxn-fs-sm); color: var(--pxn-primary-ink); }
+.pxsl__bulk-act { display: flex; gap: var(--pxn-space-3); }
+.pxsl-bulk-enter-active, .pxsl-bulk-leave-active { transition: opacity var(--pxn-dur-2) var(--pxn-ease), transform var(--pxn-dur-2) var(--pxn-ease); }
+.pxsl-bulk-enter, .pxsl-bulk-leave-to { opacity: 0; transform: translateY(-6px); }
+.pxsl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxsl__link { color: var(--pxn-primary); text-decoration: none; }
+.pxsl__link:hover { text-decoration: underline; }
+.pxsl__ret { color: var(--pxn-danger-ink); margin-left: var(--pxn-space-2); vertical-align: -2px; }
+.pxsl__muted { color: var(--pxn-ink-3); }
+.pxsl-tbl__wrap { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); overflow-x: auto; }
+.pxsl-tbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxsl-tbl th { padding: var(--pxn-space-3) var(--pxn-space-4); text-align: left; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); background: var(--pxn-surface-2); border-bottom: 1px solid var(--pxn-border); white-space: nowrap; }
+.pxsl-tbl td { padding: var(--pxn-space-3) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink); }
+.pxsl-tbl tr:last-child td { border-bottom: 0; }
+.pxsl-tbl .is-right { text-align: right; }
+.pxsl__empty { text-align: center; color: var(--pxn-ink-3); }
+.pxsl__rowbtns { display: inline-flex; gap: var(--pxn-space-1); }
+.pxsl__modaltitle { text-align: center; margin: 0 0 var(--pxn-space-5); font-size: var(--pxn-fs-h3); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxsl__grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 720px) { .pxsl__grid3 { grid-template-columns: minmax(0, 1fr); } }
+.pxsl__span2 { grid-column: span 2; }
+@media (max-width: 720px) { .pxsl__span2 { grid-column: span 1; } }
+.pxsl__gap { margin-top: var(--pxn-space-5); }
+.pxsl__change { margin: 0; padding: var(--pxn-space-2) 0; font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxsl__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+.pxsl__grow { flex: 1; }
+</style>
 
 <style>
   .total{
