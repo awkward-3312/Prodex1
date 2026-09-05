@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\InventoryLocation;
+use App\Models\Setting;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -94,90 +95,111 @@ class ExternalChannelInventoryService
     }
 
     /**
-     * MS7-B2-2C — total sellable quantity for a product/variant, summed
-     * across ALL of the tenant's warehouses. This codebase's WooCommerce
-     * (and every other external-channel) stock push has never had a
-     * per-warehouse concept — every existing computeStockQuantity() site
-     * already summed product_warehouse.qte across every warehouse into ONE
-     * number. This generalizes that SAME sum: a location_primary
-     * warehouse's contribution is its exact fulfillment location's
-     * available quantity (quantity - reserved_quantity, clamped >= 0)
-     * instead of that warehouse's stale product_warehouse row; every other
-     * mode keeps contributing product_warehouse.qte exactly as before.
+     * MS7-B2-2C.1 — the ONE canonical warehouse an automatic external
+     * channel (Woo order import — SyncService::resolveOrderWarehouseId() —
+     * AND Woo stock push, as of this hardening) resolves to: an explicit
+     * override if the caller already knows one (e.g. a caller-supplied
+     * warehouse_id), else Setting.warehouse_id if it is still a valid,
+     * non-deleted warehouse, else the lowest-id non-deleted warehouse.
      *
-     * FAILS CLOSED, never a partial/lowball number: if ANY location_primary
-     * warehouse cannot be read safely (no valid fulfillment location, or a
-     * batch/serial coverage mismatch at that location), the whole result is
-     * `blocked` and callers must not publish anything for this product —
-     * never substitute 0 for that warehouse and sum the rest.
+     * There is deliberately only ONE such rule in the whole codebase — do
+     * not add a second warehouse-resolution formula next to this one.
+     */
+    public function resolveCanonicalWarehouseId(?int $override = null): int
+    {
+        if ($override !== null && $override > 0) {
+            return $override;
+        }
+
+        $settings = Setting::whereNull('deleted_at')->first();
+        $candidate = $settings ? (int) ($settings->warehouse_id ?? 0) : 0;
+        if ($candidate > 0 && Warehouse::where('id', $candidate)->whereNull('deleted_at')->exists()) {
+            return $candidate;
+        }
+
+        return (int) (Warehouse::whereNull('deleted_at')->min('id') ?? 0);
+    }
+
+    /**
+     * MS7-B2-2C.1 — sellable quantity for a product/variant from the SINGLE
+     * warehouse a Woo connection actually fulfills orders from (never an
+     * aggregate across every warehouse in the tenant — B2-2C's original
+     * sellableQuantityAcrossWarehouses() could publish a number no single
+     * physical warehouse could actually satisfy, e.g. warehouse A=3 +
+     * warehouse B=9 published as 12 while a real order only ever draws
+     * from ONE of them). The published number must equal exactly what
+     * order import (MS7-B2-2B) can fulfill from that same warehouse.
+     *
+     * - location_primary: quantity - reserved_quantity at that warehouse's
+     *   EXACT fulfillment location (batch/serial via their own coverage
+     *   check at that same location) — never product_warehouse, never
+     *   another warehouse's location.
+     * - every other mode: product_warehouse.qte for THIS warehouse only
+     *   (not summed with any other warehouse — a tenant with a single
+     *   warehouse sees no change at all; a multi-warehouse tenant now
+     *   correctly reports only the warehouse Woo can actually draw from).
+     *
+     * FAILS CLOSED (blocked=true), never a partial/fake number: no
+     * resolvable canonical warehouse, an invalid/missing fulfillment
+     * location, or a batch/serial coverage mismatch.
      *
      * @return array{quantity: float, blocked: bool, blocked_reason: ?string}
      */
-    public function sellableQuantityAcrossWarehouses(
+    public function sellableQuantityForFulfillmentWarehouse(
         int $productId,
         ?int $variantId,
         bool $isBatchTracked = false,
-        bool $isImei = false
+        bool $isImei = false,
+        ?int $warehouseIdOverride = null
     ): array {
+        $warehouseId = $this->resolveCanonicalWarehouseId($warehouseIdOverride);
+        if ($warehouseId <= 0) {
+            return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'no_canonical_warehouse'];
+        }
+
         if ($isBatchTracked && $isImei) {
             return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'batch_and_serial_conflict'];
         }
 
-        $resolver = app(WarehouseInventoryModeResolver::class);
-        $warehouseIds = Warehouse::whereNull('deleted_at')
-            ->pluck('id')
-            ->map(fn ($v) => (int) $v)
-            ->filter(fn ($v) => $v > 0)
-            ->values()
-            ->all();
+        if (! app(WarehouseInventoryModeResolver::class)->isLocationPrimary($warehouseId)) {
+            $sum = (float) DB::table('product_warehouse')
+                ->whereNull('deleted_at')
+                ->where('product_id', $productId)
+                ->where('warehouse_id', $warehouseId)
+                ->when(
+                    $variantId !== null,
+                    fn ($q) => $q->where('product_variant_id', $variantId),
+                    fn ($q) => $q->whereNull('product_variant_id')
+                )
+                ->sum('qte');
 
-        $total = 0.0;
-
-        foreach ($warehouseIds as $warehouseId) {
-            if (! $resolver->isLocationPrimary($warehouseId)) {
-                $total += (float) DB::table('product_warehouse')
-                    ->whereNull('deleted_at')
-                    ->where('product_id', $productId)
-                    ->where('warehouse_id', $warehouseId)
-                    ->when(
-                        $variantId !== null,
-                        fn ($q) => $q->where('product_variant_id', $variantId),
-                        fn ($q) => $q->whereNull('product_variant_id')
-                    )
-                    ->sum('qte');
-
-                continue;
-            }
-
-            try {
-                $location = $this->resolveFulfillmentLocation($warehouseId);
-            } catch (ValidationException $e) {
-                return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'missing_or_invalid_fulfillment_location'];
-            }
-
-            if ($isBatchTracked) {
-                $coverage = app(BatchLocationService::class)->batchCoverageForLocation((int) $location->id, $productId, $variantId);
-                if (! $coverage['matches']) {
-                    return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'batch_coverage_mismatch'];
-                }
-                $total += max(0.0, (float) $coverage['general_quantity']);
-
-                continue;
-            }
-
-            if ($isImei) {
-                $coverage = app(SerialInventoryCoverageService::class)->coverageForLocation((int) $location->id, $productId, $variantId);
-                if (! $coverage['is_ready']) {
-                    return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'serial_coverage_mismatch'];
-                }
-                $total += max(0.0, (float) $coverage['available_serial_count']);
-
-                continue;
-            }
-
-            $total += max(0.0, $this->availableQuantity((int) $location->id, $productId, $variantId));
+            return ['quantity' => $sum, 'blocked' => false, 'blocked_reason' => null];
         }
 
-        return ['quantity' => round($total, 3), 'blocked' => false, 'blocked_reason' => null];
+        try {
+            $location = $this->resolveFulfillmentLocation($warehouseId);
+        } catch (ValidationException $e) {
+            return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'missing_or_invalid_fulfillment_location'];
+        }
+
+        if ($isBatchTracked) {
+            $coverage = app(BatchLocationService::class)->batchCoverageForLocation((int) $location->id, $productId, $variantId);
+            if (! $coverage['matches']) {
+                return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'batch_coverage_mismatch'];
+            }
+
+            return ['quantity' => max(0.0, round((float) $coverage['general_quantity'], 3)), 'blocked' => false, 'blocked_reason' => null];
+        }
+
+        if ($isImei) {
+            $coverage = app(SerialInventoryCoverageService::class)->coverageForLocation((int) $location->id, $productId, $variantId);
+            if (! $coverage['is_ready']) {
+                return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'serial_coverage_mismatch'];
+            }
+
+            return ['quantity' => (float) $coverage['available_serial_count'], 'blocked' => false, 'blocked_reason' => null];
+        }
+
+        return ['quantity' => max(0.0, $this->availableQuantity((int) $location->id, $productId, $variantId)), 'blocked' => false, 'blocked_reason' => null];
     }
 }

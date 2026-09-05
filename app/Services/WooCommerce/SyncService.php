@@ -501,18 +501,15 @@ class SyncService
      * non-deleted warehouse), else the lowest-id non-deleted warehouse.
      * Identical fallback used by pullOrders() and pullSingleOrder().
      */
+    /**
+     * MS7-B2-2C.1 — delegates to the ONE canonical warehouse-resolution
+     * rule (ExternalChannelInventoryService::resolveCanonicalWarehouseId())
+     * that Woo stock push now also reuses, instead of keeping a second,
+     * independent copy of the exact same fallback chain here.
+     */
     private function resolveOrderWarehouseId(?int $warehouseId): int
     {
-        if ($warehouseId && $warehouseId > 0) {
-            return $warehouseId;
-        }
-
-        $settings = Setting::whereNull('deleted_at')->first();
-        $candidate = $settings ? (int) ($settings->warehouse_id ?? 0) : 0;
-
-        return $candidate > 0 && Warehouse::where('id', $candidate)->whereNull('deleted_at')->exists()
-            ? $candidate
-            : (int) (Warehouse::whereNull('deleted_at')->min('id') ?? 0);
+        return app(ExternalChannelInventoryService::class)->resolveCanonicalWarehouseId($warehouseId);
     }
 
     /**

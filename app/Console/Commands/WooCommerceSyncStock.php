@@ -139,10 +139,11 @@ class WooCommerceSyncStock extends Command
     }
 
     /**
-     * MS7-B2-2C — this command is simple-only (a pre-existing, documented
+     * MS7-B2-2C.1 — this command is simple-only (a pre-existing, documented
      * limitation this milestone does not expand); it now reuses the SAME
-     * native-aware canonical calculator WooCommerceStockSyncJob uses
-     * instead of a raw product_warehouse sum.
+     * single-canonical-warehouse calculator WooCommerceStockSyncJob uses
+     * (never an aggregate across every warehouse in the tenant) instead of
+     * a raw product_warehouse sum.
      *
      * @return array{quantity: float, blocked: bool, blocked_reason: ?string}
      */
@@ -152,6 +153,6 @@ class WooCommerceSyncStock extends Command
         $isImei = (int) ($product->is_imei ?? 0) === 1;
 
         return app(\App\Services\ExternalChannelInventoryService::class)
-            ->sellableQuantityAcrossWarehouses((int) $product->id, null, $isBatch, $isImei);
+            ->sellableQuantityForFulfillmentWarehouse((int) $product->id, null, $isBatch, $isImei);
     }
 }

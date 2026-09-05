@@ -83,9 +83,17 @@ class OnlineStoreLocationNativeArchitectureTest extends TestCase
         $this->assertStringContainsString('is_quarantine', $src);
         $this->assertStringContainsString('ValidationException', $src);
         // Never picks "the first" or "any" location — only the warehouse's
-        // own configured default.
+        // own configured default. MS7-B2-2C.1 added a SECOND, unrelated
+        // legitimate ->first() (Setting::whereNull('deleted_at')->first())
+        // inside resolveCanonicalWarehouseId() — it fetches the single
+        // settings row, not "any location"/"any warehouse", so it is
+        // stripped out here too before asserting no OTHER first()-picking
+        // exists.
         $this->assertStringNotContainsString('->first()', str_replace(
-            "InventoryLocation::whereNull('deleted_at')\n            ->whereKey(\$defaultId)\n            ->where('warehouse_id', \$warehouseId)\n            ->where('is_active', 1)\n            ->first();",
+            [
+                "InventoryLocation::whereNull('deleted_at')\n            ->whereKey(\$defaultId)\n            ->where('warehouse_id', \$warehouseId)\n            ->where('is_active', 1)\n            ->first();",
+                "Setting::whereNull('deleted_at')->first();",
+            ],
             '',
             $src
         ));

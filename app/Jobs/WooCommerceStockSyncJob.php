@@ -381,14 +381,15 @@ class WooCommerceStockSyncJob implements ShouldQueue
     }
 
     /**
-     * MS7-B2-2C — the SAME "sum product_warehouse.qte across every
-     * warehouse" formula this job has always used, generalized via
-     * ExternalChannelInventoryService::sellableQuantityAcrossWarehouses():
-     * a location_primary warehouse's contribution is now its exact
-     * fulfillment location's available quantity (never its stale
-     * product_warehouse row); every other mode still contributes
-     * product_warehouse.qte exactly as before. FAILS CLOSED (blocked=true)
-     * rather than ever returning a partial/lowball number.
+     * MS7-B2-2C.1 — reads the SINGLE canonical warehouse a Woo connection
+     * actually fulfills orders from (never an aggregate across every
+     * warehouse in the tenant — B2-2C's original per-warehouse sum could
+     * publish a total no single physical warehouse could satisfy). A
+     * location_primary warehouse's stock is its exact fulfillment
+     * location's available quantity (never its stale product_warehouse
+     * row); every other mode reads product_warehouse.qte for that SAME
+     * warehouse only. FAILS CLOSED (blocked=true) rather than ever
+     * returning a partial/lowball number.
      *
      * @return array{quantity: float, blocked: bool, blocked_reason: ?string}
      */
@@ -399,7 +400,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
         $isImei = (int) ($product->is_imei ?? 0) === 1;
 
         return app(\App\Services\ExternalChannelInventoryService::class)
-            ->sellableQuantityAcrossWarehouses($productId, null, $isBatch, $isImei);
+            ->sellableQuantityForFulfillmentWarehouse($productId, null, $isBatch, $isImei);
     }
 
     /** @return array{quantity: float, blocked: bool, blocked_reason: ?string} */
@@ -410,7 +411,7 @@ class WooCommerceStockSyncJob implements ShouldQueue
         $isImei = (int) ($product->is_imei ?? 0) === 1;
 
         return app(\App\Services\ExternalChannelInventoryService::class)
-            ->sellableQuantityAcrossWarehouses($productId, $variantId, $isBatch, $isImei);
+            ->sellableQuantityForFulfillmentWarehouse($productId, $variantId, $isBatch, $isImei);
     }
 
     /**

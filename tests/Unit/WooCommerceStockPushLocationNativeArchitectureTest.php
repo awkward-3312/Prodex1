@@ -6,31 +6,37 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * ============================================================================
- *  WOOCOMMERCE STOCK PUSH LOCATION-AWARE — architecture contract (MS7-B2-2C)
+ *  WOOCOMMERCE STOCK PUSH WAREHOUSE-SCOPE — architecture contract (MS7-B2-2C.1)
  * ============================================================================
  *
  * Pattern/marker based — NEVER line numbers.
  * Pins:
  *   - WooCommerceStockSyncJob is the canonical LIVE push path; its
  *     compute*StockQuantity() helpers delegate to
- *     ExternalChannelInventoryService::sellableQuantityAcrossWarehouses()
- *     instead of a raw product_warehouse sum.
- *   - that shared calculator is the ONLY place a location_primary
- *     warehouse's contribution is computed — a location_primary
- *     warehouse's stock read NEVER touches product_warehouse; every other
- *     transition mode still contributes product_warehouse.qte exactly as
- *     before (same aggregate-across-warehouses formula, unchanged).
+ *     ExternalChannelInventoryService::sellableQuantityForFulfillmentWarehouse()
+ *     — a SINGLE canonical warehouse, never an aggregate across every
+ *     warehouse in the tenant.
+ *   - Woo order import (SyncService::resolveOrderWarehouseId()) and Woo
+ *     stock push share the EXACT SAME warehouse-resolution contract
+ *     (ExternalChannelInventoryService::resolveCanonicalWarehouseId()) —
+ *     there is only one such rule in the codebase.
+ *   - the exact fulfillment location is used — no first/random warehouse
+ *     fallback, no new schema/migration.
+ *   - a location_primary warehouse's stock read NEVER touches
+ *     product_warehouse; every other transition mode reads
+ *     product_warehouse.qte for THAT SAME single warehouse only (legacy
+ *     aggregate-across-warehouses semantics removed, since it was already
+ *     the same inconsistency this hardening fixes).
  *   - WooCommercePushProducts and WooCommerceSyncStock (manual, secondary
- *     paths) reuse the SAME canonical calculator — no duplicated native
- *     logic.
+ *     paths) reuse the SAME canonical calculator — no duplicated logic.
  *   - SyncService::syncStock() remains dead/untouched (still zero callers).
- *   - stockMetrics is native-aware (no raw product_warehouse-only sum).
- *   - variant/serial/batch reads are exact (product+variant+location keyed).
- *   - reserved_quantity is excluded from every native read.
- *   - batch/serial coverage mismatches FAIL CLOSED (blocked=true), never a
- *     fake published zero.
- *   - a missing/invalid fulfillment location FAILS CLOSED, never a silent
- *     0 fallback pushed to the remote API.
+ *   - stockMetrics reads the SAME single canonical warehouse/location, not
+ *     an aggregate.
+ *   - batch/serial coverage is checked at the canonical location only.
+ *   - batch/serial coverage mismatches, and a missing/invalid fulfillment
+ *     location, or no resolvable canonical warehouse, all FAIL CLOSED
+ *     (blocked=true) — never a fake published zero, never a silent
+ *     aggregate fallback.
  *   - B2-2B order import, B2-2B.1 reverse hardening, B2-2D absolute-set
  *     safety, Store, Shopify, Subscription, Dashboard/Report, promotion all
  *     stay untouched by this milestone.
@@ -76,14 +82,55 @@ class WooCommerceStockPushLocationNativeArchitectureTest extends TestCase
         return implode("\n", $lines);
     }
 
-    public function test_stock_sync_job_delegates_to_canonical_calculator(): void
+    public function test_stock_sync_job_delegates_to_single_warehouse_calculator(): void
     {
         $src = $this->read('app/Jobs/WooCommerceStockSyncJob.php');
         foreach (['computeStockQuantity', 'computeVariantStockQuantity'] as $fn) {
             $body = $this->extractFunction($src, $fn);
-            $this->assertStringContainsString('ExternalChannelInventoryService::class)', $body, "{$fn}() must delegate to the canonical calculator");
-            $this->assertStringNotContainsString('product_warehouse', $this->liveLines($body), "{$fn}() must not read product_warehouse directly any more");
+            $this->assertStringContainsString('sellableQuantityForFulfillmentWarehouse(', $body, "{$fn}() must delegate to the single-warehouse calculator");
+            $this->assertStringNotContainsString('product_warehouse', $this->liveLines($body), "{$fn}() must not read product_warehouse directly");
         }
+    }
+
+    public function test_no_aggregate_across_warehouses_calculator_remains(): void
+    {
+        // The old per-warehouse-summing method must be gone entirely — it
+        // had zero callers left besides the ones this hardening rewrote,
+        // and it contradicted the physical Woo fulfillment contract.
+        foreach ([
+            'app/Services/ExternalChannelInventoryService.php',
+            'app/Jobs/WooCommerceStockSyncJob.php',
+            'app/Console/Commands/WooCommercePushProducts.php',
+            'app/Console/Commands/WooCommerceSyncStock.php',
+            'app/Http/Controllers/WooCommerceSyncController.php',
+        ] as $rel) {
+            $src = $this->read($rel);
+            $this->assertStringNotContainsString('function sellableQuantityAcrossWarehouses', $src, "{$rel} must not define the removed aggregate calculator");
+            $this->assertStringNotContainsString('->sellableQuantityAcrossWarehouses(', $src, "{$rel} must not call the removed aggregate calculator");
+        }
+    }
+
+    public function test_order_import_and_stock_push_share_one_warehouse_resolver(): void
+    {
+        $externalSvcSrc = $this->read('app/Services/ExternalChannelInventoryService.php');
+        $this->assertSame(1, substr_count($externalSvcSrc, 'function resolveCanonicalWarehouseId('), 'there must be exactly ONE canonical warehouse-resolution rule');
+
+        $syncServiceBody = $this->extractFunction($this->read('app/Services/WooCommerce/SyncService.php'), 'resolveOrderWarehouseId');
+        $this->assertStringContainsString('resolveCanonicalWarehouseId(', $syncServiceBody, 'order import must delegate to the SAME resolver stock push uses, not a second formula');
+
+        $jobSrc = $this->read('app/Jobs/WooCommerceStockSyncJob.php');
+        $pushSrc = $this->read('app/Console/Commands/WooCommercePushProducts.php');
+        $syncStockSrc = $this->read('app/Console/Commands/WooCommerceSyncStock.php');
+        foreach ([$jobSrc, $pushSrc, $syncStockSrc] as $src) {
+            $this->assertStringContainsString('sellableQuantityForFulfillmentWarehouse(', $src);
+        }
+    }
+
+    public function test_no_first_or_random_warehouse_fallback(): void
+    {
+        $body = $this->extractFunction($this->read('app/Services/ExternalChannelInventoryService.php'), 'resolveCanonicalWarehouseId');
+        $this->assertStringContainsString('Setting::whereNull(\'deleted_at\')->first()', $body, 'must resolve via the canonical Setting.warehouse_id, not an arbitrary pick');
+        $this->assertStringContainsString('->min(\'id\')', $body, 'the ONLY fallback is the lowest-id warehouse, matching the existing, pre-established rule (no new heuristic)');
     }
 
     public function test_combo_keeps_structural_formula_but_blocks_on_blocked_component(): void
@@ -117,7 +164,7 @@ class WooCommerceStockPushLocationNativeArchitectureTest extends TestCase
     public function test_sync_service_sync_stock_remains_dead_and_untouched(): void
     {
         $src = $this->read('app/Services/WooCommerce/SyncService.php');
-        $this->assertStringNotContainsString('MS7-B2-2C', $this->extractFunction($src, 'syncStock'));
+        $this->assertStringNotContainsString('MS7-B2-2C.1', $this->extractFunction($src, 'syncStock'));
 
         // Confirm it's still uncalled anywhere outside its own definition.
         $callers = 0;
@@ -137,22 +184,27 @@ class WooCommerceStockPushLocationNativeArchitectureTest extends TestCase
         $this->assertSame(0, $callers, 'SyncService::syncStock() must still have zero external callers');
     }
 
-    public function test_stock_metrics_is_native_aware(): void
+    public function test_stock_metrics_reads_single_canonical_warehouse(): void
     {
         $src = $this->extractFunction($this->read('app/Http/Controllers/WooCommerceSyncController.php'), 'stockMetrics');
+        $this->assertStringContainsString('resolveCanonicalWarehouseId(', $src, 'stockMetrics must resolve the SAME single warehouse the push uses, not an aggregate');
         $this->assertStringContainsString('WarehouseInventoryModeResolver::class)', $src);
         $this->assertStringContainsString('inventory_location_stocks', $src);
         $this->assertStringContainsString('reserved_quantity', $src);
+        // Must NOT loop over multiple warehouses building a per-product total.
+        $this->assertStringNotContainsString('nativeWarehouseIds', $src, 'must not iterate multiple native warehouses any more');
+        $this->assertStringNotContainsString('legacyWarehouseIds', $src, 'must not iterate multiple legacy warehouses any more');
     }
 
     public function test_external_channel_service_excludes_reserved_and_fails_closed(): void
     {
-        $body = $this->extractFunction($this->read('app/Services/ExternalChannelInventoryService.php'), 'sellableQuantityAcrossWarehouses');
+        $body = $this->extractFunction($this->read('app/Services/ExternalChannelInventoryService.php'), 'sellableQuantityForFulfillmentWarehouse');
         // Reserved exclusion for the plain-native branch happens via the
         // shared availableQuantity() helper (quantity - reserved_quantity);
         // batch/serial coverage checks read their own general_quantity.
         $this->assertStringContainsString('$this->availableQuantity(', $body);
         $this->assertStringContainsString("'blocked' => true", $body);
+        $this->assertStringContainsString('no_canonical_warehouse', $body);
         $this->assertStringContainsString('batch_coverage_mismatch', $body);
         $this->assertStringContainsString('serial_coverage_mismatch', $body);
         $this->assertStringContainsString('missing_or_invalid_fulfillment_location', $body);
@@ -161,22 +213,26 @@ class WooCommerceStockPushLocationNativeArchitectureTest extends TestCase
     public function test_external_channel_service_native_branch_never_reads_product_warehouse(): void
     {
         $src = $this->read('app/Services/ExternalChannelInventoryService.php');
-        $body = $this->extractFunction($src, 'sellableQuantityAcrossWarehouses');
+        $body = $this->extractFunction($src, 'sellableQuantityForFulfillmentWarehouse');
         // The native (location_primary) branch starts right after the
-        // legacy `continue;` and the resolveFulfillmentLocation() call —
-        // everything from there to the loop's end must never reference
-        // product_warehouse.
+        // legacy early-return and the resolveFulfillmentLocation() call —
+        // everything from there to the end of the function must never
+        // reference product_warehouse.
         $nativeBranchStart = strpos($body, 'resolveFulfillmentLocation($warehouseId)');
         $this->assertNotFalse($nativeBranchStart);
         $nativeBranch = substr($body, $nativeBranchStart);
         $this->assertStringNotContainsString('product_warehouse', $this->liveLines($nativeBranch));
     }
 
-    public function test_legacy_absolute_read_unchanged_in_shared_calculator(): void
+    public function test_legacy_absolute_read_scoped_to_single_warehouse_only(): void
     {
-        $body = $this->extractFunction($this->read('app/Services/ExternalChannelInventoryService.php'), 'sellableQuantityAcrossWarehouses');
+        $body = $this->extractFunction($this->read('app/Services/ExternalChannelInventoryService.php'), 'sellableQuantityForFulfillmentWarehouse');
         $this->assertStringContainsString("DB::table('product_warehouse')", $body);
         $this->assertStringContainsString("->sum('qte')", $body);
+        // The legacy branch must filter by the resolved warehouse id, not
+        // scan every warehouse (no whereIn(...) over a warehouse id list).
+        $this->assertStringContainsString("->where('warehouse_id', \$warehouseId)", $body);
+        $this->assertStringNotContainsString('whereIn(\'warehouse_id\'', $body);
     }
 
     public function test_out_of_scope_surfaces_are_untouched(): void
@@ -198,7 +254,7 @@ class WooCommerceStockPushLocationNativeArchitectureTest extends TestCase
                 continue;
             }
             $src = file_get_contents($path);
-            $this->assertStringNotContainsString('MS7-B2-2C', $src, "{$rel} must stay untouched by MS7-B2-2C.");
+            $this->assertStringNotContainsString('MS7-B2-2C.1', $src, "{$rel} must stay untouched by MS7-B2-2C.1.");
         }
     }
 
@@ -209,5 +265,15 @@ class WooCommerceStockPushLocationNativeArchitectureTest extends TestCase
         $this->assertStringContainsString('$sale->details()->delete();', $src);
         $this->assertStringContainsString('isLocationPrimary($defaultWarehouseId)', $src);
         $this->assertStringContainsString("'native_stock_skipped' => \$nativeStockSkipped,", $src);
+    }
+
+    public function test_no_new_migration_introduced(): void
+    {
+        // resolveCanonicalWarehouseId() must resolve entirely from
+        // pre-existing schema (Setting.warehouse_id / warehouses.id) — no
+        // new column/table this hardening would need a migration for.
+        $body = $this->extractFunction($this->read('app/Services/ExternalChannelInventoryService.php'), 'resolveCanonicalWarehouseId');
+        $this->assertStringNotContainsString("DB::table('woocommerce_settings')", $body);
+        $this->assertStringContainsString('$settings->warehouse_id', $body);
     }
 }

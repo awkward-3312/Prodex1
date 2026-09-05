@@ -742,69 +742,59 @@ class WooCommerceSyncController extends BaseController
      * GET /api/woocommerce/stock-metrics
      */
     /**
-     * MS7-B2-2C — native-aware: a location_primary warehouse's contribution
-     * to each product's total comes from its exact fulfillment location
-     * (inventory_location_stocks.quantity - reserved_quantity, never
-     * negative), not its stale product_warehouse row. Every other
-     * transition mode still contributes product_warehouse.qte exactly as
-     * before. Two aggregate queries total (one per source), regardless of
-     * catalog size — no per-product service call needed for this metric.
+     * MS7-B2-2C.1 — this metric represents the SAME "stock synchronizable/
+     * publishable to Woo" number the adjacent Sync Stock Now button
+     * publishes (confirmed via the Stock tab UI: both live on the same
+     * screen), so it must be read from the SAME single canonical warehouse
+     * (never an aggregate across every warehouse in the tenant, which is
+     * exactly the inconsistency this hardening removes).
+     *
+     * One aggregate query, scoped to that one warehouse (legacy) or its
+     * exact fulfillment location (native) — no per-product service call
+     * needed for this metric, regardless of catalog size. Batch/serial
+     * coverage is intentionally NOT enforced here (unlike the actual push):
+     * this is an informational dashboard counter, not a remote-mutating
+     * operation, and a per-product coverage check for the whole catalog
+     * would be a real cost for a simple in/out-of-stock count.
      */
     public function stockMetrics(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', WooCommerceSetting::class);
 
-        $resolver = app(WarehouseInventoryModeResolver::class);
-        $warehouseIds = Warehouse::whereNull('deleted_at')->pluck('id')->map(fn ($v) => (int) $v)->filter(fn ($v) => $v > 0)->values()->all();
-
-        $legacyWarehouseIds = [];
-        $nativeWarehouseIds = [];
-        foreach ($warehouseIds as $wid) {
-            $resolver->isLocationPrimary($wid) ? $nativeWarehouseIds[] = $wid : $legacyWarehouseIds[] = $wid;
-        }
-
-        $totals = []; // product_id => running total across every warehouse
-
-        if (! empty($legacyWarehouseIds)) {
-            $rows = \DB::table('product_warehouse')
-                ->whereNull('deleted_at')
-                ->whereIn('warehouse_id', $legacyWarehouseIds)
-                ->selectRaw('product_id, SUM(qte) as total')
-                ->groupBy('product_id')
-                ->get();
-            foreach ($rows as $r) {
-                $pid = (int) $r->product_id;
-                $totals[$pid] = ($totals[$pid] ?? 0) + (float) $r->total;
-            }
-        }
-
-        if (! empty($nativeWarehouseIds)) {
-            $externalSvc = app(ExternalChannelInventoryService::class);
-            foreach ($nativeWarehouseIds as $wid) {
-                try {
-                    $location = $externalSvc->resolveFulfillmentLocation($wid);
-                } catch (\Throwable $e) {
-                    // Blocked warehouse (no valid fulfillment location):
-                    // contributes nothing to this metric, matching the push
-                    // job's own FAIL CLOSED policy rather than guessing.
-                    continue;
-                }
-                $rows = \DB::table('inventory_location_stocks')
-                    ->where('inventory_location_id', $location->id)
-                    ->selectRaw('product_id, SUM(quantity - reserved_quantity) as total')
-                    ->groupBy('product_id')
-                    ->get();
-                foreach ($rows as $r) {
-                    $pid = (int) $r->product_id;
-                    $totals[$pid] = ($totals[$pid] ?? 0) + max(0.0, (float) $r->total);
-                }
-            }
-        }
+        $externalSvc = app(ExternalChannelInventoryService::class);
+        $warehouseId = $externalSvc->resolveCanonicalWarehouseId();
 
         $in = 0;
         $out = 0;
-        foreach ($totals as $total) {
-            $total > 0 ? $in++ : $out++;
+
+        if ($warehouseId > 0) {
+            if (app(WarehouseInventoryModeResolver::class)->isLocationPrimary($warehouseId)) {
+                try {
+                    $location = $externalSvc->resolveFulfillmentLocation($warehouseId);
+                    $rows = \DB::table('inventory_location_stocks')
+                        ->where('inventory_location_id', $location->id)
+                        ->selectRaw('product_id, SUM(quantity - reserved_quantity) as total')
+                        ->groupBy('product_id')
+                        ->get();
+                    foreach ($rows as $r) {
+                        max(0.0, (float) $r->total) > 0 ? $in++ : $out++;
+                    }
+                } catch (\Throwable $e) {
+                    // Blocked canonical warehouse (no valid fulfillment
+                    // location): report nothing rather than guess — matches
+                    // the push job's own FAIL CLOSED policy.
+                }
+            } else {
+                $rows = \DB::table('product_warehouse')
+                    ->whereNull('deleted_at')
+                    ->where('warehouse_id', $warehouseId)
+                    ->selectRaw('product_id, SUM(qte) as total')
+                    ->groupBy('product_id')
+                    ->get();
+                foreach ($rows as $r) {
+                    (float) $r->total > 0 ? $in++ : $out++;
+                }
+            }
         }
 
         $last = optional(\App\Models\WooCommerceSetting::first())->last_sync_at;
