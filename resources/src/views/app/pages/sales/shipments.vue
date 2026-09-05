@@ -1,195 +1,136 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Shipments')" :folder="$t('Sales')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div v-else>
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="shipments"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        placeholder: $t('Search_this_table'),
-        enabled: true,
-      }"
-        :select-options="{ 
-          enabled: true ,
-          clearSelectionText: '',
-        }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'Siguiente',
-        prevLabel: 'Anterior',
-      }"
-        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
-      >
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button @click="Shipments_pdf()" size="sm" variant="outline-success ripple m-1">
-            <lucide-icon name="copy" /> PDF
-          </b-button>
-           <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="shipments"
-              :columns="columns"
-              :file-name="'shipments'"
-              :file-type="'xlsx'"
-              :sheet-name="'shipments'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
-        </div>
+  <div class="px-next pxship">
+    <px-page-header :title="$t('Shipments')" :breadcrumbs="[{ label: $t('Sales') }, { label: $t('Shipments') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">Exportar</px-button>
+          </template>
+        </px-menu>
+      </template>
+    </px-page-header>
 
-        <template slot="emptystate">
-          <PxEmptyState
-            icon="truck"
-            :title="$t('No_shipments_yet')"
-            :description="$t('No_shipments_desc')"
-          />
-        </template>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a
-              @click="Edit_Shipment(props.row)"
-              v-if="currentUserPermissions && currentUserPermissions.includes('shipment')"
-              title="Edit"
-              class="cursor-pointer"
-              v-b-tooltip.hover
-            >
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a
-              title="Delete"
-              class="cursor-pointer"
-              v-b-tooltip.hover
-              v-if="currentUserPermissions && currentUserPermissions.includes('shipment')"
-              @click="Remove_Shipment(props.row.id)"
-            >
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-
-          <div v-else-if="props.column.field == 'status'">
-            <span
-              v-if="props.row.status == 'ordered'"
-              class="badge badge-outline-warning"
-            >{{$t('Ordered')}}</span>
-
-            <span
-              v-else-if="props.row.status == 'packed'"
-              class="badge badge-outline-info"
-            >{{$t('Packed')}}</span>
-
-            <span
-              v-else-if="props.row.status == 'shipped'"
-              class="badge badge-outline-secondary"
-            >{{$t('Shipped')}}</span>
-
-             <span
-              v-else-if="props.row.status == 'delivered'"
-              class="badge badge-outline-success"
-            >{{$t('Delivered')}}</span>
-
-            <span v-else class="badge badge-outline-danger">{{$t('Cancelled')}}</span>
-          </div>
-        </template>
-      </vue-good-table>
+    <div v-if="isLoading" class="pxship__pad">
+      <px-skeleton variant="table" :rows="8" :columns="6" />
     </div>
 
-    <!-- Modal Edit Shipment -->
+    <template v-else>
+      <div class="pxship__tablewrap">
+        <px-table
+          v-if="shipments.length"
+          :columns="columns"
+          :rows="shipments"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-status="{ row }">
+            <px-badge :tone="statusTone(row.status)">{{ statusLabel(row.status) }}</px-badge>
+          </template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
+
+        <px-empty-state
+          v-else
+          icon="truck"
+          :title="$t('No_shipments_yet')"
+          :description="$t('No_shipments_desc')"
+        />
+      </div>
+
+      <px-pagination
+        v-if="shipments.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
+
+    <!-- Edit shipment -->
     <validation-observer ref="shipment_ref">
-      <b-modal hide-footer size="md" id="modal_shipment" :title="$t('Edit')">
+      <px-modal v-model="modalOpen" :title="$t('Edit')" size="md">
         <b-form @submit.prevent="Submit_Shipment">
-          <b-row>
-            <!-- Status  -->
-            <b-col md="12">
-              <validation-provider name="Status" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' ' + '*'">
-                  <v-select
-                    :class="{'is-invalid': !!errors.length}"
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    v-model="shipment.status"
-                    :reduce="label => label.value"
-                    :placeholder="$t('Choose_Status')"
-                    :options="
-                                [
-                                  {label: 'Ordered', value: 'ordered'},
-                                  {label: 'Packed', value: 'packed'},
-                                  {label: 'Shipped', value: 'shipped'},
-                                  {label: 'Delivered', value: 'delivered'},
-                                  {label: 'Cancelled', value: 'cancelled'},
-                                ]"
-                  ></v-select>
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider ref="statusProvider" name="Status" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Status')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <vs-px
+                  :input-id="id"
+                  :invalid="!!v.errors.length"
+                  v-model="shipment.status"
+                  :reduce="label => label.value"
+                  :placeholder="$t('Choose_Status')"
+                  :options="statusOptions"
+                  @input="v.validate"
+                />
+              </template>
+            </px-field>
+          </validation-provider>
 
-            <b-col md="12">
-              <b-form-group :label="$t('delivered_to')">
-                <b-form-input
-                  label="delivered_to"
-                  v-model="shipment.delivered_to"
-                  :placeholder="$t('delivered_to')"
-                ></b-form-input>
-              </b-form-group>
-            </b-col>
+          <px-field :label="$t('delivered_to')" class="pxship__gap">
+            <template #default="{ id }">
+              <px-input :id="id" v-model="shipment.delivered_to" :placeholder="$t('delivered_to')" />
+            </template>
+          </px-field>
 
-            <b-col md="12">
-              <b-form-group :label="$t('Adress')">
-                <textarea
-                  v-model="shipment.shipping_address"
-                  rows="4"
-                  class="form-control"
-                  :placeholder="$t('Enter_Address')"
-                ></textarea>
-              </b-form-group>
-            </b-col>
+          <px-field :label="$t('Adress')" class="pxship__gap">
+            <template #default="{ id }">
+              <px-textarea :id="id" v-model="shipment.shipping_address" :rows="4" :placeholder="$t('Enter_Address')" />
+            </template>
+          </px-field>
 
-            <b-col md="12">
-              <b-form-group :label="$t('Please_provide_any_details')">
-                <textarea
-                  v-model="shipment.shipping_details"
-                  rows="4"
-                  class="form-control"
-                  :placeholder="$t('Please_provide_any_details')"
-                ></textarea>
-              </b-form-group>
-            </b-col>
+          <px-field :label="$t('Please_provide_any_details')" class="pxship__gap">
+            <template #default="{ id }">
+              <px-textarea :id="id" v-model="shipment.shipping_details" :rows="4" :placeholder="$t('Please_provide_any_details')" />
+            </template>
+          </px-field>
 
-            <b-col md="12" class="mt-3">
-              <b-button
-                variant="primary"
-                type="submit"
-                :disabled="SubmitProcessing"
-              ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-              <div v-once class="typo__p" v-if="SubmitProcessing">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
-            </b-col>
-          </b-row>
+          <div class="pxship__actionbar">
+            <px-button variant="secondary" type="button" @click="modalOpen = false">{{ $t('Cancel') }}</px-button>
+            <px-button variant="primary" type="submit" icon="check" :loading="SubmitProcessing">{{ $t('submit') }}</px-button>
+          </div>
         </b-form>
-      </b-modal>
+      </px-modal>
     </validation-observer>
   </div>
 </template>
-
 
 <script>
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
-  components: { PxEmptyState },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxKebab,
+    PxBadge, PxField, PxInput, PxTextarea, PxModal, PxEmptyState, "vs-px": VsPx
+  },
   metaInfo: {
     title: "Envíos"
   },
@@ -198,6 +139,7 @@ export default {
       isLoading: true,
       SubmitProcessing: false,
       ImportProcessing: false,
+      modalOpen: false,
       serverParams: {
         columnFilters: {},
         sort: {
@@ -210,6 +152,7 @@ export default {
       totalRows: "",
       search: "",
       limit: "10",
+      _searchTimer: null,
       shipments: [],
       shipment: {}
     };
@@ -219,56 +162,52 @@ export default {
     ...mapGetters(["currentUserPermissions"]),
     columns() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("shipment_ref"),
-          field: "shipment_ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-
-        {
-          label: this.$t("sale_ref"),
-          field: "sale_ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Customer"),
-          field: "customer_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Status"),
-          field: "status",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "date", label: this.$t("date"), sortable: true },
+        { key: "shipment_ref", label: this.$t("shipment_ref"), sortable: true, strong: true },
+        { key: "sale_ref", label: this.$t("sale_ref"), sortable: true },
+        { key: "customer_name", label: this.$t("Customer"), sortable: true },
+        { key: "warehouse_name", label: this.$t("warehouse"), sortable: true },
+        { key: "status", label: this.$t("Status"), sortable: true }
+      ];
+    },
+    statusOptions() {
+      return [
+        { label: this.$t("Ordered"), value: "ordered" },
+        { label: this.$t("Packed"), value: "packed" },
+        { label: this.$t("Shipped"), value: "shipped" },
+        { label: this.$t("Delivered"), value: "delivered" },
+        { label: this.$t("Cancelled"), value: "cancelled" }
+      ];
+    },
+    rowActions() {
+      const items = [];
+      if (this.currentUserPermissions && this.currentUserPermissions.includes("shipment")) {
+        items.push({ key: "edit", label: this.$t("Edit"), icon: "pencil" });
+        items.push({ key: "delete", label: this.$t("Delete"), icon: "x", tone: "danger" });
+      }
+      return items;
+    },
+    exportMenu() {
+      return [
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "Excel (CSV)", icon: "file-spreadsheet" }
       ];
     }
   },
 
   methods: {
+    statusLabel(s) {
+      const map = {
+        ordered: this.$t("Ordered"), packed: this.$t("Packed"), shipped: this.$t("Shipped"),
+        delivered: this.$t("Delivered"), cancelled: this.$t("Cancelled")
+      };
+      return map[s] || this.$t("Cancelled");
+    },
+    statusTone(s) {
+      const map = { ordered: "warning", packed: "info", shipped: "neutral", delivered: "success", cancelled: "danger" };
+      return map[s] || "danger";
+    },
+
     //------------- Submit Validation Edit shipment
     Submit_Shipment() {
       this.$refs.shipment_ref.validate().then(success => {
@@ -289,46 +228,53 @@ export default {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_shipments(currentPage);
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_shipments(1); }, 350);
+    },
+    onPage(p) {
+      if (this.serverParams.page !== p) {
+        this.updateParams({ page: p });
+        this.Get_shipments(p);
       }
     },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
+    onLimit(v) {
+      if (this.limit !== String(v)) {
+        this.limit = String(v);
+        this.updateParams({ page: 1, perPage: Number(v) });
         this.Get_shipments(1);
       }
     },
-
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
-    },
-
-    //------ Event Sort Change
-    onSortChange(params) {
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { type: dir, field: key } });
       this.Get_shipments(this.serverParams.page);
     },
-
-    //------ Event Search
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_shipments(this.serverParams.page);
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.Edit_Shipment(row);
+      else if (k === "delete") this.Remove_Shipment(row.id);
+    },
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "pdf") this.Shipments_pdf();
+      else if (k === "xlsx") this.Shipments_csv();
+    },
+    Shipments_csv() {
+      const head = [this.$t("date"), this.$t("shipment_ref"), this.$t("sale_ref"), this.$t("Customer"), this.$t("warehouse"), this.$t("Status")];
+      const lines = [head.join(",")].concat(
+        (this.shipments || []).map(s =>
+          [s.date, s.shipment_ref, s.sale_ref, s.customer_name, s.warehouse_name, s.status]
+            .map(c => `"${String(c == null ? "" : c).replace(/"/g, '""')}"`).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "Shipments.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     },
 
     //------ Event Validation State
@@ -461,13 +407,16 @@ export default {
       NProgress.set(0.1);
       this.Get_shipments(this.serverParams.page);
       this.reset_Form();
-      this.shipment = shipment;
+      this.shipment = { ...shipment };
 
       setTimeout(() => {
         NProgress.done();
-        this.$bvModal.show("modal_shipment");
+        this.modalOpen = true;
+        this.$nextTick(() => {
+          if (this.$refs.statusProvider) this.$refs.statusProvider.syncValue(this.shipment.status);
+        });
       }, 800);
-     
+
     },
 
     //----------------------- Update_Shipment ---------------------------\\
@@ -555,7 +504,7 @@ export default {
     Fire.$on("event_update_shipment", () => {
       setTimeout(() => {
         this.Get_shipments(this.serverParams.page);
-        this.$bvModal.hide("modal_shipment");
+        this.modalOpen = false;
       }, 500);
     });
 
@@ -567,3 +516,14 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxship { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxship { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxship__pad { padding: var(--pxn-space-6) 0; }
+.pxship__tablewrap { margin-top: var(--pxn-space-5); }
+.pxship__gap { margin-top: var(--pxn-space-5); }
+.pxship__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+</style>

@@ -1,397 +1,185 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Import_Sales') || 'Import Sales'" :folder="$t('ListSales')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pximps">
+    <px-page-header
+      :title="$t('Import_Sales') || 'Importar ventas'"
+      :breadcrumbs="[{ label: $t('ListSales') }, { label: $t('Import_Sales') || 'Importar ventas' }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" icon="arrow-left" @click="$router.push({ name: 'index_sales' })">{{ $t('BackToList') || 'Volver al listado' }}</px-button>
+        <px-button variant="secondary" icon="file-spreadsheet" @click="downloadExample">{{ $t('Download_exemple') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <validation-observer ref="create_sale" v-if="!isLoading">
-      <b-form @submit.prevent="Submit_Sale">
-        <!-- Hero Header -->
-        <div :style="heroStyle">
-          <div :style="heroInnerStyle">
-            <div :style="heroLeftStyle">
-              <div :style="heroIconCircleStyle">
-                <lucide-icon name="file-up" :style="heroIconStyle" />
+    <p class="pximps__lead">{{ $t('Import_Sale_Sub') || 'Sube un archivo CSV con códigos de producto y cantidades para crear una venta de forma masiva.' }}</p>
+
+    <div v-if="isLoading" class="pximps__pad">
+      <px-skeleton variant="lines" :rows="8" />
+    </div>
+
+    <validation-observer v-else ref="create_sale" tag="div">
+      <div class="pximps__grid">
+        <!-- Left: Sale details -->
+        <px-card :title="$t('SaleDetails') || 'Detalles de la venta'" class="pximps__sec">
+          <validation-provider ref="dateProvider" name="date" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('date')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <px-input :id="id" type="date" v-model="sale.date" @input="v.validate" />
+              </template>
+            </px-field>
+          </validation-provider>
+
+          <validation-provider ref="clientProvider" name="Customer" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Customer')" required :error="v.errors[0]" class="pximps__gap">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="sale.client_id" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Customer')" :options="clients.map(c => ({ label: c.name, value: c.id }))" @input="v.validate" />
+              </template>
+            </px-field>
+          </validation-provider>
+
+          <validation-provider ref="warehouseProvider" name="warehouse" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('warehouse')" required :error="v.errors[0]" class="pximps__gap">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="sale.warehouse_id" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Warehouse')" :options="warehouses.map(w => ({ label: w.name, value: w.id }))" @input="v.validate" />
+              </template>
+            </px-field>
+          </validation-provider>
+
+          <px-field :label="$t('Sales_Agent')" class="pximps__gap">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="sale.sales_agent_id" :reduce="o => o.value"
+                :placeholder="$t('PleaseSelect')" :options="sales_agents.map(ag => ({ label: ag.name, value: ag.id }))" />
+            </template>
+          </px-field>
+
+          <validation-provider ref="statutProvider" name="Status" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Status')" required :error="v.errors[0]" class="pximps__gap">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="sale.statut" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Status')" @input="v.validate"
+                  :options="[{ label: $t('completed'), value: 'completed' }, { label: $t('Pending'), value: 'pending' }]" />
+              </template>
+            </px-field>
+          </validation-provider>
+
+          <div v-if="canEditTotals" class="pximps__grid2 pximps__gap">
+            <px-field :label="$t('OrderTax')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model.number="sale.tax_rate" suffix="%" @input="keyup_OrderTax" />
+              </template>
+            </px-field>
+            <px-field :label="$t('Discount')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model.number="sale.discount" :suffix="currentUser.currency" @input="keyup_Discount" />
+              </template>
+            </px-field>
+          </div>
+          <px-field v-if="canEditTotals" :label="$t('Shipping')" class="pximps__gap">
+            <template #default="{ id }">
+              <px-input :id="id" v-model.number="sale.shipping" :suffix="currentUser.currency" @input="keyup_Shipping" />
+            </template>
+          </px-field>
+
+          <px-field :label="$t('Note')" class="pximps__gap">
+            <template #default="{ id }">
+              <px-textarea :id="id" v-model="sale.notes" :rows="3" :placeholder="$t('Afewwords')" />
+            </template>
+          </px-field>
+        </px-card>
+
+        <!-- Right: CSV import + preview -->
+        <div class="pximps__right">
+          <px-card :title="$t('CSV_Import') || 'Importación CSV'" class="pximps__sec">
+            <label
+              class="pximps-dz"
+              :class="{ 'is-dragover': dropzoneHover, 'has-file': !!import_products }"
+              @dragover.prevent="onDragOver"
+              @dragleave.prevent="onDragLeave"
+              @drop.prevent="onDrop"
+            >
+              <input id="csv-file-input" type="file" accept=".csv,text/csv" class="pximps-dz__input" @change="onFileSelected" />
+              <div class="pximps-dz__icon"><lucide-icon :name="import_products ? 'file-text' : 'upload'" :size="26" /></div>
+              <template v-if="!import_products">
+                <p class="pximps-dz__title">{{ $t('Click_Or_Drop_CSV') || 'Haz clic o suelta tu archivo CSV aquí' }}</p>
+                <p class="pximps-dz__sub">{{ $t('Accepted_Format_CSV') || 'Solo se admiten archivos .csv · separador punto y coma (;)' }}</p>
+              </template>
+              <template v-else>
+                <p class="pximps-dz__title">{{ import_products.name }}</p>
+                <p class="pximps-dz__sub">{{ formatBytes(import_products.size) }}</p>
+                <px-button size="sm" variant="danger" icon="x" @click.stop.prevent="clearFile">{{ $t('Remove') || 'Quitar' }}</px-button>
+              </template>
+            </label>
+
+            <div v-if="previewLoading" class="pximps__loading">
+              <span class="pximps__spin"></span> {{ $t('Parsing_CSV') || 'Analizando y validando el CSV…' }}
+            </div>
+
+            <px-alert v-if="errorMessages.length" tone="danger" :title="$t('Import_Failed_Fix_Below') || 'La importación falló. Corrige lo siguiente:'" class="pximps__panel">
+              <ul class="pximps__msglist">
+                <li v-for="(err, idx) in errorMessages" :key="'err-' + idx">{{ err }}</li>
+              </ul>
+            </px-alert>
+
+            <div v-if="previewRows.length" class="pximps__preview">
+              <div class="pximps__preview-head">
+                <lucide-icon name="check" :size="15" />
+                <span>{{ $t('Preview') || 'Vista previa' }}</span>
+                <px-badge tone="info">{{ previewRows.length }} {{ $t('items') || 'ítems' }}</px-badge>
               </div>
-              <div>
-                <div :style="heroTitleStyle">{{ $t('Import_Sales') || 'Import Sales' }}</div>
-                <div :style="heroSubtitleStyle">
-                  {{ $t('Import_Sale_Sub') || 'Upload a CSV file with product codes and quantities to create a sale in bulk.' }}
-                </div>
+              <div class="pximps-ptbl__wrap pxn-scroll">
+                <table class="pximps-ptbl">
+                  <thead>
+                    <tr>
+                      <th style="width:40px">#</th>
+                      <th>{{ $t('Code') || 'Código' }}</th>
+                      <th>{{ $t('product_name') || $t('Product_Name') || 'Producto' }}</th>
+                      <th class="is-right">{{ $t('Quantity') }}</th>
+                      <th class="is-right">{{ $t('Price') }}</th>
+                      <th class="is-right">{{ $t('Subtotal') || 'Subtotal' }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, idx) in previewRows" :key="'prv-' + idx">
+                      <td class="pxn-num">{{ idx + 1 }}</td>
+                      <td><span class="pxn-mono">{{ row.code }}</span></td>
+                      <td>{{ row.name }}</td>
+                      <td class="is-right pxn-num">{{ formatNumber(row.qty, 2) }} <span class="pximps__unit">{{ row.unit }}</span></td>
+                      <td class="is-right pxn-num">{{ formatNumber(row.price, 2) }}</td>
+                      <td class="is-right pxn-num pximps__strong">{{ formatNumber(row.total, 2) }}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="5" class="is-right pximps__foot-l">{{ $t('Subtotal') || 'Subtotal' }}</td>
+                      <td class="is-right pximps__foot-v pxn-num">{{ formatNumber(previewSubtotal, 2) }}</td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
-            <div :style="heroRightStyle">
-              <a
-                href="/import/exemples/import_sales.csv"
-                :style="downloadBtnStyle"
-                download
-              >
-                <lucide-icon name="download" />
-                <span style="margin-left: 6px;">{{ $t('Download_exemple') }}</span>
-              </a>
+
+            <px-alert v-if="!import_products && !previewLoading && !errorMessages.length" tone="info" bare class="pximps__tip">
+              <lucide-icon name="info" :size="13" />
+              <strong>{{ $t('CSV_Format_Hint_Title') || 'Formato de CSV esperado' }}</strong>
+              — {{ $t('CSV_Format_Hint_Body') || 'Columnas: productcode;qty — usa el archivo de ejemplo como referencia.' }}
+            </px-alert>
+          </px-card>
+
+          <div class="pximps__submitbar">
+            <div class="pximps__submitinfo">
+              <template v-if="previewRows.length">
+                <strong>{{ previewRows.length }}</strong> {{ $t('items_ready') || 'ítems listos para importar' }} ·
+                <strong class="pximps__accent">{{ formatNumber(previewSubtotal, 2) }}</strong>
+              </template>
+              <template v-else>{{ $t('Upload_CSV_To_Preview') || 'Sube un CSV para previsualizar los ítems antes de enviar.' }}</template>
             </div>
+            <px-button variant="primary" icon="check" :loading="SubmitProcessing" :disabled="SubmitProcessing || !previewRows.length" @click="Submit_Sale">
+              {{ $t('submit') }}
+            </px-button>
           </div>
         </div>
-
-        <b-row>
-          <!-- Left: Form -->
-          <b-col lg="5" md="12" sm="12">
-            <div :style="cardStyle">
-              <div :style="cardHeaderStyle">
-                <lucide-icon name="receipt" style="font-size: 16px; margin-right: 8px;" />
-                {{ $t('SaleDetails') || 'Sale Details' }}
-              </div>
-              <div style="padding: 20px;">
-                <b-row>
-                  <!-- date -->
-                  <b-col md="12" class="mb-3">
-                    <validation-provider
-                      name="date"
-                      :rules="{ required: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group :label="$t('date') + ' *'">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          type="date"
-                          v-model="sale.date"
-                        ></b-form-input>
-                        <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Customer -->
-                  <b-col md="12" class="mb-3">
-                    <validation-provider name="Customer" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Customer') + ' *'">
-                        <v-select
-                          :class="{'is-invalid': !!errors.length}"
-                          :state="errors[0] ? false : (valid ? true : null)"
-                          v-model="sale.client_id"
-                          :reduce="label => label.value"
-                          :placeholder="$t('Choose_Customer')"
-                          :options="clients.map(c => ({label: c.name, value: c.id}))"
-                        />
-                        <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- warehouse -->
-                  <b-col md="12" class="mb-3">
-                    <validation-provider name="warehouse" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' *'">
-                        <v-select
-                          :class="{'is-invalid': !!errors.length}"
-                          :state="errors[0] ? false : (valid ? true : null)"
-                          v-model="sale.warehouse_id"
-                          :reduce="label => label.value"
-                          :placeholder="$t('Choose_Warehouse')"
-                          :options="warehouses.map(w => ({label: w.name, value: w.id}))"
-                        />
-                        <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Sales Agent -->
-                  <b-col md="12" class="mb-3">
-                    <validation-provider name="Sales Agent">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Sales_Agent')">
-                        <v-select
-                          :class="{'is-invalid': !!errors.length}"
-                          :state="errors[0] ? false : (valid ? true : null)"
-                          v-model="sale.sales_agent_id"
-                          :reduce="label => label.value"
-                          :placeholder="$t('PleaseSelect')"
-                          :options="sales_agents.map(ag => ({label: ag.name, value: ag.id}))"
-                        />
-                        <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Status -->
-                  <b-col md="12" class="mb-3">
-                    <validation-provider name="Status" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' *'">
-                        <v-select
-                          :class="{'is-invalid': !!errors.length}"
-                          :state="errors[0] ? false : (valid ? true : null)"
-                          v-model="sale.statut"
-                          :reduce="label => label.value"
-                          :placeholder="$t('Choose_Status')"
-                          :options="[
-                            { label: $t('completed'), value: 'completed' },
-                            { label: $t('Pending'), value: 'pending' }
-                          ]"
-                        ></v-select>
-                        <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Order Tax -->
-                  <b-col md="6" class="mb-3" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_sale')">
-                    <validation-provider
-                      name="Order Tax"
-                      :rules="{ regex: /^\d*\.?\d*$/}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group :label="$t('OrderTax')">
-                        <b-input-group append="%">
-                          <b-form-input
-                            :state="getValidationState(validationContext)"
-                            v-model.number="sale.tax_rate"
-                            @keyup="keyup_OrderTax()"
-                          ></b-form-input>
-                        </b-input-group>
-                        <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Discount -->
-                  <b-col md="6" class="mb-3" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_sale')">
-                    <validation-provider
-                      name="Discount"
-                      :rules="{ regex: /^\d*\.?\d*$/}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group :label="$t('Discount')">
-                        <b-input-group :append="currentUser.currency">
-                          <b-form-input
-                            :state="getValidationState(validationContext)"
-                            v-model.number="sale.discount"
-                            @keyup="keyup_Discount()"
-                          ></b-form-input>
-                        </b-input-group>
-                        <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Shipping -->
-                  <b-col md="12" class="mb-3" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_sale')">
-                    <validation-provider
-                      name="Shipping"
-                      :rules="{ regex: /^\d*\.?\d*$/}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group :label="$t('Shipping')">
-                        <b-input-group :append="currentUser.currency">
-                          <b-form-input
-                            :state="getValidationState(validationContext)"
-                            v-model.number="sale.shipping"
-                            @keyup="keyup_Shipping()"
-                          ></b-form-input>
-                        </b-input-group>
-                        <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Notes -->
-                  <b-col md="12">
-                    <b-form-group :label="$t('Note')">
-                      <textarea
-                        v-model="sale.notes"
-                        rows="3"
-                        class="form-control"
-                        :placeholder="$t('Afewwords')"
-                      ></textarea>
-                    </b-form-group>
-                  </b-col>
-                </b-row>
-              </div>
-            </div>
-          </b-col>
-
-          <!-- Right: CSV Upload + Preview -->
-          <b-col lg="7" md="12" sm="12">
-            <div :style="cardStyle">
-              <div :style="cardHeaderStyle">
-                <lucide-icon name="clipboard-list" style="font-size: 16px; margin-right: 8px;" />
-                {{ $t('CSV_Import') || 'CSV Import' }}
-              </div>
-              <div style="padding: 20px;">
-                <!-- Dropzone -->
-                <label
-                  for="csv-file-input"
-                  :style="dropzoneStyle"
-                  @dragover.prevent="onDragOver"
-                  @dragleave.prevent="onDragLeave"
-                  @drop.prevent="onDrop"
-                >
-                  <input
-                    id="csv-file-input"
-                    type="file"
-                    accept=".csv,text/csv"
-                    @change="onFileSelected"
-                    style="display: none;"
-                  />
-                  <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                    <div :style="dropzoneIconStyle">
-                      <lucide-icon name="cloud-sun" v-if="!import_products" />
-                      <lucide-icon name="file-text" v-else />
-                    </div>
-                    <div v-if="!import_products">
-                      <div style="font-size: 15px; font-weight: 600; color: #1f2937;">
-                        {{ $t('Click_Or_Drop_CSV') || 'Click to browse or drop your CSV file here' }}
-                      </div>
-                      <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
-                        {{ $t('Accepted_Format_CSV') || 'Only .csv files are supported · semicolon (;) separator' }}
-                      </div>
-                    </div>
-                    <div v-else style="text-align: center;">
-                      <div style="font-size: 14px; font-weight: 600; color: #1f2937;">
-                        {{ import_products.name }}
-                      </div>
-                      <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
-                        {{ formatBytes(import_products.size) }}
-                      </div>
-                      <button
-                        type="button"
-                        @click.stop.prevent="clearFile"
-                        :style="clearFileBtnStyle"
-                      >
-                        <lucide-icon name="x" style="margin-right: 4px;" />
-                        {{ $t('Remove') || 'Remove' }}
-                      </button>
-                    </div>
-                  </div>
-                </label>
-
-                <!-- Loading -->
-                <div v-if="previewLoading" :style="previewStatusStyle('loading')">
-                  <div class="spinner sm spinner-primary" style="display: inline-block; margin-right: 10px;"></div>
-                  {{ $t('Parsing_CSV') || 'Parsing and validating CSV...' }}
-                </div>
-
-                <!-- Error list -->
-                <div v-if="errorMessages.length" :style="previewStatusStyle('error')">
-                  <div style="display: flex; align-items: flex-start; width: 100%;">
-                    <lucide-icon name="x" style="margin-right: 8px; margin-top: 2px; font-weight: bold;" />
-                    <div style="flex: 1;">
-                      <div style="margin-bottom: 4px;">{{ $t('Import_Failed_Fix_Below') || 'Import failed. Fix the issues below:' }}</div>
-                      <ul style="margin: 0; padding-left: 18px; font-weight: 500;">
-                        <li v-for="(err, idx) in errorMessages" :key="'err-' + idx">{{ err }}</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Preview Table -->
-                <div v-if="previewRows.length" style="margin-top: 20px;">
-                  <div :style="previewHeaderStyle">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <lucide-icon name="check" style="font-size: 18px;" />
-                      <span>{{ $t('Preview') || 'Preview' }}</span>
-                      <span :style="previewBadgeStyle">
-                        {{ previewRows.length }} {{ $t('items') || 'items' }}
-                      </span>
-                    </div>
-                    <div style="font-size: 12px; opacity: 0.92;">
-                      {{ $t('Review_Before_Submit') || 'Review the items below before submitting' }}
-                    </div>
-                  </div>
-
-                  <div :style="previewTableWrapStyle">
-                    <table :style="previewTableStyle">
-                      <thead>
-                        <tr>
-                          <th :style="previewThStyle('left', 40)">#</th>
-                          <th :style="previewThStyle('left')">{{ $t('Code') || 'Code' }}</th>
-                          <th :style="previewThStyle('left')">{{ $t('product_name') || $t('Product_Name') || 'Product' }}</th>
-                          <th :style="previewThStyle('right')">{{ $t('Quantity') }}</th>
-                          <th :style="previewThStyle('right')">{{ $t('Price') }}</th>
-                          <th :style="previewThStyle('right')">{{ $t('Subtotal') || 'Subtotal' }}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          v-for="(row, idx) in previewRows"
-                          :key="'prv-' + idx"
-                          :style="{ background: idx % 2 === 1 ? '#f9fafb' : '#ffffff', borderTop: '1px solid #e5e7eb' }"
-                        >
-                          <td :style="previewTdStyle('left')">
-                            <span :style="rowNumBadgeStyle">{{ idx + 1 }}</span>
-                          </td>
-                          <td :style="previewTdStyle('left')">
-                            <code :style="codeStyle">{{ row.code }}</code>
-                          </td>
-                          <td :style="previewTdStyle('left', true)">
-                            {{ row.name }}
-                          </td>
-                          <td :style="previewTdStyle('right')">
-                            {{ formatNumber(row.qty, 2) }} <span style="color: #9ca3af; font-size: 11px;">{{ row.unit }}</span>
-                          </td>
-                          <td :style="previewTdStyle('right')">
-                            {{ formatNumber(row.price, 2) }}
-                          </td>
-                          <td :style="previewTdStyle('right', false, true)">
-                            {{ formatNumber(row.total, 2) }}
-                          </td>
-                        </tr>
-                      </tbody>
-                      <tfoot>
-                        <tr :style="tfootRowStyle">
-                          <td :colspan="5" :style="tfootLabelStyle">
-                            {{ $t('Subtotal') || 'Subtotal' }}
-                          </td>
-                          <td :style="tfootValueStyle">
-                            {{ formatNumber(previewSubtotal, 2) }}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </div>
-
-                <!-- Empty helper when no file yet -->
-                <div
-                  v-if="!import_products && !previewLoading && !errorMessages.length"
-                  :style="emptyHintStyle"
-                >
-                  <lucide-icon name="info" style="font-size: 22px; color: #4f46e5;" />
-                  <div>
-                    <div style="font-weight: 600; color: #1f2937; margin-bottom: 2px;">
-                      {{ $t('CSV_Format_Hint_Title') || 'Expected CSV format' }}
-                    </div>
-                    <div style="font-size: 12px; color: #6b7280;">
-                      {{ $t('CSV_Format_Hint_Body') || 'Columns: productcode;qty — use the example file as a reference.' }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Submit bar -->
-            <div :style="submitBarStyle">
-              <div style="flex: 1;">
-                <div v-if="previewRows.length" style="font-size: 13px; color: #6b7280;">
-                  <strong style="color: #1f2937;">{{ previewRows.length }}</strong>
-                  {{ $t('items_ready') || 'items ready to import' }} ·
-                  <strong style="color: #4f46e5;">{{ formatNumber(previewSubtotal, 2) }}</strong>
-                </div>
-                <div v-else style="font-size: 13px; color: #6b7280;">
-                  {{ $t('Upload_CSV_To_Preview') || 'Upload a CSV file to preview items before submitting' }}
-                </div>
-              </div>
-              <b-button
-                variant="primary"
-                @click="Submit_Sale"
-                :disabled="SubmitProcessing || !previewRows.length"
-                :style="submitBtnStyle"
-              >
-                <lucide-icon name="check" style="margin-right: 6px;" />
-                {{ $t('submit') }}
-              </b-button>
-              <div v-if="SubmitProcessing" class="spinner sm spinner-primary" style="margin-left: 10px;"></div>
-            </div>
-          </b-col>
-        </b-row>
-      </b-form>
+      </div>
     </validation-observer>
   </div>
 </template>
@@ -399,10 +187,22 @@
 <script>
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Importar ventas"
+  },
+  components: {
+    PxPageHeader, PxCard, PxField, PxInput, PxTextarea, PxButton, PxBadge, PxAlert, "vs-px": VsPx
   },
   data() {
     return {
@@ -433,330 +233,22 @@ export default {
 
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
-
-    // Hero
-    heroStyle() {
-      return {
-        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%)",
-        borderRadius: "14px",
-        padding: "22px 26px",
-        color: "#fff",
-        marginBottom: "20px",
-        boxShadow: "0 10px 25px rgba(79, 70, 229, 0.25)"
-      };
-    },
-    heroInnerStyle() {
-      return {
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "16px"
-      };
-    },
-    heroLeftStyle() {
-      return { display: "flex", alignItems: "center", gap: "16px", flex: "1 1 auto", minWidth: "260px" };
-    },
-    heroRightStyle() {
-      return { display: "flex", alignItems: "center", gap: "10px" };
-    },
-    heroIconCircleStyle() {
-      return {
-        width: "56px",
-        height: "56px",
-        borderRadius: "14px",
-        background: "rgba(255,255,255,0.18)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0
-      };
-    },
-    heroIconStyle() {
-      return { fontSize: "26px", color: "#fff" };
-    },
-    heroTitleStyle() {
-      return { fontSize: "22px", fontWeight: "700", lineHeight: "1.2" };
-    },
-    heroSubtitleStyle() {
-      return { fontSize: "13px", opacity: "0.9", marginTop: "4px", maxWidth: "560px" };
-    },
-    downloadBtnStyle() {
-      return {
-        display: "inline-flex",
-        alignItems: "center",
-        padding: "9px 16px",
-        borderRadius: "10px",
-        background: "rgba(255,255,255,0.2)",
-        color: "#fff",
-        fontWeight: "600",
-        fontSize: "13px",
-        textDecoration: "none",
-        border: "1px solid rgba(255,255,255,0.3)",
-        transition: "background 0.2s"
-      };
-    },
-
-    // Card
-    cardStyle() {
-      return {
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        borderRadius: "12px",
-        overflow: "hidden",
-        marginBottom: "16px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
-      };
-    },
-    cardHeaderStyle() {
-      return {
-        display: "flex",
-        alignItems: "center",
-        padding: "12px 18px",
-        background: "linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)",
-        borderBottom: "1px solid #e5e7eb",
-        fontSize: "13px",
-        fontWeight: "700",
-        color: "#374151",
-        textTransform: "uppercase",
-        letterSpacing: "0.4px"
-      };
-    },
-
-    // Dropzone
-    dropzoneStyle() {
-      const hover = this.dropzoneHover;
-      return {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "28px 20px",
-        border: `2px dashed ${hover ? "#4f46e5" : "#cbd5e1"}`,
-        borderRadius: "12px",
-        background: hover
-          ? "linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%)"
-          : "linear-gradient(135deg, #f8faff 0%, #ffffff 100%)",
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-        minHeight: "150px",
-        margin: "0"
-      };
-    },
-    dropzoneIconStyle() {
-      return {
-        width: "58px",
-        height: "58px",
-        borderRadius: "14px",
-        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-        color: "#fff",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "24px",
-        boxShadow: "0 6px 14px rgba(79, 70, 229, 0.35)"
-      };
-    },
-    clearFileBtnStyle() {
-      return {
-        marginTop: "10px",
-        padding: "4px 12px",
-        fontSize: "12px",
-        background: "#fef2f2",
-        color: "#b91c1c",
-        border: "1px solid #fecaca",
-        borderRadius: "8px",
-        cursor: "pointer",
-        fontWeight: "600"
-      };
-    },
-
-    // Preview header
-    previewHeaderStyle() {
-      return {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "10px 16px",
-        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-        color: "#fff",
-        fontSize: "13px",
-        fontWeight: "700",
-        borderRadius: "10px 10px 0 0"
-      };
-    },
-    previewBadgeStyle() {
-      return {
-        fontSize: "11px",
-        fontWeight: "600",
-        background: "rgba(255,255,255,0.22)",
-        padding: "2px 10px",
-        borderRadius: "10px",
-        marginLeft: "4px"
-      };
-    },
-    previewTableWrapStyle() {
-      return {
-        border: "1px solid #e0e7ff",
-        borderTop: "none",
-        borderRadius: "0 0 10px 10px",
-        overflow: "hidden",
-        background: "#ffffff"
-      };
-    },
-    previewTableStyle() {
-      return {
-        width: "100%",
-        borderCollapse: "collapse",
-        fontSize: "13px"
-      };
-    },
-    codeStyle() {
-      return {
-        fontFamily: "monospace",
-        fontSize: "12px",
-        background: "#f3f4f6",
-        color: "#3730a3",
-        padding: "2px 8px",
-        borderRadius: "5px",
-        fontWeight: "600"
-      };
-    },
-    rowNumBadgeStyle() {
-      return {
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "24px",
-        height: "24px",
-        borderRadius: "6px",
-        background: "#eef2ff",
-        color: "#4f46e5",
-        fontSize: "11px",
-        fontWeight: "700"
-      };
-    },
-    tfootRowStyle() {
-      return {
-        background: "linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%)",
-        borderTop: "2px solid #c7d2fe"
-      };
-    },
-    tfootLabelStyle() {
-      return {
-        padding: "12px 14px",
-        textAlign: "right",
-        fontWeight: "700",
-        fontSize: "13px",
-        color: "#374151",
-        textTransform: "uppercase",
-        letterSpacing: "0.3px"
-      };
-    },
-    tfootValueStyle() {
-      return {
-        padding: "12px 14px",
-        textAlign: "right",
-        fontWeight: "700",
-        fontSize: "15px",
-        color: "#4f46e5"
-      };
-    },
-
-    // Empty hint
-    emptyHintStyle() {
-      return {
-        marginTop: "16px",
-        padding: "14px 18px",
-        background: "linear-gradient(135deg, #f8faff 0%, #ffffff 100%)",
-        border: "1px dashed #c7d2fe",
-        borderRadius: "10px",
-        display: "flex",
-        alignItems: "center",
-        gap: "12px"
-      };
-    },
-
-    // Submit bar
-    submitBarStyle() {
-      return {
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        padding: "14px 18px",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-        marginTop: "4px"
-      };
-    },
-    submitBtnStyle() {
-      return {
-        padding: "9px 22px",
-        fontWeight: "600",
-        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-        border: "none",
-        borderRadius: "10px",
-        color: "#fff",
-        boxShadow: "0 4px 10px rgba(79, 70, 229, 0.3)"
-      };
+    canEditTotals() {
+      return this.currentUserPermissions && this.currentUserPermissions.includes("edit_tax_discount_shipping_sale");
     }
   },
 
   methods: {
-    previewThStyle(align, width) {
-      return {
-        padding: "11px 14px",
-        textAlign: align,
-        fontSize: "11px",
-        fontWeight: "700",
-        textTransform: "uppercase",
-        letterSpacing: "0.4px",
-        color: "#374151",
-        background: "#f9fafb",
-        borderBottom: "1px solid #e5e7eb",
-        width: width ? width + "px" : undefined
-      };
+    downloadExample() {
+      window.open("/import/exemples/import_sales.csv", "_blank", "noopener");
     },
-    previewTdStyle(align, strong, accent) {
-      const base = {
-        padding: "10px 14px",
-        textAlign: align,
-        fontSize: "13px",
-        color: accent ? "#4f46e5" : "#1f2937",
-        verticalAlign: "middle"
-      };
-      if (strong || accent) base.fontWeight = "600";
-      return base;
-    },
-
-    previewStatusStyle(kind) {
-      if (kind === "loading") {
-        return {
-          marginTop: "16px",
-          padding: "12px 16px",
-          background: "#eef2ff",
-          border: "1px solid #c7d2fe",
-          borderRadius: "10px",
-          color: "#3730a3",
-          fontWeight: "600",
-          fontSize: "13px",
-          display: "flex",
-          alignItems: "center"
-        };
-      }
-      return {
-        marginTop: "16px",
-        padding: "12px 16px",
-        background: "#fef2f2",
-        border: "1px solid #fecaca",
-        borderRadius: "10px",
-        color: "#991b1b",
-        fontWeight: "600",
-        fontSize: "13px",
-        display: "flex",
-        alignItems: "flex-start"
-      };
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.dateProvider) this.$refs.dateProvider.syncValue(this.sale.date);
+        if (this.$refs.statutProvider) this.$refs.statutProvider.syncValue(this.sale.statut);
+        if (this.$refs.clientProvider) this.$refs.clientProvider.syncValue(this.sale.client_id);
+        if (this.$refs.warehouseProvider) this.$refs.warehouseProvider.syncValue(this.sale.warehouse_id);
+      });
     },
 
     //------------------------------ File handlers -------------------------\\
@@ -785,7 +277,7 @@ export default {
       const name = file.name || "";
       const ext = name.split(".").pop().toLowerCase();
       if (ext !== "csv") {
-        this.errorMessages = [this.$t("field_must_be_in_csv_format") || "File must be in CSV format"];
+        this.errorMessages = [this.$t("field_must_be_in_csv_format") || "El archivo debe estar en formato CSV"];
         this.import_products = null;
         this.previewRows = [];
         this.previewSubtotal = 0;
@@ -831,7 +323,7 @@ export default {
           if (d.status === false) {
             this.errorMessages = this.collectErrorsFromResponse(d);
             if (!this.errorMessages.length) {
-              this.errorMessages = [this.$t("CSV_Parse_Failed") || "Failed to parse CSV"];
+              this.errorMessages = [this.$t("CSV_Parse_Failed") || "No se pudo analizar el CSV"];
             }
             return;
           }
@@ -839,7 +331,7 @@ export default {
           this.previewRows = rows;
           this.previewSubtotal = Number(d.grand_total) || 0;
           if (!this.previewRows.length) {
-            this.errorMessages = [this.$t("CSV_No_Valid_Rows") || "No valid rows were found in the CSV file"];
+            this.errorMessages = [this.$t("CSV_No_Valid_Rows") || "No se encontraron filas válidas en el archivo CSV"];
           }
         })
         .catch(error => {
@@ -912,7 +404,7 @@ export default {
       const list = this.collectErrorsFromResponse(payload);
       if (list.length) return list;
       if (err && typeof err === "object" && err.message) return [String(err.message)];
-      return [this.$t("An_error_occurred_while_processing_the_CSV_file") || "An error occurred while processing the CSV file."];
+      return [this.$t("An_error_occurred_while_processing_the_CSV_file") || "Ocurrió un error al procesar el archivo CSV."];
     },
 
     //--- Submit Validate Create Sale
@@ -938,7 +430,7 @@ export default {
         if (!this.previewRows.length) {
           this.makeToast(
             "danger",
-            this.$t("CSV_No_Valid_Rows") || "No valid rows were found in the CSV file",
+            this.$t("CSV_No_Valid_Rows") || "No se encontraron filas válidas en el archivo CSV",
             this.$t("Failed")
           );
           return;
@@ -1025,7 +517,7 @@ export default {
           this.errorMessages = this.collectErrorsFromAxios(error);
           this.makeToast(
             "danger",
-            this.$t("Check_the_error_list_and_fix_your_file") || "Check the error list below and fix your file.",
+            this.$t("Check_the_error_list_and_fix_your_file") || "Revisa la lista de errores y corrige tu archivo.",
             this.$t("Failed")
           );
           this.SubmitProcessing = false;
@@ -1040,6 +532,7 @@ export default {
           this.warehouses = response.data.warehouses;
           this.sales_agents = response.data.sales_agents || [];
           this.isLoading = false;
+          this.syncValidators();
         })
         .catch(() => {
           setTimeout(() => {
@@ -1055,38 +548,62 @@ export default {
 };
 </script>
 
-<style scoped>
-.main-content {
-  width: 100%;
-}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-/deep/ .vs__dropdown-toggle {
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  padding: 3px 4px;
-  min-height: 38px;
-}
+<style lang="scss" scoped>
+.pximps { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pximps { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pximps__lead { margin: var(--pxn-space-3) 0 var(--pxn-space-6); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
+.pximps__pad { padding: var(--pxn-space-6) 0; }
 
-/deep/ .form-control {
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-}
+.pximps__grid { display: grid; grid-template-columns: 5fr 7fr; gap: var(--pxn-space-6); }
+@media (max-width: 1024px) { .pximps__grid { grid-template-columns: minmax(0, 1fr); } }
+.pximps__right { display: flex; flex-direction: column; gap: var(--pxn-space-5); min-width: 0; }
+.pximps__sec { }
+.pximps__sec ::v-deep .pxn-card__body { display: block; }
+.pximps__gap { margin-top: var(--pxn-space-5); }
+.pximps__grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--pxn-space-4) var(--pxn-space-5); }
 
-/deep/ .form-control:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+.pximps-dz {
+  display: block; text-align: center; cursor: pointer;
+  border: 2px dashed var(--pxn-border-strong); border-radius: var(--pxn-radius-lg);
+  padding: var(--pxn-space-8) var(--pxn-space-6); background: var(--pxn-surface-2);
+  transition: border-color var(--pxn-dur-1) var(--pxn-ease), background-color var(--pxn-dur-1) var(--pxn-ease);
 }
+.pximps-dz:hover { border-color: var(--pxn-primary-border); background: var(--pxn-primary-softer); }
+.pximps-dz.is-dragover { border-color: var(--pxn-primary); background: var(--pxn-primary-soft); }
+.pximps-dz__input { display: none; }
+.pximps-dz__icon { color: var(--pxn-primary); }
+.pximps-dz__title { margin: var(--pxn-space-3) 0 var(--pxn-space-2); font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pximps-dz__sub { margin: 0 0 var(--pxn-space-3); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 
-/deep/ .input-group-text {
-  border-radius: 0 8px 8px 0;
-  background: #f9fafb;
-  border-color: #e5e7eb;
-}
+.pximps__loading { display: flex; align-items: center; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+.pximps__spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--pxn-border-strong); border-top-color: var(--pxn-primary); animation: pximps-spin 0.7s linear infinite; }
+@keyframes pximps-spin { to { transform: rotate(360deg); } }
 
-/deep/ .form-group label {
-  font-weight: 600;
-  font-size: 13px;
-  color: #374151;
-  margin-bottom: 6px;
+.pximps__panel { margin-top: var(--pxn-space-4); }
+.pximps__msglist { margin: 0; padding-left: var(--pxn-space-6); font-size: var(--pxn-fs-sm); }
+.pximps__tip { margin-top: var(--pxn-space-4); }
+.pximps__tip ::v-deep svg { vertical-align: -2px; margin-right: var(--pxn-space-2); }
+
+.pximps__preview { margin-top: var(--pxn-space-5); }
+.pximps__preview-head { display: flex; align-items: center; gap: var(--pxn-space-3); margin-bottom: var(--pxn-space-3); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pximps-ptbl__wrap { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); overflow-x: auto; }
+.pximps-ptbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); white-space: nowrap; }
+.pximps-ptbl th { padding: var(--pxn-space-3) var(--pxn-space-4); text-align: left; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); background: var(--pxn-surface-2); border-bottom: 1px solid var(--pxn-border); }
+.pximps-ptbl td { padding: var(--pxn-space-3) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink); }
+.pximps-ptbl tbody tr:last-child td { border-bottom: 0; }
+.pximps-ptbl .is-right { text-align: right; }
+.pximps__unit { color: var(--pxn-ink-3); font-size: var(--pxn-fs-xs); }
+.pximps__strong { font-weight: var(--pxn-fw-semibold); }
+.pximps__foot-l { padding: var(--pxn-space-3) var(--pxn-space-4); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-2); background: var(--pxn-surface-2); border-top: 2px solid var(--pxn-border); }
+.pximps__foot-v { padding: var(--pxn-space-3) var(--pxn-space-4); font-weight: var(--pxn-fw-bold); color: var(--pxn-primary); background: var(--pxn-surface-2); border-top: 2px solid var(--pxn-border); }
+
+.pximps__submitbar {
+  display: flex; align-items: center; gap: var(--pxn-space-4);
+  padding: var(--pxn-space-4) var(--pxn-space-5);
+  background: var(--pxn-surface); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg);
 }
+.pximps__submitinfo { flex: 1; font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
+.pximps__accent { color: var(--pxn-primary); }
 </style>
