@@ -10,6 +10,8 @@ const spanishUiMessages = {
   Cash_Drawer_Printer_Name_Help: 'Escribe el nombre exacto de la impresora vinculada al cajón de efectivo.',
   Cash_Drawer_Settings: 'Configuración del cajón de efectivo',
   Dashboard: 'Panel',
+  Go_to_POS: 'Ir al POS',
+  Process_in_POS: 'Procesar en POS',
   Import_Sales: 'Importar ventas',
   Internal_Location_Report: 'Informe de ubicaciones internas',
   Interviews: 'Entrevistas',

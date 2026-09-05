@@ -138,7 +138,9 @@ export const SHELL_RAIL = [
           title: "Operar",
           items: [
             { label: "Ventas", icon: "list", to: "/app/sales/list", activeMatch: "/app/sales", anyPerm: ["Sales_view"] },
-            { label: "Nueva venta", icon: "plus", route: "/app/sales/store", anyPerm: ["Sales_add"] },
+            // "Nueva venta" administrativa retirada: toda venta manual nueva se
+            // origina exclusivamente desde el POS (regla de negocio PRODEX).
+            { label: "Ir al POS", icon: "shopping-cart", route: "/app/pos", plan: "pos", anyPerm: ["Pos_view"] },
             { label: "Devoluciones", icon: "corner-up-left", route: "/app/sale_return/list", anyPerm: ["Sale_Returns_view"] },
             { label: "Importar ventas", icon: "download", route: "/app/sales/import_sales", anyPerm: ["Sales_add"] },
             { label: "Cotizaciones", icon: "file-text", route: "/app/quotations/list", plan: "quotations", anyPerm: ["Quotations_view", "Quotations_add"] },

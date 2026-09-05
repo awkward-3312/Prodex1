@@ -4,7 +4,40 @@ import NProgress from "nprogress";
 import Router from "vue-router";
 Vue.use(Router);
 
+// ---------------------------------------------------------------------------
+// POS-ONLY MANUAL SALES (PRODEX business rule)
+//
+// The administrative "Nueva venta" form (`store_sale` -> create_sale.vue) and
+// the old Quotation -> Sale direct conversion (`change_to_sale`) are retired.
+// Every new manual sale must originate from the POS. These guards make the old
+// URLs unusable as operational forms: a POS-capable user is sent to the POS
+// (optionally pre-loading the quotation), everyone else lands on the sales list.
+// The definitive barrier is still server-side (SalesController@store returns 403).
+// ---------------------------------------------------------------------------
+function canUsePos() {
+    const perms = store && store.getters && store.getters.currentUserPermissions;
+    // Permissions not loaded yet (hard navigation before the auth store hydrates):
+    // be optimistic and route to the POS — it enforces its own access gate.
+    if (!Array.isArray(perms)) return true;
+    return perms.includes("Pos_view");
+}
 
+function redirectManualSaleToPos(to, from, next) {
+    if (canUsePos()) {
+        next({ path: "/app/pos" });
+    } else {
+        next({ name: "index_sales" });
+    }
+}
+
+function redirectQuotationToPos(to, from, next) {
+    const id = to.params.id;
+    if (canUsePos()) {
+        next({ path: "/app/pos", query: id ? { quotation_id: id } : {} });
+    } else {
+        next({ name: "index_sales" });
+    }
+}
 
 
 
@@ -1351,8 +1384,13 @@ const baseRoutes = [
                             )
                     },
                     {
+                        // Administrative "Nueva venta" form is retired. The old URL
+                        // redirects to the POS for POS-capable users, otherwise to
+                        // the sales list. create_sale.vue is kept on disk but never
+                        // rendered; the definitive block is SalesController@store (403).
                         name: "store_sale",
                         path: "store",
+                        beforeEnter: redirectManualSaleToPos,
                         component: () =>
                             import(
                                 /* webpackChunkName: "store_sale" */ "./views/app/pages/sales/create_sale"

@@ -7,10 +7,12 @@
             <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">Exportar</px-button>
           </template>
         </px-menu>
+        <!-- "Nueva venta" administrativa retirada: toda venta manual nueva se
+             origina exclusivamente desde el POS (regla de negocio PRODEX). -->
         <px-button
-          v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')"
-          variant="primary" icon="plus" @click="$router.push('/app/sales/store')"
-        >{{ $t('Add') }}</px-button>
+          v-if="currentUserPermissions && currentUserPermissions.includes('Pos_view')"
+          variant="primary" icon="shopping-cart" @click="$router.push('/app/pos')"
+        >{{ $t('Go_to_POS') }}</px-button>
       </template>
     </px-page-header>
 
@@ -129,9 +131,9 @@
           :description="$t('No_sales_desc')"
         >
           <px-button
-            v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')"
-            size="sm" variant="primary" icon="plus" @click="$router.push('/app/sales/store')"
-          >{{ $t('Add') }}</px-button>
+            v-if="currentUserPermissions && currentUserPermissions.includes('Pos_view')"
+            size="sm" variant="primary" icon="shopping-cart" @click="$router.push('/app/pos')"
+          >{{ $t('Go_to_POS') }}</px-button>
         </px-empty-state>
       </div>
 

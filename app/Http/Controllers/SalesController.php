@@ -246,6 +246,39 @@ class SalesController extends BaseController
 
     public function store(Request $request)
     {
+        // ---------------------------------------------------------------------
+        // POS-ONLY MANUAL SALES (PRODEX business rule)
+        //
+        // Every NEW manual sale in PRODEX must originate exclusively from the
+        // POS (PosController@CreatePOS) so it carries full operational
+        // traceability: server date/time, user, branch, cash drawer,
+        // inventory location, idempotency and location-native stock movement.
+        //
+        // This method is the ONLY entry point of the deprecated administrative
+        // "Nueva venta" form and the old Quotation -> Sale direct conversion.
+        // It is NOT used by the POS (PosController@CreatePOS / CreateDraft),
+        // by WooCommerce/Shopify sync, nor by `store_import_sales`, so blocking
+        // it here does not affect any supported flow.
+        //
+        // The frontend also hides the entry points and the router redirects the
+        // old URL to the POS, but this server-side 403 is the definitive
+        // barrier against a direct `POST sales` call.
+        // ---------------------------------------------------------------------
+        return response()->json([
+            'success' => false,
+            'code' => 'MANUAL_SALE_POS_ONLY',
+            'message' => 'Las ventas manuales deben registrarse desde el POS.',
+        ], 403);
+    }
+
+    /**
+     * Legacy administrative sale creation.
+     *
+     * Kept intact (never reached) so location-native / batch / serial behaviour
+     * and its architecture tests remain documented. Guarded by store() above.
+     */
+    private function storeLegacyAdminSale(Request $request)
+    {
         $this->authorizeForUser($request->user('api'), 'create', Sale::class);
 
         request()->validate([

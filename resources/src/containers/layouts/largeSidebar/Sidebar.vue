@@ -1292,15 +1292,8 @@
           data-parent="sales"
           :class="{ 'd-block': selectedParentMenu == 'sales' }"
         >
-          <li
-            class="nav-item"
-            v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')"
-          >
-            <router-link tag="a" class to="/app/sales/store">
-              <lucide-icon class="nav-icon" name="file-plus" />
-              <span class="item-name">{{$t('AddSale')}}</span>
-            </router-link>
-          </li>
+          <!-- "Nueva venta" administrativa retirada: toda venta manual nueva
+               se origina exclusivamente desde el POS (regla de negocio PRODEX). -->
           <li
             class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')"

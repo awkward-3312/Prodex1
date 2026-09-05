@@ -483,12 +483,8 @@
               <lucide-icon class="submenu-arrow" name="chevron-down" v-if="!isCollapsed" />
             </a>
             <ul class="submenu" v-if="openMenus.includes('sales') && !isCollapsed">
-              <li class="submenu-item" v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')">
-                <router-link to="/app/sales/store" class="submenu-link">
-                  <lucide-icon class="submenu-icon" name="file-plus" />
-                  <span>{{ $t('AddSale') }}</span>
-                </router-link>
-              </li>
+              <!-- "Nueva venta" administrativa retirada: toda venta manual nueva
+                   se origina exclusivamente desde el POS (regla de negocio PRODEX). -->
               <li class="submenu-item" v-if="currentUserPermissions && currentUserPermissions.includes('Sales_add')">
                 <router-link to="/app/sales/import_sales" class="submenu-link">
                   <lucide-icon class="submenu-icon" name="file-plus" />
