@@ -1,450 +1,89 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('stock_report')" :folder="$t('Reports')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxrl">
+    <px-page-header
+      :title="product.name ? `${$t('stock_report')} · ${product.name}` : $t('stock_report')"
+      :breadcrumbs="crumbs"
+    />
 
-    <b-row v-if="!isLoading">
-        <b-col lg="12" class="mb-4">
-            <h3 class="text-center">{{product.name}}</h3>
-        </b-col>
-      <!-- Warehouse Quantity -->
-          <b-col md="5" v-if="product.type == 'is_single'">
-          
-            <table class="table table-hover table-sm">
-              <thead>
-                <tr>
-                  <th>{{$t('warehouse')}}</th>
-                  <th>{{$t('Quantity')}}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="PROD_W in product.CountQTY">
-                  <td>{{PROD_W.mag}}</td>
-                  <td>{{formatNumber(PROD_W.qte ,2)}} {{product.unit}}</td>
-                </tr>
-              </tbody>
-            </table>
-          </b-col>
-          <!-- Warehouse Variants Quantity -->
-          <b-col md="7" v-if="product.is_variant == 'yes'" class="mt-4">
-            <table class="table table-hover table-sm">
-              <thead>
-                <tr>
-                  <th>{{$t('warehouse')}}</th>
-                  <th>{{$t('Variant')}}</th>
-                  <th>{{$t('Quantity')}}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="PROD_V in product.CountQTY_variants">
-                  <td>{{PROD_V.mag}}</td>
-                  <td>{{PROD_V.variant}}</td>
-                  <td>{{formatNumber(PROD_V.qte ,2)}} {{product.unit}}</td>
-                </tr>
-              </tbody>
-            </table>
-          </b-col>
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="7" />
+    </div>
 
-      <b-col md="12">
-        <b-card class="card mb-30" header-bg-variant="transparent ">
-          <b-tabs active-nav-item-class="nav nav-tabs" content-class="mt-3">
-           
+    <template v-else>
+      <px-card v-if="product.type == 'is_single' && (product.CountQTY || []).length" :title="$t('Quantity')" class="pxrl__chartcard">
+        <table class="pxrl__minitable">
+          <thead>
+            <tr><th>{{ $t('warehouse') }}</th><th class="pxrl__tr">{{ $t('Quantity') }}</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(w, i) in product.CountQTY" :key="i">
+              <td>{{ w.mag }}</td>
+              <td class="pxrl__tr pxn-num">{{ formatNumber(w.qte, 2) }} {{ product.unit }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </px-card>
 
-            <!-- Sales Table -->
-            <b-tab :title="$t('Sales')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_sales"
-                :totalRows="totalRows_sales"
-                :rows="rows_sales"
-                :group-options="{
-                  enabled: true,
-                  headerPosition: 'bottom',
-                }"
-                @on-page-change="PageChangeSales"
-                @on-per-page-change="onPerPageChangeSales"
-                @on-search="onSearch_sales"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-              <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('sales')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Sales_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
+      <px-card v-if="product.is_variant == 'yes' && (product.CountQTY_variants || []).length" :title="$t('Variant')" class="pxrl__chartcard">
+        <table class="pxrl__minitable">
+          <thead>
+            <tr><th>{{ $t('warehouse') }}</th><th>{{ $t('Variant') }}</th><th class="pxrl__tr">{{ $t('Quantity') }}</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(v, i) in product.CountQTY_variants" :key="i">
+              <td>{{ v.mag }}</td>
+              <td>{{ v.variant }}</td>
+              <td class="pxrl__tr pxn-num">{{ formatNumber(v.qte, 2) }} {{ product.unit }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </px-card>
 
-                <vue-excel-xlsx
-                    class="btn btn-sm btn-outline-danger ripple m-1"
-                    :data="sales"
-                    :columns="columns_sales"
-                    :file-name="'sales_report'"
-                    :file-type="'xlsx'"
-                    :sheet-name="'sales_report'"
-                    >
-                    <lucide-icon name="file-spreadsheet" /> EXCEL
-                </vue-excel-xlsx>
+      <div class="pxrl__tabbar">
+        <button
+          v-for="t in tabs"
+          :key="t.key"
+          type="button"
+          class="pxrl__tab pxn-ring"
+          :class="{ 'is-active': activeTab === t.key }"
+          @click="activeTab = t.key"
+        >{{ t.label }}</button>
+      </div>
 
-              </div>
-                <template slot="table-row" slot-scope="props">
-                  <div v-if="props.column.field == 'Ref'">
-                    <router-link
-                      :to="'/app/sales/detail/'+props.row.sale_id"
-                    >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-                    </router-link>
-                  </div>
-                  <span v-else-if="props.column.field == 'total'">
-                    {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
-                  </span>
-                  <span v-else>
-                    {{ props.formattedRow[props.column.field] }}
-                  </span>
-                </template>
-              </vue-good-table>
-            </b-tab>
+      <div v-for="t in tabs" v-show="activeTab === t.key" :key="'panel-' + t.key" class="pxrl__panel">
+        <px-toolbar :search="searchOf(t.key)" :search-placeholder="$t('Search_this_table')" @update:search="v => onSearch(t.key, v)">
+          <template #actions><px-menu :items="pdfPrintMenu" align="end" @select="k => onExport(t.key, k)">
+            <template #trigger><px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button></template>
+          </px-menu></template>
+        </px-toolbar>
 
-             <!-- Quotations Table -->
-            <b-tab :title="$t('Quotations')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_quotations"
-                :totalRows="totalRows_quotations"
-                :rows="rows_quotations"
-                :group-options="{
-                  enabled: true,
-                  headerPosition: 'bottom',
-                }"
-                @on-page-change="PageChangeQuotation"
-                @on-per-page-change="onPerPageChangeQuotation"
-                @on-search="onSearch_quotations"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-              <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('quotations')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Quotation_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
+        <div class="pxrl__tablewrap">
+          <px-table v-if="rowsOf(t.key).length" :columns="columnsOf(t.key)" :rows="rowsOf(t.key)" row-key="__rowkey">
+            <template #cell-Ref="{ row }">
+              <router-link v-if="refLink(t.key, row)" :to="refLink(t.key, row)" class="pxrl__link">{{ row.Ref }}</router-link>
+              <span v-else>{{ row.Ref }}</span>
+            </template>
+            <template #cell-total="{ row }"><span class="pxn-num">{{ money(row.total) }}</span></template>
+            <template #cell-quantity="{ row }"><span class="pxn-num">{{ row.quantity }}</span></template>
+          </px-table>
+          <px-empty-state v-else icon="package" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+        </div>
 
-                <vue-excel-xlsx
-                    class="btn btn-sm btn-outline-danger ripple m-1"
-                    :data="quotations"
-                    :columns="columns_quotations"
-                    :file-name="'Quotation_report'"
-                    :file-type="'xlsx'"
-                    :sheet-name="'Quotation_report'"
-                    >
-                    <lucide-icon name="file-spreadsheet" /> EXCEL
-                </vue-excel-xlsx>
-              </div>
-                <template slot="table-row" slot-scope="props">
-                  <div v-if="props.column.field == 'Ref'">
-                    <router-link
-                      :to="'/app/quotations/detail/'+props.row.quotation_id"
-                    >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-                    </router-link>
-                  </div>
-                  <span v-else-if="props.column.field == 'total'">
-                    {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
-                  </span>
-                  <span v-else>
-                    {{ props.formattedRow[props.column.field] }}
-                  </span>
-                </template>
-              </vue-good-table>
-            </b-tab>
+        <div v-if="rowsOf(t.key).length && t.hasTotal" class="pxrl__totalrow">
+          <span>{{ $t('Total') }}</span>
+          <span>{{ $t('SubTotal') }}: <b class="pxn-num">{{ money(stripSum(rowsOf(t.key), 'total')) }}</b></span>
+        </div>
 
-            <!-- Purchases Table -->
-            <b-tab :title="$t('Purchases')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_purchases"
-                :totalRows="totalRows_purchases"
-                :rows="rows_purchases"
-                :group-options="{
-                  enabled: true,
-                  headerPosition: 'bottom',
-                }"
-                @on-page-change="PageChangePurchases"
-                @on-per-page-change="onPerPageChangePurchases"
-                @on-search="onSearch_purchases"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-              <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('purchases')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Purchase_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
-
-                <vue-excel-xlsx
-                    class="btn btn-sm btn-outline-danger ripple m-1"
-                    :data="purchases"
-                    :columns="columns_purchases"
-                    :file-name="'purchases_report'"
-                    :file-type="'xlsx'"
-                    :sheet-name="'purchases_report'"
-                    >
-                    <lucide-icon name="file-spreadsheet" /> EXCEL
-                </vue-excel-xlsx>
-              </div>
-                <template slot="table-row" slot-scope="props">
-                  <div v-if="props.column.field == 'Ref'">
-                    <router-link
-                      :to="'/app/purchases/detail/'+props.row.purchase_id"
-                    >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-                    </router-link>
-                  </div>
-                  <span v-else-if="props.column.field == 'total'">
-                    {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
-                  </span>
-                  <span v-else>
-                    {{ props.formattedRow[props.column.field] }}
-                  </span>
-                </template>
-              </vue-good-table>
-            </b-tab>
-
-            <!-- Sales Return Table -->
-            <b-tab :title="$t('SalesReturn')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_sales_return"
-                :totalRows="totalRows_sales_return"
-                :rows="rows_sales_return"
-                :group-options="{
-                  enabled: true,
-                  headerPosition: 'bottom',
-                }"
-                @on-page-change="Page_Change_sales_Return"
-                @on-per-page-change="onPerPage_Change_sales_Return"
-                @on-search="onSearch_return_sales"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-              <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('sales_return')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Sale_Return_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
-
-                <vue-excel-xlsx
-                    class="btn btn-sm btn-outline-danger ripple m-1"
-                    :data="sales_return"
-                    :columns="columns_sales_return"
-                    :file-name="'sales_return_report'"
-                    :file-type="'xlsx'"
-                    :sheet-name="'sales_return_report'"
-                    >
-                    <lucide-icon name="file-spreadsheet" /> EXCEL
-                </vue-excel-xlsx>
-              </div>
-                <template slot="table-row" slot-scope="props">
-                  <div v-if="props.column.field == 'Ref'">
-                    <router-link
-                      :to="'/app/sale_return/detail/'+props.row.return_sale_id"
-                    >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-                    </router-link>
-                  </div>
-                  <span v-else-if="props.column.field == 'total'">
-                    {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
-                  </span>
-                  <span v-else>
-                    {{ props.formattedRow[props.column.field] }}
-                  </span>
-                </template>
-              </vue-good-table>
-            </b-tab>
-
-             <!-- Purchase Return Table -->
-            <b-tab :title="$t('PurchasesReturn')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_purchase_return"
-                :totalRows="totalRows_purchases_return"
-                :rows="rows_purchases_return"
-                :group-options="{
-                  enabled: true,
-                  headerPosition: 'bottom',
-                }"
-                @on-page-change="Page_Change_purchases_Return"
-                @on-per-page-change="onPerPage_Change_purchases_Return"
-                @on-search="onSearch_return_purchases"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-               <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('purchases_return')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Returns_Purchase_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
-
-                <vue-excel-xlsx
-                    class="btn btn-sm btn-outline-danger ripple m-1"
-                    :data="purchases_return"
-                    :columns="columns_purchase_return"
-                    :file-name="'purchases_return_report'"
-                    :file-type="'xlsx'"
-                    :sheet-name="'purchases_return_report'"
-                    >
-                    <lucide-icon name="file-spreadsheet" /> EXCEL
-                </vue-excel-xlsx>
-              </div>
-                <template slot="table-row" slot-scope="props">
-                  <div v-if="props.column.field == 'Ref'">
-                    <router-link
-                      :to="'/app/purchase_return/detail/'+props.row.return_purchase_id"
-                    >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-                    </router-link>
-                  </div>
-                  <span v-else-if="props.column.field == 'total'">
-                    {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
-                  </span>
-                  <span v-else>
-                    {{ props.formattedRow[props.column.field] }}
-                  </span>
-                </template>
-              </vue-good-table>
-            </b-tab>
-
-             <!-- Transfers Table -->
-            <b-tab :title="$t('StockTransfers')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_transfers"
-                :totalRows="totalRows_transfers"
-                :rows="transfers"
-                @on-page-change="PageChangeTransfer"
-                @on-per-page-change="onPerPageChangeTransfer"
-                @on-search="onSearch_transfers"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-              <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('transfers')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Transfer_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
-              </div>
-               
-              </vue-good-table>
-            </b-tab>
-
-             <!-- Adjustment Table -->
-            <b-tab :title="$t('Adjustment')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_adjustments"
-                :totalRows="totalRows_adjustments"
-                :rows="adjustments"
-                @on-page-change="PageChangeAdjustment"
-                @on-per-page-change="onPerPageChangeAdjustment"
-                @on-search="onSearch_adjustments"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-               <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('adjustments')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Adjustment_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
-              </div>
-              </vue-good-table>
-            </b-tab>
-
-             
-
-          </b-tabs>
-        </b-card>
-      </b-col>
-    </b-row>
+        <px-pagination v-if="rowsOf(t.key).length" :page="Number(pageOf(t.key))" :per-page="Number(limitOf(t.key))" :total="Number(totalOf(t.key)) || 0"
+          @update:page="p => onPage(t.key, p)" @update:perPage="v => onLimit(t.key, v)" />
+      </div>
+    </template>
   </div>
 </template>
 
 
 <script>
-import { mapActions, mapGetters } from "vuex";
+import { mapGetters } from "vuex";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -452,10 +91,25 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
+  metaInfo: {
+    title: "Stock Report Detail"
+  },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxCard, PxEmptyState
+  },
   data() {
     return {
+      activeTab: "sales",
       totalRows_quotations: "",
       totalRows_sales: "",
       totalRows_sales_return: "",
@@ -480,696 +134,237 @@ export default {
       transfers_page: 1,
       adjustments_page: 1,
 
-      search_sales:"",
-      search_purchases:"",
-      search_quotations:"",
-      search_return_sales:"",
-      search_return_purchases:"",
-      search_transfers:"",
-      search_adjustments:"",
+      search_sales: "",
+      search_purchases: "",
+      search_quotations: "",
+      search_return_sales: "",
+      search_return_purchases: "",
+      search_transfers: "",
+      search_adjustments: "",
 
       isLoading: true,
-      product:{},
+      product: {},
       purchases: [],
-      rows_purchases: [{ statut: '', children: [] }],
       sales: [],
-      rows_sales: [{ statut: '', children: [] }],
       quotations: [],
-      rows_quotations: [{ statut: '', children: [] }],
       sales_return: [],
-      rows_sales_return: [{ statut: '', children: [] }],
       purchases_return: [],
-      rows_purchases_return: [{ statut: '', children: [] }],
       transfers: [],
       adjustments: [],
-      // Optional price format key for frontend display (loaded from system settings/Vuex store)
       price_format_key: null
     };
   },
 
   computed: {
     ...mapGetters(["currentUser"]),
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
-    columns_quotations() {
+    crumbs() {
+      const c = [
+        { label: this.$t('Reports'), href: '#/app/reports/all' },
+        { label: this.$t('stock_report'), href: '#/app/reports/stock_report' }
+      ];
+      if (this.product.name) c.push({ label: this.product.name });
+      return c;
+    },
+    tabs() {
       return [
-         {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("product_name"),
-          field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Customer"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Quantity"),
-          field: "quantity",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("SubTotal"),
-          field: "total",
-          headerField: this.sumQuotationsTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
+        { key: "sales", label: this.$t("Sales"), hasTotal: true },
+        { key: "quotations", label: this.$t("Quotations"), hasTotal: true },
+        { key: "purchases", label: this.$t("Purchases"), hasTotal: true },
+        { key: "sales_return", label: this.$t("SalesReturn"), hasTotal: true },
+        { key: "purchases_return", label: this.$t("PurchasesReturn"), hasTotal: true },
+        { key: "transfers", label: this.$t("StockTransfers"), hasTotal: false },
+        { key: "adjustments", label: this.$t("Adjustment"), hasTotal: false }
       ];
     },
-    columns_sales() {
+    pdfPrintMenu() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("product_name"),
-          field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Customer"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Quantity"),
-          field: "quantity",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("SubTotal"),
-          field: "total",
-          headerField: this.sumSalesTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: "PDF", icon: "file-text" }
       ];
     },
-    columns_sales_return() {
+    txnColumns() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("product_name"),
-          field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Customer"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Quantity"),
-          field: "quantity",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("SubTotal"),
-          field: "total",
-          headerField: this.sumSalesReturnTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
+        { key: "date", label: this.$t("date") },
+        { key: "Ref", label: this.$t("Reference"), strong: true },
+        { key: "product_name", label: this.$t("product_name"), sortable: false },
+        { key: "client_name", label: this.$t("Customer"), sortable: false },
+        { key: "warehouse_name", label: this.$t("warehouse"), sortable: false },
+        { key: "quantity", label: this.$t("Quantity"), align: "right", sortable: false },
+        { key: "total", label: this.$t("SubTotal"), align: "right", sortable: false }
       ];
     },
-    columns_purchases() {
+    supplierTxnColumns() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("product_name"),
-          field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Supplier"),
-          field: "provider_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Quantity"),
-          field: "quantity",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("SubTotal"),
-          field: "total",
-          headerField: this.sumPurchasesTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-      ];
-    },
-    columns_purchase_return() {
-      return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("product_name"),
-          field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Supplier"),
-          field: "provider_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Quantity"),
-          field: "quantity",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("SubTotal"),
-          field: "total",
-          headerField: this.sumPurchaseReturnTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
+        { key: "date", label: this.$t("date") },
+        { key: "Ref", label: this.$t("Reference"), strong: true },
+        { key: "product_name", label: this.$t("product_name"), sortable: false },
+        { key: "provider_name", label: this.$t("Supplier"), sortable: false },
+        { key: "warehouse_name", label: this.$t("warehouse"), sortable: false },
+        { key: "quantity", label: this.$t("Quantity"), align: "right", sortable: false },
+        { key: "total", label: this.$t("SubTotal"), align: "right", sortable: false }
       ];
     },
     columns_transfers() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("product_name"),
-          field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("FromWarehouse"),
-          field: "from_warehouse",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("ToWarehouse"),
-          field: "to_warehouse",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-       
+        { key: "date", label: this.$t("date") },
+        { key: "Ref", label: this.$t("Reference") },
+        { key: "product_name", label: this.$t("product_name"), sortable: false },
+        { key: "from_warehouse", label: this.$t("FromWarehouse") },
+        { key: "to_warehouse", label: this.$t("ToWarehouse") }
       ];
     },
     columns_adjustments() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("product_name"),
-          field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-       
+        { key: "date", label: this.$t("date") },
+        { key: "Ref", label: this.$t("Reference") },
+        { key: "product_name", label: this.$t("product_name"), sortable: false },
+        { key: "warehouse_name", label: this.$t("warehouse") }
       ];
     }
   },
 
   methods: {
-
-     //----------------------------------- Sales PDF ------------------------------\\
-    Sales_PDF() {
-      var self = this;
-      let pdf = new jsPDF("p", "pt");
-
-      const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
-
-      let columns = [
-        { header: self.$t("date"), dataKey: "date" },
-        { header: self.$t("Reference"), dataKey: "Ref" },
-        { header: self.$t("product_name"), dataKey: "product_name" },
-        { header: self.$t("Customer"), dataKey: "client_name" },
-        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { header: self.$t("Quantity"), dataKey: "quantity" },
-        { header: self.$t("SubTotal"), dataKey: "total" },
-      ];
-
-      autoTable(pdf, {
-             columns: columns,
-             body: self.sales,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Sales List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
-      });
-      pdf.save("Sale_List.pdf");
+    rowsOf(k) {
+      return { sales: this.sales, quotations: this.quotations, purchases: this.purchases, sales_return: this.sales_return, purchases_return: this.purchases_return, transfers: this.transfers, adjustments: this.adjustments }[k] || [];
+    },
+    columnsOf(k) {
+      if (k === 'purchases' || k === 'purchases_return') return this.supplierTxnColumns;
+      if (k === 'transfers') return this.columns_transfers;
+      if (k === 'adjustments') return this.columns_adjustments;
+      return this.txnColumns;
+    },
+    searchOf(k) {
+      return { sales: this.search_sales, quotations: this.search_quotations, purchases: this.search_purchases, sales_return: this.search_return_sales, purchases_return: this.search_return_purchases, transfers: this.search_transfers, adjustments: this.search_adjustments }[k];
+    },
+    pageOf(k) {
+      return { sales: this.sales_page, quotations: this.quotations_page, purchases: this.purchases_page, sales_return: this.Return_sale_page, purchases_return: this.Return_purchase_page, transfers: this.transfers_page, adjustments: this.adjustments_page }[k];
+    },
+    limitOf(k) {
+      return { sales: this.limit_sales, quotations: this.limit_quotations, purchases: this.limit_purchases, sales_return: this.limit_sales_return, purchases_return: this.limit_purchases_return, transfers: this.limit_transfers, adjustments: this.limit_adjustments }[k];
+    },
+    totalOf(k) {
+      return { sales: this.totalRows_sales, quotations: this.totalRows_quotations, purchases: this.totalRows_purchases, sales_return: this.totalRows_sales_return, purchases_return: this.totalRows_purchases_return, transfers: this.totalRows_transfers, adjustments: this.totalRows_adjustments }[k];
+    },
+    refLink(k, row) {
+      if (k === 'sales') return row.sale_id ? '/app/sales/detail/' + row.sale_id : null;
+      if (k === 'quotations') return row.quotation_id ? '/app/quotations/detail/' + row.quotation_id : null;
+      if (k === 'purchases') return row.purchase_id ? '/app/purchases/detail/' + row.purchase_id : null;
+      if (k === 'sales_return') return row.return_sale_id ? '/app/sale_return/detail/' + row.return_sale_id : null;
+      if (k === 'purchases_return') return row.return_purchase_id ? '/app/purchase_return/detail/' + row.return_purchase_id : null;
+      return null;
     },
 
-      //------------------------------------- Quotations PDF -------------------------\\
-    Quotation_PDF() {
-      var self = this;
-      let pdf = new jsPDF("p", "pt");
-
-      const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
-
-      let columns = [
-        { header: self.$t("date"), dataKey: "date" },
-        { header: self.$t("Reference"), dataKey: "Ref" },
-        { header: self.$t("product_name"), dataKey: "product_name" },
-        { header: self.$t("Customer"), dataKey: "client_name" },
-        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { header: self.$t("Quantity"), dataKey: "quantity" },
-        { header: self.$t("SubTotal"), dataKey: "total" },
-      ];
-
-      autoTable(pdf, {
-             columns: columns,
-             body: self.quotations,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Quotation List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
-      });
-
-      pdf.save("Quotation_List.pdf");
+    stripSum(arr, field) {
+      return (arr || []).reduce((acc, r) => {
+        const v = Number(r[field]) || 0;
+        return Number.isFinite(v) ? acc + v : acc;
+      }, 0);
     },
 
-     //---------------------- Purchases PDF -------------------------------\\
-    Purchase_PDF() {
-      var self = this;
-      let pdf = new jsPDF("p", "pt");
-
-      const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
-
-      let columns = [
-        { header: self.$t("date"), dataKey: "date" },
-        { header: self.$t("Reference"), dataKey: "Ref" },
-        { header: self.$t("product_name"), dataKey: "product_name" },
-        { header: self.$t("Supplier"), dataKey: "provider_name" },
-        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { header: self.$t("Quantity"), dataKey: "quantity" },
-        { header: self.$t("SubTotal"), dataKey: "total" },
-      ];
-
-      autoTable(pdf, {
-             columns: columns,
-             body: self.purchases,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Purchase List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
-      });
-
-      pdf.save("Purchase_List.pdf");
+    onExport(tab, item) {
+      const k = item && item.key ? item.key : item;
+      if (k === 'print') { this.printTableOnly(tab); return; }
+      if (k === 'pdf') {
+        const map = {
+          sales: 'Sales_PDF', quotations: 'Quotation_PDF', purchases: 'Purchase_PDF',
+          sales_return: 'Sale_Return_PDF', purchases_return: 'Returns_Purchase_PDF',
+          transfers: 'Transfer_PDF', adjustments: 'Adjustment_PDF'
+        };
+        if (map[tab] && typeof this[map[tab]] === 'function') this[map[tab]]();
+      }
+    },
+    onSearch(tab, v) {
+      const m = {
+        sales: ['search_sales', 'Get_Sales'], quotations: ['search_quotations', 'Get_Quotations'],
+        purchases: ['search_purchases', 'Get_Purchases'], sales_return: ['search_return_sales', 'Get_Sales_Return'],
+        purchases_return: ['search_return_purchases', 'Get_Purchases_Return'], transfers: ['search_transfers', 'Get_Transfers'],
+        adjustments: ['search_adjustments', 'Get_adjustments']
+      }[tab];
+      if (!m) return;
+      this[m[0]] = v;
+      this[m[1]](1);
+    },
+    onPage(tab, p) {
+      const m = {
+        sales: ['sales_page', 'Get_Sales'], quotations: ['quotations_page', 'Get_Quotations'],
+        purchases: ['purchases_page', 'Get_Purchases'], sales_return: ['Return_sale_page', 'Get_Sales_Return'],
+        purchases_return: ['Return_purchase_page', 'Get_Purchases_Return'], transfers: ['transfers_page', 'Get_Transfers'],
+        adjustments: ['adjustments_page', 'Get_adjustments']
+      }[tab];
+      if (!m) return;
+      if (this[m[0]] !== p) this[m[1]](p);
+    },
+    onLimit(tab, v) {
+      const s = String(v);
+      const m = {
+        sales: ['limit_sales', 'Get_Sales'], quotations: ['limit_quotations', 'Get_Quotations'],
+        purchases: ['limit_purchases', 'Get_Purchases'], sales_return: ['limit_sales_return', 'Get_Sales_Return'],
+        purchases_return: ['limit_purchases_return', 'Get_Purchases_Return'], transfers: ['limit_transfers', 'Get_Transfers'],
+        adjustments: ['limit_adjustments', 'Get_adjustments']
+      }[tab];
+      if (!m) return;
+      if (this[m[0]] !== s) { this[m[0]] = s; this[m[1]](1); }
     },
 
-     //----------------------------------------- Sales Return PDF -----------------------\\
-    Sale_Return_PDF() {
-      var self = this;
+    _pdf(title, columns, body, fileName) {
       let pdf = new jsPDF("p", "pt");
-
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
-
-      let columns = [
-        { header: self.$t("date"), dataKey: "date" },
-        { header: self.$t("Reference"), dataKey: "Ref" },
-        { header: self.$t("product_name"), dataKey: "product_name" },
-        { header: self.$t("Customer"), dataKey: "client_name" },
-        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { header: self.$t("Quantity"), dataKey: "quantity" },
-        { header: self.$t("SubTotal"), dataKey: "total" },
-      ];
-
+      pdf.addFont(fontPath, "VazirmatnBold", "bold");
+      pdf.setFont("VazirmatnBold");
       autoTable(pdf, {
-             columns: columns,
-             body: self.sales_return,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Sales Return List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
+        columns: columns, body: body, startY: 70, theme: "grid",
+        didDrawPage: () => { pdf.setFont("VazirmatnBold"); pdf.setFontSize(18); pdf.text(title, 40, 25); },
+        styles: { font: "VazirmatnBold", halign: "center" },
+        headStyles: { fillColor: [26, 86, 219], textColor: 255, fontStyle: "bold" },
       });
-
-      pdf.save("Sales Return.pdf");
+      pdf.save(fileName);
     },
-
-      //----------------------------------------- Returns Purchase PDF -----------------------\\
-    Returns_Purchase_PDF() {
-      var self = this;
-      let pdf = new jsPDF("p", "pt");
-
-      const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
-
-      let columns = [
-        { header: self.$t("date"), dataKey: "date" },
-        { header: self.$t("Reference"), dataKey: "Ref" },
-        { header: self.$t("product_name"), dataKey: "product_name" },
-        { header: self.$t("Supplier"), dataKey: "provider_name" },
-        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
-        { header: self.$t("Quantity"), dataKey: "quantity" },
-        { header: self.$t("SubTotal"), dataKey: "total" },
+    _txnPdfCols(clientKey, clientHeader) {
+      return [
+        { header: this.$t("date"), dataKey: "date" },
+        { header: this.$t("Reference"), dataKey: "Ref" },
+        { header: this.$t("product_name"), dataKey: "product_name" },
+        { header: clientHeader, dataKey: clientKey },
+        { header: this.$t("warehouse"), dataKey: "warehouse_name" },
+        { header: this.$t("Quantity"), dataKey: "quantity" },
+        { header: this.$t("SubTotal"), dataKey: "total" }
       ];
-
-      autoTable(pdf, {
-             columns: columns,
-             body: self.purchases_return,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Purchase Return List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
-      });
-
-      pdf.save("purchase_returns.pdf");
     },
-
-     //-------------------------------------- Transfer PDF ------------------------------\\
+    Sales_PDF() { this._pdf("Sales List", this._txnPdfCols("client_name", this.$t("Customer")), this.sales, "Sale_List.pdf"); },
+    Quotation_PDF() { this._pdf("Quotation List", this._txnPdfCols("client_name", this.$t("Customer")), this.quotations, "Quotation_List.pdf"); },
+    Purchase_PDF() { this._pdf("Purchase List", this._txnPdfCols("provider_name", this.$t("Supplier")), this.purchases, "Purchase_List.pdf"); },
+    Sale_Return_PDF() { this._pdf("Sales Return List", this._txnPdfCols("client_name", this.$t("Customer")), this.sales_return, "Sales Return.pdf"); },
+    Returns_Purchase_PDF() { this._pdf("Purchase Return List", this._txnPdfCols("provider_name", this.$t("Supplier")), this.purchases_return, "purchase_returns.pdf"); },
     Transfer_PDF() {
-      var self = this;
-      let pdf = new jsPDF("p", "pt");
-
-      const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
-
-      let columns = [
-        { header: self.$t("date"), dataKey: "date" },
-        { header: self.$t("Reference"), dataKey: "Ref" },
-        { header: self.$t("product_name"), dataKey: "product_name" },
-        { header: self.$t("FromWarehouse"), dataKey: "from_warehouse" },
-        { header: self.$t("ToWarehouse"), dataKey: "to_warehouse" },
-      ];
-
-      autoTable(pdf, {
-             columns: columns,
-             body: self.transfers,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Transfer List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
-      });
-
-      pdf.save("Transfer_List.pdf");
+      this._pdf("Transfer List", [
+        { header: this.$t("date"), dataKey: "date" },
+        { header: this.$t("Reference"), dataKey: "Ref" },
+        { header: this.$t("product_name"), dataKey: "product_name" },
+        { header: this.$t("FromWarehouse"), dataKey: "from_warehouse" },
+        { header: this.$t("ToWarehouse"), dataKey: "to_warehouse" }
+      ], this.transfers, "Transfer_List.pdf");
     },
-
-     //-------------------------------------- Adjustement PDF ------------------------------\\
     Adjustment_PDF() {
-      var self = this;
-      let pdf = new jsPDF("p", "pt");
-
-      const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
-
-      let columns = [
-        { header: self.$t("date"), dataKey: "date" },
-        { header: self.$t("Reference"), dataKey: "Ref" },
-        { header: self.$t("product_name"), dataKey: "product_name" },
-        { header: self.$t("warehouse"), dataKey: "warehouse_name" },
-      ];
-
-      autoTable(pdf, {
-             columns: columns,
-             body: self.adjustments,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Adjustment List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
-      });
-
-      pdf.save("Adjustment_List.pdf");
+      this._pdf("Adjustment List", [
+        { header: this.$t("date"), dataKey: "date" },
+        { header: this.$t("Reference"), dataKey: "Ref" },
+        { header: this.$t("product_name"), dataKey: "product_name" },
+        { header: this.$t("warehouse"), dataKey: "warehouse_name" }
+      ], this.adjustments, "Adjustment_List.pdf");
     },
-
-      //----------------------------------- Get Details Product ------------------------------\\
-    showDetails() {
-      let id = this.$route.params.id;
-      axios
-        .get(`get_product_detail/${id}`)
-        .then(response => {
-          this.product = response.data;
-        })
-        .catch(response => {
-         
-        });
-    },
-
 
     //------------------------------Formetted Numbers -------------------------\\
     formatNumber(number, dec) {
-      const value = (typeof number === "string"
-        ? number
-        : number.toString()
-      ).split(".");
+      const value = (typeof number === "string" ? number : Number(number || 0).toString()).split(".");
       if (dec <= 0) return value[0];
       let formated = value[1] || "";
-      if (formated.length > dec)
-        return `${value[0]}.${formated.substr(0, dec)}`;
+      if (formated.length > dec) return `${value[0]}.${formated.substr(0, dec)}`;
       while (formated.length < dec) formated += "0";
       return `${value[0]}.${formated}`;
     },
-
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing toLocaleString behavior to preserve current behavior.
     formatPriceDisplay(number, dec) {
       try {
         const decimals = this.priceDecimals;
@@ -1185,83 +380,52 @@ export default {
         return n.toLocaleString(undefined, { maximumFractionDigits: dec || 2 });
       }
     },
-
     formatPriceWithSymbol(symbol, number, dec) {
-      try {
-        const safeSymbol = symbol || (this.currentUser && this.currentUser.currency) || "";
-        const value = this.formatPriceDisplay(number, dec);
-        return safeSymbol ? `${safeSymbol} ${value}` : value;
-      } catch (e) {
-        const safeSymbol = symbol || "";
-        const value = this.formatPriceDisplay(number, dec);
-        return safeSymbol ? `${safeSymbol} ${value}` : value;
-      }
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
+    },
+    money(v) {
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, v, 2);
     },
 
     //------ Print Table Only - Print data with all columns based on table type
     printTableOnly(tableType) {
-      let title, rows, columns;
-      
-      if (tableType === 'sales') {
-        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("Sales")}`;
-        rows = Array.isArray(this.sales) ? this.sales : [];
-        columns = this.columns_sales;
-      } else if (tableType === 'quotations') {
-        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("Quotations")}`;
-        rows = Array.isArray(this.quotations) ? this.quotations : [];
-        columns = this.columns_quotations;
-      } else if (tableType === 'purchases') {
-        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("Purchases")}`;
-        rows = Array.isArray(this.purchases) ? this.purchases : [];
-        columns = this.columns_purchases;
-      } else if (tableType === 'sales_return') {
-        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("SalesReturn")}`;
-        rows = Array.isArray(this.sales_return) ? this.sales_return : [];
-        columns = this.columns_sales_return;
-      } else if (tableType === 'purchases_return') {
-        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("PurchasesReturn")}`;
-        rows = Array.isArray(this.purchases_return) ? this.purchases_return : [];
-        columns = this.columns_purchase_return;
-      } else if (tableType === 'transfers') {
-        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("StockTransfers")}`;
-        rows = Array.isArray(this.transfers) ? this.transfers : [];
-        columns = this.columns_transfers;
-      } else if (tableType === 'adjustments') {
-        title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${this.$t("Adjustment")}`;
-        rows = Array.isArray(this.adjustments) ? this.adjustments : [];
-        columns = this.columns_adjustments;
-      } else {
-        return;
-      }
-      
-      // Build table header with all columns
+      const cfg = {
+        sales: [this.$t("Sales"), this.sales, this.columnsOf('sales')],
+        quotations: [this.$t("Quotations"), this.quotations, this.columnsOf('quotations')],
+        purchases: [this.$t("Purchases"), this.purchases, this.columnsOf('purchases')],
+        sales_return: [this.$t("SalesReturn"), this.sales_return, this.columnsOf('sales_return')],
+        purchases_return: [this.$t("PurchasesReturn"), this.purchases_return, this.columnsOf('purchases_return')],
+        transfers: [this.$t("StockTransfers"), this.transfers, this.columnsOf('transfers')],
+        adjustments: [this.$t("Adjustment"), this.adjustments, this.columnsOf('adjustments')]
+      }[tableType];
+      if (!cfg) return;
+      const title = `${this.$t("Reports")} / ${this.$t("stock_report")} / ${cfg[0]}`;
+      const rows = Array.isArray(cfg[1]) ? cfg[1] : [];
+      const columns = cfg[2];
+
       let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
       tableHTML += '<thead><tr>';
-      
       columns.forEach(col => {
         tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
       });
       tableHTML += '</tr></thead><tbody>';
-      
-      // Build table rows with all data - format each cell according to column type
+
       rows.forEach(row => {
         tableHTML += '<tr>';
         columns.forEach(col => {
           let cellValue = '';
-          
-          if (col.field === 'total') {
-            // Format monetary values
-            cellValue = this.formatPriceWithSymbol(this.currentUser?.currency, row.total, 2);
+          if (col.key === 'total') {
+            cellValue = this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, row.total, 2);
           } else {
-            // Default: get value directly from row object
-            cellValue = row[col.field] || '';
+            cellValue = row[col.key] || '';
           }
-          
           tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
         });
         tableHTML += '</tr>';
       });
-      
+
       tableHTML += '</tbody></table>';
 
       const w = window.open("", "_blank");
@@ -1285,8 +449,7 @@ export default {
     <title>${title}</title>
     ${links}
     <style>
-      /* Force visibility in print (some global POS print CSS hides body) */
-      @media print { 
+      @media print {
         body, body * { visibility: visible !important; }
         @page { size: A4 landscape; margin: 0.3cm; }
       }
@@ -1312,372 +475,102 @@ export default {
       }, 400);
     },
 
-    // Group footer helpers for vue-good-table
-    sumSalesTotal(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].total) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
-    },
-
-    sumQuotationsTotal(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].total) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
-    },
-
-    sumPurchasesTotal(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].total) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
-    },
-
-    sumSalesReturnTotal(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].total) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
-    },
-
-    sumPurchaseReturnTotal(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].total) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
-    },
-
-
-    //--------------------------- Event Page Change -------------\\
-    PageChangeSales({ currentPage }) {
-      if (this.sales_page !== currentPage) {
-        this.Get_Sales(currentPage);
-      }
-    },
-
-    //--------------------------- Limit Page Sales -------------\\
-    onPerPageChangeSales({ currentPerPage }) {
-      if (this.limit_sales !== currentPerPage) {
-        this.limit_sales = currentPerPage;
-        this.Get_Sales(1);
-      }
-    },
-
-    onSearch_sales(value) {
-      this.search_sales = value.searchTerm;
-      this.Get_Sales(1);
-    },
-
-    //--------------------------- get_sales_by_product -------------\\
-    Get_Sales(page) {
+    //----------------------------------- Get Details Product ------------------------------\\
+    showDetails() {
+      let id = this.$route.params.id;
       axios
-        .get(
-          "/report/get_sales_by_product?page=" +
-            page +
-            "&limit=" +
-            this.limit_sales +
-            "&search=" +
-            this.search_sales +
-            "&id=" +
-            this.$route.params.id
-        )
+        .get(`get_product_detail/${id}`)
         .then(response => {
-          this.sales = response.data.sales;
-          this.totalRows_sales = response.data.totalRows;
-          this.rows_sales[0].children = this.sales;
+          this.product = response.data;
         })
         .catch(response => {});
     },
 
-    //--------------------------- Event Page Change -------------\\
-    PageChangePurchases({ currentPage }) {
-      if (this.purchases_page !== currentPage) {
-        this.Get_Sales(currentPage);
-      }
-    },
-
-    //--------------------------- Limit Page Purchases -------------\\
-    onPerPageChangePurchases({ currentPerPage }) {
-      if (this.limit_purchases !== currentPerPage) {
-        this.limit_purchases = currentPerPage;
-        this.Get_Purchases(1);
-      }
-    },
-
-    onSearch_purchases(value) {
-      this.search_purchases = value.searchTerm;
-      this.Get_Purchases(1);
+    //--------------------------- get_sales_by_product -------------\\
+    Get_Sales(page) {
+      this.sales_page = page;
+      axios
+        .get("/report/get_sales_by_product?page=" + page + "&limit=" + this.limit_sales + "&search=" + this.search_sales + "&id=" + this.$route.params.id)
+        .then(response => {
+          this.sales = (response.data.sales || []).map((r, i) => Object.assign({ __rowkey: r.sale_id != null ? `s-${r.sale_id}-${i}` : `r-${i}` }, r));
+          this.totalRows_sales = response.data.totalRows;
+        })
+        .catch(response => {});
     },
 
     //--------------------------- Get Purchases By product -------------\\
     Get_Purchases(page) {
+      this.purchases_page = page;
       axios
-        .get(
-          "report/get_purchases_by_product?page=" +
-            page +
-            "&limit=" +
-            this.limit_purchases +
-            "&search=" +
-            this.search_purchases +
-            "&id=" +
-            this.$route.params.id
-        )
+        .get("report/get_purchases_by_product?page=" + page + "&limit=" + this.limit_purchases + "&search=" + this.search_purchases + "&id=" + this.$route.params.id)
         .then(response => {
-          this.purchases = response.data.purchases;
+          this.purchases = (response.data.purchases || []).map((r, i) => Object.assign({ __rowkey: r.purchase_id != null ? `pu-${r.purchase_id}-${i}` : `r-${i}` }, r));
           this.totalRows_purchases = response.data.totalRows;
-          this.rows_purchases[0].children = this.purchases;
           this.isLoading = false;
         })
         .catch(response => {
-           setTimeout(() => {
+          setTimeout(() => {
             this.isLoading = false;
           }, 500);
         });
     },
 
-    //--------------------------- Event Page Change -------------\\
-    PageChangeQuotation({ currentPage }) {
-      if (this.quotations_page !== currentPage) {
-        this.Get_Quotations(currentPage);
-      }
-    },
-
-    //--------------------------- Limit Page Quotations -------------\\
-    onPerPageChangeQuotation({ currentPerPage }) {
-      if (this.limit_quotations !== currentPerPage) {
-        this.limit_quotations = currentPerPage;
-        this.Get_Quotations(1);
-      }
-    },
-
-    onSearch_quotations(value) {
-      this.search_quotations = value.searchTerm;
-      this.Get_Quotations(1);
-    },
-
     //--------------------------- Get Quotations By product -------------\\
     Get_Quotations(page) {
+      this.quotations_page = page;
       axios
-        .get(
-          "report/get_quotations_by_product?page=" +
-            page +
-            "&limit=" +
-            this.limit_quotations +
-            "&search=" +
-            this.search_quotations +
-            "&id=" +
-            this.$route.params.id
-        )
+        .get("report/get_quotations_by_product?page=" + page + "&limit=" + this.limit_quotations + "&search=" + this.search_quotations + "&id=" + this.$route.params.id)
         .then(response => {
-          this.quotations = response.data.quotations;
+          this.quotations = (response.data.quotations || []).map((r, i) => Object.assign({ __rowkey: r.quotation_id != null ? `q-${r.quotation_id}-${i}` : `r-${i}` }, r));
           this.totalRows_quotations = response.data.totalRows;
-          this.rows_quotations[0].children = this.quotations;
-        })
-        .catch(response => {
-         
-        });
-    },
-
-     //--------------------------- Event Page Change -------------\\
-    PageChangeTransfer({ currentPage }) {
-      if (this.transfers_page !== currentPage) {
-        this.Get_Transfers(currentPage);
-      }
-    },
-
-    //--------------------------- Limit Page transfers -------------\\
-    onPerPageChangeTransfer({ currentPerPage }) {
-      if (this.limit_transfers !== currentPerPage) {
-        this.limit_transfers = currentPerPage;
-        this.Get_Transfers(1);
-      }
-    },
-
-    onSearch_transfers(value) {
-      this.search_transfers = value.searchTerm;
-      this.Get_Transfers(1);
-    },
-
-    //--------------------------- Get Transfers By product -------------\\
-    Get_Transfers(page) {
-      axios
-        .get(
-          "report/get_transfer_by_product?page=" +
-            page +
-            "&limit=" +
-            this.limit_transfers +
-             "&search=" +
-            this.search_transfers +
-            "&id=" +
-            this.$route.params.id
-        )
-        .then(response => {
-          this.transfers = response.data.transfers;
-          this.totalRows_transfers = response.data.totalRows;
-         
-        })
-        .catch(response => {
-         
-        });
-    },
-
-      //--------------------------- Event Page Change -------------\\
-    PageChangeAdjustment({ currentPage }) {
-      if (this.adjustments_page !== currentPage) {
-        this.Get_adjustments(currentPage);
-      }
-    },
-
-    //--------------------------- Limit Page adjustments -------------\\
-    onPerPageChangeAdjustment({ currentPerPage }) {
-      if (this.limit_adjustments !== currentPerPage) {
-        this.limit_adjustments = currentPerPage;
-        this.Get_adjustments(1);
-      }
-    },
-
-    onSearch_adjustments(value) {
-      this.search_adjustments = value.searchTerm;
-      this.Get_adjustments(1);
-    },
-
-    //--------------------------- Get adjustment By product -------------\\
-    Get_adjustments(page) {
-      axios
-        .get(
-          "report/get_adjustment_by_product?page=" +
-            page +
-            "&limit=" +
-            this.limit_adjustments +
-            "&search=" +
-            this.search_adjustments +
-            "&id=" +
-            this.$route.params.id
-        )
-        .then(response => {
-          this.adjustments = response.data.adjustments;
-          this.totalRows_adjustments = response.data.totalRows;
-         
-        })
-        .catch(response => {
-         
-        });
-    },
-
-    //--------------------------- Event Page Change -------------\\
-    Page_Change_sales_Return({ currentPage }) {
-      if (this.Return_sale_page !== currentPage) {
-        this.Get_Sales_Return(currentPage);
-      }
-    },
-
-    //--------------------------- Limit Page sales Returns -------------\\
-    onPerPage_Change_sales_Return({ currentPerPage }) {
-      if (this.limit_sales_return !== currentPerPage) {
-        this.limit_sales_return = currentPerPage;
-        this.Get_Sales_Return(1);
-      }
-    },
-
-    onSearch_return_sales(value) {
-      this.search_return_sales = value.searchTerm;
-      this.Get_Sales_Return(1);
-    },
-
-    //--------------------------- Get sales Returns By product -------------\\
-    Get_Sales_Return(page) {
-      axios
-        .get(
-          "/report/get_sales_return_by_product?page=" +
-            page +
-            "&limit=" +
-            this.limit_sales_return +
-            "&search=" +
-            this.search_return_sales +
-            "&id=" +
-            this.$route.params.id
-        )
-        .then(response => {
-          this.sales_return = response.data.sales_return;
-          this.totalRows_sales_return = response.data.totalRows;
-          this.rows_sales_return[0].children = this.sales_return;
         })
         .catch(response => {});
     },
 
-    //--------------------------- Event Page Change -------------\\
-    Page_Change_purchases_Return({ currentPage }) {
-      if (this.Return_purchase_page !== currentPage) {
-        this.Get_Purchases_Return(currentPage);
-      }
+    //--------------------------- Get Transfers By product -------------\\
+    Get_Transfers(page) {
+      this.transfers_page = page;
+      axios
+        .get("report/get_transfer_by_product?page=" + page + "&limit=" + this.limit_transfers + "&search=" + this.search_transfers + "&id=" + this.$route.params.id)
+        .then(response => {
+          this.transfers = (response.data.transfers || []).map((r, i) => Object.assign({ __rowkey: `t-${i}` }, r));
+          this.totalRows_transfers = response.data.totalRows;
+        })
+        .catch(response => {});
     },
 
-    //--------------------------- Limit Page sales Returns -------------\\
-    onPerPage_Change_purchases_Return({ currentPerPage }) {
-      if (this.limit_purchases_return !== currentPerPage) {
-        this.limit_purchases_return = currentPerPage;
-        this.Get_Purchases_Return(1);
-      }
+    //--------------------------- Get adjustment By product -------------\\
+    Get_adjustments(page) {
+      this.adjustments_page = page;
+      axios
+        .get("report/get_adjustment_by_product?page=" + page + "&limit=" + this.limit_adjustments + "&search=" + this.search_adjustments + "&id=" + this.$route.params.id)
+        .then(response => {
+          this.adjustments = (response.data.adjustments || []).map((r, i) => Object.assign({ __rowkey: `a-${i}` }, r));
+          this.totalRows_adjustments = response.data.totalRows;
+        })
+        .catch(response => {});
     },
 
-     onSearch_return_purchases(value) {
-      this.search_return_purchases = value.searchTerm;
-      this.Get_Purchases_Return(1);
+    //--------------------------- Get sales Returns By product -------------\\
+    Get_Sales_Return(page) {
+      this.Return_sale_page = page;
+      axios
+        .get("/report/get_sales_return_by_product?page=" + page + "&limit=" + this.limit_sales_return + "&search=" + this.search_return_sales + "&id=" + this.$route.params.id)
+        .then(response => {
+          this.sales_return = (response.data.sales_return || []).map((r, i) => Object.assign({ __rowkey: r.return_sale_id != null ? `sr-${r.return_sale_id}-${i}` : `r-${i}` }, r));
+          this.totalRows_sales_return = response.data.totalRows;
+        })
+        .catch(response => {});
     },
 
     //--------------------------- Get purchases Returns By product -------------\\
     Get_Purchases_Return(page) {
+      this.Return_purchase_page = page;
       axios
-        .get(
-          "/report/get_purchase_return_by_product?page=" +
-            page +
-            "&limit=" +
-            this.limit_purchases_return +
-            "&search=" +
-            this.search_return_purchases +
-            "&id=" +
-            this.$route.params.id
-        )
+        .get("/report/get_purchase_return_by_product?page=" + page + "&limit=" + this.limit_purchases_return + "&search=" + this.search_return_purchases + "&id=" + this.$route.params.id)
         .then(response => {
-          this.purchases_return = response.data.purchases_return;
+          this.purchases_return = (response.data.purchases_return || []).map((r, i) => Object.assign({ __rowkey: r.return_purchase_id != null ? `pr-${r.return_purchase_id}-${i}` : `r-${i}` }, r));
           this.totalRows_purchases_return = response.data.totalRows;
-          this.rows_purchases_return[0].children = this.purchases_return;
         })
         .catch(response => {});
     }
@@ -1697,3 +590,28 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__chartcard { margin-top: var(--pxn-space-5); }
+.pxrl__minitable { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxrl__minitable th, .pxrl__minitable td { padding: var(--pxn-space-2) var(--pxn-space-3); border-bottom: 1px solid var(--pxn-border); text-align: left; }
+.pxrl__minitable th { font-size: var(--pxn-fs-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); }
+.pxrl__tr { text-align: right; }
+.pxrl__tabbar { display: flex; gap: var(--pxn-space-2); margin-top: var(--pxn-space-6); border-bottom: 1px solid var(--pxn-border); overflow-x: auto; }
+.pxrl__tab {
+  appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; white-space: nowrap;
+  padding: var(--pxn-space-3) var(--pxn-space-4); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink-3); cursor: pointer; transition: color 120ms, border-color 120ms;
+}
+.pxrl__tab:hover { color: var(--pxn-ink); }
+.pxrl__tab.is-active { color: var(--pxn-ink); border-bottom-color: var(--pxn-primary); font-weight: var(--pxn-fw-semibold); }
+.pxrl__panel { margin-top: var(--pxn-space-5); }
+.pxrl__tablewrap { margin-top: var(--pxn-space-4); }
+.pxrl__link { color: var(--pxn-primary); }
+.pxrl__totalrow { display: flex; align-items: center; justify-content: flex-end; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+</style>

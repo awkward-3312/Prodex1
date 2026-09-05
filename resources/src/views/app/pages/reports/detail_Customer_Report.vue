@@ -1,306 +1,144 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('CustomersReport')" :folder="$t('Reports')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxrl">
+    <px-page-header
+      :title="client.name ? `${$t('CustomersReport')} · ${client.name}` : $t('CustomersReport')"
+      :breadcrumbs="crumbs"
+    />
 
-    <b-row v-if="!isLoading">
-      <!-- ICON BG -->
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="8" />
+    </div>
 
-      <b-col lg="3" md="6" sm="12">
-        <b-card class="card-icon-bg card-icon-bg-primary mb-30 text-center">
-          <lucide-icon name="shopping-cart" />
-          <div class="content">
-            <p class="text-muted mt-2 mb-0">{{$t('Sales')}}</p>
-            <p class="text-primary text-24 line-height-1 mb-2">{{client.total_sales}}</p>
-          </div>
-        </b-card>
-      </b-col>
-      <b-col lg="3" md="6" sm="12">
-        <b-card class="card-icon-bg card-icon-bg-primary mb-30 text-center">
-          <lucide-icon name="trending-up" />
-          <div class="content">
-            <p class="text-muted mt-2 mb-0">{{$t('TotalAmount')}}</p>
-            <p
-              class="text-primary text-24 line-height-1 mb-2"
-            >{{ formatPriceWithSymbol(currentUser.currency, client.total_amount, 2) }}</p>
-          </div>
-        </b-card>
-      </b-col>
-      <b-col lg="3" md="6" sm="12">
-        <b-card class="card-icon-bg card-icon-bg-primary mb-30 text-center">
-          <lucide-icon name="banknote" />
-          <div class="content">
-            <p class="text-muted mt-2 mb-0">{{$t('TotalPaid')}}</p>
-            <p
-              class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((client.total_paid),priceDecimals)}}</p>
-          </div>
-        </b-card>
-      </b-col>
-      <b-col lg="3" md="6" sm="12">
-        <b-card class="card-icon-bg card-icon-bg-primary mb-30 text-center">
-          <lucide-icon name="wallet" />
-          <div class="content">
-            <p class="text-muted mt-2 mb-0">{{$t('Due')}}</p>
-            <p
-              class="text-primary text-24 line-height-1 mb-2"
-            >{{ formatPriceWithSymbol(currentUser.currency, client.due, 2) }}</p>
-          </div>
-        </b-card>
-      </b-col>
-    </b-row>
+    <template v-else>
+      <div class="pxrl__stats">
+        <px-stat icon="shopping-cart" :label="$t('Sales')" :value="String(client.total_sales || 0)" bordered />
+        <px-stat icon="trending-up" :label="$t('TotalAmount')" :value="formatPriceWithSymbol(currentUser.currency, client.total_amount, 2)" bordered />
+        <px-stat icon="banknote" :label="$t('TotalPaid')" :value="`${currentUser.currency} ${formatNumber(client.total_paid, priceDecimals)}`" bordered />
+        <px-stat icon="wallet" :label="$t('Due')" :value="formatPriceWithSymbol(currentUser.currency, client.due, 2)" bordered />
+      </div>
 
-    <b-row v-if="!isLoading">
-      <b-col md="12">
-        <b-card class="card mb-30" header-bg-variant="transparent ">
-          <b-tabs active-nav-item-class="nav nav-tabs" content-class="mt-3">
-           
-            <!-- Sales Table -->
-            <b-tab :title="$t('Sales')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_sales"
-                :totalRows="totalRows_sales"
-                :rows="sales"
-                @on-page-change="PageChangeSales"
-                @on-per-page-change="onPerPageChangeSales"
-                @on-search="onSearch_sales"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-              <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('sales')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Sales_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
-                  <div v-if="props.column.field == 'statut'">
-                    <span
-                      v-if="props.row.statut == 'completed'"
-                      class="badge badge-outline-success"
-                    >{{$t('complete')}}</span>
-                    <span
-                      v-else-if="props.row.statut == 'pending'"
-                      class="badge badge-outline-info"
-                    >{{$t('Pending')}}</span>
-                    <span v-else class="badge badge-outline-warning">{{$t('Ordered')}}</span>
-                  </div>
-                  <div v-else-if="props.column.field == 'payment_status'">
-                    <span
-                      v-if="props.row.payment_status == 'paid'"
-                      class="badge badge-outline-success"
-                    >{{$t('Paid')}}</span>
-                    <span
-                      v-else-if="props.row.payment_status == 'partial'"
-                      class="badge badge-outline-primary"
-                    >{{$t('partial')}}</span>
-                    <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
-                  </div>
-                  <div v-else-if="props.column.field == 'shipping_status'">
-                  <span
-                    v-if="props.row.shipping_status == 'ordered'"
-                    class="badge badge-outline-warning"
-                  >{{$t('Ordered')}}</span>
+      <div class="pxrl__tabbar">
+        <button
+          v-for="t in tabs"
+          :key="t.key"
+          type="button"
+          class="pxrl__tab pxn-ring"
+          :class="{ 'is-active': activeTab === t.key }"
+          @click="activeTab = t.key"
+        >{{ t.label }}</button>
+      </div>
 
-                  <span
-                    v-else-if="props.row.shipping_status == 'packed'"
-                    class="badge badge-outline-info"
-                  >{{$t('Packed')}}</span>
+      <!-- Sales -->
+      <div v-show="activeTab === 'sales'" class="pxrl__panel">
+        <px-toolbar :search="search_sales" :search-placeholder="$t('Search_this_table')" @update:search="v => onSearch('sales', v)">
+          <template #actions>
+            <px-menu :items="pdfPrintMenu" align="end" @select="k => onExport('sales', k)">
+              <template #trigger><px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button></template>
+            </px-menu>
+          </template>
+        </px-toolbar>
+        <div class="pxrl__tablewrap">
+          <px-table v-if="sales.length" :columns="columns_sales" :rows="sales" row-key="__rowkey">
+            <template #cell-Ref="{ row }">
+              <router-link v-if="row.id" :to="'/app/sales/detail/' + row.id" class="pxrl__link">{{ row.Ref }}</router-link>
+              <span v-else>{{ row.Ref }}</span>
+            </template>
+            <template #cell-GrandTotal="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.GrandTotal, 2) }}</span></template>
+            <template #cell-paid_amount="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.paid_amount, 2) }}</span></template>
+            <template #cell-due="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.due, 2) }}</span></template>
+            <template #cell-statut="{ row }"><px-badge :tone="saleStatutTone(row.statut)">{{ saleStatutLabel(row.statut) }}</px-badge></template>
+            <template #cell-payment_status="{ row }"><px-badge :tone="payTone(row.payment_status)">{{ payLabel(row.payment_status) }}</px-badge></template>
+            <template #cell-shipping_status="{ row }">
+              <px-badge v-if="row.shipping_status" :tone="shipTone(row.shipping_status)">{{ shipLabel(row.shipping_status) }}</px-badge>
+              <span v-else>—</span>
+            </template>
+          </px-table>
+          <px-empty-state v-else icon="receipt" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+        </div>
+        <px-pagination v-if="sales.length" :page="Number(sales_page)" :per-page="Number(limit_sales)" :total="Number(totalRows_sales) || 0"
+          @update:page="p => onPage('sales', p)" @update:perPage="v => onLimit('sales', v)" />
+      </div>
 
-                  <span
-                    v-else-if="props.row.shipping_status == 'shipped'"
-                    class="badge badge-outline-secondary"
-                  >{{$t('Shipped')}}</span>
+      <!-- Quotations -->
+      <div v-show="activeTab === 'quotations'" class="pxrl__panel">
+        <px-toolbar :search="search_quotations" :search-placeholder="$t('Search_this_table')" @update:search="v => onSearch('quotations', v)">
+          <template #actions>
+            <px-menu :items="pdfPrintMenu" align="end" @select="k => onExport('quotations', k)">
+              <template #trigger><px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button></template>
+            </px-menu>
+          </template>
+        </px-toolbar>
+        <div class="pxrl__tablewrap">
+          <px-table v-if="quotations.length" :columns="columns_quotations" :rows="quotations" row-key="__rowkey">
+            <template #cell-Ref="{ row }">
+              <router-link v-if="row.id" :to="'/app/quotations/detail/' + row.id" class="pxrl__link">{{ row.Ref }}</router-link>
+              <span v-else>{{ row.Ref }}</span>
+            </template>
+            <template #cell-GrandTotal="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.GrandTotal, 2) }}</span></template>
+            <template #cell-statut="{ row }"><px-badge :tone="row.statut === 'sent' ? 'success' : 'info'">{{ row.statut === 'sent' ? $t('Sent') : $t('Pending') }}</px-badge></template>
+          </px-table>
+          <px-empty-state v-else icon="file-text" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+        </div>
+        <px-pagination v-if="quotations.length" :page="Number(quotations_page)" :per-page="Number(limit_quotations)" :total="Number(totalRows_quotations) || 0"
+          @update:page="p => onPage('quotations', p)" @update:perPage="v => onLimit('quotations', v)" />
+      </div>
 
-                  <span
-                    v-else-if="props.row.shipping_status == 'delivered'"
-                    class="badge badge-outline-success"
-                  >{{$t('Delivered')}}</span>
+      <!-- Returns -->
+      <div v-show="activeTab === 'returns'" class="pxrl__panel">
+        <px-toolbar :search="search_return_sales" :search-placeholder="$t('Search_this_table')" @update:search="v => onSearch('returns', v)">
+          <template #actions>
+            <px-menu :items="pdfPrintMenu" align="end" @select="k => onExport('returns', k)">
+              <template #trigger><px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button></template>
+            </px-menu>
+          </template>
+        </px-toolbar>
+        <div class="pxrl__tablewrap">
+          <px-table v-if="returns_customer.length" :columns="columns_returns" :rows="returns_customer" row-key="__rowkey">
+            <template #cell-Ref="{ row }">
+              <router-link v-if="row.id" :to="'/app/sale_return/detail/' + row.id" class="pxrl__link">{{ row.Ref }}</router-link>
+              <span v-else>{{ row.Ref }}</span>
+            </template>
+            <template #cell-sale_ref="{ row }">
+              <router-link v-if="row.sale_id" :to="'/app/sales/detail/' + row.sale_id" class="pxrl__link">{{ row.sale_ref }}</router-link>
+              <span v-else>{{ row.sale_ref }}</span>
+            </template>
+            <template #cell-GrandTotal="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.GrandTotal, 2) }}</span></template>
+            <template #cell-paid_amount="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.paid_amount, 2) }}</span></template>
+            <template #cell-due="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.due, 2) }}</span></template>
+            <template #cell-statut="{ row }"><px-badge :tone="row.statut === 'received' ? 'success' : 'info'">{{ row.statut === 'received' ? $t('Received') : $t('Pending') }}</px-badge></template>
+            <template #cell-payment_status="{ row }"><px-badge :tone="payTone(row.payment_status)">{{ payLabel(row.payment_status) }}</px-badge></template>
+          </px-table>
+          <px-empty-state v-else icon="corner-up-left" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+        </div>
+        <px-pagination v-if="returns_customer.length" :page="Number(Return_sale_page)" :per-page="Number(limit_returns)" :total="Number(totalRows_returns) || 0"
+          @update:page="p => onPage('returns', p)" @update:perPage="v => onLimit('returns', v)" />
+      </div>
 
-                  <span v-else-if="props.row.shipping_status == 'cancelled'" class="badge badge-outline-danger">{{$t('Cancelled')}}</span>
-                </div>
-                   <div v-else-if="props.column.field == 'Ref'">
-                    <router-link
-                      :to="'/app/sales/detail/'+props.row.id"
-                    >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-                    </router-link>
-                  </div>
-                </template>
-              </vue-good-table>
-            </b-tab>
-
-             <!-- Quotations Table -->
-            <b-tab :title="$t('Quotations')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_quotations"
-                :totalRows="totalRows_quotations"
-                :rows="quotations"
-                @on-page-change="PageChangeQuotation"
-                @on-per-page-change="onPerPageChangeQuotation"
-                @on-search="onSearch_quotations"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-              <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('quotations')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Quotation_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
-                  <div v-if="props.column.field == 'statut'">
-                    <span
-                      v-if="props.row.statut == 'sent'"
-                      class="badge badge-outline-success"
-                    >{{$t('Sent')}}</span>
-                    <span v-else class="badge badge-outline-info">{{$t('Pending')}}</span>
-                  </div>
-                    <div v-else-if="props.column.field == 'Ref'">
-                    <router-link
-                      :to="'/app/quotations/detail/'+props.row.id"
-                    >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-                    </router-link>
-                  </div>
-                </template>
-              </vue-good-table>
-            </b-tab>
-
-            <!-- Returns Table -->
-            <b-tab :title="$t('Returns')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_returns"
-                :totalRows="totalRows_returns"
-                :rows="returns_customer"
-                @on-page-change="PageChangeReturn"
-                @on-per-page-change="onPerPageChangeReturn"
-                @on-search="onSearch_return_sales"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-              <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('returns')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Sale_Return_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
-                  <div v-if="props.column.field == 'statut'">
-                    <span
-                      v-if="props.row.statut == 'received'"
-                      class="badge badge-outline-success"
-                    >{{$t('Received')}}</span>
-                    <span v-else class="badge badge-outline-info">{{$t('Pending')}}</span>
-                  </div>
-
-                  <div v-else-if="props.column.field == 'payment_status'">
-                    <span
-                      v-if="props.row.payment_status == 'paid'"
-                      class="badge badge-outline-success"
-                    >{{$t('Paid')}}</span>
-                    <span
-                      v-else-if="props.row.payment_status == 'partial'"
-                      class="badge badge-outline-primary"
-                    >{{$t('partial')}}</span>
-                    <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
-                  </div>
-                  <div v-else-if="props.column.field == 'Ref'">
-                    <router-link
-                      :to="'/app/sale_return/detail/'+props.row.id"
-                    >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-                    </router-link>
-                  </div>
-                  <div v-else-if="props.column.field == 'sale_ref' && props.row.sale_id">
-                    <router-link
-                      :to="'/app/sales/detail/'+props.row.sale_id"
-                    >
-                      <span class="ul-btn__text ml-1">{{props.row.sale_ref}}</span>
-                    </router-link>
-                  </div>
-                </template>
-              </vue-good-table>
-            </b-tab>
-
-            <!-- Payments Table -->
-            <b-tab :title="$t('SalesInvoice')">
-              <vue-good-table
-                mode="remote"
-                :columns="columns_payments"
-                :totalRows="totalRows_payments"
-                :rows="payments"
-                @on-page-change="PageChangePayments"
-                @on-per-page-change="onPerPageChangePayments"
-                @on-search="onSearch_payments"
-                :search-options="{
-                  placeholder: $t('Search_this_table'),
-                  enabled: true,
-                }"
-                :pagination-options="{
-                  enabled: true,
-                  mode: 'records',
-                  nextLabel: 'next',
-                  prevLabel: 'prev',
-                }"
-                styleClass="tableOne table-hover vgt-table"
-              >
-               <div slot="table-actions" class="mt-2 mb-3">
-                <b-button @click="printTableOnly('payments')" size="sm" variant="outline-secondary ripple m-1">
-                  <lucide-icon name="printer" /> {{ $t("print") }}
-                </b-button>
-                <b-button @click="Payments_PDF()" size="sm" variant="outline-success ripple m-1">
-                  <lucide-icon name="copy" /> PDF
-                </b-button>
-              </div>
-              </vue-good-table>
-            </b-tab>
-          </b-tabs>
-        </b-card>
-      </b-col>
-    </b-row>
+      <!-- Payments -->
+      <div v-show="activeTab === 'payments'" class="pxrl__panel">
+        <px-toolbar :search="search_payments" :search-placeholder="$t('Search_this_table')" @update:search="v => onSearch('payments', v)">
+          <template #actions>
+            <px-menu :items="pdfPrintMenu" align="end" @select="k => onExport('payments', k)">
+              <template #trigger><px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button></template>
+            </px-menu>
+          </template>
+        </px-toolbar>
+        <div class="pxrl__tablewrap">
+          <px-table v-if="payments.length" :columns="columns_payments" :rows="payments" row-key="__rowkey">
+            <template #cell-montant="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.montant, 2) }}</span></template>
+          </px-table>
+          <px-empty-state v-else icon="coins" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+        </div>
+        <px-pagination v-if="payments.length" :page="Number(Payment_sale_page)" :per-page="Number(limit_payments)" :total="Number(totalRows_payments) || 0"
+          @update:page="p => onPage('payments', p)" @update:perPage="v => onLimit('payments', v)" />
+      </div>
+    </template>
   </div>
 </template>
 
 
 <script>
-import { mapActions, mapGetters } from "vuex";
+import { mapGetters } from "vuex";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -308,10 +146,26 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
+  metaInfo: {
+    title: "Customer Report Detail"
+  },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxBadge, PxStat, PxEmptyState
+  },
   data() {
     return {
+      activeTab: "sales",
       totalRows_quotations: "",
       totalRows_sales: "",
       totalRows_returns: "",
@@ -330,10 +184,10 @@ export default {
       quotations: [],
       returns_customer: [],
 
-      search_sales:"",
-      search_payments:"",
-      search_quotations:"",
-      search_return_sales:"",
+      search_sales: "",
+      search_payments: "",
+      search_quotations: "",
+      search_return_sales: "",
 
       client: {
         id: "",
@@ -343,254 +197,134 @@ export default {
         total_paid: 0,
         due: 0
       },
-      // Optional price format key for frontend display (loaded from system settings/localStorage)
       price_format_key: null
     };
   },
 
   computed: {
     ...mapGetters(["currentUser"]),
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
+    crumbs() {
+      const c = [
+        { label: this.$t('Reports'), href: '#/app/reports/all' },
+        { label: this.$t('CustomersReport'), href: '#/app/reports/customers_report' }
+      ];
+      if (this.client.name) c.push({ label: this.client.name });
+      return c;
+    },
+    tabs() {
+      return [
+        { key: "sales", label: this.$t("Sales") },
+        { key: "quotations", label: this.$t("Quotations") },
+        { key: "returns", label: this.$t("Returns") },
+        { key: "payments", label: this.$t("SalesInvoice") }
+      ];
+    },
+    pdfPrintMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: "PDF", icon: "file-text" }
+      ];
+    },
     columns_quotations() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Customer"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Total"),
-          field: "GrandTotal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Status"),
-          field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "date", label: this.$t("date"), sortable: false },
+        { key: "Ref", label: this.$t("Reference"), strong: true, sortable: false },
+        { key: "client_name", label: this.$t("Customer"), sortable: false },
+        { key: "warehouse_name", label: this.$t("warehouse") },
+        { key: "GrandTotal", label: this.$t("Total"), align: "right", sortable: false },
+        { key: "statut", label: this.$t("Status"), sortable: false }
       ];
     },
     columns_sales() {
       return [
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-       
-        {
-          label: this.$t("Customer"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Total"),
-          field: "GrandTotal",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Paid"),
-          field: "paid_amount",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Due"),
-          field: "due",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-         {
-          label: this.$t("Status"),
-          field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("PaymentStatus"),
-          field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Shipping_status"),
-          field: "shipping_status",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
+        { key: "Ref", label: this.$t("Reference"), strong: true, sortable: false },
+        { key: "client_name", label: this.$t("Customer"), sortable: false },
+        { key: "warehouse_name", label: this.$t("warehouse") },
+        { key: "GrandTotal", label: this.$t("Total"), align: "right", sortable: false },
+        { key: "paid_amount", label: this.$t("Paid"), align: "right", sortable: false },
+        { key: "due", label: this.$t("Due"), align: "right", sortable: false },
+        { key: "statut", label: this.$t("Status"), sortable: false },
+        { key: "payment_status", label: this.$t("PaymentStatus"), sortable: false },
+        { key: "shipping_status", label: this.$t("Shipping_status") }
       ];
     },
     columns_returns() {
       return [
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Customer"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Sale_Ref"),
-          field: "sale_ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-       
-        {
-          label: this.$t("Total"),
-          field: "GrandTotal",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Paid"),
-          field: "paid_amount",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Due"),
-          field: "due",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-         {
-          label: this.$t("Status"),
-          field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("PaymentStatus"),
-          field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "Ref", label: this.$t("Reference"), strong: true, sortable: false },
+        { key: "client_name", label: this.$t("Customer"), sortable: false },
+        { key: "sale_ref", label: this.$t("Sale_Ref") },
+        { key: "warehouse_name", label: this.$t("warehouse") },
+        { key: "GrandTotal", label: this.$t("Total"), align: "right", sortable: false },
+        { key: "paid_amount", label: this.$t("Paid"), align: "right", sortable: false },
+        { key: "due", label: this.$t("Due"), align: "right", sortable: false },
+        { key: "statut", label: this.$t("Status"), sortable: false },
+        { key: "payment_status", label: this.$t("PaymentStatus"), sortable: false }
       ];
     },
     columns_payments() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-       
-        {
-          label: this.$t("Sale"),
-          field: "Sale_Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("ModePaiement"),
-          field: "payment_method",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Amount"),
-          field: "montant",
-          tdClass: "text-left",
-          thClass: "text-left",
-          type: "decimal",
-          sortable: false
-        }
+        { key: "date", label: this.$t("date"), sortable: false },
+        { key: "Ref", label: this.$t("Reference"), strong: true, sortable: false },
+        { key: "Sale_Ref", label: this.$t("Sale"), sortable: false },
+        { key: "payment_method", label: this.$t("ModePaiement"), sortable: false },
+        { key: "montant", label: this.$t("Amount"), align: "right", sortable: false }
       ];
     }
   },
 
   methods: {
+    saleStatutTone(s) { return s === 'completed' ? 'success' : s === 'pending' ? 'info' : 'warning'; },
+    saleStatutLabel(s) { return s === 'completed' ? this.$t('complete') : s === 'pending' ? this.$t('Pending') : this.$t('Ordered'); },
+    payTone(s) { return s === 'paid' ? 'success' : s === 'partial' ? 'info' : 'warning'; },
+    payLabel(s) { return s === 'paid' ? this.$t('Paid') : s === 'partial' ? this.$t('partial') : this.$t('Unpaid'); },
+    shipTone(s) {
+      return s === 'delivered' ? 'success' : s === 'cancelled' ? 'danger' : s === 'packed' ? 'info' : s === 'shipped' ? 'neutral' : 'warning';
+    },
+    shipLabel(s) {
+      const map = { ordered: 'Ordered', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' };
+      return map[s] ? this.$t(map[s]) : (s || '');
+    },
 
-     //----------------------------------- Sales PDF ------------------------------\\
+    onExport(tab, item) {
+      const k = item && item.key ? item.key : item;
+      if (k === 'print') { this.printTableOnly(tab); return; }
+      if (k === 'pdf') {
+        if (tab === 'sales') this.Sales_PDF();
+        else if (tab === 'quotations') this.Quotation_PDF();
+        else if (tab === 'returns') this.Sale_Return_PDF();
+        else if (tab === 'payments') this.Payments_PDF();
+      }
+    },
+    onSearch(tab, v) {
+      if (tab === 'sales') { this.search_sales = v; this.Get_Sales(1); }
+      else if (tab === 'quotations') { this.search_quotations = v; this.Get_Quotations(1); }
+      else if (tab === 'returns') { this.search_return_sales = v; this.Get_Returns(1); }
+      else if (tab === 'payments') { this.search_payments = v; this.Get_Payments(1); }
+    },
+    onPage(tab, p) {
+      if (tab === 'sales' && this.sales_page !== p) this.Get_Sales(p);
+      else if (tab === 'quotations' && this.quotations_page !== p) this.Get_Quotations(p);
+      else if (tab === 'returns' && this.Return_sale_page !== p) this.Get_Returns(p);
+      else if (tab === 'payments' && this.Payment_sale_page !== p) this.Get_Payments(p);
+    },
+    onLimit(tab, v) {
+      const s = String(v);
+      if (tab === 'sales' && this.limit_sales !== s) { this.limit_sales = s; this.Get_Sales(1); }
+      else if (tab === 'quotations' && this.limit_quotations !== s) { this.limit_quotations = s; this.Get_Quotations(1); }
+      else if (tab === 'returns' && this.limit_returns !== s) { this.limit_returns = s; this.Get_Returns(1); }
+      else if (tab === 'payments' && this.limit_payments !== s) { this.limit_payments = s; this.Get_Payments(1); }
+    },
+
+    //----------------------------------- Sales PDF ------------------------------\\
     Sales_PDF() {
       var self = this;
       let pdf = new jsPDF("p", "pt");
-
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
-
+      pdf.addFont(fontPath, "VazirmatnBold", "bold");
+      pdf.setFont("VazirmatnBold");
       let columns = [
         { header: self.$t("Reference"), dataKey: "Ref" },
         { header: self.$t("Customer"), dataKey: "client_name" },
@@ -602,39 +336,22 @@ export default {
         { header: self.$t("PaymentStatus"), dataKey: "payment_status" },
         { header: self.$t("Shipping_status"), dataKey: "shipping_status" }
       ];
-
       autoTable(pdf, {
-             columns: columns,
-             body: self.sales,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Sale List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
+        columns: columns, body: self.sales, startY: 70, theme: "grid",
+        didDrawPage: () => { pdf.setFont("VazirmatnBold"); pdf.setFontSize(18); pdf.text("Sale List", 40, 25); },
+        styles: { font: "VazirmatnBold", halign: "center" },
+        headStyles: { fillColor: [26, 86, 219], textColor: 255, fontStyle: "bold" },
       });
       pdf.save("Sale_List.pdf");
     },
 
-      //------------------------------------- Quotations PDF -------------------------\\
+    //------------------------------------- Quotations PDF -------------------------\\
     Quotation_PDF() {
-        var self = this;
-        let pdf = new jsPDF("p", "pt");
-
-        const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-        pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-        pdf.setFont("VazirmatnBold"); 
-
+      var self = this;
+      let pdf = new jsPDF("p", "pt");
+      const fontPath = "/fonts/Vazirmatn-Bold.ttf";
+      pdf.addFont(fontPath, "VazirmatnBold", "bold");
+      pdf.setFont("VazirmatnBold");
       let columns = [
         { header: self.$t("date"), dataKey: "date" },
         { header: self.$t("Reference"), dataKey: "Ref" },
@@ -643,40 +360,22 @@ export default {
         { header: self.$t("Status"), dataKey: "statut" },
         { header: self.$t("Total"), dataKey: "GrandTotal" }
       ];
-
       autoTable(pdf, {
-             columns: columns,
-             body: self.quotations,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Quotation List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
+        columns: columns, body: self.quotations, startY: 70, theme: "grid",
+        didDrawPage: () => { pdf.setFont("VazirmatnBold"); pdf.setFontSize(18); pdf.text("Quotation List", 40, 25); },
+        styles: { font: "VazirmatnBold", halign: "center" },
+        headStyles: { fillColor: [26, 86, 219], textColor: 255, fontStyle: "bold" },
       });
-
       pdf.save("Quotation_List.pdf");
     },
 
-     //----------------------------------------- Sales Return PDF -----------------------\\
+    //----------------------------------------- Sales Return PDF -----------------------\\
     Sale_Return_PDF() {
       var self = this;
       let pdf = new jsPDF("p", "pt");
-
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
-
+      pdf.addFont(fontPath, "VazirmatnBold", "bold");
+      pdf.setFont("VazirmatnBold");
       let columns = [
         { header: self.$t("Reference"), dataKey: "Ref" },
         { header: self.$t("Customer"), dataKey: "client_name" },
@@ -689,38 +388,21 @@ export default {
         { header: self.$t("PaymentStatus"), dataKey: "payment_status" }
       ];
       autoTable(pdf, {
-             columns: columns,
-             body: self.returns_customer,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Sales Return List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
+        columns: columns, body: self.returns_customer, startY: 70, theme: "grid",
+        didDrawPage: () => { pdf.setFont("VazirmatnBold"); pdf.setFontSize(18); pdf.text("Sales Return List", 40, 25); },
+        styles: { font: "VazirmatnBold", halign: "center" },
+        headStyles: { fillColor: [26, 86, 219], textColor: 255, fontStyle: "bold" },
       });
-
       pdf.save("Sales Return.pdf");
     },
 
-       //----------------------------------- Sales PDF ------------------------------\\
+    //----------------------------------- Payments PDF ------------------------------\\
     Payments_PDF() {
       var self = this;
       let pdf = new jsPDF("p", "pt");
-
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
+      pdf.addFont(fontPath, "VazirmatnBold", "bold");
       pdf.setFont("VazirmatnBold");
-
       let columns = [
         { header: self.$t("date"), dataKey: "date" },
         { header: self.$t("Reference"), dataKey: "Ref" },
@@ -728,47 +410,25 @@ export default {
         { header: self.$t("ModePaiement"), dataKey: "payment_method" },
         { header: self.$t("Amount"), dataKey: "montant" },
       ];
-
       autoTable(pdf, {
-             columns: columns,
-             body: self.payments,
-             startY: 70,
-             theme: "grid", 
-             didDrawPage: (data) => {
-               pdf.setFont("VazirmatnBold");
-               pdf.setFontSize(18);
-               pdf.text("Payments List", 40, 25);   
-             },
-             styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
-             },
-             headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
-             },
+        columns: columns, body: self.payments, startY: 70, theme: "grid",
+        didDrawPage: () => { pdf.setFont("VazirmatnBold"); pdf.setFontSize(18); pdf.text("Payments List", 40, 25); },
+        styles: { font: "VazirmatnBold", halign: "center" },
+        headStyles: { fillColor: [26, 86, 219], textColor: 255, fontStyle: "bold" },
       });
       pdf.save("Payments_List.pdf");
     },
 
     //------------------------------Formetted Numbers -------------------------\\
     formatNumber(number, dec) {
-      const value = (typeof number === "string"
-        ? number
-        : number.toString()
-      ).split(".");
+      const value = (typeof number === "string" ? number : Number(number || 0).toString()).split(".");
       if (dec <= 0) return value[0];
       let formated = value[1] || "";
-      if (formated.length > dec)
-        return `${value[0]}.${formated.substr(0, dec)}`;
+      if (formated.length > dec) return `${value[0]}.${formated.substr(0, dec)}`;
       while (formated.length < dec) formated += "0";
       return `${value[0]}.${formated}`;
     },
 
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing formatNumber helper to preserve current behavior.
     formatPriceDisplay(number, dec) {
       try {
         const decimals = this.priceDecimals;
@@ -792,7 +452,7 @@ export default {
     //------ Print Table Only - Print data with all columns based on table type
     printTableOnly(tableType) {
       let title, rows, columns;
-      
+
       if (tableType === 'sales') {
         title = `${this.$t("Reports")} / ${this.$t("CustomersReport")} / ${this.$t("Sales")}`;
         rows = Array.isArray(this.sales) ? this.sales : [];
@@ -812,61 +472,46 @@ export default {
       } else {
         return;
       }
-      
-      // Build table header with all columns
+
       let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
       tableHTML += '<thead><tr>';
-      
       columns.forEach(col => {
         tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
       });
       tableHTML += '</tr></thead><tbody>';
-      
-      // Build table rows with all data - format each cell according to column type
+
       rows.forEach(row => {
         tableHTML += '<tr>';
         columns.forEach(col => {
           let cellValue = '';
-          
-          // Handle status fields with badges
-          if (col.field === 'statut') {
+          if (col.key === 'statut') {
             if (tableType === 'sales') {
               if (row.statut === 'completed') cellValue = this.$t('complete');
               else if (row.statut === 'pending') cellValue = this.$t('Pending');
               else cellValue = this.$t('Ordered');
             } else if (tableType === 'quotations') {
-              if (row.statut === 'sent') cellValue = this.$t('Sent');
-              else cellValue = this.$t('Pending');
+              cellValue = row.statut === 'sent' ? this.$t('Sent') : this.$t('Pending');
             } else if (tableType === 'returns') {
-              if (row.statut === 'received') cellValue = this.$t('Received');
-              else cellValue = this.$t('Pending');
+              cellValue = row.statut === 'received' ? this.$t('Received') : this.$t('Pending');
             } else {
               cellValue = row.statut || '';
             }
-          } else if (col.field === 'payment_status') {
+          } else if (col.key === 'payment_status') {
             if (row.payment_status === 'paid') cellValue = this.$t('Paid');
             else if (row.payment_status === 'partial') cellValue = this.$t('partial');
             else cellValue = this.$t('Unpaid');
-          } else if (col.field === 'shipping_status') {
-            if (row.shipping_status === 'ordered') cellValue = this.$t('Ordered');
-            else if (row.shipping_status === 'packed') cellValue = this.$t('Packed');
-            else if (row.shipping_status === 'shipped') cellValue = this.$t('Shipped');
-            else if (row.shipping_status === 'delivered') cellValue = this.$t('Delivered');
-            else if (row.shipping_status === 'cancelled') cellValue = this.$t('Cancelled');
-            else cellValue = row.shipping_status || '';
-          } else if (['GrandTotal', 'paid_amount', 'due', 'montant'].includes(col.field)) {
-            // Format monetary values
-            cellValue = this.formatPriceDisplay(row[col.field] || 0, 2);
+          } else if (col.key === 'shipping_status') {
+            cellValue = this.shipLabel(row.shipping_status);
+          } else if (['GrandTotal', 'paid_amount', 'due', 'montant'].includes(col.key)) {
+            cellValue = this.formatPriceDisplay(row[col.key] || 0, 2);
           } else {
-            // Default: get value directly from row object
-            cellValue = row[col.field] || '';
+            cellValue = row[col.key] || '';
           }
-          
           tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
         });
         tableHTML += '</tr>';
       });
-      
+
       tableHTML += '</tbody></table>';
 
       const w = window.open("", "_blank");
@@ -890,8 +535,7 @@ export default {
     <title>${title}</title>
     ${links}
     <style>
-      /* Force visibility in print (some global POS print CSS hides body) */
-      @media print { 
+      @media print {
         body, body * { visibility: visible !important; }
         @page { size: A4 landscape; margin: 0.3cm; }
       }
@@ -928,121 +572,52 @@ export default {
         .catch(response => {});
     },
 
-    //--------------------------- Event Page Change -------------\\
-    PageChangeSales({ currentPage }) {
-      if (this.sales_page !== currentPage) {
-        this.Get_Sales(currentPage);
-      }
-    },
-
-    //--------------------------- Limit Page Sales -------------\\
-    onPerPageChangeSales({ currentPerPage }) {
-      if (this.limit_sales !== currentPerPage) {
-        this.limit_sales = currentPerPage;
-        this.Get_Sales(1);
-      }
-    },
-
-    onSearch_sales(value) {
-      this.search_sales = value.searchTerm;
-      this.Get_Sales(1);
-    },
-
     //--------------------------- Get sales By Customer -------------\\
     Get_Sales(page) {
+      this.sales_page = page;
       axios
         .get(
-          "/report/client_sales?page=" +
-            page +
-            "&limit=" +
-            this.limit_sales +
-            "&search=" +
-            this.search_sales +
-            "&id=" +
-            this.$route.params.id
+          "/report/client_sales?page=" + page +
+            "&limit=" + this.limit_sales +
+            "&search=" + this.search_sales +
+            "&id=" + this.$route.params.id
         )
         .then(response => {
-          this.sales = response.data.sales;
+          this.sales = (response.data.sales || []).map((r, i) => Object.assign({ __rowkey: r.id != null ? `s-${r.id}` : `r-${i}` }, r));
           this.totalRows_sales = response.data.totalRows;
         })
         .catch(response => {});
     },
 
-    //--------------------------- Event Page Change -------------\\
-    PageChangePayments({ currentPage }) {
-      if (this.Payment_sale_page !== currentPage) {
-        this.Get_Payments(currentPage);
-      }
-    },
-
-    //--------------------------- Limit Page Payments -------------\\
-    onPerPageChangePayments({ currentPerPage }) {
-      if (this.limit_payments !== currentPerPage) {
-        this.limit_payments = currentPerPage;
-        this.Get_Payments(1);
-      }
-    },
-
-     onSearch_payments(value) {
-      this.search_payments = value.searchTerm;
-      this.Get_Payments(1);
-    },
-
     //--------------------------- Get Payments By Customer -------------\\
     Get_Payments(page) {
+      this.Payment_sale_page = page;
       axios
         .get(
-          "report/client_payments?page=" +
-            page +
-            "&limit=" +
-            this.limit_payments +
-            "&search=" +
-            this.search_payments +
-            "&id=" +
-            this.$route.params.id
+          "report/client_payments?page=" + page +
+            "&limit=" + this.limit_payments +
+            "&search=" + this.search_payments +
+            "&id=" + this.$route.params.id
         )
         .then(response => {
-          this.payments = response.data.payments;
+          this.payments = (response.data.payments || []).map((r, i) => Object.assign({ __rowkey: `p-${i}` }, r));
           this.totalRows_payments = response.data.totalRows;
         })
         .catch(response => {});
     },
 
-    //--------------------------- Event Page Change -------------\\
-    PageChangeQuotation({ currentPage }) {
-      if (this.quotations_page !== currentPage) {
-        this.Get_Quotations(currentPage);
-      }
-    },
-
-    //--------------------------- Limit Page Quotations -------------\\
-    onPerPageChangeQuotation({ currentPerPage }) {
-      if (this.limit_quotations !== currentPerPage) {
-        this.limit_quotations = currentPerPage;
-        this.Get_Quotations(1);
-      }
-    },
-
-     onSearch_quotations(value) {
-      this.search_quotations = value.searchTerm;
-      this.Get_Quotations(1);
-    },
-
     //--------------------------- Get Quotations By Customer -------------\\
     Get_Quotations(page) {
+      this.quotations_page = page;
       axios
         .get(
-          "report/client_quotations?page=" +
-            page +
-            "&limit=" +
-            this.limit_quotations +
-            "&search=" +
-            this.search_quotations +
-            "&id=" +
-            this.$route.params.id
+          "report/client_quotations?page=" + page +
+            "&limit=" + this.limit_quotations +
+            "&search=" + this.search_quotations +
+            "&id=" + this.$route.params.id
         )
         .then(response => {
-          this.quotations = response.data.quotations;
+          this.quotations = (response.data.quotations || []).map((r, i) => Object.assign({ __rowkey: r.id != null ? `q-${r.id}` : `r-${i}` }, r));
           this.totalRows_quotations = response.data.totalRows;
           this.isLoading = false;
         })
@@ -1053,41 +628,18 @@ export default {
         });
     },
 
-    //--------------------------- Event Page Change -------------\\
-    PageChangeReturn({ currentPage }) {
-      if (this.Return_sale_page !== currentPage) {
-        this.Get_Returns(currentPage);
-      }
-    },
-
-    //--------------------------- Limit Page Returns -------------\\
-    onPerPageChangeReturn({ currentPerPage }) {
-      if (this.limit_returns !== currentPerPage) {
-        this.limit_returns = currentPerPage;
-        this.Get_Returns(1);
-      }
-    },
-
-     onSearch_return_sales(value) {
-      this.search_return_sales = value.searchTerm;
-      this.Get_Returns(1);
-    },
-
     //--------------------------- Get Returns By Customer -------------\\
     Get_Returns(page) {
+      this.Return_sale_page = page;
       axios
         .get(
-          "/report/client_returns?page=" +
-            page +
-            "&limit=" +
-            this.limit_returns +
-            "&search=" +
-            this.search_return_sales +
-            "&id=" +
-            this.$route.params.id
+          "/report/client_returns?page=" + page +
+            "&limit=" + this.limit_returns +
+            "&search=" + this.search_return_sales +
+            "&id=" + this.$route.params.id
         )
         .then(response => {
-          this.returns_customer = response.data.returns_customer;
+          this.returns_customer = (response.data.returns_customer || []).map((r, i) => Object.assign({ __rowkey: r.id != null ? `rt-${r.id}` : `r-${i}` }, r));
           this.totalRows_returns = response.data.totalRows;
         })
         .catch(response => {});
@@ -1106,39 +658,24 @@ export default {
 };
 </script>
 
-<style scoped>
-.card-icon-bg .card-body {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 2rem 1rem;
-}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-.card-icon-bg [class^="i-"] {
-  font-size: 4rem;
-  color: rgba(0, 52, 115, 0.28);
-  margin-bottom: 1rem;
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--pxn-space-4); margin-top: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxrl__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .pxrl__stats { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__tabbar { display: flex; gap: var(--pxn-space-2); margin-top: var(--pxn-space-6); border-bottom: 1px solid var(--pxn-border); }
+.pxrl__tab {
+  appearance: none; background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: var(--pxn-space-3) var(--pxn-space-4); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink-3); cursor: pointer; transition: color 120ms, border-color 120ms;
 }
-
-.card-icon-bg .content {
-  width: 100%;
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.card-icon-bg .content p {
-  margin-bottom: 0.5rem;
-  text-align: center;
-  width: 100%;
-}
-
-.card-icon-bg .content .text-24 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.pxrl__tab:hover { color: var(--pxn-ink); }
+.pxrl__tab.is-active { color: var(--pxn-ink); border-bottom-color: var(--pxn-primary); font-weight: var(--pxn-fw-semibold); }
+.pxrl__panel { margin-top: var(--pxn-space-5); }
+.pxrl__tablewrap { margin-top: var(--pxn-space-4); }
+.pxrl__link { color: var(--pxn-primary); }
 </style>
