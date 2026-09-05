@@ -1,198 +1,128 @@
 <template>
-  <div class="main-content p-2 p-md-4">
-    <breadcumb :page="$t('SalesInvoice')" :folder="$t('Reports')" />
-
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-
-    <div v-else>
-      <!-- Toolbar -->
-      <b-card class="shadow-soft border-0 mb-3">
-        <div class="d-flex flex-wrap align-items-center">
-          <!-- Date range (responsive) -->
-          <div class="mr-3 mb-2 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center">
-            <label class="mb-1 mb-sm-0 mr-sm-2 text-muted">{{$t('DateRange')}}</label>
-            <date-range-picker
-              v-model="dateRange"
-              :locale-data="locale"
-              :autoApply="true"
-              :showDropdowns="true"
-              @update="Submit_filter_dateRange"
-            >
-              <template v-slot:input="picker">
-                <b-button variant="light" class="btn-pill w-100 text-left">
-                  <lucide-icon class="mr-1" name="calendar-days" />
-                  {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
-                </b-button>
-              </template>
-            </date-range-picker>
-          </div>
-
-          <!-- Quick ranges -->
-          <div class="mr-3 mb-2">
-            <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
-            <div class="btn-group quick-ranges">
-              <b-button size="sm" variant="outline-primary" @click="quick('7d')">7D</b-button>
-              <b-button size="sm" variant="outline-primary" @click="quick('30d')">30D</b-button>
-              <b-button size="sm" variant="outline-primary" @click="quick('90d')">90D</b-button>
-              <b-button size="sm" variant="outline-primary" @click="quick('mtd')">{{$t('MTD')}}</b-button>
-              <b-button size="sm" variant="outline-primary" @click="quick('ytd')">{{$t('YTD')}}</b-button>
-            </div>
-          </div>
-
-          <div class="ml-auto mb-2">
-            <b-button variant="primary" class="btn-pill mr-2" @click="Payments_Sales(serverParams.page)">
-              <lucide-icon class="mr-1" name="refresh-cw" /> {{$t('Refresh')}}
-            </b-button>
-            <b-button @click="Payment_PDF" size="sm" variant="outline-success" class="btn-pill mr-2">
-              <lucide-icon name="copy" /> PDF
-            </b-button>
-            <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger btn-pill"
-              :data="payments"
-              :columns="excelColumns"
-              :file-name="'payments_sales'"
-              :file-type="'xlsx'"
-              :sheet-name="'payments_sales'"
-            >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-            </vue-excel-xlsx>
-          </div>
-        </div>
-      </b-card>
-
-      <!-- Charts -->
-      <b-row>
-        <b-col md="8" class="mb-3">
-          <b-card class="shadow-soft border-0">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <h6 class="m-0">{{$t('PaymentsOverTime')}}</h6>
-              <small class="text-muted">{{ fmt(dateRange.startDate) }} → {{ fmt(dateRange.endDate) }}</small>
-            </div>
-            <apexchart type="line" height="320" :options="apexTimeOptions" :series="apexTimeSeries" />
-          </b-card>
-        </b-col>
-        <b-col md="4" class="mb-3">
-          <b-card class="shadow-soft border-0">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <h6 class="m-0">{{$t('PaymentsByMethod')}}</h6>
-              <small class="text-muted">{{$t('ByAmount')}}</small>
-            </div>
-            <apexchart type="bar" height="320" :options="apexMethodOptions" :series="apexMethodSeries" />
-          </b-card>
-        </b-col>
-      </b-row>
-
-      <!-- Table -->
-      <b-card class="wrapper shadow-soft border-0">
-        <vue-good-table
-          mode="remote"
-          :columns="columns"
-          :totalRows="totalRows"
-          :rows="rows"
-          :group-options="{ enabled: true, headerPosition: 'bottom' }"
-          @on-page-change="onPageChange"
-          @on-per-page-change="onPerPageChange"
-          @on-sort-change="onSortChange"
-          @on-search="onSearch"
-          :search-options="{ placeholder: $t('Search_this_table'), enabled: true }"
-          :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
-          styleClass="table-hover tableOne vgt-table"
-        >
-          <div slot="table-actions" class="mt-2 mb-3">
-            <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right class="btn-pill">
-              <lucide-icon name="filter" /> {{ $t('Filter') }}
-            </b-button>
-            <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1" class="btn-pill">
-              <lucide-icon name="printer" /> {{ $t("print") }}
-            </b-button>
-          </div>
-
-          <template slot="table-row" slot-scope="props">
-            <span v-if="props.column.field === 'montant'">
-              {{ formatPriceDisplay(props.row.montant, 2) }}
-            </span>
-            <span v-else-if="props.column.field === 'Ref_Sale' && props.row.sale_id">
-              <router-link :to="{ name: 'detail_sale', params: { id: props.row.sale_id } }" class="text-primary">
-                {{ props.formattedRow[props.column.field] }}
-              </router-link>
-            </span>
-            <span v-else>
-              {{ props.formattedRow[props.column.field] }}
-            </span>
+  <div class="px-next pxrl">
+    <px-page-header :title="$t('SalesInvoice')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('SalesInvoice') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button>
           </template>
-        </vue-good-table>
-      </b-card>
+        </px-menu>
+        <px-button variant="primary" size="sm" icon="refresh-cw" @click="Payments_Sales(serverParams.page)">{{ $t('Refresh') }}</px-button>
+      </template>
+      <template #meta>
+        <date-range-picker
+          v-model="dateRange"
+          :locale-data="locale"
+          :autoApply="true"
+          :showDropdowns="true"
+          @update="Submit_filter_dateRange"
+        >
+          <template v-slot:input="picker">
+            <button type="button" class="pxrl__daterange pxn-ring">
+              <lucide-icon name="calendar-days" :size="14" />
+              {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
+            </button>
+          </template>
+        </date-range-picker>
+      </template>
+    </px-page-header>
+
+    <div class="pxrl__quickbar">
+      <span class="pxrl__quicklabel">{{ $t('QuickRanges') }}</span>
+      <px-button size="sm" variant="subtle" @click="quick('7d')">7D</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('30d')">30D</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('90d')">90D</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('mtd')">{{ $t('MTD') }}</px-button>
+      <px-button size="sm" variant="subtle" @click="quick('ytd')">{{ $t('YTD') }}</px-button>
     </div>
 
-    <!-- Sidebar Filter -->
-    <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
-      <div class="px-3 py-2">
-        <b-row>
-          <!-- Reference -->
-          <b-col md="12">
-            <b-form-group :label="$t('Reference')">
-              <b-form-input :placeholder="$t('Reference')" v-model="Filter_Ref" />
-            </b-form-group>
-          </b-col>
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="lines" :rows="8" />
+    </div>
 
-          <!-- Customers  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Customer')">
-              <v-select
-                :reduce="o => o.value"
-                :placeholder="$t('Choose_Customer')"
-                v-model="Filter_client"
-                :options="clients.map(c => ({label: c.name, value: c.id}))"
-                :clearable="true"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Sale  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Sale')">
-              <v-select
-                :reduce="o => o.value"
-                :placeholder="$t('PleaseSelect')"
-                v-model="Filter_sale"
-                :options="sales.map(s => ({label: s.Ref, value: s.id}))"
-                :clearable="true"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Payment choice -->
-          <b-col md="12">
-            <b-form-group :label="$t('Paymentchoice')">
-              <v-select
-                v-model="Filter_Reg"
-                :reduce="o => o.value"
-                :placeholder="$t('PleaseSelect')"
-                :options="payment_methods.map(pm => ({label: pm.name, value: pm.id}))"
-                :clearable="true"
-              />
-            </b-form-group>
-          </b-col>
-
-          <b-col md="6" sm="12">
-            <b-button
-              @click="Payments_Sales(1)"
-              variant="primary"
-              size="sm"
-              block
-              class="btn-pill"
-            >
-              <lucide-icon name="filter" /> {{ $t('Filter') }}
-            </b-button>
-          </b-col>
-          <b-col md="6" sm="12">
-            <b-button @click="Reset_Filter" variant="danger" size="sm" block class="btn-pill">
-              <lucide-icon name="power" /> {{ $t('Reset') }}
-            </b-button>
-          </b-col>
-        </b-row>
+    <template v-else>
+      <div class="pxrl__cols pxrl__cols--87">
+        <px-card :title="$t('PaymentsOverTime')">
+          <apexchart type="line" height="320" :options="apexTimeOptions" :series="apexTimeSeries" />
+        </px-card>
+        <px-card :title="$t('PaymentsByMethod')">
+          <apexchart type="bar" height="320" :options="apexMethodOptions" :series="apexMethodSeries" />
+        </px-card>
       </div>
-    </b-sidebar>
+
+      <px-toolbar
+        :search="search"
+        :search-placeholder="$t('Search_this_table')"
+        :filter-count="activeFilterCount"
+        @update:search="onSearchInput"
+        @open-filters="filtersOpen = !filtersOpen"
+      />
+
+      <div v-if="filtersOpen" class="pxrl__filters">
+        <div class="pxrl__filters-grid">
+          <px-field :label="$t('Reference')">
+            <template #default="{ id }"><px-input :id="id" v-model="Filter_Ref" :placeholder="$t('Reference')" /></template>
+          </px-field>
+          <px-field :label="$t('Customer')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="Filter_client" :reduce="o => o.value" :placeholder="$t('Choose_Customer')"
+                :options="clients.map(c => ({ label: c.name, value: c.id }))" />
+            </template>
+          </px-field>
+          <px-field :label="$t('Sale')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="Filter_sale" :reduce="o => o.value" :placeholder="$t('PleaseSelect')"
+                :options="sales.map(s => ({ label: s.Ref, value: s.id }))" />
+            </template>
+          </px-field>
+          <px-field :label="$t('Paymentchoice')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="Filter_Reg" :reduce="o => o.value" :placeholder="$t('PleaseSelect')"
+                :options="payment_methods.map(m => ({ label: m.name, value: m.id }))" />
+            </template>
+          </px-field>
+        </div>
+        <div class="pxrl__filters-act">
+          <px-button size="sm" variant="primary" icon="filter" @click="Payments_Sales(1)">{{ $t('Filter') }}</px-button>
+          <px-button size="sm" variant="ghost" icon="x" @click="Reset_Filter">{{ $t('Reset') }}</px-button>
+        </div>
+      </div>
+
+      <div class="pxrl__tablewrap">
+        <px-table
+          v-if="payments.length"
+          :columns="columns"
+          :rows="payments"
+          row-key="__rowkey"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          @sort="onSort"
+        >
+          <template #cell-date="{ row }">{{ row.date ? fmt(row.date) : '' }}</template>
+          <template #cell-Ref_Sale="{ row }">
+            <router-link v-if="row.sale_id" :to="{ name: 'detail_sale', params: { id: row.sale_id } }" class="pxrl__link">{{ row.Ref_Sale }}</router-link>
+            <span v-else>{{ row.Ref_Sale }}</span>
+          </template>
+          <template #cell-montant="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.montant, 2) }}</span></template>
+        </px-table>
+
+        <px-empty-state v-else icon="coins" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+      </div>
+
+      <div v-if="payments.length" class="pxrl__totalrow">
+        <span>{{ $t('Total') }}</span>
+        <span class="pxn-num">{{ formatPriceDisplay(totalMontant, 2) }}</span>
+      </div>
+
+      <px-pagination
+        v-if="payments.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
 </template>
 
@@ -209,39 +139,51 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: "Payment Sales" },
-  components: { DateRangePicker, apexchart: VueApexCharts },
+  components: {
+    "date-range-picker": DateRangePicker, apexchart: VueApexCharts,
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxCard,
+    PxField, PxInput, PxEmptyState, "vs-px": VsPx
+  },
 
   data() {
     const end = new Date();
     const start = new Date(); start.setDate(end.getDate() - 29);
     return {
+      _searchTimer: null,
+      filtersOpen: false,
       isLoading: true,
 
-      // table state
       serverParams: { sort: { field: "id", type: "desc" }, page: 1, perPage: 10 },
       limit: "10",
       search: "",
       totalRows: 0,
 
-      // filters
       Filter_client: "",
       Filter_Ref: "",
       Filter_sale: "",
       Filter_Reg: "",
 
-      // data
       payments: [],
       clients: [],
       sales: [],
       payment_methods: [],
 
-      // vgt rows (with footer group)
       rows: [{ children: [] }],
 
-      // date range
       dateRange: { startDate: start, endDate: end },
       locale: {
         Label: this.$t("Apply") || "Apply",
@@ -252,45 +194,45 @@ export default {
         monthNames: moment.monthsShort(),
         firstDay: 1
       },
-      // Optional price format key for frontend display (loaded from system settings/localStorage)
       price_format_key: null
     };
   },
 
   computed: {
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
+    activeFilterCount() {
+      return [this.Filter_Ref, this.Filter_client, this.Filter_sale, this.Filter_Reg]
+        .filter(v => v !== "" && v !== null && v !== undefined).length;
+    },
+    exportMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
+    totalMontant() {
+      return (this.payments || []).reduce((a, b) => a + (Number(b.montant) || 0), 0);
+    },
     columns() {
       return [
-        { label: this.$t("date"),          field: "date",           tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Reference"),     field: "Ref",            tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Sale"),          field: "Ref_Sale",       tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Customer"),      field: "client_name",    tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("ModePaiement"),  field: "payment_method", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Account"),       field: "account_name",   tdClass: "text-left", thClass: "text-left", sortable:false },
-        { label: this.$t("Amount"),        field: "montant",        // Let headerField return a formatted string; avoid vue-good-table's decimal re-formatting.
-          headerField: this.sumCount, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("AddedBy"), field: "user_name", tdClass: "text-left", thClass: "text-left", sortable:false },
+        { key: "date",           label: this.$t("date") },
+        { key: "Ref",            label: this.$t("Reference"), strong: true },
+        { key: "Ref_Sale",       label: this.$t("Sale") },
+        { key: "client_name",    label: this.$t("Customer") },
+        { key: "payment_method", label: this.$t("ModePaiement") },
+        { key: "account_name",   label: this.$t("Account") },
+        { key: "montant",        label: this.$t("Amount"), align: "right" },
+        { key: "user_name",      label: this.$t("AddedBy") },
       ];
     },
 
-    // for excel lib (simple mapping)
     excelColumns(){
-      return [
-        { label: this.$t("date"), field: "date" },
-        { label: this.$t("Reference"), field: "Ref" },
-        { label: this.$t("Sale"), field: "Ref_Sale" },
-        { label: this.$t("Customer"), field: "client_name" },
-        { label: this.$t("ModePaiement"), field: "payment_method" },
-        { label: this.$t("Account"), field: "account_name" },
-        { label: this.$t("Amount"), field: "montant" },
-        { label: this.$t("AddedBy"), field: "user_name" },
-      ];
+      return this.columns.map(c => ({ label: c.label, field: c.key }));
     },
 
-    // ApexCharts: time series (line)
     apexTimeOptions(){
       const map = new Map();
       (this.payments || []).forEach(p => {
@@ -329,7 +271,6 @@ export default {
       return [{ name: this.$t('Amount'), data: vals }];
     },
 
-    // ApexCharts: by method (horizontal bar)
     apexMethodOptions(){
       const map = new Map();
       (this.payments || []).forEach(p => {
@@ -362,9 +303,6 @@ export default {
   },
 
   methods: {
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing toLocaleString behavior to preserve current behavior.
     formatPriceDisplay(number, dec) {
       try {
         const decimals = this.priceDecimals;
@@ -380,24 +318,7 @@ export default {
         return n.toLocaleString(undefined, { maximumFractionDigits: dec || 2 });
       }
     },
-    // ---------- utils ----------
     fmt(d){ return moment(d).format("YYYY-MM-DD"); },
-    // Group footer helper for vue-good-table.
-    // Returns a formatted string so the footer row inside the table
-    // looks like a normal data row, but uses the global price format.
-    sumCount(rowObj){
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceDisplay(0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].montant) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceDisplay(sum, 2);
-    },
     findLabel(list, id, key='name'){
       if (!id) return this.$t('All');
       const x = (list||[]).find(i => String(i.id) === String(id));
@@ -409,7 +330,6 @@ export default {
       return x ? (x.Ref || this.$t('All')) : this.$t('All');
     },
 
-    // ---------- quick ranges ----------
     quick(kind){
       const now = moment(); let s, e = now.clone();
       if (kind==='7d')  s = now.clone().subtract(6,'days');
@@ -421,26 +341,24 @@ export default {
       this.Payments_Sales(1);
     },
 
-    // ---------- table handlers ----------
     updateParams(newProps){ this.serverParams = Object.assign({}, this.serverParams, newProps); },
-    onPageChange({ currentPage }){ if (this.serverParams.page !== currentPage){ this.updateParams({ page: currentPage }); this.Payments_Sales(currentPage); } },
-    onPerPageChange({ currentPerPage }){ if (this.limit !== currentPerPage){ this.limit = String(currentPerPage); this.updateParams({ page: 1, perPage: currentPerPage }); this.Payments_Sales(1); } },
-    onSortChange(params){
-      if (params && params[0]) {
-        const field = params[0].field === 'Ref_Sale' ? 'sale_id' : params[0].field;
-        this.updateParams({ sort: { type: params[0].type, field } });
-        this.Payments_Sales(this.serverParams.page);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Payments_Sales(1); }, 350);
     },
-    onSearch(value){ this.search = value.searchTerm || ""; this.Payments_Sales(this.serverParams.page); },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Payments_Sales(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Payments_Sales(1); } },
+    onSort({ key, dir }) {
+      const field = key === 'Ref_Sale' ? 'sale_id' : key;
+      this.updateParams({ sort: { type: dir, field } });
+      this.Payments_Sales(this.serverParams.page);
+    },
 
-    // ---------- date picker ----------
     Submit_filter_dateRange(){
-      // fetch with new range
       this.Payments_Sales(1);
     },
 
-    // ---------- filters ----------
     Reset_Filter(){
       this.search = "";
       this.Filter_client = "";
@@ -450,52 +368,64 @@ export default {
       this.Payments_Sales(1);
     },
 
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "print") this.printTableOnly();
+      else if (k === "pdf") this.Payment_PDF();
+      else if (k === "xlsx") this.exportCsv();
+    },
+
+    exportCsv() {
+      const head = this.columns.map(c => c.label);
+      const lines = [head.join(",")].concat(
+        (this.payments || []).map(r =>
+          this.columns.map(c => {
+            let v = r[c.key];
+            if (c.key === "date") v = r.date ? this.fmt(r.date) : "";
+            return `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+          }).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "payments_sales.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+
     //------ Print Table Only - Print ALL payments data with all columns
     printTableOnly() {
       const title = `${this.$t("Reports")} / ${this.$t("SalesInvoice")}`;
       const payments = Array.isArray(this.payments) ? this.payments : [];
-      
-      // Build table header with all columns
+
       let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
       tableHTML += '<thead><tr>';
-      
+
       this.columns.forEach(col => {
         tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
       });
       tableHTML += '</tr></thead><tbody>';
-      
-      // Build table rows with all data - format each cell according to column type
+
       payments.forEach(payment => {
         tableHTML += '<tr>';
         this.columns.forEach(col => {
           let cellValue = '';
-          
-          if (col.field === 'date') {
+
+          if (col.key === 'date') {
             cellValue = payment.date ? this.fmt(payment.date) : '';
-          } else if (col.field === 'Ref') {
-            cellValue = payment.Ref || '';
-          } else if (col.field === 'Ref_Sale') {
-            cellValue = payment.Ref_Sale || '';
-          } else if (col.field === 'client_name') {
-            cellValue = payment.client_name || '';
-          } else if (col.field === 'payment_method') {
-            cellValue = payment.payment_method || '';
-          } else if (col.field === 'account_name') {
-            cellValue = payment.account_name || '';
-          } else if (col.field === 'montant') {
+          } else if (col.key === 'montant') {
             cellValue = this.formatPriceDisplay(payment.montant, 2);
-          } else if (col.field === 'user_name') {
-            cellValue = payment.user_name || '';
           } else {
-            // Default: get value directly from payment object
-            cellValue = payment[col.field] || '';
+            cellValue = payment[col.key] || '';
           }
-          
+
           tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
         });
         tableHTML += '</tr>';
       });
-      
+
       tableHTML += '</tbody></table>';
 
       const w = window.open("", "_blank");
@@ -519,8 +449,7 @@ export default {
     <title>${title}</title>
     ${links}
     <style>
-      /* Force visibility in print (some global POS print CSS hides body) */
-      @media print { 
+      @media print {
         body, body * { visibility: visible !important; }
         @page { size: A4 landscape; margin: 0.3cm; }
       }
@@ -550,7 +479,6 @@ export default {
     Payments_Sales(page){
       NProgress.start(); NProgress.set(0.1);
 
-      // Normalize null -> ''
       const client_id  = this.Filter_client  || '';
       const sale_id    = this.Filter_sale    || '';
       const method_id  = this.Filter_Reg     || '';
@@ -573,7 +501,7 @@ export default {
 
       axios.get(url)
         .then(({data})=>{
-          this.payments = data.payments || [];
+          this.payments = (data.payments || []).map((p, i) => Object.assign({ __rowkey: p.id != null ? `p-${p.id}-${i}` : `r-${i}` }, p));
           this.clients = data.clients || [];
           this.sales = data.sales || [];
           this.payment_methods = data.payment_methods || [];
@@ -588,39 +516,22 @@ export default {
 
     // ---------- shared font + RTL helpers ----------
     useVazirmatn(pdf){
-      // Make sure this file exists and is publicly accessible:
-      // /public/fonts/Vazirmatn-Bold.ttf
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
       try {
-        // Reuse the same TTF as "normal" and "bold"
         pdf.addFont(fontPath, "Vazirmatn", "normal");
         pdf.addFont(fontPath, "Vazirmatn", "bold");
       } catch(e){ /* ignore if already added */ }
       pdf.setFont("Vazirmatn", "normal");
     },
     isRTL(){
-      // works with vue-i18n or <html dir="rtl">
       return (this.$i18n && ['ar','fa','ur','he'].includes(this.$i18n.locale))
           || (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
-    },
-
-    // ---------- lookups (safe if null) ----------
-    findLabel(list, id, key='name'){
-      if (!id) return this.$t('All');
-      const x = (list||[]).find(i => String(i.id) === String(id));
-      return x ? (x[key] ?? this.$t('All')) : this.$t('All');
-    },
-    findSaleRef(id){
-      if (!id) return this.$t('All');
-      const x = (this.sales||[]).find(i => String(i.id) === String(id));
-      return x ? (x.Ref || this.$t('All')) : this.$t('All');
     },
 
     // ---------- EXPORT PDF (Payments Sales) ----------
     async Payment_PDF(){
       NProgress.start(); NProgress.set(0.2);
       try{
-        // robust date formatting
         const fmtLocal = (d) => {
           if (!d) return '';
           if (this.fmt) return this.fmt(d);
@@ -629,7 +540,6 @@ export default {
         const from = this.startDate || fmtLocal(this.dateRange?.startDate);
         const to   = this.endDate   || fmtLocal(this.dateRange?.endDate);
 
-        // fetch ALL rows using current filters/sort
         const qs = new URLSearchParams({
           page: '1',
           limit: '-1',
@@ -646,20 +556,17 @@ export default {
         const { data } = await axios.get(`payment_sale?${qs}`).catch(()=>({data:{}}));
         const items = Array.isArray(data?.payments) ? data.payments : [];
 
-        // PDF setup (landscape A4)
         const pdf = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
         this.useVazirmatn(pdf);
         const rtl = this.isRTL();
         const margin = 40;
         const pageW = pdf.internal.pageSize.getWidth();
 
-        // Title
         pdf.setFont('Vazirmatn','bold'); pdf.setFontSize(16);
         const title = 'Payment Sales';
         rtl ? pdf.text(title, pageW - margin, 40, { align:'right' })
             : pdf.text(title, margin, 40);
 
-        // Header (filters + date range) with auto-wrap
         pdf.setFont('Vazirmatn','normal'); pdf.setFontSize(10);
         const customerLabel = this.findLabel(this.clients, this.Filter_client, 'name');
         const saleLabel     = this.findSaleRef(this.Filter_sale);
@@ -679,7 +586,6 @@ export default {
         rtl ? pdf.text(wrapped, pageW - margin, 58, { align:'right' })
             : pdf.text(wrapped, margin, 58);
 
-        // Table
         const head = [[
           this.$t('date'),
           this.$t('Reference'),
@@ -725,7 +631,7 @@ export default {
             halign: rtl ? 'right' : 'left',
           },
           columnStyles: {
-            6: { halign:'right' }, // Amount column
+            6: { halign:'right' },
           },
           foot: [[
             { content: this.$t('Totals'), colSpan: 7, styles:{ halign:'right', fontStyle:'bold' } },
@@ -743,35 +649,37 @@ export default {
         NProgress.done();
       }
     },
-
-
-
-
   },
 
   created(){ this.Payments_Sales(1); }
 };
 </script>
 
-<style scoped>
-.shadow-soft{box-shadow:0 12px 24px rgba(0,0,0,.06),0 2px 6px rgba(0,0,0,.05);}
-.btn-pill{border-radius:999px;}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-/* date-range responsiveness */
-.date-range-filter { min-width: 240px; }
-@media (max-width: 575.98px) {
-  .date-range-filter { width: 100%; }
-  .date-btn { justify-content: center; }
-  .daterangepicker {
-    left: 0 !important; right: 0 !important; margin: 0 !important;
-    width: 100vw !important; max-width: 100vw !important;
-  }
-  .daterangepicker .ranges, .daterangepicker .drp-calendar {
-    float: none !important; width: 100% !important;
-  }
-
-  /* Wrap quick range buttons into two columns */
-  .quick-ranges { display:flex !important; flex-wrap:wrap; width:100%; }
-  .quick-ranges .btn { flex:1 1 calc(50% - 6px); margin-bottom:6px; }
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-sm); padding: 0 var(--pxn-space-4);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
 }
+.pxrl__daterange:hover { background: var(--pxn-surface-2); }
+.pxrl__quickbar { display: flex; align-items: center; gap: var(--pxn-space-2); margin-top: var(--pxn-space-4); flex-wrap: wrap; }
+.pxrl__quicklabel { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); margin-right: var(--pxn-space-2); }
+.pxrl__cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); margin-top: var(--pxn-space-5); }
+.pxrl__cols--87 { grid-template-columns: 2fr 1fr; }
+@media (max-width: 900px) { .pxrl__cols, .pxrl__cols--87 { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxrl__filters-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 560px) { .pxrl__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+.pxrl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxrl__link { color: var(--pxn-primary); }
+.pxrl__totalrow { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrl ::v-deep .daterangepicker { z-index: 2055 !important; }
 </style>

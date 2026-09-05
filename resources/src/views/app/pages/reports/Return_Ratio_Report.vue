@@ -1,13 +1,16 @@
 <template>
-  <div class="main-content p-2 p-md-4">
-    <breadcumb :page="$t('Return_Ratio_Report')" :folder="$t('Reports')" />
+  <div class="px-next pxrp">
+    <px-page-header :title="$t('Return_Ratio_Report')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('Return_Ratio_Report') }]">
+      <template #actions>
+        <px-button variant="secondary" icon="printer" @click="printTableOnly()">{{ $t('print') }}</px-button>
+        <px-button variant="primary" icon="refresh-cw" @click="fetchData">{{ $t('Refresh') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <!-- Toolbar -->
-    <b-card class="toolbar-card shadow-soft mb-3 border-0">
-      <div class="d-flex flex-wrap align-items-center">
-        <!-- Date Range -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('DateRange')}}</label>
+    <px-card class="pxrp__filters">
+      <div class="pxrp__filterrow">
+        <div class="pxrp__field">
+          <label class="pxrp__label">{{ $t('DateRange') }}</label>
           <date-range-picker
             v-model="dateRange"
             :startDate="dateRange.startDate"
@@ -21,120 +24,83 @@
             @update="onDateChange"
           >
             <template v-slot:input="pickerSlot">
-              <b-button variant="light" class="btn-pill">
-                <lucide-icon class="mr-1" name="calendar-days" />
+              <button type="button" class="pxrp__daterange pxn-ring">
+                <lucide-icon name="calendar-days" :size="14" />
                 {{ fmtDate(pickerSlot.startDate) }} — {{ fmtDate(pickerSlot.endDate) }}
-              </b-button>
+              </button>
             </template>
           </date-range-picker>
         </div>
-
-        <!-- Quick ranges -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
-          <div class="btn-group quick-ranges">
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('today')">{{ $t('Today') }}</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('7d')">7D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('30d')">30D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('ytd')">{{$t('YTD')}}</b-button>
+        <div class="pxrp__field">
+          <label class="pxrp__label">{{ $t('QuickRanges') }}</label>
+          <div class="pxrp__quick">
+            <px-button size="sm" variant="subtle" @click="applyQuick('today')">{{ $t('Today') }}</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('7d')">7D</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('30d')">30D</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('ytd')">{{ $t('YTD') }}</px-button>
           </div>
         </div>
-
-        <!-- Warehouse -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
-          <v-select
-            class="w-280"
-            @input="onWarehouseChange"
+        <div class="pxrp__field pxrp__field--wh">
+          <label class="pxrp__label">{{ $t('warehouse') }}</label>
+          <vs-px
             v-model="warehouse_id"
             :reduce="opt => opt.value"
             :placeholder="$t('Choose_Warehouse')"
-            :options="warehouses.map(w => ({label: w.name, value: w.id}))"
-            :clearable="true"
+            :options="warehouses.map(w => ({ label: w.name, value: w.id }))"
+            @input="onWarehouseChange"
           />
         </div>
-
-        <div class="ml-auto mb-2">
-          <b-button @click="printTableOnly()" variant="outline-secondary" class="btn-pill mr-2">
-            <lucide-icon class="mr-1" name="printer" /> {{ $t("print") }}
-          </b-button>
-          <b-button variant="primary" class="btn-pill" @click="fetchData">
-            <lucide-icon class="mr-1" name="refresh-cw" />{{$t('Refresh')}}
-          </b-button>
-        </div>
       </div>
-    </b-card>
+    </px-card>
 
-    <!-- Loading -->
-    <div v-if="isLoading" class="mb-4">
-      <b-row>
-        <b-col md="6" v-for="n in 2" :key="n" class="mb-3">
-          <b-skeleton-img class="rounded-xl shadow-soft" height="120px" />
-        </b-col>
-      </b-row>
+    <px-alert tone="info" icon="clock" class="pxrp__range">
+      <strong>{{ fmtDate(dateRange.startDate) }}</strong> — <strong>{{ fmtDate(dateRange.endDate) }}</strong>
+      <span v-if="warehouseLabel" class="pxrp__whtag">{{ warehouseLabel }}</span>
+    </px-alert>
+
+    <div v-if="isLoading" class="pxrp__pad">
+      <px-skeleton variant="lines" :rows="6" />
     </div>
 
-    <!-- Content -->
-    <b-row v-else>
-      <b-col md="12" class="mb-3">
-        <b-alert show variant="light" class="shadow-soft border-0">
-          <div class="d-flex align-items-center">
-            <div class="mr-2"><lucide-icon class="text-primary" name="clock" /></div>
-            <div>
-              <strong>{{ fmtDate(dateRange.startDate) }}</strong> — <strong>{{ fmtDate(dateRange.endDate) }}</strong>
-              <span v-if="warehouseLabel" class="ml-2 badge badge-light">{{ warehouseLabel }}</span>
+    <template v-else>
+      <div class="pxrp__cols">
+        <px-card :title="$t('Sales')">
+          <div class="pxrp__ratio">
+            <div class="pxrp__ratio-left">
+              <p class="pxrp__ratio-total pxn-num">{{ money(data.sales_sum) }}</p>
+              <p class="pxrp__ratio-sub">{{ $t('SalesReturn') }}</p>
+              <p class="pxrp__ratio-ret pxn-num">{{ money(data.returns_sales_sum) }}</p>
+            </div>
+            <div class="pxrp__ratio-pct">
+              <span class="pxrp__ratio-pctlabel">{{ $t('Return_Ratio') || 'Return Ratio' }}</span>
+              <span class="pxrp__ratio-pctval pxn-num">{{ data.sales_return_ratio_pct || 0 }}%</span>
             </div>
           </div>
-        </b-alert>
-      </b-col>
-
-      <!-- Sales Ratios -->
-      <b-col md="6" class="mb-3">
-        <RatioCard
-          icon="banknote"
-          :title="$t('Sales')"
-          :total="money(data.sales_sum)"
-          :returns-title="$t('SalesReturn')"
-          :returns="money(data.returns_sales_sum)"
-          :ratio="data.sales_return_ratio_pct"
-          theme="blue"
-        />
-      </b-col>
-
-      <!-- Purchase Ratios -->
-      <b-col md="6" class="mb-3">
-        <RatioCard
-          icon="receipt-text"
-          :title="$t('Purchases')"
-          :total="money(data.purchases_sum)"
-          :returns-title="$t('PurchasesReturn')"
-          :returns="money(data.returns_purchases_sum)"
-          :ratio="data.purchase_return_ratio_pct"
-          theme="teal"
-        />
-      </b-col>
-
-      <!-- Charts -->
-      <b-col md="6" class="mb-3">
-        <b-card class="shadow-soft border-0">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <h6 class="m-0">{{ $t('Report') }} — {{ $t('Returns') }}</h6>
-            <small class="text-muted">{{ fmtDate(dateRange.startDate) }} — {{ fmtDate(dateRange.endDate) }}</small>
+        </px-card>
+        <px-card :title="$t('Purchases')">
+          <div class="pxrp__ratio">
+            <div class="pxrp__ratio-left">
+              <p class="pxrp__ratio-total pxn-num">{{ money(data.purchases_sum) }}</p>
+              <p class="pxrp__ratio-sub">{{ $t('PurchasesReturn') }}</p>
+              <p class="pxrp__ratio-ret pxn-num">{{ money(data.returns_purchases_sum) }}</p>
+            </div>
+            <div class="pxrp__ratio-pct">
+              <span class="pxrp__ratio-pctlabel">{{ $t('Return_Ratio') || 'Return Ratio' }}</span>
+              <span class="pxrp__ratio-pctval pxn-num">{{ data.purchase_return_ratio_pct || 0 }}%</span>
+            </div>
           </div>
+        </px-card>
+      </div>
+
+      <div class="pxrp__cols pxrp__gap">
+        <px-card :title="`${$t('Report')} — ${$t('Returns')}`">
           <apexchart type="radialBar" height="320" :options="apexRadialOptions" :series="apexRadialSeries" />
-        </b-card>
-      </b-col>
-
-      <b-col md="6" class="mb-3">
-        <b-card class="shadow-soft border-0">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <h6 class="m-0">{{ $t('Report') }} — {{ $t('Totals') }}</h6>
-            <small class="text-muted">{{ fmtDate(dateRange.startDate) }} — {{ fmtDate(dateRange.endDate) }}</small>
-          </div>
+        </px-card>
+        <px-card :title="`${$t('Report')} — ${$t('Totals')}`">
           <apexchart type="bar" height="320" :options="apexBarOptions" :series="apexBarSeries" />
-        </b-card>
-      </b-col>
-    </b-row>
+        </px-card>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -150,34 +116,15 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
-
-const RatioCard = {
-  name: 'RatioCard',
-  functional: true,
-  props: { icon:String, title:String, total:[String,Number], returnsTitle:String, returns:[String,Number], ratio:[String,Number], theme:{type:String,default:'blue'} },
-  render(h,{props}){
-    return h('b-card',{class:['ratio-card','shadow-soft','rounded-xl',`theme-${props.theme}`]},[
-      h('div',{class:'d-flex align-items-center'},[
-        h('div',{class:'ratio-icon mr-3'},[ h('lucide-icon', { props: { name: props.icon } }) ]),
-        h('div',{class:'flex-fill'},[
-          h('div',{class:'h6 mb-1'}, props.title),
-          h('div',{class:'text-muted small mb-2'}, props.total),
-          h('div',{class:'d-flex justify-content-between align-items-center'},[
-            h('div',[ h('div',{class:'small text-muted'}, props.returnsTitle), h('div',{class:'font-weight-bold'}, props.returns) ]),
-            h('div',{class:'text-right'},[
-              h('div',{class:'small text-muted'}, 'Return Ratio'),
-              h('div',{class:'display-6 font-weight-bold'}, `${props.ratio || 0}%`)
-            ])
-          ])
-        ])
-      ])
-    ]);
-  }
-};
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: "Return Ratio Report" },
-  components: { 'date-range-picker': DateRangePicker, RatioCard, apexchart: VueApexCharts },
+  components: { 'date-range-picker': DateRangePicker, apexchart: VueApexCharts, PxPageHeader, PxCard, PxButton, PxAlert, "vs-px": VsPx },
   data(){
     const start = moment().startOf('day').toDate();
     const end   = moment().endOf('day').toDate();
@@ -204,20 +151,17 @@ export default {
         returns_purchases_sum: 0,
         purchase_return_ratio_pct: 0,
       },
-      // Optional price format key for frontend display (loaded from system settings/localStorage)
       price_format_key: null
     };
   },
   computed: {
     ...mapGetters(["currentUser"]),
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
     currency(){ return (this.currentUser && this.currentUser.currency) || "USD"; },
     warehouseLabel(){ const w = this.warehouses.find(w=>w.id===this.warehouse_id); return w ? w.name : null; },
 
-    // ApexCharts: radial gauges for ratios
     apexRadialOptions(){
       return {
         chart: { type: 'radialBar' },
@@ -241,7 +185,6 @@ export default {
       ];
     },
 
-    // ApexCharts: bar comparing totals vs returns
     apexBarOptions(){
       return {
         chart: { type: 'bar', stacked: false, toolbar: { show:false } },
@@ -266,9 +209,6 @@ export default {
     updatePickerPlacement(){ const isXs = window.matchMedia('(max-width: 576px)').matches; this.picker.opens = isXs ? 'center':'right'; this.picker.drops = 'auto'; },
     fmtDate(d){ return moment(d).format('YYYY-MM-DD'); },
     num(v){ const n = parseFloat(v||0); return isNaN(n)?0:n; },
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing Intl.NumberFormat behavior to preserve current behavior.
     money(v){
       try {
         const n = this.num(v);
@@ -308,33 +248,19 @@ export default {
       const dateRangeText = `${this.fmtDate(this.dateRange.startDate)} — ${this.fmtDate(this.dateRange.endDate)}`;
       const warehouseText = this.warehouseLabel ? ` (${this.warehouseLabel})` : '';
 
-      // Build table HTML with all return ratio information
       let tableHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 16px;">`;
-      
-      // Header section
       tableHtml += `<thead><tr><th colspan="4" style="border: 1px solid #ddd; padding: 12px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${title}</th></tr>`;
       tableHtml += `<tr><td colspan="4" style="border: 1px solid #ddd; padding: 8px; background-color: #f9f9f9; font-size: 10px;">${dateRangeText}${warehouseText}</td></tr>`;
       tableHtml += `</thead>`;
-
-      // Body with all KPIs
       tableHtml += `<tbody>`;
-      
-      // Separator
       tableHtml += `<tr><td colspan="4" style="border: 1px solid #ddd; padding: 4px; background-color: #f5f5f5;"></td></tr>`;
-      
-      // Sales Section
       tableHtml += `<tr><td colspan="4" style="border: 1px solid #ddd; padding: 8px; font-weight: 700; background-color: #e6f0ff;">${this.$t('Sales')}</td></tr>`;
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; padding-left: 24px;">${this.$t('Sales')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.data.sales_sum)}</td><td style="border: 1px solid #ddd; padding: 8px;"></td><td style="border: 1px solid #ddd; padding: 8px;"></td></tr>`;
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; padding-left: 24px;">${this.$t('SalesReturn')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.data.returns_sales_sum)}</td><td style="border: 1px solid #ddd; padding: 8px;">${this.$t('Return_Ratio')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: 700;">${Number(this.data.sales_return_ratio_pct || 0).toFixed(2)}%</td></tr>`;
-      
-      // Separator
       tableHtml += `<tr><td colspan="4" style="border: 1px solid #ddd; padding: 4px; background-color: #f5f5f5;"></td></tr>`;
-      
-      // Purchases Section
       tableHtml += `<tr><td colspan="4" style="border: 1px solid #ddd; padding: 8px; font-weight: 700; background-color: #e6fbf6;">${this.$t('Purchases')}</td></tr>`;
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; padding-left: 24px;">${this.$t('Purchases')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.data.purchases_sum)}</td><td style="border: 1px solid #ddd; padding: 8px;"></td><td style="border: 1px solid #ddd; padding: 8px;"></td></tr>`;
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; padding-left: 24px;">${this.$t('PurchasesReturn')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.data.returns_purchases_sum)}</td><td style="border: 1px solid #ddd; padding: 8px;">${this.$t('Return_Ratio')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: 700;">${Number(this.data.purchase_return_ratio_pct || 0).toFixed(2)}%</td></tr>`;
-      
       tableHtml += `</tbody></table>`;
 
       const w = window.open("", "_blank");
@@ -358,7 +284,7 @@ export default {
     <title>${title}</title>
     ${links}
     <style>
-      @media print { 
+      @media print {
         body, body * { visibility: visible !important; }
         @page { size: A4; margin: 1cm; }
       }
@@ -401,27 +327,37 @@ export default {
 };
 </script>
 
-<style scoped>
-.rounded-xl { border-radius: 1rem; }
-.shadow-soft { box-shadow: 0 12px 24px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.05); }
-.toolbar-card { background: #fff; }
-.btn-pill { border-radius: 999px; }
-.w-280 { width: 280px; }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-.ratio-card { background: #fff; }
-.ratio-icon { width: 48px; height: 48px; border-radius: 12px; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.04); }
-.display-6 { font-size: 1.6rem; }
-
-/* Keep the picker above navbars/modals/offcanvas */
-.daterangepicker { z-index: 2055 !important; }
-
-/* Mobile layout */
-@media (max-width: 576px) {
-  .daterangepicker { left: 8px !important; right: 8px !important; width: auto !important; max-width: calc(100vw - 16px) !important; }
-  .daterangepicker .drp-calendar, .daterangepicker .ranges { float: none !important; width: 100% !important; }
-  .quick-ranges { display:flex !important; flex-wrap:wrap; width:100%; }
-  .quick-ranges .btn { flex:1 1 calc(50% - 6px); margin-bottom:6px; }
+<style lang="scss" scoped>
+.pxrp { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrp { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrp__pad { padding: var(--pxn-space-6) 0; }
+.pxrp__filters { margin-top: var(--pxn-space-5); }
+.pxrp__filterrow { display: flex; flex-wrap: wrap; gap: var(--pxn-space-6); align-items: flex-start; }
+.pxrp__field { display: flex; flex-direction: column; gap: var(--pxn-space-2); }
+.pxrp__field--wh { min-width: 240px; }
+.pxrp__label { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); }
+.pxrp__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-md); padding: 0 var(--pxn-space-5);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
 }
+.pxrp__daterange:hover { background: var(--pxn-surface-2); }
+.pxrp__quick { display: flex; flex-wrap: wrap; gap: var(--pxn-space-2); }
+.pxrp__range { margin-top: var(--pxn-space-4); }
+.pxrp__whtag { margin-left: var(--pxn-space-3); padding: 2px var(--pxn-space-3); border-radius: var(--pxn-radius-sm); background: var(--pxn-surface-3); font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-medium); }
+.pxrp__cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); margin-top: var(--pxn-space-5); }
+@media (max-width: 820px) { .pxrp__cols { grid-template-columns: minmax(0, 1fr); } }
+.pxrp__gap { margin-top: var(--pxn-space-5); }
+.pxrp__ratio { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-5); }
+.pxrp__ratio-total { font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); margin-bottom: var(--pxn-space-3); }
+.pxrp__ratio-sub { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxrp__ratio-ret { font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrp__ratio-pct { text-align: right; }
+.pxrp__ratio-pctlabel { display: block; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxrp__ratio-pctval { font-size: var(--pxn-fs-kpi); font-weight: var(--pxn-fw-bold); color: var(--pxn-ink); }
+.pxrp ::v-deep .daterangepicker { z-index: 2055 !important; }
 </style>
-
-

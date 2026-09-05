@@ -1,140 +1,102 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('product_sales_report')" :folder="$t('Reports')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-
-     <b-col md="12" class="text-center" v-if="!isLoading">
-        <date-range-picker 
-          v-model="dateRange" 
-          :startDate="startDate" 
-          :endDate="endDate" 
-           @update="Submit_filter_dateRange"
-          :locale-data="locale" > 
-
-          <template v-slot:input="picker" style="min-width: 350px;">
-              {{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}
-          </template>        
+  <div class="px-next pxrl">
+    <px-page-header :title="$t('product_sales_report')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('product_sales_report') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button>
+          </template>
+        </px-menu>
+      </template>
+      <template #meta>
+        <date-range-picker
+          v-model="dateRange"
+          :startDate="startDate"
+          :endDate="endDate"
+          @update="Submit_filter_dateRange"
+          :locale-data="locale"
+        >
+          <template v-slot:input="picker">
+            <button type="button" class="pxrl__daterange pxn-ring">
+              <lucide-icon name="calendar-days" :size="14" />
+              {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
+            </button>
+          </template>
         </date-range-picker>
-      </b-col>
+      </template>
+    </px-page-header>
 
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      :filter-count="activeFilterCount"
+      @update:search="onSearchInput"
+      @open-filters="filtersOpen = !filtersOpen"
+    />
 
-    <div v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="rows"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        placeholder: $t('Search_this_table'),
-        enabled: true,
-      }"
-       :group-options="{
-          enabled: true,
-          headerPosition: 'bottom',
-        }"
-       
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
-      >
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'total'">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}
-          </span>
-          <span v-else>
-            {{ props.formattedRow[props.column.field] }}
-          </span>
-        </template>
-       
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
-            <lucide-icon name="filter" />
-            {{ $t("Filter") }}
-          </b-button>
-          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
-            <lucide-icon name="printer" /> {{ $t("print") }}
-          </b-button>
-          <b-button @click="Sales_PDF()" size="sm" variant="outline-success ripple m-1">
-            <lucide-icon name="copy" /> PDF
-          </b-button>
-          <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="sales"
-              :columns="columns"
-              :file-name="'sales'"
-              :file-type="'xlsx'"
-              :sheet-name="'sales'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
-         
-        </div>
-
-      </vue-good-table>
+    <div v-if="filtersOpen" class="pxrl__filters">
+      <div class="pxrl__filters-grid">
+        <px-field :label="$t('Customer')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_Client" :reduce="o => o.value" :placeholder="$t('Choose_Customer')"
+              :options="customers.map(c => ({ label: c.name, value: c.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('warehouse')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_warehouse" :reduce="o => o.value" :placeholder="$t('Choose_Warehouse')"
+              :options="warehouses.map(w => ({ label: w.name, value: w.id }))" />
+          </template>
+        </px-field>
+      </div>
+      <div class="pxrl__filters-act">
+        <px-button size="sm" variant="primary" icon="filter" @click="applyFilters">{{ $t('Filter') }}</px-button>
+        <px-button size="sm" variant="ghost" icon="x" @click="Reset_Filter">{{ $t('Reset') }}</px-button>
+      </div>
     </div>
 
-    <!-- Sidebar Filter -->
-    <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
-      <div class="px-3 py-2">
-        <b-row>
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="7" />
+    </div>
 
-          <!-- Customer  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Customer')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Customer')"
-                v-model="Filter_Client"
-                :options="customers.map(customers => ({label: customers.name, value: customers.id}))"
-              />
-            </b-form-group>
-          </b-col>
+    <template v-else>
+      <div class="pxrl__tablewrap">
+        <px-table
+          v-if="sales.length"
+          :columns="columns"
+          :rows="sales"
+          row-key="__rowkey"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          @sort="onSort"
+        >
+          <template #cell-total="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, row.total, 2) }}</span></template>
+          <template #cell-quantity="{ row }"><span class="pxn-num">{{ row.quantity }}</span></template>
+        </px-table>
 
-          <!-- warehouse -->
-          <b-col md="12">
-            <b-form-group :label="$t('warehouse')">
-              <v-select
-                v-model="Filter_warehouse"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Warehouse')"
-                :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <b-col md="6" sm="12">
-            <b-button
-              @click="Get_Sales(serverParams.page)"
-              variant="primary btn-block ripple m-1"
-              size="sm"
-            >
-              <lucide-icon name="filter" />
-              {{ $t("Filter") }}
-            </b-button>
-          </b-col>
-          <b-col md="6" sm="12">
-            <b-button @click="Reset_Filter()" variant="danger ripple btn-block m-1" size="sm">
-              <lucide-icon name="power" />
-              {{ $t("Reset") }}
-            </b-button>
-          </b-col>
-        </b-row>
+        <px-empty-state v-else icon="package" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
       </div>
-    </b-sidebar>
 
+      <div v-if="sales.length" class="pxrl__totalrow">
+        <span>{{ $t('Total') }}</span>
+        <span>{{ $t('Qty_sold') }}: <b class="pxn-num">{{ totalQuantity }}</b></span>
+        <span>{{ $t('Total') }}: <b class="pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, totalTotal, 2) }}</b></span>
+      </div>
+
+      <px-pagination
+        v-if="sales.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
 </template>
 
 <script>
-import { mapActions, mapGetters } from "vuex";
+import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -146,31 +108,44 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
 
   metaInfo: {
     title: "Product Sales Report"
   },
-  components: { DateRangePicker },
+  components: {
+    "date-range-picker": DateRangePicker,
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu,
+    PxField, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
-      startDate: "", 
-      endDate: "", 
-      dateRange: { 
-       startDate: "", 
-       endDate: "" 
-      }, 
-      locale:{ 
-          //separator between the two ranges apply
-          Label: "Apply", 
-          cancelLabel: "Cancel", 
-          weekLabel: "W", 
-          customRangeLabel: "Custom Range", 
-          daysOfWeek: moment.weekdaysMin(), 
-          //array of days - see moment documenations for details 
-          monthNames: moment.monthsShort(), //array of month names - see moment documenations for details 
-          firstDay: 1 //ISO first day of week - see moment documenations for details
+      _searchTimer: null,
+      filtersOpen: false,
+      startDate: "",
+      endDate: "",
+      dateRange: {
+       startDate: "",
+       endDate: ""
+      },
+      locale:{
+          Label: "Apply",
+          cancelLabel: "Cancel",
+          weekLabel: "W",
+          customRangeLabel: "Custom Range",
+          daysOfWeek: moment.weekdaysMin(),
+          monthNames: moment.monthsShort(),
+          firstDay: 1
         },
       isLoading: true,
       serverParams: {
@@ -183,14 +158,11 @@ export default {
       },
       rows: [{
           statut: 'Total',
-         
           children: [
-             
           ],
       },],
       search: "",
       totalRows: "",
-      showDropdown: false,
       Filter_Client: "",
       Filter_warehouse: "",
       customers: [],
@@ -200,171 +172,91 @@ export default {
       today_mode: true,
       to: "",
       from: "",
-      // Optional price format key for frontend display (loaded from system settings/Vuex store)
       price_format_key: null
     };
   },
-   mounted() {
-    this.$root.$on("bv::dropdown::show", bvEvent => {
-      this.showDropdown = true;
-    });
-    this.$root.$on("bv::dropdown::hide", bvEvent => {
-      this.showDropdown = false;
-    });
-  },
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
+    activeFilterCount() {
+      return [this.Filter_Client, this.Filter_warehouse].filter(v => v !== "" && v !== null && v !== undefined).length;
+    },
+    exportMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
     columns() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Customer"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-      
-        {
-          label: this.$t("Name_product"),
-          field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Qty_sold"),
-          field: "quantity",
-          type: "decimal",
-          headerField: this.sumCount,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Total"),
-          field: "total",
-          headerField: this.sumCount2,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
+        { key: "date", label: this.$t("date") },
+        { key: "Ref", label: this.$t("Reference"), strong: true },
+        { key: "client_name", label: this.$t("Customer") },
+        { key: "warehouse_name", label: this.$t("warehouse") },
+        { key: "product_name", label: this.$t("Name_product") },
+        { key: "quantity", label: this.$t("Qty_sold"), align: "right" },
+        { key: "total", label: this.$t("Total"), align: "right" },
       ];
+    },
+    totalQuantity() {
+      return (this.sales || []).reduce((sum, s) => sum + (parseFloat(s.quantity) || 0), 0);
+    },
+    totalTotal() {
+      return (this.sales || []).reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
     }
   },
   methods: {
-
-    sumCount(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return 0;
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].quantity) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return sum;
-    },
-    // Group footer helper for vue-good-table.
-    // Returns a formatted string so the footer row inside the table
-    // looks like a normal data row, but uses the global price format & currency.
-    sumCount2(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].total) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
-    },
-
-
-    //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Sales(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Sales(1); }, 350);
     },
 
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Sales(1);
-      }
-    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Sales(p); } },
 
-    //---- Event Sort change
-    onSortChange(params) {
-      let field = "";
-      if (params[0].field == "client_name") {
-        field = "client_id";
-      } else if (params[0].field == "warehouse_name") {
-        field = "warehouse_id";
-      } else {
-        field = params[0].field;
-      }
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: field
-        }
-      });
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Sales(1); } },
+
+    onSort({ key, dir }) {
+      let field = key;
+      if (key === "client_name") field = "client_id";
+      else if (key === "warehouse_name") field = "warehouse_id";
+      this.updateParams({ sort: { type: dir, field: field } });
       this.Get_Sales(this.serverParams.page);
     },
 
-    
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Sales(this.serverParams.page);
+    applyFilters() { this.updateParams({ page: 1 }); this.Get_Sales(this.serverParams.page); },
+
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "print") this.printTableOnly();
+      else if (k === "pdf") this.Sales_PDF();
+      else if (k === "xlsx") this.exportCsv();
     },
 
-    //---Validate State Fields
-    getValidationState({ dirty, validated, valid = null }) {
-      return dirty || validated ? valid : null;
+    exportCsv() {
+      const head = this.columns.map(c => c.label);
+      const lines = [head.join(",")].concat(
+        (this.sales || []).map(r => this.columns.map(c => `"${String(r[c.key] == null ? "" : r[c.key]).replace(/"/g, '""')}"`).join(","))
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "product_sales_report.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     },
-    //------ Toast
+
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
-        title: title,
-        variant: variant,
-        solid: true
-      });
+      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
     },
-
 
     //------ Reset Filter
     Reset_Filter() {
@@ -373,7 +265,6 @@ export default {
       this.Filter_warehouse = "";
       this.Get_Sales(this.serverParams.page);
     },
-
 
     //------------------------------Formetted Numbers -------------------------\\
     formatNumber(number, dec) {
@@ -389,9 +280,6 @@ export default {
       return `${value[0]}.${formated}`;
     },
 
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing toLocaleString behavior to preserve current behavior.
     formatPriceDisplay(number, dec) {
       try {
         const decimals = this.priceDecimals;
@@ -416,37 +304,25 @@ export default {
 
     //------ Print Table Only
     printTableOnly() {
-      const root = this.$el;
-      if (!root) {
-        window.print();
-        return;
-      }
-
-      // Get sales data from rows[0].children or this.sales
-      const salesData = Array.isArray(this.rows[0]?.children) && this.rows[0].children.length > 0 
-        ? this.rows[0].children 
+      const salesData = Array.isArray(this.rows[0]?.children) && this.rows[0].children.length > 0
+        ? this.rows[0].children
         : (this.sales || []);
 
-      // Manually construct the table HTML from sales data
       let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
-
-      // Table Header
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
         tableHtml += `<th class="text-left">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
-
-      // Table Body
       tableHtml += `<tbody>`;
       salesData.forEach(row => {
         tableHtml += `<tr>`;
         this.columns.forEach(col => {
-          let cellContent = row[col.field];
-          if (col.field === 'total') {
+          let cellContent = row[col.key];
+          if (col.key === 'total') {
             cellContent = this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, row.total, 2);
           } else {
-            cellContent = row[col.field] || '';
+            cellContent = row[col.key] || '';
           }
           tableHtml += `<td class="text-left">${cellContent}</td>`;
         });
@@ -454,16 +330,14 @@ export default {
       });
       tableHtml += `</tbody>`;
 
-      // Table Footer (Totals)
       const totalQuantity = salesData.reduce((sum, sale) => sum + parseFloat(sale.quantity || 0), 0);
       const totalTotal = salesData.reduce((sum, sale) => sum + parseFloat(sale.total || 0), 0);
       tableHtml += `<tfoot><tr>`;
       tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
-      tableHtml += `<td colspan="5"></td>`; // Span for other columns
+      tableHtml += `<td colspan="4"></td>`;
       tableHtml += `<td class="text-left font-weight-bold">${totalQuantity}</td>`;
       tableHtml += `<td class="text-left font-weight-bold">${this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, totalTotal, 2)}</td>`;
       tableHtml += `</tr></tfoot>`;
-
       tableHtml += `</table>`;
 
       const w = window.open("", "_blank");
@@ -522,8 +396,8 @@ export default {
       let pdf = new jsPDF("p", "pt");
 
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
-      pdf.addFont(fontPath, "VazirmatnBold", "bold"); 
-      pdf.setFont("VazirmatnBold"); 
+      pdf.addFont(fontPath, "VazirmatnBold", "bold");
+      pdf.setFont("VazirmatnBold");
 
       let columns = [
         { header: self.$t("date"), dataKey: "date" },
@@ -535,7 +409,6 @@ export default {
         { header: self.$t("Total"), dataKey: "total" },
       ];
 
-      // Calculate totals
       let totalquantity = self.sales.reduce((sum, sale) => sum + parseFloat(sale.quantity || 0), 0);
       let totaltotal= self.sales.reduce((sum, sale) => sum + parseFloat(sale.total || 0), 0);
 
@@ -554,25 +427,25 @@ export default {
              body: self.sales,
              foot: footer,
              startY: 70,
-             theme: "grid", 
+             theme: "grid",
              didDrawPage: (data) => {
                pdf.setFont("VazirmatnBold");
                pdf.setFontSize(18);
-               pdf.text("Product Sales Report", 40, 25);   
+               pdf.text("Product Sales Report", 40, 25);
              },
              styles: {
-               font: "VazirmatnBold", 
-               halign: "center", // 
+               font: "VazirmatnBold",
+               halign: "center",
              },
              headStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
+               fillColor: [26, 86, 219],
+               textColor: 255,
+               fontStyle: "bold",
              },
              footStyles: {
-               fillColor: [26, 86, 219], 
-               textColor: 255, 
-               fontStyle: "bold", 
+               fillColor: [26, 86, 219],
+               textColor: 255,
+               fontStyle: "bold",
              },
       });
 
@@ -580,16 +453,13 @@ export default {
 
     },
 
-
-  
     //---------------------------------------- Set To Strings-------------------------\\
     setToStrings() {
-      // Simply replaces null values with strings=''
       if (this.Filter_Client === null) {
         this.Filter_Client = "";
       } else if (this.Filter_warehouse === null) {
         this.Filter_warehouse = "";
-      } 
+      }
     },
 
     //----------------------------- Submit Date Picker -------------------\\
@@ -618,7 +488,6 @@ export default {
       }
     },
 
-    // Same as dashboard: format date for picker display (YYYY-MM-DD, local time via moment)
     fmt(d) {
       return moment(d).format("YYYY-MM-DD");
     },
@@ -626,7 +495,6 @@ export default {
 
     //----------------------------------------- Get all Sales ------------------------------\\
     Get_Sales(page) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       this.setToStrings();
@@ -653,18 +521,16 @@ export default {
             this.startDate
         )
         .then(response => {
-          this.sales = response.data.sales;
+          this.sales = (response.data.sales || []).map((s, i) => Object.assign({ __rowkey: `${s.Ref || 'r'}-${s.product_name || ''}-${i}` }, s));
           this.customers = response.data.customers;
           this.warehouses = response.data.warehouses;
           this.totalRows = response.data.totalRows;
           this.rows[0].children = this.sales;
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
           this.today_mode = false;
         })
         .catch(response => {
-          // Complete the animation of theprogress bar.
           NProgress.done();
           setTimeout(() => {
             this.isLoading = false;
@@ -672,10 +538,6 @@ export default {
           }, 500);
         });
     },
-
-  
-  
-  
   },
   //----------------------------- Created function-------------------\\
   created() {
@@ -684,3 +546,28 @@ export default {
 };
 </script>
 
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-sm); padding: 0 var(--pxn-space-4);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
+}
+.pxrl__daterange:hover { background: var(--pxn-surface-2); }
+.pxrl__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxrl__filters-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxrl__filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxrl__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+.pxrl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxrl__link { color: var(--pxn-primary); }
+.pxrl__totalrow { display: flex; align-items: center; justify-content: flex-end; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+.pxrl__totalrow > span:first-child { margin-right: auto; font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrl ::v-deep .daterangepicker { z-index: 2055 !important; }
+</style>

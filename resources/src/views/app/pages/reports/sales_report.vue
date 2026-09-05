@@ -1,9 +1,14 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('SalesReport')" :folder="$t('Reports')"/>
-
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-      <b-col md="12" class="text-center" v-if="!isLoading">
+  <div class="px-next pxrl">
+    <px-page-header :title="$t('SalesReport')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('SalesReport') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button>
+          </template>
+        </px-menu>
+      </template>
+      <template #meta>
         <date-range-picker
           v-model="dateRange"
           :startDate="startDate"
@@ -17,197 +22,121 @@
           @update="Submit_filter_dateRange"
           :locale-data="locale"
         >
-          <template v-slot:input="picker" style="min-width: 350px;">
-            {{ formatDateTime(picker.startDate) }} — {{ formatDateTime(picker.endDate) }}
+          <template v-slot:input="picker">
+            <button type="button" class="pxrl__daterange pxn-ring">
+              <lucide-icon name="calendar-days" :size="14" />
+              {{ formatDateTime(picker.startDate) }} — {{ formatDateTime(picker.endDate) }}
+            </button>
           </template>
         </date-range-picker>
-      </b-col>
+      </template>
+    </px-page-header>
 
-    <b-card class="wrapper print-table-only" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="rows"
-        :group-options="{
-          enabled: true,
-          headerPosition: 'bottom',
-        }"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        placeholder: $t('Search_this_table'),
-        enabled: true,
-      }"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        :styleClass="'mt-5 order-table vgt-table'"
-      >
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
-            <lucide-icon name="filter" />
-            {{ $t("Filter") }}
-          </b-button>
-          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
-            <lucide-icon name="printer" /> {{ $t("print") }}
-          </b-button>
-          <b-button @click="Sales_PDF()" size="sm" variant="outline-success ripple m-1">
-            <lucide-icon name="copy" /> PDF
-          </b-button>
-           <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="sales"
-              :columns="columns"
-              :file-name="'sales_report'"
-              :file-type="'xlsx'"
-              :sheet-name="'sales_report'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
-        </div>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      :filter-count="activeFilterCount"
+      @update:search="onSearchInput"
+      @open-filters="filtersOpen = !filtersOpen"
+    />
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'date'">
-            {{ formatDisplayDateTime(props.row.date, props.row.time) }}
-          </span>
-          <div v-else-if="props.column.field == 'statut'">
-            <span
-              v-if="props.row.statut == 'completed'"
-              class="badge badge-outline-success"
-            >{{$t('complete')}}</span>
-            <span
-              v-else-if="props.row.statut == 'pending'"
-              class="badge badge-outline-info"
-            >{{$t('Pending')}}</span>
-            <span v-else class="badge badge-outline-warning">{{$t('Ordered')}}</span>
-          </div>
-
-          <div v-else-if="props.column.field == 'payment_status'">
-            <span
-              v-if="props.row.payment_status == 'paid'"
-              class="badge badge-outline-success"
-            >{{$t('Paid')}}</span>
-            <span
-              v-else-if="props.row.payment_status == 'partial'"
-              class="badge badge-outline-primary"
-            >{{$t('partial')}}</span>
-            <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
-          </div>
-          <span v-else-if="props.column.field === 'Ref' && props.row.id">
-            <router-link :to="{ name: 'detail_sale', params: { id: props.row.id } }" class="text-primary">
-              {{ props.formattedRow[props.column.field] }}
-            </router-link>
-          </span>
-          <span v-else-if="props.column.field == 'GrandTotal'">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.GrandTotal, 2) }}
-          </span>
-          <span v-else-if="props.column.field == 'paid_amount'">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.paid_amount, 2) }}
-          </span>
-          <span v-else-if="props.column.field == 'due'">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.due, 2) }}
-          </span>
-          <span v-else>
-            {{ props.formattedRow[props.column.field] }}
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
-
-    <!-- Sidebar Filter -->
-    <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
-      <div class="px-3 py-2">
-        <b-row>
-          <!-- Reference -->
-          <b-col md="12">
-            <b-form-group :label="$t('Reference')">
-              <b-form-input label="Reference" :placeholder="$t('Reference')" v-model="Filter_Ref"></b-form-input>
-            </b-form-group>
-          </b-col>
-
-          <!-- Customer  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Customer')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Customer')"
-                v-model="Filter_Client"
-                :options="customers.map(customers => ({label: customers.name, value: customers.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-           <!-- Seller  -->
-           <b-col md="12">
-            <b-form-group label="Seller">
-              <v-select
-                :reduce="label => label.value"
-                placeholder="Choose Seller"
-                v-model="Filter_Client"
-                :options="sellers.map(sellers => ({label: sellers.username, value: sellers.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-           <!-- warehouse -->
-          <b-col md="12">
-            <b-form-group :label="$t('warehouse')">
-              <v-select
-                v-model="Filter_warehouse"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Warehouse')"
-                :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Status  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Status')">
-              <select v-model="Filter_status" type="text" class="form-control">
-                <option value selected>All</option>
-                <option value="completed">Completed</option>
-                <option value="pending">Pending</option>
-                <option value="ordered">Ordered</option>
-              </select>
-            </b-form-group>
-          </b-col>
-
-          <!-- Payment Status  -->
-          <b-col md="12">
-            <b-form-group :label="$t('PaymentStatus')">
-              <select v-model="Filter_Payment" type="text" class="form-control">
-                <option value selected>All</option>
-                <option value="paid">Paid</option>
-                <option value="partial">partial</option>
-                <option value="unpaid">UnPaid</option>
-              </select>
-            </b-form-group>
-          </b-col>
-
-          <b-col md="6" sm="12">
-            <b-button @click="Get_Sales(serverParams.page)" variant="primary ripple m-1" size="sm" block>
-              <lucide-icon name="filter" />
-              {{ $t("Filter") }}
-            </b-button>
-          </b-col>
-          <b-col md="6" sm="12">
-            <b-button @click="Reset_Filter()" variant="danger ripple m-1" size="sm" block>
-              <lucide-icon name="power" />
-              {{ $t("Reset") }}
-            </b-button>
-          </b-col>
-        </b-row>
+    <div v-if="filtersOpen" class="pxrl__filters">
+      <div class="pxrl__filters-grid">
+        <px-field :label="$t('Reference')">
+          <template #default="{ id }"><px-input :id="id" v-model="Filter_Ref" :placeholder="$t('Reference')" /></template>
+        </px-field>
+        <px-field :label="$t('Customer')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_Client" :reduce="o => o.value" :placeholder="$t('Choose_Customer')"
+              :options="customers.map(c => ({ label: c.name, value: c.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Seller') || 'Seller'">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_seller" :reduce="o => o.value" :placeholder="$t('PleaseSelect')"
+              :options="sellers.map(s => ({ label: s.username, value: s.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('warehouse')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_warehouse" :reduce="o => o.value" :placeholder="$t('Choose_Warehouse')"
+              :options="warehouses.map(w => ({ label: w.name, value: w.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Status')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_status" :reduce="o => o.value" :clearable="false"
+              :options="[{label: $t('All') || 'All', value: ''}, {label: $t('complete') || 'Completed', value: 'completed'}, {label: $t('Pending'), value: 'pending'}, {label: $t('Ordered'), value: 'ordered'}]" />
+          </template>
+        </px-field>
+        <px-field :label="$t('PaymentStatus')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_Payment" :reduce="o => o.value" :clearable="false"
+              :options="[{label: $t('All') || 'All', value: ''}, {label: $t('Paid'), value: 'paid'}, {label: $t('partial'), value: 'partial'}, {label: $t('Unpaid'), value: 'unpaid'}]" />
+          </template>
+        </px-field>
       </div>
-    </b-sidebar>
+      <div class="pxrl__filters-act">
+        <px-button size="sm" variant="primary" icon="filter" @click="applyFilters">{{ $t('Filter') }}</px-button>
+        <px-button size="sm" variant="ghost" icon="x" @click="Reset_Filter">{{ $t('Reset') }}</px-button>
+      </div>
+    </div>
+
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="8" />
+    </div>
+
+    <template v-else>
+      <div class="pxrl__tablewrap">
+        <px-table
+          v-if="sales.length"
+          :columns="columns"
+          :rows="sales"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          @sort="onSort"
+        >
+          <template #cell-date="{ row }">{{ formatDisplayDateTime(row.date, row.time) }}</template>
+          <template #cell-Ref="{ row }">
+            <router-link v-if="row.id" :to="{ name: 'detail_sale', params: { id: row.id } }" class="pxrl__link">{{ row.Ref }}</router-link>
+            <span v-else>{{ row.Ref }}</span>
+          </template>
+          <template #cell-statut="{ row }">
+            <px-badge v-if="row.statut === 'completed'" tone="success">{{ $t('complete') }}</px-badge>
+            <px-badge v-else-if="row.statut === 'pending'" tone="info">{{ $t('Pending') }}</px-badge>
+            <px-badge v-else tone="warning">{{ $t('Ordered') }}</px-badge>
+          </template>
+          <template #cell-payment_status="{ row }">
+            <px-badge v-if="row.payment_status === 'paid'" tone="success">{{ $t('Paid') }}</px-badge>
+            <px-badge v-else-if="row.payment_status === 'partial'" tone="info">{{ $t('partial') }}</px-badge>
+            <px-badge v-else tone="warning">{{ $t('Unpaid') }}</px-badge>
+          </template>
+          <template #cell-GrandTotal="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, row.GrandTotal, 2) }}</span></template>
+          <template #cell-paid_amount="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, row.paid_amount, 2) }}</span></template>
+          <template #cell-due="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, row.due, 2) }}</span></template>
+        </px-table>
+
+        <px-empty-state v-else icon="receipt" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+      </div>
+
+      <div v-if="sales.length" class="pxrl__totalrow">
+        <span>{{ $t('Total') }}</span>
+        <span>{{ $t('Total') }}: <b class="pxn-num">{{ money(footerTotals.grandTotal) }}</b></span>
+        <span>{{ $t('Paid') }}: <b class="pxn-num">{{ money(footerTotals.paidTotal) }}</b></span>
+        <span>{{ $t('Due') }}: <b class="pxn-num">{{ money(footerTotals.dueTotal) }}</b></span>
+      </div>
+
+      <px-pagination
+        v-if="sales.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
-  <!-- </div> -->
 </template>
 
 <script>
@@ -215,7 +144,6 @@ import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import DateRangePicker from 'vue2-daterange-picker'
-//you need to import the CSS manually
 import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
 import moment from 'moment'
 import Util from '../../../../utils'
@@ -225,30 +153,45 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Report Sales"
   },
-components: { DateRangePicker },
+  components: {
+    "date-range-picker": DateRangePicker,
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxBadge,
+    PxField, PxInput, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
-     startDate: "", 
-     endDate: "", 
-     dateRange: { 
-       startDate: "", 
-       endDate: "" 
-     }, 
-      locale:{ 
-          //separator between the two ranges apply
-          Label: "Apply", 
-          cancelLabel: "Cancel", 
-          weekLabel: "W", 
-          customRangeLabel: "Custom Range", 
-          daysOfWeek: moment.weekdaysMin(), 
-          //array of days - see moment documenations for details 
-          monthNames: moment.monthsShort(), //array of month names - see moment documenations for details 
-          firstDay: 1 //ISO first day of week - see moment documenations for details
+     _searchTimer: null,
+     filtersOpen: false,
+     startDate: "",
+     endDate: "",
+     dateRange: {
+       startDate: "",
+       endDate: ""
+     },
+      locale:{
+          Label: "Apply",
+          cancelLabel: "Cancel",
+          weekLabel: "W",
+          customRangeLabel: "Custom Range",
+          daysOfWeek: moment.weekdaysMin(),
+          monthNames: moment.monthsShort(),
+          firstDay: 1
         },
       isLoading: true,
       serverParams: {
@@ -273,9 +216,7 @@ components: { DateRangePicker },
       sellers: [],
       rows: [{
           statut: 'Total',
-         
           children: [
-             
           ],
       },],
       sales: [],
@@ -284,91 +225,41 @@ components: { DateRangePicker },
       from: "",
       start_time: "",
       end_time: "",
-      // Optional price format key for frontend display (loaded from system settings/localStorage)
       price_format_key: null
     };
   },
 
   computed: {
-    columns() {
-      return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-       
-
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-
-        {
-          label: this.$t("Customer"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Status"),
-          field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Total"),
-          field: "GrandTotal",
-          // Let headerField return a formatted string; avoid vue-good-table's decimal re-formatting.
-          headerField: this.sumCount,
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Paid"),
-          field: "paid_amount",
-          headerField: this.sumCount2,
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Due"),
-          field: "due",
-          headerField: this.sumCount3,
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("PaymentStatus"),
-          field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("AddedBy"),
-          field: "user_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        }
-      ];
-    },
     ...mapGetters(["currentUser"]),
-
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
+    activeFilterCount() {
+      return [this.Filter_Ref, this.Filter_Client, this.Filter_seller, this.Filter_warehouse, this.Filter_status, this.Filter_Payment]
+        .filter(v => v !== "" && v !== null && v !== undefined).length;
+    },
+    exportMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
+    columns() {
+      return [
+        { key: "date", label: this.$t("date") },
+        { key: "Ref", label: this.$t("Reference"), strong: true },
+        { key: "client_name", label: this.$t("Customer") },
+        { key: "warehouse_name", label: this.$t("warehouse") },
+        { key: "statut", label: this.$t("Status") },
+        { key: "GrandTotal", label: this.$t("Total"), align: "right" },
+        { key: "paid_amount", label: this.$t("Paid"), align: "right" },
+        { key: "due", label: this.$t("Due"), align: "right" },
+        { key: "payment_status", label: this.$t("PaymentStatus") },
+        { key: "user_name", label: this.$t("AddedBy") }
+      ];
+    },
 
-    // Global footer totals used in the custom tfoot slot
     footerTotals() {
       const sales = Array.isArray(this.sales) ? this.sales : [];
       let grand = 0;
@@ -394,120 +285,81 @@ components: { DateRangePicker },
   },
 
   methods: {
-
-    // Group footer helpers for vue-good-table.
-    // These return already formatted strings so the footer row
-    // inside the table looks like a normal data row, but uses
-    // the global price format & currency.
-    sumCount(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].GrandTotal) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
-    },
-    sumCount2(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].paid_amount) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
-    },
-    sumCount3(rowObj) {
-      if (!rowObj || !Array.isArray(rowObj.children)) {
-        return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
-      }
-      let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        const value = Number(rowObj.children[i].due) || 0;
-        if (Number.isFinite(value)) {
-          sum += value;
-        }
-      }
-      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
+    money(v) {
+      return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, v, 2);
     },
 
-    //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Sales(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Sales(1); }, 350);
     },
 
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Sales(1);
-      }
-    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Sales(p); } },
 
-    //---- Event on Sort Change
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Sales(1); } },
 
-    onSortChange(params) {
-      let field = "";
-      if (params[0].field == "client_name") {
-        field = "client_id";
-      } else {
-        field = params[0].field;
-      }
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: field
-        }
-      });
+    onSort({ key, dir }) {
+      let field = key;
+      if (key === "client_name") field = "client_id";
+      this.updateParams({ sort: { type: dir, field: field } });
       this.Get_Sales(this.serverParams.page);
     },
 
-    //---- Event on Search
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Sales(this.serverParams.page);
+    applyFilters() { this.updateParams({ page: 1 }); this.Get_Sales(this.serverParams.page); },
+
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "print") this.printTableOnly();
+      else if (k === "pdf") this.Sales_PDF();
+      else if (k === "xlsx") this.exportCsv();
+    },
+
+    exportCsv() {
+      const head = this.columns.map(c => c.label);
+      const lines = [head.join(",")].concat(
+        (this.sales || []).map(r =>
+          this.columns.map(c => {
+            let v = r[c.key];
+            if (c.key === "date") v = this.formatDisplayDateTime(r.date, r.time);
+            return `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+          }).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "sales_report.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     },
 
     //------ Print Table Only - Print ALL sales data with all columns
     printTableOnly() {
       const title = `${this.$t("Reports")} / ${this.$t("SalesReport")}`;
       const sales = Array.isArray(this.sales) ? this.sales : [];
-      
-      // Build table header with all columns
+
       let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 10px;">';
       tableHTML += '<thead><tr>';
-      
+
       this.columns.forEach(col => {
         tableHTML += `<th style="border: 1px solid #ddd; padding: 6px 8px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${col.label}</th>`;
       });
       tableHTML += '</tr></thead><tbody>';
-      
-      // Build table rows with all data - format each cell according to column type
+
       sales.forEach(sale => {
         tableHTML += '<tr>';
         this.columns.forEach(col => {
           let cellValue = '';
-          
-          if (col.field === 'date') {
+
+          if (col.key === 'date') {
             cellValue = this.formatDisplayDateTime(sale.date, sale.time) || '';
-          } else if (col.field === 'statut') {
+          } else if (col.key === 'statut') {
             const status = sale.statut || '';
             if (status === 'completed') {
               cellValue = this.$t('complete');
@@ -516,7 +368,7 @@ components: { DateRangePicker },
             } else {
               cellValue = this.$t('Ordered');
             }
-          } else if (col.field === 'payment_status') {
+          } else if (col.key === 'payment_status') {
             const status = sale.payment_status || '';
             if (status === 'paid') {
               cellValue = this.$t('Paid');
@@ -525,24 +377,23 @@ components: { DateRangePicker },
             } else {
               cellValue = this.$t('Unpaid');
             }
-          } else if (col.field === 'Ref') {
+          } else if (col.key === 'Ref') {
             cellValue = sale.Ref || '';
-          } else if (col.field === 'GrandTotal') {
+          } else if (col.key === 'GrandTotal') {
             cellValue = this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sale.GrandTotal, 2);
-          } else if (col.field === 'paid_amount') {
+          } else if (col.key === 'paid_amount') {
             cellValue = this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sale.paid_amount, 2);
-          } else if (col.field === 'due') {
+          } else if (col.key === 'due') {
             cellValue = this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sale.due, 2);
           } else {
-            // Default: get value directly from sale object
-            cellValue = sale[col.field] || '';
+            cellValue = sale[col.key] || '';
           }
-          
+
           tableHTML += `<td style="border: 1px solid #ddd; padding: 6px 8px; text-align: left;">${cellValue}</td>`;
         });
         tableHTML += '</tr>';
       });
-      
+
       tableHTML += '</tbody></table>';
 
       const w = window.open("", "_blank");
@@ -566,8 +417,7 @@ components: { DateRangePicker },
     <title>${title}</title>
     ${links}
     <style>
-      /* Force visibility in print (some global POS print CSS hides body) */
-      @media print { 
+      @media print {
         body, body * { visibility: visible !important; }
         @page { size: A4 landscape; margin: 0.3cm; }
       }
@@ -619,12 +469,8 @@ components: { DateRangePicker },
       return `${value[0]}.${formated}`;
     },
 
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing formatNumber helper to preserve current behavior.
     formatPriceDisplay(number, dec) {
       try {
-        // Handle null, undefined, empty string, or NaN
         if (number === null || number === undefined || number === '') {
           number = 0;
         }
@@ -632,9 +478,8 @@ components: { DateRangePicker },
         if (isNaN(n) || !isFinite(n)) {
           return this.formatNumber(0, dec || 2);
         }
-        
+
         const decimals = this.priceDecimals;
-        // Always check store directly to ensure we get the latest value
         const key = getPriceFormatSetting({ store: this.$store });
         if (key) {
           this.price_format_key = key;
@@ -642,7 +487,6 @@ components: { DateRangePicker },
         const effectiveKey = key || null;
         return formatPriceDisplayHelper(n, decimals, effectiveKey);
       } catch (e) {
-        // Fallback to formatNumber with safe value
         return this.formatNumber(0, dec || 2);
       }
     },
@@ -695,7 +539,6 @@ components: { DateRangePicker },
         sale.user_name || '---'
       ]));
 
-      // Calculate totals
       let totalGrandTotal = self.sales.reduce((sum, sale) => sum + parseFloat(sale.GrandTotal || 0), 0);
       let totalPaidAmount = self.sales.reduce((sum, sale) => sum + parseFloat(sale.paid_amount || 0), 0);
       let totalDue = self.sales.reduce((sum, sale) => sum + parseFloat(sale.due || 0), 0);
@@ -732,11 +575,9 @@ components: { DateRangePicker },
           const pageW = pdf.internal.pageSize.getWidth();
           const pageH = pdf.internal.pageSize.getHeight();
 
-          // Header banner
           pdf.setFillColor(26,86,219);
           pdf.rect(0, 0, pageW, 60, 'F');
 
-          // Title
           pdf.setTextColor(255);
           pdf.setFont('Vazirmatn', 'bold');
           pdf.setFontSize(16);
@@ -744,10 +585,8 @@ components: { DateRangePicker },
           rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
               : pdf.text(title, marginX, 38);
 
-          // Reset text color
           pdf.setTextColor(33);
 
-          // Footer page numbers
           pdf.setFontSize(8);
           const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
           rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
@@ -756,12 +595,11 @@ components: { DateRangePicker },
       });
 
       pdf.save("Sales_report.pdf");
-   
+
     },
 
     //---------------------------------------- Set To Strings-------------------------\\
     setToStrings() {
-      // Simply replaces null values with strings=''
       if (this.Filter_Client === null) {
         this.Filter_Client = "";
       }else if (this.Filter_warehouse === null) {
@@ -809,7 +647,6 @@ components: { DateRangePicker },
 
     //----------------------------------------- Get all Sales ------------------------------\\
     Get_Sales(page) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       this.setToStrings();
@@ -855,13 +692,11 @@ components: { DateRangePicker },
           this.totalRows = response.data.totalRows;
           this.rows[0].children = this.sales;
 
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
           this.today_mode = false;
         })
         .catch(response => {
-          // Complete the animation of theprogress bar.
           NProgress.done();
           setTimeout(() => {
             this.isLoading = false;
@@ -872,12 +707,10 @@ components: { DateRangePicker },
     //----------------------------------------- Format Display Date (for tables) -------------------------------\\
     formatDisplayDate(value) {
       if (!value) return '';
-      // Get date format from Vuex store (loaded from database) or fallback
       const dateFormat = this.$store.getters.getDateFormat || Util.getDateFormat(this.$store);
       return Util.formatDisplayDate(value, dateFormat);
     },
 
-    // Format date and time for table display (date uses store format, time concatenated)
     formatDisplayDateTime(dateValue, timeValue) {
       const dateStr = this.formatDisplayDate(dateValue);
       if (!dateStr) return '';
@@ -885,12 +718,10 @@ components: { DateRangePicker },
       return t ? dateStr + ' ' + t : dateStr;
     },
 
-    // Same as dashboard: format date for picker display (YYYY-MM-DD, local time via moment)
     fmt(d) {
       return moment(d).format("YYYY-MM-DD");
     },
 
-    // Format date and time for picker display (like seller_report)
     formatDateTime(date) {
       return date ? moment(date).format("YYYY-MM-DD HH:mm:ss") : "";
     },
@@ -905,3 +736,29 @@ components: { DateRangePicker },
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-sm); padding: 0 var(--pxn-space-4);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
+}
+.pxrl__daterange:hover { background: var(--pxn-surface-2); }
+.pxrl__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxrl__filters-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxrl__filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxrl__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+.pxrl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxrl__link { color: var(--pxn-primary); }
+.pxrl__totalrow { display: flex; align-items: center; justify-content: flex-end; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+.pxrl__totalrow > span:first-child { margin-right: auto; font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrl ::v-deep .daterangepicker { z-index: 2055 !important; }
+</style>
