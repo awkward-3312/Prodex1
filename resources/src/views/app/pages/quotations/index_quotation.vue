@@ -1,257 +1,119 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('ListQuotations')" :folder="$t('Quotations')"/>
+  <div class="px-next pxqtl">
+    <px-page-header :title="$t('ListQuotations')" :breadcrumbs="[{ label: $t('Sales') }, { label: $t('Quotations') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">Exportar</px-button>
+          </template>
+        </px-menu>
+        <px-button
+          v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_add')"
+          variant="primary" icon="plus" @click="$router.push('/app/quotations/store')"
+        >{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div v-else>
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="quotations"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        enabled: true,
-        placeholder: $t('Search_this_table'),  
-      }"
-        :select-options="{ 
-          enabled: true ,
-          clearSelectionText: '',
-        }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{
-          enabled: true,
-          mode: 'records',
-          nextLabel: 'Siguiente',
-          prevLabel: 'Anterior',
-        }"
-        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
-      >
-        <div slot="selected-row-actions" v-if="currentUserPermissions.includes('Quotations_delete')">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
-            <lucide-icon name="filter" />
-            {{ $t("Filter") }}
-          </b-button>
-          <b-button @click="Quotation_PDF()" size="sm" variant="outline-success ripple m-1">
-            <lucide-icon name="copy" /> PDF
-          </b-button>
-          <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="quotations"
-              :columns="columns"
-              :file-name="'quotations'"
-              :file-type="'xlsx'"
-              :sheet-name="'quotations'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
-          <router-link
-            class="btn-sm btn btn-primary ripple btn-icon m-1"
-            v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_add')"
-            to="/app/quotations/store"
-          >
-            <span class="ul-btn__icon">
-              <lucide-icon name="plus" />
-            </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
-          </router-link>
-        </div>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      :filter-count="activeFilterCount"
+      @update:search="onSearchInput"
+      @open-filters="filtersOpen = !filtersOpen"
+    />
 
-        <template slot="emptystate">
-          <PxEmptyState
-            icon="file-text"
-            :title="$t('No_quotations_yet')"
-            :description="$t('No_quotations_desc')"
-          >
-            <router-link
-              v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_add')"
-              class="btn btn-sm btn-primary"
-              to="/app/quotations/store"
-            >
-              <lucide-icon name="plus" /> {{ $t('Add') }}
-            </router-link>
-          </PxEmptyState>
-        </template>
-
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'date'">
-            {{ formatDisplayDate(props.row.date) }}
-          </span>
-          <span v-else-if="props.column.field == 'actions'">
-            <div>
-              <b-dropdown
-                id="dropdown-left"
-                variant="link"
-                text="Left align"
-                toggle-class="text-decoration-none"
-                size="lg"
-                no-caret
-              >
-                <template v-slot:button-content class="_r_btn border-0">
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                </template>
-                <b-navbar-nav>
-                  <b-dropdown-item title="Show" :to="'/app/quotations/detail/'+props.row.id">
-                    <lucide-icon class="nav-icon font-weight-bold mr-2" name="eye" />
-                    {{$t('DetailQuote')}}
-                  </b-dropdown-item>
-                </b-navbar-nav>
-
-                <b-dropdown-item
-                  title="Edit"
-                  v-if="currentUserPermissions.includes('Quotations_edit')"
-                  :to="'/app/quotations/edit/'+props.row.id"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="pen" />
-                  {{$t('EditQuote')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  :title="$t('Convert_to_Invoice')"
-                  v-if="currentUserPermissions.includes('Quotations_edit')"
-                  :to="'/app/quotations/Create_sale/'+props.row.id"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="plus" />
-                  {{$t('Convert_to_Invoice')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item title="PDF" @click="Quote_pdf(props.row , props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="file-text" />
-                  {{$t('DownloadPdf')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item title=" WhatsApp Notification" @click="Send_WhatsApp(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="mail" />
-                  WhatsApp Notification
-                </b-dropdown-item>
-
-                <b-dropdown-item title="Email" @click="SendEmail(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="mail" />
-                  {{$t('email_notification')}}
-                </b-dropdown-item>
-
-                 <b-dropdown-item title="SMS" @click="Quote_SMS(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="message-square" />
-                  {{$t('sms_notification')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  title="Delete"
-                  v-if="currentUserPermissions.includes('Quotations_delete')"
-                  @click="Remove_Quotation(props.row.id)"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="x" />
-                  {{$t('DeleteQuote')}}
-                </b-dropdown-item>
-              </b-dropdown>
-            </div>
-          </span>
-          <div v-else-if="props.column.field == 'statut'">
-            <span
-              v-if="props.row.statut == 'sent'"
-              class="badge badge-outline-success"
-            >{{$t('Sent')}}</span>
-            <span v-else class="badge badge-outline-info">{{$t('Pending')}}</span>
-          </div>
-          <div v-else-if="props.column.field == 'Ref'">
-            <router-link
-              :to="'/app/quotations/detail/'+props.row.id"
-            >
-              <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-            </router-link>
-          </div>
-          <span v-else-if="props.column.field == 'GrandTotal'">
-            {{ formatPriceWithSymbol(currentUser.currency, props.row.GrandTotal, 2) }}
-          </span>
-        </template>
-      </vue-good-table>
+    <div v-if="filtersOpen" class="pxqtl__filters">
+      <div class="pxqtl__filters-grid">
+        <px-field :label="$t('date')"><template #default="{ id }"><px-input :id="id" type="date" v-model="Filter_date" /></template></px-field>
+        <px-field :label="$t('Reference')"><template #default="{ id }"><px-input :id="id" v-model="Filter_Ref" :placeholder="$t('Reference')" /></template></px-field>
+        <px-field :label="$t('Customer')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_client" :reduce="o => o.value" :placeholder="$t('Choose_Customer')"
+              :options="customers.map(c => ({ label: c.name, value: c.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('warehouse')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_warehouse" :reduce="o => o.value" :placeholder="$t('Choose_Warehouse')"
+              :options="warehouses.map(w => ({ label: w.name, value: w.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Status')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_status" :reduce="o => o.value" :placeholder="$t('Choose_Status')"
+              :options="[{ label: $t('Sent'), value: 'sent' }, { label: $t('Pending'), value: 'pending' }]" />
+          </template>
+        </px-field>
+      </div>
+      <div class="pxqtl__filters-act">
+        <px-button size="sm" variant="primary" icon="filter" @click="applyFilters">{{ $t('Filter') }}</px-button>
+        <px-button size="sm" variant="ghost" icon="x" @click="Reset_Filter">{{ $t('Reset') }}</px-button>
+      </div>
     </div>
 
-    <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
-      <div class="px-3 py-2">
-        <b-row>
-          <!-- date  -->
-          <b-col md="12">
-            <b-form-group :label="$t('date')">
-              <b-form-input type="date" v-model="Filter_date"></b-form-input>
-            </b-form-group>
-          </b-col>
+    <div v-if="isLoading" class="pxqtl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="5" />
+    </div>
 
-          <!-- Reference  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Reference')">
-              <b-form-input label="Reference" :placeholder="$t('Reference')" v-model="Filter_Ref"></b-form-input>
-            </b-form-group>
-          </b-col>
+    <template v-else>
+      <transition name="pxqtl-bulk">
+        <div v-if="selectedIds.length" class="pxqtl__bulk">
+          <span><b class="pxn-num">{{ selectedIds.length }}</b> {{ $t('selected') }}</span>
+          <div class="pxqtl__bulk-act">
+            <px-button v-if="currentUserPermissions.includes('Quotations_delete')" size="sm" variant="danger" icon="trash-2" @click="delete_by_selected">{{ $t('Del') }}</px-button>
+            <px-button size="sm" variant="ghost" @click="selectedIds = []">{{ $t('Cancel') }}</px-button>
+          </div>
+        </div>
+      </transition>
 
-          <!-- Customer  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Customer')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Customer')"
-                v-model="Filter_client"
-                :options="customers.map(customers => ({label: customers.name, value: customers.id}))"
-              />
-            </b-form-group>
-          </b-col>
+      <div class="pxqtl__tablewrap">
+        <px-table
+          v-if="quotations.length"
+          :columns="columns"
+          :rows="quotations"
+          row-key="id"
+          selectable
+          :selected.sync="selectedIds"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-date="{ row }">{{ formatDisplayDate(row.date) }}</template>
+          <template #cell-Ref="{ row }">
+            <router-link class="pxqtl__link" :to="'/app/quotations/detail/' + row.id">{{ row.Ref }}</router-link>
+          </template>
+          <template #cell-statut="{ row }">
+            <px-badge :tone="row.statut === 'sent' ? 'success' : 'info'">{{ row.statut === 'sent' ? $t('Sent') : $t('Pending') }}</px-badge>
+          </template>
+          <template #cell-GrandTotal="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser.currency, row.GrandTotal, 2) }}</span></template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions(row)" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
 
-          <!-- warehouse -->
-          <b-col md="12">
-            <b-form-group :label="$t('warehouse')">
-              <v-select
-                v-model="Filter_warehouse"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Warehouse')"
-                :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Status  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Status')">
-              <v-select
-                v-model="Filter_status"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Status')"
-                :options="
-                      [
-                        {label: $t('Sent'), value: 'sent'},
-                        {label: $t('Pending'), value: 'pending'}
-                      ]"
-              ></v-select>
-            </b-form-group>
-          </b-col>
-
-          <b-col md="6" sm="12">
-            <b-button
-              @click="Get_Quotations(serverParams.page)"
-              variant="primary ripple m-1"
-              size="sm"
-              block
-            >
-              <lucide-icon name="filter" />
-              {{ $t("Filter") }}
-            </b-button>
-          </b-col>
-          <b-col md="6" sm="12">
-            <b-button @click="Reset_Filter()" variant="danger ripple m-1" size="sm" block>
-              <lucide-icon name="power" />
-              {{ $t("Reset") }}
-            </b-button>
-          </b-col>
-        </b-row>
+        <px-empty-state
+          v-else
+          icon="file-text"
+          :title="$t('No_quotations_yet')"
+          :description="$t('No_quotations_desc')"
+        >
+          <px-button
+            v-if="currentUserPermissions && currentUserPermissions.includes('Quotations_add')"
+            size="sm" variant="primary" icon="plus" @click="$router.push('/app/quotations/store')"
+          >{{ $t('Add') }}</px-button>
+        </px-empty-state>
       </div>
-    </b-sidebar>
+
+      <px-pagination
+        v-if="quotations.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
 </template>
 
@@ -267,10 +129,24 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
-  components: { PxEmptyState },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxKebab, PxBadge,
+    PxField, PxInput, PxEmptyState, "vs-px": VsPx
+  },
   metaInfo: {
     title: "Cotizaciones"
   },
@@ -288,7 +164,8 @@ export default {
       selectedIds: [],
       totalRows: "",
       search: "",
-      showDropdown: false,
+      _searchTimer: null,
+      filtersOpen: false,
       Filter_date: "",
       Filter_client: "",
       Filter_status: "",
@@ -311,14 +188,6 @@ export default {
       price_format_key: null
     };
   },
-  mounted: function() {
-    this.$root.$on("bv::dropdown::show", bvEvent => {
-      this.showDropdown = true;
-    });
-    this.$root.$on("bv::dropdown::hide", bvEvent => {
-      this.showDropdown = false;
-    });
-  },
 
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
@@ -328,107 +197,105 @@ export default {
     },
     columns() {
       return [
-        
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Customer"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Status"),
-          field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Total"),
-          field: "GrandTotal",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "date", label: this.$t("date"), sortable: true },
+        { key: "Ref", label: this.$t("Reference"), sortable: true, strong: true },
+        { key: "client_name", label: this.$t("Customer"), sortable: true },
+        { key: "warehouse_name", label: this.$t("warehouse"), sortable: true },
+        { key: "statut", label: this.$t("Status"), sortable: true },
+        { key: "GrandTotal", label: this.$t("Total"), sortable: true, align: "right" }
+      ];
+    },
+    activeFilterCount() {
+      return [this.Filter_date, this.Filter_Ref, this.Filter_client, this.Filter_warehouse, this.Filter_status]
+        .filter(v => v !== "" && v != null).length;
+    },
+    exportMenu() {
+      return [
+        { key: "pdf", label: "PDF de la lista", icon: "file-text" },
+        { key: "xlsx", label: "Excel (CSV)", icon: "file-spreadsheet" }
       ];
     }
   },
 
   methods: {
+    rowActions(row) {
+      const p = this.currentUserPermissions || [];
+      const items = [{ key: "view", label: this.$t("DetailQuote"), icon: "eye" }];
+      if (p.includes("Quotations_edit")) {
+        items.push({ key: "edit", label: this.$t("EditQuote"), icon: "pencil" });
+        items.push({ key: "convert", label: this.$t("Convert_to_Invoice"), icon: "plus" });
+      }
+      items.push({ key: "pdf", label: this.$t("DownloadPdf"), icon: "file-text" });
+      items.push({ key: "whatsapp", label: "WhatsApp", icon: "message-circle" });
+      items.push({ key: "email", label: this.$t("email_notification"), icon: "mail" });
+      items.push({ key: "sms", label: this.$t("sms_notification"), icon: "message-square" });
+      if (p.includes("Quotations_delete")) items.push({ key: "delete", label: this.$t("DeleteQuote"), icon: "x", tone: "danger" });
+      return items;
+    },
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "view") this.$router.push("/app/quotations/detail/" + row.id);
+      else if (k === "edit") this.$router.push("/app/quotations/edit/" + row.id);
+      else if (k === "convert") this.$router.push("/app/quotations/Create_sale/" + row.id);
+      else if (k === "pdf") this.Quote_pdf(row, row.id);
+      else if (k === "whatsapp") this.Send_WhatsApp(row.id);
+      else if (k === "email") this.SendEmail(row.id);
+      else if (k === "sms") this.Quote_SMS(row.id);
+      else if (k === "delete") this.Remove_Quotation(row.id);
+    },
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "pdf") this.Quotation_PDF();
+      else if (k === "xlsx") this.exportCsv();
+    },
+    exportCsv() {
+      const head = [this.$t("date"), this.$t("Reference"), this.$t("Customer"), this.$t("warehouse"), this.$t("Status"), this.$t("Total")];
+      const lines = [head.join(",")].concat(
+        (this.quotations || []).map(r =>
+          [r.date, r.Ref, r.client_name, r.warehouse_name, r.statut, r.GrandTotal]
+            .map(c => `"${String(c == null ? "" : c).replace(/"/g, '""')}"`).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "Quotations.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Quotations(currentPage);
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Quotations(1); }, 350);
+    },
+    onPage(p) {
+      if (this.serverParams.page !== p) {
+        this.updateParams({ page: p });
+        this.Get_Quotations(p);
       }
     },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
+    onLimit(v) {
+      if (this.limit !== String(v)) {
+        this.limit = String(v);
+        this.updateParams({ page: 1, perPage: Number(v) });
         this.Get_Quotations(1);
       }
     },
-
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
-    },
-
-    //---- Event Sort
-    onSortChange(params) {
-      let field = "";
-      if (params[0].field == "client_name") {
-        field = "client_id";
-      } else if (params[0].field == "warehouse_name") {
-        field = "warehouse_id";
-      } else {
-        field = params[0].field;
-      }
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: field
-        }
-      });
+    onSort({ key, dir }) {
+      let field = key;
+      if (key === "client_name") field = "client_id";
+      else if (key === "warehouse_name") field = "warehouse_id";
+      this.updateParams({ sort: { type: dir, field: field } });
       this.Get_Quotations(this.serverParams.page);
     },
-
-    //---- Event Search
-    onSearch(value) {
-      this.search = value.searchTerm;
+    applyFilters() {
+      this.updateParams({ page: 1 });
       this.Get_Quotations(this.serverParams.page);
     },
 
@@ -448,7 +315,7 @@ export default {
       this.Filter_client = "";
       this.Filter_status = "";
       this.Filter_Ref = "";
-      this.Filter_warehouse = ""; 
+      this.Filter_warehouse = "";
       this.Get_Quotations(this.serverParams.page);
     },
 
@@ -499,7 +366,7 @@ export default {
         headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
         alternateRowStyles: { fillColor: [245,247,250] },
         footStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
-        columnStyles: { 
+        columnStyles: {
           0: { halign: rtl ? 'right' : 'left' },  // Date
           1: { halign: rtl ? 'right' : 'left' },  // Reference
           2: { halign: rtl ? 'right' : 'left' },  // Customer
@@ -538,7 +405,6 @@ export default {
     },
 
     Send_WhatsApp(id) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       axios
@@ -546,25 +412,20 @@ export default {
           id: id,
         })
         .then(response => {
-          // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
 
           var phone = response.data.phone;
           var message = response.data.message;
 
-          // Encode phone number and message
           var encodedPhone = encodeURIComponent(phone);
           var encodedMessage = encodeURIComponent(message);
 
-          // Create WhatsApp URL
           var whatsappUrl = `https://web.whatsapp.com/send/?phone=${encodedPhone}&text=${encodedMessage}`;
 
-          // Open the WhatsApp URL in a new window
           window.open(whatsappUrl, '_blank');
-          
+
         })
         .catch(error => {
-          // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
           this.makeToast("danger", "Failed to send the Message", this.$t("Failed"));
         });
@@ -573,7 +434,6 @@ export default {
 
      //----------------------------------- Quotation PDF by id -------------------------\\
     Quote_pdf(quote, id) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       axios
@@ -590,18 +450,15 @@ export default {
           link.setAttribute("download", "Quotation_" + quote.Ref + ".pdf");
           document.body.appendChild(link);
           link.click();
-          // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
         })
         .catch(() => {
-          // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
         });
     },
 
 
     SendEmail(id) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       axios
@@ -609,7 +466,6 @@ export default {
           id: id,
         })
         .then(response => {
-          // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
           this.makeToast(
             "success",
@@ -618,16 +474,14 @@ export default {
           );
         })
         .catch(error => {
-          // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
           this.makeToast("danger", this.$t("SMTPIncorrect"), this.$t("Failed"));
         });
     },
 
     //---------SMS notification
-     
+
      Quote_SMS(id) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       axios
@@ -635,7 +489,6 @@ export default {
           id: id,
         })
         .then(response => {
-          // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
           this.makeToast(
             "success",
@@ -644,7 +497,6 @@ export default {
           );
         })
         .catch(error => {
-          // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
           this.makeToast("danger", this.$t("sms_config_invalid"), this.$t("Failed"));
         });
@@ -664,7 +516,6 @@ export default {
 
     //---------------------------------------- Get All Quotations -------------------------\\
     Get_Quotations(page) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       this.setToStrings();
@@ -697,12 +548,10 @@ export default {
           this.warehouses = response.data.warehouses;
           this.totalRows = response.data.totalRows;
 
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
         })
         .catch(response => {
-          // Complete the animation of theprogress bar.
           NProgress.done();
           setTimeout(() => {
             this.isLoading = false;
@@ -710,7 +559,7 @@ export default {
         });
     },
 
-   
+
 
     //-------------------------------------------- Delete Quotation -------------------------\\
     Remove_Quotation(id) {
@@ -725,7 +574,6 @@ export default {
         confirmButtonText: this.$t("Delete_confirmButtonText")
       }).then(result => {
         if (result.value) {
-          // Start the progress bar.
           NProgress.start();
           NProgress.set(0.1);
           axios
@@ -739,7 +587,6 @@ export default {
               Fire.$emit("Delete_Quote");
             })
             .catch(() => {
-              // Complete the animation of the  progress bar.
               setTimeout(() => NProgress.done(), 500);
               this.$swal(
                 this.$t("Delete_Failed"),
@@ -765,7 +612,6 @@ export default {
         confirmButtonText: this.$t("Delete_confirmButtonText")
       }).then(result => {
         if (result.value) {
-          // Start the progress bar.
           NProgress.start();
           NProgress.set(0.1);
           axios
@@ -782,7 +628,6 @@ export default {
               Fire.$emit("Delete_Quote");
             })
             .catch(() => {
-              // Complete the animation of theprogress bar.
               setTimeout(() => NProgress.done(), 500);
               this.$swal(
                 this.$t("Delete_Failed"),
@@ -816,11 +661,8 @@ export default {
     },
 
     // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing formatNumber helper to preserve current behavior.
     formatPriceDisplay(number, dec) {
       try {
-        // Money formatter: always honour the configured price precision (2 or 3).
         const decimals = this.priceDecimals;
         const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
         if (key) {
@@ -847,10 +689,32 @@ export default {
     Fire.$on("Delete_Quote", () => {
       setTimeout(() => {
         this.Get_Quotations(this.serverParams.page);
-        // Complete the animation of the  progress bar.
         setTimeout(() => NProgress.done(), 500);
       }, 500);
     });
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxqtl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxqtl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxqtl__pad { padding: var(--pxn-space-6) 0; }
+
+.pxqtl__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxqtl__filters-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxqtl__filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxqtl__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxqtl__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+
+.pxqtl__bulk { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-5); margin-top: var(--pxn-space-4); padding: var(--pxn-space-4) var(--pxn-space-5); background: var(--pxn-primary-soft); border: 1px solid var(--pxn-primary-border); border-radius: var(--pxn-radius-md); font-size: var(--pxn-fs-sm); color: var(--pxn-primary-ink); }
+.pxqtl__bulk-act { display: flex; gap: var(--pxn-space-3); }
+.pxqtl-bulk-enter-active, .pxqtl-bulk-leave-active { transition: opacity var(--pxn-dur-2) var(--pxn-ease), transform var(--pxn-dur-2) var(--pxn-ease); }
+.pxqtl-bulk-enter, .pxqtl-bulk-leave-to { opacity: 0; transform: translateY(-6px); }
+
+.pxqtl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxqtl__link { color: var(--pxn-primary); text-decoration: none; }
+.pxqtl__link:hover { text-decoration: underline; }
+</style>
