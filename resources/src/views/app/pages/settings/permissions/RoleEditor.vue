@@ -1,106 +1,133 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="isEdit ? 'Editar rol' : 'Crear rol'" folder="Usuarios y accesos"/>
+  <div class="px-next pxcfg pxrole">
+    <px-page-header
+      :title="isEdit ? 'Editar rol y permisos' : 'Nuevo rol y permisos'"
+      subtitle="El rol define qué puede hacer una persona. Las sucursales, ubicaciones y cajas se asignan al usuario y definen dónde puede hacerlo."
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: 'Roles y permisos', href: '#/app/User_Management/permissions' }, { label: isEdit ? 'Editar rol' : 'Crear rol' }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" size="sm" icon="arrow-left" @click="$router.push('/app/User_Management/permissions')">Volver a roles</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="pxcfg__pad">
+      <px-skeleton variant="lines" :rows="10" />
+    </div>
+
     <template v-else>
-      <b-card class="mb-3 border-0 shadow-sm">
-        <div class="d-flex flex-wrap justify-content-between align-items-start">
-          <div>
-            <h4 class="mb-1">{{ isEdit ? 'Editar rol y permisos' : 'Nuevo rol y permisos' }}</h4>
-            <p class="text-muted mb-0">El rol define <strong>qué puede hacer</strong> una persona. Las sucursales, ubicaciones y cajas se asignan al usuario y definen <strong>dónde puede hacerlo</strong>.</p>
-          </div>
-          <b-button variant="outline-secondary" size="sm" @click="$router.push('/app/User_Management/permissions')">Volver a roles</b-button>
+      <px-card title="Información del rol" class="pxcfg__card">
+        <div class="pxcfg__grid">
+          <px-field label="Nombre del rol *">
+            <template #default="{ id }"><px-input :id="id" :value="role.name" @input="v => role.name = trimVal(v)" maxlength="120" /></template>
+          </px-field>
+          <px-field label="Descripción">
+            <template #default="{ id }"><px-input :id="id" :value="role.description" @input="v => role.description = trimVal(v)" maxlength="500" /></template>
+          </px-field>
         </div>
-      </b-card>
+        <px-field v-if="!isEdit && templates.length" label="Comenzar desde una plantilla"
+          hint="Las plantillas son puntos de partida seguros. Puedes ajustar cualquier permiso antes de guardar." class="pxcfg__mt">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="selectedTemplate" :options="templateOptions" :reduce="o => o.value"
+              placeholder="Sin plantilla · configurar manualmente" @input="applyTemplate" />
+          </template>
+        </px-field>
+      </px-card>
 
-      <b-card class="mb-3">
-        <h5 class="mb-3">Información del rol</h5>
-        <b-row>
-          <b-col md="6"><b-form-group label="Nombre del rol *"><b-form-input v-model.trim="role.name" maxlength="120"/></b-form-group></b-col>
-          <b-col md="6"><b-form-group label="Descripción"><b-form-input v-model.trim="role.description" maxlength="500"/></b-form-group></b-col>
-        </b-row>
-        <b-form-group v-if="!isEdit && templates.length" label="Comenzar desde una plantilla">
-          <v-select v-model="selectedTemplate" :options="templateOptions" :reduce="o => o.value" placeholder="Sin plantilla · configurar manualmente" @input="applyTemplate"/>
-          <small class="text-muted">Las plantillas son puntos de partida seguros. Puedes ajustar cualquier permiso antes de guardar.</small>
-        </b-form-group>
-      </b-card>
-
-      <b-card class="mb-3 permission-toolbar">
-        <div class="d-flex flex-wrap align-items-center justify-content-between">
+      <px-card class="pxcfg__card pxrole__toolbar">
+        <div class="pxrole__toolbar-row">
           <div>
             <strong>{{ permissions.length }} permisos seleccionados</strong>
-            <div class="text-muted text-12">{{ selectedSensitive.length }} sensibles · {{ catalogCount }} disponibles</div>
+            <div class="pxcfg__cardnote">{{ selectedSensitive.length }} sensibles · {{ catalogCount }} disponibles</div>
           </div>
-          <b-form-input v-model.trim="search" class="permission-search" placeholder="Buscar por función, por ejemplo: ventas, pagos, inventario..."/>
+          <px-input class="pxrole__search" :value="search" @input="v => search = trimVal(v)"
+            placeholder="Buscar por función, por ejemplo: ventas, pagos, inventario..." icon-lead="search" />
         </div>
-      </b-card>
+      </px-card>
 
-      <b-alert v-if="selectedSensitive.length" show variant="warning" class="mb-3">
-        <strong>Permisos sensibles activos:</strong>
+      <px-alert v-if="selectedSensitive.length" tone="warning" title="Permisos sensibles activos:" class="pxcfg__alert">
         {{ selectedSensitive.map(p => p.label).join(', ') }}.
         Estas acciones pueden afectar dinero, inventario, usuarios o configuración. Concédelas solo cuando el puesto realmente las necesite.
-      </b-alert>
+      </px-alert>
 
-      <div v-if="error" class="alert alert-danger">{{ error }}</div>
+      <px-alert v-if="error" tone="danger" class="pxcfg__alert">{{ error }}</px-alert>
 
-      <b-card v-for="group in filteredGroups" :key="group.key" class="mb-3 module-card">
-        <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
-          <div class="module-heading">
-            <h5 class="mb-1">{{ group.label }}</h5>
-            <div v-if="group.description" class="text-muted module-description">{{ group.description }}</div>
-            <small class="text-muted">{{ selectedIn(group) }}/{{ group.permissions.length }} seleccionados</small>
+      <px-card v-for="group in filteredGroups" :key="group.key" class="pxcfg__card">
+        <div class="pxrole__modhead">
+          <div class="pxrole__modheading">
+            <h5>{{ group.label }}</h5>
+            <div v-if="group.description" class="pxcfg__cardnote">{{ group.description }}</div>
+            <small class="pxcfg__cardnote">{{ selectedIn(group) }}/{{ group.permissions.length }} seleccionados</small>
           </div>
-          <div class="quick-access">
-            <div class="quick-access-label">Configuración rápida</div>
-            <div class="module-actions">
-              <b-button size="sm" variant="outline-secondary" title="Permite consultar información sin modificarla" v-b-tooltip.hover @click="applyPreset(group, 'read_only')">Solo lectura</b-button>
-              <b-button size="sm" variant="outline-secondary" title="Permite consultar y registrar operaciones habituales sin permisos sensibles" v-b-tooltip.hover @click="applyPreset(group, 'operator')">Operador</b-button>
-              <b-button size="sm" variant="outline-secondary" title="Activa todas las operaciones no sensibles disponibles en este módulo" v-b-tooltip.hover @click="applyPreset(group, 'manager')">Acceso completo</b-button>
-              <b-button size="sm" variant="outline-danger" title="Quita todos los permisos seleccionados de este módulo" v-b-tooltip.hover @click="clearGroup(group)">Limpiar</b-button>
+          <div class="pxrole__quick">
+            <div class="pxrole__quick-label">Configuración rápida</div>
+            <div class="pxrole__quick-actions">
+              <px-button size="sm" variant="secondary" @click="applyPreset(group, 'read_only')">Solo lectura</px-button>
+              <px-button size="sm" variant="secondary" @click="applyPreset(group, 'operator')">Operador</px-button>
+              <px-button size="sm" variant="secondary" @click="applyPreset(group, 'manager')">Acceso completo</px-button>
+              <px-button size="sm" variant="ghost" class="pxcfg__del" @click="clearGroup(group)">Limpiar</px-button>
             </div>
-            <small class="text-muted d-block mt-1">Puedes usar un nivel rápido y luego ajustar permisos individualmente.</small>
+            <small class="pxcfg__cardnote">Puedes usar un nivel rápido y luego ajustar permisos individualmente.</small>
           </div>
         </div>
 
-        <div class="permission-matrix">
-          <label v-for="permission in group.permissions" :key="permission.name" class="permission-row" :class="{ sensitive: permission.sensitive }">
-            <input type="checkbox" :checked="hasPermission(permission.name)" @change="togglePermission(permission, $event.target.checked)">
-            <span class="permission-copy">
-              <span class="permission-title">
+        <div class="pxrole__matrix">
+          <label
+            v-for="permission in group.permissions"
+            :key="permission.name"
+            class="pxrole__perm"
+            :class="{ 'is-sensitive': permission.sensitive }"
+          >
+            <input type="checkbox" class="pxrole__perm-cb" :checked="hasPermission(permission.name)" @change="togglePermission(permission, $event.target.checked)" />
+            <span class="pxrole__perm-copy">
+              <span class="pxrole__perm-title">
                 {{ permission.label }}
-                <b-badge v-if="permission.sensitive" variant="warning" class="ml-1" title="Esta acción puede afectar información sensible o procesos críticos" v-b-tooltip.hover>Sensible</b-badge>
+                <px-badge v-if="permission.sensitive" tone="warning" class="pxrole__perm-badge">Sensible</px-badge>
               </span>
-              <small class="permission-description">{{ permission.description }}</small>
-              <small v-if="permission.dependency_labels && permission.dependency_labels.length" class="dependency">
+              <small class="pxrole__perm-desc">{{ permission.description }}</small>
+              <small v-if="permission.dependency_labels && permission.dependency_labels.length" class="pxrole__perm-dep">
                 <strong>También activará:</strong> {{ permission.dependency_labels.join(', ') }}
               </small>
             </span>
-            <span class="action-badge">{{ actionLabel(permission.action) }}</span>
+            <span class="pxrole__perm-action">{{ actionLabel(permission.action) }}</span>
           </label>
         </div>
-      </b-card>
+      </px-card>
 
-      <b-card v-if="!filteredGroups.length" class="text-center py-5 text-muted mb-3">No hay permisos que coincidan con la búsqueda.</b-card>
+      <px-card v-if="!filteredGroups.length" class="pxcfg__card">
+        <px-empty-state icon="search" title="Sin coincidencias" description="No hay permisos que coincidan con la búsqueda." />
+      </px-card>
 
-      <b-card class="mb-4 save-card">
-        <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <px-card class="pxcfg__card">
+        <div class="pxrole__save">
           <div>
             <strong>Resumen antes de guardar</strong>
-            <div class="text-muted text-12">{{ permissions.length }} permisos · {{ selectedSensitive.length }} sensibles</div>
+            <div class="pxcfg__cardnote">{{ permissions.length }} permisos · {{ selectedSensitive.length }} sensibles</div>
           </div>
-          <div>
-            <b-button variant="secondary" class="mr-2" @click="$router.push('/app/User_Management/permissions')">Cancelar</b-button>
-            <b-button variant="primary" :disabled="saving || !role.name" @click="save">{{ saving ? 'Guardando…' : (isEdit ? 'Guardar cambios' : 'Crear rol') }}</b-button>
+          <div class="pxrole__save-btns">
+            <px-button variant="ghost" @click="$router.push('/app/User_Management/permissions')">Cancelar</px-button>
+            <px-button variant="primary" icon="check" :disabled="saving || !role.name" @click="save">
+              {{ saving ? 'Guardando…' : (isEdit ? 'Guardar cambios' : 'Crear rol') }}
+            </px-button>
           </div>
         </div>
-      </b-card>
+      </px-card>
     </template>
   </div>
 </template>
 
 <script>
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
+
 export default {
+  components: { PxPageHeader, PxButton, PxCard, PxField, PxInput, PxBadge, PxAlert, PxEmptyState, "vs-px": VsPx },
   props: {
     mode: { type: String, default: 'create' },
     roleId: { type: [String, Number], default: null },
@@ -135,6 +162,7 @@ export default {
   },
   created() { this.load(); },
   methods: {
+    trimVal(v) { return typeof v === 'string' ? v.trim() : v; },
     async load() {
       this.loading = true; this.error = '';
       try {
@@ -215,31 +243,43 @@ export default {
 };
 </script>
 
-<style scoped>
-.permission-toolbar, .module-card, .save-card { border: 1px solid #edf0f4; border-radius: 12px; }
-.permission-search { max-width: 420px; }
-.module-heading { max-width: 52%; }
-.module-description { font-size: 13px; margin-bottom: 2px; }
-.quick-access { text-align: right; }
-.quick-access-label { font-size: 11px; font-weight: 700; color: #667085; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
-.module-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-.permission-matrix { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.permission-row { display: flex; align-items: flex-start; gap: 10px; border: 1px solid #e7eaf0; border-radius: 10px; padding: 12px; margin: 0; cursor: pointer; background: #fff; min-height: 92px; }
-.permission-row:hover { border-color: #cdd5df; box-shadow: 0 1px 3px rgba(16, 24, 40, .05); }
-.permission-row.sensitive { border-color: #f3d7a3; background: #fffaf0; }
-.permission-row input { margin-top: 4px; }
-.permission-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; }
-.permission-title { font-weight: 600; color: #344054; }
-.permission-copy small { overflow-wrap: anywhere; }
-.permission-description { color: #667085; margin-top: 4px; line-height: 1.35; }
-.permission-copy .dependency { color: #475467; margin-top: 6px; }
-.action-badge { background: #f2f4f7; border-radius: 999px; padding: 2px 8px; font-size: 10px; color: #667085; white-space: nowrap; }
-.text-12 { font-size: 12px; }
-@media (max-width: 991px) {
-  .permission-matrix { grid-template-columns: 1fr; }
-  .permission-search { max-width: none; width: 100%; margin-top: 10px; }
-  .module-heading { max-width: 100%; width: 100%; }
-  .quick-access { width: 100%; text-align: left; margin-top: 12px; }
-  .module-actions { justify-content: flex-start; }
-}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-5); }
+.pxcfg__cardnote { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxcfg__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 640px) { .pxcfg__grid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__mt { margin-top: var(--pxn-space-4); }
+.pxcfg__alert { margin-top: var(--pxn-space-4); }
+.pxcfg__del ::v-deep .pxn-btn__label { color: var(--pxn-danger); }
+
+.pxrole__toolbar-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pxn-space-4); }
+.pxrole__search { max-width: 420px; width: 100%; }
+@media (max-width: 720px) { .pxrole__search { max-width: none; } }
+.pxrole__modhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: var(--pxn-space-5); margin-bottom: var(--pxn-space-4); }
+.pxrole__modheading { max-width: 52%; }
+.pxrole__modheading h5 { margin: 0 0 var(--pxn-space-1); font-size: var(--pxn-fs-md); font-weight: var(--pxn-fw-semibold); }
+@media (max-width: 900px) { .pxrole__modheading { max-width: 100%; } }
+.pxrole__quick { text-align: right; }
+.pxrole__quick-label { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-bold); color: var(--pxn-ink-3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--pxn-space-2); }
+.pxrole__quick-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--pxn-space-2); }
+@media (max-width: 900px) { .pxrole__quick { text-align: left; width: 100%; } .pxrole__quick-actions { justify-content: flex-start; } }
+.pxrole__matrix { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-3); }
+@media (max-width: 991px) { .pxrole__matrix { grid-template-columns: minmax(0, 1fr); } }
+.pxrole__perm { display: flex; align-items: flex-start; gap: var(--pxn-space-4); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); padding: var(--pxn-space-4); margin: 0; cursor: pointer; background: var(--pxn-surface); transition: border-color 120ms, background 120ms; }
+.pxrole__perm:hover { border-color: var(--pxn-border-strong, var(--pxn-border)); background: var(--pxn-surface-2); }
+.pxrole__perm.is-sensitive { border-color: var(--pxn-warning); background: color-mix(in srgb, var(--pxn-warning) 8%, var(--pxn-surface)); }
+.pxrole__perm-cb { margin-top: 3px; accent-color: var(--pxn-primary); width: 16px; height: 16px; flex: none; }
+.pxrole__perm-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.pxrole__perm-title { font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrole__perm-badge { margin-left: var(--pxn-space-2); }
+.pxrole__perm-desc { color: var(--pxn-ink-3); margin-top: var(--pxn-space-1); line-height: 1.35; overflow-wrap: anywhere; }
+.pxrole__perm-dep { color: var(--pxn-ink-2); margin-top: var(--pxn-space-2); overflow-wrap: anywhere; }
+.pxrole__perm-action { background: var(--pxn-surface-2); border-radius: 999px; padding: 2px var(--pxn-space-3); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); white-space: nowrap; align-self: flex-start; }
+.pxrole__save { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--pxn-space-4); }
+.pxrole__save-btns { display: flex; gap: var(--pxn-space-3); }
 </style>

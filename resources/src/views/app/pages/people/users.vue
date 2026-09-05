@@ -1,166 +1,129 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('UserManagement')" :folder="$t('Users')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div v-else>
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="users"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        enabled: true,
-        placeholder: $t('Search_this_table'),  
-      }"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button variant="outline-info m-1" size="sm" v-b-toggle.sidebar-right>
-            <lucide-icon name="filter" />
-            {{ $t("Filter") }}
-          </b-button>
-          <b-button @click="Users_PDF()" size="sm" variant="outline-success m-1">
-            <lucide-icon name="copy" /> PDF
-          </b-button>
-           <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="users"
-              :columns="columns"
-              :file-name="'users'"
-              :file-type="'xlsx'"
-              :sheet-name="'users'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
-          <b-button
-            @click="New_User()"
-            size="sm"
-            variant="btn btn-primary btn-icon m-1"
-            v-if="currentUserPermissions && currentUserPermissions.includes('users_add')"
-          >
-            <lucide-icon name="plus" />
-            {{$t('Add')}}
-          </b-button>
-        </div>
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('UserManagement')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('Users') }]"
+    >
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button>
+          </template>
+        </px-menu>
+        <px-button
+          v-if="currentUserPermissions && currentUserPermissions.includes('users_add')"
+          variant="primary" size="sm" icon="plus" @click="New_User()">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a
-              @click="Edit_User(props.row)"
-              v-if="currentUserPermissions && currentUserPermissions.includes('users_edit')"
-              title="Edit"
-              class="cursor-pointer"
-              v-b-tooltip.hover
-            >
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a
-              @click="Remove_User(props.row.id)"
-              v-if="currentUserPermissions && currentUserPermissions.includes('users_delete') && currentUser && props.row.id !== currentUser.id"
-              title="Delete"
-              class="cursor-pointer ml-2"
-              v-b-tooltip.hover
-            >
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      :filter-count="activeFilterCount"
+      @update:search="onSearchInput"
+      @open-filters="filtersOpen = !filtersOpen"
+    />
 
-          <div v-else-if="props.column.field == 'statut'">
-            <label class="switch switch-primary mr-3">
-              <input @change="isChecked(props.row)" type="checkbox" v-model="props.row.statut">
-              <span class="slider"></span>
-            </label>
-          </div>
-        </template>
-      </vue-good-table>
+    <div v-if="filtersOpen" class="pxcfg__filters">
+      <div class="pxcfg__filters-grid">
+        <px-field :label="$t('username')">
+          <template #default="{ id }"><px-input :id="id" v-model="Filter_Name" :placeholder="$t('username')" /></template>
+        </px-field>
+        <px-field :label="$t('Phone')">
+          <template #default="{ id }"><px-input :id="id" v-model="Filter_Phone" :placeholder="$t('SearchByPhone')" /></template>
+        </px-field>
+        <px-field :label="$t('Email')">
+          <template #default="{ id }"><px-input :id="id" v-model="Filter_Email" :placeholder="$t('SearchByEmail')" /></template>
+        </px-field>
+        <px-field :label="$t('Status')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_status" :reduce="o => o.value" :placeholder="$t('Choose_Status')"
+              :options="[{ label: 'Actif', value: '1' }, { label: 'Inactif', value: '0' }]" />
+          </template>
+        </px-field>
+      </div>
+      <div class="pxcfg__filters-act">
+        <px-button size="sm" variant="primary" icon="filter" @click="Get_Users(serverParams.page)">{{ $t('Filter') }}</px-button>
+        <px-button size="sm" variant="ghost" icon="x" @click="Reset_Filter()">{{ $t('Reset') }}</px-button>
+      </div>
     </div>
 
-    <!-- Multiple Filters  -->
-    <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
-      <div class="px-3 py-2">
-        <b-row>
-          <!-- Name user  -->
-          <b-col md="12">
-            <b-form-group :label="$t('username')">
-              <b-form-input label="Code" :placeholder="$t('username')" v-model="Filter_Name"></b-form-input>
-            </b-form-group>
-          </b-col>
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="table" :rows="10" :columns="6" />
+    </div>
 
-          <!-- User Phone -->
-          <b-col md="12">
-            <b-form-group :label="$t('Phone')">
-              <b-form-input label="Phone" :placeholder="$t('SearchByPhone')" v-model="Filter_Phone"></b-form-input>
-            </b-form-group>
-          </b-col>
-
-          <!-- User Email  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Email')">
-              <b-form-input label="Email" :placeholder="$t('SearchByEmail')" v-model="Filter_Email"></b-form-input>
-            </b-form-group>
-          </b-col>
-
-          <!-- Status  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Status')">
-              <v-select
-                v-model="Filter_status"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Status')"
-                :options="
-                        [
-                           {label: 'Actif', value: '1'},
-                           {label: 'Inactif', value: '0'}
-                        ]"
-              ></v-select>
-            </b-form-group>
-          </b-col>
-
-          <b-col md="6" sm="12">
-            <b-button @click="Get_Users(serverParams.page)" variant="primary m-1" size="sm" block>
-              <lucide-icon name="filter" />
-              {{ $t("Filter") }}
-            </b-button>
-          </b-col>
-          <b-col md="6" sm="12">
-            <b-button @click="Reset_Filter()" variant="danger m-1" size="sm" block>
-              <lucide-icon name="power" />
-              {{ $t("Reset") }}
-            </b-button>
-          </b-col>
-        </b-row>
+    <template v-else>
+      <div class="pxcfg__tablewrap">
+        <px-table
+          v-if="users.length"
+          :columns="columns"
+          :rows="users"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-statut="{ row }">
+            <px-check type="switch" :modelValue="!!row.statut" @change="v => { row.statut = v; isChecked(row); }" />
+          </template>
+          <template #row-actions="{ row }">
+            <div class="pxcfg__rowbtns">
+              <px-button v-if="currentUserPermissions && currentUserPermissions.includes('users_edit')"
+                variant="ghost" size="sm" icon-only icon="pencil" aria-label="Edit" @click="Edit_User(row)" />
+              <px-button v-if="currentUserPermissions && currentUserPermissions.includes('users_delete') && currentUser && row.id !== currentUser.id"
+                class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Delete" @click="Remove_User(row.id)" />
+            </div>
+          </template>
+        </px-table>
+        <px-empty-state v-else icon="users" title="Sin usuarios" description="Agrega un usuario para verlo en esta lista." />
       </div>
-    </b-sidebar>
 
+      <px-pagination
+        v-if="users.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
 </template>
 
 <script>
-import { mapActions, mapGetters } from "vuex";
+import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Users"
   },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxField,
+    PxInput, PxCheck, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
+      _searchTimer: null,
+      filtersOpen: false,
       editmode: false,
       isLoading: true,
-      SubmitProcessing:false,
-      email_exist:"",
+      SubmitProcessing: false,
+      email_exist: "",
       serverParams: {
         columnFilters: {},
         sort: {
@@ -193,113 +156,77 @@ export default {
         statut: "",
         role_id: "",
         avatar: "",
-        is_all_warehouses:1,
+        is_all_warehouses: 1,
       },
-      assigned_warehouses:[],
+      assigned_warehouses: [],
     };
   },
 
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
+    activeFilterCount() {
+      return [this.Filter_Name, this.Filter_Phone, this.Filter_Email, this.Filter_status]
+        .filter(v => v !== "" && v !== null && v !== undefined).length;
+    },
+    exportMenu() {
+      return [
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
     columns() {
       return [
-        {
-          label: this.$t("Firstname"),
-          field: "firstname",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("lastname"),
-          field: "lastname",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-
-        {
-          label: this.$t("username"),
-          field: "username",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Email"),
-          field: "email",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Phone"),
-          field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Status"),
-          field: "statut",
-          sortable: false,
-          tdClass: "text-center",
-          thClass: "text-center"
-        },
-
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "firstname", label: this.$t("Firstname") },
+        { key: "lastname", label: this.$t("lastname") },
+        { key: "username", label: this.$t("username"), strong: true },
+        { key: "email", label: this.$t("Email") },
+        { key: "phone", label: this.$t("Phone") },
+        { key: "statut", label: this.$t("Status"), align: "center", sortable: false }
       ];
     }
   },
 
   methods: {
-
-    //------ update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
-
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Users(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Users(1); }, 350);
     },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Users(1);
-      }
-    },
-
-    //------ Event Sort Change
-    onSortChange(params) {
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Users(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Users(1); } },
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { type: dir, field: key } });
       this.Get_Users(this.serverParams.page);
     },
-
-    //------ Event Search
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Users(this.serverParams.page);
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "pdf") this.Users_PDF();
+      else if (k === "xlsx") this.exportCsv();
+    },
+    exportCsv() {
+      const cols = this.columns.filter(c => c.key !== "statut");
+      const head = cols.map(c => c.label);
+      const lines = [head.join(",")].concat(
+        (this.users || []).map(r =>
+          cols.map(c => `"${String(r[c.key] == null ? "" : r[c.key]).replace(/"/g, '""')}"`).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "users.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     },
 
-    //------ Event Validation State
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
     },
 
-    //------ Reset Filter
     Reset_Filter() {
       this.search = "";
       this.Filter_Name = "";
@@ -309,7 +236,6 @@ export default {
       this.Get_Users(this.serverParams.page);
     },
 
-    //------ Toast
     makeToast(variant, msg, title) {
       this.$root.$bvToast.toast(msg, {
         title: title,
@@ -319,12 +245,11 @@ export default {
     },
 
     Selected_Warehouse(value) {
-          if (!value.length) {
-              this.assigned_warehouses = [];
-          }
-      },
+      if (!value.length) {
+        this.assigned_warehouses = [];
+      }
+    },
 
-    //------ Checked Status User
     isChecked(user) {
       axios
         .put("users_switch_activated/" + user.id, {
@@ -335,35 +260,19 @@ export default {
           if (response.data.success) {
             if (user.statut) {
               user.statut = 1;
-              this.makeToast(
-                "success",
-                this.$t("ActivateUser"),
-                this.$t("Success")
-              );
+              this.makeToast("success", this.$t("ActivateUser"), this.$t("Success"));
             } else {
               user.statut = 0;
-              this.makeToast(
-                "success",
-                this.$t("DisActivateUser"),
-                this.$t("Success")
-              );
+              this.makeToast("success", this.$t("DisActivateUser"), this.$t("Success"));
             }
           } else {
             user.statut = 1;
-            this.makeToast(
-              "warning",
-              this.$t("Delete_Therewassomethingwronge"),
-              this.$t("Warning")
-            );
+            this.makeToast("warning", this.$t("Delete_Therewassomethingwronge"), this.$t("Warning"));
           }
         })
         .catch(error => {
           user.statut = 1;
-          this.makeToast(
-            "warning",
-            this.$t("Delete_Therewassomethingwronge"),
-            this.$t("Warning")
-          );
+          this.makeToast("warning", this.$t("Delete_Therewassomethingwronge"), this.$t("Warning"));
         });
     },
 
@@ -374,7 +283,7 @@ export default {
       try {
         pdf.addFont(fontPath, "Vazirmatn", "normal");
         pdf.addFont(fontPath, "Vazirmatn", "bold");
-      } catch(e) { /* ignore if already added */ }
+      } catch (e) { /* ignore if already added */ }
       pdf.setFont("Vazirmatn", "normal");
 
       const headers = [
@@ -395,7 +304,7 @@ export default {
 
       const marginX = 40;
       const rtl =
-        (this.$i18n && ["ar","fa","ur","he"].includes(this.$i18n.locale)) ||
+        (this.$i18n && ["ar", "fa", "ur", "he"].includes(this.$i18n.locale)) ||
         (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
 
       autoTable(pdf, {
@@ -405,28 +314,20 @@ export default {
         theme: 'striped',
         margin: { left: marginX, right: marginX },
         styles: { font: 'Vazirmatn', fontSize: 9, cellPadding: 4, halign: rtl ? 'right' : 'left', textColor: 33 },
-        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63,81,181], textColor: 255 },
-        alternateRowStyles: { fillColor: [245,247,250] },
+        headStyles: { font: 'Vazirmatn', fontStyle: 'bold', fillColor: [63, 81, 181], textColor: 255 },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
         didDrawPage: (d) => {
           const pageW = pdf.internal.pageSize.getWidth();
           const pageH = pdf.internal.pageSize.getHeight();
-
-          // Header banner
-          pdf.setFillColor(63,81,181);
+          pdf.setFillColor(63, 81, 181);
           pdf.rect(0, 0, pageW, 60, 'F');
-
-          // Title
           pdf.setTextColor(255);
           pdf.setFont('Vazirmatn', 'bold');
           pdf.setFontSize(16);
           const title = this.$t('UserManagement') || 'User List';
           rtl ? pdf.text(title, pageW - marginX, 38, { align: 'right' })
               : pdf.text(title, marginX, 38);
-
-          // Reset text color
           pdf.setTextColor(33);
-
-          // Footer page numbers
           pdf.setFontSize(8);
           const pn = `${d.pageNumber} / ${pdf.internal.getNumberOfPages()}`;
           rtl ? pdf.text(pn, marginX, pageH - 14, { align: 'left' })
@@ -437,8 +338,6 @@ export default {
       pdf.save("User_List.pdf");
     },
 
-
-    // Simply replaces null values with strings=''
     setToStrings() {
       if (this.Filter_status === null) {
         this.Filter_status = "";
@@ -447,7 +346,6 @@ export default {
 
     //----------------------------------- Get All Users  ---------------------------\\
     Get_Users(page) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       this.setToStrings();
@@ -477,13 +375,10 @@ export default {
           this.roles = response.data.roles;
           this.warehouses = response.data.warehouses;
           this.totalRows = response.data.totalRows;
-
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
         })
         .catch(response => {
-          // Complete the animation of theprogress bar.
           NProgress.done();
           setTimeout(() => {
             this.isLoading = false;
@@ -491,17 +386,14 @@ export default {
         });
     },
 
-    //------------------------------ Navigate to Create User Page -------------------------------\\
     New_User() {
       this.$router.push({ name: 'Create_User' });
     },
 
-    //------------------------------ Navigate to Edit User Page -------------------------------\\
     Edit_User(user) {
       this.$router.push({ name: 'Edit_User', params: { id: user.id } });
     },
 
-    //----------------------------- Reset Form ---------------------------\\
     reset_Form() {
       this.user = {
         id: "",
@@ -515,16 +407,14 @@ export default {
         statut: "",
         role_id: "",
         avatar: "",
-        is_all_warehouses:1,
+        is_all_warehouses: 1,
       };
-      this.data= new FormData();
+      this.data = new FormData();
       this.assigned_warehouses = [];
-      this.email_exist= "";
+      this.email_exist = "";
     },
 
-    //--------------------------------- Remove User ---------------------------\\
     Remove_User(id) {
-      // Prevent user from deleting their own account
       if (this.currentUser && id === this.currentUser.id) {
         this.$swal({
           title: this.$t("Error"),
@@ -554,7 +444,6 @@ export default {
                 this.$t("Deleted_in_successfully"),
                 "success"
               );
-
               Fire.$emit("Delete_User");
             })
             .catch(error => {
@@ -573,7 +462,6 @@ export default {
     }
   }, // END METHODS
 
-  //----------------------------- Created function-------------------
   created: function() {
     this.Get_Users(1);
 
@@ -591,3 +479,18 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__tablewrap { margin-top: var(--pxn-space-5); }
+.pxcfg__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxcfg__filters-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 560px) { .pxcfg__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+.pxcfg__rowbtns { display: flex; gap: var(--pxn-space-2); justify-content: flex-end; }
+.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+</style>

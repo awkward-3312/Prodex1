@@ -1,103 +1,210 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Edit')" :folder="$t('Users')"/>
+  <div class="px-next pxcfg">
+    <px-page-header
+      title="Editar usuario"
+      subtitle="Modifica identidad, rol y contexto operativo. Para POS, la caja física habitual debe pertenecer a la misma sucursal y ubicación."
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('Users'), href: '#/app/User_Management/Users' }, { label: $t('Edit') }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" size="sm" icon="building-2" @click="goto('/app/organization/branches')">Sucursales y cajas</px-button>
+        <px-button variant="ghost" size="sm" icon="shield-check" @click="goto('/app/organization/role-templates')">Roles</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="lines" :rows="10" />
+    </div>
 
-    <validation-observer ref="Edit_User" v-else>
-      <b-form @submit.prevent="Submit_User" enctype="multipart/form-data">
-        <b-card class="mb-3">
-          <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
-            <div>
-              <h4 class="mb-1">Editar usuario</h4>
-              <p class="text-muted mb-0">Modifica identidad, rol y contexto operativo. Para POS, la caja física habitual debe pertenecer a la misma sucursal y ubicación.</p>
+    <validation-observer v-else ref="Edit_User">
+      <form @submit.prevent="Submit_User" enctype="multipart/form-data">
+        <px-card title="Datos de acceso" class="pxcfg__card">
+          <div class="pxcfg__grid">
+            <validation-provider ref="firstnameProvider" name="Nombre" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
+              <px-field label="Nombre *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="user.firstname" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <validation-provider ref="lastnameProvider" name="Apellido" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
+              <px-field label="Apellido *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="user.lastname" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <validation-provider ref="usernameProvider" name="Usuario" :rules="{ required: true, min: 3, max: 60 }" v-slot="v">
+              <px-field label="Nombre de usuario *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="user.username" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <px-field label="Teléfono">
+              <template #default="{ id }"><px-input :id="id" v-model="user.phone" /></template>
+            </px-field>
+            <validation-provider ref="emailProvider" name="Correo" :rules="{ required: true, email: true }" v-slot="v">
+              <px-field label="Correo *" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" type="email" v-model="user.email" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+            <px-field label="Nueva contraseña" hint="Déjala vacía para conservar la actual. Si la cambias, usa mínimo 8 caracteres.">
+              <template #default="{ id }"><px-input :id="id" type="password" v-model="user.password" /></template>
+            </px-field>
+            <validation-provider ref="roleProvider" name="Rol" :rules="{ required: true }" v-slot="v">
+              <px-field label="Rol *" :error="v.errors[0]">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="user.role_id" :reduce="o => o.value" :options="roleOptions" placeholder="Seleccionar rol"
+                    @input="() => { roleChanged(); if ($refs.roleProvider) $refs.roleProvider.validate(); }" />
+                </template>
+              </px-field>
+            </validation-provider>
+            <px-field label="Estado">
+              <template #default="{ id }">
+                <vs-px :input-id="id" v-model="user.statut" :reduce="o => o.value" :options="statusOptions" />
+              </template>
+            </px-field>
+            <px-field label="Imagen de usuario" :hint="user.avatar_name ? `Actual: ${user.avatar_name}` : ''">
+              <template #default="{ id }"><input :id="id" class="pxcfg__file" @change="onFileSelected" type="file" accept="image/*" /></template>
+            </px-field>
+          </div>
+        </px-card>
+
+        <px-card title="Alcance operativo" class="pxcfg__card">
+          <p class="pxcfg__cardnote">El rol determina las acciones. Este bloque limita la sucursal, ubicación y, cuando corresponde, la caja física habitual.</p>
+          <div class="pxcfg__grid">
+            <px-field label="Tipo de alcance *">
+              <template #default="{ id }">
+                <vs-px :input-id="id" v-model="user.scope" :reduce="o => o.value" :options="scopeOptions" @input="scopeChanged" />
+              </template>
+            </px-field>
+            <px-field v-if="user.scope === 'selected'" label="Sucursales permitidas *">
+              <template #default="{ id }">
+                <vs-px :input-id="id" multiple v-model="user.branch_ids" :reduce="o => o.value" :options="branchOptions" placeholder="Seleccionar sucursales" @input="branchesChanged" />
+              </template>
+            </px-field>
+          </div>
+
+          <px-alert v-if="user.scope === 'all'" tone="warning" class="pxcfg__alert">
+            Alcance global: podrá consultar las ubicaciones de toda la empresa, siempre sujeto a los permisos del rol.
+          </px-alert>
+
+          <template v-if="user.scope !== 'all'">
+            <px-field v-if="selectedBranchIds.length" label="Ubicaciones de inventario permitidas"
+              hint="No es necesario asignar un CD/almacén para que un usuario trabaje en una sucursal." class="pxcfg__mt">
+              <template #default="{ id }">
+                <vs-px :input-id="id" multiple v-model="user.inventory_location_ids" :reduce="o => o.value" :options="allowedLocationOptions" placeholder="Seleccionar ubicaciones" />
+              </template>
+            </px-field>
+            <div class="pxcfg__grid pxcfg__mt">
+              <px-field label="Sucursal predeterminada *">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="user.default_branch_id" :reduce="o => o.value" :options="defaultBranchOptions" placeholder="Seleccionar" @input="defaultBranchChanged" />
+                </template>
+              </px-field>
+              <px-field label="Ubicación predeterminada">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="user.default_inventory_location_id" :reduce="o => o.value" :options="defaultLocationOptions" placeholder="Seleccionar" @input="defaultLocationChanged" />
+                </template>
+              </px-field>
             </div>
-            <div>
-              <b-button variant="outline-info" class="mr-2" @click="$router.push('/app/organization/branches')"><lucide-icon name="building-2" class="mr-1"/> Sucursales y cajas</b-button>
-              <b-button variant="outline-primary" @click="$router.push('/app/organization/role-templates')"><lucide-icon name="shield-check" class="mr-1"/> Roles</b-button>
+          </template>
+
+          <div v-if="selectedRole && selectedRole.uses_pos" class="pxcfg__subcard">
+            <px-field :label="selectedRole.requires_cash_drawer ? 'Caja física predeterminada *' : 'Caja física predeterminada'"
+              hint="La caja pertenece a la empresa. Cambiar la asignación habitual no elimina sesiones ni historial anteriores.">
+              <template #default="{ id }">
+                <vs-px :input-id="id" v-model="user.default_cash_drawer_id" :reduce="o => o.value" :options="defaultCashDrawerOptions"
+                  :placeholder="defaultCashDrawerOptions.length ? 'Seleccionar caja física' : 'No hay cajas disponibles en esta ubicación'" />
+              </template>
+            </px-field>
+            <px-alert v-if="selectedRole.requires_cash_drawer && !defaultCashDrawerOptions.length" tone="warning" class="pxcfg__alert">
+              Este rol necesita una caja física para operar POS. Crea una en la sucursal y ubicación seleccionadas antes de guardar.
+              <template #actions>
+                <px-button size="sm" variant="secondary" @click="goto('/app/organization/branches')">Administrar cajas</px-button>
+              </template>
+            </px-alert>
+          </div>
+
+          <px-check :modelValue="!!user.record_view" @change="v => user.record_view = v" class="pxcfg__mt">
+            Ver registros de otros usuarios dentro de su propio alcance
+          </px-check>
+          <div class="pxcfg__cardnote">No concede acceso a otras sucursales.</div>
+        </px-card>
+
+        <px-card v-if="operationalLoaded" title="Asignación temporal" class="pxcfg__card">
+          <template #actions>
+            <px-badge v-if="operational.active_temporary_assignment" tone="warning">Temporal activa</px-badge>
+          </template>
+          <p class="pxcfg__cardnote">Úsala cuando la persona cubra otra sucursal temporalmente. No modifica su sucursal o caja habitual.</p>
+
+          <div class="pxcfg__grid">
+            <div class="pxcfg__mini">
+              <strong>Configuración habitual</strong>
+              <div>Sucursal: {{ operational.default.branch_name || 'Sin definir' }}</div>
+              <div>Inventario: {{ operational.default.inventory_location_name || 'Sin definir' }}</div>
+              <div>Caja: {{ operational.default.cash_drawer_name || 'Sin definir' }}</div>
+            </div>
+            <div class="pxcfg__mini">
+              <strong>Contexto efectivo ahora</strong>
+              <div>Sucursal: {{ effectiveName('branch') }}</div>
+              <div>Inventario: {{ effectiveName('inventory_location') }}</div>
+              <div>Caja: {{ effectiveName('cash_drawer') }}</div>
+              <small class="pxcfg__cardnote">Fuente: {{ operational.effective && operational.effective.source === 'temporary' ? 'Asignación temporal' : 'Configuración habitual' }}</small>
             </div>
           </div>
 
-          <b-row>
-            <b-col md="6"><validation-provider name="Nombre" :rules="{ required: true, min:2, max:30 }" v-slot="validationContext"><b-form-group label="Nombre *"><b-form-input v-model="user.firstname" :state="getValidationState(validationContext)"/><b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback></b-form-group></validation-provider></b-col>
-            <b-col md="6"><validation-provider name="Apellido" :rules="{ required: true, min:2, max:30 }" v-slot="validationContext"><b-form-group label="Apellido *"><b-form-input v-model="user.lastname" :state="getValidationState(validationContext)"/><b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback></b-form-group></validation-provider></b-col>
-            <b-col md="6"><validation-provider name="Usuario" :rules="{ required: true, min:3, max:60 }" v-slot="validationContext"><b-form-group label="Nombre de usuario *"><b-form-input v-model="user.username" :state="getValidationState(validationContext)"/><b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback></b-form-group></validation-provider></b-col>
-            <b-col md="6"><b-form-group label="Teléfono"><b-form-input v-model="user.phone"/></b-form-group></b-col>
-            <b-col md="6"><validation-provider name="Correo" :rules="{ required: true, email: true }" v-slot="validationContext"><b-form-group label="Correo *"><b-form-input type="email" v-model="user.email" :state="getValidationState(validationContext)"/><b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback></b-form-group></validation-provider></b-col>
-            <b-col md="6"><b-form-group label="Nueva contraseña"><b-form-input type="password" v-model="user.password"/><small class="text-muted">Déjala vacía para conservar la actual. Si la cambias, usa mínimo 8 caracteres.</small></b-form-group></b-col>
-            <b-col md="6"><validation-provider name="Rol" :rules="{ required: true }" v-slot="{ valid, errors }"><b-form-group label="Rol *"><v-select :class="{'is-invalid': !!errors.length}" :state="errors[0] ? false : (valid ? true : null)" v-model="user.role_id" :reduce="o => o.value" :options="roleOptions" placeholder="Seleccionar rol" @input="roleChanged"/><b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback></b-form-group></validation-provider></b-col>
-            <b-col md="6"><b-form-group label="Estado"><v-select v-model="user.statut" :reduce="o => o.value" :options="statusOptions"/></b-form-group></b-col>
-            <b-col md="6"><b-form-group label="Imagen de usuario"><input @change="onFileSelected" type="file" accept="image/*" class="form-control-file"/><small class="text-muted" v-if="user.avatar_name">Actual: {{ user.avatar_name }}</small></b-form-group></b-col>
-          </b-row>
-        </b-card>
-
-        <b-card class="mb-3">
-          <h5 class="mb-1">Alcance operativo</h5>
-          <p class="text-muted mb-3">El rol determina las acciones. Este bloque limita la sucursal, ubicación y, cuando corresponde, la caja física habitual.</p>
-          <b-row>
-            <b-col md="6"><b-form-group label="Tipo de alcance *"><v-select v-model="user.scope" :reduce="o => o.value" :options="scopeOptions" @input="scopeChanged"/></b-form-group></b-col>
-            <b-col md="6" v-if="user.scope === 'selected'"><b-form-group label="Sucursales permitidas *"><v-select multiple v-model="user.branch_ids" :reduce="o => o.value" :options="branchOptions" placeholder="Seleccionar sucursales" @input="branchesChanged"/></b-form-group></b-col>
-            <b-col md="12" v-if="user.scope === 'all'"><div class="alert alert-warning py-2">Alcance global: podrá consultar las ubicaciones de toda la empresa, siempre sujeto a los permisos del rol.</div></b-col>
-            <template v-if="user.scope !== 'all'">
-              <b-col md="12" v-if="selectedBranchIds.length"><b-form-group label="Ubicaciones de inventario permitidas"><v-select multiple v-model="user.inventory_location_ids" :reduce="o => o.value" :options="allowedLocationOptions" placeholder="Seleccionar ubicaciones"/><small class="text-muted">No es necesario asignar un CD/almacén para que un usuario trabaje en una sucursal.</small></b-form-group></b-col>
-              <b-col md="6"><b-form-group label="Sucursal predeterminada *"><v-select v-model="user.default_branch_id" :reduce="o => o.value" :options="defaultBranchOptions" placeholder="Seleccionar" @input="defaultBranchChanged"/></b-form-group></b-col>
-              <b-col md="6"><b-form-group label="Ubicación predeterminada"><v-select v-model="user.default_inventory_location_id" :reduce="o => o.value" :options="defaultLocationOptions" placeholder="Seleccionar" @input="defaultLocationChanged"/></b-form-group></b-col>
+          <px-alert v-if="operational.active_temporary_assignment" tone="warning" class="pxcfg__alert">
+            <strong>{{ operational.active_temporary_assignment.temporary_branch_name }}</strong>
+            <div>{{ operational.active_temporary_assignment.temporary_inventory_location_name || 'Sin ubicación' }}<span v-if="operational.active_temporary_assignment.temporary_cash_drawer_name"> · {{ operational.active_temporary_assignment.temporary_cash_drawer_name }}</span></div>
+            <small>{{ operational.active_temporary_assignment.reason }}</small>
+            <template #actions>
+              <px-button v-if="canTemporaryAssignment" size="sm" variant="danger" @click="endTemporaryAssignment">Finalizar asignación</px-button>
             </template>
-
-            <b-col md="12" v-if="selectedRole && selectedRole.uses_pos">
-              <div class="border rounded p-3 mb-3">
-                <b-form-group :label="selectedRole.requires_cash_drawer ? 'Caja física predeterminada *' : 'Caja física predeterminada'" class="mb-1">
-                  <v-select v-model="user.default_cash_drawer_id" :reduce="o => o.value" :options="defaultCashDrawerOptions" :placeholder="defaultCashDrawerOptions.length ? 'Seleccionar caja física' : 'No hay cajas disponibles en esta ubicación'"/>
-                </b-form-group>
-                <small class="text-muted">La caja pertenece a la empresa. Cambiar la asignación habitual no elimina sesiones ni historial anteriores.</small>
-                <b-alert v-if="selectedRole.requires_cash_drawer && !defaultCashDrawerOptions.length" show variant="warning" class="mt-2 mb-0 py-2">
-                  Este rol necesita una caja física para operar POS. Crea una en la sucursal y ubicación seleccionadas antes de guardar.
-                  <b-button size="sm" variant="outline-warning" class="ml-2" @click="$router.push('/app/organization/branches')">Administrar cajas</b-button>
-                </b-alert>
-              </div>
-            </b-col>
-
-            <b-col md="12"><b-form-checkbox v-model="user.record_view">Ver registros de otros usuarios dentro de su propio alcance</b-form-checkbox><small class="text-muted">No concede acceso a otras sucursales.</small></b-col>
-          </b-row>
-        </b-card>
-
-        <b-card v-if="operationalLoaded" class="mb-3">
-          <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
-            <div><h5 class="mb-1">Asignación temporal</h5><p class="text-muted mb-0">Úsala cuando la persona cubra otra sucursal temporalmente. No modifica su sucursal o caja habitual.</p></div>
-            <b-badge v-if="operational.active_temporary_assignment" variant="warning">Temporal activa</b-badge>
-          </div>
-
-          <b-row class="mb-3">
-            <b-col md="6"><div class="border rounded p-3 h-100"><strong>Configuración habitual</strong><div class="mt-2">Sucursal: {{ operational.default.branch_name || 'Sin definir' }}</div><div>Inventario: {{ operational.default.inventory_location_name || 'Sin definir' }}</div><div>Caja: {{ operational.default.cash_drawer_name || 'Sin definir' }}</div></div></b-col>
-            <b-col md="6"><div class="border rounded p-3 h-100"><strong>Contexto efectivo ahora</strong><div class="mt-2">Sucursal: {{ effectiveName('branch') }}</div><div>Inventario: {{ effectiveName('inventory_location') }}</div><div>Caja: {{ effectiveName('cash_drawer') }}</div><small class="text-muted">Fuente: {{ operational.effective && operational.effective.source === 'temporary' ? 'Asignación temporal' : 'Configuración habitual' }}</small></div></b-col>
-          </b-row>
-
-          <div v-if="operational.active_temporary_assignment" class="alert alert-warning">
-            <div class="d-flex justify-content-between align-items-start flex-wrap">
-              <div><strong>{{ operational.active_temporary_assignment.temporary_branch_name }}</strong><div>{{ operational.active_temporary_assignment.temporary_inventory_location_name || 'Sin ubicación' }}<span v-if="operational.active_temporary_assignment.temporary_cash_drawer_name"> · {{ operational.active_temporary_assignment.temporary_cash_drawer_name }}</span></div><small>{{ operational.active_temporary_assignment.reason }}</small></div>
-              <b-button v-if="canTemporaryAssignment" size="sm" variant="outline-danger" class="mt-2 mt-md-0" @click="endTemporaryAssignment">Finalizar asignación</b-button>
-            </div>
-          </div>
+          </px-alert>
 
           <template v-if="canTemporaryAssignment">
-            <hr><h6>{{ operational.active_temporary_assignment ? 'Reemplazar asignación temporal' : 'Crear asignación temporal' }}</h6>
-            <b-row>
-              <b-col md="4"><b-form-group label="Sucursal temporal *"><v-select v-model="temporary.branch_id" :reduce="o => o.value" :options="temporaryBranchOptions" @input="temporaryBranchChanged"/></b-form-group></b-col>
-              <b-col md="4"><b-form-group label="Ubicación de inventario *"><v-select v-model="temporary.inventory_location_id" :reduce="o => o.value" :options="temporaryLocationOptions" @input="temporaryLocationChanged"/></b-form-group></b-col>
-              <b-col md="4"><b-form-group label="Caja física"><v-select v-model="temporary.cash_drawer_id" :reduce="o => o.value" :options="temporaryDrawerOptions" placeholder="Necesaria para personal de caja"/></b-form-group></b-col>
-              <b-col md="6"><b-form-group label="Inicio"><b-form-input v-model="temporary.starts_at" type="datetime-local"/></b-form-group></b-col>
-              <b-col md="6"><b-form-group label="Fin"><b-form-input v-model="temporary.ends_at" type="datetime-local"/></b-form-group></b-col>
-              <b-col md="12"><b-form-group label="Motivo *"><b-form-textarea v-model.trim="temporary.reason" rows="2" maxlength="2000" placeholder="Ej. Cobertura de turno en Sucursal Mall"/></b-form-group></b-col>
-            </b-row>
-            <div v-if="temporary_error" class="alert alert-danger">{{ temporary_error }}</div>
-            <b-button type="button" variant="outline-primary" :disabled="temporarySaving" @click="saveTemporaryAssignment">{{ temporarySaving ? 'Guardando…' : 'Guardar asignación temporal' }}</b-button>
+            <h6 class="pxcfg__subhead">{{ operational.active_temporary_assignment ? 'Reemplazar asignación temporal' : 'Crear asignación temporal' }}</h6>
+            <div class="pxcfg__grid pxcfg__grid--3">
+              <px-field label="Sucursal temporal *">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="temporary.branch_id" :reduce="o => o.value" :options="temporaryBranchOptions" @input="temporaryBranchChanged" />
+                </template>
+              </px-field>
+              <px-field label="Ubicación de inventario *">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="temporary.inventory_location_id" :reduce="o => o.value" :options="temporaryLocationOptions" @input="temporaryLocationChanged" />
+                </template>
+              </px-field>
+              <px-field label="Caja física">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="temporary.cash_drawer_id" :reduce="o => o.value" :options="temporaryDrawerOptions" placeholder="Necesaria para personal de caja" />
+                </template>
+              </px-field>
+            </div>
+            <div class="pxcfg__grid pxcfg__mt">
+              <px-field label="Inicio">
+                <template #default="{ id }"><px-input :id="id" v-model="temporary.starts_at" type="datetime-local" /></template>
+              </px-field>
+              <px-field label="Fin">
+                <template #default="{ id }"><px-input :id="id" v-model="temporary.ends_at" type="datetime-local" /></template>
+              </px-field>
+            </div>
+            <px-field label="Motivo *" class="pxcfg__mt">
+              <template #default="{ id }">
+                <px-textarea :id="id" :value="temporary.reason" @input="val => temporary.reason = val.trim ? val.trim() : val" :rows="2" placeholder="Ej. Cobertura de turno en Sucursal Mall" />
+              </template>
+            </px-field>
+            <px-alert v-if="temporary_error" tone="danger" class="pxcfg__alert">{{ temporary_error }}</px-alert>
+            <px-button class="pxcfg__mt" variant="secondary" type="button" :disabled="temporarySaving" @click="saveTemporaryAssignment">
+              {{ temporarySaving ? 'Guardando…' : 'Guardar asignación temporal' }}
+            </px-button>
           </template>
-        </b-card>
+        </px-card>
 
-        <div v-if="form_error" class="alert alert-danger">{{ form_error }}</div>
-        <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="mr-1" name="check"/> {{ SubmitProcessing ? 'Guardando…' : 'Guardar cambios' }}</b-button>
-        <b-button variant="secondary" class="ml-2" @click="$router.push({ name: 'Users' })">Cancelar</b-button>
-      </b-form>
+        <px-alert v-if="form_error" tone="danger" class="pxcfg__alert">{{ form_error }}</px-alert>
+
+        <div class="pxcfg__actions">
+          <px-button variant="primary" icon="check" type="submit" :loading="SubmitProcessing" :disabled="SubmitProcessing" @click="Submit_User">
+            {{ SubmitProcessing ? 'Guardando…' : 'Guardar cambios' }}
+          </px-button>
+          <px-button variant="ghost" @click="$router.push({ name: 'Users' })">Cancelar</px-button>
+        </div>
+      </form>
     </validation-observer>
   </div>
 </template>
@@ -105,9 +212,20 @@
 <script>
 import NProgress from 'nprogress';
 import { mapGetters } from 'vuex';
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: 'Editar usuario' },
+  components: { PxPageHeader, PxButton, PxCard, PxField, PxInput, PxTextarea, PxCheck, PxBadge, PxAlert, "vs-px": VsPx },
   data() {
     return {
       isLoading: true, SubmitProcessing: false, form_error: '',
@@ -146,8 +264,21 @@ export default {
   },
   created() { this.load(); },
   methods: {
+    goto(path) { this.$router.push(path).catch(() => {}); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
     makeToast(variant, msg, title) { if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(msg, { title, variant, solid: true }); },
+    syncValidators() {
+      this.$nextTick(() => {
+        const map = {
+          firstnameProvider: 'firstname', lastnameProvider: 'lastname', usernameProvider: 'username',
+          emailProvider: 'email', roleProvider: 'role_id'
+        };
+        Object.keys(map).forEach(ref => {
+          const p = this.$refs[ref];
+          if (p && p.syncValue) p.syncValue(this.user[map[ref]]);
+        });
+      });
+    },
     async load() {
       NProgress.start();
       try {
@@ -159,7 +290,7 @@ export default {
       } catch (e) {
         const data = (e && e.response && e.response.data) || (e && typeof e === 'object' ? e : null);
         this.form_error = (data && (data.message || data.error)) || 'No se pudo cargar el usuario.';
-      } finally { this.isLoading = false; NProgress.done(); }
+      } finally { this.isLoading = false; NProgress.done(); this.syncValidators(); }
     },
     async loadOperational() {
       try {
@@ -198,7 +329,7 @@ export default {
     async Update_User() {
       this.SubmitProcessing = true; this.form_error = '';
       const data = new FormData();
-      ['firstname','lastname','username','email','phone','password','role_id','statut','scope','default_branch_id','default_inventory_location_id','default_cash_drawer_id'].forEach(key => { const value = this.user[key]; data.append(key, value === null || typeof value === 'undefined' ? '' : value); });
+      ['firstname', 'lastname', 'username', 'email', 'phone', 'password', 'role_id', 'statut', 'scope', 'default_branch_id', 'default_inventory_location_id', 'default_cash_drawer_id'].forEach(key => { const value = this.user[key]; data.append(key, value === null || typeof value === 'undefined' ? '' : value); });
       this.selectedBranchIds.forEach((id, i) => data.append(`branch_ids[${i}]`, id));
       (this.user.inventory_location_ids || []).forEach((id, i) => data.append(`inventory_location_ids[${i}]`, id));
       data.append('record_view', this.user.record_view ? 1 : 0); if (this.user.avatar) data.append('avatar', this.user.avatar); data.append('_method', 'PUT');
@@ -226,3 +357,25 @@ export default {
   },
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-5); }
+.pxcfg__cardnote { margin: 0 0 var(--pxn-space-2); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxcfg__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+.pxcfg__grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { .pxcfg__grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .pxcfg__grid, .pxcfg__grid--3 { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__mt { margin-top: var(--pxn-space-4); }
+.pxcfg__file { width: 100%; font: inherit; font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); padding: var(--pxn-space-2) 0; }
+.pxcfg__alert { margin-top: var(--pxn-space-4); }
+.pxcfg__subcard { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
+.pxcfg__mini { padding: var(--pxn-space-4); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); font-size: var(--pxn-fs-sm); }
+.pxcfg__mini strong { display: block; margin-bottom: var(--pxn-space-2); }
+.pxcfg__subhead { margin: var(--pxn-space-5) 0 var(--pxn-space-3); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); }
+.pxcfg__actions { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-5); }
+</style>
