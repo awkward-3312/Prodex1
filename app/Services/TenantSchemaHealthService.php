@@ -51,6 +51,10 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_08_21_186000_create_transfer_detail_serials.php',
         'database/migrations/tenant/2026_08_21_187000_create_transfer_batch_issue_allocations.php',
         'database/migrations/tenant/2026_08_31_000000_add_inventory_location_to_adjustments_and_damages.php',
+        // MS5/MS6/MS7 — location-native purchases, serial foundation, sales snapshot.
+        'database/migrations/tenant/2026_09_02_000000_add_inventory_location_to_purchases_and_returns.php',
+        'database/migrations/tenant/2026_09_03_000000_add_serial_native_foundation.php',
+        'database/migrations/tenant/2026_09_04_000000_add_inventory_effect_snapshot_to_sales_and_returns.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -189,13 +193,26 @@ class TenantSchemaHealthService
             $this->requireColumns($schema, $missing, 'product_batch_location_movements', ['product_batch_id', 'from_inventory_location_id', 'to_inventory_location_id', 'quantity', 'user_id', 'reference_type', 'reference_id', 'idempotency_key']);
         }
         if ($schema->hasTable('product_serials')) $this->requireColumns($schema, $missing, 'product_serials', ['inventory_location_id']);
-        if ($schema->hasTable('product_serial_movements')) $this->requireColumns($schema, $missing, 'product_serial_movements', ['from_inventory_location_id', 'to_inventory_location_id']);
+        if ($schema->hasTable('product_serial_movements')) {
+            $this->requireColumns($schema, $missing, 'product_serial_movements', [
+                'from_inventory_location_id', 'to_inventory_location_id',
+                // MS6-B0 — serial native foundation idempotency (2026_09_03).
+                'idempotency_key', 'idempotency_fingerprint',
+            ]);
+        }
 
         // #81 — Ajustes / Daños location-aware (NULL = legacy). El snapshot de
         // efectos es obligatorio: sin él un registro location-aware no se puede
         // revertir de forma segura (FAIL CLOSED en update/destroy).
         if ($schema->hasTable('adjustments')) $this->requireColumns($schema, $missing, 'adjustments', ['inventory_location_id', 'inventory_effect_snapshot']);
         if ($schema->hasTable('damages')) $this->requireColumns($schema, $missing, 'damages', ['inventory_location_id', 'inventory_effect_snapshot']);
+
+        // MS5/MS7 — Compras / Ventas (y sus devoluciones) location-native
+        // (NULL = legacy). Mismo contrato de snapshot que Ajustes/Daños.
+        $this->requireColumns($schema, $missing, 'purchases', ['inventory_location_id', 'inventory_effect_snapshot']);
+        $this->requireColumns($schema, $missing, 'purchase_returns', ['inventory_location_id', 'inventory_effect_snapshot']);
+        $this->requireColumns($schema, $missing, 'sales', ['inventory_effect_snapshot']);
+        $this->requireColumns($schema, $missing, 'sale_returns', ['inventory_effect_snapshot']);
 
         return $missing;
     }

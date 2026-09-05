@@ -14,16 +14,22 @@ class ProdexInventoryTransition extends Command
     protected $signature = 'prodex:inventory-transition
         {--tenants=* : Tenant IDs to inspect or update. Defaults to all tenants.}
         {--warehouse= : Optional warehouse/CD ID inside each selected tenant.}
-        {--mode=audit : audit|legacy_only|shadow_compare|dual_write}';
+        {--mode=audit : audit|readiness|legacy_only|shadow_compare|dual_write|location_primary}';
 
     protected $description = 'Inspect or safely change per-warehouse inventory transition mode.';
 
     public function handle(): int
     {
         $mode = trim((string) $this->option('mode'));
-        $allowed = ['audit', InventoryTransitionState::MODE_LEGACY_ONLY, InventoryTransitionState::MODE_SHADOW_COMPARE, InventoryTransitionState::MODE_DUAL_WRITE];
+        $allowed = [
+            'audit', 'readiness',
+            InventoryTransitionState::MODE_LEGACY_ONLY,
+            InventoryTransitionState::MODE_SHADOW_COMPARE,
+            InventoryTransitionState::MODE_DUAL_WRITE,
+            InventoryTransitionState::MODE_LOCATION_PRIMARY,
+        ];
         if (! in_array($mode, $allowed, true)) {
-            $this->error('Modo inválido. Usa: audit, legacy_only, shadow_compare o dual_write.');
+            $this->error('Modo inválido. Usa: audit, readiness, legacy_only, shadow_compare, dual_write o location_primary.');
             return self::FAILURE;
         }
 
@@ -61,6 +67,18 @@ class ProdexInventoryTransition extends Command
                 $service = app(InventoryCompatibilityService::class);
                 foreach ($warehouseIds as $warehouseId) {
                     try {
+                        if ($mode === 'readiness') {
+                            // READ-ONLY: never mutates the transition mode.
+                            $readiness = $service->readinessForLocationPrimary($warehouseId);
+                            if ($readiness['ready']) {
+                                $this->info("  CD {$warehouseId}: READY para location_primary (ubicación destino {$readiness['inventory_location_id']}).");
+                            } else {
+                                $failures++;
+                                $this->warn("  CD {$warehouseId}: NOT READY — ".implode(' | ', $readiness['reasons']));
+                            }
+                            continue;
+                        }
+
                         if ($mode === 'audit') {
                             $audit = $service->audit($warehouseId);
                             $state = $service->state($warehouseId);
@@ -70,8 +88,11 @@ class ProdexInventoryTransition extends Command
                         } elseif ($mode === InventoryTransitionState::MODE_SHADOW_COMPARE) {
                             $state = $service->enableShadowCompare($warehouseId);
                             $audit = $service->audit($warehouseId);
-                        } else {
+                        } elseif ($mode === InventoryTransitionState::MODE_DUAL_WRITE) {
                             $state = $service->enableDualWrite($warehouseId);
+                            $audit = $service->audit($warehouseId);
+                        } else {
+                            $state = $service->promoteToLocationPrimary($warehouseId);
                             $audit = $service->audit($warehouseId);
                         }
 

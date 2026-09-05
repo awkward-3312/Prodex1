@@ -66,9 +66,262 @@ class InventoryCompatibilityService
         return $this->enableMode($warehouseId, InventoryTransitionState::MODE_DUAL_WRITE);
     }
 
+    /**
+     * READ-ONLY readiness gate for promoting a warehouse to location_primary.
+     * Reuses the existing provenance/reconciliation/coverage services — no
+     * parallel engine. Unlike dual_write (single-target mirror), location_primary
+     * DOES allow batch/serial-tracked inventory and multi-location stock; it
+     * requires instead that batch/serial coverage is internally consistent and
+     * that no transfer leaves the cut physically unsafe.
+     *
+     * @return array{
+     *   warehouse_id:int, ready:bool, reasons:string[], inventory_location_id:?int,
+     *   provenance_reconciled:bool, has_target_location:bool,
+     *   batch_mismatches:array, serial_mismatches:array,
+     *   unmigrated_legacy_serials:int, pending_transfers:int
+     * }
+     */
+    public function readinessForLocationPrimary(int $warehouseId): array
+    {
+        $audit = $this->audit($warehouseId);
+        $reasons = [];
+
+        // GENERAL — provenance-based reconciliation, no pending ambiguity.
+        $reconciled = $audit['provenance_reconciled'] ?? $audit['is_reconciled'] ?? false;
+        if (! $reconciled) {
+            $reasons[] = 'General: existen inconsistencias sin reconciliar entre legacy y location-native '
+                .'(revisión pendiente, migración legacy pendiente o existencias negativas).';
+        }
+
+        // LOCATION — default_inventory_location_id válida, del almacén, activa,
+        // no cuarentena (el único contrato "apto" existente, reutilizado tal cual).
+        $hasTarget = $audit['has_target_location'] ?? false;
+        if (! $hasTarget) {
+            $reasons[] = 'Location: el almacén no tiene una ubicación destino apta (perteneciente al almacén, '
+                .'activa, tipo storage, no cuarentena) configurada como default_inventory_location_id.';
+        }
+
+        // BATCH / SERIAL — coverage mismatch por ubicación del almacén.
+        $artifacts = $this->artifactCoverageMismatches($warehouseId);
+        if (! empty($artifacts['batch'])) {
+            $reasons[] = 'Batch: '.count($artifacts['batch']).' clave(s) producto/ubicación cuya existencia general '
+                .'no cuadra con la suma de sus lotes (coverage mismatch).';
+        }
+        if (! empty($artifacts['serial'])) {
+            $reasons[] = 'Serial: '.count($artifacts['serial']).' clave(s) producto/ubicación cuya existencia general '
+                .'no cuadra con el conteo de seriales disponibles, o no es entera.';
+        }
+
+        $unmigratedSerials = app(SerialInventoryCoverageService::class)->unmigratedLegacySerialCount($warehouseId);
+        if ($unmigratedSerials > 0) {
+            $reasons[] = "Serial: {$unmigratedSerials} serial(es) disponible(s) sin ubicación asignada "
+                .'(inventory_location_id NULL) en este almacén.';
+        }
+
+        // TRANSFERS — ningún movimiento/issue pendiente que haga inseguro el corte.
+        $pendingTransfers = $this->pendingTransfersCount($warehouseId);
+        if ($pendingTransfers > 0) {
+            $reasons[] = "Transfers: {$pendingTransfers} transferencia(s) con movimiento pendiente "
+                .'(in_transit / partially_received / received_with_issues) que hacen inseguro el corte.';
+        }
+
+        return [
+            'warehouse_id' => $warehouseId,
+            'ready' => empty($reasons),
+            'reasons' => $reasons,
+            'inventory_location_id' => $audit['inventory_location_id'],
+            'provenance_reconciled' => $reconciled,
+            'has_target_location' => $hasTarget,
+            'batch_mismatches' => $artifacts['batch'],
+            'serial_mismatches' => $artifacts['serial'],
+            'unmigrated_legacy_serials' => $unmigratedSerials,
+            'pending_transfers' => $pendingTransfers,
+        ];
+    }
+
+    /**
+     * FAIL CLOSED promotion to location_primary. Throws with the concrete
+     * reasons (readinessForLocationPrimary) instead of promoting a warehouse
+     * that is not actually safe to cut over.
+     *
+     * @throws ValidationException
+     */
+    public function promoteToLocationPrimary(int $warehouseId): InventoryTransitionState
+    {
+        $readiness = $this->readinessForLocationPrimary($warehouseId);
+
+        if (! $readiness['ready']) {
+            throw ValidationException::withMessages([
+                'inventory_transition' => "FAIL CLOSED: el almacén {$warehouseId} no cumple los requisitos de readiness para location_primary. Motivos: "
+                    .implode(' | ', $readiness['reasons']),
+            ]);
+        }
+
+        $state = $this->state($warehouseId);
+        // last_reconciled_at (baseline provenance) no se toca aquí, por la misma
+        // razón documentada en enableMode(): el baseline real es el momento del
+        // backfill físico, no la activación de un modo de transición.
+        $state->forceFill([
+            'inventory_location_id' => $readiness['inventory_location_id'],
+            'mode' => InventoryTransitionState::MODE_LOCATION_PRIMARY,
+            'status' => 'healthy',
+            'mismatch_count' => 0,
+            'shadow_enabled_at' => $state->shadow_enabled_at ?: now(),
+        ])->save();
+
+        return $state->fresh();
+    }
+
+    /**
+     * Batch/serial coverage mismatch scan across every active location of the
+     * warehouse, reusing BatchLocationService::batchCoverageForLocation() and
+     * SerialInventoryCoverageService::coverageForLocation() — no second engine.
+     *
+     * @return array{batch: array<int,array>, serial: array<int,array>}
+     */
+    private function artifactCoverageMismatches(int $warehouseId): array
+    {
+        $locationIds = $this->warehouseLocationIds($warehouseId);
+        $batchMismatches = [];
+        $serialMismatches = [];
+
+        if (! $locationIds) {
+            return ['batch' => $batchMismatches, 'serial' => $serialMismatches];
+        }
+
+        $keys = DB::table('inventory_location_stocks')
+            ->whereIn('inventory_location_id', $locationIds)
+            ->select('inventory_location_id', 'product_id', 'variant_key')
+            ->distinct()
+            ->get();
+
+        if (Schema::hasTable('product_batch_location_stocks') && Schema::hasTable('product_batches')) {
+            $batchKeys = DB::table('product_batch_location_stocks as pbls')
+                ->join('product_batches as pb', 'pb.id', '=', 'pbls.product_batch_id')
+                ->whereIn('pbls.inventory_location_id', $locationIds)
+                ->select('pbls.inventory_location_id', 'pb.product_id', DB::raw('COALESCE(pb.product_variant_id, 0) as variant_key'))
+                ->distinct()
+                ->get();
+            $keys = $keys->concat($batchKeys);
+        }
+
+        $batchService = app(BatchLocationService::class);
+        $serialService = app(SerialInventoryCoverageService::class);
+        $seenBatch = [];
+        $seenSerial = [];
+
+        foreach ($keys as $row) {
+            $locationId = (int) $row->inventory_location_id;
+            $productId = (int) $row->product_id;
+            $variantKey = (int) $row->variant_key;
+            $variantId = $variantKey > 0 ? $variantKey : null;
+
+            $flags = $this->productArtifactFlags($productId);
+
+            if ($flags['is_batch']) {
+                $dedupe = $locationId.':'.$productId.':'.$variantKey;
+                if (! isset($seenBatch[$dedupe])) {
+                    $seenBatch[$dedupe] = true;
+                    $coverage = $batchService->batchCoverageForLocation($locationId, $productId, $variantId);
+                    if (! $coverage['matches']) {
+                        $batchMismatches[] = $coverage;
+                    }
+                }
+            }
+
+            if ($flags['is_imei']) {
+                $dedupe = $locationId.':'.$productId.':'.$variantKey;
+                if (! isset($seenSerial[$dedupe])) {
+                    $seenSerial[$dedupe] = true;
+                    $coverage = $serialService->coverageForLocation($locationId, $productId, $variantId);
+                    if (! $coverage['is_ready']) {
+                        $serialMismatches[] = array_merge([
+                            'inventory_location_id' => $locationId,
+                            'product_id' => $productId,
+                            'product_variant_id' => $variantId,
+                        ], $coverage);
+                    }
+                }
+            }
+        }
+
+        return ['batch' => $batchMismatches, 'serial' => $serialMismatches];
+    }
+
+    /** Per-product batch/IMEI flags — a plural-friendly sibling of productIsArtifactTracked(). */
+    private function productArtifactFlags(int $productId): array
+    {
+        $none = ['is_batch' => false, 'is_imei' => false];
+        if (! Schema::hasTable('products')) return $none;
+
+        $hasBatch = Schema::hasColumn('products', 'is_batch_tracked');
+        $hasImei = Schema::hasColumn('products', 'is_imei');
+        if (! $hasBatch && ! $hasImei) return $none;
+
+        $row = DB::table('products')->where('id', $productId)->whereNull('deleted_at')
+            ->first(array_merge($hasBatch ? ['is_batch_tracked'] : [], $hasImei ? ['is_imei'] : []));
+        if (! $row) return $none;
+
+        return [
+            'is_batch' => $hasBatch && (int) ($row->is_batch_tracked ?? 0) === 1,
+            'is_imei' => $hasImei && (int) ($row->is_imei ?? 0) === 1,
+        ];
+    }
+
+    /**
+     * Transfers touching this warehouse (origin or destination) with a
+     * movement/issue still pending — unsafe to cut over while any exist.
+     * received_with_issues counts: an unresolved discrepancy is still pending.
+     */
+    private function pendingTransfersCount(int $warehouseId): int
+    {
+        if (! Schema::hasTable('transfers')) return 0;
+
+        return (int) DB::table('transfers')
+            ->whereNull('deleted_at')
+            ->where(function ($q) use ($warehouseId) {
+                $q->where('from_warehouse_id', $warehouseId)->orWhere('to_warehouse_id', $warehouseId);
+            })
+            ->whereIn('logistics_status', ['in_transit', 'partially_received', 'received_with_issues'])
+            ->count();
+    }
+
+    /**
+     * FAIL CLOSED demotion guard. Demoting OUT of location_primary makes
+     * product_warehouse (legacy) the productive source again — that is only
+     * safe if legacy can already represent the current physical state exactly
+     * (snapshot_equal) and there is no unreconciled ambiguity. This never
+     * performs a copy-back/write: it only gates the mode flip. A caller that
+     * needs product_warehouse to actually match first must run the existing
+     * reconciliation tooling (LegacyInventoryReconciliationService) — never a
+     * destructive shortcut here.
+     *
+     * @throws ValidationException
+     */
     public function returnToLegacyOnly(int $warehouseId): InventoryTransitionState
     {
         $state = $this->state($warehouseId);
+
+        if ($state->mode === InventoryTransitionState::MODE_LOCATION_PRIMARY) {
+            $audit = $this->audit($warehouseId);
+            $reasons = [];
+
+            if (! ($audit['provenance_reconciled'] ?? $audit['is_reconciled'] ?? false)) {
+                $reasons[] = 'quedan inconsistencias sin reconciliar (revisión pendiente, migración legacy pendiente o existencias negativas)';
+            }
+            if (! ($audit['snapshot_equal'] ?? false)) {
+                $reasons[] = 'product_warehouse (legacy) está stale: no representa el estado físico actual para '
+                    .count($audit['snapshot_unequal_keys'] ?? []).' clave(s) producto/variante';
+            }
+
+            if ($reasons) {
+                throw ValidationException::withMessages([
+                    'inventory_transition' => "FAIL CLOSED: el almacén {$warehouseId} no puede demoverse de location_primary a legacy_only de forma segura ("
+                        .implode('; ', $reasons).'). No se realiza ningún copy-back destructivo; reconcilia primero con las herramientas existentes.',
+                ]);
+            }
+        }
+
         $state->forceFill([
             'mode' => InventoryTransitionState::MODE_LEGACY_ONLY,
             'status' => $state->status === 'mismatch' ? 'mismatch' : 'pending',
