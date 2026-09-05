@@ -1,263 +1,135 @@
 <template>
-  <div class="main-content p-2 p-md-4">
-    <breadcumb :page="$t('Seller_report')" :folder="$t('Reports')" />
-
-    <!-- Toolbar -->
-    <b-card class="shadow-soft border-0 mb-3">
-      <div class="d-flex flex-wrap align-items-center">
-        <!-- Date/time range -->
-        <div class="mr-3 mb-2 d-flex flex-column date-range-filter">
-          <label class="mb-1 d-block text-muted">{{ $t('DateRange') }}</label>
-          <date-range-picker
-            v-model="dateRange"
-            :locale-data="locale"
-            :time-picker="true"
-            :time-picker-seconds="true"
-            :autoApply="true"
-            :showDropdowns="true"
-            :opens="isMobile ? 'center' : 'right'"
-            :drops="'down'"
-            @update="Submit_filter_dateRange"
-          >
-            <template v-slot:input="picker">
-              <b-button
-                variant="light"
-                class="btn-pill date-btn"
-                :class="{ 'w-100': isMobile }"
-              >
-                <lucide-icon class="mr-1" name="calendar-days" />
-                <span class="d-none d-sm-inline">
-                  {{ formatDateTime(picker.startDate) }} —
-                  {{ formatDateTime(picker.endDate) }}
-                </span>
-                <span class="d-inline d-sm-none">
-                  {{ formatDateTimeShort(picker.startDate) }}–{{ formatDateTimeShort(picker.endDate) }}
-                </span>
-              </b-button>
-            </template>
-          </date-range-picker>
-        </div>
-
-        <!-- Warehouse -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{ $t('warehouse') }}</label>
-          <v-select
-            class="w-280"
-            v-model="warehouse_id"
-            @input="Selected_Warehouse"
-            :reduce="label => label.value"
-            :placeholder="$t('Choose_Warehouse')"
-            :options="warehouses.map(w => ({ label: w.name, value: w.id }))"
-          />
-        </div>
-
-        <!-- Actions -->
-        <div class="ml-auto mb-2 d-flex">
-          <b-button
-            variant="success"
-            class="btn-pill mr-2"
-            @click="Seller_report_pdf"
-          >
-            <lucide-icon class="mr-1" name="file-text" />
-            {{ $t('Export_PDF') || 'PDF' }}
-          </b-button>
-
-          <vue-excel-xlsx
-            class="btn btn-outline-danger btn-pill mr-2"
-            :data="payments"
-            :columns="columns"
-            :file-name="'Seller_report'"
-            :file-type="'xlsx'"
-            :sheet-name="'Seller_report'"
-          >
-            <lucide-icon class="mr-1" name="file-spreadsheet" />
-            <span>EXCEL</span>
-          </vue-excel-xlsx>
-
-          <b-button
-            variant="primary"
-            class="btn-pill"
-            @click="Seller_report(serverParams.page)"
-          >
-            <lucide-icon class="mr-1" name="refresh-cw" />
-            {{ $t('Refresh') || 'Refresh' }}
-          </b-button>
-        </div>
-      </div>
-    </b-card>
-
-    <!-- Loading -->
-    <div v-if="isLoading" class="text-center my-5">
-      <div class="loading_page spinner spinner-primary mr-3"></div>
-    </div>
-
-    <!-- Analytics + Table -->
-    <div v-else>
-      <!-- KPI Cards -->
-      <b-row class="mb-3">
-        <b-col md="3" sm="6" class="mb-3">
-          <StatTile
-            icon="users"
-            :label="$t('Sellers') || 'Sellers'"
-            :value="num(sellerStats.totalSellers)"
-            theme="blue"
-          />
-        </b-col>
-        <b-col md="3" sm="6" class="mb-3">
-          <StatTile
-            icon="banknote"
-            :label="$t('TotalSales')"
-            :value="money(sellerStats.totalSales)"
-            theme="green"
-          />
-        </b-col>
-        <b-col md="3" sm="6" class="mb-3">
-          <StatTile
-            icon="bar-chart"
-            :label="$t('AvgPerSeller') || 'Avg per seller'"
-            :value="money(sellerStats.avgSales)"
-            theme="indigo"
-          />
-        </b-col>
-        <b-col md="3" sm="6" class="mb-3">
-          <StatTile
-            icon="star"
-            :label="$t('TopSeller') || 'Top seller'"
-            :value="sellerStats.topSellerName || '-'"
-            theme="teal"
-          />
-        </b-col>
-      </b-row>
-
-      <!-- Charts -->
-      <b-row class="mb-3">
-        <b-col lg="8" class="mb-3">
-          <b-card class="shadow-soft border-0 h-100">
-            <div
-              class="d-flex align-items-center justify-content-between mb-2"
-            >
-              <h6 class="m-0">
-                {{ $t('Seller') }} {{ $t('TotalSales') }}
-              </h6>
-              <small class="text-muted" v-if="topSellersChartData.length">
-                {{ topSellersChartData.length }} {{ $t('Sellers') || 'sellers' }}
-              </small>
-            </div>
-
-            <apexchart
-              v-if="topSellersChartData.length"
-              type="bar"
-              height="320"
-              :options="topSellersChartOptions"
-              :series="topSellersChartSeries"
-            />
-            <div v-else class="text-muted text-center small py-4">
-              {{ $t('No_Data') || 'No data to display' }}
-            </div>
-
-            <!-- Top seller listing -->
-            <div
-              v-if="topSellersChartData.length"
-              class="mt-3 small top-seller-list"
-            >
-              <div
-                class="d-flex justify-content-between align-items-center mb-1"
-              >
-                <span class="text-muted text-uppercase">
-                  {{ $t('TopSeller') || 'Top seller' }}
-                </span>
-                <span class="font-weight-bold">
-                  {{ sellerStats.topSellerName }}
-                  ·
-                  {{ money(sellerStats.topSellerSales) }}
-                </span>
-              </div>
-              <ul class="list-unstyled mb-0">
-                <li
-                  v-for="(s, idx) in topSellersChartData.slice(0, 5)"
-                  :key="s.name"
-                  class="d-flex justify-content-between py-1"
-                >
-                  <span>{{ idx + 1 }}. {{ s.name }}</span>
-                  <span>{{ money(s.sales) }}</span>
-                </li>
-              </ul>
-            </div>
-          </b-card>
-        </b-col>
-
-        <b-col lg="4" class="mb-3">
-          <b-card class="shadow-soft border-0 h-100">
-            <div
-              class="d-flex align-items-center justify-content-between mb-2"
-            >
-              <h6 class="m-0">
-                {{ $t('SalesByPaymentMethod') || 'Sales by payment method' }}
-              </h6>
-              <small class="text-muted">
-                {{ $t('CurrentPage') || 'Current page' }}
-              </small>
-            </div>
-
-            <apexchart
-              v-if="paymentMethodsChartSeries.length && paymentMethodsChartSeries[0].data.length"
-              type="bar"
-              height="320"
-              :options="paymentMethodsChartOptions"
-              :series="paymentMethodsChartSeries"
-            />
-            <div v-else class="text-muted text-center small py-4">
-              {{ $t('No_Data') || 'No data to display' }}
-            </div>
-          </b-card>
-        </b-col>
-      </b-row>
-
-      <!-- Table -->
-      <b-card class="shadow-soft border-0 print-table-only">
-        <vue-good-table
-          mode="remote"
-          :columns="columns"
-          :totalRows="totalRows"
-          :rows="rows"
-          :group-options="{
-            enabled: true,
-            headerPosition: 'bottom',
-          }"
-          @on-page-change="onPageChange"
-          @on-per-page-change="onPerPageChange"
-          @on-sort-change="onSortChange"
-          @on-search="onSearch"
-          :search-options="{
-            placeholder: $t('Search_this_table'),
-            enabled: true,
-          }"
-          :pagination-options="{
-            enabled: true,
-            mode: 'records',
-            nextLabel: 'next',
-            prevLabel: 'prev',
-          }"
-          styleClass="table-hover tableOne vgt-table"
-        >
-          <div slot="table-actions" class="mt-2 mb-3">
-            <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
-              <lucide-icon name="printer" /> {{ $t("print") }}
-            </b-button>
-          </div>
-          <template slot="table-row" slot-scope="props">
-            <!-- Format price columns (total_sales and all payment methods) -->
-            <span v-if="isPriceField(props.column.field)">
-              {{ formatPriceDisplay(props.row[props.column.field], 2) }}
-            </span>
-            <!-- Default rendering for other columns -->
-            <span v-else>
-              {{ props.formattedRow[props.column.field] }}
-            </span>
+  <div class="px-next pxrl">
+    <px-page-header :title="$t('Seller_report')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('Seller_report') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') }}</px-button>
           </template>
-        </vue-good-table>
-      </b-card>
+        </px-menu>
+        <px-button variant="primary" size="sm" icon="refresh-cw" @click="Seller_report(serverParams.page)">{{ $t('Refresh') || 'Actualizar' }}</px-button>
+      </template>
+      <template #meta>
+        <date-range-picker
+          v-model="dateRange"
+          :locale-data="locale"
+          :time-picker="true"
+          :time-picker-seconds="true"
+          :autoApply="true"
+          :showDropdowns="true"
+          @update="Submit_filter_dateRange"
+        >
+          <template v-slot:input="picker">
+            <button type="button" class="pxrl__daterange pxn-ring">
+              <lucide-icon name="calendar-days" :size="14" />
+              {{ formatDateTime(picker.startDate) }} — {{ formatDateTime(picker.endDate) }}
+            </button>
+          </template>
+        </date-range-picker>
+      </template>
+    </px-page-header>
+
+    <px-card class="pxrl__filtercard">
+      <div class="pxrl__filterrow">
+        <px-field :label="$t('warehouse')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="warehouse_id" :reduce="o => o.value" :placeholder="$t('Choose_Warehouse')"
+              :options="warehouses.map(w => ({ label: w.name, value: w.id }))" @input="Selected_Warehouse" />
+          </template>
+        </px-field>
+      </div>
+    </px-card>
+
+    <div v-if="isLoading" class="pxrl__pad">
+      <px-skeleton variant="lines" :rows="8" />
     </div>
+
+    <template v-else>
+      <div class="pxrl__stats">
+        <px-stat icon="users" :label="$t('Sellers') || 'Vendedores'" :value="num(sellerStats.totalSellers)" bordered />
+        <px-stat icon="banknote" :label="$t('TotalSales')" :value="money(sellerStats.totalSales)" bordered />
+        <px-stat icon="bar-chart-3" :label="$t('AvgPerSeller') || 'Promedio por vendedor'" :value="money(sellerStats.avgSales)" bordered />
+        <px-stat icon="star" :label="$t('TopSeller') || 'Mejor vendedor'" :value="sellerStats.topSellerName || '-'" :sub="sellerStats.topSellerName ? money(sellerStats.topSellerSales) : ''" bordered />
+      </div>
+
+      <div class="pxrl__cols pxrl__cols--87">
+        <px-card :title="`${$t('Seller')} · ${$t('TotalSales')}`">
+          <template #actions>
+            <span v-if="topSellersChartData.length" class="pxrl__cardmeta">{{ topSellersChartData.length }} {{ $t('Sellers') || 'vendedores' }}</span>
+          </template>
+          <apexchart
+            v-if="topSellersChartData.length"
+            type="bar"
+            height="320"
+            :options="topSellersChartOptions"
+            :series="topSellersChartSeries"
+          />
+          <px-empty-state v-else icon="bar-chart-3" :title="$t('No_Data') || 'Sin datos'" description="" />
+
+          <div v-if="topSellersChartData.length" class="pxrl__ranklist">
+            <div class="pxrl__rankhead">
+              <span>{{ $t('TopSeller') || 'Mejor vendedor' }}</span>
+              <span class="pxn-num">{{ sellerStats.topSellerName }} · {{ money(sellerStats.topSellerSales) }}</span>
+            </div>
+            <div v-for="(s, idx) in topSellersChartData.slice(0, 5)" :key="s.name" class="pxrl__rankrow">
+              <span>{{ idx + 1 }}. {{ s.name }}</span>
+              <span class="pxn-num">{{ money(s.sales) }}</span>
+            </div>
+          </div>
+        </px-card>
+
+        <px-card :title="$t('SalesByPaymentMethod') || 'Ventas por método de pago'">
+          <apexchart
+            v-if="paymentMethodsChartSeries.length && paymentMethodsChartSeries[0].data.length"
+            type="bar"
+            height="320"
+            :options="paymentMethodsChartOptions"
+            :series="paymentMethodsChartSeries"
+          />
+          <px-empty-state v-else icon="pie-chart" :title="$t('No_Data') || 'Sin datos'" description="" />
+        </px-card>
+      </div>
+
+      <px-toolbar
+        :search="search"
+        :search-placeholder="$t('Search_this_table')"
+        @update:search="onSearchInput"
+      />
+
+      <div class="pxrl__tablewrap">
+        <px-table
+          v-if="payments.length"
+          :columns="columns"
+          :rows="payments"
+          row-key="__rowkey"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          @sort="onSort"
+        >
+          <template #cell-total_sales="{ row }"><span class="pxn-num">{{ formatPriceDisplay(row.total_sales, 2) }}</span></template>
+          <template v-for="col in dynamicColumns" #[`cell-${col.key}`]="{ row }">
+            <span :key="col.key" class="pxn-num">{{ formatPriceDisplay(row[col.key], 2) }}</span>
+          </template>
+        </px-table>
+
+        <px-empty-state v-else icon="user-check" :title="$t('No_report_rows') || 'Sin resultados'" :description="$t('No_report_rows_desc')" />
+      </div>
+
+      <div v-if="payments.length" class="pxrl__totalrow">
+        <span>{{ $t('Total') }}</span>
+        <span>{{ $t('TotalSales') }}: <b class="pxn-num">{{ sumTotalSales(rows[0]) }}</b></span>
+        <span v-for="method in paymentMethods" :key="method">{{ method }}: <b class="pxn-num">{{ sumPaymentMethod(rows[0], method) }}</b></span>
+      </div>
+
+      <px-pagination
+        v-if="payments.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
   </div>
 </template>
 
@@ -266,7 +138,6 @@ import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import DateRangePicker from "vue2-daterange-picker";
-// you need to import the CSS manually
 import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
 import moment from "moment";
 import { mapGetters } from "vuex";
@@ -276,34 +147,17 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
-
-const StatTile = {
-  name: "StatTile",
-  functional: true,
-  props: {
-    icon: String,
-    label: String,
-    value: [String, Number],
-    theme: { type: String, default: "blue" },
-  },
-  render(h, { props }) {
-    return h(
-      "div",
-      {
-        class: ["stat-card", `theme-${props.theme}`, "shadow-soft", "rounded-xl"],
-      },
-      [
-        h("div", { class: "stat-inner" }, [
-          h("div", { class: "stat-icon" }, [h('lucide-icon', { props: { name: props.icon } })]),
-          h("div", { class: "stat-content" }, [
-            h("div", { class: "stat-label" }, props.label),
-            h("div", { class: "stat-value" }, props.value),
-          ]),
-        ]),
-      ]
-    );
-  },
-};
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
@@ -312,11 +166,13 @@ export default {
   components: {
     apexchart: VueApexCharts,
     "date-range-picker": DateRangePicker,
-    StatTile,
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxCard,
+    PxField, PxStat, PxEmptyState, "vs-px": VsPx
   },
 
   data() {
     return {
+      _searchTimer: null,
       isLoading: true,
       serverParams: {
         sort: {
@@ -347,18 +203,14 @@ export default {
         endDate: "",
       },
       locale: {
-        // separator between the two ranges apply
         Label: "Apply",
         cancelLabel: "Cancel",
         weekLabel: "W",
         customRangeLabel: "Custom Range",
         daysOfWeek: moment.weekdaysMin(),
-        // array of days - see moment documentation for details
-        monthNames: moment.monthsShort(), // array of month names
-        firstDay: 1, // ISO first day of week
+        monthNames: moment.monthsShort(),
+        firstDay: 1,
       },
-      isMobile: false,
-      // Optional price format key for frontend display (loaded from system settings/localStorage)
       price_format_key: null
     };
   },
@@ -366,7 +218,6 @@ export default {
   computed: {
     ...mapGetters(["currentUser"]),
 
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
@@ -375,38 +226,44 @@ export default {
       return (this.currentUser && this.currentUser.currency) || "";
     },
 
+    exportMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
+
+    dynamicColumns() {
+      return (this.paymentMethods || []).map((method) => ({ key: method, label: method }));
+    },
+
     columns() {
       const base = [
         {
           label: this.$t("Seller"),
-          field: "username",
-          tdClass: "text-left",
-          thClass: "text-left",
+          key: "username",
+          strong: true,
           sortable: true,
         },
         {
           label: this.$t("TotalSales"),
-          field: "total_sales",
-          headerField: this.sumTotalSales,
-          tdClass: "text-center",
-          thClass: "text-center",
+          key: "total_sales",
+          align: "right",
           sortable: false,
         },
       ];
 
-      const dynamic = this.paymentMethods.map((method) => ({
-        label: method,
-        field: method,
-        headerField: (rowObj) => this.sumPaymentMethod(rowObj, method),
-        tdClass: "text-right",
-        thClass: "text-right",
+      const dynamic = this.dynamicColumns.map((c) => ({
+        label: c.label,
+        key: c.key,
+        align: "right",
         sortable: false,
       }));
 
       return [...base, ...dynamic];
     },
 
-    // Aggregated stats over the currently visible sellers (current page)
     sellerStats() {
       const rows = Array.isArray(this.payments) ? this.payments : [];
       if (!rows.length) {
@@ -445,7 +302,6 @@ export default {
       };
     },
 
-    // Top sellers chart data (current page only)
     topSellersChartData() {
       const rows = Array.isArray(this.payments) ? this.payments : [];
       const mapped = rows
@@ -489,7 +345,6 @@ export default {
       ];
     },
 
-    // Payment method totals aggregated over current page
     paymentMethodTotals() {
       const methods = Array.isArray(this.paymentMethods)
         ? this.paymentMethods
@@ -506,7 +361,6 @@ export default {
     },
 
     paymentMethodsChartOptions() {
-      // Vertical bar chart, same pattern as Top_Suppliers value chart
       const categories = this.paymentMethodTotals.map((x) => x.method);
       return {
         chart: { toolbar: { show: false } },
@@ -538,12 +392,11 @@ export default {
   },
 
   methods: {
-    // Helper to check if a field is a price field
     isPriceField(field) {
       return field === 'total_sales' || (this.paymentMethods && this.paymentMethods.includes(field));
     },
 
-    // Group footer helpers for vue-good-table
+    // Group footer helpers preserved verbatim
     sumTotalSales(rowObj) {
       if (!rowObj || !Array.isArray(rowObj.children)) {
         return this.formatPriceDisplay(0, 2);
@@ -572,7 +425,6 @@ export default {
       return this.formatPriceDisplay(sum, 2);
     },
 
-    //---------------------- Event Select Warehouse ------------------------------\\
     Selected_Warehouse(value) {
       if (value === null) {
         this.warehouse_id = "";
@@ -580,86 +432,73 @@ export default {
       this.Seller_report(1);
     },
 
-    //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Seller_report(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Seller_report(1); }, 350);
     },
 
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Seller_report(1);
-      }
-    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Seller_report(p); } },
 
-    //---- Event on Sort Change
-    onSortChange(params) {
-      let field = "";
-      field = params[0].field;
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: field,
-        },
-      });
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Seller_report(1); } },
+
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { type: dir, field: key } });
       this.Seller_report(this.serverParams.page);
     },
 
-    //---- Event on Search
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "print") this.printTableOnly();
+      else if (k === "pdf") this.Seller_report_pdf();
+      else if (k === "xlsx") this.exportCsv();
+    },
 
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Seller_report(this.serverParams.page);
+    exportCsv() {
+      const cols = this.columns;
+      const head = cols.map(c => c.label);
+      const lines = [head.join(",")].concat(
+        (this.payments || []).map(r =>
+          cols.map(c => {
+            let v = r[c.key];
+            if (this.isPriceField(c.key)) v = this.formatPriceDisplay(r[c.key], 2);
+            return `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+          }).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "Seller_report.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     },
 
     //------ Print Table Only
     printTableOnly() {
-      const root = this.$el;
-      if (!root) {
-        window.print();
-        return;
-      }
-
-      const tableCard = root.querySelector(".print-table-only");
-      if (!tableCard) {
-        window.print();
-        return;
-      }
-
-      // Get payments data from rows[0].children or this.payments
-      const paymentsData = Array.isArray(this.rows[0]?.children) && this.rows[0].children.length > 0 
-        ? this.rows[0].children 
+      const paymentsData = Array.isArray(this.rows[0] && this.rows[0].children) && this.rows[0].children.length > 0
+        ? this.rows[0].children
         : (this.payments || []);
 
-      // Manually construct the table HTML from payments data
       let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
-
-      // Table Header
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
         tableHtml += `<th class="text-left">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
 
-      // Table Body
       tableHtml += `<tbody>`;
       paymentsData.forEach(row => {
         tableHtml += `<tr>`;
         this.columns.forEach(col => {
-          let cellContent = row[col.field];
-          // Format price fields (total_sales and all payment methods)
-          if (this.isPriceField(col.field)) {
-            cellContent = this.formatPriceDisplay(row[col.field], 2);
+          let cellContent = row[col.key];
+          if (this.isPriceField(col.key)) {
+            cellContent = this.formatPriceDisplay(row[col.key], 2);
           }
           tableHtml += `<td class="text-left">${cellContent || ''}</td>`;
         });
@@ -667,18 +506,15 @@ export default {
       });
       tableHtml += `</tbody>`;
 
-      // Table Footer (Totals)
       const totalSales = this.sumTotalSales(this.rows[0]);
       tableHtml += `<tfoot><tr>`;
       tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
       tableHtml += `<td class="text-left font-weight-bold">${totalSales}</td>`;
-      // Add totals for each payment method
       (this.paymentMethods || []).forEach(method => {
         const total = this.sumPaymentMethod(this.rows[0], method);
         tableHtml += `<td class="text-left font-weight-bold">${total}</td>`;
       });
       tableHtml += `</tr></tfoot>`;
-
       tableHtml += `</table>`;
 
       const w = window.open("", "_blank");
@@ -734,7 +570,6 @@ export default {
     Seller_report_pdf() {
       const doc = new jsPDF("p", "pt");
 
-      // Load custom font
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
       try {
         doc.addFont(fontPath, "VazirmatnBold", "bold");
@@ -743,24 +578,20 @@ export default {
         // Fallback silently if font is already registered or missing
       }
 
-      // 1. Base headers
       const headers = [
         { title: this.$t("Seller"), dataKey: "username" },
         { title: this.$t("TotalSales"), dataKey: "total_sales" },
         ...(this.paymentMethods || []).map((method) => ({
-          // Show the payment method name exactly as defined
           title: method,
           dataKey: method,
         })),
       ];
 
-      // 2. Build rows
       const rows = Array.isArray(this.payments) ? this.payments : [];
 
-      // 4. Generate PDF table using jspdf-autotable helper
       autoTable(doc, {
         head: [headers.map((h) => h.title)],
-        body: rows.map((row) => headers.map((h) => row[h.dataKey] ?? "")),
+        body: rows.map((row) => headers.map((h) => (row[h.dataKey] != null ? row[h.dataKey] : ""))),
         startY: 70,
         theme: "grid",
         didDrawPage: () => {
@@ -777,13 +608,11 @@ export default {
         },
       });
 
-      // 5. Save file
       doc.save("Seller_Payment_Report.pdf");
     },
 
     //----------------------------- Submit Date Picker -------------------\\
     Submit_filter_dateRange() {
-      // Ensure we have valid start/end dates before formatting
       const start = this.dateRange.startDate
         ? moment(this.dateRange.startDate)
         : null;
@@ -792,7 +621,6 @@ export default {
         : null;
 
       if (start && end) {
-        // Send separate date and time parts to backend
         this.startDate = start.format("YYYY-MM-DD");
         this.endDate = end.format("YYYY-MM-DD");
 
@@ -806,30 +634,21 @@ export default {
     get_data_loaded() {
       const self = this;
       if (self.today_mode) {
-        // Default range: from 2000-01-01 until today
         const startDate = new Date("2000-01-01");
-        const endDate = new Date(); // Set end date to current date
+        const endDate = new Date();
 
-        // Values used for backend filtering (YYYY-MM-DD)
         self.startDate = moment(startDate).format("YYYY-MM-DD");
         self.endDate = moment(endDate).format("YYYY-MM-DD");
 
-        // Values used by the date-range-picker (Date objects)
         self.dateRange.startDate = startDate;
         self.dateRange.endDate = endDate;
       }
     },
 
-    // Format helper for displaying in the picker input
     formatDateTime(date) {
       return date ? moment(date).format("YYYY-MM-DD HH:mm:ss") : "";
     },
 
-    formatDateTimeShort(date) {
-      return date ? moment(date).format("YYYY-MM-DD") : "";
-    },
-
-    // Robust numeric conversion from formatted strings ('1,234.50') or numbers
     toNumber(val) {
       if (typeof val === "number") {
         return isNaN(val) ? 0 : val;
@@ -844,13 +663,9 @@ export default {
       return isNaN(n) ? "0" : n.toLocaleString();
     },
 
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing toLocaleString behavior to preserve current behavior.
     formatPriceDisplay(number, dec) {
       try {
         const decimals = this.priceDecimals;
-        // Convert to number first (handles strings like "1,234.56" or numbers)
         const n = this.toNumber(number);
         const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
         if (key) {
@@ -864,9 +679,6 @@ export default {
       }
     },
 
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing Intl.NumberFormat behavior to preserve current behavior.
     money(v) {
       try {
         const n = this.toNumber(v);
@@ -899,17 +711,11 @@ export default {
       }).format(n);
     },
 
-    handleResize() {
-      this.isMobile = window.innerWidth < 576;
-    },
-
     //-------------------------------- Get All Payments Sales ---------------------\\
     Seller_report(page) {
-      // Start the progress bar
       NProgress.start();
       NProgress.set(0.1);
 
-      // Mark loading
       this.get_data_loaded();
       this.isLoading = true;
 
@@ -929,7 +735,9 @@ export default {
           },
         })
         .then((response) => {
-          this.payments = response.data.report;
+          this.payments = (response.data.report || []).map((p, i) =>
+            Object.assign({ __rowkey: p.id != null ? `s-${p.id}-${i}` : `r-${i}` }, p)
+          );
           this.paymentMethods = response.data.paymentMethods || [];
           this.warehouses = response.data.warehouses || [];
           this.totalRows = response.data.totalRows;
@@ -953,113 +761,38 @@ export default {
   created() {
     this.Seller_report(1);
   },
-  mounted() {
-    this.handleResize();
-    window.addEventListener("resize", this.handleResize);
-  },
-  beforeDestroy() {
-    window.removeEventListener("resize", this.handleResize);
-  },
 };
 </script>
 
-<style scoped>
-.rounded-xl {
-  border-radius: 1rem;
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxrl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrl__pad { padding: var(--pxn-space-6) 0; }
+.pxrl__filtercard { margin-top: var(--pxn-space-5); }
+.pxrl__filterrow { display: grid; grid-template-columns: minmax(0, 320px); gap: var(--pxn-space-4) var(--pxn-space-5); }
+.pxrl__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-sm); padding: 0 var(--pxn-space-4);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
 }
-
-.shadow-soft {
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-
-.btn-pill {
-  border-radius: 999px;
-}
-
-.w-280 {
-  width: 280px;
-  max-width: 100%;
-}
-
-.stat-card {
-  padding: 14px 16px;
-  min-height: 100px;
-  background: #fff;
-}
-
-.stat-inner {
-  display: flex;
-  align-items: center;
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: #f8f9fa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 12px;
-}
-
-.stat-icon i {
-  font-size: 22px;
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #666;
-}
-
-.stat-value {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #333;
-}
-
-.theme-blue .stat-icon {
-  color: #0b5fff;
-}
-
-.theme-teal .stat-icon {
-  color: #138f7a;
-}
-
-.theme-indigo .stat-icon {
-  color: #3949ab;
-}
-
-.theme-green .stat-icon {
-  color: #2e7d32;
-}
-
-.date-range-filter {
-  min-width: 240px;
-}
-
-.date-btn {
-  display: inline-flex;
-  align-items: center;
-}
-
-@media (max-width: 575.98px) {
-  .date-range-filter {
-    width: 100%;
-  }
-
-  .daterangepicker {
-    left: 0 !important;
-    right: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-  }
-
-  .daterangepicker .ranges,
-  .daterangepicker .drp-calendar {
-    float: none !important;
-    width: 100% !important;
-  }
-}
+.pxrl__daterange:hover { background: var(--pxn-surface-2); }
+.pxrl__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--pxn-space-4); margin-top: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxrl__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .pxrl__stats { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); margin-top: var(--pxn-space-5); }
+.pxrl__cols--87 { grid-template-columns: 2fr 1fr; }
+@media (max-width: 900px) { .pxrl__cols, .pxrl__cols--87 { grid-template-columns: minmax(0, 1fr); } }
+.pxrl__cardmeta { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxrl__ranklist { margin-top: var(--pxn-space-4); font-size: var(--pxn-fs-sm); }
+.pxrl__rankhead { display: flex; justify-content: space-between; align-items: center; padding-bottom: var(--pxn-space-2); border-bottom: 1px solid var(--pxn-border); text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxrl__rankhead span:last-child { font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); text-transform: none; letter-spacing: 0; }
+.pxrl__rankrow { display: flex; justify-content: space-between; padding: var(--pxn-space-2) 0; }
+.pxrl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxrl__totalrow { display: flex; align-items: center; justify-content: flex-end; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); flex-wrap: wrap; }
+.pxrl__totalrow > span:first-child { margin-right: auto; font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrl ::v-deep .daterangepicker { z-index: 2055 !important; }
 </style>
