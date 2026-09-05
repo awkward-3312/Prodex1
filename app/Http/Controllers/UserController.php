@@ -175,7 +175,7 @@ class UserController extends BaseController
                 $image_resize->save(public_path('/images/avatar/'.$filename));
 
             } else {
-                $filename = 'no_avatar.png';
+                $filename = random_default_tenant_avatar_filename();
             }
 
             if ($request['is_all_warehouses'] == '1' || $request['is_all_warehouses'] == 'true') {
@@ -298,7 +298,7 @@ class UserController extends BaseController
 
                 $userPhoto = $path.'/'.$currentAvatar;
                 if (file_exists($userPhoto)) {
-                    if ($user->avatar != 'no_avatar.png') {
+                    if (! is_default_tenant_avatar_filename($user->avatar)) {
                         @unlink($userPhoto);
                     }
                 }
@@ -386,7 +386,7 @@ class UserController extends BaseController
             $userPhoto = $path.'/'.$currentAvatar;
 
             if (file_exists($userPhoto)) {
-                if ($user->avatar != 'no_avatar.png') {
+                if (! is_default_tenant_avatar_filename($user->avatar)) {
                     @unlink($userPhoto);
                 }
             }

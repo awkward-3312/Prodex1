@@ -242,7 +242,7 @@ class UserAccessController extends Controller
 
     private function storeAvatar(Request $request): string
     {
-        if (! $request->hasFile('avatar')) return 'no_avatar.png';
+        if (! $request->hasFile('avatar')) return random_default_tenant_avatar_filename();
 
         $image = $request->file('avatar');
         $filename = rand(11111111, 99999999).$image->getClientOriginalName();

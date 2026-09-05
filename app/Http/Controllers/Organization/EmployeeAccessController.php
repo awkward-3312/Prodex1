@@ -195,7 +195,7 @@ class EmployeeAccessController extends Controller
                 'email' => $validated['email'],
                 'phone' => $lockedEmployee->phone,
                 'password' => Hash::make($validated['password']),
-                'avatar' => 'no_avatar.png',
+                'avatar' => random_default_tenant_avatar_filename(),
                 'role_id' => (int) $validated['role_id'],
                 'statut' => 1,
                 // Kept for legacy modules until they migrate away from warehouse scope.

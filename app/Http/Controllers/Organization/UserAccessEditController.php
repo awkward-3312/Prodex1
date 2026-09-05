@@ -288,7 +288,7 @@ class UserAccessEditController extends Controller
         $filename = rand(11111111, 99999999).$image->getClientOriginalName();
         Image::make($image->getRealPath())->resize(128, 128)->save(public_path('/images/avatar/'.$filename));
 
-        if ($user->avatar && $user->avatar !== 'no_avatar.png') {
+        if (! is_default_tenant_avatar_filename($user->avatar)) {
             $old = public_path('/images/avatar/'.$user->avatar);
             if (is_file($old)) @unlink($old);
         }
