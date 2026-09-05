@@ -1,482 +1,305 @@
 <template>
-  <div class="pf-page" :class="{ 'pf-loading': isLoading }">
-    <!-- Sticky header bar -->
-    <header class="pf-header">
-      <div class="pf-header-inner">
-        <div class="pf-header-left">
-          <button class="pf-icon-btn" @click="goBack" :title="$t('Back') || 'Back'">
-            <lucide-icon name="arrow-left" />
-          </button>
-          <div>
-            <div class="pf-eyebrow">{{ $t('Promotions') || 'Promotions' }}</div>
-            <h1 class="pf-title">
-              {{ isEdit ? ($t('EditPromotion') || 'Edit promotion') : ($t('NewPromotion') || 'New promotion') }}
-              <span v-if="isEdit && form.name" class="pf-title-sub">— {{ form.name }}</span>
-            </h1>
-          </div>
-        </div>
-        <div class="pf-header-actions">
-          <button class="pf-btn pf-btn-ghost" @click="goBack" :disabled="saving">
-            {{ $t('Cancel') || 'Cancel' }}
-          </button>
-          <button
-            class="pf-btn pf-btn-secondary"
-            @click="submit(false)"
-            :disabled="!canSave || saving"
-          >
-            <lucide-icon name="archive" />
-            {{ $t('SaveAsDraft') || 'Save as Draft' }}
-          </button>
-          <button
-            class="pf-btn pf-btn-primary"
-            @click="submit(true)"
-            :disabled="!canSave || saving"
-          >
-            <span v-if="saving" class="pf-spinner"></span>
-            <lucide-icon v-else name="check" />
-            {{ isEdit ? ($t('SaveChanges') || 'Save changes') : ($t('SaveAndActivate') || 'Save & Activate') }}
-          </button>
-        </div>
-      </div>
-    </header>
+  <div class="px-next pxpf">
+    <px-page-header
+      :title="isEdit ? ($t('EditPromotion') || 'Editar promoción') : ($t('NewPromotion') || 'Nueva promoción')"
+      :breadcrumbs="[{ label: $t('Sales') }, { label: 'Promociones' }, { label: isEdit ? ($t('Edit') || 'Editar') : ($t('Add') || 'Nueva') }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" :disabled="saving" @click="goBack">{{ $t('Cancel') || 'Cancelar' }}</px-button>
+        <px-button variant="secondary" icon="archive" :disabled="!canSave || saving" @click="submit(false)">{{ $t('SaveAsDraft') || 'Guardar borrador' }}</px-button>
+        <px-button variant="primary" icon="check" :loading="saving" :disabled="!canSave || saving" @click="submit(true)">
+          {{ isEdit ? ($t('SaveChanges') || 'Guardar cambios') : ($t('SaveAndActivate') || 'Guardar y activar') }}
+        </px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="pf-loading-state">
-      <div class="pf-spinner pf-spinner-lg"></div>
+    <div v-if="isLoading" class="pxpf__pad">
+      <px-skeleton variant="lines" :rows="10" />
     </div>
 
-    <div v-else class="pf-body">
-      <!-- Main column -->
-      <main class="pf-main">
-        <!-- Section 1: Basics -->
-        <section class="pf-card">
-          <div class="pf-card-head">
-            <div class="pf-step">1</div>
-            <div class="pf-card-headings">
-              <h2>{{ $t('Basics') || 'Basics' }}</h2>
-              <p>{{ $t('BasicsHint') || 'Give the promotion a clear name and choose its type.' }}</p>
+    <div v-else class="pxpf__body">
+      <main class="pxpf__main">
+        <!-- 1 · Basics -->
+        <px-card>
+          <template #header>
+            <div class="pxpf__sechead"><span class="pxpf__step">1</span>
+              <div><h3 class="pxpf__sectitle">{{ $t('Basics') || 'Datos básicos' }}</h3>
+              <p class="pxpf__sechint">{{ $t('BasicsHint') || 'Nombra la promoción y elige su tipo.' }}</p></div>
             </div>
-          </div>
-          <div class="pf-card-body">
-            <div class="pf-field">
-              <label>{{ $t('Name') || 'Name' }} <span class="pf-req">*</span></label>
-              <input
-                v-model="form.name"
-                :placeholder="$t('PromoNamePh') || 'e.g. Summer Weekend Special'"
-                :class="{ 'pf-input-error': fieldErrors.name }"
-              />
-              <small v-if="fieldErrors.name" class="pf-error">{{ fieldErrors.name }}</small>
-            </div>
+          </template>
 
-            <div class="pf-grid-2">
-              <div class="pf-field">
-                <label>{{ $t('Type') || 'Type' }}</label>
-                <div class="pf-segment">
-                  <button
-                    type="button"
-                    :class="{ active: form.kind === 'discount' }"
-                    @click="form.kind = 'discount'"
-                  >
-                    <lucide-icon name="percent" />
-                    {{ $t('Discount') || 'Discount' }}
-                  </button>
-                  <button
-                    type="button"
-                    :class="{ active: form.kind === 'promotion' }"
-                    @click="form.kind = 'promotion'"
-                  >
-                    <lucide-icon name="gift" />
-                    {{ $t('Promotion') || 'Promotion' }}
-                  </button>
-                </div>
-                <small class="pf-help">{{
-                  form.kind === 'discount'
-                    ? ($t('DiscountKindHint') || 'Unconditional reduction that auto-applies.')
-                    : ($t('PromotionKindHint') || 'Conditional offer; usually paired with a code.')
-                }}</small>
-              </div>
+          <px-field :label="$t('Name') || 'Nombre'" required :error="fieldErrors.name">
+            <template #default="{ id }">
+              <px-input :id="id" v-model="form.name" :placeholder="$t('PromoNamePh') || 'Ej. Especial fin de semana'" />
+            </template>
+          </px-field>
 
-              <div class="pf-field">
-                <label>{{ $t('Code') || 'Code' }} <span class="pf-optional">{{ $t('Optional') || 'optional' }}</span></label>
-                <input
-                  v-model="form.code"
-                  class="pf-input-mono"
+          <div class="pxpf__grid2 pxpf__mt">
+            <px-field :label="$t('Type') || 'Tipo'">
+              <template #default>
+                <px-tabs variant="pill" :tabs="kindTabs" :value="form.kind" @input="form.kind = $event" />
+                <p class="pxpf__hint">{{ form.kind === 'discount' ? ($t('DiscountKindHint') || 'Reducción automática sin condiciones.') : ($t('PromotionKindHint') || 'Oferta condicional; normalmente con código.') }}</p>
+              </template>
+            </px-field>
+            <px-field :label="$t('Code') || 'Código'" :optional="true">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="form.code" class="pxn-mono"
                   :placeholder="$t('CodePh') || 'SUMMER15'"
-                  @input="form.code = form.code.toUpperCase().replace(/\s+/g, '')"
-                />
-                <small class="pf-help">
-                  {{ $t('CodeHint') || 'If set, customers must enter this code at checkout.' }}
-                </small>
-              </div>
-            </div>
+                  @input="form.code = (form.code || '').toUpperCase().replace(/\s+/g, '')" />
+                <p class="pxpf__hint">{{ $t('CodeHint') || 'Si se define, el cliente debe introducirlo al pagar.' }}</p>
+              </template>
+            </px-field>
+          </div>
 
-            <div class="pf-field">
-              <label>{{ $t('Description') || 'Description' }}</label>
-              <textarea
-                v-model="form.description"
-                rows="2"
-                :placeholder="$t('DescriptionPh') || 'A short note for staff or receipts.'"
-              ></textarea>
-            </div>
-          </div>
-        </section>
+          <px-field :label="$t('Description') || 'Descripción'" class="pxpf__mt">
+            <template #default="{ id }">
+              <px-textarea :id="id" v-model="form.description" :rows="2" :placeholder="$t('DescriptionPh') || 'Nota breve para el personal o el recibo.'" />
+            </template>
+          </px-field>
+        </px-card>
 
-        <!-- Section 2: Discount value -->
-        <section class="pf-card">
-          <div class="pf-card-head">
-            <div class="pf-step">2</div>
-            <div class="pf-card-headings">
-              <h2>{{ $t('DiscountValue') || 'Discount value' }}</h2>
-              <p>{{ $t('DiscountValueHint') || 'How much to take off the cart.' }}</p>
+        <!-- 2 · Discount value -->
+        <px-card>
+          <template #header>
+            <div class="pxpf__sechead"><span class="pxpf__step">2</span>
+              <div><h3 class="pxpf__sectitle">{{ $t('DiscountValue') || 'Valor del descuento' }}</h3>
+              <p class="pxpf__sechint">{{ $t('DiscountValueHint') || 'Cuánto se descuenta del carrito.' }}</p></div>
             </div>
-          </div>
-          <div class="pf-card-body">
-            <div class="pf-grid-2">
-              <div class="pf-field">
-                <label>{{ $t('DiscountType') || 'Discount type' }}</label>
-                <div class="pf-segment">
-                  <button
-                    type="button"
-                    :class="{ active: form.discount_type === 'percentage' }"
-                    @click="form.discount_type = 'percentage'"
-                  >% {{ $t('Percentage') || 'Percentage' }}</button>
-                  <button
-                    type="button"
-                    :class="{ active: form.discount_type === 'fixed' }"
-                    @click="form.discount_type = 'fixed'"
-                  >{{ currencySymbol || '$' }} {{ $t('Fixed') || 'Fixed' }}</button>
-                </div>
-              </div>
-              <div class="pf-field">
-                <label>{{ $t('Value') || 'Value' }} <span class="pf-req">*</span></label>
-                <div class="pf-input-affix">
-                  <span class="pf-prefix" v-if="form.discount_type === 'fixed'">{{ currencySymbol || '$' }}</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    v-model.number="form.discount_value"
-                    :placeholder="form.discount_type === 'percentage' ? '15' : '10.00'"
-                    :class="{ 'pf-input-error': fieldErrors.discount_value }"
-                  />
-                  <span class="pf-suffix" v-if="form.discount_type === 'percentage'">%</span>
-                </div>
-                <small v-if="fieldErrors.discount_value" class="pf-error">{{ fieldErrors.discount_value }}</small>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Section 3: Validity -->
-        <section class="pf-card">
-          <div class="pf-card-head">
-            <div class="pf-step">3</div>
-            <div class="pf-card-headings">
-              <h2>{{ $t('Validity') || 'Validity' }}</h2>
-              <p>{{ $t('ValidityHint') || 'When the promotion is honored.' }}</p>
-            </div>
-          </div>
-          <div class="pf-card-body">
-            <div class="pf-grid-2">
-              <div class="pf-field">
-                <label>{{ $t('StartsAt') || 'Starts at' }} <span class="pf-optional">{{ $t('Optional') || 'optional' }}</span></label>
-                <input type="datetime-local" v-model="form.starts_at" />
-              </div>
-              <div class="pf-field">
-                <label>{{ $t('EndsAt') || 'Ends at' }} <span class="pf-optional">{{ $t('Optional') || 'optional' }}</span></label>
-                <input type="datetime-local" v-model="form.ends_at" />
-              </div>
-            </div>
-
-            <div class="pf-toggle-row">
-              <label class="pf-toggle">
-                <input type="checkbox" v-model="restrictHours" />
-                <span class="pf-toggle-track"><span class="pf-toggle-thumb"></span></span>
-                <span class="pf-toggle-label">{{ $t('RestrictHours') || 'Restrict to specific hours of the day' }}</span>
-              </label>
-            </div>
-            <div class="pf-grid-2" v-if="restrictHours">
-              <div class="pf-field">
-                <label>{{ $t('FromTime') || 'From time' }}</label>
-                <input type="time" v-model="form.time_of_day_start" step="1" />
-              </div>
-              <div class="pf-field">
-                <label>{{ $t('ToTime') || 'To time' }}</label>
-                <input type="time" v-model="form.time_of_day_end" step="1" />
-                <small class="pf-help">{{ $t('HoursCrossMidnightHint') || 'Times can cross midnight (e.g. 22:00 → 02:00).' }}</small>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Section 4: Conditions -->
-        <section class="pf-card">
-          <div class="pf-card-head">
-            <div class="pf-step">4</div>
-            <div class="pf-card-headings">
-              <h2>{{ $t('Conditions') || 'Conditions' }}</h2>
-              <p>{{ $t('ConditionsHint') || 'Minimum requirements before the promotion kicks in.' }}</p>
-            </div>
-          </div>
-          <div class="pf-card-body">
-            <div class="pf-grid-2">
-              <div class="pf-field">
-                <label>{{ $t('MinCartTotal') || 'Minimum cart total' }}</label>
-                <div class="pf-input-affix">
-                  <span class="pf-prefix">{{ currencySymbol || '$' }}</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    v-model.number="form.min_cart_total"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-              <div class="pf-field">
-                <label>{{ $t('MinItemCount') || 'Minimum item count' }}</label>
-                <input
+          </template>
+          <div class="pxpf__grid2">
+            <px-field :label="$t('DiscountType') || 'Tipo de descuento'">
+              <template #default>
+                <px-tabs variant="pill" :tabs="discountTypeTabs" :value="form.discount_type" @input="form.discount_type = $event" />
+              </template>
+            </px-field>
+            <px-field :label="$t('Value') || 'Valor'" required :error="fieldErrors.discount_value">
+              <template #default="{ id }">
+                <px-input
+                  :id="id"
                   type="number"
+                  step="0.01"
                   min="0"
-                  v-model.number="form.min_item_count"
-                  placeholder="0"
+                  v-model.number="form.discount_value"
+                  :prefix="form.discount_type === 'fixed' ? (currencySymbol || '$') : null"
+                  :suffix="form.discount_type === 'percentage' ? '%' : null"
+                  :placeholder="form.discount_type === 'percentage' ? '15' : '10.00'"
                 />
-              </div>
-            </div>
+              </template>
+            </px-field>
+          </div>
+        </px-card>
 
-            <div class="pf-field">
-              <label>{{ $t('ProductScope') || 'Product scope' }}</label>
-              <div class="pf-radio-grid">
-                <label class="pf-radio-card" :class="{ active: form.product_scope === 'all' }">
+        <!-- 3 · Validity -->
+        <px-card>
+          <template #header>
+            <div class="pxpf__sechead"><span class="pxpf__step">3</span>
+              <div><h3 class="pxpf__sectitle">{{ $t('Validity') || 'Vigencia' }}</h3>
+              <p class="pxpf__sechint">{{ $t('ValidityHint') || 'Cuándo se aplica la promoción.' }}</p></div>
+            </div>
+          </template>
+          <div class="pxpf__grid2">
+            <px-field :label="$t('StartsAt') || 'Inicia'" :optional="true">
+              <template #default="{ id }"><px-input :id="id" type="datetime-local" v-model="form.starts_at" /></template>
+            </px-field>
+            <px-field :label="$t('EndsAt') || 'Finaliza'" :optional="true">
+              <template #default="{ id }"><px-input :id="id" type="datetime-local" v-model="form.ends_at" /></template>
+            </px-field>
+          </div>
+          <label class="pxpf__switch pxpf__mt">
+            <px-check type="switch" v-model="restrictHours" />
+            {{ $t('RestrictHours') || 'Restringir a horas específicas del día' }}
+          </label>
+          <div class="pxpf__grid2 pxpf__mt" v-if="restrictHours">
+            <px-field :label="$t('FromTime') || 'Desde'">
+              <template #default="{ id }"><px-input :id="id" type="time" v-model="form.time_of_day_start" step="1" /></template>
+            </px-field>
+            <px-field :label="$t('ToTime') || 'Hasta'">
+              <template #default="{ id }">
+                <px-input :id="id" type="time" v-model="form.time_of_day_end" step="1" />
+                <p class="pxpf__hint">{{ $t('HoursCrossMidnightHint') || 'Los horarios pueden cruzar la medianoche (p. ej. 22:00 → 02:00).' }}</p>
+              </template>
+            </px-field>
+          </div>
+        </px-card>
+
+        <!-- 4 · Conditions -->
+        <px-card>
+          <template #header>
+            <div class="pxpf__sechead"><span class="pxpf__step">4</span>
+              <div><h3 class="pxpf__sectitle">{{ $t('Conditions') || 'Condiciones' }}</h3>
+              <p class="pxpf__sechint">{{ $t('ConditionsHint') || 'Requisitos mínimos para que aplique la promoción.' }}</p></div>
+            </div>
+          </template>
+          <div class="pxpf__grid2">
+            <px-field :label="$t('MinCartTotal') || 'Total mínimo del carrito'">
+              <template #default="{ id }">
+                <px-input :id="id" type="number" step="0.01" min="0" v-model.number="form.min_cart_total" :prefix="currencySymbol || '$'" placeholder="0.00" />
+              </template>
+            </px-field>
+            <px-field :label="$t('MinItemCount') || 'Cantidad mínima de artículos'">
+              <template #default="{ id }">
+                <px-input :id="id" type="number" min="0" v-model.number="form.min_item_count" placeholder="0" />
+              </template>
+            </px-field>
+          </div>
+
+          <px-field :label="$t('ProductScope') || 'Alcance de productos'" class="pxpf__mt">
+            <template #default>
+              <div class="pxpf__radiogrid">
+                <label class="pxpf__radiocard" :class="{ 'is-active': form.product_scope === 'all' }">
                   <input type="radio" v-model="form.product_scope" value="all" />
-                  <div class="pf-radio-card-icon"><lucide-icon name="package" /></div>
-                  <div>
-                    <div class="pf-radio-card-title">{{ $t('AllProducts') || 'All products' }}</div>
-                    <div class="pf-radio-card-sub">{{ $t('AllProductsHint') || 'Applies to every item in the cart.' }}</div>
-                  </div>
+                  <lucide-icon name="package" :size="18" />
+                  <div><div class="pxpf__radiocard-t">{{ $t('AllProducts') || 'Todos los productos' }}</div>
+                  <div class="pxpf__radiocard-s">{{ $t('AllProductsHint') || 'Aplica a cada artículo del carrito.' }}</div></div>
                 </label>
-                <label class="pf-radio-card" :class="{ active: form.product_scope === 'specific' }">
+                <label class="pxpf__radiocard" :class="{ 'is-active': form.product_scope === 'specific' }">
                   <input type="radio" v-model="form.product_scope" value="specific" />
-                  <div class="pf-radio-card-icon"><lucide-icon name="package-search" /></div>
-                  <div>
-                    <div class="pf-radio-card-title">{{ $t('SpecificProducts') || 'Specific products' }}</div>
-                    <div class="pf-radio-card-sub">{{ $t('SpecificProductsHint') || 'Only triggers when one of these is in the cart.' }}</div>
-                  </div>
+                  <lucide-icon name="package-search" :size="18" />
+                  <div><div class="pxpf__radiocard-t">{{ $t('SpecificProducts') || 'Productos específicos' }}</div>
+                  <div class="pxpf__radiocard-s">{{ $t('SpecificProductsHint') || 'Solo se activa si uno de estos está en el carrito.' }}</div></div>
                 </label>
               </div>
-            </div>
+            </template>
+          </px-field>
 
-            <div v-if="form.product_scope === 'specific'" class="pf-field">
-              <label>
-                {{ $t('Products') || 'Products' }}
-                <span class="pf-count-badge" v-if="form.product_ids.length">{{ form.product_ids.length }}</span>
-              </label>
-              <div class="pf-product-picker">
-                <div class="pf-product-search">
-                  <lucide-icon name="search" />
-                  <input
-                    v-model="productSearch"
-                    :placeholder="$t('SearchProducts') || 'Search products…'"
-                  />
+          <px-field v-if="form.product_scope === 'specific'" class="pxpf__mt">
+            <template #label>
+              {{ $t('Products') || 'Productos' }}
+              <span v-if="form.product_ids.length" class="pxpf__countbadge">{{ form.product_ids.length }}</span>
+            </template>
+            <template #default>
+              <div class="pxpf__picker">
+                <div class="pxpf__picker-search">
+                  <lucide-icon name="search" :size="15" />
+                  <input v-model="productSearch" :placeholder="$t('SearchProducts') || 'Buscar productos…'" />
                 </div>
-                <div class="pf-product-list">
+                <div class="pxpf__picker-list pxn-scroll">
                   <label
                     v-for="p in filteredProducts.slice(0, 100)"
                     :key="p.id"
-                    class="pf-product-item"
-                    :class="{ active: form.product_ids.includes(p.id) }"
+                    class="pxpf__picker-item"
+                    :class="{ 'is-active': form.product_ids.includes(p.id) }"
                   >
-                    <input
-                      type="checkbox"
-                      :value="p.id"
-                      v-model="form.product_ids"
-                    />
-                    <div class="pf-product-info">
-                      <div class="pf-product-name">{{ p.name }}</div>
-                      <div class="pf-product-code">{{ p.code }}</div>
-                    </div>
+                    <input type="checkbox" :value="p.id" v-model="form.product_ids" />
+                    <div><div class="pxpf__picker-name">{{ p.name }}</div>
+                    <div class="pxpf__picker-code pxn-mono">{{ p.code }}</div></div>
                   </label>
-                  <div v-if="filteredProducts.length === 0" class="pf-empty">
-                    {{ $t('NoProductsFound') || 'No products match your search.' }}
-                  </div>
-                  <div v-else-if="filteredProducts.length > 100" class="pf-empty">
-                    {{ $t('TooManyResults') || 'Showing first 100 — refine the search to see more.' }}
-                  </div>
+                  <div v-if="filteredProducts.length === 0" class="pxpf__pickerempty">{{ $t('NoProductsFound') || 'Ningún producto coincide con la búsqueda.' }}</div>
+                  <div v-else-if="filteredProducts.length > 100" class="pxpf__pickerempty">{{ $t('TooManyResults') || 'Mostrando los primeros 100 — refina la búsqueda.' }}</div>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
+            </template>
+          </px-field>
+        </px-card>
 
-        <!-- Section 5: Warehouses -->
-        <section class="pf-card">
-          <div class="pf-card-head">
-            <div class="pf-step">5</div>
-            <div class="pf-card-headings">
-              <h2>{{ $t('Warehouses') || 'Warehouses' }}</h2>
-              <p>{{ $t('WarehousesHint') || 'Where this promotion is honored.' }}</p>
+        <!-- 5 · Warehouses -->
+        <px-card>
+          <template #header>
+            <div class="pxpf__sechead"><span class="pxpf__step">5</span>
+              <div><h3 class="pxpf__sectitle">{{ $t('Warehouses') || 'Almacenes' }}</h3>
+              <p class="pxpf__sechint">{{ $t('WarehousesHint') || 'Dónde se aplica esta promoción.' }}</p></div>
             </div>
-            <button
-              v-if="warehouses.length"
-              type="button"
-              class="pf-link-btn"
-              @click="toggleAllWarehouses"
+          </template>
+          <template #actions>
+            <px-button v-if="warehouses.length" size="sm" variant="ghost" @click="toggleAllWarehouses">
+              {{ allWarehousesSelected ? ($t('Deselect_all') || 'Deseleccionar todo') : ($t('Select_all') || 'Seleccionar todo') }}
+            </px-button>
+          </template>
+          <div class="pxpf__whgrid" v-if="warehouses.length">
+            <label
+              v-for="w in warehouses"
+              :key="w.id"
+              class="pxpf__whcard"
+              :class="{ 'is-active': form.warehouse_ids.includes(w.id) }"
             >
-              {{ allWarehousesSelected ? ($t('Deselect_all') || 'Deselect all') : ($t('Select_all') || 'Select all') }}
-            </button>
+              <input type="checkbox" :value="w.id" v-model="form.warehouse_ids" />
+              <lucide-icon name="store" :size="16" />
+              <div><div class="pxpf__whcard-n">{{ w.name }}</div>
+              <div class="pxpf__whcard-s">{{ [w.city, w.country].filter(Boolean).join(', ') || '—' }}</div></div>
+              <lucide-icon name="check" :size="15" class="pxpf__whcard-chk" />
+            </label>
           </div>
-          <div class="pf-card-body">
-            <div class="pf-warehouse-grid" v-if="warehouses.length">
-              <label
-                v-for="w in warehouses"
-                :key="w.id"
-                class="pf-warehouse-card"
-                :class="{ active: form.warehouse_ids.includes(w.id) }"
-              >
-                <input type="checkbox" :value="w.id" v-model="form.warehouse_ids" />
-                <div class="pf-warehouse-icon">
-                  <lucide-icon name="store" />
-                </div>
-                <div class="pf-warehouse-info">
-                  <div class="pf-warehouse-name">{{ w.name }}</div>
-                  <div class="pf-warehouse-sub">{{ [w.city, w.country].filter(Boolean).join(', ') || '—' }}</div>
-                </div>
-                <div class="pf-warehouse-check">
-                  <lucide-icon name="check" />
-                </div>
-              </label>
-            </div>
-            <div v-else class="pf-empty">{{ $t('NoWarehousesYet') || 'No warehouses configured yet.' }}</div>
-          </div>
-        </section>
+          <div v-else class="pxpf__pickerempty">{{ $t('NoWarehousesYet') || 'Aún no hay almacenes configurados.' }}</div>
+        </px-card>
 
-        <!-- Section 6: Stacking & limits -->
-        <section class="pf-card">
-          <div class="pf-card-head">
-            <div class="pf-step">6</div>
-            <div class="pf-card-headings">
-              <h2>{{ $t('StackingAndLimits') || 'Stacking & limits' }}</h2>
-              <p>{{ $t('StackingHint') || 'How this competes with other promotions, and how often it can be used.' }}</p>
+        <!-- 6 · Stacking & limits -->
+        <px-card>
+          <template #header>
+            <div class="pxpf__sechead"><span class="pxpf__step">6</span>
+              <div><h3 class="pxpf__sectitle">{{ $t('StackingAndLimits') || 'Combinación y límites' }}</h3>
+              <p class="pxpf__sechint">{{ $t('StackingHint') || 'Cómo compite con otras promociones y con qué frecuencia se usa.' }}</p></div>
             </div>
-          </div>
-          <div class="pf-card-body">
-            <div class="pf-grid-2">
-              <div class="pf-field">
-                <label>{{ $t('Priority') || 'Priority' }}</label>
-                <input type="number" v-model.number="form.priority" placeholder="0" />
-                <small class="pf-help">{{ $t('HigherWins') || 'Higher priority wins when promotions overlap.' }}</small>
-              </div>
-              <div class="pf-field">
-                <label>{{ $t('Stackable') || 'Stackable' }}</label>
-                <label class="pf-toggle">
-                  <input type="checkbox" v-model="form.stackable" />
-                  <span class="pf-toggle-track"><span class="pf-toggle-thumb"></span></span>
-                  <span class="pf-toggle-label">
-                    {{ form.stackable ? ($t('YesStacksWithOthers') || 'Yes — stacks with other stackable promotions') : ($t('NoExclusive') || 'No — exclusive (only this one wins)') }}
-                  </span>
+          </template>
+          <div class="pxpf__grid2">
+            <px-field :label="$t('Priority') || 'Prioridad'">
+              <template #default="{ id }">
+                <px-input :id="id" type="number" v-model.number="form.priority" placeholder="0" />
+                <p class="pxpf__hint">{{ $t('HigherWins') || 'La mayor prioridad gana cuando se solapan promociones.' }}</p>
+              </template>
+            </px-field>
+            <px-field :label="$t('Stackable') || 'Combinable'">
+              <template #default>
+                <label class="pxpf__switch">
+                  <px-check type="switch" v-model="form.stackable" />
+                  {{ form.stackable ? ($t('YesStacksWithOthers') || 'Sí — se combina con otras promociones combinables') : ($t('NoExclusive') || 'No — exclusiva (solo gana esta)') }}
                 </label>
-              </div>
-            </div>
-            <div class="pf-grid-2">
-              <div class="pf-field">
-                <label>{{ $t('UsageLimitTotal') || 'Total usage limit' }}</label>
-                <input
-                  type="number"
-                  min="0"
-                  v-model.number="form.usage_limit_total"
-                  :placeholder="$t('Unlimited') || 'Unlimited'"
-                />
-                <small class="pf-help">{{ $t('LeaveBlankUnlimited') || 'Leave blank for unlimited.' }}</small>
-              </div>
-              <div class="pf-field">
-                <label>{{ $t('UsageLimitPerCustomer') || 'Per-customer limit' }}</label>
-                <input
-                  type="number"
-                  min="0"
-                  v-model.number="form.usage_limit_per_customer"
-                  :placeholder="$t('Unlimited') || 'Unlimited'"
-                />
-                <small class="pf-help">{{ $t('LeaveBlankUnlimited') || 'Leave blank for unlimited.' }}</small>
-              </div>
-            </div>
+              </template>
+            </px-field>
           </div>
-        </section>
+          <div class="pxpf__grid2 pxpf__mt">
+            <px-field :label="$t('UsageLimitTotal') || 'Límite total de usos'">
+              <template #default="{ id }">
+                <px-input :id="id" type="number" min="0" v-model.number="form.usage_limit_total" :placeholder="$t('Unlimited') || 'Ilimitado'" />
+                <p class="pxpf__hint">{{ $t('LeaveBlankUnlimited') || 'Déjalo en blanco para ilimitado.' }}</p>
+              </template>
+            </px-field>
+            <px-field :label="$t('UsageLimitPerCustomer') || 'Límite por cliente'">
+              <template #default="{ id }">
+                <px-input :id="id" type="number" min="0" v-model.number="form.usage_limit_per_customer" :placeholder="$t('Unlimited') || 'Ilimitado'" />
+                <p class="pxpf__hint">{{ $t('LeaveBlankUnlimited') || 'Déjalo en blanco para ilimitado.' }}</p>
+              </template>
+            </px-field>
+          </div>
+        </px-card>
       </main>
 
-      <!-- Side preview -->
-      <aside class="pf-side">
-        <div class="pf-side-sticky">
-          <!-- Live preview card -->
-          <section class="pf-preview-card">
-            <div class="pf-preview-tag">{{ $t('Preview') || 'Preview' }}</div>
-            <div class="pf-preview-discount">
-              <div class="pf-preview-value-row">
-                <span class="pf-preview-value">{{ previewValue }}</span>
-                <span class="pf-preview-off">OFF</span>
-              </div>
+      <aside class="pxpf__side">
+        <div class="pxpf__sticky">
+          <px-card class="pxpf__preview">
+            <div class="pxpf__preview-tag">{{ $t('Preview') || 'Vista previa' }}</div>
+            <div class="pxpf__preview-val">
+              <span class="pxpf__preview-num">{{ previewValue }}</span>
+              <span class="pxpf__preview-off">OFF</span>
             </div>
-            <div class="pf-preview-body">
-              <div class="pf-preview-name">{{ form.name || ($t('UntitledPromotion') || 'Untitled promotion') }}</div>
-              <div class="pf-preview-desc" v-if="form.description">{{ form.description }}</div>
-              <div class="pf-preview-meta">
-                <span class="pf-tag pf-tag-kind" :data-kind="form.kind">{{ form.kind === 'discount' ? $t('Discount') : $t('Promotion') }}</span>
-                <span class="pf-tag pf-tag-code" v-if="form.code">{{ form.code }}</span>
-                <span class="pf-tag" :class="form.is_active ? 'pf-tag-active' : 'pf-tag-draft'">
-                  {{ form.is_active ? ($t('Active') || 'Active') : ($t('Draft') || 'Draft') }}
-                </span>
-              </div>
+            <div class="pxpf__preview-name">{{ form.name || ($t('UntitledPromotion') || 'Promoción sin título') }}</div>
+            <div class="pxpf__preview-desc" v-if="form.description">{{ form.description }}</div>
+            <div class="pxpf__preview-meta">
+              <px-badge :tone="form.kind === 'discount' ? 'info' : 'success'">{{ form.kind === 'discount' ? ($t('Discount') || 'Descuento') : ($t('Promotion') || 'Promoción') }}</px-badge>
+              <px-badge v-if="form.code" tone="neutral">{{ form.code }}</px-badge>
+              <px-badge :tone="form.is_active ? 'success' : 'neutral'">{{ form.is_active ? ($t('Active') || 'Activa') : ($t('Draft') || 'Borrador') }}</px-badge>
             </div>
-          </section>
+          </px-card>
 
-          <!-- Applies at -->
-          <section class="pf-side-card">
-            <div class="pf-side-card-head">
-              <lucide-icon name="map-pin" />
-              <h4>{{ $t('AppliesAt') || 'Applies at' }}</h4>
-              <span class="pf-side-count">{{ selectedWarehouseObjects.length }}</span>
+          <px-card :title="$t('AppliesAt') || 'Se aplica en'">
+            <template #actions><span class="pxpf__sidecount">{{ selectedWarehouseObjects.length }}</span></template>
+            <div class="pxpf__chips" v-if="selectedWarehouseObjects.length">
+              <px-badge v-for="w in selectedWarehouseObjects" :key="w.id" tone="neutral">{{ w.name }}</px-badge>
             </div>
-            <div class="pf-chips" v-if="selectedWarehouseObjects.length">
-              <span v-for="w in selectedWarehouseObjects" :key="w.id" class="pf-chip">{{ w.name }}</span>
-            </div>
-            <p v-else class="pf-empty-mini">{{ $t('PickAtLeastOne') || 'Pick at least one warehouse.' }}</p>
-          </section>
+            <p v-else class="pxpf__hint">{{ $t('PickAtLeastOne') || 'Elige al menos un almacén.' }}</p>
+          </px-card>
 
-          <!-- Validity summary -->
-          <section class="pf-side-card">
-            <div class="pf-side-card-head">
-              <lucide-icon name="calendar" />
-              <h4>{{ $t('Validity') || 'Validity' }}</h4>
+          <px-card :title="$t('Validity') || 'Vigencia'">
+            <div class="pxpf__sumline"><span>{{ $t('Window') || 'Ventana' }}</span><span>{{ validityWindowLabel }}</span></div>
+            <div class="pxpf__sumline" v-if="restrictHours && (form.time_of_day_start || form.time_of_day_end)">
+              <span>{{ $t('Hours') || 'Horas' }}</span><span>{{ form.time_of_day_start || '00:00:00' }} → {{ form.time_of_day_end || '23:59:59' }}</span>
             </div>
-            <div class="pf-summary-line">
-              <span class="pf-summary-label">{{ $t('Window') || 'Window' }}</span>
-              <span class="pf-summary-value">{{ validityWindowLabel }}</span>
-            </div>
-            <div class="pf-summary-line" v-if="restrictHours && (form.time_of_day_start || form.time_of_day_end)">
-              <span class="pf-summary-label">{{ $t('Hours') || 'Hours' }}</span>
-              <span class="pf-summary-value">{{ form.time_of_day_start || '00:00:00' }} → {{ form.time_of_day_end || '23:59:59' }}</span>
-            </div>
-          </section>
+          </px-card>
 
-          <!-- Conditions summary -->
-          <section class="pf-side-card">
-            <div class="pf-side-card-head">
-              <lucide-icon name="filter" />
-              <h4>{{ $t('Conditions') || 'Conditions' }}</h4>
-            </div>
-            <div class="pf-summary-line">
-              <span class="pf-summary-label">{{ $t('Cart') || 'Cart' }}</span>
-              <span class="pf-summary-value">{{ form.min_cart_total ? '≥ ' + (currencySymbol || '$') + ' ' + form.min_cart_total : ($t('Any') || 'Any') }}</span>
-            </div>
-            <div class="pf-summary-line">
-              <span class="pf-summary-label">{{ $t('Items') || 'Items' }}</span>
-              <span class="pf-summary-value">{{ form.min_item_count ? '≥ ' + form.min_item_count : ($t('Any') || 'Any') }}</span>
-            </div>
-            <div class="pf-summary-line">
-              <span class="pf-summary-label">{{ $t('Scope') || 'Scope' }}</span>
-              <span class="pf-summary-value">
-                {{ form.product_scope === 'specific' ? (($t('NProducts') || '{n} products').replace('{n}', form.product_ids.length)) : ($t('AllProducts') || 'All products') }}
-              </span>
-            </div>
-          </section>
+          <px-card :title="$t('Conditions') || 'Condiciones'">
+            <div class="pxpf__sumline"><span>{{ $t('Cart') || 'Carrito' }}</span><span>{{ form.min_cart_total ? '≥ ' + (currencySymbol || '$') + ' ' + form.min_cart_total : ($t('Any') || 'Cualquiera') }}</span></div>
+            <div class="pxpf__sumline"><span>{{ $t('Items') || 'Artículos' }}</span><span>{{ form.min_item_count ? '≥ ' + form.min_item_count : ($t('Any') || 'Cualquiera') }}</span></div>
+            <div class="pxpf__sumline"><span>{{ $t('Scope') || 'Alcance' }}</span><span>{{ form.product_scope === 'specific' ? (($t('NProducts') || '{n} productos').replace('{n}', form.product_ids.length)) : ($t('AllProducts') || 'Todos los productos') }}</span></div>
+          </px-card>
         </div>
       </aside>
     </div>
@@ -486,6 +309,15 @@
 <script>
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxTabs from "@/components/px-next/PxTabs.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
 
 const emptyForm = () => ({
   id: null,
@@ -513,6 +345,9 @@ const emptyForm = () => ({
 
 export default {
   metaInfo: { title: "Promoción" },
+  components: {
+    PxPageHeader, PxCard, PxField, PxInput, PxTextarea, PxTabs, PxCheck, PxButton, PxBadge
+  },
 
   data() {
     return {
@@ -534,6 +369,18 @@ export default {
     },
     isEdit() {
       return !!this.$route.params.id;
+    },
+    kindTabs() {
+      return [
+        { value: "discount", label: this.$t("Discount") || "Descuento", icon: "percent" },
+        { value: "promotion", label: this.$t("Promotion") || "Promoción", icon: "gift" }
+      ];
+    },
+    discountTypeTabs() {
+      return [
+        { value: "percentage", label: (this.$t("Percentage") || "Porcentaje"), icon: "percent" },
+        { value: "fixed", label: (this.currencySymbol || "$") + " " + (this.$t("Fixed") || "Fijo") }
+      ];
     },
     canSave() {
       return !!(this.form.name && this.form.name.trim()) && Number(this.form.discount_value) >= 0;
@@ -563,9 +410,9 @@ export default {
     validityWindowLabel() {
       const f = this.form.starts_at ? this.form.starts_at.replace("T", " ").substring(0, 16) : null;
       const t = this.form.ends_at ? this.form.ends_at.replace("T", " ").substring(0, 16) : null;
-      if (!f && !t) return this.$t("Always") || "Always";
-      if (f && !t) return (this.$t("From") || "From") + " " + f;
-      if (!f && t) return (this.$t("Until") || "Until") + " " + t;
+      if (!f && !t) return this.$t("Always") || "Siempre";
+      if (f && !t) return (this.$t("From") || "Desde") + " " + f;
+      if (!f && t) return (this.$t("Until") || "Hasta") + " " + t;
       return f + " → " + t;
     }
   },
@@ -636,10 +483,10 @@ export default {
     validate() {
       this.fieldErrors = {};
       if (!this.form.name || !this.form.name.trim()) {
-        this.fieldErrors.name = this.$t("FieldRequired") || "Required";
+        this.fieldErrors.name = this.$t("FieldRequired") || "Requerido";
       }
       if (Number(this.form.discount_value) < 0) {
-        this.fieldErrors.discount_value = this.$t("MustBePositive") || "Must be ≥ 0";
+        this.fieldErrors.discount_value = this.$t("MustBePositive") || "Debe ser ≥ 0";
       }
       return Object.keys(this.fieldErrors).length === 0;
     },
@@ -754,840 +601,94 @@ export default {
 };
 </script>
 
-<style scoped>
-/* ---------------- Page shell ---------------- */
-.pf-page {
-  background: #f5f6fa;
-  min-height: calc(100vh - 60px);
-  padding-bottom: 40px;
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxpf { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxpf { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxpf__pad { padding: var(--pxn-space-6) 0; }
+
+.pxpf__body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--pxn-space-6); margin-top: var(--pxn-space-6); }
+@media (max-width: 1080px) { .pxpf__body { grid-template-columns: minmax(0, 1fr); } }
+.pxpf__main { min-width: 0; display: flex; flex-direction: column; gap: var(--pxn-space-6); }
+
+.pxpf__sechead { display: flex; align-items: flex-start; gap: var(--pxn-space-4); }
+.pxpf__step {
+  flex: none; display: grid; place-items: center; width: 26px; height: 26px;
+  border-radius: 50%; background: var(--pxn-primary-soft); color: var(--pxn-primary-ink);
+  font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-bold);
 }
-.pf-loading-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 0;
+.pxpf__sectitle { font-size: var(--pxn-fs-h3); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxpf__sechint { margin: 2px 0 0; font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
+
+.pxpf__grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--pxn-space-5) var(--pxn-space-6); }
+@media (max-width: 640px) { .pxpf__grid2 { grid-template-columns: 1fr; } }
+.pxpf__mt { margin-top: var(--pxn-space-5); }
+.pxpf__hint { margin: var(--pxn-space-2) 0 0; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxpf__switch { display: flex; align-items: center; gap: var(--pxn-space-3); font-size: var(--pxn-fs-body); color: var(--pxn-ink-2); cursor: pointer; }
+.pxpf__countbadge {
+  display: inline-block; margin-left: var(--pxn-space-2); padding: 0 var(--pxn-space-2);
+  border-radius: var(--pxn-radius-pill); background: var(--pxn-primary-soft); color: var(--pxn-primary-ink);
+  font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold);
 }
 
-/* ---------------- Header ---------------- */
-.pf-header {
-  position: sticky;
-  top: 0;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: saturate(180%) blur(10px);
-  border-bottom: 1px solid #ececf2;
-  z-index: 10;
+.pxpf__radiogrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--pxn-space-4); }
+@media (max-width: 640px) { .pxpf__radiogrid { grid-template-columns: 1fr; } }
+.pxpf__radiocard {
+  display: flex; align-items: flex-start; gap: var(--pxn-space-3);
+  padding: var(--pxn-space-4); border: 1px solid var(--pxn-border-control);
+  border-radius: var(--pxn-radius-md); cursor: pointer;
+  transition: border-color var(--pxn-dur-1) var(--pxn-ease), background-color var(--pxn-dur-1) var(--pxn-ease);
 }
-.pf-header-inner {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 14px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-.pf-header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-.pf-icon-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: #f0f0f7;
-  border: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s;
-  color: #54546a;
-}
-.pf-icon-btn:hover {
-  background: #e6e6f0;
-  color: #1f1f2c;
-}
-.pf-eyebrow {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #8d8da0;
-  margin-bottom: 2px;
-}
-.pf-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1f1f2c;
-  margin: 0;
-  line-height: 1.2;
-}
-.pf-title-sub {
-  color: #8d8da0;
-  font-weight: 500;
-  margin-left: 6px;
-}
-.pf-header-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.pf-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 38px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 0;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-.pf-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.pf-btn-ghost {
-  background: transparent;
-  color: #54546a;
-}
-.pf-btn-ghost:hover:not(:disabled) {
-  background: #f0f0f7;
-}
-.pf-btn-secondary {
-  background: #fff;
-  color: #54546a;
-  border: 1px solid #e6e6ec;
-}
-.pf-btn-secondary:hover:not(:disabled) {
-  border-color: #c8c8d8;
-  color: #1f1f2c;
-}
-.pf-btn-primary {
-  background: linear-gradient(135deg, #6f53d9 0%, #5a3fc0 100%);
-  color: #fff;
-  box-shadow: 0 4px 14px -4px rgba(111, 83, 217, 0.5);
-}
-.pf-btn-primary:hover:not(:disabled) {
-  box-shadow: 0 6px 18px -4px rgba(111, 83, 217, 0.65);
-  transform: translateY(-1px);
-}
+.pxpf__radiocard input { margin-top: 2px; }
+.pxpf__radiocard.is-active { border-color: var(--pxn-primary); background: var(--pxn-primary-softer); }
+.pxpf__radiocard-t { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium); color: var(--pxn-ink); }
+.pxpf__radiocard-s { margin-top: 2px; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 
-/* ---------------- Body grid ---------------- */
-.pf-body {
-  max-width: 1400px;
-  margin: 24px auto 0;
-  padding: 0 24px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 24px;
-  align-items: start;
-}
-@media (max-width: 1100px) {
-  .pf-body {
-    grid-template-columns: 1fr;
-  }
-}
+.pxpf__picker { border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md); overflow: hidden; }
+.pxpf__picker-search { display: flex; align-items: center; gap: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink-3); }
+.pxpf__picker-search input { flex: 1; border: 0; outline: none; background: transparent; font: inherit; font-size: var(--pxn-fs-sm); color: var(--pxn-ink); }
+.pxpf__picker-list { max-height: 280px; overflow-y: auto; }
+.pxpf__picker-item { display: flex; align-items: center; gap: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); cursor: pointer; }
+.pxpf__picker-item:last-child { border-bottom: 0; }
+.pxpf__picker-item.is-active { background: var(--pxn-primary-softer); }
+.pxpf__picker-name { font-size: var(--pxn-fs-sm); color: var(--pxn-ink); }
+.pxpf__picker-code { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxpf__pickerempty { padding: var(--pxn-space-6); text-align: center; color: var(--pxn-ink-3); font-size: var(--pxn-fs-sm); }
 
-/* ---------------- Cards ---------------- */
-.pf-card {
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid #ececf2;
-  box-shadow: 0 1px 2px rgba(20, 22, 40, 0.04);
-  margin-bottom: 18px;
-  overflow: hidden;
+.pxpf__whgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--pxn-space-4); }
+.pxpf__whcard {
+  display: flex; align-items: center; gap: var(--pxn-space-3); position: relative;
+  padding: var(--pxn-space-4); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md); cursor: pointer;
+  transition: border-color var(--pxn-dur-1) var(--pxn-ease), background-color var(--pxn-dur-1) var(--pxn-ease);
 }
-.pf-card-head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 20px 24px 0;
-}
-.pf-step {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6f53d9 0%, #5a3fc0 100%);
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.pf-card-headings {
-  flex: 1;
-  min-width: 0;
-}
-.pf-card-headings h2 {
-  margin: 0 0 2px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #1f1f2c;
-}
-.pf-card-headings p {
-  margin: 0;
-  font-size: 12.5px;
-  color: #8d8da0;
-}
-.pf-card-body {
-  padding: 18px 24px 24px;
-}
+.pxpf__whcard input { position: absolute; opacity: 0; pointer-events: none; }
+.pxpf__whcard.is-active { border-color: var(--pxn-primary); background: var(--pxn-primary-softer); }
+.pxpf__whcard-n { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium); color: var(--pxn-ink); }
+.pxpf__whcard-s { margin-top: 2px; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxpf__whcard-chk { margin-left: auto; color: var(--pxn-primary); opacity: 0; transition: opacity var(--pxn-dur-1) var(--pxn-ease); }
+.pxpf__whcard.is-active .pxpf__whcard-chk { opacity: 1; }
 
-/* ---------------- Inputs ---------------- */
-.pf-field {
-  display: block;
-  margin-bottom: 14px;
-}
-.pf-field:last-child {
-  margin-bottom: 0;
-}
-.pf-field label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: #54546a;
-  margin-bottom: 6px;
-  letter-spacing: 0.01em;
-}
-.pf-field input[type='text'],
-.pf-field input[type='number'],
-.pf-field input[type='time'],
-.pf-field input[type='date'],
-.pf-field input[type='datetime-local'],
-.pf-field textarea,
-.pf-field select,
-.pf-field input:not([type]) {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #e6e6ec;
-  border-radius: 10px;
-  background: #fafafd;
-  font-size: 13.5px;
-  color: #1f1f2c;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-  font-family: inherit;
-}
-.pf-field textarea {
-  height: auto;
-  padding: 10px 12px;
-  resize: vertical;
-  min-height: 60px;
-}
-.pf-field input:focus,
-.pf-field textarea:focus,
-.pf-field select:focus {
-  border-color: #6f53d9;
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(111, 83, 217, 0.12);
-}
-.pf-input-error {
-  border-color: #ef4444 !important;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
-}
-.pf-input-mono {
-  font-family: 'JetBrains Mono', 'Menlo', monospace !important;
-  letter-spacing: 0.02em;
-}
-.pf-req {
-  color: #ef4444;
-  margin-left: 2px;
-}
-.pf-optional {
-  color: #b8b8c8;
-  font-weight: 500;
-  font-size: 11px;
-  margin-left: 4px;
-}
-.pf-help {
-  display: block;
-  font-size: 11.5px;
-  color: #8d8da0;
-  margin-top: 4px;
-  line-height: 1.4;
-}
-.pf-error {
-  display: block;
-  font-size: 11.5px;
-  color: #ef4444;
-  margin-top: 4px;
-}
-.pf-count-badge {
-  display: inline-block;
-  background: #6f53d9;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 10px;
-  margin-left: 6px;
-}
+.pxpf__side { min-width: 0; }
+@media (max-width: 1080px) { .pxpf__side { order: -1; } }
+.pxpf__sticky { position: sticky; top: var(--pxn-space-6); display: flex; flex-direction: column; gap: var(--pxn-space-5); }
 
-/* Grid helpers */
-.pf-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-.pf-grid-2:last-child {
-  margin-bottom: 0;
-}
-@media (max-width: 600px) {
-  .pf-grid-2 {
-    grid-template-columns: 1fr;
-  }
-}
+.pxpf__preview ::v-deep .pxn-card__body { display: flex; flex-direction: column; gap: var(--pxn-space-3); }
+.pxpf__preview-tag { font-size: var(--pxn-fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--pxn-ink-3); }
+.pxpf__preview-val { display: flex; align-items: baseline; gap: var(--pxn-space-3); }
+.pxpf__preview-num { font-size: var(--pxn-fs-display); font-weight: var(--pxn-fw-bold); color: var(--pxn-primary); }
+.pxpf__preview-off { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink-3); }
+.pxpf__preview-name { font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxpf__preview-desc { font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
+.pxpf__preview-meta { display: flex; flex-wrap: wrap; gap: var(--pxn-space-2); margin-top: var(--pxn-space-2); }
 
-/* Affix input (prefix/suffix) */
-.pf-input-affix {
-  display: flex;
-  align-items: center;
-  border: 1px solid #e6e6ec;
-  border-radius: 10px;
-  background: #fafafd;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-}
-.pf-input-affix:focus-within {
-  border-color: #6f53d9;
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(111, 83, 217, 0.12);
-}
-.pf-input-affix input {
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  height: 38px;
-  flex: 1;
-  padding: 0 10px !important;
-  font-size: 13.5px;
-}
-.pf-input-affix input:focus {
-  border: 0 !important;
-  box-shadow: none !important;
-}
-.pf-prefix,
-.pf-suffix {
-  color: #8d8da0;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 0 12px;
-}
-.pf-prefix {
-  border-right: 1px solid #ececf2;
-}
-.pf-suffix {
-  border-left: 1px solid #ececf2;
-}
-
-/* Segmented control */
-.pf-segment {
-  display: inline-flex;
-  background: #f0f0f7;
-  border-radius: 10px;
-  padding: 4px;
-  width: 100%;
-  gap: 4px;
-}
-.pf-segment button {
-  flex: 1;
-  height: 32px;
-  border: 0;
-  background: transparent;
-  border-radius: 7px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #8d8da0;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-}
-.pf-segment button:hover {
-  color: #54546a;
-}
-.pf-segment button.active {
-  background: #fff;
-  color: #1f1f2c;
-  box-shadow: 0 1px 3px rgba(20, 22, 40, 0.08);
-}
-
-/* Toggle switch */
-.pf-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  user-select: none;
-}
-.pf-toggle input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.pf-toggle-track {
-  width: 40px;
-  height: 22px;
-  background: #d8d8e4;
-  border-radius: 12px;
-  position: relative;
-  transition: background 0.2s;
-  flex-shrink: 0;
-}
-.pf-toggle-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  background: #fff;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s;
-}
-.pf-toggle input:checked + .pf-toggle-track {
-  background: #6f53d9;
-}
-.pf-toggle input:checked + .pf-toggle-track .pf-toggle-thumb {
-  transform: translateX(18px);
-}
-.pf-toggle-label {
-  font-size: 13px;
-  color: #1f1f2c;
-}
-.pf-toggle-row {
-  margin: 10px 0 14px;
-}
-
-/* Radio card */
-.pf-radio-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-@media (max-width: 600px) {
-  .pf-radio-grid {
-    grid-template-columns: 1fr;
-  }
-}
-.pf-radio-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px;
-  border: 1.5px solid #e6e6ec;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.15s;
-  background: #fff;
-}
-.pf-radio-card input {
-  position: absolute;
-  opacity: 0;
-}
-.pf-radio-card:hover {
-  border-color: #c8c8d8;
-}
-.pf-radio-card.active {
-  border-color: #6f53d9;
-  background: #faf8ff;
-}
-.pf-radio-card-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: #f0f0f7;
-  color: #6f53d9;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.pf-radio-card.active .pf-radio-card-icon {
-  background: #6f53d9;
-  color: #fff;
-}
-.pf-radio-card-title {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #1f1f2c;
-  margin-bottom: 2px;
-}
-.pf-radio-card-sub {
-  font-size: 11.5px;
-  color: #8d8da0;
-}
-
-/* Warehouse grid */
-.pf-warehouse-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 10px;
-}
-.pf-warehouse-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1.5px solid #e6e6ec;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.15s;
-  background: #fff;
-  position: relative;
-}
-.pf-warehouse-card input {
-  position: absolute;
-  opacity: 0;
-}
-.pf-warehouse-card:hover {
-  border-color: #c8c8d8;
-}
-.pf-warehouse-card.active {
-  border-color: #6f53d9;
-  background: #faf8ff;
-}
-.pf-warehouse-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  background: #f0f0f7;
-  color: #6f53d9;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.pf-warehouse-card.active .pf-warehouse-icon {
-  background: #6f53d9;
-  color: #fff;
-}
-.pf-warehouse-info {
-  flex: 1;
-  min-width: 0;
-}
-.pf-warehouse-name {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #1f1f2c;
-  margin-bottom: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pf-warehouse-sub {
-  font-size: 11.5px;
-  color: #8d8da0;
-}
-.pf-warehouse-check {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: transparent;
-  border: 1.5px solid #d8d8e4;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: transparent;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-.pf-warehouse-card.active .pf-warehouse-check {
-  background: #6f53d9;
-  border-color: #6f53d9;
-  color: #fff;
-}
-
-/* Product picker */
-.pf-product-picker {
-  border: 1px solid #e6e6ec;
-  border-radius: 10px;
-  background: #fff;
-  overflow: hidden;
-}
-.pf-product-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid #ececf2;
-  background: #fafafd;
-  color: #8d8da0;
-}
-.pf-product-search input {
-  border: 0;
-  background: transparent;
-  outline: none;
-  flex: 1;
-  font-size: 13px;
-}
-.pf-product-list {
-  max-height: 280px;
-  overflow-y: auto;
-}
-.pf-product-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  cursor: pointer;
-  border-bottom: 1px solid #f4f4f9;
-  transition: background 0.1s;
-}
-.pf-product-item:last-child {
-  border-bottom: 0;
-}
-.pf-product-item:hover {
-  background: #fafafd;
-}
-.pf-product-item.active {
-  background: #faf8ff;
-}
-.pf-product-item input {
-  accent-color: #6f53d9;
-}
-.pf-product-info {
-  flex: 1;
-  min-width: 0;
-}
-.pf-product-name {
-  font-size: 13px;
-  color: #1f1f2c;
-  font-weight: 500;
-}
-.pf-product-code {
-  font-size: 11px;
-  color: #8d8da0;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* Side preview */
-.pf-side-sticky {
-  position: sticky;
-  top: 80px;
-}
-.pf-preview-card {
-  background: linear-gradient(135deg, #1f1f2c 0%, #2f2f44 100%);
-  border-radius: 14px;
-  padding: 22px;
-  color: #fff;
-  margin-bottom: 14px;
-  position: relative;
-  overflow: hidden;
-}
-.pf-preview-card::before {
-  content: '';
-  position: absolute;
-  top: -40%;
-  right: -10%;
-  width: 200px;
-  height: 200px;
-  background: radial-gradient(circle, rgba(111, 83, 217, 0.4) 0%, transparent 70%);
-  pointer-events: none;
-}
-.pf-preview-tag {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.55);
-  text-transform: uppercase;
-  margin-bottom: 14px;
-  position: relative;
-}
-.pf-preview-discount {
-  margin-bottom: 14px;
-  position: relative;
-}
-.pf-preview-value-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.pf-preview-value {
-  font-size: 38px;
-  font-weight: 800;
-  line-height: 1;
-  font-family: 'JetBrains Mono', monospace;
-  color: #fff;
-  letter-spacing: -0.02em;
-}
-.pf-preview-off {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.5);
-}
-.pf-preview-body {
-  position: relative;
-}
-.pf-preview-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 4px;
-}
-.pf-preview-desc {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.65);
-  margin-bottom: 10px;
-  line-height: 1.4;
-}
-.pf-preview-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-.pf-tag {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 3px 9px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
-  text-transform: uppercase;
-}
-.pf-tag-kind[data-kind='promotion'] {
-  background: rgba(46, 213, 115, 0.18);
-  color: #6ee7b7;
-}
-.pf-tag-kind[data-kind='discount'] {
-  background: rgba(59, 130, 246, 0.18);
-  color: #93c5fd;
-}
-.pf-tag-code {
-  font-family: 'JetBrains Mono', monospace;
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-}
-.pf-tag-active {
-  background: rgba(34, 197, 94, 0.2);
-  color: #6ee7b7;
-}
-.pf-tag-draft {
-  background: rgba(234, 179, 8, 0.18);
-  color: #fcd34d;
-}
-
-/* Side cards */
-.pf-side-card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #ececf2;
-  padding: 16px;
-  margin-bottom: 12px;
-}
-.pf-side-card-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  color: #54546a;
-}
-.pf-side-card-head h4 {
-  font-size: 13px;
-  font-weight: 700;
-  color: #1f1f2c;
-  margin: 0;
-  flex: 1;
-}
-.pf-side-count {
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  background: #6f53d9;
-  padding: 1px 8px;
-  border-radius: 10px;
-}
-.pf-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.pf-chip {
-  font-size: 11.5px;
-  font-weight: 500;
-  color: #54546a;
-  background: #f0f0f7;
-  padding: 4px 10px;
-  border-radius: 8px;
-}
-.pf-empty,
-.pf-empty-mini {
-  color: #b8b8c8;
-  font-size: 12.5px;
-  font-style: italic;
-  padding: 14px 0;
-  text-align: center;
-}
-.pf-empty-mini {
-  padding: 4px 0;
-  text-align: left;
-}
-.pf-summary-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12.5px;
-  padding: 5px 0;
-  border-bottom: 1px solid #f4f4f9;
-}
-.pf-summary-line:last-child {
-  border-bottom: 0;
-}
-.pf-summary-label {
-  color: #8d8da0;
-}
-.pf-summary-value {
-  color: #1f1f2c;
-  font-weight: 600;
-  text-align: right;
-}
-
-/* Misc */
-.pf-link-btn {
-  background: transparent;
-  border: 0;
-  color: #6f53d9;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 6px;
-  transition: background 0.15s;
-}
-.pf-link-btn:hover {
-  background: #faf8ff;
-}
-.pf-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: pf-spin 0.7s linear infinite;
-}
-.pf-spinner-lg {
-  width: 28px;
-  height: 28px;
-  border-color: rgba(111, 83, 217, 0.25);
-  border-top-color: #6f53d9;
-}
-@keyframes pf-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+.pxpf__sidecount {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
+  border-radius: var(--pxn-radius-pill); background: var(--pxn-surface-3); color: var(--pxn-ink-2);
+  font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold);
+}
+.pxpf__chips { display: flex; flex-wrap: wrap; gap: var(--pxn-space-2); }
+.pxpf__sumline { display: flex; justify-content: space-between; gap: var(--pxn-space-4); padding: var(--pxn-space-2) 0; font-size: var(--pxn-fs-sm); }
+.pxpf__sumline span:first-child { color: var(--pxn-ink-3); }
+.pxpf__sumline span:last-child { color: var(--pxn-ink); text-align: right; }
 </style>

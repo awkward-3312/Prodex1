@@ -1,179 +1,189 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('PromotionUsageReport') || 'Promotion Usage Report'" :folder="$t('Promotions') || 'Promotions'" />
+  <div class="px-next pxpru">
+    <px-page-header
+      :title="$t('PromotionUsageReport') || 'Informe de uso de promociones'"
+      :breadcrumbs="[{ label: $t('Sales') }, { label: 'Promociones' }, { label: 'Informe de uso' }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" icon="arrow-left" @click="$router.push('/app/promotions')">{{ $t('BackToPromotions') || 'Volver a promociones' }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="pxpru__pad">
+      <px-skeleton variant="lines" :rows="4" />
+      <px-skeleton variant="table" :rows="8" :columns="6" />
+    </div>
 
-    <b-card class="wrapper mb-3" v-if="!isLoading">
-      <b-row align-v="end">
-        <b-col md="3">
-          <b-form-group :label="$t('From') || 'From'">
-            <b-form-input type="date" v-model="filters.from" @change="reload()"></b-form-input>
-          </b-form-group>
-        </b-col>
-        <b-col md="3">
-          <b-form-group :label="$t('To') || 'To'">
-            <b-form-input type="date" v-model="filters.to" @change="reload()"></b-form-input>
-          </b-form-group>
-        </b-col>
-        <b-col md="3">
-          <b-form-group :label="$t('Promotion') || 'Promotion'">
-            <b-form-select v-model="filters.promotion_id" @change="reload()">
-              <template #first>
-                <b-form-select-option :value="null">{{ $t('All') || 'All' }}</b-form-select-option>
-              </template>
-              <option v-for="p in promotionsList" :key="p.id" :value="p.id">
-                {{ p.name }}<span v-if="p.code"> ({{ p.code }})</span>
-              </option>
-            </b-form-select>
-          </b-form-group>
-        </b-col>
-        <b-col md="3">
-          <b-form-group :label="$t('Warehouse') || 'Warehouse'">
-            <b-form-select v-model="filters.warehouse_id" @change="reload()">
-              <template #first>
-                <b-form-select-option :value="null">{{ $t('All') || 'All' }}</b-form-select-option>
-              </template>
-              <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
-            </b-form-select>
-          </b-form-group>
-        </b-col>
+    <template v-else>
+      <px-card class="pxpru__filters">
+        <div class="pxpru__filters-grid">
+          <px-field :label="$t('From') || 'Desde'">
+            <template #default="{ id }"><px-input :id="id" type="date" v-model="filters.from" @input="reload" /></template>
+          </px-field>
+          <px-field :label="$t('To') || 'Hasta'">
+            <template #default="{ id }"><px-input :id="id" type="date" v-model="filters.to" @input="reload" /></template>
+          </px-field>
+          <px-field :label="$t('Promotion') || 'Promoción'">
+            <template #default="{ id }">
+              <vs-px
+                :input-id="id"
+                v-model="filters.promotion_id"
+                :reduce="o => o.value"
+                :placeholder="$t('All') || 'Todas'"
+                :options="promotionsList.map(p => ({ label: p.code ? (p.name + ' (' + p.code + ')') : p.name, value: p.id }))"
+                @input="reload"
+              />
+            </template>
+          </px-field>
+          <px-field :label="$t('Warehouse') || 'Almacén'">
+            <template #default="{ id }">
+              <vs-px
+                :input-id="id"
+                v-model="filters.warehouse_id"
+                :reduce="o => o.value"
+                :placeholder="$t('All') || 'Todos'"
+                :options="warehouses.map(w => ({ label: w.name, value: w.id }))"
+                @input="reload"
+              />
+            </template>
+          </px-field>
+        </div>
+        <div class="pxpru__filters-act">
+          <px-button size="sm" variant="ghost" icon="x" @click="resetFilters">{{ $t('Reset') || 'Limpiar' }}</px-button>
+        </div>
+      </px-card>
 
-        <b-col md="12" class="text-right mb-2">
-          <b-button variant="outline-secondary" size="sm" @click="resetFilters">
-            {{ $t('Reset') || 'Reset' }}
-          </b-button>
-          <router-link tag="b-button" to="/app/promotions" class="ml-2 btn btn-outline-primary btn-sm">
-            <lucide-icon class="me-1" name="arrow-left" /> {{ $t('BackToPromotions') || 'Back to Promotions' }}
-          </router-link>
-        </b-col>
-      </b-row>
-    </b-card>
-
-    <b-card class="wrapper mb-3" v-if="!isLoading">
-      <h5 class="mb-3">{{ $t('Summary') || 'Summary' }}</h5>
-      <b-row class="mb-3">
-        <b-col md="4">
-          <div class="kpi-card">
-            <div class="kpi-label">{{ $t('TotalUses') || 'Total uses' }}</div>
-            <div class="kpi-value">{{ totals.uses || 0 }}</div>
-          </div>
-        </b-col>
-        <b-col md="4">
-          <div class="kpi-card">
-            <div class="kpi-label">{{ $t('TotalDiscount') || 'Total discount' }}</div>
-            <div class="kpi-value">{{ formatMoney(totals.total_discount) }}</div>
-          </div>
-        </b-col>
-        <b-col md="4">
-          <div class="kpi-card">
-            <div class="kpi-label">{{ $t('PromotionsUsed') || 'Promotions used' }}</div>
-            <div class="kpi-value">{{ totals.promotions_with_usage || 0 }}</div>
-          </div>
-        </b-col>
-      </b-row>
-
-      <b-table-simple small responsive hover v-if="summary.length">
-        <b-thead>
-          <b-tr>
-            <b-th>{{ $t('Promotion') || 'Promotion' }}</b-th>
-            <b-th>{{ $t('Code') || 'Code' }}</b-th>
-            <b-th>{{ $t('Type') || 'Type' }}</b-th>
-            <b-th class="text-right">{{ $t('Uses') || 'Uses' }}</b-th>
-            <b-th class="text-right">{{ $t('UniqueCustomers') || 'Unique customers' }}</b-th>
-            <b-th class="text-right">{{ $t('TotalDiscount') || 'Total discount' }}</b-th>
-            <b-th class="text-right">{{ $t('CapProgress') || 'Cap progress' }}</b-th>
-          </b-tr>
-        </b-thead>
-        <b-tbody>
-          <b-tr v-for="row in summary" :key="row.promotion_id">
-            <b-td>{{ row.name }}</b-td>
-            <b-td><code v-if="row.code">{{ row.code }}</code><span v-else class="text-muted">—</span></b-td>
-            <b-td>
-              <b-badge :variant="row.kind === 'discount' ? 'info' : 'success'">{{ row.kind }}</b-badge>
-            </b-td>
-            <b-td class="text-right">{{ row.uses }}</b-td>
-            <b-td class="text-right">{{ row.unique_customers }}</b-td>
-            <b-td class="text-right">{{ formatMoney(row.total_discount) }}</b-td>
-            <b-td class="text-right">
-              <template v-if="row.usage_limit_total !== null">
-                {{ row.uses }} / {{ row.usage_limit_total }}
-                <b-progress :max="row.usage_limit_total" :value="row.uses" :variant="row.uses >= row.usage_limit_total ? 'danger' : 'success'" height="4px" class="mt-1"></b-progress>
-              </template>
-              <template v-else>
-                <span class="text-muted">{{ $t('Unlimited') || 'Unlimited' }}</span>
-              </template>
-            </b-td>
-          </b-tr>
-        </b-tbody>
-      </b-table-simple>
-      <div v-else class="text-muted text-center py-3">
-        {{ $t('NoUsageYet') || 'No usage recorded in this window.' }}
+      <div class="pxpru__kpis">
+        <px-stat bordered :label="$t('TotalUses') || 'Usos totales'" :value="String(totals.uses || 0)" icon="repeat" />
+        <px-stat bordered :label="$t('TotalDiscount') || 'Descuento total'" :value="formatMoney(totals.total_discount)" icon="badge-percent" />
+        <px-stat bordered :label="$t('PromotionsUsed') || 'Promociones usadas'" :value="String(totals.promotions_with_usage || 0)" icon="tag" />
       </div>
-    </b-card>
 
-    <b-card class="wrapper" v-if="!isLoading">
-      <h5 class="mb-3">{{ $t('Details') }}</h5>
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="usages"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'Siguiente', prevLabel: 'Anterior' }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <template slot="emptystate">
-          <PxEmptyState
+      <px-card :title="$t('Summary') || 'Resumen'" flush class="pxpru__sec">
+        <div class="pxpru-tbl__wrap pxn-scroll" v-if="summary.length">
+          <table class="pxpru-tbl">
+            <thead>
+              <tr>
+                <th>{{ $t('Promotion') || 'Promoción' }}</th>
+                <th>{{ $t('Code') || 'Código' }}</th>
+                <th>{{ $t('Type') || 'Tipo' }}</th>
+                <th class="is-right">{{ $t('Uses') || 'Usos' }}</th>
+                <th class="is-right">{{ $t('UniqueCustomers') || 'Clientes únicos' }}</th>
+                <th class="is-right">{{ $t('TotalDiscount') || 'Descuento total' }}</th>
+                <th class="is-right">{{ $t('CapProgress') || 'Progreso de tope' }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in summary" :key="row.promotion_id">
+                <td>{{ row.name }}</td>
+                <td><span v-if="row.code" class="pxn-mono">{{ row.code }}</span><span v-else class="pxpru__muted">—</span></td>
+                <td><px-badge :tone="row.kind === 'discount' ? 'info' : 'success'">{{ row.kind }}</px-badge></td>
+                <td class="is-right pxn-num">{{ row.uses }}</td>
+                <td class="is-right pxn-num">{{ row.unique_customers }}</td>
+                <td class="is-right pxn-num">{{ formatMoney(row.total_discount) }}</td>
+                <td class="is-right">
+                  <template v-if="row.usage_limit_total !== null">
+                    <span class="pxn-num">{{ row.uses }} / {{ row.usage_limit_total }}</span>
+                    <div class="pxpru__cap">
+                      <div
+                        class="pxpru__cap-bar"
+                        :class="{ 'is-full': row.uses >= row.usage_limit_total }"
+                        :style="{ width: Math.min(100, (row.uses / row.usage_limit_total) * 100) + '%' }"
+                      ></div>
+                    </div>
+                  </template>
+                  <span v-else class="pxpru__muted">{{ $t('Unlimited') || 'Ilimitado' }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-else class="pxpru__empty">{{ $t('NoUsageYet') || 'Sin usos registrados en este período.' }}</div>
+      </px-card>
+
+      <px-card :title="$t('Details')" flush class="pxpru__sec">
+        <px-toolbar
+          :search="search"
+          :search-placeholder="$t('Search_this_table')"
+          @update:search="onSearchInput"
+        />
+        <div class="pxpru__tablewrap">
+          <px-table
+            v-if="usages.length"
+            :columns="columns"
+            :rows="usages"
+            row-key="id"
+            :sort-key="serverParams.sort.field"
+            :sort-dir="serverParams.sort.type"
+            @sort="onSort"
+          >
+            <template #cell-used_at="{ row }">{{ row.used_at }}</template>
+            <template #cell-promotion="{ row }">
+              <div class="pxpru__promo">
+                <strong>{{ row.promotion ? row.promotion.name : '—' }}</strong>
+                <px-badge v-if="row.promotion && row.promotion.kind" :tone="row.promotion.kind === 'discount' ? 'info' : 'success'">{{ row.promotion.kind }}</px-badge>
+              </div>
+            </template>
+            <template #cell-code="{ row }">
+              <span v-if="row.code" class="pxn-mono">{{ row.code }}</span><span v-else class="pxpru__muted">—</span>
+            </template>
+            <template #cell-sale="{ row }">
+              <span v-if="row.sale">{{ row.sale.Ref }}</span><span v-else class="pxpru__muted">—</span>
+            </template>
+            <template #cell-client="{ row }">
+              <span v-if="row.client">{{ row.client.name }}</span><span v-else class="pxpru__muted">{{ $t('Guest') || 'Invitado' }}</span>
+            </template>
+            <template #cell-warehouse="{ row }">
+              <span v-if="row.warehouse && row.warehouse.name">{{ row.warehouse.name }}</span><span v-else class="pxpru__muted">—</span>
+            </template>
+            <template #cell-discount_amount="{ row }">
+              <span class="pxpru__neg pxn-num">−{{ formatMoney(row.discount_amount) }}</span>
+            </template>
+          </px-table>
+
+          <px-empty-state
+            v-else
             icon="bar-chart-3"
             :title="$t('No_promotion_usages_yet')"
             :description="$t('No_promotion_usages_desc')"
           />
-        </template>
+        </div>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field === 'promotion'">
-            <strong>{{ props.row.promotion ? props.row.promotion.name : '—' }}</strong>
-            <small v-if="props.row.promotion && props.row.promotion.kind" class="text-muted d-block">
-              <b-badge :variant="props.row.promotion.kind === 'discount' ? 'info' : 'success'">{{ props.row.promotion.kind }}</b-badge>
-            </small>
-          </span>
-          <span v-else-if="props.column.field === 'code'">
-            <code v-if="props.row.code">{{ props.row.code }}</code>
-            <span v-else class="text-muted">—</span>
-          </span>
-          <span v-else-if="props.column.field === 'sale'">
-            <span v-if="props.row.sale">{{ props.row.sale.Ref }}</span>
-            <span v-else class="text-muted">—</span>
-          </span>
-          <span v-else-if="props.column.field === 'client'">
-            <span v-if="props.row.client">{{ props.row.client.name }}</span>
-            <span v-else class="text-muted">{{ $t('Guest') || 'Guest' }}</span>
-          </span>
-          <span v-else-if="props.column.field === 'warehouse'">
-            <span v-if="props.row.warehouse && props.row.warehouse.name">{{ props.row.warehouse.name }}</span>
-            <span v-else class="text-muted">—</span>
-          </span>
-          <span v-else-if="props.column.field === 'discount_amount'" class="text-danger">
-            −{{ formatMoney(props.row.discount_amount) }}
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+        <px-pagination
+          v-if="usages.length"
+          :page="serverParams.page"
+          :per-page="Number(limit)"
+          :total="Number(totalRows) || 0"
+          :per-page-options="['15', '25', '50', '100']"
+          @update:page="onPage"
+          @update:perPage="onLimit"
+        />
+      </px-card>
+    </template>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
-  components: { PxEmptyState },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxCard, PxField, PxInput,
+    PxBadge, PxStat, PxEmptyState, "vs-px": VsPx
+  },
   metaInfo: { title: "Informe de uso de promociones" },
 
   data() {
@@ -187,6 +197,7 @@ export default {
       totalRows: 0,
       search: "",
       limit: "15",
+      _searchTimer: null,
       usages: [],
       summary: [],
       totals: { uses: 0, total_discount: 0, promotions_with_usage: 0 },
@@ -208,13 +219,13 @@ export default {
     },
     columns() {
       return [
-        { label: this.$t("Date") || "Date", field: "used_at", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Promotion") || "Promotion", field: "promotion", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Code") || "Code", field: "code", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Sale") || "Sale", field: "sale", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Client") || "Client", field: "client", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Warehouse") || "Warehouse", field: "warehouse", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Discount") || "Discount", field: "discount_amount", tdClass: "text-right", thClass: "text-right" }
+        { key: "used_at", label: this.$t("Date") || "Fecha", sortable: true },
+        { key: "promotion", label: this.$t("Promotion") || "Promoción", sortable: false },
+        { key: "code", label: this.$t("Code") || "Código", sortable: false },
+        { key: "sale", label: this.$t("Sale") || "Venta", sortable: false },
+        { key: "client", label: this.$t("Client") || "Cliente", sortable: false },
+        { key: "warehouse", label: this.$t("Warehouse") || "Almacén", sortable: false },
+        { key: "discount_amount", label: this.$t("Discount") || "Descuento", align: "right" }
       ];
     }
   },
@@ -299,25 +310,26 @@ export default {
       this.reload();
     },
 
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.serverParams.page = currentPage;
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.serverParams.page = 1; this.fetchUsages(); }, 350);
+    },
+    onPage(p) {
+      if (this.serverParams.page !== p) {
+        this.serverParams.page = p;
         this.fetchUsages();
       }
     },
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
+    onLimit(v) {
+      if (this.limit !== String(v)) {
+        this.limit = String(v);
         this.serverParams.page = 1;
         this.fetchUsages();
       }
     },
-    onSortChange(params) {
-      this.serverParams.sort = { type: params[0].type, field: params[0].field };
-      this.fetchUsages();
-    },
-    onSearch(value) {
-      this.search = value.searchTerm;
+    onSort({ key, dir }) {
+      this.serverParams.sort = { type: dir, field: key };
       this.fetchUsages();
     }
   },
@@ -332,24 +344,44 @@ export default {
 };
 </script>
 
-<style scoped>
-.kpi-card {
-  padding: 14px 16px;
-  background: #f7f7fb;
-  border-radius: 8px;
-  border: 1px solid #ececf2;
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxpru { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxpru { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxpru__pad { padding: var(--pxn-space-6) 0; display: flex; flex-direction: column; gap: var(--pxn-space-6); }
+
+.pxpru__filters { margin-bottom: var(--pxn-space-6); }
+.pxpru__filters-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxpru__filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxpru__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxpru__filters-act { display: flex; justify-content: flex-end; margin-top: var(--pxn-space-4); }
+
+.pxpru__kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); margin-bottom: var(--pxn-space-6); }
+@media (max-width: 720px) { .pxpru__kpis { grid-template-columns: minmax(0, 1fr); } }
+
+.pxpru__sec { margin-bottom: var(--pxn-space-6); }
+.pxpru__sec ::v-deep .pxn-card__body { padding: 0; }
+.pxpru__tablewrap { padding: var(--pxn-space-4) var(--pxn-space-5) var(--pxn-space-5); }
+
+.pxpru-tbl__wrap { overflow-x: auto; }
+.pxpru-tbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxpru-tbl th {
+  text-align: left; padding: var(--pxn-space-3) var(--pxn-space-5);
+  font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold);
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3);
+  background: var(--pxn-surface-2); border-bottom: 1px solid var(--pxn-border); white-space: nowrap;
 }
-.kpi-label {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: #8d8da0;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.kpi-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1f1f2c;
-  font-family: 'JetBrains Mono', monospace;
-}
+.pxpru-tbl td { padding: var(--pxn-space-3) var(--pxn-space-5); border-bottom: 1px solid var(--pxn-border); }
+.pxpru-tbl tr:last-child td { border-bottom: 0; }
+.pxpru-tbl .is-right { text-align: right; }
+
+.pxpru__cap { height: 4px; margin-top: 4px; border-radius: var(--pxn-radius-pill); background: var(--pxn-surface-3); overflow: hidden; }
+.pxpru__cap-bar { height: 100%; background: var(--pxn-success); }
+.pxpru__cap-bar.is-full { background: var(--pxn-danger); }
+
+.pxpru__empty { padding: var(--pxn-space-8); text-align: center; color: var(--pxn-ink-3); font-size: var(--pxn-fs-sm); }
+.pxpru__muted { color: var(--pxn-ink-3); }
+.pxpru__neg { color: var(--pxn-danger-ink); }
+.pxpru__promo { display: flex; align-items: center; gap: var(--pxn-space-3); }
 </style>
