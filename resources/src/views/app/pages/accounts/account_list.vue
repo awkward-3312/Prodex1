@@ -1,165 +1,128 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('List_accounts')" :folder="$t('Accounting')"/>
+  <div class="px-next pxal">
+    <px-page-header :title="$t('List_accounts')" :breadcrumbs="[{ label: $t('Accounting') }, { label: $t('List_accounts') }]">
+      <template #actions>
+        <px-button variant="primary" icon="plus" @click="New_Account">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="accounts"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-          enabled: true,
-          placeholder: $t('Search_this_table'),  
-        }"
-      :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="selected-row-actions">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button
-            @click="New_Account()"
-            class="btn-rounded"
-            variant="btn btn-primary btn-icon m-1"
-          >
-            <lucide-icon name="plus" />
-            {{$t('Add')}}
-          </b-button>
-        </div>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a @click="Edit_Account(props.row)" title="Edit" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success cursor-pointer" name="pencil" />
-            </a>
-            <a title="Delete" v-b-tooltip.hover @click="Remove_Account(props.row.id)">
-              <lucide-icon class="text-25 text-danger cursor-pointer" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+    <div v-if="isLoading" class="pxal__pad">
+      <px-skeleton variant="table" :rows="8" :columns="4" />
+    </div>
+
+    <template v-else>
+      <div class="pxal__tablewrap">
+        <px-table
+          v-if="accounts.length"
+          :columns="columns"
+          :rows="accounts"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-balance="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser.currency, row.balance, priceDecimals) }}</span></template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
+
+        <px-empty-state
+          v-else
+          icon="wallet"
+          :title="$t('No_accounts_yet') || 'Sin cuentas todavía'"
+          :description="$t('No_accounts_desc') || 'Crea una cuenta financiera para registrar movimientos.'"
+        >
+          <px-button variant="primary" icon="plus" size="sm" @click="New_Account">{{ $t('Add') }}</px-button>
+        </px-empty-state>
+      </div>
+
+      <px-pagination
+        v-if="accounts.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
     <validation-observer ref="Create_Account">
-      <b-modal hide-footer size="md" id="New_Account" :title="editmode?$t('Edit'):$t('Add')">
+      <px-modal v-model="modalOpen" size="md" :title="editmode ? $t('Edit') : $t('Add')">
         <b-form @submit.prevent="Submit_Account">
-          <b-row>
-            <!-- account_num -->
-            <b-col md="12">
-              <validation-provider
-                name="account_num"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('account_num') + ' ' + '*'">
-                  <b-form-input
-                    :placeholder="$t('Enter_account_num')"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="account_num-feedback"
-                    label="account_num"
-                    v-model="account.account_num"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="account_num-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider ref="numProvider" name="account_num" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('account_num')" required :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model="account.account_num" :placeholder="$t('Enter_account_num')" @input="v.validate" /></template>
+            </px-field>
+          </validation-provider>
 
-            <!-- Name account -->
-            <b-col md="12">
-              <validation-provider
-                name="Name account"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('account_name') + ' ' + '*'">
-                  <b-form-input
-                    :placeholder="$t('Enter_account_name')"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="account_name-feedback"
-                    label="account_name"
-                    v-model="account.account_name"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="account_name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider ref="nameProvider" name="Name account" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('account_name')" required :error="v.errors[0]" class="pxal__gap">
+              <template #default="{ id }"><px-input :id="id" v-model="account.account_name" :placeholder="$t('Enter_account_name')" @input="v.validate" /></template>
+            </px-field>
+          </validation-provider>
 
-            <!-- initial_balance -->
-            <b-col md="12" v-if="!editmode">
-              <validation-provider
-                name="initial_balance"
-                :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('initial_balance') + ' ' + '*'">
-                  <b-form-input
-                    type="text"
-                    :placeholder="$t('Enter_initial_balance')"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="initial_balance-feedback"
-                    label="initial_balance"
-                    v-model="account.initial_balance"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="initial_balance-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider v-if="!editmode" ref="balProvider" name="initial_balance" :rules="{ required: true, regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('initial_balance')" required :error="v.errors[0]" class="pxal__gap">
+              <template #default="{ id }"><px-input :id="id" v-model="account.initial_balance" :placeholder="$t('Enter_initial_balance')" @input="v.validate" /></template>
+            </px-field>
+          </validation-provider>
 
-             <!-- Details -->
-             <b-col lg="12" md="12" sm="12">
-                <validation-provider name="Details">
-                  <b-form-group slot-scope="{ valid, errors }" :label="$t('Details')">
-                    <textarea
-                      :class="{'is-invalid': !!errors.length}"
-                      :state="errors[0] ? false : (valid ? true : null)"
-                      v-model="account.note"
-                      rows="4"
-                      class="form-control"
-                      :placeholder="$t('Afewwords')"
-                    ></textarea>
-                    <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
-              </b-col>
+          <px-field :label="$t('Details')" class="pxal__gap">
+            <template #default="{ id }"><px-textarea :id="id" v-model="account.note" :rows="4" :placeholder="$t('Afewwords')" /></template>
+          </px-field>
 
-             <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
-
-          </b-row>
+          <div class="pxal__actionbar">
+            <px-button variant="secondary" type="button" @click="modalOpen = false">{{ $t('Cancel') }}</px-button>
+            <px-button variant="primary" type="submit" icon="check" :loading="SubmitProcessing">{{ $t('submit') }}</px-button>
+          </div>
         </b-form>
-      </b-modal>
+      </px-modal>
     </validation-observer>
   </div>
 </template>
 
-
 <script>
+import { mapGetters } from "vuex";
 import NProgress from "nprogress";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting,
+  getPriceDecimals
+} from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
   metaInfo: {
     title: "Account"
   },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
+    PxField, PxInput, PxTextarea, PxModal, PxEmptyState
+  },
   data() {
     return {
+      _searchTimer: null,
       isLoading: true,
       SubmitProcessing:false,
+      modalOpen: false,
       serverParams: {
         columnFilters: {},
         sort: {
@@ -176,6 +139,8 @@ export default {
       accounts: [],
       editmode: false,
 
+      price_format_key: null,
+
       account: {
         id: "",
         account_num: "",
@@ -186,97 +151,88 @@ export default {
     };
   },
   computed: {
+    ...mapGetters(["currentUser"]),
+    priceDecimals() {
+      return getPriceDecimals({ store: this.$store });
+    },
+    rowActions() {
+      return [
+        { key: "edit", label: this.$t("Edit"), icon: "pencil" },
+        { key: "delete", label: this.$t("Del"), icon: "x", tone: "danger" }
+      ];
+    },
     columns() {
       return [
-        {
-          label: this.$t("account_num"),
-          field: "account_num",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("account_name"),
-          field: "account_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("balance"),
-          field: "balance",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("notes"),
-          field: "note",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "account_num", label: this.$t("account_num"), sortable: true, strong: true },
+        { key: "account_name", label: this.$t("account_name"), sortable: true },
+        { key: "balance", label: this.$t("balance"), align: "right", sortable: true },
+        { key: "note", label: this.$t("notes") }
       ];
     }
   },
 
   methods: {
-    //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Accounts(currentPage);
+    //------------------------------ Money display formatting -------------------------\\
+    formatNumber(number, dec) {
+      const value = (typeof number === "string" ? number : Number(number || 0).toString()).split(".");
+      if (dec <= 0) return value[0];
+      let formated = value[1] || "";
+      if (formated.length > dec) return `${value[0]}.${formated.substr(0, dec)}`;
+      while (formated.length < dec) formated += "0";
+      return `${value[0]}.${formated}`;
+    },
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = this.priceDecimals;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) this.price_format_key = key;
+        return formatPriceDisplayHelper(number, decimals, key || null);
+      } catch (e) {
+        return this.formatNumber(number, dec);
       }
     },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Accounts(1);
-      }
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
     },
 
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Accounts(1); }, 350);
     },
 
-    //---- Event on Sort Change
-    onSortChange(params) {
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Accounts(p); } },
+
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Accounts(1); } },
+
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { type: dir, field: key } });
       this.Get_Accounts(this.serverParams.page);
     },
 
-    //---- Event on Search
-
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Accounts(this.serverParams.page);
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.Edit_Account(row);
+      else if (k === "delete") this.Remove_Account(row.id);
     },
 
     //---- Validation State Form
-
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
+    },
+
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.numProvider) this.$refs.numProvider.syncValue(this.account.account_num);
+        if (this.$refs.nameProvider) this.$refs.nameProvider.syncValue(this.account.account_name);
+        if (this.$refs.balProvider) this.$refs.balProvider.syncValue(this.account.initial_balance);
+      });
     },
 
     //------------- Submit Validation Create & Edit account
@@ -311,7 +267,8 @@ export default {
     New_Account() {
       this.reset_Form();
       this.editmode = false;
-      this.$bvModal.show("New_Account");
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
     //------------------------------ Modal (Update account) -------------------------------\\
@@ -320,7 +277,8 @@ export default {
       this.reset_Form();
       this.account = account;
       this.editmode = true;
-      this.$bvModal.show("New_Account");
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
     //--------------------------Get ALL Categories & Sub account ---------------------------\\
@@ -455,7 +413,7 @@ export default {
       });
     },
 
-  
+
   }, //end Methods
 
   //----------------------------- Created function-------------------
@@ -466,7 +424,7 @@ export default {
     Fire.$on("Event_Account", () => {
       setTimeout(() => {
         this.Get_Accounts(this.serverParams.page);
-        this.$bvModal.hide("New_Account");
+        this.modalOpen = false;
       }, 500);
     });
 
@@ -478,3 +436,14 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxal { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxal { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxal__pad { padding: var(--pxn-space-6) 0; }
+.pxal__tablewrap { margin-top: var(--pxn-space-5); }
+.pxal__gap { margin-top: var(--pxn-space-5); }
+.pxal__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+</style>

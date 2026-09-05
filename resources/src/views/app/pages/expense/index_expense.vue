@@ -1,274 +1,155 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Expense_List')" :folder="$t('Expenses')"/>
+  <div class="px-next pxfl">
+    <px-page-header :title="$t('Expense_List')" :breadcrumbs="[{ label: $t('Expenses') }, { label: $t('Expense_List') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">Exportar</px-button>
+          </template>
+        </px-menu>
+        <px-button
+          v-if="currentUserPermissions && currentUserPermissions.includes('expense_add')"
+          variant="primary" icon="plus" @click="$router.push('/app/expenses/store')"
+        >{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div v-else>
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="expenses"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-          enabled: true,
-          placeholder: $t('Search_this_table'),  
-        }"
-        
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="tableOne table-hover vgt-table"
-      >
-        <div slot="selected-row-actions" v-if="currentUserPermissions && currentUserPermissions.includes('expense_delete')">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
-            <lucide-icon name="filter" />
-            {{ $t("Filter") }}
-          </b-button>
-          <b-button @click="Expense_PDF()" size="sm" variant="outline-success ripple m-1">
-            <lucide-icon name="copy" /> PDF
-          </b-button>
-           <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="expenses"
-              :columns="columns"
-              :file-name="'Expenses'"
-              :file-type="'xlsx'"
-              :sheet-name="'Expenses'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
-          <router-link
-            class="btn-sm btn btn-primary ripple btn-icon m-1"
-            v-if="currentUserPermissions && currentUserPermissions.includes('expense_add')"
-            to="/app/expenses/store"
-          >
-            <span class="ul-btn__icon">
-              <lucide-icon name="plus" />
-            </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
-          </router-link>
-        </div>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      :filter-count="activeFilterCount"
+      @update:search="onSearchInput"
+      @open-filters="filtersOpen = !filtersOpen"
+    />
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'date'">
-            {{ formatDisplayDate(props.row.date) }}
-          </span>
-          <span v-else-if="props.column.field == 'documents'">
-            <span v-if="props.row.documents_count > 0" class="badge badge-info">
-              <lucide-icon name="file" /> {{ props.row.documents_count }}
-            </span>
-            <span v-else class="text-muted">-</span>
-          </span>
-          <span v-else-if="props.column.field == 'actions'">
-            <a
-              title="Attach Documents"
-              class="cursor-pointer mr-2"
-              v-b-tooltip.hover
-              @click="Manage_Documents(props.row.id)"
-            >
-              <lucide-icon class="text-20 text-info" name="file" />
-            </a>
-            <router-link
-              v-if="currentUserPermissions && currentUserPermissions.includes('expense_edit')"
-              title="Edit"
-              v-b-tooltip.hover
-              :to="'/app/expenses/edit/'+props.row.id"
-            >
-              <lucide-icon class="text-20 text-success" name="pencil" />
-            </router-link>
-            <a
-              title="Delete"
-              class="cursor-pointer ml-2"
-              v-b-tooltip.hover
-              v-if="currentUserPermissions && currentUserPermissions.includes('expense_delete')"
-              @click="Remove_Expense(props.row.id)"
-            >
-              <lucide-icon class="text-20 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
+    <div v-if="filtersOpen" class="pxfl__filters">
+      <div class="pxfl__filters-grid">
+        <px-field :label="$t('date')"><template #default="{ id }"><px-input :id="id" type="date" v-model="Filter_date" /></template></px-field>
+        <px-field :label="$t('Reference')"><template #default="{ id }"><px-input :id="id" v-model="Filter_Ref" :placeholder="$t('Reference')" /></template></px-field>
+        <px-field :label="$t('Paymentchoice')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_Reg" :reduce="o => o.value" :placeholder="$t('PleaseSelect')"
+              :options="payment_methods.map(m => ({ label: m.name, value: m.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Account')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_account" :reduce="o => o.value" :placeholder="$t('Choose_Account')"
+              :options="accounts.map(a => ({ label: a.account_name, value: a.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('warehouse')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_warehouse" :reduce="o => o.value" :placeholder="$t('Choose_Warehouse')"
+              :options="warehouses.map(w => ({ label: w.name, value: w.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Expense_Category')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_category" :reduce="o => o.value" :placeholder="$t('Choose_Category')"
+              :options="expense_Category.map(c => ({ label: c.name, value: c.id }))" />
+          </template>
+        </px-field>
+      </div>
+      <div class="pxfl__filters-act">
+        <px-button size="sm" variant="primary" icon="filter" @click="applyFilters">{{ $t('Filter') }}</px-button>
+        <px-button size="sm" variant="ghost" icon="x" @click="Reset_Filter">{{ $t('Reset') }}</px-button>
+      </div>
     </div>
 
-    <!-- Modal Manage Documents -->
-    <b-modal
-      hide-footer
-      size="lg"
-      id="Manage_Documents"
-      :title="$t('Attach_Documents')"
-    >
-      <b-row>
-        <!-- Upload Section -->
-        <b-col lg="12" md="12" sm="12" class="mb-3">
-          <b-form-group :label="$t('Upload_Documents')">
-            <b-form-file
-              v-model="selectedFiles"
-              :placeholder="$t('Choose_files_or_drop_them_here')"
-              :drop-placeholder="$t('Drop_files_here')"
-              multiple
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
-              @change="onFileChange"
-            ></b-form-file>
-          </b-form-group>
-          <b-button
-            variant="primary"
-            size="sm"
-            @click="Upload_Documents"
-            :disabled="!selectedFiles || selectedFiles.length === 0 || uploadProcessing"
-          >
-            <lucide-icon name="upload" /> {{$t('Upload')}}
-          </b-button>
-          <div v-if="uploadProcessing" class="mt-2">
-            <div class="spinner sm spinner-primary"></div>
-          </div>
-        </b-col>
+    <div v-if="isLoading" class="pxfl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="6" />
+    </div>
 
-        <!-- Documents List -->
-        <b-col lg="12" md="12" sm="12">
-          <h5>{{$t('Attached_Documents')}}</h5>
-          <div class="table-responsive">
-            <table class="table table-hover table-bordered table-sm">
-              <thead>
-                <tr>
-                  <th scope="col">{{$t('File_Name')}}</th>
-                  <th scope="col">{{$t('Size')}}</th>
-                  <th scope="col">{{$t('Uploaded_Date')}}</th>
-                  <th scope="col">{{$t('Action')}}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="documents.length <= 0">
-                  <td colspan="4" class="text-center">{{$t('NodataAvailable')}}</td>
-                </tr>
-                <tr v-for="document in documents" :key="document.id">
-                  <td>
-                    <lucide-icon class="mr-1" name="file" />
-                    {{document.name}}
-                  </td>
-                  <td>{{formatFileSize(document.size)}}</td>
-                  <td>{{formatDateTime(document.created_at)}}</td>
-                  <td>
-                    <div role="group" aria-label="Document actions" class="btn-group">
-                      <button
-                        title="Download"
-                        class="btn btn-icon btn-success btn-sm"
-                        @click="Download_Document(document)"
-                      >
-                        <lucide-icon name="download" />
-                      </button>
-                      <button
-                        title="Delete"
-                        class="btn btn-icon btn-danger btn-sm"
-                        @click="Remove_Document(document.id)"
-                      >
-                        <lucide-icon name="x" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </b-col>
-      </b-row>
-    </b-modal>
+    <template v-else>
+      <div class="pxfl__tablewrap">
+        <px-table
+          v-if="expenses.length"
+          :columns="columns"
+          :rows="expenses"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-date="{ row }">{{ formatDisplayDate(row.date) }}</template>
+          <template #cell-amount="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser.currency, row.amount, priceDecimals) }}</span></template>
+          <template #cell-documents="{ row }">
+            <px-badge v-if="row.documents_count > 0" tone="info" icon="file">{{ row.documents_count }}</px-badge>
+            <span v-else class="pxfl__muted">—</span>
+          </template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions(row)" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
 
-    <!-- Multiple Filters -->
-    <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
-      <div class="px-3 py-2">
-        <b-row>
-          <!-- date  -->
-          <b-col md="12">
-            <b-form-group :label="$t('date')">
-              <b-form-input type="date" v-model="Filter_date"></b-form-input>
-            </b-form-group>
-          </b-col>
-
-          <!-- Reference  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Reference')">
-              <b-form-input label="Reference" :placeholder="$t('Reference')" v-model="Filter_Ref"></b-form-input>
-            </b-form-group>
-          </b-col>
-
-           <!-- Payment choice -->
-            <b-col md="12">
-            <b-form-group :label="$t('Paymentchoice')">
-              <v-select
-                v-model="Filter_Reg"
-                :reduce="label => label.value"
-                :placeholder="$t('PleaseSelect')"
-                :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
-              ></v-select>
-            </b-form-group>
-          </b-col>
-
-            <!-- Account  -->
-            <b-col md="12">
-            <b-form-group :label="$t('Account')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Account')"
-                v-model="Filter_account"
-                :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- warehouse  -->
-          <b-col md="12">
-            <b-form-group :label="$t('warehouse')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Warehouse')"
-                v-model="Filter_warehouse"
-                :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Expense_Category  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Expense_Category')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Category')"
-                v-model="Filter_category"
-                :options="expense_Category.map(expense_Category => ({label: expense_Category.name, value: expense_Category.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <b-col md="6" sm="12">
-            <b-button
-              @click="Get_Expenses(serverParams.page)"
-              variant="primary m-1"
-              size="sm"
-              block
-            >
-              <lucide-icon name="filter" />
-              {{ $t("Filter") }}
-            </b-button>
-          </b-col>
-          <b-col md="6" sm="12">
-            <b-button @click="Reset_Filter()" variant="danger m-1" size="sm" block>
-              <lucide-icon name="power" />
-              {{ $t("Reset") }}
-            </b-button>
-          </b-col>
-        </b-row>
+        <px-empty-state
+          v-else
+          icon="receipt"
+          :title="$t('No_expenses_yet') || 'Sin gastos todavía'"
+          :description="$t('No_expenses_desc') || 'Cuando registres un gasto, aparecerá en esta lista.'"
+        >
+          <px-button
+            v-if="currentUserPermissions && currentUserPermissions.includes('expense_add')"
+            size="sm" variant="primary" icon="plus" @click="$router.push('/app/expenses/store')"
+          >{{ $t('Add') }}</px-button>
+        </px-empty-state>
       </div>
-    </b-sidebar>
+
+      <px-pagination
+        v-if="expenses.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
+
+    <!-- Manage documents -->
+    <px-modal v-model="documentsOpen" size="lg" :title="$t('Attach_Documents')">
+      <div class="pxfl__docsupload">
+        <b-form-group :label="$t('Upload_Documents')">
+          <b-form-file
+            v-model="selectedFiles"
+            :placeholder="$t('Choose_files_or_drop_them_here')"
+            :drop-placeholder="$t('Drop_files_here')"
+            multiple
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
+            @change="onFileChange"
+          ></b-form-file>
+        </b-form-group>
+        <px-button size="sm" variant="primary" icon="upload"
+          :loading="uploadProcessing"
+          :disabled="!selectedFiles || selectedFiles.length === 0 || uploadProcessing"
+          @click="Upload_Documents"
+        >{{ $t('Upload') }}</px-button>
+      </div>
+
+      <h5 class="pxfl__docshead">{{ $t('Attached_Documents') }}</h5>
+      <div class="pxfl-tbl__wrap pxn-scroll">
+        <table class="pxfl-tbl">
+          <thead>
+            <tr><th>{{ $t('File_Name') }}</th><th>{{ $t('Size') }}</th><th>{{ $t('Uploaded_Date') }}</th><th class="is-right">{{ $t('Action') }}</th></tr>
+          </thead>
+          <tbody>
+            <tr v-if="documents.length <= 0"><td colspan="4" class="pxfl__empty">{{ $t('NodataAvailable') }}</td></tr>
+            <tr v-for="document in documents" :key="document.id">
+              <td><lucide-icon name="file" :size="14" /> {{ document.name }}</td>
+              <td>{{ formatFileSize(document.size) }}</td>
+              <td>{{ formatDateTime(document.created_at) }}</td>
+              <td class="is-right">
+                <div class="pxfl__rowbtns">
+                  <px-button size="sm" variant="ghost" icon-only icon="download" :title="$t('Download')" @click="Download_Document(document)" />
+                  <px-button size="sm" variant="ghost" icon-only icon="x" :title="$t('Delete')" @click="Remove_Document(document.id)" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </px-modal>
   </div>
 </template>
 
@@ -278,15 +159,39 @@ import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Util from '../../../../utils';
-import { getPriceDecimals } from "../../../../utils/priceFormat";
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting,
+  getPriceDecimals
+} from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Expense"
   },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxKebab,
+    PxBadge, PxField, PxInput, PxModal, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
+      _searchTimer: null,
       isLoading: true,
+      filtersOpen: false,
+      documentsOpen: false,
       serverParams: {
         columnFilters: {},
         sort: {
@@ -314,7 +219,8 @@ export default {
       documents: [],
       selectedFiles: [],
       currentExpenseId: null,
-      uploadProcessing: false
+      uploadProcessing: false,
+      price_format_key: null
     };
   },
 
@@ -324,80 +230,100 @@ export default {
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
+    activeFilterCount() {
+      return [this.Filter_date, this.Filter_Ref, this.Filter_Reg, this.Filter_account, this.Filter_warehouse, this.Filter_category]
+        .filter(v => v !== "" && v !== null && v !== undefined).length;
+    },
+    exportMenu() {
+      return [
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
     columns() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-
-        {
-          label: this.$t("ModePaiement"),
-          field: "payment_method",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-
-
-        {
-          label: this.$t("Account"),
-          field: "account_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-       
-        {
-          label: this.$t("Amount"),
-          field: "amount",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Categorie"),
-          field: "category_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-         
-        {
-          label: this.$t("Details"),
-          field: "details",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Documents"),
-          field: "documents",
-          tdClass: "text-center",
-          thClass: "text-center"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "date", label: this.$t("date"), sortable: true },
+        { key: "Ref", label: this.$t("Reference"), sortable: true, strong: true },
+        { key: "payment_method", label: this.$t("ModePaiement"), sortable: true },
+        { key: "account_name", label: this.$t("Account"), sortable: true },
+        { key: "amount", label: this.$t("Amount"), align: "right", sortable: true },
+        { key: "category_name", label: this.$t("Categorie"), sortable: true },
+        { key: "warehouse_name", label: this.$t("warehouse"), sortable: true },
+        { key: "details", label: this.$t("Details") },
+        { key: "documents", label: this.$t("Documents") }
       ];
     }
   },
 
   methods: {
+    updateParams(newProps) {
+      this.serverParams = Object.assign({}, this.serverParams, newProps);
+    },
+
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Expenses(1); }, 350);
+    },
+
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Expenses(p); } },
+
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Expenses(1); } },
+
+    onSort({ key, dir }) {
+      let field = key;
+      if (key === "warehouse_name") field = "warehouse_id";
+      else if (key === "category_name") field = "expense_category_id";
+      else if (key === "account_name") field = "account_id";
+      this.updateParams({ sort: { type: dir, field: field } });
+      this.Get_Expenses(this.serverParams.page);
+    },
+
+    applyFilters() { this.updateParams({ page: 1 }); this.Get_Expenses(this.serverParams.page); },
+
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "pdf") this.Expense_PDF();
+      else if (k === "xlsx") this.exportCsv();
+    },
+
+    exportCsv() {
+      const head = [this.$t("date"), this.$t("Reference"), this.$t("Account"), this.$t("Categorie"), this.$t("warehouse"), this.$t("ModePaiement"), this.$t("Amount")];
+      const lines = [head.join(",")].concat(
+        (this.expenses || []).map(r =>
+          [r.date, r.Ref, r.account_name, r.category_name, r.warehouse_name, r.payment_method, r.amount]
+            .map(c => `"${String(c == null ? "" : c).replace(/"/g, '""')}"`).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "Expenses.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+
+    rowActions(row) {
+      const p = this.currentUserPermissions || [];
+      const items = [{ key: "docs", label: this.$t("Attach_Documents"), icon: "file" }];
+      if (p.includes("expense_edit")) items.push({ key: "edit", label: this.$t("Edit"), icon: "pencil" });
+      if (p.includes("expense_delete")) items.push({ key: "delete", label: this.$t("Del"), icon: "x", tone: "danger" });
+      return items;
+    },
+
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "docs") this.Manage_Documents(row.id);
+      else if (k === "edit") this.$router.push("/app/expenses/edit/" + row.id);
+      else if (k === "delete") this.Remove_Expense(row.id);
+    },
+
+    //------ Toast
+    makeToast(variant, msg, title) {
+      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+    },
+
     //---------------------- Expenses PDF -------------------------------\\
     Expense_PDF() {
       var self = this;
@@ -429,7 +355,7 @@ export default {
 
       // Calculate totals
       let totalGrandTotal = self.expenses.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
-     
+
       const footer = [[
         self.$t("Total"),
         '',
@@ -487,6 +413,31 @@ export default {
 
     },
 
+    //------------------------------ Money display formatting -------------------------\\
+    formatNumber(number, dec) {
+      const value = (typeof number === "string" ? number : Number(number || 0).toString()).split(".");
+      if (dec <= 0) return value[0];
+      let formated = value[1] || "";
+      if (formated.length > dec) return `${value[0]}.${formated.substr(0, dec)}`;
+      while (formated.length < dec) formated += "0";
+      return `${value[0]}.${formated}`;
+    },
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = this.priceDecimals;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) this.price_format_key = key;
+        return formatPriceDisplayHelper(number, decimals, key || null);
+      } catch (e) {
+        return this.formatNumber(number, dec);
+      }
+    },
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
+    },
+
     //----------------------------------------- Format File Size -------------------------------\\
     formatFileSize(bytes) {
       if (bytes === 0) return '0 Bytes';
@@ -510,66 +461,8 @@ export default {
     //----------------------------------------- Format Display Date (for tables) -------------------------------\\
     formatDisplayDate(value) {
       if (!value) return '';
-      // Get date format from Vuex store (loaded from database) or fallback
       const dateFormat = this.$store.getters.getDateFormat || Util.getDateFormat(this.$store);
       return Util.formatDisplayDate(value, dateFormat);
-    },
-
-    //------ update Params Table
-    updateParams(newProps) {
-      this.serverParams = Object.assign({}, this.serverParams, newProps);
-    },
-
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Expenses(currentPage);
-      }
-    },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Expenses(1);
-      }
-    },
-
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
-    },
-
-    //------ Event Sort Change
-    onSortChange(params) {
-      let field = "";
-      if (params[0].field == "warehouse_name") {
-        field = "warehouse_id";
-      } else if (params[0].field == "category_name") {
-        field = "expense_category_id";
-      } else if (params[0].field == "account_name") {
-        field = "account_id";
-      } else {
-        field = params[0].field;
-      }
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: field
-        }
-      });
-      this.Get_Expenses(this.serverParams.page);
-    },
-
-    //------ Event Search
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Expenses(this.serverParams.page);
     },
 
     //------ Reset Filter
@@ -666,7 +559,7 @@ export default {
           this.documents = response.data.documents || [];
           setTimeout(() => {
             NProgress.done();
-            this.$bvModal.show("Manage_Documents");
+            this.documentsOpen = true;
           }, 500);
         })
         .catch(error => {
@@ -838,3 +731,28 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxfl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxfl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxfl__pad { padding: var(--pxn-space-6) 0; }
+.pxfl__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxfl__filters-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxfl__filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxfl__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxfl__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+.pxfl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxfl__muted { color: var(--pxn-ink-3); }
+.pxfl-tbl__wrap { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); overflow-x: auto; }
+.pxfl-tbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxfl-tbl th { padding: var(--pxn-space-3) var(--pxn-space-4); text-align: left; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); background: var(--pxn-surface-2); border-bottom: 1px solid var(--pxn-border); white-space: nowrap; }
+.pxfl-tbl td { padding: var(--pxn-space-3) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink); }
+.pxfl-tbl tr:last-child td { border-bottom: 0; }
+.pxfl-tbl .is-right { text-align: right; }
+.pxfl__empty { text-align: center; color: var(--pxn-ink-3); }
+.pxfl__rowbtns { display: inline-flex; gap: var(--pxn-space-1); }
+.pxfl__docsupload { display: flex; flex-direction: column; gap: var(--pxn-space-3); margin-bottom: var(--pxn-space-6); }
+.pxfl__docshead { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); margin: var(--pxn-space-4) 0 var(--pxn-space-3); }
+</style>
