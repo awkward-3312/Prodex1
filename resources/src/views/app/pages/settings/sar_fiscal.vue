@@ -1,83 +1,100 @@
 <template>
-  <div class="main-content">
-    <breadcumb page="Facturación SAR" :folder="$t('Accounting') || 'Contabilidad'" />
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxcfg">
+    <px-page-header
+      title="Facturación SAR"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: 'Facturación SAR' }]"
+    />
 
-    <div v-else>
-      <b-alert show variant="info">
+    <div v-if="loading" class="pxcfg__pad">
+      <px-skeleton variant="lines" :rows="10" />
+    </div>
+
+    <template v-else>
+      <px-alert tone="info" class="pxcfg__alert">
         Ingresa únicamente datos autorizados por el SAR. Los cambios se aplican a facturas futuras; las facturas ya emitidas conservan una copia congelada de su información fiscal.
-      </b-alert>
+      </px-alert>
 
-      <b-card class="mb-4">
-        <h5>Perfil fiscal</h5>
-        <b-row>
-          <b-col md="4"><b-form-group label="RTN *"><b-form-input v-model.trim="profile.rtn" /></b-form-group></b-col>
-          <b-col md="4"><b-form-group label="Razón social *"><b-form-input v-model.trim="profile.legal_name" /></b-form-group></b-col>
-          <b-col md="4"><b-form-group label="Nombre comercial"><b-form-input v-model.trim="profile.trade_name" /></b-form-group></b-col>
-          <b-col md="4"><b-form-group label="Teléfono"><b-form-input v-model.trim="profile.phone" /></b-form-group></b-col>
-          <b-col md="4"><b-form-group label="Correo"><b-form-input type="email" v-model.trim="profile.email" /></b-form-group></b-col>
-          <b-col md="12"><b-form-group label="Dirección de casa matriz *"><b-form-textarea rows="2" v-model.trim="profile.head_office_address" /></b-form-group></b-col>
-          <b-col md="12">
-            <b-form-checkbox v-model="profile.enabled" switch>
-              {{ profile.enabled ? "Facturación fiscal habilitada" : "Facturación fiscal deshabilitada" }}
-            </b-form-checkbox>
-          </b-col>
-        </b-row>
-      </b-card>
-
-      <b-card class="mb-4">
-        <div class="mb-3">
-          <h5 class="mb-1">Contenido y presentación de la factura</h5>
-          <small class="text-muted">Estos datos son administrables por el tenant y se congelan en cada factura al momento de emitirla.</small>
+      <px-card title="Perfil fiscal" class="pxcfg__card">
+        <div class="pxcfg__grid pxcfg__grid--3">
+          <px-field label="RTN *"><template #default="{ id }"><px-input :id="id" :value="profile.rtn" @input="v => profile.rtn = tv(v)" /></template></px-field>
+          <px-field label="Razón social *"><template #default="{ id }"><px-input :id="id" :value="profile.legal_name" @input="v => profile.legal_name = tv(v)" /></template></px-field>
+          <px-field label="Nombre comercial"><template #default="{ id }"><px-input :id="id" :value="profile.trade_name" @input="v => profile.trade_name = tv(v)" /></template></px-field>
+          <px-field label="Teléfono"><template #default="{ id }"><px-input :id="id" :value="profile.phone" @input="v => profile.phone = tv(v)" /></template></px-field>
+          <px-field label="Correo"><template #default="{ id }"><px-input :id="id" type="email" :value="profile.email" @input="v => profile.email = tv(v)" /></template></px-field>
         </div>
-        <b-row>
-          <b-col md="4"><b-form-group label="Título del documento"><b-form-input v-model.trim="profile.invoice_settings.document_title" placeholder="FACTURA" /></b-form-group></b-col>
-          <b-col md="4"><b-form-group label="Tipo de venta"><b-form-input v-model.trim="profile.invoice_settings.sale_type_label" placeholder="CONTADO" /></b-form-group></b-col>
-          <b-col md="4"><b-form-group label="Sitio web"><b-form-input v-model.trim="profile.invoice_settings.website" placeholder="https://..." /></b-form-group></b-col>
-          <b-col md="6"><b-form-group label="Texto de original"><b-form-input v-model.trim="profile.invoice_settings.original_label" /></b-form-group></b-col>
-          <b-col md="6"><b-form-group label="Texto de copia"><b-form-input v-model.trim="profile.invoice_settings.copy_label" /></b-form-group></b-col>
-          <b-col md="12"><b-form-group label="Mensaje al pie"><b-form-textarea rows="2" v-model.trim="profile.invoice_settings.footer_message" /></b-form-group></b-col>
-        </b-row>
-        <b-row>
-          <b-col md="3" v-for="toggle in invoiceToggles" :key="toggle.key" class="mb-2">
-            <b-form-checkbox v-model="profile.invoice_settings[toggle.key]" switch>{{ toggle.label }}</b-form-checkbox>
-          </b-col>
-        </b-row>
-        <b-button variant="primary" class="mt-3" :disabled="saving" @click="saveProfile">Guardar configuración fiscal y factura</b-button>
-      </b-card>
+        <px-field label="Dirección de casa matriz *" class="pxcfg__mt">
+          <template #default="{ id }"><px-textarea :id="id" :rows="2" :value="profile.head_office_address" @input="v => profile.head_office_address = tv(v)" /></template>
+        </px-field>
+        <px-check type="switch" :modelValue="!!profile.enabled" @change="v => profile.enabled = v" class="pxcfg__mt">
+          {{ profile.enabled ? "Facturación fiscal habilitada" : "Facturación fiscal deshabilitada" }}
+        </px-check>
+      </px-card>
 
-      <b-card class="mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-          <div><h5 class="mb-1">Clasificación fiscal de productos</h5><small class="text-muted">Define si cada producto es gravado, exento, exonerado o tasa cero y su ISV. Esta clasificación alimenta POS, A4, térmica y reimpresiones.</small></div>
-          <b-form-input v-model.trim="productSearch" size="sm" style="max-width:280px" placeholder="Buscar producto..." />
+      <px-card title="Contenido y presentación de la factura" class="pxcfg__card">
+        <p class="pxcfg__cardnote">Estos datos son administrables por el tenant y se congelan en cada factura al momento de emitirla.</p>
+        <div class="pxcfg__grid pxcfg__grid--3">
+          <px-field label="Título del documento"><template #default="{ id }"><px-input :id="id" :value="profile.invoice_settings.document_title" @input="v => profile.invoice_settings.document_title = tv(v)" placeholder="FACTURA" /></template></px-field>
+          <px-field label="Tipo de venta"><template #default="{ id }"><px-input :id="id" :value="profile.invoice_settings.sale_type_label" @input="v => profile.invoice_settings.sale_type_label = tv(v)" placeholder="CONTADO" /></template></px-field>
+          <px-field label="Sitio web"><template #default="{ id }"><px-input :id="id" :value="profile.invoice_settings.website" @input="v => profile.invoice_settings.website = tv(v)" placeholder="https://..." /></template></px-field>
         </div>
-        <div class="table-responsive" style="max-height:420px; overflow:auto;">
-          <table class="table table-sm table-hover">
-            <thead><tr><th>Código</th><th>Producto</th><th style="min-width:160px">Clasificación</th><th style="min-width:120px">ISV</th><th style="min-width:150px">Precio</th><th></th></tr></thead>
+        <div class="pxcfg__grid pxcfg__mt">
+          <px-field label="Texto de original"><template #default="{ id }"><px-input :id="id" :value="profile.invoice_settings.original_label" @input="v => profile.invoice_settings.original_label = tv(v)" /></template></px-field>
+          <px-field label="Texto de copia"><template #default="{ id }"><px-input :id="id" :value="profile.invoice_settings.copy_label" @input="v => profile.invoice_settings.copy_label = tv(v)" /></template></px-field>
+        </div>
+        <px-field label="Mensaje al pie" class="pxcfg__mt">
+          <template #default="{ id }"><px-textarea :id="id" :rows="2" :value="profile.invoice_settings.footer_message" @input="v => profile.invoice_settings.footer_message = tv(v)" /></template>
+        </px-field>
+        <div class="pxcfg__togglegrid">
+          <px-check v-for="toggle in invoiceToggles" :key="toggle.key" type="switch"
+            :modelValue="!!profile.invoice_settings[toggle.key]" @change="v => $set(profile.invoice_settings, toggle.key, v)">
+            {{ toggle.label }}
+          </px-check>
+        </div>
+        <template #footer>
+          <px-button variant="primary" :disabled="saving" @click="saveProfile">Guardar configuración fiscal y factura</px-button>
+        </template>
+      </px-card>
+
+      <px-card class="pxcfg__card">
+        <template #header>
+          <div class="pxcfg__cardhead">
+            <div>
+              <h3 class="pxcfg__cardtitle">Clasificación fiscal de productos</h3>
+              <small class="pxcfg__cardnote">Define si cada producto es gravado, exento, exonerado o tasa cero y su ISV. Esta clasificación alimenta POS, A4, térmica y reimpresiones.</small>
+            </div>
+            <px-input class="pxcfg__inlinesearch" :value="productSearch" @input="v => productSearch = tv(v)" placeholder="Buscar producto..." icon-lead="search" />
+          </div>
+        </template>
+        <div class="pxcfg__scrollbox">
+          <table class="pxcfg__table">
+            <thead><tr><th>Código</th><th>Producto</th><th>Clasificación</th><th>ISV</th><th>Precio</th><th></th></tr></thead>
             <tbody>
               <tr v-for="product in filteredProducts" :key="product.id">
                 <td>{{ product.code }}</td>
                 <td>{{ product.name }}</td>
-                <td><v-select v-model="product.fiscal_tax_category" :reduce="o => o.value" :options="taxCategories" :clearable="false" /></td>
-                <td>
-                  <v-select v-model="product.TaxNet" :reduce="o => o.value" :options="taxRateOptions(product)" :clearable="false" :disabled="product.fiscal_tax_category !== 'taxed'" />
-                </td>
-                <td><v-select v-model="product.tax_method" :reduce="o => o.value" :options="taxMethodOptions" :clearable="false" /></td>
-                <td class="text-right"><b-button size="sm" variant="outline-primary" :disabled="saving" @click="saveProductFiscal(product)">Guardar</b-button></td>
+                <td class="pxcfg__cellsel"><vs-px v-model="product.fiscal_tax_category" :reduce="o => o.value" :options="taxCategories" :clearable="false" /></td>
+                <td class="pxcfg__cellsel"><vs-px v-model="product.TaxNet" :reduce="o => o.value" :options="taxRateOptions(product)" :clearable="false" :disabled="product.fiscal_tax_category !== 'taxed'" /></td>
+                <td class="pxcfg__cellsel"><vs-px v-model="product.tax_method" :reduce="o => o.value" :options="taxMethodOptions" :clearable="false" /></td>
+                <td class="pxcfg__tr"><px-button size="sm" variant="secondary" :disabled="saving" @click="saveProductFiscal(product)">Guardar</px-button></td>
               </tr>
-              <tr v-if="!filteredProducts.length"><td colspan="6" class="text-center text-muted">No hay productos que coincidan.</td></tr>
+              <tr v-if="!filteredProducts.length"><td colspan="6" class="pxcfg__tc pxcfg__cardnote">No hay productos que coincidan.</td></tr>
             </tbody>
           </table>
         </div>
-      </b-card>
+      </px-card>
 
-      <b-card class="mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-          <div><h5 class="mb-1">Datos fiscales de clientes</h5><small class="text-muted">RTN, documento de identificación y registros de exoneración que podrán copiarse a la factura cuando correspondan.</small></div>
-          <b-form-input v-model.trim="clientSearch" size="sm" style="max-width:280px" placeholder="Buscar cliente..." />
-        </div>
-        <div class="table-responsive" style="max-height:360px; overflow:auto;">
-          <table class="table table-sm table-hover">
+      <px-card class="pxcfg__card">
+        <template #header>
+          <div class="pxcfg__cardhead">
+            <div>
+              <h3 class="pxcfg__cardtitle">Datos fiscales de clientes</h3>
+              <small class="pxcfg__cardnote">RTN, documento de identificación y registros de exoneración que podrán copiarse a la factura cuando correspondan.</small>
+            </div>
+            <px-input class="pxcfg__inlinesearch" :value="clientSearch" @input="v => clientSearch = tv(v)" placeholder="Buscar cliente..." icon-lead="search" />
+          </div>
+        </template>
+        <div class="pxcfg__scrollbox">
+          <table class="pxcfg__table">
             <thead><tr><th>Cliente</th><th>RTN</th><th>Identificación</th><th>Registro SAR/SAG</th><th>Registro exonerado</th><th></th></tr></thead>
             <tbody>
               <tr v-for="client in filteredClients" :key="client.id">
@@ -86,21 +103,23 @@
                 <td>{{ client.identification_number || '-' }}</td>
                 <td>{{ client.sar_registry_number || '-' }}</td>
                 <td>{{ client.exoneration_registry_number || '-' }}</td>
-                <td class="text-right"><b-button size="sm" variant="outline-primary" @click="openClient(client)">Editar</b-button></td>
+                <td class="pxcfg__tr"><px-button size="sm" variant="secondary" @click="openClient(client)">Editar</px-button></td>
               </tr>
-              <tr v-if="!filteredClients.length"><td colspan="6" class="text-center text-muted">No hay clientes que coincidan.</td></tr>
+              <tr v-if="!filteredClients.length"><td colspan="6" class="pxcfg__tc pxcfg__cardnote">No hay clientes que coincidan.</td></tr>
             </tbody>
           </table>
         </div>
-      </b-card>
+      </px-card>
 
-      <b-card class="mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <div><h5 class="mb-1">Puntos de emisión</h5><small class="text-muted">Códigos de establecimiento y punto autorizados.</small></div>
-          <b-button variant="primary" @click="openPoint()">Agregar punto</b-button>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-hover">
+      <px-card class="pxcfg__card">
+        <template #header>
+          <div class="pxcfg__cardhead">
+            <div><h3 class="pxcfg__cardtitle">Puntos de emisión</h3><small class="pxcfg__cardnote">Códigos de establecimiento y punto autorizados.</small></div>
+            <px-button variant="primary" size="sm" icon="plus" @click="openPoint()">Agregar punto</px-button>
+          </div>
+        </template>
+        <div class="pxcfg__scrollbox">
+          <table class="pxcfg__table">
             <thead><tr><th>Código</th><th>Nombre</th><th>Almacén</th><th>Caja</th><th>Estado</th><th></th></tr></thead>
             <tbody>
               <tr v-for="point in points" :key="point.id">
@@ -108,91 +127,117 @@
                 <td>{{ point.name }}</td>
                 <td>{{ warehouseName(point.warehouse_id) }}</td>
                 <td>{{ drawerName(point.cash_drawer_id) }}</td>
-                <td><b-badge :variant="point.active ? 'success' : 'secondary'">{{ point.active ? "Activo" : "Inactivo" }}</b-badge></td>
-                <td class="text-right"><a href="#" @click.prevent="openPoint(point)"><lucide-icon name="pencil" /></a></td>
+                <td><px-badge :tone="point.active ? 'success' : 'neutral'">{{ point.active ? "Activo" : "Inactivo" }}</px-badge></td>
+                <td class="pxcfg__tr"><px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Editar" @click="openPoint(point)" /></td>
               </tr>
-              <tr v-if="!points.length"><td colspan="6" class="text-center text-muted">No hay puntos registrados.</td></tr>
+              <tr v-if="!points.length"><td colspan="6" class="pxcfg__tc pxcfg__cardnote">No hay puntos registrados.</td></tr>
             </tbody>
           </table>
         </div>
-      </b-card>
+      </px-card>
 
-      <b-card>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <div><h5 class="mb-1">Autorizaciones y rangos</h5><small class="text-muted">El correlativo solo avanza al emitir una factura fiscal.</small></div>
-          <b-button variant="primary" :disabled="!points.length" @click="openAuthorization">Agregar autorización</b-button>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-hover">
+      <px-card class="pxcfg__card">
+        <template #header>
+          <div class="pxcfg__cardhead">
+            <div><h3 class="pxcfg__cardtitle">Autorizaciones y rangos</h3><small class="pxcfg__cardnote">El correlativo solo avanza al emitir una factura fiscal.</small></div>
+            <px-button variant="primary" size="sm" icon="plus" :disabled="!points.length" @click="openAuthorization">Agregar autorización</px-button>
+          </div>
+        </template>
+        <div class="pxcfg__scrollbox">
+          <table class="pxcfg__table">
             <thead><tr><th>Punto</th><th>CAI</th><th>Rango</th><th>Siguiente</th><th>Fecha límite</th><th>Estado</th><th></th></tr></thead>
             <tbody>
               <template v-for="point in points">
                 <tr v-for="auth in point.authorizations" :key="auth.id">
                   <td>{{ point.establishment_code }}-{{ point.point_code }}-{{ auth.document_type }}</td>
-                  <td>{{ auth.cai }}</td>
-                  <td>{{ auth.range_start }} – {{ auth.range_end }}</td>
-                  <td>{{ auth.next_number }}</td>
+                  <td class="pxn-num">{{ auth.cai }}</td>
+                  <td class="pxn-num">{{ auth.range_start }} – {{ auth.range_end }}</td>
+                  <td class="pxn-num">{{ auth.next_number }}</td>
                   <td>{{ auth.deadline }}</td>
-                  <td><b-badge :variant="auth.status === 'active' ? 'success' : 'secondary'">{{ statusLabel(auth.status) }}</b-badge></td>
-                  <td class="text-right"><b-button v-if="auth.status === 'draft' || auth.status === 'disabled'" size="sm" variant="success" @click="activate(auth)">Activar</b-button></td>
+                  <td><px-badge :tone="auth.status === 'active' ? 'success' : 'neutral'">{{ statusLabel(auth.status) }}</px-badge></td>
+                  <td class="pxcfg__tr"><px-button v-if="auth.status === 'draft' || auth.status === 'disabled'" size="sm" variant="primary" @click="activate(auth)">Activar</px-button></td>
                 </tr>
               </template>
-              <tr v-if="!hasAuthorizations"><td colspan="7" class="text-center text-muted">No hay autorizaciones registradas.</td></tr>
+              <tr v-if="!hasAuthorizations"><td colspan="7" class="pxcfg__tc pxcfg__cardnote">No hay autorizaciones registradas.</td></tr>
             </tbody>
           </table>
         </div>
-      </b-card>
-    </div>
+      </px-card>
+    </template>
 
-    <b-modal id="SarClientModal" hide-footer title="Datos fiscales del cliente">
-      <b-form @submit.prevent="saveClientFiscal">
-        <b-form-group label="Cliente"><b-form-input :value="clientForm.name" disabled /></b-form-group>
-        <b-form-group label="RTN"><b-form-input v-model.trim="clientForm.tax_number" /></b-form-group>
-        <b-row>
-          <b-col md="6"><b-form-group label="Tipo de identificación"><b-form-input v-model.trim="clientForm.identification_type" placeholder="DNI / Pasaporte" /></b-form-group></b-col>
-          <b-col md="6"><b-form-group label="Número de identificación"><b-form-input v-model.trim="clientForm.identification_number" /></b-form-group></b-col>
-        </b-row>
-        <b-form-group label="No. Registro SAG/SAR"><b-form-input v-model.trim="clientForm.sar_registry_number" /></b-form-group>
-        <b-form-group label="No. Registro exonerado"><b-form-input v-model.trim="clientForm.exoneration_registry_number" /></b-form-group>
-        <b-button type="submit" variant="primary" :disabled="saving">Guardar</b-button>
-      </b-form>
-    </b-modal>
+    <px-modal v-model="clientModalOpen" title="Datos fiscales del cliente" size="md">
+      <div class="pxcfg__formgrid">
+        <px-field label="Cliente"><template #default="{ id }"><px-input :id="id" :value="clientForm.name" disabled /></template></px-field>
+        <px-field label="RTN"><template #default="{ id }"><px-input :id="id" :value="clientForm.tax_number" @input="v => clientForm.tax_number = tv(v)" /></template></px-field>
+        <div class="pxcfg__grid">
+          <px-field label="Tipo de identificación"><template #default="{ id }"><px-input :id="id" :value="clientForm.identification_type" @input="v => clientForm.identification_type = tv(v)" placeholder="DNI / Pasaporte" /></template></px-field>
+          <px-field label="Número de identificación"><template #default="{ id }"><px-input :id="id" :value="clientForm.identification_number" @input="v => clientForm.identification_number = tv(v)" /></template></px-field>
+        </div>
+        <px-field label="No. Registro SAG/SAR"><template #default="{ id }"><px-input :id="id" :value="clientForm.sar_registry_number" @input="v => clientForm.sar_registry_number = tv(v)" /></template></px-field>
+        <px-field label="No. Registro exonerado"><template #default="{ id }"><px-input :id="id" :value="clientForm.exoneration_registry_number" @input="v => clientForm.exoneration_registry_number = tv(v)" /></template></px-field>
+      </div>
+      <template #footer="{ close }">
+        <px-button variant="ghost" @click="close">Cancelar</px-button>
+        <px-button variant="primary" :disabled="saving" @click="saveClientFiscal">Guardar</px-button>
+      </template>
+    </px-modal>
 
-    <b-modal id="SarPointModal" hide-footer :title="pointForm.id ? 'Editar punto de emisión' : 'Agregar punto de emisión'">
-      <b-form @submit.prevent="savePoint">
-        <b-row>
-          <b-col md="6"><b-form-group label="Código de establecimiento *"><b-form-input maxlength="3" v-model.trim="pointForm.establishment_code" placeholder="000" /></b-form-group></b-col>
-          <b-col md="6"><b-form-group label="Código del punto *"><b-form-input maxlength="3" v-model.trim="pointForm.point_code" placeholder="001" /></b-form-group></b-col>
-          <b-col md="12"><b-form-group label="Nombre *"><b-form-input v-model.trim="pointForm.name" /></b-form-group></b-col>
-          <b-col md="6"><b-form-group label="Almacén"><v-select v-model="pointForm.warehouse_id" :reduce="o => o.value" :options="warehouseOptions" /></b-form-group></b-col>
-          <b-col md="6"><b-form-group label="Caja física"><v-select v-model="pointForm.cash_drawer_id" :reduce="o => o.value" :options="drawerOptions" /></b-form-group></b-col>
-          <b-col md="12"><b-form-group label="Dirección del punto *"><b-form-textarea rows="2" v-model.trim="pointForm.address" /></b-form-group></b-col>
-          <b-col md="12"><b-form-checkbox v-model="pointForm.active" switch>Activo</b-form-checkbox></b-col>
-        </b-row>
-        <b-button type="submit" variant="primary" class="mt-3" :disabled="saving">Guardar</b-button>
-      </b-form>
-    </b-modal>
+    <px-modal v-model="pointModalOpen" :title="pointForm.id ? 'Editar punto de emisión' : 'Agregar punto de emisión'" size="md">
+      <div class="pxcfg__formgrid">
+        <div class="pxcfg__grid">
+          <px-field label="Código de establecimiento *"><template #default="{ id }"><px-input :id="id" maxlength="3" :value="pointForm.establishment_code" @input="v => pointForm.establishment_code = tv(v)" placeholder="000" /></template></px-field>
+          <px-field label="Código del punto *"><template #default="{ id }"><px-input :id="id" maxlength="3" :value="pointForm.point_code" @input="v => pointForm.point_code = tv(v)" placeholder="001" /></template></px-field>
+        </div>
+        <px-field label="Nombre *"><template #default="{ id }"><px-input :id="id" :value="pointForm.name" @input="v => pointForm.name = tv(v)" /></template></px-field>
+        <div class="pxcfg__grid">
+          <px-field label="Almacén"><template #default="{ id }"><vs-px :input-id="id" v-model="pointForm.warehouse_id" :reduce="o => o.value" :options="warehouseOptions" /></template></px-field>
+          <px-field label="Caja física"><template #default="{ id }"><vs-px :input-id="id" v-model="pointForm.cash_drawer_id" :reduce="o => o.value" :options="drawerOptions" /></template></px-field>
+        </div>
+        <px-field label="Dirección del punto *"><template #default="{ id }"><px-textarea :id="id" :rows="2" :value="pointForm.address" @input="v => pointForm.address = tv(v)" /></template></px-field>
+        <px-check type="switch" :modelValue="!!pointForm.active" @change="v => pointForm.active = v">Activo</px-check>
+      </div>
+      <template #footer="{ close }">
+        <px-button variant="ghost" @click="close">Cancelar</px-button>
+        <px-button variant="primary" :disabled="saving" @click="savePoint">Guardar</px-button>
+      </template>
+    </px-modal>
 
-    <b-modal id="SarAuthorizationModal" hide-footer title="Agregar autorización SAR">
-      <b-form @submit.prevent="saveAuthorization">
-        <b-form-group label="Punto de emisión *"><v-select v-model="authForm.point_of_issue_id" :reduce="o => o.value" :options="pointOptions" /></b-form-group>
-        <b-form-group label="CAI *"><b-form-input v-model.trim="authForm.cai" /></b-form-group>
-        <b-row>
-          <b-col md="4"><b-form-group label="Tipo *"><b-form-input maxlength="2" v-model.trim="authForm.document_type" /></b-form-group></b-col>
-          <b-col md="4"><b-form-group label="Inicio *"><b-form-input type="number" v-model.number="authForm.range_start" /></b-form-group></b-col>
-          <b-col md="4"><b-form-group label="Final *"><b-form-input type="number" v-model.number="authForm.range_end" /></b-form-group></b-col>
-          <b-col md="6"><b-form-group label="Siguiente correlativo *"><b-form-input type="number" v-model.number="authForm.next_number" /></b-form-group></b-col>
-          <b-col md="6"><b-form-group label="Fecha límite *"><b-form-input type="date" v-model="authForm.deadline" /></b-form-group></b-col>
-          <b-col md="6"><b-form-group label="Fecha de autorización"><b-form-input type="date" v-model="authForm.authorization_date" /></b-form-group></b-col>
-        </b-row>
-        <b-button type="submit" variant="primary" :disabled="saving">Guardar como borrador</b-button>
-      </b-form>
-    </b-modal>
+    <px-modal v-model="authModalOpen" title="Agregar autorización SAR" size="md">
+      <div class="pxcfg__formgrid">
+        <px-field label="Punto de emisión *"><template #default="{ id }"><vs-px :input-id="id" v-model="authForm.point_of_issue_id" :reduce="o => o.value" :options="pointOptions" /></template></px-field>
+        <px-field label="CAI *"><template #default="{ id }"><px-input :id="id" :value="authForm.cai" @input="v => authForm.cai = tv(v)" /></template></px-field>
+        <div class="pxcfg__grid pxcfg__grid--3">
+          <px-field label="Tipo *"><template #default="{ id }"><px-input :id="id" maxlength="2" :value="authForm.document_type" @input="v => authForm.document_type = tv(v)" /></template></px-field>
+          <px-field label="Inicio *"><template #default="{ id }"><px-input :id="id" type="number" :value="authForm.range_start" @input="v => authForm.range_start = vnum(v)" /></template></px-field>
+          <px-field label="Final *"><template #default="{ id }"><px-input :id="id" type="number" :value="authForm.range_end" @input="v => authForm.range_end = vnum(v)" /></template></px-field>
+        </div>
+        <div class="pxcfg__grid">
+          <px-field label="Siguiente correlativo *"><template #default="{ id }"><px-input :id="id" type="number" :value="authForm.next_number" @input="v => authForm.next_number = vnum(v)" /></template></px-field>
+          <px-field label="Fecha límite *"><template #default="{ id }"><px-input :id="id" type="date" v-model="authForm.deadline" /></template></px-field>
+        </div>
+        <px-field label="Fecha de autorización"><template #default="{ id }"><px-input :id="id" type="date" v-model="authForm.authorization_date" /></template></px-field>
+      </div>
+      <template #footer="{ close }">
+        <px-button variant="ghost" @click="close">Cancelar</px-button>
+        <px-button variant="primary" :disabled="saving" @click="saveAuthorization">Guardar como borrador</px-button>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 const invoiceDefaults = () => ({
   document_title: "FACTURA", sale_type_label: "CONTADO", website: "", footer_message: "Gracias por su compra.",
@@ -203,19 +248,21 @@ const invoiceDefaults = () => ({
 
 export default {
   metaInfo: { title: "Facturación SAR" },
+  components: { PxPageHeader, PxButton, PxCard, PxField, PxInput, PxTextarea, PxCheck, PxBadge, PxAlert, PxModal, "vs-px": VsPx },
   data() {
     return {
       loading: true, saving: false, points: [], warehouses: [], cashDrawers: [], products: [], clients: [],
-      productSearch: "", clientSearch: "", taxCategories: [], taxRates: [0,15,18],
+      productSearch: "", clientSearch: "", taxCategories: [], taxRates: [0, 15, 18],
+      clientModalOpen: false, pointModalOpen: false, authModalOpen: false,
       profile: { enabled: false, rtn: "", legal_name: "", trade_name: "", head_office_address: "", phone: "", email: "", invoice_settings: invoiceDefaults() },
       pointForm: {}, authForm: {}, clientForm: {},
-      taxMethodOptions: [{label:"Exclusivo",value:"1"},{label:"Incluido en precio",value:"2"}],
+      taxMethodOptions: [{ label: "Exclusivo", value: "1" }, { label: "Incluido en precio", value: "2" }],
       invoiceToggles: [
-        {key:"show_logo",label:"Mostrar logo"}, {key:"show_internal_reference",label:"Mostrar referencia interna"},
-        {key:"show_cashier",label:"Mostrar cajero"}, {key:"show_warehouse",label:"Mostrar almacén"},
-        {key:"show_payment_summary",label:"Mostrar resumen de pago"}, {key:"show_customer_address",label:"Mostrar dirección cliente"},
-        {key:"show_item_code",label:"Mostrar código de producto"}, {key:"show_total_in_words",label:"Mostrar total en letras"},
-        {key:"show_qr",label:"Mostrar QR"}
+        { key: "show_logo", label: "Mostrar logo" }, { key: "show_internal_reference", label: "Mostrar referencia interna" },
+        { key: "show_cashier", label: "Mostrar cajero" }, { key: "show_warehouse", label: "Mostrar almacén" },
+        { key: "show_payment_summary", label: "Mostrar resumen de pago" }, { key: "show_customer_address", label: "Mostrar dirección cliente" },
+        { key: "show_item_code", label: "Mostrar código de producto" }, { key: "show_total_in_words", label: "Mostrar total en letras" },
+        { key: "show_qr", label: "Mostrar QR" }
       ]
     };
   },
@@ -224,48 +271,80 @@ export default {
     drawerOptions() { return this.cashDrawers.filter(x => !this.pointForm.warehouse_id || x.warehouse_id === this.pointForm.warehouse_id).map(x => ({ label: x.name + " (" + x.code + ")", value: x.id })); },
     pointOptions() { return this.points.filter(x => x.active).map(x => ({ label: x.establishment_code + "-" + x.point_code + " · " + x.name, value: x.id })); },
     hasAuthorizations() { return this.points.some(x => (x.authorizations || []).length); },
-    filteredProducts() { const q=this.productSearch.toLowerCase(); return this.products.filter(x=>!q || String(x.name||"").toLowerCase().includes(q) || String(x.code||"").toLowerCase().includes(q)); },
-    filteredClients() { const q=this.clientSearch.toLowerCase(); return this.clients.filter(x=>!q || String(x.name||"").toLowerCase().includes(q) || String(x.tax_number||"").toLowerCase().includes(q)); }
+    filteredProducts() { const q = this.productSearch.toLowerCase(); return this.products.filter(x => !q || String(x.name || "").toLowerCase().includes(q) || String(x.code || "").toLowerCase().includes(q)); },
+    filteredClients() { const q = this.clientSearch.toLowerCase(); return this.clients.filter(x => !q || String(x.name || "").toLowerCase().includes(q) || String(x.tax_number || "").toLowerCase().includes(q)); }
   },
   methods: {
+    tv(v) { return typeof v === "string" ? v.trim() : v; },
+    vnum(v) { if (v === "" || v === null || typeof v === "undefined") return v; const n = parseFloat(v); return Number.isNaN(n) ? v : n; },
     toast(variant, message) { this.$root.$bvToast.toast(message, { title: variant === "success" ? "Éxito" : "Atención", variant, solid: true }); },
-    errorMessage(error) { const data=error.response&&error.response.data; if(data&&data.errors){const key=Object.keys(data.errors)[0];return data.errors[key][0];} return (data&&data.message)||"No se pudo completar la operación."; },
-    normalizeProduct(p) { const category=p.fiscal_tax_category || (Number(p.TaxNet)>0?"taxed":"exempt"); return Object.assign({},p,{fiscal_tax_category:category,TaxNet:Number(p.TaxNet||0),tax_method:String(p.tax_method||"1")}); },
-    taxRateOptions(product) { return (product.fiscal_tax_category === "taxed" ? this.taxRates.filter(x=>Number(x)>0) : [0]).map(x=>({label:x+"%",value:Number(x)})); },
+    errorMessage(error) { const data = error.response && error.response.data; if (data && data.errors) { const key = Object.keys(data.errors)[0]; return data.errors[key][0]; } return (data && data.message) || "No se pudo completar la operación."; },
+    normalizeProduct(p) { const category = p.fiscal_tax_category || (Number(p.TaxNet) > 0 ? "taxed" : "exempt"); return Object.assign({}, p, { fiscal_tax_category: category, TaxNet: Number(p.TaxNet || 0), tax_method: String(p.tax_method || "1") }); },
+    taxRateOptions(product) { return (product.fiscal_tax_category === "taxed" ? this.taxRates.filter(x => Number(x) > 0) : [0]).map(x => ({ label: x + "%", value: Number(x) })); },
     async load() {
-      this.loading=true; NProgress.start();
+      this.loading = true; NProgress.start();
       try {
-        const r=await axios.get("sar-fiscal/settings");
-        const incoming=r.data.profile||{};
-        this.profile=Object.assign({},this.profile,incoming,{invoice_settings:Object.assign(invoiceDefaults(),incoming.invoice_settings||{})});
-        this.points=r.data.points||[]; this.warehouses=r.data.warehouses||[]; this.cashDrawers=r.data.cash_drawers||[];
-        this.products=(r.data.products||[]).map(this.normalizeProduct); this.clients=(r.data.clients||[]).map(x=>Object.assign({},x));
-        this.taxCategories=r.data.tax_categories||[]; this.taxRates=r.data.tax_rates||[0,15,18];
-      } catch(e){this.toast("danger",this.errorMessage(e));} finally {this.loading=false;NProgress.done();}
+        const r = await axios.get("sar-fiscal/settings");
+        const incoming = r.data.profile || {};
+        this.profile = Object.assign({}, this.profile, incoming, { invoice_settings: Object.assign(invoiceDefaults(), incoming.invoice_settings || {}) });
+        this.points = r.data.points || []; this.warehouses = r.data.warehouses || []; this.cashDrawers = r.data.cash_drawers || [];
+        this.products = (r.data.products || []).map(this.normalizeProduct); this.clients = (r.data.clients || []).map(x => Object.assign({}, x));
+        this.taxCategories = r.data.tax_categories || []; this.taxRates = r.data.tax_rates || [0, 15, 18];
+      } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.loading = false; NProgress.done(); }
     },
-    async saveProfile() { this.saving=true; try{await axios.put("sar-fiscal/profile",this.profile);this.toast("success","Configuración fiscal guardada.");await this.load();}catch(e){this.toast("danger",this.errorMessage(e));}finally{this.saving=false;} },
+    async saveProfile() { this.saving = true; try { await axios.put("sar-fiscal/profile", this.profile); this.toast("success", "Configuración fiscal guardada."); await this.load(); } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; } },
     async saveProductFiscal(product) {
-      this.saving=true;
+      this.saving = true;
       try {
-        await axios.put("sar-fiscal/profile", { action:"product_fiscal", product_id:product.id, fiscal_tax_category:product.fiscal_tax_category, TaxNet:product.fiscal_tax_category==="taxed"?Number(product.TaxNet):0, tax_method:String(product.tax_method||"1") });
-        this.toast("success","Clasificación fiscal del producto guardada."); await this.load();
-      } catch(e){this.toast("danger",this.errorMessage(e));} finally{this.saving=false;}
+        await axios.put("sar-fiscal/profile", { action: "product_fiscal", product_id: product.id, fiscal_tax_category: product.fiscal_tax_category, TaxNet: product.fiscal_tax_category === "taxed" ? Number(product.TaxNet) : 0, tax_method: String(product.tax_method || "1") });
+        this.toast("success", "Clasificación fiscal del producto guardada."); await this.load();
+      } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; }
     },
-    openClient(client){this.clientForm=Object.assign({},client);this.$bvModal.show("SarClientModal");},
-    async saveClientFiscal(){
-      this.saving=true;
-      try{await axios.put("sar-fiscal/profile",Object.assign({action:"client_fiscal",client_id:this.clientForm.id},this.clientForm));this.$bvModal.hide("SarClientModal");this.toast("success","Datos fiscales del cliente guardados.");await this.load();}
-      catch(e){this.toast("danger",this.errorMessage(e));} finally{this.saving=false;}
+    openClient(client) { this.clientForm = Object.assign({}, client); this.clientModalOpen = true; },
+    async saveClientFiscal() {
+      this.saving = true;
+      try { await axios.put("sar-fiscal/profile", Object.assign({ action: "client_fiscal", client_id: this.clientForm.id }, this.clientForm)); this.clientModalOpen = false; this.toast("success", "Datos fiscales del cliente guardados."); await this.load(); }
+      catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; }
     },
-    openPoint(point) { this.pointForm=point?Object.assign({},point):{id:null,establishment_code:"000",point_code:"001",name:"",address:"",warehouse_id:null,cash_drawer_id:null,active:true}; this.$bvModal.show("SarPointModal"); },
-    async savePoint(){this.saving=true;try{const url=this.pointForm.id?"sar-fiscal/points/"+this.pointForm.id:"sar-fiscal/points";if(this.pointForm.id)await axios.put(url,this.pointForm);else await axios.post(url,this.pointForm);this.$bvModal.hide("SarPointModal");this.toast("success","Punto de emisión guardado.");await this.load();}catch(e){this.toast("danger",this.errorMessage(e));}finally{this.saving=false;}},
-    openAuthorization(){this.authForm={point_of_issue_id:this.points.length===1?this.points[0].id:null,document_type:"01",cai:"",range_start:1,range_end:null,next_number:1,authorization_date:"",deadline:""};this.$bvModal.show("SarAuthorizationModal");},
-    async saveAuthorization(){this.saving=true;try{await axios.post("sar-fiscal/authorizations",this.authForm);this.$bvModal.hide("SarAuthorizationModal");this.toast("success","Autorización guardada como borrador.");await this.load();}catch(e){this.toast("danger",this.errorMessage(e));}finally{this.saving=false;}},
-    async activate(auth){const result=await this.$swal({title:"¿Activar autorización?",text:"Las futuras facturas fiscales usarán este rango.",type:"warning",showCancelButton:true,confirmButtonText:"Activar",cancelButtonText:"Cancelar"});if(!result.value)return;try{await axios.post("sar-fiscal/authorizations/"+auth.id+"/activate");this.toast("success","Autorización activada.");await this.load();}catch(e){this.toast("danger",this.errorMessage(e));}},
-    warehouseName(id){const item=this.warehouses.find(x=>x.id===id);return item?item.name:"-";},
-    drawerName(id){const item=this.cashDrawers.find(x=>x.id===id);return item?item.name:"-";},
-    statusLabel(status){return({draft:"Borrador",active:"Activa",exhausted:"Agotada",expired:"Vencida",disabled:"Deshabilitada"})[status]||status;}
+    openPoint(point) { this.pointForm = point ? Object.assign({}, point) : { id: null, establishment_code: "000", point_code: "001", name: "", address: "", warehouse_id: null, cash_drawer_id: null, active: true }; this.pointModalOpen = true; },
+    async savePoint() { this.saving = true; try { const url = this.pointForm.id ? "sar-fiscal/points/" + this.pointForm.id : "sar-fiscal/points"; if (this.pointForm.id) await axios.put(url, this.pointForm); else await axios.post(url, this.pointForm); this.pointModalOpen = false; this.toast("success", "Punto de emisión guardado."); await this.load(); } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; } },
+    openAuthorization() { this.authForm = { point_of_issue_id: this.points.length === 1 ? this.points[0].id : null, document_type: "01", cai: "", range_start: 1, range_end: null, next_number: 1, authorization_date: "", deadline: "" }; this.authModalOpen = true; },
+    async saveAuthorization() { this.saving = true; try { await axios.post("sar-fiscal/authorizations", this.authForm); this.authModalOpen = false; this.toast("success", "Autorización guardada como borrador."); await this.load(); } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; } },
+    async activate(auth) { const result = await this.$swal({ title: "¿Activar autorización?", text: "Las futuras facturas fiscales usarán este rango.", type: "warning", showCancelButton: true, confirmButtonText: "Activar", cancelButtonText: "Cancelar" }); if (!result.value) return; try { await axios.post("sar-fiscal/authorizations/" + auth.id + "/activate"); this.toast("success", "Autorización activada."); await this.load(); } catch (e) { this.toast("danger", this.errorMessage(e)); } },
+    warehouseName(id) { const item = this.warehouses.find(x => x.id === id); return item ? item.name : "-"; },
+    drawerName(id) { const item = this.cashDrawers.find(x => x.id === id); return item ? item.name : "-"; },
+    statusLabel(status) { return ({ draft: "Borrador", active: "Activa", exhausted: "Agotada", expired: "Vencida", disabled: "Deshabilitada" })[status] || status; }
   },
-  created(){this.load();}
+  created() { this.load(); }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-5); }
+.pxcfg__alert { margin-top: var(--pxn-space-4); }
+.pxcfg__cardnote { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxcfg__cardhead { display: flex; flex-wrap: wrap; gap: var(--pxn-space-4); align-items: flex-start; justify-content: space-between; }
+.pxcfg__cardtitle { margin: 0 0 var(--pxn-space-1); font-size: var(--pxn-fs-md); font-weight: var(--pxn-fw-semibold); }
+.pxcfg__inlinesearch { max-width: 280px; }
+.pxcfg__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+.pxcfg__grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { .pxcfg__grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .pxcfg__grid, .pxcfg__grid--3 { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__mt { margin-top: var(--pxn-space-4); }
+.pxcfg__togglegrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+@media (max-width: 900px) { .pxcfg__togglegrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxcfg__togglegrid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__formgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--pxn-space-4); }
+.pxcfg__scrollbox { max-height: 420px; overflow: auto; border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); }
+.pxcfg__table { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxcfg__table th { position: sticky; top: 0; background: var(--pxn-surface-2); z-index: 1; text-align: left; font-size: var(--pxn-fs-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); padding: var(--pxn-space-3) var(--pxn-space-4); }
+.pxcfg__table td { padding: var(--pxn-space-3) var(--pxn-space-4); border-top: 1px solid var(--pxn-border); vertical-align: middle; }
+.pxcfg__cellsel { min-width: 150px; }
+.pxcfg__tr { text-align: right; white-space: nowrap; }
+.pxcfg__tc { text-align: center; }
+</style>
