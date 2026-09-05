@@ -1,135 +1,111 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('SubCategory')" :folder="$t('Products')" />
+  <div class="px-next pxsubcat">
+    <px-page-header :title="$t('SubCategory')" :breadcrumbs="[{ label: $t('Products') }, { label: $t('SubCategory') }]">
+      <template #actions>
+        <px-button variant="primary" icon="plus" @click="openCreate">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
 
-    <b-card class="wrapper" v-else>
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :rows="rows"
-        :totalRows="totalRows"
-        :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
-        :select-options="{ enabled: true, clearSelectionText: '' }"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'Siguiente', prevLabel: 'Anterior' }"
-        styleClass="table-hover tableOne vgt-table"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        @on-selected-rows-change="selectionChanged"
-      >
-        <div slot="selected-row-actions">
-          <button class="btn btn-danger btn-sm" :disabled="!selectedIds.length" @click="deleteBySelected">
-            {{$t('Del')}}
-          </button>
+    <transition name="pxsubcat-bulk">
+      <div v-if="selectedIds.length" class="pxsubcat__bulk">
+        <span><b class="pxn-num">{{ selectedIds.length }}</b> {{ $t('selected') }}</span>
+        <div class="pxsubcat__bulk-actions">
+          <px-button size="sm" variant="danger" icon="trash-2" @click="deleteBySelected">{{ $t('Del') }}</px-button>
+          <px-button size="sm" variant="ghost" @click="selectedIds = []">{{ $t('Cancel') }}</px-button>
         </div>
+      </div>
+    </transition>
 
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button class="btn-rounded" variant="btn btn-primary btn-icon m-1" @click="openCreate">
-            <lucide-icon name="plus" /> {{$t('Add')}}
-          </b-button>
-        </div>
+    <div v-if="isLoading" class="pxsubcat__pad">
+      <px-skeleton variant="table" :rows="8" :columns="4" />
+    </div>
 
-        <template slot="emptystate">
-          <PxEmptyState
-            icon="folder-tree"
-            :title="$t('No_subcategories_yet')"
-            :description="$t('No_subcategories_desc')"
-          >
-            <b-button class="btn btn-sm btn-primary" @click="openCreate">
-              <lucide-icon name="plus" /> {{ $t('Add') }}
-            </b-button>
-          </PxEmptyState>
-        </template>
+    <template v-else>
+      <div class="pxsubcat__tablewrap">
+        <px-table
+          :columns="columns"
+          :rows="rows"
+          row-key="id"
+          selectable
+          :selected.sync="selectedIds"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-status_label="{ row }">
+            <px-badge :tone="row.status ? 'success' : 'neutral'">{{ row.status_label }}</px-badge>
+          </template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+          <template #empty>
+            <PxEmptyState icon="folder-tree" :title="$t('No_subcategories_yet')" :description="$t('No_subcategories_desc')">
+              <px-button size="sm" variant="primary" icon="plus" @click="openCreate">{{ $t('Add') }}</px-button>
+            </PxEmptyState>
+          </template>
+        </px-table>
+      </div>
 
-        <template slot="table-row" slot-scope="props">
-          <!-- Actions -->
-          <span v-if="props.column.field === 'actions'">
-            <a v-b-tooltip.hover :title="$t('Edit')" @click="openEdit(props.row)">
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a v-b-tooltip.hover :title="$t('Delete')" class="ml-2" @click="removeOne(props.row.id)">
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-
-          <!-- Default -->
-          <span v-else>{{ props.formattedRow[props.column.field] }}</span>
-        </template>
-      </vue-good-table>
-    </b-card>
+      <px-pagination
+        v-if="rows.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
     <!-- Create/Edit Modal -->
     <validation-observer ref="CategoryForm">
-      <b-modal id="New_SubCategory" hide-footer size="md" :title="editmode ? $t('Edit') : $t('Add')">
+      <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
         <b-form @submit.prevent="submitCategory">
-          <b-row>
-            <!-- Parent Category -->
-            <b-col md="12">
-              <validation-provider name="Category" :rules="{ required: true }" v-slot="v">
-                <b-form-group :label="$t('Categorie') + ' *'">
-                  <v-select
-                    :class="{'is-invalid': !!v.errors.length}"
-                    :state="v.errors[0] ? false : (v.valid ? true : null)"
-                    :reduce="label => label.value"
-                    :placeholder="$t('Choose_Category')"
-                    v-model="form.category_id"
-                    :options="categories.map(c => ({ label: c.name, value: c.id }))"
-                  />
-                  <b-form-invalid-feedback>{{ v.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Name -->
-            <b-col md="12">
-              <validation-provider name="Name subcategory" :rules="{ required: true }" v-slot="v">
-                <b-form-group :label="$t('SubCategoryName') + ' *'">
-                  <b-form-input
-                    v-model="form.name"
-                    :placeholder="$t('Enter_name_category')"
-                    :state="getState(v)"
-                    aria-describedby="Name-feedback"
-                  />
-                  <b-form-invalid-feedback id="Name-feedback">{{ v.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Description -->
-            <b-col md="12">
-              <b-form-group :label="$t('Description')">
-                <b-form-textarea
-                  v-model="form.description"
-                  :placeholder="$t('Afewwords')"
-                  rows="3"
+          <validation-provider ref="categoryProvider" name="Category" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Categorie')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <px-select
+                  :id="id"
+                  v-model="form.category_id"
+                  :options="categories.map(c => ({ label: c.name, value: c.id }))"
+                  :placeholder="$t('Choose_Category')"
+                  @input="v.validate"
                 />
-              </b-form-group>
-            </b-col>
+              </template>
+            </px-field>
+          </validation-provider>
 
-            <!-- Status -->
-            <b-col md="12">
-              <b-form-group :label="$t('Status')">
-                <b-form-checkbox v-model="form.status" switch>
-                  {{ form.status ? $t('Active') : $t('Inactive') }}
-                </b-form-checkbox>
-              </b-form-group>
-            </b-col>
+          <validation-provider ref="nameProvider" name="Name subcategory" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('SubCategoryName')" required :error="v.errors[0]" class="pxsubcat__field-gap">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="form.name" :placeholder="$t('Enter_name_category')" @input="v.validate" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-            <!-- Submit -->
-            <b-col md="12" class="mt-3">
-              <b-button variant="primary" type="submit" :disabled="submitProcessing">
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}
-              </b-button>
-              <div v-once class="typo__p" v-if="submitProcessing">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
-            </b-col>
-          </b-row>
+          <px-field :label="$t('Description')" class="pxsubcat__field-gap">
+            <template #default="{ id }">
+              <b-form-textarea :id="id" v-model="form.description" :placeholder="$t('Afewwords')" rows="3" class="pxsubcat__textarea" />
+            </template>
+          </px-field>
+
+          <label class="pxsubcat__switch">
+            <px-check type="switch" v-model="form.status" />
+            {{ form.status ? $t('Active') : $t('Inactive') }}
+          </label>
+
+          <div class="pxsubcat__actionbar">
+            <px-button variant="secondary" type="button" @click="modalOpen = false">{{ $t('Cancel') }}</px-button>
+            <px-button variant="primary" type="submit" icon="check" :loading="submitProcessing">{{ $t('submit') }}</px-button>
+          </div>
         </b-form>
-      </b-modal>
+      </px-modal>
     </validation-observer>
   </div>
 </template>
@@ -137,17 +113,33 @@
 <script>
 import NProgress from 'nprogress'
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxSelect from "@/components/px-next/PxSelect.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
 
 const API = 'subcategories'
 
 export default {
-  components: { PxEmptyState },
+  components: {
+    PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton,
+    PxKebab, PxBadge, PxField, PxInput, PxSelect, PxCheck, PxModal
+  },
   metaInfo: { title: 'Subcategorías' },
 
   data() {
     return {
       isLoading: true,
       submitProcessing: false,
+      modalOpen: false,
 
       serverParams: {
         sort: { field: 'id', type: 'desc' },
@@ -159,6 +151,7 @@ export default {
       totalRows: 0,
       search: '',
       limit: '10',
+      _searchTimer: null,
 
       rows: [],
       categories: [],
@@ -171,10 +164,15 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t('Categorie'), field: 'category_name', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('SubCategoryName'), field: 'name', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Status'), field: 'status_label', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Action'), field: 'actions', sortable: false, tdClass: 'text-left', thClass: 'text-left' }
+        { key: 'category_name', label: this.$t('Categorie'), sortable: true },
+        { key: 'name', label: this.$t('SubCategoryName'), sortable: true, strong: true },
+        { key: 'status_label', label: this.$t('Status'), sortable: false }
+      ]
+    },
+    rowActions() {
+      return [
+        { key: 'edit', label: this.$t('Edit'), icon: 'pencil' },
+        { key: 'delete', label: this.$t('Delete'), icon: 'x', tone: 'danger' }
       ]
     }
   },
@@ -184,39 +182,56 @@ export default {
     toast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }) },
     updateParams(patch) { this.serverParams = { ...this.serverParams, ...patch } },
 
-    // Table events
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage })
+    onSearchInput(v) {
+      this.search = v
+      if (this._searchTimer) clearTimeout(this._searchTimer)
+      this._searchTimer = setTimeout(() => {
+        this.updateParams({ page: 1 })
+        this.fetchRows()
+      }, 350)
+    },
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { field: key, type: dir } })
+      this.fetchRows()
+    },
+    onPage(p) {
+      if (this.serverParams.page !== p) {
+        this.updateParams({ page: p })
         this.fetchRows()
       }
     },
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage
-        this.updateParams({ page: 1, perPage: currentPerPage })
+    onLimit(v) {
+      if (this.limit !== String(v)) {
+        this.limit = String(v)
+        this.updateParams({ page: 1, perPage: Number(v) })
         this.fetchRows()
       }
     },
-    onSortChange(params) {
-      const s = params[0] || { field: 'id', type: 'desc' }
-      this.updateParams({ sort: { field: s.field, type: s.type } })
-      this.fetchRows()
-    },
-    onSearch({ searchTerm }) {
-      this.search = searchTerm
-      this.updateParams({ page: 1 })
-      this.fetchRows()
-    },
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = selectedRows.map(r => r.id)
+    onRowAction(row, item) {
+      const k = item && item.key
+      if (k === 'edit') this.openEdit(row)
+      else if (k === 'delete') this.removeOne(row.id)
     },
 
     // CRUD
     openCreate() {
       this.resetForm()
       this.editmode = false
-      this.$bvModal.show('New_SubCategory')
+      this.modalOpen = true
+      this.syncValidators()
+    },
+
+    // Vee-validate's automatic value detection can't see past a component's own
+    // <slot> boundary (px-field wraps px-input/px-select), so a field's tracked
+    // value never updates unless the user types into it. Seed each provider's
+    // real current value here (silently — no rule is run, no error is shown) so
+    // an untouched but valid/prefilled field doesn't block submit with a false
+    // "required" error.
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.categoryProvider) this.$refs.categoryProvider.syncValue(this.form.category_id)
+        if (this.$refs.nameProvider) this.$refs.nameProvider.syncValue(this.form.name)
+      })
     },
 
     async openEdit(row) {
@@ -238,7 +253,8 @@ export default {
       } finally {
         NProgress.done()
       }
-      this.$bvModal.show('New_SubCategory')
+      this.modalOpen = true
+      this.syncValidators()
     },
 
     async fetchRows() {
@@ -249,7 +265,6 @@ export default {
         const { data } = await axios.get(
           `${API}?page=${page}&SortField=${sort.field}&SortType=${sort.type}&search=${encodeURIComponent(this.search)}&limit=${this.limit}`
         )
-        // map API payload into table rows with category name + status label
         const subs = data.subcategories || []
         this.rows = subs.map(sc => ({
           id: sc.id,
@@ -288,7 +303,7 @@ export default {
           await axios.post(API, payload)
         }
         this.toast('success', this.$t('Successfully_Updated'), this.$t('Success'))
-        this.$bvModal.hide('New_SubCategory')
+        this.modalOpen = false
         this.fetchRows()
       } catch (e) {
         this.toast('danger', this.$t('InvalidData'), this.$t('Failed'))
@@ -372,3 +387,33 @@ export default {
 }
 </script>
 
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxsubcat { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxsubcat { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxsubcat__pad { padding: var(--pxn-space-6) 0; }
+
+.pxsubcat__bulk {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-5);
+  margin-top: var(--pxn-space-4);
+  padding: var(--pxn-space-4) var(--pxn-space-5);
+  background: var(--pxn-primary-soft);
+  border: 1px solid var(--pxn-primary-border);
+  border-radius: var(--pxn-radius-md);
+  font-size: var(--pxn-fs-sm); color: var(--pxn-primary-ink);
+}
+.pxsubcat__bulk-actions { display: flex; gap: var(--pxn-space-3); }
+.pxsubcat-bulk-enter-active, .pxsubcat-bulk-leave-active { transition: opacity var(--pxn-dur-2) var(--pxn-ease), transform var(--pxn-dur-2) var(--pxn-ease); }
+.pxsubcat-bulk-enter, .pxsubcat-bulk-leave-to { opacity: 0; transform: translateY(-6px); }
+
+.pxsubcat__tablewrap { margin-top: var(--pxn-space-5); }
+.pxsubcat__field-gap { margin-top: var(--pxn-space-5); }
+.pxsubcat__textarea {
+  width: 100%; border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); color: var(--pxn-ink); font: inherit; font-size: var(--pxn-fs-body);
+  padding: var(--pxn-space-4) var(--pxn-space-5);
+}
+.pxsubcat__switch { display: flex; align-items: center; gap: var(--pxn-space-3); margin-top: var(--pxn-space-6); font-size: var(--pxn-fs-body); color: var(--pxn-ink-2); }
+.pxsubcat__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+</style>

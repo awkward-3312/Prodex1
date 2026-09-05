@@ -1,153 +1,102 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Brand')" :folder="$t('Products')"/>
+  <div class="px-next pxbrand">
+    <px-page-header :title="$t('Brand')" :breadcrumbs="[{ label: $t('Products') }, { label: $t('Brand') }]">
+      <template #actions>
+        <px-button variant="primary" icon="plus" @click="New_Brand">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="brands"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        enabled: true,
-        placeholder: $t('Search_this_table'),  
-      }"
-        :select-options="{ 
-          enabled: true ,
-          clearSelectionText: '',
-        }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'Siguiente',
-        prevLabel: 'Anterior',
-      }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="selected-row-actions">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
+
+    <transition name="pxbrand-bulk">
+      <div v-if="selectedIds.length" class="pxbrand__bulk">
+        <span><b class="pxn-num">{{ selectedIds.length }}</b> {{ $t('selected') }}</span>
+        <div class="pxbrand__bulk-actions">
+          <px-button size="sm" variant="danger" icon="trash-2" @click="delete_by_selected">{{ $t('Del') }}</px-button>
+          <px-button size="sm" variant="ghost" @click="selectedIds = []">{{ $t('Cancel') }}</px-button>
         </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button @click="New_Brand()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
-            <lucide-icon name="plus" />
-            {{$t('Add')}}
-          </b-button>
-        </div>
+      </div>
+    </transition>
 
-        <template slot="emptystate">
-          <PxEmptyState
-            icon="award"
-            :title="$t('No_brands_yet')"
-            :description="$t('No_brands_desc')"
-          >
-            <b-button class="btn btn-sm btn-primary" @click="New_Brand()">
-              <lucide-icon name="plus" /> {{ $t('Add') }}
-            </b-button>
-          </PxEmptyState>
-        </template>
+    <div v-if="isLoading" class="pxbrand__pad">
+      <px-skeleton variant="table" :rows="8" :columns="4" />
+    </div>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a @click="Edit_Brand(props.row)" :title="$t('Edit')" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a :title="$t('Delete')" v-b-tooltip.hover @click="Delete_Brand(props.row.id)">
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-          <span v-else-if="props.column.field == 'image'">
-            <b-img
-              thumbnail
-              height="50"
-              width="50"
-              fluid
-              :src="$imgUrl('brands', props.row.image)"
-              alt="image"
-            ></b-img>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+    <template v-else>
+      <div class="pxbrand__tablewrap">
+        <px-table
+          :columns="columns"
+          :rows="brands"
+          row-key="id"
+          selectable
+          :selected.sync="selectedIds"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-image="{ row }">
+            <img v-if="row.image" :src="$imgUrl('brands', row.image)" alt="" class="pxbrand__thumb" />
+            <span v-else class="pxbrand__muted">—</span>
+          </template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+          <template #empty>
+            <PxEmptyState icon="award" :title="$t('No_brands_yet')" :description="$t('No_brands_desc')">
+              <px-button size="sm" variant="primary" icon="plus" @click="New_Brand">{{ $t('Add') }}</px-button>
+            </PxEmptyState>
+          </template>
+        </px-table>
+      </div>
+
+      <px-pagination
+        v-if="brands.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
     <validation-observer ref="Create_brand">
-      <b-modal hide-footer size="md" id="New_brand" :title="editmode?$t('Edit'):$t('Add')">
+      <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
         <b-form @submit.prevent="Submit_Brand" enctype="multipart/form-data">
-          <b-row>
-            <!-- Brand Name -->
-            <b-col md="12">
-              <validation-provider
-                name="Brand Name"
-                :rules="{ required: true , min:3 , max:20}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('BrandName') + ' ' + '*'">
-                  <b-form-input
-                    :placeholder="$t('Enter_Name_Brand')"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Name-feedback"
-                    label="Name"
-                    v-model="brand.name"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider ref="nameProvider" name="Brand Name" :rules="{ required: true, min: 3, max: 20 }" v-slot="v">
+            <px-field :label="$t('BrandName')" required :error="v.errors[0]">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="brand.name" :placeholder="$t('Enter_Name_Brand')" @input="v.validate" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-            <!-- Brand Description -->
-            <b-col md="12">
-              <validation-provider
-                name="Brand Description"
-                :rules="{ max:30}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('BrandDescription')">
-                  <b-form-textarea
-                    rows="3"
-                    :placeholder="$t('Enter_Description_Brand')"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Description-feedback"
-                    label="Description"
-                    v-model="brand.description"
-                  ></b-form-textarea>
-                  <b-form-invalid-feedback
-                    id="Description-feedback"
-                  >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider ref="descriptionProvider" name="Brand Description" :rules="{ max: 30 }" v-slot="v">
+            <px-field :label="$t('BrandDescription')" :error="v.errors[0]" class="pxbrand__field-gap">
+              <template #default="{ id }">
+                <b-form-textarea :id="id" rows="3" :placeholder="$t('Enter_Description_Brand')" v-model="brand.description" class="pxbrand__textarea" @input="v.validate" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-            <!-- -Brand Image -->
-            <b-col md="12">
-              <validation-provider name="Image" ref="Image" rules="mimes:image/*|size:200">
-                <b-form-group slot-scope="{validate, valid, errors }" :label="$t('BrandImage')">
-                  <input
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    :class="{'is-invalid': !!errors.length}"
-                    @change="onFileSelected"
-                    label="Choose Image"
-                    type="file"
-                  >
-                  <b-form-invalid-feedback id="Image-feedback">{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+          <validation-provider name="Image" ref="Image" rules="mimes:image/*|size:200" v-slot="v">
+            <px-field :label="$t('BrandImage')" :error="v.errors[0]" class="pxbrand__field-gap">
+              <template #default="{ id }">
+                <input :id="id" class="pxbrand__file" type="file" @change="onFileSelected" />
+              </template>
+            </px-field>
+          </validation-provider>
 
-            <b-col md="12" class="mt-3">
-              <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                <div v-once class="typo__p" v-if="SubmitProcessing">
-                  <div class="spinner sm spinner-primary mt-3"></div>
-                </div>
-            </b-col>
-
-          </b-row>
+          <div class="pxbrand__actionbar">
+            <px-button variant="secondary" type="button" @click="modalOpen = false">{{ $t('Cancel') }}</px-button>
+            <px-button variant="primary" type="submit" icon="check" :loading="SubmitProcessing">{{ $t('submit') }}</px-button>
+          </div>
         </b-form>
-      </b-modal>
+      </px-modal>
     </validation-observer>
   </div>
 </template>
@@ -155,16 +104,26 @@
 <script>
 import NProgress from "nprogress";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
 
 export default {
-  components: { PxEmptyState },
+  components: { PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxField, PxInput, PxModal },
   metaInfo: {
     title: "Marcas"
   },
   data() {
     return {
       isLoading: true,
-      SubmitProcessing:false,
+      SubmitProcessing: false,
+      modalOpen: false,
       serverParams: {
         columnFilters: {},
         sort: {
@@ -177,6 +136,7 @@ export default {
       selectedIds: [],
       totalRows: "",
       search: "",
+      _searchTimer: null,
       data: new FormData(),
       editmode: false,
       brands: [],
@@ -192,99 +152,62 @@ export default {
   computed: {
     columns() {
       return [
-        {
-          label: this.$t("BrandImage"),
-          field: "image",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("BrandName"),
-          field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("BrandDescription"),
-          field: "description",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "image", label: this.$t("BrandImage"), sortable: false, width: "80px" },
+        { key: "name", label: this.$t("BrandName"), sortable: true, strong: true },
+        { key: "description", label: this.$t("BrandDescription"), sortable: true }
+      ];
+    },
+    rowActions() {
+      return [
+        { key: "edit", label: this.$t("Edit"), icon: "pencil" },
+        { key: "delete", label: this.$t("Delete"), icon: "x", tone: "danger" }
       ];
     }
   },
 
   methods: {
-    //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
-
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Brands(currentPage);
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => {
+        this.updateParams({ page: 1 });
+        this.Get_Brands(1);
+      }, 350);
+    },
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { field: key, type: dir } });
+      this.Get_Brands(this.serverParams.page);
+    },
+    onPage(p) {
+      if (this.serverParams.page !== p) {
+        this.updateParams({ page: p });
+        this.Get_Brands(p);
       }
     },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
+    onLimit(v) {
+      if (this.limit !== String(v)) {
+        this.limit = String(v);
+        this.updateParams({ page: 1, perPage: Number(v) });
         this.Get_Brands(1);
       }
     },
-
-    //---- Event on Sort Change
-    onSortChange(params) {
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
-      this.Get_Brands(this.serverParams.page);
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.Edit_Brand(row);
+      else if (k === "delete") this.Delete_Brand(row.id);
     },
-
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
-    },
-
-    //---- Event on Search
-
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Brands(this.serverParams.page);
-    },
-
-    //---- Validation State Form
 
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
     },
 
-    //------------- Submit Validation Create & Edit Brand
     Submit_Brand() {
       this.$refs.Create_brand.validate().then(success => {
         if (!success) {
-          this.makeToast(
-            "danger",
-            this.$t("Please_fill_the_form_correctly"),
-            this.$t("Failed")
-          );
+          this.makeToast("danger", this.$t("Please_fill_the_form_correctly"), this.$t("Failed"));
         } else {
           if (!this.editmode) {
             this.Create_Brand();
@@ -295,19 +218,12 @@ export default {
       });
     },
 
-    //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
-        title: title,
-        variant: variant,
-        solid: true
-      });
+      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
     },
 
-    //------------------------------ Event Upload Image -------------------------------\\
     async onFileSelected(e) {
       const { valid } = await this.$refs.Image.validate(e);
-
       if (valid) {
         this.brand.image = e.target.files[0];
       } else {
@@ -315,25 +231,34 @@ export default {
       }
     },
 
-    //------------------------------ Modal (create Brand) -------------------------------\\
     New_Brand() {
       this.reset_Form();
       this.editmode = false;
-      this.$bvModal.show("New_brand");
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
-    //------------------------------ Modal (Update Brand) -------------------------------\\
     Edit_Brand(brand) {
-      this.Get_Brands(this.serverParams.page);
       this.reset_Form();
-      this.brand = brand;
+      this.brand = { ...brand };
       this.editmode = true;
-      this.$bvModal.show("New_brand");
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
-    //---------------------------------------- Get All brands-----------------\\
+    // Vee-validate's automatic value detection can't see past a component's own
+    // <slot> boundary (px-field wraps px-input), so a field's tracked value never
+    // updates unless the user types into it. Seed each provider's real current
+    // value here (silently — no rule is run, no error is shown) so an untouched
+    // but valid/prefilled field doesn't block submit with a false validation error.
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.nameProvider) this.$refs.nameProvider.syncValue(this.brand.name);
+        if (this.$refs.descriptionProvider) this.$refs.descriptionProvider.syncValue(this.brand.description);
+      });
+    },
+
     Get_Brands(page) {
-      // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
       axios
@@ -352,13 +277,10 @@ export default {
         .then(response => {
           this.brands = response.data.brands;
           this.totalRows = response.data.totalRows;
-
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
         })
         .catch(response => {
-          // Complete the animation of theprogress bar.
           NProgress.done();
           setTimeout(() => {
             this.isLoading = false;
@@ -366,7 +288,6 @@ export default {
         });
     },
 
-    //---------------------------------------- Create new brand-----------------\\
     Create_Brand() {
       var self = this;
       self.SubmitProcessing = true;
@@ -378,23 +299,17 @@ export default {
         .then(response => {
           self.SubmitProcessing = false;
           Fire.$emit("Event_Brand");
-
-          this.makeToast(
-            "success",
-            this.$t("Successfully_Created"),
-            this.$t("Success")
-          );
+          this.makeToast("success", this.$t("Successfully_Created"), this.$t("Success"));
         })
         .catch(error => {
-           self.SubmitProcessing = false;
+          self.SubmitProcessing = false;
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
         });
     },
 
-    //---------------------------------------- Update Brand-----------------\\
     Update_Brand() {
       var self = this;
-       self.SubmitProcessing = true;
+      self.SubmitProcessing = true;
       self.data.append("name", self.brand.name);
       self.data.append("description", self.brand.description);
       self.data.append("image", self.brand.image);
@@ -403,22 +318,16 @@ export default {
       axios
         .post("brands/" + self.brand.id, self.data)
         .then(response => {
-           self.SubmitProcessing = false;
+          self.SubmitProcessing = false;
           Fire.$emit("Event_Brand");
-
-          this.makeToast(
-            "success",
-            this.$t("Successfully_Updated"),
-            this.$t("Success")
-          );
+          this.makeToast("success", this.$t("Successfully_Updated"), this.$t("Success"));
         })
         .catch(error => {
-           self.SubmitProcessing = false;
+          self.SubmitProcessing = false;
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
         });
     },
 
-    //---------------------------------------- Reset Form -----------------\\
     reset_Form() {
       this.brand = {
         id: "",
@@ -429,7 +338,6 @@ export default {
       this.data = new FormData();
     },
 
-    //---------------------------------------- Delete Brand -----------------\\
     Delete_Brand(id) {
       this.$swal({
         title: this.$t("Delete_Title"),
@@ -445,26 +353,15 @@ export default {
           axios
             .delete("brands/" + id)
             .then(() => {
-              this.$swal(
-                this.$t("Delete_Deleted"),
-                this.$t("Deleted_in_successfully"),
-                "success"
-              );
-
+              this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
               Fire.$emit("Delete_Brand");
             })
             .catch(() => {
-              this.$swal(
-                this.$t("Delete_Failed"),
-                this.$t("Delete_Therewassomethingwronge"),
-                "warning"
-              );
+              this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
             });
         }
       });
     },
-
-    //---- Delete brands by selection
 
     delete_by_selected() {
       this.$swal({
@@ -478,42 +375,30 @@ export default {
         confirmButtonText: this.$t("Delete_confirmButtonText")
       }).then(result => {
         if (result.value) {
-          // Start the progress bar.
           NProgress.start();
           NProgress.set(0.1);
           axios
-            .post("brands/delete/by_selection", {
-              selectedIds: this.selectedIds
-            })
+            .post("brands/delete/by_selection", { selectedIds: this.selectedIds })
             .then(() => {
-              this.$swal(
-                this.$t("Delete_Deleted"),
-                this.$t("Deleted_in_successfully"),
-                "success"
-              );
-
+              this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+              this.selectedIds = [];
               Fire.$emit("Delete_Brand");
             })
             .catch(() => {
-              // Complete the animation of theprogress bar.
               setTimeout(() => NProgress.done(), 500);
-              this.$swal(
-                this.$t("Delete_Failed"),
-                this.$t("Delete_Therewassomethingwronge"),
-                "warning"
-              );
+              this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
             });
         }
       });
     }
-  }, //end Methods
-  created: function() {
+  },
+  created: function () {
     this.Get_Brands(1);
 
     Fire.$on("Event_Brand", () => {
       setTimeout(() => {
         this.Get_Brands(this.serverParams.page);
-        this.$bvModal.hide("New_brand");
+        this.modalOpen = false;
       }, 500);
     });
 
@@ -525,3 +410,36 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxbrand { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxbrand { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxbrand__pad { padding: var(--pxn-space-6) 0; }
+.pxbrand__muted { color: var(--pxn-ink-3); }
+.pxbrand__thumb { width: 40px; height: 40px; object-fit: cover; border-radius: var(--pxn-radius-sm); border: 1px solid var(--pxn-border); }
+
+.pxbrand__bulk {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-5);
+  margin-top: var(--pxn-space-4);
+  padding: var(--pxn-space-4) var(--pxn-space-5);
+  background: var(--pxn-primary-soft);
+  border: 1px solid var(--pxn-primary-border);
+  border-radius: var(--pxn-radius-md);
+  font-size: var(--pxn-fs-sm); color: var(--pxn-primary-ink);
+}
+.pxbrand__bulk-actions { display: flex; gap: var(--pxn-space-3); }
+.pxbrand-bulk-enter-active, .pxbrand-bulk-leave-active { transition: opacity var(--pxn-dur-2) var(--pxn-ease), transform var(--pxn-dur-2) var(--pxn-ease); }
+.pxbrand-bulk-enter, .pxbrand-bulk-leave-to { opacity: 0; transform: translateY(-6px); }
+
+.pxbrand__tablewrap { margin-top: var(--pxn-space-5); }
+.pxbrand__field-gap { margin-top: var(--pxn-space-5); }
+.pxbrand__textarea {
+  width: 100%; border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); color: var(--pxn-ink); font: inherit; font-size: var(--pxn-fs-body);
+  padding: var(--pxn-space-4) var(--pxn-space-5);
+}
+.pxbrand__file { font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+.pxbrand__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+</style>

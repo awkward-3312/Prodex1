@@ -77,18 +77,18 @@
     <validation-observer ref="CategoryForm">
       <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
         <b-form @submit.prevent="submitCategory">
-          <validation-provider name="Code category" :rules="{ required: true }" v-slot="v">
+          <validation-provider ref="codeProvider" name="Code category" :rules="{ required: true }" v-slot="v">
             <px-field :label="$t('Codecategorie')" required :error="v.errors[0]">
               <template #default="{ id }">
-                <px-input :id="id" v-model="category.code" :placeholder="$t('Enter_Code_category')" />
+                <px-input :id="id" v-model="category.code" :placeholder="$t('Enter_Code_category')" @input="v.validate" />
               </template>
             </px-field>
           </validation-provider>
 
-          <validation-provider name="Name category" :rules="{ required: true }" v-slot="v">
+          <validation-provider ref="nameProvider" name="Name category" :rules="{ required: true }" v-slot="v">
             <px-field :label="$t('Namecategorie')" required :error="v.errors[0]" class="pxcat__field-gap">
               <template #default="{ id }">
-                <px-input :id="id" v-model="category.name" :placeholder="$t('Enter_name_category')" />
+                <px-input :id="id" v-model="category.name" :placeholder="$t('Enter_name_category')" @input="v.validate" />
               </template>
             </px-field>
           </validation-provider>
@@ -254,6 +254,19 @@ export default {
       this.resetForm()
       this.editmode = false
       this.modalOpen = true
+      this.syncValidators()
+    },
+
+    // Vee-validate's automatic value detection can't see past a component's own
+    // <slot> boundary (px-field wraps px-input), so a field's tracked value never
+    // updates unless the user types into it. Seed each provider's real current
+    // value here (silently — no rule is run, no error is shown) so an untouched
+    // but valid/prefilled field doesn't block submit with a false "required" error.
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.codeProvider) this.$refs.codeProvider.syncValue(this.category.code)
+        if (this.$refs.nameProvider) this.$refs.nameProvider.syncValue(this.category.name)
+      })
     },
 
     async openEdit(row) {
@@ -277,6 +290,7 @@ export default {
         NProgress.done()
       }
       this.modalOpen = true
+      this.syncValidators()
     },
 
     async fetchCategories() {
