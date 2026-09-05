@@ -1,157 +1,90 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Create_Expense')" :folder="$t('Expenses')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxff">
+    <px-page-header :title="$t('Create_Expense')" :breadcrumbs="[{ label: $t('Expenses'), href: '#/app/expenses/list' }, { label: $t('Create_Expense') }]" />
 
-    <validation-observer ref="Create_Expense" v-if="!isLoading">
+    <div v-if="isLoading" class="pxff__pad">
+      <px-skeleton variant="lines" :rows="6" />
+    </div>
+
+    <validation-observer v-else ref="Create_Expense">
       <b-form @submit.prevent="Submit_Expense">
-        <b-row>
-          <b-col lg="12" md="12" sm="12">
-            <b-card>
-              <b-row>
-                <!-- date  -->
-                <b-col lg="4" md="6" sm="12">
-                  <validation-provider
-                    name="date"
-                    :rules="{ required: true}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('date') + ' ' + '*'">
-                      <b-form-input
-                        :state="getValidationState(validationContext)"
-                        aria-describedby="date-feedback"
-                        type="date"
-                        v-model="expense.date"
-                      ></b-form-input>
-                      <b-form-invalid-feedback
-                        id="OrderTax-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+        <px-card>
+          <div class="pxff__grid">
+            <validation-provider ref="dateProvider" name="date" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('date')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <px-input :id="id" type="date" v-model="expense.date" @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-                <!-- warehouse -->
-                <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="expense.warehouse_id"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Warehouse')"
-                        :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+            <validation-provider ref="warehouseProvider" name="warehouse" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('warehouse')" required :error="v.errors[0]" :class="{ 'is-invalid': !!v.errors.length }">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="expense.warehouse_id" :reduce="o => o.value" :invalid="!!v.errors.length"
+                    :placeholder="$t('Choose_Warehouse')"
+                    :options="warehouses.map(w => ({ label: w.name, value: w.id }))"
+                    @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-                <!-- Payment choice -->
-                <b-col lg="4" md="6" sm="12">
-                <validation-provider name="Payment choice" :rules="{ required: true}">
-                  <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')">
-                    <v-select
-                      :class="{'is-invalid': !!errors.length}"
-                      :state="errors[0] ? false : (valid ? true : null)"
-                      v-model="expense.payment_method_id"
-                      :reduce="label => label.value"
-                      :placeholder="$t('PleaseSelect')"
-                      :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
+            <validation-provider ref="paymentProvider" name="Payment choice" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('Paymentchoice')" required :error="v.errors[0]" :class="{ 'is-invalid': !!v.errors.length }">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="expense.payment_method_id" :reduce="o => o.value" :invalid="!!v.errors.length"
+                    :placeholder="$t('PleaseSelect')"
+                    :options="payment_methods.map(p => ({ label: p.name, value: p.id }))"
+                    @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-                    ></v-select>
-                    <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
-              </b-col>
+            <validation-provider ref="accountProvider" name="Account" v-slot="v">
+              <px-field :label="$t('Account')" :error="v.errors[0]">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="expense.account_id" :reduce="o => o.value"
+                    :placeholder="$t('Choose_Account')"
+                    :options="accounts.map(a => ({ label: a.account_name, value: a.id }))" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-                <!-- Account -->
-                <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="Account">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="expense.account_id"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Account')"
-                        :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+            <validation-provider ref="categoryProvider" name="category" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('Expense_Category')" required :error="v.errors[0]" :class="{ 'is-invalid': !!v.errors.length }">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="expense.category_id" :reduce="o => o.value" :invalid="!!v.errors.length"
+                    :placeholder="$t('Choose_Category')"
+                    :options="expense_Category.map(c => ({ label: c.name, value: c.id }))"
+                    @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-                <!-- Expense_Category  -->
-                <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="category" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Expense_Category') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="expense.category_id"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Category')"
-                        :options="expense_Category.map(expense_Category => 
-                        ({label: expense_Category.name, value: expense_Category.id}))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+            <validation-provider ref="amountProvider" name="Amount" :rules="{ required: true, regex: /^\d*\.?\d*$/ }" v-slot="v">
+              <px-field :label="$t('Amount')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <px-input :id="id" v-model="expense.amount" :placeholder="$t('Amount')" @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-                <!-- Amount  -->
-                <b-col lg="4" md="4" sm="12">
-                  <validation-provider
-                    name="Amount"
-                    :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('Amount') + ' ' + '*'">
-                      <b-form-input
-                        :state="getValidationState(validationContext)"
-                        aria-describedby="Amount-feedback"
-                        label="Amount"
-                        :placeholder="$t('Amount')"
-                        v-model="expense.amount"
-                      ></b-form-input>
-                      <b-form-invalid-feedback
-                        id="Amount-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+            <validation-provider ref="detailsProvider" name="Details" :rules="{ required: true }" v-slot="v" class="pxff__wide">
+              <px-field :label="$t('Details')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <px-textarea :id="id" v-model="expense.details" :rows="4" :placeholder="$t('Afewwords')" @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
+          </div>
 
-                <!-- Details -->
-                <b-col lg="8" md="8" sm="12">
-                  <validation-provider name="Details" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Details') + ' ' + '*'">
-                      <textarea
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="expense.details"
-                        rows="4"
-                        class="form-control"
-                        :placeholder="$t('Afewwords')"
-                      ></textarea>
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
-
-                <b-col md="12">
-                  <b-form-group>
-                    <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                      <div v-once class="typo__p" v-if="SubmitProcessing">
-                        <div class="spinner sm spinner-primary mt-3"></div>
-                      </div>
-                  </b-form-group>
-                </b-col>
-
-              </b-row>
-            </b-card>
-          </b-col>
-        </b-row>
+          <template #footer>
+            <div class="pxff__actionbar">
+              <px-button variant="secondary" type="button" @click="$router.push({ name: 'index_expense' })">{{ $t('Cancel') }}</px-button>
+              <px-button variant="primary" type="submit" icon="check" :loading="SubmitProcessing">{{ $t('submit') }}</px-button>
+            </div>
+          </template>
+        </px-card>
       </b-form>
     </validation-observer>
   </div>
@@ -159,15 +92,25 @@
 
 <script>
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Create Expense"
   },
+  components: {
+    PxPageHeader, PxCard, PxField, PxInput, PxTextarea, PxButton, "vs-px": VsPx
+  },
   data() {
     return {
       isLoading: true,
-      SubmitProcessing:false,
+      SubmitProcessing: false,
       warehouses: [],
       expense_Category: [],
       payment_methods: [],
@@ -185,6 +128,24 @@ export default {
   },
 
   methods: {
+    syncValidators() {
+      this.$nextTick(() => {
+        const map = {
+          dateProvider: this.expense.date,
+          warehouseProvider: this.expense.warehouse_id,
+          paymentProvider: this.expense.payment_method_id,
+          categoryProvider: this.expense.category_id,
+          amountProvider: this.expense.amount,
+          detailsProvider: this.expense.details
+        };
+        Object.keys(map).forEach(ref => {
+          if (this.$refs[ref] && typeof this.$refs[ref].syncValue === "function") {
+            this.$refs[ref].syncValue(map[ref]);
+          }
+        });
+      });
+    },
+
     //------------- Submit Validation Create Expense
     Submit_Expense() {
       this.$refs.Create_Expense.validate().then(success => {
@@ -255,6 +216,7 @@ export default {
           this.accounts = response.data.accounts;
           this.payment_methods = response.data.payment_methods;
           this.isLoading = false;
+          this.syncValidators();
         })
         .catch(response => {
           setTimeout(() => {
@@ -270,3 +232,18 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxff { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxff { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxff__pad { padding: var(--pxn-space-6) 0; }
+.pxff__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5) var(--pxn-space-6); }
+@media (max-width: 900px) { .pxff__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxff__grid { grid-template-columns: minmax(0, 1fr); } }
+.pxff__wide { grid-column: 1 / -1; }
+.pxff__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); }
+.pxff ::v-deep .pxn-field.is-invalid .pxn-input,
+.pxff ::v-deep .pxn-field.is-invalid .vs__dropdown-toggle { border-color: var(--pxn-danger); }
+</style>
