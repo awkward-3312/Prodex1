@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\Product;
-use App\Models\product_warehouse;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -125,16 +124,27 @@ class WooCommercePushProducts extends Command
     {
         $sku = (string) ($product->code ?? '');
         $price = $this->formatPrice($product->price ?? 0);
-        $stockQty = $this->computeStockQuantity($product->id);
+        $stockResult = $this->computeStockQuantity($product);
 
         $payload = [
             'name' => (string) ($product->name ?? $sku),
             'sku' => $sku,
             'regular_price' => $price,
-            'manage_stock' => true,
-            'stock_quantity' => $stockQty,
             'status' => 'publish',
         ];
+
+        // MS7-B2-2C — FAIL CLOSED, never a stale/fake stock number: if the
+        // native read couldn't be resolved safely (missing fulfillment
+        // location, or a batch/serial coverage mismatch), create the
+        // product WITHOUT any managed-stock fields rather than publish a
+        // wrong quantity. A later WooCommerceStockSyncJob run picks it up
+        // once the underlying issue is fixed.
+        if (! $stockResult['blocked']) {
+            $payload['manage_stock'] = true;
+            $payload['stock_quantity'] = (int) round($stockResult['quantity']);
+        } else {
+            $this->warn("Product ID {$product->id} (SKU {$sku}): stock not published — {$stockResult['blocked_reason']}.");
+        }
 
         // Optional image sync
         $imageName = (string) ($product->image ?? '');
@@ -150,14 +160,21 @@ class WooCommercePushProducts extends Command
         return $payload;
     }
 
-    private function computeStockQuantity(int $productId): int
+    /**
+     * MS7-B2-2C — this command is simple-only (no variant awareness, a
+     * pre-existing, documented limitation this milestone does not
+     * expand); it now reuses the SAME native-aware canonical calculator
+     * WooCommerceStockSyncJob uses instead of a raw product_warehouse sum.
+     *
+     * @return array{quantity: float, blocked: bool, blocked_reason: ?string}
+     */
+    private function computeStockQuantity(Product $product): array
     {
-        // Sum of qte across warehouses
-        $sum = (float) product_warehouse::where('product_id', $productId)->sum('qte');
-        // Woo expects integer for stock quantity; clamp to >=0
-        $qty = (int) round($sum);
+        $isBatch = (bool) ($product->is_batch_tracked ?? false);
+        $isImei = (int) ($product->is_imei ?? 0) === 1;
 
-        return $qty < 0 ? 0 : $qty;
+        return app(\App\Services\ExternalChannelInventoryService::class)
+            ->sellableQuantityAcrossWarehouses((int) $product->id, null, $isBatch, $isImei);
     }
 
     private function formatPrice($value): string

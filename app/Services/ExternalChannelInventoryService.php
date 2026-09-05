@@ -92,4 +92,92 @@ class ExternalChannelInventoryService
 
         return round((float) $row->quantity - (float) $row->reserved_quantity, 3);
     }
+
+    /**
+     * MS7-B2-2C — total sellable quantity for a product/variant, summed
+     * across ALL of the tenant's warehouses. This codebase's WooCommerce
+     * (and every other external-channel) stock push has never had a
+     * per-warehouse concept — every existing computeStockQuantity() site
+     * already summed product_warehouse.qte across every warehouse into ONE
+     * number. This generalizes that SAME sum: a location_primary
+     * warehouse's contribution is its exact fulfillment location's
+     * available quantity (quantity - reserved_quantity, clamped >= 0)
+     * instead of that warehouse's stale product_warehouse row; every other
+     * mode keeps contributing product_warehouse.qte exactly as before.
+     *
+     * FAILS CLOSED, never a partial/lowball number: if ANY location_primary
+     * warehouse cannot be read safely (no valid fulfillment location, or a
+     * batch/serial coverage mismatch at that location), the whole result is
+     * `blocked` and callers must not publish anything for this product —
+     * never substitute 0 for that warehouse and sum the rest.
+     *
+     * @return array{quantity: float, blocked: bool, blocked_reason: ?string}
+     */
+    public function sellableQuantityAcrossWarehouses(
+        int $productId,
+        ?int $variantId,
+        bool $isBatchTracked = false,
+        bool $isImei = false
+    ): array {
+        if ($isBatchTracked && $isImei) {
+            return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'batch_and_serial_conflict'];
+        }
+
+        $resolver = app(WarehouseInventoryModeResolver::class);
+        $warehouseIds = Warehouse::whereNull('deleted_at')
+            ->pluck('id')
+            ->map(fn ($v) => (int) $v)
+            ->filter(fn ($v) => $v > 0)
+            ->values()
+            ->all();
+
+        $total = 0.0;
+
+        foreach ($warehouseIds as $warehouseId) {
+            if (! $resolver->isLocationPrimary($warehouseId)) {
+                $total += (float) DB::table('product_warehouse')
+                    ->whereNull('deleted_at')
+                    ->where('product_id', $productId)
+                    ->where('warehouse_id', $warehouseId)
+                    ->when(
+                        $variantId !== null,
+                        fn ($q) => $q->where('product_variant_id', $variantId),
+                        fn ($q) => $q->whereNull('product_variant_id')
+                    )
+                    ->sum('qte');
+
+                continue;
+            }
+
+            try {
+                $location = $this->resolveFulfillmentLocation($warehouseId);
+            } catch (ValidationException $e) {
+                return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'missing_or_invalid_fulfillment_location'];
+            }
+
+            if ($isBatchTracked) {
+                $coverage = app(BatchLocationService::class)->batchCoverageForLocation((int) $location->id, $productId, $variantId);
+                if (! $coverage['matches']) {
+                    return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'batch_coverage_mismatch'];
+                }
+                $total += max(0.0, (float) $coverage['general_quantity']);
+
+                continue;
+            }
+
+            if ($isImei) {
+                $coverage = app(SerialInventoryCoverageService::class)->coverageForLocation((int) $location->id, $productId, $variantId);
+                if (! $coverage['is_ready']) {
+                    return ['quantity' => 0.0, 'blocked' => true, 'blocked_reason' => 'serial_coverage_mismatch'];
+                }
+                $total += max(0.0, (float) $coverage['available_serial_count']);
+
+                continue;
+            }
+
+            $total += max(0.0, $this->availableQuantity((int) $location->id, $productId, $variantId));
+        }
+
+        return ['quantity' => round($total, 3), 'blocked' => false, 'blocked_reason' => null];
+    }
 }

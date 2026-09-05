@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\Product;
-use App\Models\product_warehouse;
 use App\Models\WooCommerceLog;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -44,7 +43,28 @@ class WooCommerceSyncStock extends Command
         $query->chunkById($batchSize, function ($products) use (&$total, &$success, &$failed, $endpoint, $key, $secret) {
             foreach ($products as $product) {
                 $total++;
-                $qty = $this->computeStockQuantity((int) $product->id);
+                $stockResult = $this->computeStockQuantity($product);
+
+                if ($stockResult['blocked']) {
+                    // MS7-B2-2C — FAIL CLOSED: no remote PUT with a fake
+                    // zero fallback when the native read couldn't be
+                    // resolved safely.
+                    $failed++;
+                    WooCommerceLog::create([
+                        'action' => 'stock.sync',
+                        'level' => 'warning',
+                        'message' => 'Stock push blocked: '.$stockResult['blocked_reason'],
+                        'context' => [
+                            'product_id' => $product->id,
+                            'woocommerce_id' => (int) $product->woocommerce_id,
+                        ],
+                    ]);
+                    $this->line(json_encode(['progress' => ['product_id' => $product->id, 'ok' => false, 'blocked' => $stockResult['blocked_reason']]]));
+
+                    continue;
+                }
+
+                $qty = (int) round($stockResult['quantity']);
                 $status = $qty > 0 ? 'instock' : 'outofstock';
 
                 $payload = [
@@ -118,11 +138,20 @@ class WooCommerceSyncStock extends Command
         return self::SUCCESS;
     }
 
-    private function computeStockQuantity(int $productId): int
+    /**
+     * MS7-B2-2C — this command is simple-only (a pre-existing, documented
+     * limitation this milestone does not expand); it now reuses the SAME
+     * native-aware canonical calculator WooCommerceStockSyncJob uses
+     * instead of a raw product_warehouse sum.
+     *
+     * @return array{quantity: float, blocked: bool, blocked_reason: ?string}
+     */
+    private function computeStockQuantity(Product $product): array
     {
-        $sum = (float) product_warehouse::where('product_id', $productId)->sum('qte');
-        $qty = (int) round($sum);
+        $isBatch = (bool) ($product->is_batch_tracked ?? false);
+        $isImei = (int) ($product->is_imei ?? 0) === 1;
 
-        return $qty < 0 ? 0 : $qty;
+        return app(\App\Services\ExternalChannelInventoryService::class)
+            ->sellableQuantityAcrossWarehouses((int) $product->id, null, $isBatch, $isImei);
     }
 }

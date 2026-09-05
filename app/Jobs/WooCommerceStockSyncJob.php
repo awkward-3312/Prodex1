@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Product;
-use App\Models\product_warehouse;
 use App\Models\WooCommerceLog;
 use App\Models\WooCommerceSetting;
 use App\Services\WooCommerce\Client;
@@ -175,7 +174,20 @@ class WooCommerceStockSyncJob implements ShouldQueue
                                 if ($sku === '') {
                                     $sku = $product->code ? ($product->code.'-'.($name !== '' ? $name : $var->id)) : ('VAR-'.$var->id);
                                 }
-                                $qty = $this->computeVariantStockQuantity((int) $product->id, (int) $var->id);
+                                $stockResult = $this->computeVariantStockQuantity((int) $product->id, (int) $var->id);
+                                if ($stockResult['blocked']) {
+                                    // MS7-B2-2C — a native (location_primary)
+                                    // warehouse's stock could not be read
+                                    // safely (missing fulfillment location or
+                                    // a batch/serial coverage mismatch) — FAIL
+                                    // CLOSED for THIS variant: no remote PUT/
+                                    // POST, never a fake zero.
+                                    $ok = false;
+                                    $message = 'Blocked variant stock read: '.$stockResult['blocked_reason'];
+
+                                    continue;
+                                }
+                                $qty = (int) round($stockResult['quantity']);
                                 $status = $qty > 0 ? 'instock' : 'outofstock';
                                 if ($qty > 0) {
                                     $anyInStock = true;
@@ -225,57 +237,72 @@ class WooCommerceStockSyncJob implements ShouldQueue
                             }
 
                         } elseif (($product->type ?? '') === 'is_combo') {
-                            $qty = $this->computeComboStockQuantity((int) $product->id);
-                            $status = $qty > 0 ? 'instock' : 'outofstock';
-                            $payload = ['manage_stock' => true, 'stock_quantity' => $qty, 'stock_status' => $status];
-                            // Attach main product image (prefer WP media id)
-                            $media = $this->resolveOrUploadWpMedia($product);
-                            if ($media && isset($media['id'])) {
-                                $payload['images'] = [['id' => (int) $media['id']]];
+                            $stockResult = $this->computeComboStockQuantity((int) $product->id);
+                            if ($stockResult['blocked']) {
+                                $ok = false;
+                                $message = 'Blocked combo stock read: '.$stockResult['blocked_reason'];
                             } else {
-                                try {
-                                    $imgName = (string) ($product->image ?? '');
-                                    if ($imgName !== '' && strtolower($imgName) !== 'no-image.png') {
-                                        $public = upload_public_path('products').'/'.$imgName;
-                                        if (is_file($public)) {
-                                            $payload['images'] = [['src' => global_asset(upload_path('products').'/'.$imgName)]];
+                                $qty = (int) round($stockResult['quantity']);
+                                $status = $qty > 0 ? 'instock' : 'outofstock';
+                                $payload = ['manage_stock' => true, 'stock_quantity' => $qty, 'stock_status' => $status];
+                                // Attach main product image (prefer WP media id)
+                                $media = $this->resolveOrUploadWpMedia($product);
+                                if ($media && isset($media['id'])) {
+                                    $payload['images'] = [['id' => (int) $media['id']]];
+                                } else {
+                                    try {
+                                        $imgName = (string) ($product->image ?? '');
+                                        if ($imgName !== '' && strtolower($imgName) !== 'no-image.png') {
+                                            $public = upload_public_path('products').'/'.$imgName;
+                                            if (is_file($public)) {
+                                                $payload['images'] = [['src' => global_asset(upload_path('products').'/'.$imgName)]];
+                                            }
                                         }
+                                    } catch (\Throwable $e) {
                                     }
-                                } catch (\Throwable $e) {
                                 }
-                            }
-                            $res = $client->put('products/'.(int) $product->woocommerce_id, $payload);
-                            $ok = $res->successful();
-                            if (! $ok) {
-                                $statusCode = $res->status();
-                                $body = $res->body();
+                                $res = $client->put('products/'.(int) $product->woocommerce_id, $payload);
+                                $ok = $res->successful();
+                                if (! $ok) {
+                                    $statusCode = $res->status();
+                                    $body = $res->body();
+                                }
                             }
                         } else {
                             // Simple
-                            $qty = $this->computeStockQuantity((int) $product->id);
-                            $status = $qty > 0 ? 'instock' : 'outofstock';
-                            $payload = ['manage_stock' => true, 'stock_quantity' => $qty, 'stock_status' => $status];
-                            // Attach main product image (prefer WP media id)
-                            $media = $this->resolveOrUploadWpMedia($product);
-                            if ($media && isset($media['id'])) {
-                                $payload['images'] = [['id' => (int) $media['id']]];
+                            $stockResult = $this->computeStockQuantity((int) $product->id);
+                            if ($stockResult['blocked']) {
+                                // MS7-B2-2C — never a remote PUT with a fake
+                                // zero fallback: FAIL CLOSED this product's
+                                // stock push entirely and report why.
+                                $ok = false;
+                                $message = 'Blocked stock read: '.$stockResult['blocked_reason'];
                             } else {
-                                try {
-                                    $imgName = (string) ($product->image ?? '');
-                                    if ($imgName !== '' && strtolower($imgName) !== 'no-image.png') {
-                                        $public = upload_public_path('products').'/'.$imgName;
-                                        if (is_file($public)) {
-                                            $payload['images'] = [['src' => global_asset(upload_path('products').'/'.$imgName)]];
+                                $qty = (int) round($stockResult['quantity']);
+                                $status = $qty > 0 ? 'instock' : 'outofstock';
+                                $payload = ['manage_stock' => true, 'stock_quantity' => $qty, 'stock_status' => $status];
+                                // Attach main product image (prefer WP media id)
+                                $media = $this->resolveOrUploadWpMedia($product);
+                                if ($media && isset($media['id'])) {
+                                    $payload['images'] = [['id' => (int) $media['id']]];
+                                } else {
+                                    try {
+                                        $imgName = (string) ($product->image ?? '');
+                                        if ($imgName !== '' && strtolower($imgName) !== 'no-image.png') {
+                                            $public = upload_public_path('products').'/'.$imgName;
+                                            if (is_file($public)) {
+                                                $payload['images'] = [['src' => global_asset(upload_path('products').'/'.$imgName)]];
+                                            }
                                         }
+                                    } catch (\Throwable $e) {
                                     }
-                                } catch (\Throwable $e) {
                                 }
-                            }
-                            $res = $client->put('products/'.(int) $product->woocommerce_id, $payload);
-                            $ok = $res->successful();
-                            if (! $ok) {
-                                $statusCode = $res->status();
-                                $body = $res->body();
+                                $res = $client->put('products/'.(int) $product->woocommerce_id, $payload);
+                                $ok = $res->successful();
+                                if (! $ok) {
+                                    $statusCode = $res->status();
+                                    $body = $res->body();
+                                }
                             }
                         }
                     } catch (\Throwable $e) {
@@ -353,28 +380,49 @@ class WooCommerceStockSyncJob implements ShouldQueue
         ]);
     }
 
-    private function computeStockQuantity(int $productId): int
+    /**
+     * MS7-B2-2C — the SAME "sum product_warehouse.qte across every
+     * warehouse" formula this job has always used, generalized via
+     * ExternalChannelInventoryService::sellableQuantityAcrossWarehouses():
+     * a location_primary warehouse's contribution is now its exact
+     * fulfillment location's available quantity (never its stale
+     * product_warehouse row); every other mode still contributes
+     * product_warehouse.qte exactly as before. FAILS CLOSED (blocked=true)
+     * rather than ever returning a partial/lowball number.
+     *
+     * @return array{quantity: float, blocked: bool, blocked_reason: ?string}
+     */
+    private function computeStockQuantity(int $productId): array
     {
-        $sum = (float) product_warehouse::where('product_id', $productId)
-            ->whereNull('deleted_at')
-            ->sum('qte');
-        $qty = (int) round($sum);
+        $product = Product::find($productId);
+        $isBatch = (bool) ($product->is_batch_tracked ?? false);
+        $isImei = (int) ($product->is_imei ?? 0) === 1;
 
-        return $qty < 0 ? 0 : $qty;
+        return app(\App\Services\ExternalChannelInventoryService::class)
+            ->sellableQuantityAcrossWarehouses($productId, null, $isBatch, $isImei);
     }
 
-    private function computeVariantStockQuantity(int $productId, int $variantId): int
+    /** @return array{quantity: float, blocked: bool, blocked_reason: ?string} */
+    private function computeVariantStockQuantity(int $productId, int $variantId): array
     {
-        $sum = (float) product_warehouse::where('product_id', $productId)
-            ->where('product_variant_id', $variantId)
-            ->whereNull('deleted_at')
-            ->sum('qte');
-        $qty = (int) round($sum);
+        $product = Product::find($productId);
+        $isBatch = (bool) ($product->is_batch_tracked ?? false);
+        $isImei = (int) ($product->is_imei ?? 0) === 1;
 
-        return $qty < 0 ? 0 : $qty;
+        return app(\App\Services\ExternalChannelInventoryService::class)
+            ->sellableQuantityAcrossWarehouses($productId, $variantId, $isBatch, $isImei);
     }
 
-    private function computeComboStockQuantity(int $productId): int
+    /**
+     * Same structural combo formula as before (min of floor(component
+     * stock / required qty) across components) — only the per-component
+     * stock read is now native-aware. Any blocked component blocks the
+     * whole combo (an unknown component quantity can never be safely
+     * turned into a "possible combos" number).
+     *
+     * @return array{quantity: float, blocked: bool, blocked_reason: ?string}
+     */
+    private function computeComboStockQuantity(int $productId): array
     {
         $components = \DB::table('combined_products')
             ->where('product_id', $productId)
@@ -384,13 +432,17 @@ class WooCommerceStockSyncJob implements ShouldQueue
         }
         $min = null;
         foreach ($components as $c) {
-            $componentStock = $this->computeStockQuantity((int) $c->combined_product_id);
+            $componentResult = $this->computeStockQuantity((int) $c->combined_product_id);
+            if ($componentResult['blocked']) {
+                return ['quantity' => 0, 'blocked' => true, 'blocked_reason' => 'combo_component_blocked:'.$c->combined_product_id.':'.$componentResult['blocked_reason']];
+            }
+            $componentStock = (int) round($componentResult['quantity']);
             $required = max(1.0, (float) $c->quantity);
             $possible = (int) floor($componentStock / $required);
             $min = is_null($min) ? $possible : min($min, $possible);
         }
 
-        return max(0, (int) ($min ?? 0));
+        return ['quantity' => max(0, (int) ($min ?? 0)), 'blocked' => false, 'blocked_reason' => null];
     }
 
     private function computePercentage(int $processed, int $total): int

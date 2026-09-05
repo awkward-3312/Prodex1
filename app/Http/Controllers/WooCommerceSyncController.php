@@ -14,6 +14,8 @@ use App\Models\WooCommerceLog;
 use App\Models\WooCommerceSetting;
 use App\Services\WooCommerce\SyncService;
 use App\Services\WooCommerce\Client as WooCommerceClient;
+use App\Services\ExternalChannelInventoryService;
+use App\Services\WarehouseInventoryModeResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -739,21 +741,72 @@ class WooCommerceSyncController extends BaseController
     /**
      * GET /api/woocommerce/stock-metrics
      */
+    /**
+     * MS7-B2-2C — native-aware: a location_primary warehouse's contribution
+     * to each product's total comes from its exact fulfillment location
+     * (inventory_location_stocks.quantity - reserved_quantity, never
+     * negative), not its stale product_warehouse row. Every other
+     * transition mode still contributes product_warehouse.qte exactly as
+     * before. Two aggregate queries total (one per source), regardless of
+     * catalog size — no per-product service call needed for this metric.
+     */
     public function stockMetrics(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', WooCommerceSetting::class);
-        $in = (int) \DB::table('product_warehouse')
-            ->whereNull('deleted_at')
-            ->selectRaw('product_id, SUM(qte) as total')
-            ->groupBy('product_id')
-            ->having('total', '>', 0)
-            ->count();
-        $out = (int) \DB::table('product_warehouse')
-            ->whereNull('deleted_at')
-            ->selectRaw('product_id, SUM(qte) as total')
-            ->groupBy('product_id')
-            ->having('total', '<=', 0)
-            ->count();
+
+        $resolver = app(WarehouseInventoryModeResolver::class);
+        $warehouseIds = Warehouse::whereNull('deleted_at')->pluck('id')->map(fn ($v) => (int) $v)->filter(fn ($v) => $v > 0)->values()->all();
+
+        $legacyWarehouseIds = [];
+        $nativeWarehouseIds = [];
+        foreach ($warehouseIds as $wid) {
+            $resolver->isLocationPrimary($wid) ? $nativeWarehouseIds[] = $wid : $legacyWarehouseIds[] = $wid;
+        }
+
+        $totals = []; // product_id => running total across every warehouse
+
+        if (! empty($legacyWarehouseIds)) {
+            $rows = \DB::table('product_warehouse')
+                ->whereNull('deleted_at')
+                ->whereIn('warehouse_id', $legacyWarehouseIds)
+                ->selectRaw('product_id, SUM(qte) as total')
+                ->groupBy('product_id')
+                ->get();
+            foreach ($rows as $r) {
+                $pid = (int) $r->product_id;
+                $totals[$pid] = ($totals[$pid] ?? 0) + (float) $r->total;
+            }
+        }
+
+        if (! empty($nativeWarehouseIds)) {
+            $externalSvc = app(ExternalChannelInventoryService::class);
+            foreach ($nativeWarehouseIds as $wid) {
+                try {
+                    $location = $externalSvc->resolveFulfillmentLocation($wid);
+                } catch (\Throwable $e) {
+                    // Blocked warehouse (no valid fulfillment location):
+                    // contributes nothing to this metric, matching the push
+                    // job's own FAIL CLOSED policy rather than guessing.
+                    continue;
+                }
+                $rows = \DB::table('inventory_location_stocks')
+                    ->where('inventory_location_id', $location->id)
+                    ->selectRaw('product_id, SUM(quantity - reserved_quantity) as total')
+                    ->groupBy('product_id')
+                    ->get();
+                foreach ($rows as $r) {
+                    $pid = (int) $r->product_id;
+                    $totals[$pid] = ($totals[$pid] ?? 0) + max(0.0, (float) $r->total);
+                }
+            }
+        }
+
+        $in = 0;
+        $out = 0;
+        foreach ($totals as $total) {
+            $total > 0 ? $in++ : $out++;
+        }
+
         $last = optional(\App\Models\WooCommerceSetting::first())->last_sync_at;
 
         return response()->json([
