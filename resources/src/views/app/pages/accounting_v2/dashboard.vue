@@ -1,81 +1,41 @@
 <template>
   <!-- NEW FEATURE - SAFE ADDITION -->
-  <div class="main-content">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <div>
-        <h4 class="mb-1">{{ $t('Accounting_Dashboard_Title') }}</h4>
-        <div class="text-muted small">{{ $t('Accounting_Dashboard_Subtitle') }}</div>
-      </div>
+  <div class="px-next pxac">
+    <px-page-header :title="$t('Accounting_Dashboard_Title')" :subtitle="$t('Accounting_Dashboard_Subtitle')" />
+
+    <div class="pxac__kpis">
+      <px-stat bordered :label="$t('Accounts')" :value="String(kpi.accounts)" icon="database" />
+      <px-stat bordered :label="$t('Journal_Entries_30d')" :value="String(kpi.journals)" icon="clipboard-list" />
+      <px-stat bordered :label="$t('Income_30d')" :value="toMoney(kpi.income)" icon="trending-up" />
+      <px-stat bordered :label="$t('Expense_30d')" :value="toMoney(kpi.expense)" icon="trending-down" />
     </div>
 
-    <div class="row">
-      <div class="col-md-3">
-        <div class="card p-3 mb-3 kpi">
-          <div class="text-muted small">{{ $t('Accounts') }}</div>
-          <div class="h4 mb-0">{{ kpi.accounts }}</div>
-        </div>
+    <px-card :title="$t('Quick_Links') || 'Accesos rápidos'">
+      <div class="pxac__links">
+        <router-link class="pxac__link" to="/app/accounting-v2/chart-of-accounts">
+          <lucide-icon name="database" :size="16" /> <span>{{ $t('Chart_of_Accounts_Link') }}</span>
+        </router-link>
+        <router-link class="pxac__link" to="/app/accounting-v2/journal-entries">
+          <lucide-icon name="clipboard-list" :size="16" /> <span>{{ $t('Journal_Entries_Link') }}</span>
+        </router-link>
+        <router-link class="pxac__link" to="/app/accounting-v2/reports/trial-balance">
+          <lucide-icon name="scale" :size="16" /> <span>{{ $t('Trial_Balance_Link') }}</span>
+        </router-link>
+        <router-link class="pxac__link" to="/app/accounting-v2/reports/profit-and-loss">
+          <lucide-icon name="wallet" :size="16" /> <span>{{ $t('Profit_Loss_Link') }}</span>
+        </router-link>
+        <router-link class="pxac__link" to="/app/accounting-v2/reports/balance-sheet">
+          <lucide-icon name="pie-chart" :size="16" /> <span>{{ $t('Balance_Sheet_Link') }}</span>
+        </router-link>
+        <router-link class="pxac__link" to="/app/accounting-v2/reports/tax-report">
+          <lucide-icon name="receipt-text" :size="16" /> <span>{{ $t('Tax_Summary_Link') }}</span>
+        </router-link>
       </div>
-      <div class="col-md-3">
-        <div class="card p-3 mb-3 kpi">
-          <div class="text-muted small">{{ $t('Journal_Entries_30d') }}</div>
-          <div class="h4 mb-0">{{ kpi.journals }}</div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card p-3 mb-3 kpi">
-          <div class="text-muted small">{{ $t('Income_30d') }}</div>
-          <div class="h4 mb-0">{{ toMoney(kpi.income) }}</div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card p-3 mb-3 kpi">
-          <div class="text-muted small">{{ $t('Expense_30d') }}</div>
-          <div class="h4 mb-0">{{ toMoney(kpi.expense) }}</div>
-        </div>
-      </div>
-    </div>
+    </px-card>
 
-    <div class="card p-3">
-      <div class="row">
-        <div class="col-md-3 mb-2">
-          <router-link class="btn btn-outline-primary btn-block" to="/app/accounting-v2/chart-of-accounts">
-            <lucide-icon class="mr-1" name="database" /> {{ $t('Chart_of_Accounts_Link') }}
-          </router-link>
-        </div>
-        <div class="col-md-3 mb-2">
-          <router-link class="btn btn-outline-primary btn-block" to="/app/accounting-v2/journal-entries">
-            <lucide-icon class="mr-1" name="clipboard-list" /> {{ $t('Journal_Entries_Link') }}
-          </router-link>
-        </div>
-        <div class="col-md-3 mb-2">
-          <router-link class="btn btn-outline-primary btn-block" to="/app/accounting-v2/reports/trial-balance">
-            <lucide-icon class="mr-1" name="scale" /> {{ $t('Trial_Balance_Link') }}
-          </router-link>
-        </div>
-        <div class="col-md-3 mb-2">
-          <router-link class="btn btn-outline-primary btn-block" to="/app/accounting-v2/reports/profit-and-loss">
-            <lucide-icon class="mr-1" name="wallet" /> {{ $t('Profit_Loss_Link') }}
-          </router-link>
-        </div>
-        <div class="col-md-3 mb-2">
-          <router-link class="btn btn-outline-primary btn-block" to="/app/accounting-v2/reports/balance-sheet">
-            <lucide-icon class="mr-1" name="pie-chart" /> {{ $t('Balance_Sheet_Link') }}
-          </router-link>
-        </div>
-        <div class="col-md-3 mb-2">
-          <router-link class="btn btn-outline-primary btn-block" to="/app/accounting-v2/reports/tax-report">
-            <lucide-icon class="mr-1" name="receipt-text" /> {{ $t('Tax_Summary_Link') }}
-          </router-link>
-        </div>
-      </div>
-    </div>
-
-    <div class="card p-3 mt-3">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="mb-0">{{ $t('Income_30d') }} / {{ $t('Expense_30d') }}</h5>
-      </div>
+    <px-card :title="`${$t('Income_30d')} / ${$t('Expense_30d')}`" class="pxac__chartcard">
       <apexchart type="area" height="320" :options="chart.options" :series="chart.series" />
-    </div>
+    </px-card>
   </div>
 </template>
 
@@ -87,10 +47,13 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
 
 export default {
   name: "AccountingV2Dashboard",
-  components: { apexchart: VueApexCharts },
+  components: { apexchart: VueApexCharts, PxPageHeader, PxCard, PxStat },
   data() {
     return {
       kpi: { accounts: 0, journals: 0, income: 0, expense: 0 },
@@ -172,9 +135,27 @@ export default {
 };
 </script>
 
-<style scoped>
-.kpi { border-left: 4px solid #663399; }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxac { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxac { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxac__kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--pxn-space-5); margin: var(--pxn-space-5) 0; }
+@media (max-width: 900px) { .pxac__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .pxac__kpis { grid-template-columns: minmax(0, 1fr); } }
+.pxac__links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-4); }
+@media (max-width: 800px) { .pxac__links { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .pxac__links { grid-template-columns: minmax(0, 1fr); } }
+.pxac__link {
+  display: flex; align-items: center; gap: var(--pxn-space-3);
+  padding: var(--pxn-space-4) var(--pxn-space-5);
+  border: 1px solid var(--pxn-border-control);
+  border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface);
+  font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink-2);
+  transition: background-color var(--pxn-dur-1) var(--pxn-ease), border-color var(--pxn-dur-1) var(--pxn-ease), color var(--pxn-dur-1) var(--pxn-ease);
+}
+.pxac__link:hover { background: var(--pxn-surface-2); border-color: var(--pxn-border-strong); color: var(--pxn-ink); }
+.pxac__chartcard { margin-top: var(--pxn-space-5); }
 </style>
-
-
-

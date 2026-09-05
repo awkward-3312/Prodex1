@@ -1,98 +1,67 @@
 <template>
   <!-- NEW FEATURE - SAFE ADDITION -->
-  <div class="main-content">
-    <breadcumb :page="$t('Tax_Summary_Report')" :folder="$t('Reports')" />
+  <div class="px-next pxac">
+    <px-page-header :title="$t('Tax_Summary_Report')" :breadcrumbs="[{ label: $t('Reports') }, { label: $t('Tax_Summary_Report') }]" />
 
-   
-    <!-- Loading State -->
-    <div v-if="isLoading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="sr-only">Loading...</span>
-      </div>
+    <px-alert v-if="error" tone="danger" :title="$t('Error')" class="pxac__err">{{ error }}</px-alert>
+
+    <div v-if="isLoading" class="pxac__pad">
+      <px-skeleton variant="lines" :rows="6" />
     </div>
 
-    <!-- Error State -->
-    <div v-if="error" class="alert alert-danger" role="alert">
-      <lucide-icon name="x" /> {{ error }}
-    </div>
-
-    <template v-if="!isLoading">
-      <div class="card p-3 mb-3">
-        <div class="row align-items-end">
-          <div class="col-md-4 mb-2">
-            <label class="small text-muted mb-1">{{ $t('From') }}</label>
-            <input v-model="filters.from" type="date" class="form-control" @change="fetch" />
-          </div>
-          <div class="col-md-4 mb-2">
-            <label class="small text-muted mb-1">{{ $t('To') }}</label>
-            <input v-model="filters.to" type="date" class="form-control" @change="fetch" />
-          </div>
-          <div class="col-md-4 mb-2 text-right">
-            <button class="btn btn-outline-primary" @click="fetch" :disabled="isLoading">
-              <lucide-icon name="refresh-cw" /> {{ $t('Refresh') }}
-            </button>
-          </div>
+    <template v-else>
+      <px-card class="pxac__filtercard">
+        <div class="pxac__filterrow">
+          <px-field :label="$t('From')">
+            <template #default="{ id }"><px-input :id="id" type="date" v-model="filters.from" @change="fetch" /></template>
+          </px-field>
+          <px-field :label="$t('To')">
+            <template #default="{ id }"><px-input :id="id" type="date" v-model="filters.to" @change="fetch" /></template>
+          </px-field>
+          <px-button variant="secondary" icon="refresh-cw" :disabled="isLoading" @click="fetch">{{ $t('Refresh') }}</px-button>
         </div>
+      </px-card>
+
+      <div class="pxac__twocol">
+        <px-card :title="`${$t('Sales_Tax')} (${$t('Output_Tax')})`">
+          <div class="pxac__line pxac__line--muted">
+            <span>{{ $t('Total_Sales') }}</span><span class="pxn-num">{{ toMoney(data.sales) }}</span>
+          </div>
+          <div class="pxac__line pxac__line--muted">
+            <span>{{ $t('Sale_Returns') }}</span><span class="pxn-num pxac__neg">- {{ toMoney(data.sale_returns) }}</span>
+          </div>
+          <div class="pxac__divider"></div>
+          <div class="pxac__line pxac__line--strong">
+            <span>{{ $t('Net_Sales') }}</span><span class="pxn-num">{{ toMoney(data.taxable_sales) }}</span>
+          </div>
+          <div class="pxac__line pxac__line--strong">
+            <span>{{ $t('Output_Tax') }}</span><span class="pxn-num pxac__pos">{{ toMoney(data.output_tax) }}</span>
+          </div>
+        </px-card>
+
+        <px-card :title="`${$t('Purchase_Tax')} (${$t('Input_Tax')})`">
+          <div class="pxac__line pxac__line--muted">
+            <span>{{ $t('Total_Purchases') }}</span><span class="pxn-num">{{ toMoney(data.purchases) }}</span>
+          </div>
+          <div class="pxac__line pxac__line--muted">
+            <span>{{ $t('Purchase_Returns') }}</span><span class="pxn-num pxac__neg">- {{ toMoney(data.purchase_returns) }}</span>
+          </div>
+          <div class="pxac__divider"></div>
+          <div class="pxac__line pxac__line--strong">
+            <span>{{ $t('Net_Purchases') }}</span><span class="pxn-num">{{ toMoney(data.taxable_purchases) }}</span>
+          </div>
+          <div class="pxac__line pxac__line--strong">
+            <span>{{ $t('Input_Tax') }}</span><span class="pxn-num pxac__info">{{ toMoney(data.input_tax) }}</span>
+          </div>
+        </px-card>
       </div>
 
-      <div class="row">
-        <div class="col-md-6">
-          <div class="card p-3 mb-3">
-            <h6 class="mb-3 text-primary">{{ $t('Sales_Tax') }} ({{ $t('Output_Tax') }})</h6>
-            <div class="d-flex justify-content-between mb-2 text-muted small">
-              <span>{{ $t('Total_Sales') }}</span>
-              <span>{{ toMoney(data.sales) }}</span>
-            </div>
-            <div class="d-flex justify-content-between mb-2 text-muted small">
-              <span>{{ $t('Sale_Returns') }}</span>
-              <span class="text-danger">- {{ toMoney(data.sale_returns) }}</span>
-            </div>
-            <hr class="my-2">
-            <div class="d-flex justify-content-between mb-2">
-              <strong>{{ $t('Net_Sales') }}</strong>
-              <strong>{{ toMoney(data.taxable_sales) }}</strong>
-            </div>
-            <div class="d-flex justify-content-between">
-              <strong>{{ $t('Output_Tax') }}</strong>
-              <strong class="text-success">{{ toMoney(data.output_tax) }}</strong>
-            </div>
-          </div>
+      <px-alert :tone="data.net_tax >= 0 ? 'warning' : 'success'" :title="$t('Net_Tax')">
+        <div class="pxac__nettax">
+          <span class="pxn-num pxac__balval">{{ toMoney(data.net_tax) }}</span>
+          <span class="pxac__nettax-note">{{ data.net_tax >= 0 ? $t('Tax_Payable') : $t('Tax_Refund') }}</span>
         </div>
-        <div class="col-md-6">
-          <div class="card p-3 mb-3">
-            <h6 class="mb-3 text-primary">{{ $t('Purchase_Tax') }} ({{ $t('Input_Tax') }})</h6>
-            <div class="d-flex justify-content-between mb-2 text-muted small">
-              <span>{{ $t('Total_Purchases') }}</span>
-              <span>{{ toMoney(data.purchases) }}</span>
-            </div>
-            <div class="d-flex justify-content-between mb-2 text-muted small">
-              <span>{{ $t('Purchase_Returns') }}</span>
-              <span class="text-danger">- {{ toMoney(data.purchase_returns) }}</span>
-            </div>
-            <hr class="my-2">
-            <div class="d-flex justify-content-between mb-2">
-              <strong>{{ $t('Net_Purchases') }}</strong>
-              <strong>{{ toMoney(data.taxable_purchases) }}</strong>
-            </div>
-            <div class="d-flex justify-content-between">
-              <strong>{{ $t('Input_Tax') }}</strong>
-              <strong class="text-info">{{ toMoney(data.input_tax) }}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card p-3" :class="data.net_tax >= 0 ? 'border-warning' : 'border-success'">
-        <div class="d-flex justify-content-between">
-          <strong>{{ $t('Net_Tax') }}</strong>
-          <span :class="data.net_tax >= 0 ? 'text-warning' : 'text-success'">
-            {{ toMoney(data.net_tax) }}
-          </span>
-        </div>
-        <small class="text-muted mt-2 d-block">
-          {{ data.net_tax >= 0 ? $t('Tax_Payable') : $t('Tax_Refund') }}
-        </small>
-      </div>
+      </px-alert>
     </template>
   </div>
 </template>
@@ -104,12 +73,19 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
 
 export default {
   name: "TaxReportV2",
   metaInfo: {
     title: "Tax Summary Report"
   },
+  components: { PxPageHeader, PxCard, PxField, PxInput, PxButton, PxAlert },
   data() {
     return {
       data: {
@@ -150,19 +126,19 @@ export default {
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      
+
       this.filters.from = firstDay.toISOString().split('T')[0];
       this.filters.to = lastDay.toISOString().split('T')[0];
     },
     async fetch() {
       this.isLoading = true;
       this.error = null;
-      
+
       try {
         const { data } = await axios.get("/accounting/v2/reports/tax-summary", {
           params: this.filters
         });
-        
+
         if (data) {
           this.data = {
             sales: parseFloat(data.sales || 0),
@@ -179,7 +155,7 @@ export default {
       } catch (e) {
         console.error("Tax Summary Error:", e);
         this.error = e.response?.data?.message || this.$t('Failed_Load_Tax_Summary');
-        
+
         // Show toast notification
         this.$root.$bvToast.toast(this.error, {
           title: this.$t('Error'),
@@ -214,8 +190,26 @@ export default {
 };
 </script>
 
-<style scoped>
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxac { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxac { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxac__pad { padding: var(--pxn-space-6) 0; }
+.pxac__err { margin-top: var(--pxn-space-5); }
+.pxac__filtercard { margin-top: var(--pxn-space-5); }
+.pxac__filterrow { display: flex; align-items: flex-end; gap: var(--pxn-space-5); flex-wrap: wrap; }
+.pxac__filterrow ::v-deep .pxn-field { max-width: 220px; }
+.pxac__twocol { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); margin: var(--pxn-space-5) 0; }
+@media (max-width: 780px) { .pxac__twocol { grid-template-columns: minmax(0, 1fr); } }
+.pxac__line { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-4); padding: var(--pxn-space-2) 0; font-size: var(--pxn-fs-sm); }
+.pxac__line--muted { color: var(--pxn-ink-2); }
+.pxac__line--strong { font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxac__divider { height: 1px; background: var(--pxn-border); margin: var(--pxn-space-3) 0; }
+.pxac__pos { color: var(--pxn-success); }
+.pxac__neg { color: var(--pxn-danger); }
+.pxac__info { color: var(--pxn-info); }
+.pxac__balval { font-size: var(--pxn-fs-lg); font-weight: var(--pxn-fw-bold); }
+.pxac__nettax { display: flex; align-items: baseline; gap: var(--pxn-space-4); flex-wrap: wrap; }
+.pxac__nettax-note { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 </style>
-
-
-

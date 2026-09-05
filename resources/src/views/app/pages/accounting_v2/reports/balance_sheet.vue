@@ -1,49 +1,26 @@
 <template>
   <!-- NEW FEATURE - SAFE ADDITION -->
-  <div class="main-content">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <div>
-        <h4 class="mb-1">{{ $t('Balance_Sheet_Title') }}</h4>
-        <div class="text-muted small">{{ $t('Balance_Sheet_Subtitle') }}</div>
+  <div class="px-next pxac">
+    <px-page-header :title="$t('Balance_Sheet_Title')" :subtitle="$t('Balance_Sheet_Subtitle')" />
+
+    <px-card class="pxac__filtercard">
+      <div class="pxac__filterrow">
+        <px-field :label="$t('As_Of')">
+          <template #default="{ id }"><px-input :id="id" type="date" v-model="to" /></template>
+        </px-field>
+        <px-button variant="secondary" icon="refresh-cw" @click="fetch">{{ $t('Refresh') }}</px-button>
       </div>
+    </px-card>
+
+    <div class="pxac__kpis pxac__kpis--3">
+      <px-stat bordered :label="$t('Assets')" :value="toMoney(data.assets)" />
+      <px-stat bordered :label="$t('Liabilities')" :value="toMoney(data.liabilities)" />
+      <px-stat bordered :label="$t('Equity')" :value="toMoney(data.equity)" />
     </div>
 
-    <div class="card p-3 mb-3">
-      <div class="row align-items-end">
-        <div class="col-md-6 mb-2">
-          <label class="small text-muted mb-1">{{ $t('As_Of') }}</label>
-          <input v-model="to" type="date" class="form-control" />
-        </div>
-        <div class="col-md-6 mb-2 text-right">
-          <button class="btn btn-outline-primary" @click="fetch"><lucide-icon name="refresh-cw" /> {{ $t('Refresh') }}</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="col-md-4">
-        <div class="card p-3 mb-3 kpi">
-          <div class="text-muted small">{{ $t('Assets') }}</div>
-          <div class="h4 mb-0">{{ toMoney(data.assets) }}</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card p-3 mb-3 kpi">
-          <div class="text-muted small">{{ $t('Liabilities') }}</div>
-          <div class="h4 mb-0">{{ toMoney(data.liabilities) }}</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card p-3 mb-3 kpi">
-          <div class="text-muted small">{{ $t('Equity') }}</div>
-          <div class="h4 mb-0">{{ toMoney(data.equity) }}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card p-3 text-right" :class="Math.abs(data.balance) < 0.01 ? 'border-success' : 'border-warning'">
-      <span class="mr-3">{{ $t('Balance_Check') }}</span> <strong>{{ toMoney(data.balance) }}</strong>
-    </div>
+    <px-alert :tone="Math.abs(data.balance) < 0.01 ? 'success' : 'warning'" :title="$t('Balance_Check')">
+      <span class="pxn-num pxac__balval">{{ toMoney(data.balance) }}</span>
+    </px-alert>
   </div>
 </template>
 
@@ -53,9 +30,17 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
 
 export default {
   name: "BalanceSheetV2",
+  components: { PxPageHeader, PxCard, PxStat, PxField, PxInput, PxButton, PxAlert },
   data() {
     return {
       data: { assets: 0, liabilities: 0, equity: 0, balance: 0 },
@@ -99,9 +84,16 @@ export default {
 };
 </script>
 
-<style scoped>
-.kpi { border-left: 4px solid #663399; }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxac { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxac { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxac__filtercard { margin-top: var(--pxn-space-5); }
+.pxac__filterrow { display: flex; align-items: flex-end; gap: var(--pxn-space-5); flex-wrap: wrap; }
+.pxac__filterrow ::v-deep .pxn-field { max-width: 260px; }
+.pxac__kpis { display: grid; gap: var(--pxn-space-5); margin: var(--pxn-space-5) 0; }
+.pxac__kpis--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 720px) { .pxac__kpis--3 { grid-template-columns: minmax(0, 1fr); } }
+.pxac__balval { font-size: var(--pxn-fs-lg); font-weight: var(--pxn-fw-bold); }
 </style>
-
-
-

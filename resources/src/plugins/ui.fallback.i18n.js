@@ -49,6 +49,7 @@ const spanishUiMessages = {
   No_deposit_categories_desc: 'Crea una categoría para clasificar tus depósitos.',
   No_transfers_yet: 'Sin transferencias todavía',
   No_transfers_desc: 'Cuando registres una transferencia entre cuentas, aparecerá aquí.',
+  Quick_Links: 'Accesos rápidos',
   No_sale_returns_yet: 'Sin devoluciones todavía',
   No_sale_returns_desc: 'Cuando registres una devolución de venta, aparecerá en esta lista.',
   No_shipments_yet: 'Sin envíos todavía',
