@@ -1,139 +1,175 @@
 <template>
-  <div>
-    <breadcumb :page="$t('Commission_Rules')" :folder="$t('Commissions')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div v-else>
-      <b-card class="shadow-soft border-0">
-        <div class="mb-3">
-          <v-select
-            v-model="filterProgramId"
-            :reduce="p => p.id"
-            :options="programsList"
-            :placeholder="$t('Filter_by_Program')"
-            label="name"
-            class="d-inline-block"
-            style="max-width: 280px;"
-            @input="load(1)"
-          />
-        </div>
-        <vue-good-table
-          mode="remote"
-          :columns="columns"
-          :totalRows="totalRows"
-          :rows="rules"
-          @on-page-change="onPageChange"
-          @on-per-page-change="onPerPageChange"
-          @on-sort-change="onSortChange"
-          @on-search="onSearch"
-          :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
-          :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
-          styleClass="tableOne table-hover vgt-table"
-        >
-          <div slot="table-actions" class="mt-2 mb-3">
-            <b-button
-              v-if="currentUserPermissions && currentUserPermissions.includes('commissions_add')"
-              variant="primary"
-              size="sm"
-              @click="openModal()"
-            >
-              <lucide-icon name="plus" /> {{ $t('Add') }}
-            </b-button>
-          </div>
-          <template slot="table-row" slot-scope="props">
-            <span v-if="props.column.field === 'type'">{{ props.row.type }} ({{ props.row.value }}{{ props.row.type === 'percentage' ? '%' : '' }})</span>
-            <span v-else-if="props.column.field === 'source'">{{ props.row.source === 'sale_total' ? $t('Sale_Total') : $t('Paid_Amount') }}</span>
-            <span v-else-if="props.column.field === 'applies_to'">{{ props.row.applies_to === 'all_agents' ? $t('All_Agents') : $t('Specific_Agent') }}</span>
-            <span v-else-if="props.column.field === 'program'">{{ props.row.commission_program ? props.row.commission_program.name : '—' }}</span>
-            <span v-else-if="props.column.field === 'agent'">{{ props.row.sales_agent ? props.row.sales_agent.name : '—' }}</span>
-            <span v-else-if="props.column.field === 'is_active'">
-              <b-badge :variant="props.row.is_active ? 'success' : 'secondary'">{{ props.row.is_active ? $t('Active') : $t('Inactive') }}</b-badge>
-            </span>
-            <span v-else-if="props.column.field === 'actions'">
-              <b-button v-if="currentUserPermissions && currentUserPermissions.includes('commissions_edit')" variant="link" size="sm" class="p-0 mr-2" @click="openModal(props.row)"><lucide-icon class="text-success" name="pen" /></b-button>
-              <b-button v-if="currentUserPermissions && currentUserPermissions.includes('commissions_delete')" variant="link" size="sm" class="p-0" @click="confirmDelete(props.row)"><lucide-icon class="text-danger" name="x" /></b-button>
-            </span>
-            <span v-else>{{ props.formattedRow[props.column.field] }}</span>
-          </template>
-        </vue-good-table>
-      </b-card>
+  <div class="px-next pxcm">
+    <px-page-header :title="$t('Commission_Rules')" :breadcrumbs="[{ label: $t('Commissions') }, { label: $t('Commission_Rules') }]">
+      <template #actions>
+        <px-button
+          v-if="currentUserPermissions && currentUserPermissions.includes('commissions_add')"
+          variant="primary" icon="plus" @click="openModal()"
+        >{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
+
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
+
+    <div class="pxcm__filterbar">
+      <px-field :label="$t('Filter_by_Program')">
+        <template #default="{ id }">
+          <vs-px :input-id="id" v-model="filterProgramId" :reduce="p => p.id" :options="programsList" label="name"
+            :placeholder="$t('Filter_by_Program')" @input="load(1)" />
+        </template>
+      </px-field>
     </div>
 
-    <b-modal :title="editMode ? $t('Edit') : $t('Add')" hide-footer size="lg" id="form_modal" @hidden="resetForm">
+    <div v-if="isLoading" class="pxcm__pad">
+      <px-skeleton variant="table" :rows="8" :columns="7" />
+    </div>
+
+    <template v-else>
+      <div class="pxcm__tablewrap">
+        <px-table
+          v-if="rules.length"
+          :columns="columns"
+          :rows="rules"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          :has-row-actions="canRowActions"
+          @sort="onSort"
+        >
+          <template #cell-type="{ row }">{{ row.type }} ({{ row.value }}{{ row.type === 'percentage' ? '%' : '' }})</template>
+          <template #cell-source="{ row }">{{ row.source === 'sale_total' ? $t('Sale_Total') : $t('Paid_Amount') }}</template>
+          <template #cell-program="{ row }">{{ row.commission_program ? row.commission_program.name : '—' }}</template>
+          <template #cell-agent="{ row }">{{ row.sales_agent ? row.sales_agent.name : '—' }}</template>
+          <template #cell-is_active="{ row }">
+            <px-badge :tone="row.is_active ? 'success' : 'neutral'">{{ row.is_active ? $t('Active') : $t('Inactive') }}</px-badge>
+          </template>
+          <template #row-actions="{ row }">
+            <px-kebab v-if="canRowActions" :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
+
+        <px-empty-state
+          v-else
+          icon="percent"
+          :title="$t('No_commission_rules_yet') || 'Sin reglas de comisión todavía'"
+        >
+          <px-button
+            v-if="currentUserPermissions && currentUserPermissions.includes('commissions_add')"
+            variant="primary" icon="plus" size="sm" @click="openModal()"
+          >{{ $t('Add') }}</px-button>
+        </px-empty-state>
+      </div>
+
+      <px-pagination
+        v-if="rules.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
+
+    <px-modal v-model="modalOpen" size="lg" :title="editMode ? $t('Edit') : $t('Add')">
       <b-form @submit.prevent="submit">
-        <b-form-group :label="$t('Commission_Program')" label-for="program">
-          <v-select v-model="form.commission_program_id" :reduce="p => p.id" :options="programsList" label="name" :placeholder="$t('PleaseSelect')" required />
-        </b-form-group>
-        <b-form-group :label="$t('Name')" label-for="name">
-          <b-form-input id="name" v-model="form.name" required maxlength="192"></b-form-input>
-        </b-form-group>
-        <b-row>
-          <b-col md="4">
-            <b-form-group :label="$t('Type')">
-              <b-form-select v-model="form.type">
-                <option value="percentage">{{ $t('Percentage') }}</option>
-                <option value="fixed">{{ $t('Fixed') }}</option>
-              </b-form-select>
-            </b-form-group>
-          </b-col>
-          <b-col md="4">
-            <b-form-group :label="$t('Source')">
-              <b-form-select v-model="form.source">
-                <option value="sale_total">{{ $t('Sale_Total') }}</option>
-                <option value="paid_amount">{{ $t('Paid_Amount') }}</option>
-              </b-form-select>
-            </b-form-group>
-          </b-col>
-          <b-col md="4">
-            <b-form-group :label="$t('Value')">
-              <b-form-input v-model.number="form.value" type="number" step="0.01" min="0" required></b-form-input>
-            </b-form-group>
-          </b-col>
-        </b-row>
-        <b-row>
-          <b-col md="4">
-            <b-form-group :label="$t('Min_Threshold')">
-              <b-form-input v-model="form.min_threshold" type="number" step="0.01" min="0"></b-form-input>
-            </b-form-group>
-          </b-col>
-          <b-col md="4">
-            <b-form-group :label="$t('Max_Cap')">
-              <b-form-input v-model="form.max_cap" type="number" step="0.01" min="0"></b-form-input>
-            </b-form-group>
-          </b-col>
-          <b-col md="4">
-            <b-form-group :label="$t('Priority')">
-              <b-form-input v-model.number="form.priority" type="number" min="0"></b-form-input>
-            </b-form-group>
-          </b-col>
-        </b-row>
-        <b-form-group :label="$t('Applies_To')">
-          <b-form-select v-model="form.applies_to">
-            <option value="all_agents">{{ $t('All_Agents') }}</option>
-            <option value="specific_agent">{{ $t('Specific_Agent') }}</option>
-          </b-form-select>
-        </b-form-group>
-        <b-form-group v-if="form.applies_to === 'specific_agent'" :label="$t('Sales_Agent')">
-          <v-select v-model="form.sales_agent_id" :reduce="a => a.id" :options="agentsList" label="name" :placeholder="$t('PleaseSelect')" />
-        </b-form-group>
-        <b-form-group><b-form-checkbox v-model="form.is_active">{{ $t('Active') }}</b-form-checkbox></b-form-group>
-        <div class="d-flex justify-content-end mt-3">
-          <b-button type="button" variant="secondary" @click="$bvModal.hide('form_modal')">{{ $t('Cancel') }}</b-button>
-          <b-button type="submit" variant="primary" class="ml-2">{{ $t('Submit') }}</b-button>
+        <px-field :label="$t('Commission_Program')" required>
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="form.commission_program_id" :reduce="p => p.id" :options="programsList" label="name" :placeholder="$t('PleaseSelect')" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Name')" required class="pxcm__gap">
+          <template #default="{ id }"><px-input :id="id" v-model="form.name" maxlength="192" /></template>
+        </px-field>
+
+        <div class="pxcm__formgrid pxcm__formgrid--3 pxcm__gap">
+          <px-field :label="$t('Type')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="form.type" :reduce="o => o.value" :clearable="false"
+                :options="[{ label: $t('Percentage'), value: 'percentage' }, { label: $t('Fixed'), value: 'fixed' }]" />
+            </template>
+          </px-field>
+          <px-field :label="$t('Source')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="form.source" :reduce="o => o.value" :clearable="false"
+                :options="[{ label: $t('Sale_Total'), value: 'sale_total' }, { label: $t('Paid_Amount'), value: 'paid_amount' }]" />
+            </template>
+          </px-field>
+          <px-field :label="$t('Value')" required>
+            <template #default="{ id }"><px-input :id="id" v-model.number="form.value" type="number" step="0.01" min="0" /></template>
+          </px-field>
+        </div>
+
+        <div class="pxcm__formgrid pxcm__formgrid--3 pxcm__gap">
+          <px-field :label="$t('Min_Threshold')">
+            <template #default="{ id }"><px-input :id="id" v-model="form.min_threshold" type="number" step="0.01" min="0" /></template>
+          </px-field>
+          <px-field :label="$t('Max_Cap')">
+            <template #default="{ id }"><px-input :id="id" v-model="form.max_cap" type="number" step="0.01" min="0" /></template>
+          </px-field>
+          <px-field :label="$t('Priority')">
+            <template #default="{ id }"><px-input :id="id" v-model.number="form.priority" type="number" min="0" /></template>
+          </px-field>
+        </div>
+
+        <div class="pxcm__formgrid pxcm__gap">
+          <px-field :label="$t('Applies_To')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="form.applies_to" :reduce="o => o.value" :clearable="false"
+                :options="[{ label: $t('All_Agents'), value: 'all_agents' }, { label: $t('Specific_Agent'), value: 'specific_agent' }]" />
+            </template>
+          </px-field>
+          <px-field v-if="form.applies_to === 'specific_agent'" :label="$t('Sales_Agent')">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="form.sales_agent_id" :reduce="a => a.id" :options="agentsList" label="name" :placeholder="$t('PleaseSelect')" />
+            </template>
+          </px-field>
+        </div>
+
+        <div class="pxcm__gap">
+          <px-check v-model="form.is_active" type="checkbox">{{ $t('Active') }}</px-check>
+        </div>
+
+        <div class="pxcm__actionbar">
+          <px-button variant="secondary" type="button" @click="modalOpen = false">{{ $t('Cancel') }}</px-button>
+          <px-button variant="primary" type="submit" icon="check">{{ $t('Submit') }}</px-button>
         </div>
       </b-form>
-    </b-modal>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: 'Commission Rules' },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxBadge,
+    PxField, PxInput, PxCheck, PxModal, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
+      _searchTimer: null,
       isLoading: true,
+      modalOpen: false,
       rules: [],
       totalRows: 0,
       serverParams: { sort: { field: 'priority', type: 'desc' }, page: 1, perPage: 10 },
@@ -148,16 +184,26 @@ export default {
   },
   computed: {
     ...mapGetters(['currentUserPermissions']),
+    canRowActions() {
+      const p = this.currentUserPermissions || [];
+      return p.includes('commissions_edit') || p.includes('commissions_delete');
+    },
+    rowActions() {
+      const p = this.currentUserPermissions || [];
+      const items = [];
+      if (p.includes('commissions_edit')) items.push({ key: 'edit', label: this.$t('Edit'), icon: 'pencil' });
+      if (p.includes('commissions_delete')) items.push({ key: 'delete', label: this.$t('Del'), icon: 'x', tone: 'danger' });
+      return items;
+    },
     columns() {
       return [
-        { label: this.$t('Name'), field: 'name' },
-        { label: this.$t('Program'), field: 'program' },
-        { label: this.$t('Type'), field: 'type' },
-        { label: this.$t('Source'), field: 'source' },
-        { label: this.$t('Agent'), field: 'agent' },
-        { label: this.$t('Active'), field: 'is_active' },
-        { label: this.$t('Priority'), field: 'priority' },
-        { label: this.$t('Action'), field: 'actions', sortable: false },
+        { key: 'name', label: this.$t('Name'), strong: true },
+        { key: 'program', label: this.$t('Program') },
+        { key: 'type', label: this.$t('Type') },
+        { key: 'source', label: this.$t('Source') },
+        { key: 'agent', label: this.$t('Agent') },
+        { key: 'is_active', label: this.$t('Active') },
+        { key: 'priority', label: this.$t('Priority'), align: 'right' },
       ];
     },
   },
@@ -167,6 +213,11 @@ export default {
     this.load();
   },
   methods: {
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.load(1); }, 350);
+    },
     loadPrograms() {
       axios.get('commission_programs', { params: { limit: '-1' } }).then((res) => {
         const d = res.data.data || res.data;
@@ -191,16 +242,20 @@ export default {
         this.isLoading = false;
       }).catch(() => { NProgress.done(); this.isLoading = false; });
     },
-    onPageChange({ currentPage }) { this.serverParams.page = currentPage; this.load(currentPage); },
-    onPerPageChange({ currentPerPage }) { this.limit = String(currentPerPage); this.load(1); },
-    onSortChange(params) { if (params.length) { this.serverParams.sort = { field: params[0].field, type: params[0].type }; this.load(1); } },
-    onSearch({ searchTerm }) { this.search = searchTerm || ''; this.load(1); },
+    onPage(p) { if (this.serverParams.page !== p) { this.serverParams.page = p; this.load(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.load(1); } },
+    onSort({ key, dir }) { this.serverParams.sort = { field: key, type: dir }; this.load(1); },
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === 'edit') this.openModal(row);
+      else if (k === 'delete') this.confirmDelete(row);
+    },
     openModal(row = null) {
       this.editMode = !!row;
       if (row) {
         this.form = { id: row.id, commission_program_id: row.commission_program_id, name: row.name, type: row.type, source: row.source, value: parseFloat(row.value), min_threshold: row.min_threshold || '', max_cap: row.max_cap || '', applies_to: row.applies_to, sales_agent_id: row.sales_agent_id || null, priority: row.priority || 0, is_active: !!row.is_active };
       } else this.resetForm();
-      this.$bvModal.show('form_modal');
+      this.modalOpen = true;
     },
     resetForm() {
       this.form = { commission_program_id: this.filterProgramId || null, name: '', type: 'percentage', source: 'sale_total', value: 0, min_threshold: '', max_cap: '', applies_to: 'all_agents', sales_agent_id: null, priority: 0, is_active: true };
@@ -213,7 +268,7 @@ export default {
       if (this.editMode) delete payload.id;
       axios[method](url, payload).then(() => {
         this.makeToast('success', this.$t('Success'));
-        this.$bvModal.hide('form_modal');
+        this.modalOpen = false;
         this.load(this.serverParams.page);
       }).catch((e) => this.makeToast('danger', e.response?.data?.message || this.$t('Error')));
     },
@@ -226,3 +281,18 @@ export default {
   },
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcm { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcm { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcm__pad { padding: var(--pxn-space-6) 0; }
+.pxcm__filterbar { margin-top: var(--pxn-space-4); max-width: 320px; }
+.pxcm__tablewrap { margin-top: var(--pxn-space-5); }
+.pxcm__gap { margin-top: var(--pxn-space-5); }
+.pxcm__formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+.pxcm__formgrid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 640px) { .pxcm__formgrid, .pxcm__formgrid--3 { grid-template-columns: minmax(0, 1fr); } }
+.pxcm__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+</style>
