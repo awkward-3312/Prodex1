@@ -1,630 +1,288 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('ListPurchases')" :folder="$t('Purchases')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div v-else>
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="purchases"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        placeholder: $t('Search_this_table'),
-        enabled: true,
-      }"
-        :select-options="{ 
-          enabled: true ,
-          clearSelectionText: '',
-        }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{
-          enabled: true,
-          mode: 'records',
-          nextLabel: 'next',
-          prevLabel: 'prev',
-        }"
-        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
-      >
-        <div slot="selected-row-actions" v-if="currentUserPermissions.includes('Purchases_delete')">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
-            <lucide-icon name="filter" />
-            {{ $t("Filter") }}
-          </b-button>
-          <b-button @click="Purchase_PDF()" size="sm" variant="outline-success ripple m-1">
-            <lucide-icon name="copy" /> PDF
-          </b-button>
-          <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="purchases"
-              :columns="columns"
-              :file-name="'purchases'"
-              :file-type="'xlsx'"
-              :sheet-name="'purchases'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
-          <router-link
-            class="btn-sm btn btn-primary ripple btn-icon m-1"
-            v-if="currentUserPermissions && currentUserPermissions.includes('Purchases_add')"
-            to="/app/purchases/store"
-          >
-            <span class="ul-btn__icon">
-              <lucide-icon name="plus" />
-            </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
-          </router-link>
-        </div>
+  <div class="px-next pxpl">
+    <px-page-header :title="$t('ListPurchases')" :breadcrumbs="[{ label: $t('Purchases') }, { label: $t('ListPurchases') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">Exportar</px-button>
+          </template>
+        </px-menu>
+        <px-button
+          v-if="currentUserPermissions && currentUserPermissions.includes('Purchases_add')"
+          variant="primary" icon="plus" @click="$router.push('/app/purchases/store')"
+        >{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <div>
-              <b-dropdown
-                id="dropdown-left"
-                variant="link"
-                text="Left align"
-                toggle-class="text-decoration-none"
-                size="lg"
-                no-caret
-              >
-                <template v-slot:button-content class="_r_btn border-0">
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                  <span class="_dot _r_block-dot bg-dark"></span>
-                </template>
-                  <b-dropdown-item title="Show" :to="'/app/purchases/detail/'+props.row.id">
-                    <lucide-icon class="nav-icon font-weight-bold mr-2" name="eye" />
-                    {{$t('PurchaseDetail')}}
-                  </b-dropdown-item>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      :filter-count="activeFilterCount"
+      @update:search="onSearchInput"
+      @open-filters="filtersOpen = !filtersOpen"
+    />
 
-                <b-dropdown-item
-                  title="Edit"
-                  v-if="currentUserPermissions.includes('Purchases_edit') && props.row.purchase_has_return == 'no'"
-                  :to="'/app/purchases/edit/'+props.row.id"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="pen" />
-                  {{$t('EditPurchase')}}
-                </b-dropdown-item>
-
-                 <b-dropdown-item
-                  title="Purchase Return"
-                  v-if="currentUserPermissions.includes('Purchase_Returns_add') && props.row.purchase_has_return == 'no' && props.row.statut == 'received'"
-                  :to="'/app/purchases/purchase_return/'+props.row.id"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="arrow-left" />
-                  {{$t('Purchase_Return')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  title="Purchase Return"
-                  v-if="currentUserPermissions.includes('Purchase_Returns_add') && props.row.purchase_has_return == 'yes'"
-                  :to="'/app/purchase_return/edit/'+props.row.purchasereturn_id+'/'+props.row.id"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="arrow-left" />
-                  {{$t('Purchase_Return')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  v-if="currentUserPermissions.includes('payment_purchases_view')"
-                  @click="Show_Payments(props.row.id , props.row)"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="wallet" />
-                  {{$t('ShowPayment')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  v-if="currentUserPermissions.includes('payment_purchases_add') && props.row.statut == 'received'"
-                  @click="New_Payment(props.row)"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="plus" />
-                  {{$t('AddPayment')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item title="PDF" @click="Invoice_PDF(props.row , props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="file-text" />
-                  {{$t('DownloadPdf')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  title="Print Barcode"
-                  @click="Print_Purchase_Barcode(props.row.id)"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="barcode" />
-                  {{$t('Printbarcode')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item title=" WhatsApp Notification" @click="Send_WhatsApp(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="mail" />
-                  WhatsApp Notification
-                </b-dropdown-item>
-
-                <b-dropdown-item title="Email" @click="Send_Email(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="mail" />
-                  {{$t('email_notification')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item title="SMS" @click="Purchase_SMS(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="message-square" />
-                  {{$t('sms_notification')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item title="Attach Documents" @click="Manage_Documents(props.row.id)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="file" />
-                  {{$t('Attach_Documents')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  title="Delete"
-                  v-if="currentUserPermissions.includes('Purchases_delete')"
-                  @click="Remove_Purchase(props.row.id , props.row.purchase_has_return)"
-                >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="x" />
-                  {{$t('DeletePurchase')}}
-                </b-dropdown-item>
-              </b-dropdown>
-            </div>
-          </span>
-          <span v-else-if="props.column.field == 'date'">
-            {{ formatDisplayDate(props.row.date) }}
-          </span>
-          <div v-else-if="props.column.field == 'statut'">
-            <span
-              v-if="props.row.statut == 'received'"
-              class="badge badge-outline-success"
-            >{{$t('Received')}}</span>
-            <span
-              v-else-if="props.row.statut == 'pending'"
-              class="badge badge-outline-info"
-            >{{$t('Pending')}}</span>
-            <span v-else class="badge badge-outline-warning">{{$t('Ordered')}}</span>
-          </div>
-
-          <div v-else-if="props.column.field == 'payment_status'">
-            <span
-              v-if="props.row.payment_status == 'paid'"
-              class="badge badge-outline-success"
-            >{{$t('Paid')}}</span>
-            <span
-              v-else-if="props.row.payment_status == 'partial'"
-              class="badge badge-outline-primary"
-            >{{$t('partial')}}</span>
-            <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
-          </div>
-           <div v-else-if="props.column.field == 'Ref'">
-              <router-link
-                :to="'/app/purchases/detail/'+props.row.id"
-              >
-                <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
-              </router-link> <br>
-              <small v-if="props.row.purchase_has_return == 'yes'"><lucide-icon class="text-15 text-danger" name="arrow-left" /></small>
-            </div>
-            <div v-else-if="props.column.field == 'documents'">
-              <span v-if="props.row.documents_count > 0" class="badge badge-info">
-                <lucide-icon name="file" /> {{props.row.documents_count}}
-              </span>
-              <span v-else class="text-muted">-</span>
-            </div>
-          <span v-else-if="props.column.field == 'GrandTotal'">
-            {{ formatPriceWithSymbol(currentUser.currency, props.row.GrandTotal, 2) }}
-          </span>
-          <span v-else-if="props.column.field == 'paid_amount'">
-            {{ formatPriceWithSymbol(currentUser.currency, props.row.paid_amount, 2) }}
-          </span>
-          <span v-else-if="props.column.field == 'due'">
-            {{ formatPriceWithSymbol(currentUser.currency, props.row.due, 2) }}
-          </span>
-        </template>
-      </vue-good-table>
+    <div v-if="filtersOpen" class="pxpl__filters">
+      <div class="pxpl__filters-grid">
+        <px-field :label="$t('date')"><template #default="{ id }"><px-input :id="id" type="date" v-model="Filter_date" /></template></px-field>
+        <px-field :label="$t('Reference')"><template #default="{ id }"><px-input :id="id" v-model="Filter_Ref" :placeholder="$t('Reference')" /></template></px-field>
+        <px-field :label="$t('Supplier')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_Supplier" :reduce="o => o.value" :placeholder="$t('Choose_Supplier')"
+              :options="suppliers.map(s => ({ label: s.name, value: s.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('warehouse')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_warehouse" :reduce="o => o.value" :placeholder="$t('Choose_Warehouse')"
+              :options="warehouses.map(w => ({ label: w.name, value: w.id }))" />
+          </template>
+        </px-field>
+        <px-field :label="$t('Status')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_status" :reduce="o => o.value" :placeholder="$t('Choose_Status')"
+              :options="[{ label: 'Received', value: 'received' }, { label: 'Pending', value: 'pending' }, { label: 'Ordered', value: 'ordered' }]" />
+          </template>
+        </px-field>
+        <px-field :label="$t('PaymentStatus')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_Payment" :reduce="o => o.value" :placeholder="$t('Choose_Status')"
+              :options="[{ label: 'Paid', value: 'paid' }, { label: 'partial', value: 'partial' }, { label: 'UnPaid', value: 'unpaid' }]" />
+          </template>
+        </px-field>
+      </div>
+      <div class="pxpl__filters-act">
+        <px-button size="sm" variant="primary" icon="filter" @click="applyFilters">{{ $t('Filter') }}</px-button>
+        <px-button size="sm" variant="ghost" icon="x" @click="Reset_Filter">{{ $t('Reset') }}</px-button>
+      </div>
     </div>
 
-    <!-- Sidebar Filter -->
-    <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
-      <div class="px-3 py-2">
-        <b-row>
-          <!-- date  -->
-          <b-col md="12">
-            <b-form-group :label="$t('date')">
-              <b-form-input type="date" v-model="Filter_date"></b-form-input>
-            </b-form-group>
-          </b-col>
+    <div v-if="isLoading" class="pxpl__pad">
+      <px-skeleton variant="table" :rows="10" :columns="6" />
+    </div>
 
-          <!-- Reference -->
-          <b-col md="12">
-            <b-form-group :label="$t('Reference')">
-              <b-form-input label="Reference" :placeholder="$t('Reference')" v-model="Filter_Ref"></b-form-input>
-            </b-form-group>
-          </b-col>
-
-          <!-- Supplier  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Supplier')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Supplier')"
-                v-model="Filter_Supplier"
-                :options="suppliers.map(suppliers => ({label: suppliers.name, value: suppliers.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- warehouse -->
-          <b-col md="12">
-            <b-form-group :label="$t('warehouse')">
-              <v-select
-                v-model="Filter_warehouse"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Warehouse')"
-                :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Status  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Status')">
-              <v-select
-                v-model="Filter_status"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Status')"
-                :options="
-                      [
-                        {label: 'Received', value: 'received'},
-                        {label: 'Pending', value: 'pending'},
-                        {label: 'Ordered', value: 'ordered'},
-                      ]"
-              ></v-select>
-            </b-form-group>
-          </b-col>
-
-          <!-- Payment Status  -->
-          <b-col md="12">
-            <b-form-group :label="$t('PaymentStatus')">
-              <v-select
-                v-model="Filter_Payment"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Status')"
-                :options="
-                      [
-                        {label: 'Paid', value: 'paid'},
-                        {label: 'partial', value: 'partial'},
-                        {label: 'UnPaid', value: 'unpaid'},
-                      ]"
-              ></v-select>
-            </b-form-group>
-          </b-col>
-
-          <b-col md="6" sm="12">
-            <b-button
-              @click="Get_Purchases(serverParams.page)"
-              variant="primary ripple m-1"
-              size="sm"
-              block
-            >
-              <lucide-icon name="filter" />
-              {{ $t("Filter") }}
-            </b-button>
-          </b-col>
-          <b-col md="6" sm="12">
-            <b-button @click="Reset_Filter()" variant="danger ripple m-1" size="sm" block>
-              <lucide-icon name="power" />
-              {{ $t("Reset") }}
-            </b-button>
-          </b-col>
-        </b-row>
-      </div>
-    </b-sidebar>
-
-    <!-- Modal Show Payments-->
-    <b-modal hide-footer size="lg" id="Show_payment" :title="$t('ShowPayment')">
-      <b-row>
-        <b-col lg="12" md="12" sm="12" class="mt-3">
-          <div class="table-responsive">
-            <table class="table table-hover table-bordered table-md">
-              <thead>
-                <tr>
-                  <th scope="col">{{$t('date')}}</th>
-                  <th scope="col">{{$t('Reference')}}</th>
-                  <th scope="col">{{$t('Amount')}}</th>
-                  <th scope="col">{{$t('PayeBy')}}</th>
-                  <th scope="col">{{$t('Action')}}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="factures.length <= 0">
-                  <td colspan="5">{{$t('NodataAvailable')}}</td>
-                </tr>
-                <tr v-for="facture in factures">
-                  <td>{{facture.date}}</td>
-                  <td>{{facture.Ref}}</td>
-                  <td>{{ formatPriceWithSymbol(currentUser.currency, facture.montant, 2) }}</td>
-                   <td>{{facture.payment_method?facture.payment_method.name:'---'}}</td>
-                  <td>
-                    <div role="group" aria-label="Basic example" class="btn-group">
-                      <span
-                        title="Print"
-                        class="btn btn-icon btn-info btn-sm"
-                        @click="Payment_Purchase_PDF(facture,facture.id)"
-                      >
-                        <lucide-icon name="receipt" />
-                      </span>
-                      <span
-                        v-if="currentUserPermissions.includes('payment_purchases_edit')"
-                        title="Edit"
-                        class="btn btn-icon btn-success btn-sm"
-                        @click="Edit_Payment(facture)"
-                      >
-                        <lucide-icon name="pen" />
-                      </span>
-                      <span
-                        title="Email"
-                        class="btn btn-icon btn-primary btn-sm"
-                        @click="Send_Email_Payment(facture.id)"
-                      >
-                        <lucide-icon name="mail" />
-                      </span>
-                      <span
-                        title="SMS"
-                        class="btn btn-icon btn-secondary btn-sm"
-                        @click="Payment_Purchase_SMS(facture.id)"
-                      >
-                        <lucide-icon name="message-square" />
-                      </span>
-                      <span
-                        v-if="currentUserPermissions.includes('payment_purchases_delete')"
-                        title="Delete"
-                        class="btn btn-icon btn-danger btn-sm"
-                        @click="Remove_Payment(facture.id)"
-                      >
-                        <lucide-icon name="x" />
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+    <template v-else>
+      <transition name="pxpl-bulk">
+        <div v-if="selectedIds.length" class="pxpl__bulk">
+          <span><b class="pxn-num">{{ selectedIds.length }}</b> {{ $t('selected') }}</span>
+          <div class="pxpl__bulk-act">
+            <px-button v-if="currentUserPermissions.includes('Purchases_delete')" size="sm" variant="danger" icon="trash-2" @click="delete_by_selected">{{ $t('Del') }}</px-button>
+            <px-button size="sm" variant="ghost" @click="selectedIds = []">{{ $t('Cancel') }}</px-button>
           </div>
-        </b-col>
-      </b-row>
-    </b-modal>
+        </div>
+      </transition>
 
-    <!-- Modal Add Payment-->
+      <div class="pxpl__tablewrap">
+        <px-table
+          v-if="purchases.length"
+          :columns="columns"
+          :rows="purchases"
+          row-key="id"
+          selectable
+          :selected.sync="selectedIds"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-date="{ row }">{{ formatDisplayDate(row.date) }}</template>
+          <template #cell-Ref="{ row }">
+            <router-link class="pxpl__link" :to="'/app/purchases/detail/' + row.id">{{ row.Ref }}</router-link>
+            <lucide-icon v-if="row.purchase_has_return == 'yes'" name="arrow-left" :size="13" class="pxpl__ret" />
+          </template>
+          <template #cell-statut="{ row }">
+            <px-badge :tone="row.statut === 'received' ? 'success' : (row.statut === 'pending' ? 'info' : 'warning')">
+              {{ row.statut === 'received' ? $t('Received') : (row.statut === 'pending' ? $t('Pending') : $t('Ordered')) }}
+            </px-badge>
+          </template>
+          <template #cell-payment_status="{ row }">
+            <px-badge :tone="row.payment_status === 'paid' ? 'success' : (row.payment_status === 'partial' ? 'info' : 'warning')">
+              {{ row.payment_status === 'paid' ? $t('Paid') : (row.payment_status === 'partial' ? $t('partial') : $t('Unpaid')) }}
+            </px-badge>
+          </template>
+          <template #cell-GrandTotal="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser.currency, row.GrandTotal, 2) }}</span></template>
+          <template #cell-paid_amount="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser.currency, row.paid_amount, 2) }}</span></template>
+          <template #cell-due="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser.currency, row.due, 2) }}</span></template>
+          <template #cell-documents="{ row }">
+            <px-badge v-if="row.documents_count > 0" tone="info" icon="file">{{ row.documents_count }}</px-badge>
+            <span v-else class="pxpl__muted">—</span>
+          </template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions(row)" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
+
+        <px-empty-state
+          v-else
+          icon="shopping-cart"
+          :title="$t('No_purchases_yet') || 'Sin compras todavía'"
+          :description="$t('No_purchases_desc') || 'Cuando registres una compra, aparecerá en esta lista.'"
+        >
+          <px-button
+            v-if="currentUserPermissions && currentUserPermissions.includes('Purchases_add')"
+            size="sm" variant="primary" icon="plus" @click="$router.push('/app/purchases/store')"
+          >{{ $t('Add') }}</px-button>
+        </px-empty-state>
+      </div>
+
+      <px-pagination
+        v-if="purchases.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
+
+    <!-- Show payments -->
+    <px-modal v-model="showPaymentOpen" :title="$t('ShowPayment')" size="lg">
+      <div class="pxpl-tbl__wrap pxn-scroll">
+        <table class="pxpl-tbl">
+          <thead>
+            <tr>
+              <th>{{ $t('date') }}</th><th>{{ $t('Reference') }}</th><th class="is-right">{{ $t('Amount') }}</th>
+              <th>{{ $t('PayeBy') }}</th><th class="is-right">{{ $t('Action') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="factures.length <= 0"><td colspan="5" class="pxpl__empty">{{ $t('NodataAvailable') }}</td></tr>
+            <tr v-for="facture in factures" :key="facture.id">
+              <td>{{ facture.date }}</td>
+              <td class="pxn-mono">{{ facture.Ref }}</td>
+              <td class="is-right pxn-num">{{ formatPriceWithSymbol(currentUser.currency, facture.montant, 2) }}</td>
+              <td>{{ facture.payment_method ? facture.payment_method.name : '---' }}</td>
+              <td class="is-right">
+                <div class="pxpl__rowbtns">
+                  <px-button size="sm" variant="ghost" icon-only icon="printer" :title="$t('print')" @click="Payment_Purchase_PDF(facture, facture.id)" />
+                  <px-button v-if="currentUserPermissions.includes('payment_purchases_edit')" size="sm" variant="ghost" icon-only icon="pencil" :title="$t('Edit')" @click="Edit_Payment(facture)" />
+                  <px-button size="sm" variant="ghost" icon-only icon="mail" title="Email" @click="Send_Email_Payment(facture.id)" />
+                  <px-button size="sm" variant="ghost" icon-only icon="message-square" title="SMS" @click="Payment_Purchase_SMS(facture.id)" />
+                  <px-button v-if="currentUserPermissions.includes('payment_purchases_delete')" size="sm" variant="ghost" icon-only icon="x" :title="$t('Delete')" @click="Remove_Payment(facture.id)" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <template #footer="{ close }">
+        <span class="pxpl__grow" />
+        <px-button variant="secondary" @click="close">Cerrar</px-button>
+      </template>
+    </px-modal>
+
+    <!-- Add / edit payment -->
     <validation-observer ref="Add_payment">
-      <b-modal
-        hide-footer
-        size="lg"
-        id="Add_Payment"
-        :title="EditPaiementMode?$t('EditPayment'):$t('AddPayment')"
-      >
+      <px-modal v-model="addPaymentOpen" :title="EditPaiementMode ? $t('EditPayment') : $t('AddPayment')" size="lg">
         <b-form @submit.prevent="Submit_Payment">
-          <b-row>
-            <!-- date -->
-            <b-col lg="4" md="12" sm="12">
-              <validation-provider
-                name="date"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('date')">
-                  <b-form-input
-                    label="date"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="date-feedback"
-                    v-model="facture.date"
-                    type="date"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="date-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Reference  -->
-            <b-col lg="4" md="12" sm="12">
-              <b-form-group :label="$t('Reference')">
-                <b-form-input
-                  disabled="disabled"
-                  label="Reference"
-                  :placeholder="$t('Reference')"
-                  v-model="facture.Ref"
-                ></b-form-input>
-              </b-form-group>
-            </b-col>
-
-              <!-- Payment choice -->
-             <b-col lg="4" md="12" sm="12">
-              <validation-provider name="Payment choice" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')">
-                  <v-select
-                    :class="{'is-invalid': !!errors.length}"
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    v-model="facture.payment_method_id"
-                    :reduce="label => label.value"
-                    :placeholder="$t('PleaseSelect')"
-                    :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
-
-                  ></v-select>
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-             <!-- Received  Amount  -->
-            <b-col lg="4" md="12" sm="12">
-              <validation-provider
-                name="Received Amount"
-                :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                v-slot="validationContext"
-              >
-              <b-form-group :label="$t('Received_Amount')">
-                <b-form-input
-                  @keyup="Verified_Received_Amount(facture.received_amount)"
-                  label="Received_Amount"
-                  :placeholder="$t('Received_Amount')"
-                  v-model.number="facture.received_amount"
-                  :state="getValidationState(validationContext)"
-                  aria-describedby="Received_Amount-feedback"
-                ></b-form-input>
-                <b-form-invalid-feedback
-                  id="Received_Amount-feedback"
-                >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-              </b-form-group>
+          <div class="pxpl__grid3">
+            <validation-provider ref="pDateProvider" name="date" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('date')" required :error="v.errors[0]">
+                <template #default="{ id }"><px-input :id="id" type="date" v-model="facture.date" @input="v.validate" /></template>
+              </px-field>
             </validation-provider>
-          </b-col>
 
-            <!-- Paying Amount  -->
-            <b-col lg="4" md="12" sm="12">
-              <validation-provider
-                name="Amount"
-                :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Paying_Amount')">
-                  <b-form-input
-                   @keyup="Verified_paidAmount(facture.montant)"
-                    label="Amount"
-                    :placeholder="$t('Paying_Amount')"
-                    v-model.number="facture.montant"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Amount-feedback"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Amount-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+            <px-field :label="$t('Reference')">
+              <template #default="{ id }"><px-input :id="id" v-model="facture.Ref" disabled /></template>
+            </px-field>
 
-            <!-- change Amount  -->
-            <b-col lg="4" md="12" sm="12">
-              <label>{{$t('Change')}} :</label>
-              <p
-                class="change_amount"
-              >{{parseFloat(facture.received_amount - facture.montant).toFixed(priceDecimals)}}</p>
-            </b-col>
+            <validation-provider ref="pMethodProvider" name="Payment choice" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('Paymentchoice')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="facture.payment_method_id" :reduce="o => o.value"
+                    :placeholder="$t('PleaseSelect')" @input="v.validate"
+                    :options="payment_methods.map(m => ({ label: m.name, value: m.id }))" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-             <!-- Account -->
-             <b-col lg="6" md="6" sm="12">
-              <validation-provider name="Account">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
-                  <v-select
-                    :class="{'is-invalid': !!errors.length}"
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    v-model="facture.account_id"
-                    :reduce="label => label.value"
-                    :placeholder="$t('Choose_Account')"
-                    :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
-                  />
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-          
-            <!-- Note -->
-            <b-col lg="6" md="6" sm="12">
-              <b-form-group :label="$t('Note')">
-                <b-form-textarea id="textarea" v-model="facture.notes" rows="3" max-rows="6"></b-form-textarea>
-              </b-form-group>
-            </b-col>
-            <b-col md="12" class="mt-3">
-              <b-button
-                variant="primary"
-                type="submit"
-                :disabled="paymentProcessing"
-              ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-              <div v-once class="typo__p" v-if="paymentProcessing">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
-            </b-col>
-          </b-row>
+            <validation-provider ref="pRecvProvider" name="Received Amount" :rules="{ required: true, regex: /^\d*\.?\d*$/ }" v-slot="v">
+              <px-field :label="$t('Received_Amount')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <px-input :id="id" v-model.number="facture.received_amount" :placeholder="$t('Received_Amount')"
+                    @input="v.validate($event); Verified_Received_Amount(facture.received_amount)" />
+                </template>
+              </px-field>
+            </validation-provider>
+
+            <validation-provider ref="pAmtProvider" name="Amount" :rules="{ required: true, regex: /^\d*\.?\d*$/ }" v-slot="v">
+              <px-field :label="$t('Paying_Amount')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <px-input :id="id" v-model.number="facture.montant" :placeholder="$t('Paying_Amount')"
+                    @input="v.validate($event); Verified_paidAmount(facture.montant)" />
+                </template>
+              </px-field>
+            </validation-provider>
+
+            <px-field :label="$t('Change')">
+              <template #default>
+                <p class="pxpl__change pxn-num">{{ parseFloat(facture.received_amount - facture.montant).toFixed(priceDecimals) }}</p>
+              </template>
+            </px-field>
+
+            <px-field :label="$t('Account')" class="pxpl__span2">
+              <template #default="{ id }">
+                <vs-px :input-id="id" v-model="facture.account_id" :reduce="o => o.value" :placeholder="$t('Choose_Account')"
+                  :options="accounts.map(a => ({ label: a.account_name, value: a.id }))" />
+              </template>
+            </px-field>
+
+            <px-field :label="$t('Note')" class="pxpl__span2">
+              <template #default="{ id }"><px-textarea :id="id" v-model="facture.notes" :rows="3" /></template>
+            </px-field>
+          </div>
+
+          <div class="pxpl__actionbar">
+            <px-button variant="secondary" type="button" @click="addPaymentOpen = false">{{ $t('Cancel') }}</px-button>
+            <px-button variant="primary" type="submit" icon="check" :loading="paymentProcessing">{{ $t('submit') }}</px-button>
+          </div>
         </b-form>
-      </b-modal>
+      </px-modal>
     </validation-observer>
 
-    <!-- Modal Manage Documents -->
-    <b-modal
-      hide-footer
-      size="lg"
-      id="Manage_Documents"
-      :title="$t('Attach_Documents')"
-    >
-      <b-row>
-        <!-- Upload Section -->
-        <b-col lg="12" md="12" sm="12" class="mb-3">
-          <b-form-group :label="$t('Upload_Documents')">
-            <b-form-file
-              v-model="selectedFiles"
-              :placeholder="$t('Choose_files_or_drop_them_here')"
-              :drop-placeholder="$t('Drop_files_here')"
-              multiple
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
-              @change="onFileChange"
-            ></b-form-file>
-          </b-form-group>
-          <b-button
-            variant="primary"
-            size="sm"
-            @click="Upload_Documents"
-            :disabled="!selectedFiles || selectedFiles.length === 0 || uploadProcessing"
-          >
-            <lucide-icon name="upload" /> {{$t('Upload')}}
-          </b-button>
-          <div v-if="uploadProcessing" class="mt-2">
-            <div class="spinner sm spinner-primary"></div>
-          </div>
-        </b-col>
+    <!-- Manage documents -->
+    <px-modal v-model="documentsOpen" size="lg" :title="$t('Attach_Documents')">
+      <div class="pxpl__docsupload">
+        <b-form-group :label="$t('Upload_Documents')">
+          <b-form-file
+            v-model="selectedFiles"
+            :placeholder="$t('Choose_files_or_drop_them_here')"
+            :drop-placeholder="$t('Drop_files_here')"
+            multiple
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
+            @change="onFileChange"
+          ></b-form-file>
+        </b-form-group>
+        <px-button size="sm" variant="primary" icon="upload"
+          :loading="uploadProcessing"
+          :disabled="!selectedFiles || selectedFiles.length === 0 || uploadProcessing"
+          @click="Upload_Documents"
+        >{{ $t('Upload') }}</px-button>
+      </div>
 
-        <!-- Documents List -->
-        <b-col lg="12" md="12" sm="12">
-          <h5>{{$t('Attached_Documents')}}</h5>
-          <div class="table-responsive">
-            <table class="table table-hover table-bordered table-sm">
-              <thead>
-                <tr>
-                  <th scope="col">{{$t('File_Name')}}</th>
-                  <th scope="col">{{$t('Size')}}</th>
-                  <th scope="col">{{$t('Uploaded_Date')}}</th>
-                  <th scope="col">{{$t('Action')}}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="documents.length <= 0">
-                  <td colspan="4" class="text-center">{{$t('NodataAvailable')}}</td>
-                </tr>
-                <tr v-for="document in documents" :key="document.id">
-                  <td>
-                    <lucide-icon class="mr-1" name="file" />
-                    {{document.name}}
-                  </td>
-                  <td>{{formatFileSize(document.size)}}</td>
-                  <td>{{formatDateTime(document.created_at)}}</td>
-                  <td>
-                    <div role="group" aria-label="Document actions" class="btn-group">
-                      <button
-                        title="Download"
-                        class="btn btn-icon btn-success btn-sm"
-                        @click="Download_Document(document)"
-                      >
-                        <lucide-icon name="download" />
-                      </button>
-                      <button
-                        title="Delete"
-                        class="btn btn-icon btn-danger btn-sm"
-                        @click="Remove_Document(document.id)"
-                      >
-                        <lucide-icon name="x" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </b-col>
-      </b-row>
-    </b-modal>
+      <h5 class="pxpl__docshead">{{ $t('Attached_Documents') }}</h5>
+      <div class="pxpl-tbl__wrap pxn-scroll">
+        <table class="pxpl-tbl">
+          <thead>
+            <tr><th>{{ $t('File_Name') }}</th><th>{{ $t('Size') }}</th><th>{{ $t('Uploaded_Date') }}</th><th class="is-right">{{ $t('Action') }}</th></tr>
+          </thead>
+          <tbody>
+            <tr v-if="documents.length <= 0"><td colspan="4" class="pxpl__empty">{{ $t('NodataAvailable') }}</td></tr>
+            <tr v-for="document in documents" :key="document.id">
+              <td><lucide-icon name="file" :size="14" /> {{ document.name }}</td>
+              <td>{{ formatFileSize(document.size) }}</td>
+              <td>{{ formatDateTime(document.created_at) }}</td>
+              <td class="is-right">
+                <div class="pxpl__rowbtns">
+                  <px-button size="sm" variant="ghost" icon-only icon="download" :title="$t('Download')" @click="Download_Document(document)" />
+                  <px-button size="sm" variant="ghost" icon-only icon="x" :title="$t('Delete')" @click="Remove_Document(document.id)" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </px-modal>
   </div>
 </template>
 
@@ -639,16 +297,40 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Purchases"
   },
 
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxKebab,
+    PxBadge, PxField, PxInput, PxTextarea, PxModal, PxEmptyState, "vs-px": VsPx
+  },
+
   data() {
     return {
+      _searchTimer: null,
       paymentProcessing: false,
       isLoading: true,
+      filtersOpen: false,
+      addPaymentOpen: false,
+      showPaymentOpen: false,
+      documentsOpen: false,
       serverParams: {
         sort: {
           field: "id",
@@ -660,7 +342,6 @@ export default {
       selectedIds: [],
       search: "",
       totalRows: "",
-      showDropdown: false,
       EditPaiementMode: false,
       Filter_Supplier: "",
       Filter_status: "",
@@ -710,94 +391,34 @@ export default {
     };
   },
 
-   mounted() {
-    this.$root.$on("bv::dropdown::show", bvEvent => {
-      this.showDropdown = true;
-    });
-    this.$root.$on("bv::dropdown::hide", bvEvent => {
-      this.showDropdown = false;
-    });
-  },
-
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
     // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
+    activeFilterCount() {
+      return [this.Filter_date, this.Filter_Ref, this.Filter_Supplier, this.Filter_warehouse, this.Filter_status, this.Filter_Payment]
+        .filter(v => v !== "" && v !== null && v !== undefined).length;
+    },
+    exportMenu() {
+      return [
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
     columns() {
       return [
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Supplier"),
-          field: "provider_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("warehouse"),
-          field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Status"),
-          field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Total"),
-          field: "GrandTotal",
-          // type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Paid"),
-          field: "paid_amount",
-          // type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Due"),
-          field: "due",
-          // type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("PaymentStatus"),
-          field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Documents"),
-          field: "documents",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "date", label: this.$t("date"), sortable: true },
+        { key: "Ref", label: this.$t("Reference"), sortable: true, strong: true },
+        { key: "provider_name", label: this.$t("Supplier"), sortable: true },
+        { key: "warehouse_name", label: this.$t("warehouse"), sortable: true },
+        { key: "statut", label: this.$t("Status"), sortable: true },
+        { key: "GrandTotal", label: this.$t("Total"), align: "right", sortable: true },
+        { key: "paid_amount", label: this.$t("Paid"), align: "right", sortable: true },
+        { key: "due", label: this.$t("Due"), align: "right" },
+        { key: "payment_status", label: this.$t("PaymentStatus"), sortable: true },
+        { key: "documents", label: this.$t("Documents") }
       ];
     }
   },
@@ -808,53 +429,94 @@ export default {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Purchases(currentPage);
-      }
+    //---- Toolbar search (debounced)
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Purchases(1); }, 350);
     },
 
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Purchases(1);
-      }
-    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Purchases(p); } },
 
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
-    },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Purchases(1); } },
 
-    //---- Event on Sort Change
-    onSortChange(params) {
-      let field = "";
-      if (params[0].field == "provider_name") {
-        field = "provider_id";
-      } else if (params[0].field == "warehouse_name") {
-        field = "warehouse_id";
-      } else {
-        field = params[0].field;
-      }
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: field
-        }
-      });
+    onSort({ key, dir }) {
+      let field = key;
+      if (key === "provider_name") field = "provider_id";
+      else if (key === "warehouse_name") field = "warehouse_id";
+      this.updateParams({ sort: { type: dir, field: field } });
       this.Get_Purchases(this.serverParams.page);
     },
 
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Purchases(this.serverParams.page);
+    applyFilters() { this.updateParams({ page: 1 }); this.Get_Purchases(this.serverParams.page); },
+
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "pdf") this.Purchase_PDF();
+      else if (k === "xlsx") this.exportCsv();
+    },
+
+    exportCsv() {
+      const head = [this.$t("date"), this.$t("Reference"), this.$t("Supplier"), this.$t("warehouse"), this.$t("Status"), this.$t("Total"), this.$t("Paid"), this.$t("Due"), this.$t("PaymentStatus")];
+      const lines = [head.join(",")].concat(
+        (this.purchases || []).map(r =>
+          [r.date, r.Ref, r.provider_name, r.warehouse_name, r.statut, r.GrandTotal, r.paid_amount, r.due, r.payment_status]
+            .map(c => `"${String(c == null ? "" : c).replace(/"/g, '""')}"`).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "Purchases.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+
+    //---- Kebab row actions
+    rowActions(row) {
+      const p = this.currentUserPermissions || [];
+      const items = [{ key: "view", label: this.$t("PurchaseDetail"), icon: "eye" }];
+      if (p.includes("Purchases_edit") && row.purchase_has_return == "no") items.push({ key: "edit", label: this.$t("EditPurchase"), icon: "pencil" });
+      if (p.includes("Purchase_Returns_add") && row.purchase_has_return == "no" && row.statut == "received") items.push({ key: "return", label: this.$t("Purchase_Return"), icon: "arrow-left" });
+      if (p.includes("Purchase_Returns_add") && row.purchase_has_return == "yes") items.push({ key: "return_edit", label: this.$t("Purchase_Return"), icon: "arrow-left" });
+      if (p.includes("payment_purchases_view")) items.push({ key: "showpay", label: this.$t("ShowPayment"), icon: "wallet" });
+      if (p.includes("payment_purchases_add") && row.statut == "received") items.push({ key: "addpay", label: this.$t("AddPayment"), icon: "plus" });
+      items.push({ key: "pdf", label: this.$t("DownloadPdf"), icon: "file-text" });
+      items.push({ key: "barcode", label: this.$t("Printbarcode"), icon: "scan-line" });
+      items.push({ key: "whatsapp", label: "WhatsApp", icon: "message-circle" });
+      items.push({ key: "email", label: this.$t("email_notification"), icon: "mail" });
+      items.push({ key: "sms", label: this.$t("sms_notification"), icon: "message-square" });
+      items.push({ key: "docs", label: this.$t("Attach_Documents"), icon: "file" });
+      if (p.includes("Purchases_delete")) items.push({ key: "delete", label: this.$t("DeletePurchase"), icon: "x", tone: "danger" });
+      return items;
+    },
+
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "view") this.$router.push("/app/purchases/detail/" + row.id);
+      else if (k === "edit") this.$router.push("/app/purchases/edit/" + row.id);
+      else if (k === "return") this.$router.push("/app/purchases/purchase_return/" + row.id);
+      else if (k === "return_edit") this.$router.push("/app/purchase_return/edit/" + row.purchasereturn_id + "/" + row.id);
+      else if (k === "showpay") this.Show_Payments(row.id, row);
+      else if (k === "addpay") this.New_Payment(row);
+      else if (k === "pdf") this.Invoice_PDF(row, row.id);
+      else if (k === "barcode") this.Print_Purchase_Barcode(row.id);
+      else if (k === "whatsapp") this.Send_WhatsApp(row.id);
+      else if (k === "email") this.Send_Email(row.id);
+      else if (k === "sms") this.Purchase_SMS(row.id);
+      else if (k === "docs") this.Manage_Documents(row.id);
+      else if (k === "delete") this.Remove_Purchase(row.id, row.purchase_has_return);
+    },
+
+    //--- vee-validate 3.x: seed prefilled/fetched values into the payment providers.
+    syncPaymentValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.pDateProvider) this.$refs.pDateProvider.syncValue(this.facture.date);
+        if (this.$refs.pMethodProvider) this.$refs.pMethodProvider.syncValue(this.facture.payment_method_id);
+        if (this.$refs.pRecvProvider) this.$refs.pRecvProvider.syncValue(this.facture.received_amount);
+        if (this.$refs.pAmtProvider) this.$refs.pAmtProvider.syncValue(this.facture.montant);
+      });
     },
 
     //------ Validate Form Submit_Payment
@@ -899,7 +561,7 @@ export default {
           this.$t("Warning")
         );
         this.facture.montant = 0;
-      } 
+      }
       else if (this.facture.montant > this.due) {
         this.makeToast(
           "warning",
@@ -915,7 +577,7 @@ export default {
     Verified_Received_Amount() {
       if (isNaN(this.facture.received_amount)) {
         this.facture.received_amount = 0;
-      } 
+      }
     },
 
 
@@ -1062,7 +724,7 @@ export default {
 
           // Open the WhatsApp URL in a new window
           window.open(whatsappUrl, '_blank');
-          
+
         })
         .catch(error => {
           // Complete the animation of the  progress bar.
@@ -1076,7 +738,7 @@ export default {
       // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
-     
+
        axios
         .get("purchase_pdf/" + id, {
           responseType: "blob", // important
@@ -1105,7 +767,7 @@ export default {
       // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
-     
+
        axios
         .get("payment_purchase_pdf/" + id, {
           responseType: "blob", // important
@@ -1395,7 +1057,7 @@ export default {
     },
 
      //---------SMS notification
-     
+
      Purchase_SMS(id) {
       // Start the progress bar.
       NProgress.start();
@@ -1444,7 +1106,8 @@ export default {
         setTimeout(() => {
           // Complete the animation of the  progress bar.
           NProgress.done();
-          this.$bvModal.show("Add_Payment");
+          this.addPaymentOpen = true;
+          this.syncPaymentValidators();
         }, 500);
       }
     },
@@ -1476,7 +1139,8 @@ export default {
       setTimeout(() => {
         // Complete the animation of the  progress bar.
         NProgress.done();
-        this.$bvModal.show("Add_Payment");
+        this.addPaymentOpen = true;
+        this.syncPaymentValidators();
       }, 500);
     },
 
@@ -1541,7 +1205,7 @@ export default {
       this.paymentProcessing = true;
       NProgress.start();
       NProgress.set(0.1);
-     
+
         axios
           .put("payment_purchase/" + this.facture.id, {
             purchase_id: this.purchase.id,
@@ -1568,7 +1232,7 @@ export default {
           });
     },
 
-  
+
 
     //------------------------------------ Remove Payment -------------------------------\\
     Remove_Payment(id) {
@@ -1619,7 +1283,7 @@ export default {
           setTimeout(() => {
             // Complete the animation of the  progress bar.
             NProgress.done();
-            this.$bvModal.show("Show_payment");
+            this.showPaymentOpen = true;
           }, 500);
         })
         .catch(() => {
@@ -1645,7 +1309,7 @@ export default {
           this.documents = response.data.documents || [];
           setTimeout(() => {
             NProgress.done();
-            this.$bvModal.show("Manage_Documents");
+            this.documentsOpen = true;
           }, 500);
         })
         .catch(error => {
@@ -1701,7 +1365,7 @@ export default {
     Download_Document(doc) {
       NProgress.start();
       NProgress.set(0.1);
-      
+
       axios
         .get("purchases/documents/" + doc.id + "/download", {
           responseType: "blob"
@@ -1820,16 +1484,16 @@ export default {
         this.Get_Purchases(this.serverParams.page);
         // Complete the animation of the  progress bar.
         NProgress.done();
-        this.$bvModal.hide("Add_Payment");
+        this.addPaymentOpen = false;
       }, 800);
     });
 
     Fire.$on("Update_Facture_purchase", () => {
-      
+
       setTimeout(() => {
         NProgress.done();
-        this.$bvModal.hide("Add_Payment");
-        this.$bvModal.hide("Show_payment");
+        this.addPaymentOpen = false;
+        this.showPaymentOpen = false;
         this.Get_Purchases(this.serverParams.page);
       }, 800);
     });
@@ -1837,10 +1501,49 @@ export default {
     Fire.$on("Delete_Facture_purchase", () => {
       setTimeout(() => {
         NProgress.done();
-        this.$bvModal.hide("Show_payment");
+        this.showPaymentOpen = false;
         this.Get_Purchases(this.serverParams.page);
       }, 800);
     });
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxpl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxpl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxpl__pad { padding: var(--pxn-space-6) 0; }
+.pxpl__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxpl__filters-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxpl__filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxpl__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxpl__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+.pxpl__bulk { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-5); margin-top: var(--pxn-space-4); padding: var(--pxn-space-4) var(--pxn-space-5); background: var(--pxn-primary-soft); border: 1px solid var(--pxn-primary-border); border-radius: var(--pxn-radius-md); font-size: var(--pxn-fs-sm); color: var(--pxn-primary-ink); }
+.pxpl__bulk-act { display: flex; gap: var(--pxn-space-3); }
+.pxpl-bulk-enter-active, .pxpl-bulk-leave-active { transition: opacity var(--pxn-dur-2) var(--pxn-ease), transform var(--pxn-dur-2) var(--pxn-ease); }
+.pxpl-bulk-enter, .pxpl-bulk-leave-to { opacity: 0; transform: translateY(-6px); }
+.pxpl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxpl__link { color: var(--pxn-primary); text-decoration: none; }
+.pxpl__link:hover { text-decoration: underline; }
+.pxpl__ret { color: var(--pxn-danger-ink); margin-left: var(--pxn-space-2); vertical-align: -2px; }
+.pxpl__muted { color: var(--pxn-ink-3); }
+.pxpl-tbl__wrap { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); overflow-x: auto; }
+.pxpl-tbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxpl-tbl th { padding: var(--pxn-space-3) var(--pxn-space-4); text-align: left; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); background: var(--pxn-surface-2); border-bottom: 1px solid var(--pxn-border); white-space: nowrap; }
+.pxpl-tbl td { padding: var(--pxn-space-3) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink); }
+.pxpl-tbl tr:last-child td { border-bottom: 0; }
+.pxpl-tbl .is-right { text-align: right; }
+.pxpl__empty { text-align: center; color: var(--pxn-ink-3); }
+.pxpl__rowbtns { display: inline-flex; gap: var(--pxn-space-1); }
+.pxpl__grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 720px) { .pxpl__grid3 { grid-template-columns: minmax(0, 1fr); } }
+.pxpl__span2 { grid-column: span 2; }
+@media (max-width: 720px) { .pxpl__span2 { grid-column: span 1; } }
+.pxpl__change { margin: 0; padding: var(--pxn-space-2) 0; font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxpl__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+.pxpl__grow { flex: 1; }
+.pxpl__docsupload { display: flex; flex-direction: column; gap: var(--pxn-space-3); margin-bottom: var(--pxn-space-6); }
+.pxpl__docshead { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); margin: var(--pxn-space-4) 0 var(--pxn-space-3); }
+</style>

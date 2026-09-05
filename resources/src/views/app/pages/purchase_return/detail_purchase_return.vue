@@ -1,37 +1,31 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('ReturnDetail')" :folder="$t('ListReturns')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pxprd">
+    <px-page-header
+      class="no-print"
+      :title="isLoading ? $t('ReturnDetail') : ($t('ReturnDetail') + (purchase_return.Ref ? ' · ' + purchase_return.Ref : ''))"
+      :breadcrumbs="[{ label: $t('Purchases') }, { label: $t('ListReturns') }, { label: $t('ReturnDetail') }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" icon="arrow-left" @click="$router.push({ name: 'index_purchase_return' })">{{ $t('Back') }}</px-button>
+        <px-button
+          v-if="!isLoading && currentUserPermissions && currentUserPermissions.includes('Purchase_Returns_edit')"
+          variant="secondary" icon="pencil"
+          @click="$router.push('/app/purchase_return/edit/' + $route.params.id + '/' + purchase_return.purchase_id)"
+        >{{ $t('EditReturn') }}</px-button>
+        <px-button v-if="!isLoading" variant="secondary" icon="file-text" @click="Return_PDF">PDF</px-button>
+        <px-button v-if="!isLoading" variant="secondary" icon="printer" @click="print">{{ $t('print') }}</px-button>
+        <px-button
+          v-if="!isLoading && currentUserPermissions && currentUserPermissions.includes('Purchase_Returns_delete')"
+          variant="danger" icon="x" @click="Delete_Return"
+        >{{ $t('Del') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <b-card v-if="!isLoading">
-      <b-row>
-        <b-col md="12" class="mb-5">
-          <router-link
-            v-if="currentUserPermissions && currentUserPermissions.includes('Purchase_Returns_edit')"
-            title="Edit"
-            class="btn btn-success btn-icon ripple btn-sm"
-            :to="'/app/purchase_return/edit/'+$route.params.id+'/'+purchase_return.purchase_id"
-          >
-            <lucide-icon name="pencil" />
-            <span>{{$t('EditReturn')}}</span>
-          </router-link>
-          <button @click="Return_PDF()" class="btn btn-primary btn-icon ripple btn-sm">
-            <lucide-icon name="file-text" /> PDF
-          </button>
-          <button @click="print()" class="btn btn-warning btn-icon ripple btn-sm">
-            <lucide-icon name="receipt" />
-            {{$t('print')}}
-          </button>
-          <button
-            v-if="currentUserPermissions && currentUserPermissions.includes('Purchase_Returns_delete')"
-            @click="Delete_Return()"
-            class="btn btn-danger btn-icon ripple btn-sm"
-          >
-            <lucide-icon name="x" />
-            {{$t('Del')}}
-          </button>
-        </b-col>
-      </b-row>
+    <div v-if="isLoading" class="pxprd__pad no-print">
+      <px-skeleton variant="lines" :rows="10" />
+    </div>
+
+    <px-card v-if="!isLoading" flush class="pxprd__card">
       <div class="invoice" id="print_Invoice">
         <div class="invoice-print">
           <b-row class="justify-content-md-center">
@@ -238,13 +232,16 @@
         </b-row>
         </div>
       </div>
-    </b-card>
+    </px-card>
   </div>
 </template>
 
 <script>
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting,
@@ -252,6 +249,7 @@ import {
 } from "../../../../utils/priceFormat";
 
 export default {
+  components: { PxPageHeader, PxCard, PxButton },
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
     // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
@@ -449,3 +447,15 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxprd { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxprd { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxprd__pad { padding: var(--pxn-space-6) 0; }
+.pxprd__card { margin-top: var(--pxn-space-5); }
+.pxprd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-8); }
+@media (max-width: 620px) { .pxprd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-5); } }
+@media print { .pxprd { padding: 0; background: #fff; } .pxprd__card ::v-deep .pxn-card__body { padding: 0; } }
+</style>
