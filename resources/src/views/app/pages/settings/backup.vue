@@ -1,199 +1,167 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('BackupDatabase')" :folder="$t('Settings')"/>
+  <div class="px-next pxcfg">
+    <px-page-header
+      :title="$t('BackupDatabase')"
+      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: $t('BackupDatabase') }]"
+    />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <b-row class="mb-4">
-        <b-col lg="12" md="12" sm="12">
-          <b-card no-body class="mb-0">
-            <b-card-body>
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Destino de la copia de seguridad</h5>
+    <div v-if="isLoading" class="pxcfg__pad">
+      <px-skeleton variant="lines" :rows="6" />
+    </div>
+
+    <template v-else>
+      <px-card :title="'Destino de la copia de seguridad'" class="pxcfg__card">
+        <div class="pxcfg__grid">
+          <px-field label="Destino" hint="Ruta de las copias locales: /storage/app/public/backup">
+            <template #default>
+              <div class="pxcfg__radios">
+                <px-check type="radio" name="backup-dest" native-value="local" :modelValue="backupDestination" @change="v => backupDestination = v">
+                  Solo almacenamiento local
+                </px-check>
+                <px-check type="radio" name="backup-dest" native-value="cloud" :modelValue="backupDestination" @change="v => backupDestination = v">
+                  Nube (subir después de crear la copia local)
+                </px-check>
               </div>
+            </template>
+          </px-field>
 
-              <b-row>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Destino">
-                    <b-form-radio-group
-                      v-model="backupDestination"
-                      :options="[
-                        { value: 'local', text: 'Solo almacenamiento local' },
-                        { value: 'cloud', text: 'Nube (subir después de crear la copia local)' },
-                      ]"
-                      stacked
-                    />
-                    <small class="text-muted d-block mt-1">
-                      Ruta de las copias locales: <code>/storage/app/public/backup</code>.
-                    </small>
-                  </b-form-group>
-                </b-col>
+          <px-field v-if="backupDestination === 'cloud'" label="Ruta o carpeta en la nube (opcional)">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_cloud_path" placeholder="Ej.: ProdexBackups/" /></template>
+          </px-field>
+        </div>
 
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Ruta o carpeta en la nube (opcional)" v-if="backupDestination === 'cloud'">
-                    <b-form-input
-                      v-model="setting.backup_cloud_path"
-                      placeholder="Ej.: ProdexBackups/"
-                    />
-                  </b-form-group>
-                </b-col>
-              </b-row>
+        <div v-if="backupDestination === 'cloud'" class="pxcfg__grid pxcfg__grid--mt">
+          <px-field label="Proveedor de almacenamiento en la nube" hint="La copia se subirá a la nube después de generarse localmente.">
+            <template #default="{ id }">
+              <vs-px :input-id="id" v-model="setting.backup_cloud_provider" :reduce="o => o.value" placeholder="Seleccione un proveedor"
+                :options="[
+                  { label: 'Google Drive', value: 'google_drive' },
+                  { label: 'Dropbox', value: 'dropbox' },
+                  { label: 'Compatible con S3 (AWS, MinIO, etc.)', value: 's3' }
+                ]" />
+            </template>
+          </px-field>
+        </div>
 
-              <b-row v-if="backupDestination === 'cloud'">
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Proveedor de almacenamiento en la nube">
-                    <b-form-select
-                      v-model="setting.backup_cloud_provider"
-                      :options="[
-                        { value: null, text: 'Seleccione un proveedor' },
-                        { value: 'google_drive', text: 'Google Drive' },
-                        { value: 'dropbox', text: 'Dropbox' },
-                        { value: 's3', text: 'Compatible con S3 (AWS, MinIO, etc.)' },
-                      ]"
-                    />
-                    <small class="text-muted d-block mt-1">
-                      La copia se subirá a la nube después de generarse localmente.
-                    </small>
-                  </b-form-group>
-                </b-col>
-              </b-row>
+        <div v-if="backupDestination === 'cloud' && setting.backup_cloud_provider === 's3'" class="pxcfg__grid pxcfg__grid--mt">
+          <px-field label="Bucket (contenedor)">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_s3_bucket" placeholder="Nombre del bucket" /></template>
+          </px-field>
+          <px-field label="Región">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_s3_region" placeholder="Ej.: us-east-1" /></template>
+          </px-field>
+          <px-field label="Clave de acceso">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_s3_access_key" placeholder="Clave de acceso" /></template>
+          </px-field>
+          <px-field label="Clave secreta (déjela vacía para conservar la actual)">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_s3_secret_key" placeholder="Clave secreta" /></template>
+          </px-field>
+          <px-field label="Endpoint (opcional para MinIO)">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_s3_endpoint" placeholder="Ej.: https://minio.ejemplo.com" /></template>
+          </px-field>
+          <px-field label="URLs con estilo de ruta">
+            <template #default>
+              <px-check type="switch" :modelValue="setting.backup_s3_path_style" @change="v => setting.backup_s3_path_style = v">
+                Activar (MinIO suele requerirlo)
+              </px-check>
+            </template>
+          </px-field>
+        </div>
 
-              <b-row v-if="backupDestination === 'cloud' && setting.backup_cloud_provider === 's3'">
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Bucket (contenedor)">
-                    <b-form-input v-model="setting.backup_s3_bucket" placeholder="Nombre del bucket" />
-                  </b-form-group>
-                </b-col>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Región">
-                    <b-form-input v-model="setting.backup_s3_region" placeholder="Ej.: us-east-1" />
-                  </b-form-group>
-                </b-col>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Clave de acceso">
-                    <b-form-input v-model="setting.backup_s3_access_key" placeholder="Clave de acceso" />
-                  </b-form-group>
-                </b-col>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Clave secreta (déjela vacía para conservar la actual)">
-                    <b-form-input type="text" v-model="setting.backup_s3_secret_key" placeholder="Clave secreta" />
-                  </b-form-group>
-                </b-col>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Endpoint (opcional para MinIO)">
-                    <b-form-input v-model="setting.backup_s3_endpoint" placeholder="Ej.: https://minio.ejemplo.com" />
-                  </b-form-group>
-                </b-col>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Usar URLs con estilo de ruta (MinIO suele requerirlo)">
-                    <b-form-checkbox switch v-model="setting.backup_s3_path_style">Activar</b-form-checkbox>
-                  </b-form-group>
-                </b-col>
-              </b-row>
+        <div v-if="backupDestination === 'cloud' && setting.backup_cloud_provider === 'google_drive'" class="pxcfg__grid pxcfg__grid--mt">
+          <px-field label="ID de carpeta (opcional)">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_gdrive_folder_id" placeholder="ID de la carpeta de Google Drive" /></template>
+          </px-field>
+          <px-field label="Token de acceso (opcional, de corta duración)">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_gdrive_access_token" placeholder="Token Bearer" /></template>
+          </px-field>
+          <px-field label="Token de actualización (recomendado)">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_gdrive_refresh_token" placeholder="Token de actualización" /></template>
+          </px-field>
+          <px-field label="ID de cliente">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_gdrive_client_id" placeholder="ID de cliente OAuth" /></template>
+          </px-field>
+          <px-field label="Secreto del cliente (déjelo vacío para conservar el actual)">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_gdrive_client_secret" placeholder="Secreto del cliente OAuth" /></template>
+          </px-field>
+        </div>
 
-              <b-row v-if="backupDestination === 'cloud' && setting.backup_cloud_provider === 'google_drive'">
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="ID de carpeta (opcional)">
-                    <b-form-input v-model="setting.backup_gdrive_folder_id" placeholder="ID de la carpeta de Google Drive" />
-                  </b-form-group>
-                </b-col>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Token de acceso (opcional, de corta duración)">
-                    <b-form-input type="text" v-model="setting.backup_gdrive_access_token" placeholder="Token Bearer" />
-                  </b-form-group>
-                </b-col>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Token de actualización (recomendado)">
-                    <b-form-input type="text" v-model="setting.backup_gdrive_refresh_token" placeholder="Token de actualización" />
-                  </b-form-group>
-                </b-col>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="ID de cliente">
-                    <b-form-input v-model="setting.backup_gdrive_client_id" placeholder="ID de cliente OAuth" />
-                  </b-form-group>
-                </b-col>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Secreto del cliente (déjelo vacío para conservar el actual)">
-                    <b-form-input type="text" v-model="setting.backup_gdrive_client_secret" placeholder="Secreto del cliente OAuth" />
-                  </b-form-group>
-                </b-col>
-              </b-row>
+        <div v-if="backupDestination === 'cloud' && setting.backup_cloud_provider === 'dropbox'" class="pxcfg__grid pxcfg__grid--mt">
+          <px-field label="Ruta de carpeta en Dropbox (opcional)">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_dropbox_path" placeholder="Ej.: /ProdexBackups" /></template>
+          </px-field>
+          <px-field label="Token de acceso (déjelo vacío para conservar el actual)">
+            <template #default="{ id }"><px-input :id="id" v-model="setting.backup_dropbox_access_token" placeholder="Token de Dropbox" /></template>
+          </px-field>
+        </div>
 
-              <b-row v-if="backupDestination === 'cloud' && setting.backup_cloud_provider === 'dropbox'">
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Ruta de carpeta en Dropbox (opcional)">
-                    <b-form-input v-model="setting.backup_dropbox_path" placeholder="Ej.: /ProdexBackups" />
-                  </b-form-group>
-                </b-col>
-                <b-col lg="6" md="6" sm="12" class="mb-3">
-                  <b-form-group label="Token de acceso (déjelo vacío para conservar el actual)">
-                    <b-form-input type="text" v-model="setting.backup_dropbox_access_token" placeholder="Token de Dropbox" />
-                  </b-form-group>
-                </b-col>
-              </b-row>
+        <template #footer>
+          <px-button variant="primary" @click="Submit_Backup_Settings()">Guardar configuración de copias de seguridad</px-button>
+        </template>
+      </px-card>
 
-              <div class="d-flex justify-content-end">
-                <b-button variant="primary" @click="Submit_Backup_Settings()">
-                  Guardar configuración de copias de seguridad
-                </b-button>
-              </div>
-            </b-card-body>
-          </b-card>
-        </b-col>
-      </b-row>
-
-      <b-alert v-if="backupError" show variant="danger" dismissible @dismissed="backupError = null" class="mb-3">
-        <h6 class="alert-heading">Se requiere configurar las copias de seguridad</h6>
-        <p class="mb-2"><strong>No se encontró mysqldump.</strong> Configure <code>DUMP_PATH</code> en el archivo <code>.env</code>.</p>
-        <p class="mb-2"><strong>Para Laragon en Windows:</strong></p>
-        <ol class="mb-2 pl-3">
+      <px-alert v-if="backupError" tone="danger" dismissible title="Se requiere configurar las copias de seguridad" @dismiss="backupError = null" class="pxcfg__alert">
+        <p><strong>No se encontró mysqldump.</strong> Configure <code>DUMP_PATH</code> en el archivo <code>.env</code>.</p>
+        <p><strong>Para Laragon en Windows:</strong></p>
+        <ol>
           <li>Abra el archivo <code>.env</code> ubicado en la raíz del proyecto.</li>
           <li>Busque la carpeta de su versión de MySQL en <code>C:\laragon\bin\mysql\</code>.</li>
           <li>Agregue esta línea y sustituya la versión por la que tenga instalada:</li>
         </ol>
-        <pre class="bg-light p-2 mb-2"><code>DUMP_PATH="C:\\laragon\\bin\\mysql\\mysql-8.0.30\\bin\\mysqldump.exe"</code></pre>
-        <p class="mb-0">También puede usar barras normales: <code>DUMP_PATH="C:/laragon/bin/mysql/mysql-8.0.30/bin/mysqldump.exe"</code></p>
-        <p class="mb-0 mt-2"><small>Después de actualizar <code>.env</code>, ejecute: <code>php artisan config:clear</code></small></p>
-      </b-alert>
-      
-      <div class="alert alert-danger mb-3">{{$t('You_will_find_your_backup_on')}} <strong>/storage/app/public/backup</strong> {{$t('and_save_it_to_your_pc')}}</div>
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="backups"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button
-            @click="GenerateBackup()"
-            size="sm"
-            class="btn-rounded"
-            variant="btn btn-primary btn-icon m-1"
-          >
-            <lucide-icon name="plus" />
-            {{$t('GenerateBackup')}}
-          </b-button>
-        </div>
+        <pre><code>DUMP_PATH="C:\\laragon\\bin\\mysql\\mysql-8.0.30\\bin\\mysqldump.exe"</code></pre>
+        <p>También puede usar barras normales: <code>DUMP_PATH="C:/laragon/bin/mysql/mysql-8.0.30/bin/mysqldump.exe"</code></p>
+        <p><small>Después de actualizar <code>.env</code>, ejecute: <code>php artisan config:clear</code></small></p>
+      </px-alert>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a title="Eliminar" v-b-tooltip.hover @click="DeleteBackup(props.row.date)">
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
+      <px-alert tone="info" bare class="pxcfg__alert">
+        {{ $t('You_will_find_your_backup_on') }} <strong>/storage/app/public/backup</strong> {{ $t('and_save_it_to_your_pc') }}
+      </px-alert>
+
+      <px-toolbar :searchable="false">
+        <template #actions>
+          <px-button variant="primary" size="sm" icon="plus" @click="GenerateBackup()">{{ $t('GenerateBackup') }}</px-button>
         </template>
-      </vue-good-table>
-    </b-card>
+      </px-toolbar>
+
+      <div class="pxcfg__tablewrap">
+        <px-table
+          v-if="backups.length"
+          :columns="columns"
+          :rows="backups"
+          row-key="date"
+          has-row-actions
+        >
+          <template #row-actions="{ row }">
+            <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Eliminar" @click="DeleteBackup(row.date)" />
+          </template>
+        </px-table>
+        <px-empty-state v-else icon="database-backup" title="Sin copias de seguridad" description="Genera una copia para verla en esta lista." />
+      </div>
+    </template>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Copias de seguridad"
+  },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxButton, PxCard, PxField, PxInput,
+    PxCheck, PxAlert, PxEmptyState, "vs-px": VsPx
   },
   data() {
     return {
@@ -231,25 +199,8 @@ export default {
   computed: {
     columns() {
       return [
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Filesize"),
-          field: "size",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "date", label: this.$t("date") },
+        { key: "size", label: this.$t("Filesize") }
       ];
     },
     backupDestination: {
@@ -429,3 +380,22 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcfg { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcfg { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcfg__pad { padding: var(--pxn-space-6) 0; }
+.pxcfg__card { margin-top: var(--pxn-space-5); }
+.pxcfg__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+.pxcfg__grid--mt { margin-top: var(--pxn-space-4); }
+@media (max-width: 640px) { .pxcfg__grid { grid-template-columns: minmax(0, 1fr); } }
+.pxcfg__radios { display: flex; flex-direction: column; gap: var(--pxn-space-2); }
+.pxcfg__alert { margin-top: var(--pxn-space-4); }
+.pxcfg__alert pre { background: var(--pxn-surface-2); padding: var(--pxn-space-3); border-radius: var(--pxn-radius-sm); overflow-x: auto; font-size: var(--pxn-fs-xs); }
+.pxcfg__alert code { font-family: var(--pxn-font-mono, monospace); font-size: 0.9em; }
+.pxcfg__alert ol { margin: var(--pxn-space-2) 0; padding-left: var(--pxn-space-6); }
+.pxcfg__tablewrap { margin-top: var(--pxn-space-4); }
+.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+</style>
