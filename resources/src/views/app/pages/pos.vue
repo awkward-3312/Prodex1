@@ -7045,6 +7045,120 @@ export default {
         });
     },
 
+    // ---------------------------------------------------------------------
+    // QUOTATION -> POS PREFILL (business rule: POS-only manual sales)
+    //
+    // Opened via /app/pos?quotation_id=<id> from the quotation detail screen.
+    // Pre-populates the cart from the quotation. It creates NOTHING: no Sale,
+    // no draft, no payment, no stock movement, and it does NOT set
+    // draft_sale_id (a quotation is not a held draft). The user then reviews,
+    // charges and confirms the sale through the normal POS flow, which calls
+    // PosController@CreatePOS and produces the is_pos = 1 sale.
+    // ---------------------------------------------------------------------
+    loadQuotationPrefill(id) {
+      if (!id) return;
+      NProgress.start();
+      NProgress.set(0.1);
+      axios
+        .get(`pos/data_quotation_prefill/${id}`)
+        .then(response => {
+          const data = response.data || {};
+
+          if (Array.isArray(data.clients)) this.clients = data.clients;
+          if (Array.isArray(data.accounts)) this.accounts = data.accounts;
+          if (Array.isArray(data.warehouses)) this.warehouses = data.warehouses;
+          if (Array.isArray(data.categories)) this.categories = data.categories;
+          if (Array.isArray(data.brands)) this.brands = data.brands;
+          if (Array.isArray(data.payment_methods)) this.payment_methods = data.payment_methods;
+
+          // Customer & loyalty
+          this.selectedClientId = data.client_id || (data.sale && data.sale.client_id) || this.selectedClientId;
+          this.client_name = data.client_name || this.client_name;
+          this.clientIsEligible = data.default_client_eligible === true || data.default_client_eligible === 1;
+          this.selectedClientPoints = this.clientIsEligible ? parseFloat(data.default_client_points || 0) : 0;
+          if (typeof data.point_to_amount_rate !== 'undefined') {
+            this.point_to_amount_rate = data.point_to_amount_rate;
+          }
+
+          // Sale-level fields
+          const saleData = data.sale || {};
+          this.sale.warehouse_id = (data.warehouse_id !== undefined && data.warehouse_id !== null && data.warehouse_id !== '')
+            ? data.warehouse_id
+            : (saleData.warehouse_id || this.sale.warehouse_id);
+          this.applyEffectiveOperationalAssignment();
+          this.sale.tax_rate = saleData.tax_rate || 0;
+          this.sale.TaxNet = saleData.TaxNet || 0;
+          this.sale.discount = saleData.discount || 0;
+          this.sale.discount_Method = saleData.discount_Method || '2';
+          this.sale.shipping = saleData.shipping || 0;
+          this.sale.notes = saleData.notes || '';
+
+          // Map quotation details to the POS cart shape (same normalization as
+          // loadDraftSale so price/tax/discount fields are consistent).
+          const incoming = Array.isArray(data.details) ? data.details : [];
+          const mapped = incoming.map((it, idx) => {
+            const d = { ...it };
+            if (d.detail_id === undefined || d.detail_id === null) d.detail_id = idx + 1;
+            if (!d.price_type) d.price_type = 'retail';
+            if (!Array.isArray(d.packs)) d.packs = [];
+            if (d.product_pack_id === undefined) d.product_pack_id = null;
+            if (d.pack_multiplier === undefined || d.pack_multiplier === null) d.pack_multiplier = 1;
+            if (d.pack_name === undefined) d.pack_name = null;
+            if (d.retail_unit_price === undefined) d.retail_unit_price = d.Unit_price;
+            if (d.wholesale_unit_price === undefined) d.wholesale_unit_price = (d.Unit_price_wholesale !== undefined ? d.Unit_price_wholesale : d.Unit_price);
+            if (d.min_price === undefined) d.min_price = 0;
+            if (d.current === undefined || d.current === null) d.current = (d.fix_stock !== undefined ? d.fix_stock : d.quantity);
+            if (d.fix_stock === undefined || d.fix_stock === null) d.fix_stock = d.current;
+
+            const unitPrice = Number(d.Unit_price || 0);
+            const discountVal = Number(d.discount || 0);
+            const discountMethod = String(d.discount_Method || '2');
+            const taxPercent = Number(d.tax_percent || 0);
+            const taxMethod = String(d.tax_method || '1');
+
+            if (typeof d.DiscountNet === 'undefined') {
+              d.DiscountNet = discountMethod === '2' ? discountVal : (unitPrice * (discountVal / 100));
+            }
+
+            if (taxMethod === '1') {
+              d.Net_price = parseFloat((unitPrice - d.DiscountNet).toFixed(this.priceDecimals));
+              d.taxe = parseFloat((((unitPrice - d.DiscountNet) * taxPercent) / 100).toFixed(this.priceDecimals));
+              d.Total_price = parseFloat((d.Net_price + d.taxe).toFixed(this.priceDecimals));
+            } else {
+              d.taxe = parseFloat(((unitPrice - d.DiscountNet) * (taxPercent / 100)).toFixed(this.priceDecimals));
+              d.Net_price = parseFloat((unitPrice - d.taxe - d.DiscountNet).toFixed(this.priceDecimals));
+              d.Total_price = parseFloat((d.Net_price + d.taxe).toFixed(this.priceDecimals));
+            }
+            return d;
+          });
+          this.details = mapped;
+
+          this.GrandTotal = Number(data.GrandTotal || 0);
+          this.CalculTotal();
+
+          if (this.sale.warehouse_id) {
+            this.getProducts();
+          }
+
+          try {
+            this.makeToast(
+              'info',
+              (data.quotation_ref ? (data.quotation_ref + ' — ') : '') + 'Cotización cargada. Revisa y cobra para registrar la venta.',
+              'POS'
+            );
+          } catch (e) {}
+
+          NProgress.done();
+        })
+        .catch(error => {
+          NProgress.done();
+          const msg = error && error.response && error.response.data && error.response.data.message
+            ? error.response.data.message
+            : 'No se pudo cargar la cotización.';
+          try { this.makeToast('danger', msg, this.$t ? this.$t('Failed') : 'Error'); } catch (e) {}
+        });
+    },
+
     // Load a draft sale into the current POS view without navigating
     loadDraftSale(id) {
       this.openingDraftId = id;
@@ -9367,6 +9481,16 @@ export default {
             }
           } catch (e) {}
           this.isLoading = false;
+
+          // Quotation -> POS prefill: after base data is loaded, if the POS was
+          // opened via /app/pos?quotation_id=<id>, pre-populate the cart from
+          // that quotation (read-only; creates nothing).
+          try {
+            const qid = this.$route && this.$route.query ? this.$route.query.quotation_id : null;
+            if (qid) {
+              this.$nextTick(() => this.loadQuotationPrefill(qid));
+            }
+          } catch (e) {}
         })
         .catch(() => {
           // Offline/failed bootstrap: hydrate from cached data where possible

@@ -1881,6 +1881,221 @@ class PosController extends BaseController
         ]);
     }
 
+    // ---------------------------------------------------------------------
+    // QUOTATION -> POS PREFILL (PRODEX business rule: POS-only manual sales)
+    //
+    // Read-only. Returns the same payload shape as data_draft_convert_sale so
+    // the POS cart can be pre-populated from a quotation. This endpoint:
+    //   - does NOT create a Sale, DraftSale, PaymentSale or promotion usage
+    //   - does NOT move inventory / batches / serials
+    //   - does NOT mark the quotation as converted
+    // The user still reviews, charges and confirms the sale through the normal
+    // POS flow (PosController@CreatePOS), which produces the is_pos = 1 sale
+    // with full operational context.
+    // ---------------------------------------------------------------------
+    public function data_quotation_prefill(Request $request, $id)
+    {
+        $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+
+        $quotation = \App\Models\Quotation::with('details.product.unitSale')
+            ->whereNull('deleted_at')
+            ->findOrFail($id);
+
+        // Warehouse restriction — same rule as SalesController::Elemens_Change_To_Sale.
+        $user_auth = auth()->user();
+        if (! $user_auth->is_all_warehouses) {
+            $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
+            if (empty($quotation->warehouse_id) || ! in_array($quotation->warehouse_id, $warehouses_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para procesar esta cotización (restricción de almacén).',
+                ], 403);
+            }
+        }
+
+        $clients = Client::where('deleted_at', '=', null)->get(['id', 'name', 'phone', 'tax_number']);
+        $settings = Setting::where('deleted_at', '=', null)->with('Client')->first();
+        $accounts = Account::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id', 'account_name']);
+
+        if ($user_auth->is_all_warehouses) {
+            $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+        } else {
+            $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
+            $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+        }
+
+        $client_name = '';
+        $defaultClient = '';
+        $default_client_points = 0;
+        $default_client_eligible = false;
+        $sale = [];
+
+        if ($quotation->client_id) {
+            $client = Client::where('id', $quotation->client_id)->whereNull('deleted_at')->first();
+            if ($client) {
+                $sale['client_id'] = $client->id;
+                $client_name = $client->name;
+                $defaultClient = $client->id;
+                $default_client_points = $client->points;
+                $default_client_eligible = $client->is_royalty_eligible;
+            } else {
+                $sale['client_id'] = '';
+            }
+        } else {
+            $sale['client_id'] = '';
+        }
+
+        if ($quotation->warehouse_id
+            && Warehouse::where('id', $quotation->warehouse_id)->where('deleted_at', '=', null)->first()) {
+            $sale['warehouse_id'] = $quotation->warehouse_id;
+        } else {
+            $sale['warehouse_id'] = '';
+        }
+
+        $sale['tax_rate'] = $quotation->tax_rate;
+        $sale['TaxNet'] = $quotation->TaxNet;
+        $sale['discount'] = $quotation->discount;
+        // quotations have no discount_Method column — POS default is fixed ('2').
+        $sale['discount_Method'] = '2';
+        $sale['shipping'] = $quotation->shipping;
+        $sale['notes'] = $quotation->notes;
+        $GrandTotal = $quotation->GrandTotal;
+
+        $details = [];
+        $detail_id = 0;
+        foreach ($quotation['details'] as $detail) {
+            $data = [];
+
+            if ($detail->sale_unit_id !== null) {
+                $unit = Unit::where('id', $detail->sale_unit_id)->first();
+                $data['no_unit'] = 1;
+            } else {
+                $product_unit_sale_id = Product::with('unitSale')->where('id', $detail->product_id)->first();
+                $unit = null;
+                $data['no_unit'] = 0;
+            }
+
+            if ($detail->product_variant_id) {
+                $item_product = product_warehouse::where('product_id', $detail->product_id)
+                    ->where('deleted_at', '=', null)
+                    ->where('product_variant_id', $detail->product_variant_id)
+                    ->where('warehouse_id', $quotation->warehouse_id)
+                    ->first();
+
+                $productsVariants = ProductVariant::where('product_id', $detail->product_id)
+                    ->where('id', $detail->product_variant_id)->first();
+
+                $item_product ? $data['del'] = 0 : $data['del'] = 1;
+                $data['product_variant_id'] = $detail->product_variant_id;
+                $data['code'] = $productsVariants ? $productsVariants->code : ($detail['product']['code'] ?? '');
+                $data['name'] = ($productsVariants ? '['.$productsVariants->name.']' : '').$detail['product']['name'];
+
+                if ($unit && $unit->operator == '/') {
+                    $stock = $item_product ? $item_product->qte * $unit->operator_value : 0;
+                } elseif ($unit && $unit->operator == '*') {
+                    $stock = $item_product ? $item_product->qte / $unit->operator_value : 0;
+                } else {
+                    $stock = 0;
+                }
+            } else {
+                $item_product = product_warehouse::where('product_id', $detail->product_id)
+                    ->where('deleted_at', '=', null)
+                    ->where('warehouse_id', $quotation->warehouse_id)
+                    ->where('product_variant_id', '=', null)->first();
+
+                $item_product ? $data['del'] = 0 : $data['del'] = 1;
+                $data['product_variant_id'] = null;
+                $data['code'] = $detail['product']['code'];
+                $data['name'] = $detail['product']['name'];
+
+                if ($unit && $unit->operator == '/') {
+                    $stock = $item_product ? $item_product->qte * $unit->operator_value : 0;
+                } elseif ($unit && $unit->operator == '*') {
+                    $stock = $item_product ? $item_product->qte / $unit->operator_value : 0;
+                } else {
+                    $stock = 0;
+                }
+            }
+
+            $data['id'] = $detail->id;
+            $data['fix_stock'] = $detail['product']['type'] != 'is_service' ? $stock : '---';
+            $data['current'] = $detail['product']['type'] != 'is_service' ? $stock : '---';
+            $data['product_type'] = $detail['product']['type'];
+            $data['detail_id'] = $detail_id += 1;
+            $data['product_id'] = $detail->product_id;
+            $data['total'] = $detail->total;
+            $data['quantity'] = $detail->quantity;
+            $data['qte_copy'] = $detail->quantity;
+            $data['etat'] = 'current';
+            $data['unitSale'] = $unit ? $unit->ShortName : '';
+            $data['sale_unit_id'] = $unit ? $unit->id : '';
+            $data['is_imei'] = $detail['product']['is_imei'];
+            $data['imei_number'] = $detail->imei_number;
+            $data['subtotal'] = $detail->total;
+
+            // Quotations carry no multi-pack selection — base unit defaults.
+            $data['product_pack_id'] = null;
+            $data['pack_multiplier'] = 1;
+            $data['pack_name'] = null;
+            $data['packs'] = [];
+
+            if ($detail->discount_method == '2') {
+                $data['DiscountNet'] = $detail->discount;
+            } else {
+                $data['DiscountNet'] = $detail->price * $detail->discount / 100;
+            }
+
+            $tax_price = $detail->TaxNet * (($detail->price - $data['DiscountNet']) / 100);
+            $data['Unit_price'] = $detail->price;
+            $data['price_type'] = 'retail';
+            $data['tax_percent'] = $detail->TaxNet;
+            $data['tax_method'] = $detail->tax_method;
+            $data['discount'] = $detail->discount;
+            $data['discount_Method'] = $detail->discount_method;
+
+            if ($detail->tax_method == '1') {
+                $data['Net_price'] = $detail->price - $data['DiscountNet'];
+                $data['taxe'] = $tax_price;
+                $data['Total_price'] = $data['Net_price'] + $data['taxe'];
+            } else {
+                $data['Net_price'] = ($detail->price - $data['DiscountNet'] - $tax_price);
+                $data['taxe'] = $detail->price - $data['Net_price'] - $data['DiscountNet'];
+                $data['Total_price'] = $data['Net_price'] + $data['taxe'];
+            }
+
+            $details[] = $data;
+        }
+
+        $categories = Category::where('deleted_at', '=', null)->get(['id', 'name']);
+        $brands = Brand::where('deleted_at', '=', null)->get();
+        $paymentSettings = PaymentSetting::current();
+        $payment_methods = PaymentMethod::where('deleted_at', '=', null)->get(['id', 'name']);
+
+        return response()->json([
+            'source' => 'quotation',
+            'quotation_id' => $quotation->id,
+            'quotation_ref' => $quotation->Ref,
+            'stripe_key' => $paymentSettings->stripe_key,
+            'card_processing_mode' => $paymentSettings->effectiveCardProcessingMode(),
+            'brands' => $brands,
+            'warehouse_id' => $sale['warehouse_id'],
+            'client_id' => $sale['client_id'],
+            'client_name' => $client_name,
+            'clients' => $clients,
+            'warehouses' => $warehouses,
+            'categories' => $categories,
+            'accounts' => $accounts,
+            'payment_methods' => $payment_methods,
+            'sale' => $sale,
+            'GrandTotal' => $GrandTotal,
+            'details' => $details,
+            'defaultClient' => $defaultClient,
+            'default_client_points' => $default_client_points,
+            'default_client_eligible' => $default_client_eligible,
+            'point_to_amount_rate' => $settings->point_to_amount_rate,
+        ]);
+    }
+
     // ------------ Get Products (POS) --------------\\
     //
     // NOTE:

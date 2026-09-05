@@ -1179,8 +1179,13 @@ const baseRoutes = [
                             )
                     },
                     {
+                        // Quotation -> Sale direct conversion is retired. The old
+                        // URL now routes the user into the POS with the quotation
+                        // pre-loaded (see redirectQuotationToPos). change_to_sale.vue
+                        // is kept on disk but never rendered.
                         name: "change_to_sale",
                         path: "create_sale/:id",
+                        beforeEnter: redirectQuotationToPos,
                         component: () =>
                             import(
                                 /* webpackChunkName: "change_to_sale" */ "./views/app/pages/sales/change_to_sale.vue"

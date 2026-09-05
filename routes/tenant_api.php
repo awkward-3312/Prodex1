@@ -499,6 +499,9 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
         Route::delete('remove_draft_sale/{id}', 'PosController@remove_draft_sale');
         Route::get('pos/data_draft_convert_sale/{id}', 'PosController@data_draft_convert_sale');
         Route::post('pos/submit_sale_from_draft', 'PosController@submit_sale_from_draft');
+        // Quotation -> POS prefill (read-only; creates nothing). Business rule:
+        // every manual sale originates from the POS.
+        Route::get('pos/data_quotation_prefill/{id}', 'PosController@data_quotation_prefill');
 
         // ---------------------- Cash Registers (optional module) ----------------------\\
         Route::post('cash-registers/open', 'CashRegisterController@openRegister');
