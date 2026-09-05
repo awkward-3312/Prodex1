@@ -407,20 +407,22 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // Stock Alerts
-        $product_warehouse_data = product_warehouse::with('warehouse', 'product', 'productVariant')
-            ->join('products', 'product_warehouse.product_id', '=', 'products.id')
-            ->where('manage_stock', true)
-            ->whereRaw('qte <= stock_alert')
-            ->where('product_warehouse.deleted_at', null)
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('product_warehouse.warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('product_warehouse.warehouse_id', $array_warehouses_id);
-                }
-            })
-            ->take('5')->get();
+        // Stock Alerts — MS7-B3: a location_primary warehouse's
+        // product_warehouse row is stale; read those from
+        // inventory_location_stocks instead, merged with the legacy list.
+        $alertScopeWarehouseIds = $warehouse_id !== 0 ? [$warehouse_id] : $array_warehouses_id;
+        $alertSplit = app(\App\Services\InventoryReadService::class)->splitWarehousesByMode($alertScopeWarehouseIds);
+
+        $product_warehouse_data = collect();
+        if (! empty($alertSplit['legacy'])) {
+            $product_warehouse_data = product_warehouse::with('warehouse', 'product', 'productVariant')
+                ->join('products', 'product_warehouse.product_id', '=', 'products.id')
+                ->where('manage_stock', true)
+                ->whereRaw('qte <= stock_alert')
+                ->where('product_warehouse.deleted_at', null)
+                ->whereIn('product_warehouse.warehouse_id', $alertSplit['legacy'])
+                ->take(5)->get();
+        }
 
         $stock_alert = [];
         if ($product_warehouse_data->isNotEmpty()) {
@@ -440,6 +442,39 @@ class DashboardController extends Controller
                 }
             }
 
+        }
+
+        if (! empty($alertSplit['locationByWarehouse']) && count($stock_alert) < 5) {
+            $locationIds = array_values(array_unique($alertSplit['locationByWarehouse']));
+            $warehouseIdByLocation = array_flip($alertSplit['locationByWarehouse']);
+            $nativeAlertRows = DB::table('inventory_location_stocks')
+                ->join('products', 'products.id', '=', 'inventory_location_stocks.product_id')
+                ->leftJoin('product_variants', 'product_variants.id', '=', 'inventory_location_stocks.product_variant_id')
+                ->where('inventory_location_stocks.manage_stock', true)
+                ->whereColumn('inventory_location_stocks.quantity', '<=', 'products.stock_alert')
+                ->whereIn('inventory_location_stocks.inventory_location_id', $locationIds)
+                ->select(
+                    'inventory_location_stocks.quantity',
+                    'inventory_location_stocks.inventory_location_id',
+                    'products.code as product_code',
+                    'products.name as product_name',
+                    'products.stock_alert',
+                    'product_variants.name as variant_name'
+                )
+                ->take(5 - count($stock_alert))
+                ->get();
+
+            foreach ($nativeAlertRows as $row) {
+                $warehouseId = $warehouseIdByLocation[(int) $row->inventory_location_id] ?? null;
+                $warehouseName = $warehouseId ? optional(Warehouse::find($warehouseId))->name : null;
+                $stock_alert[] = [
+                    'code' => $row->variant_name ? ($row->variant_name.'-'.$row->product_code) : $row->product_code,
+                    'quantity' => $row->quantity,
+                    'name' => $row->product_name,
+                    'warehouse' => $warehouseName,
+                    'stock_alert' => $row->stock_alert,
+                ];
+            }
         }
 
         // ---------------- sales + payments (for due) -------------
@@ -963,77 +998,90 @@ class DashboardController extends Controller
         $user = Auth::user();
         $view_records = $user->hasRecordView();
 
-        // Build warehouse filter
-        $warehouseFilter = function ($query) use ($warehouse_id, $array_warehouses_id) {
-            if ($warehouse_id !== 0) {
-                return $query->where('product_warehouse.warehouse_id', $warehouse_id);
-            } else {
-                return $query->whereIn('product_warehouse.warehouse_id', $array_warehouses_id);
-            }
+        $scopeWarehouseIds = $warehouse_id !== 0 ? [$warehouse_id] : $array_warehouses_id;
+        // MS7-B3 — a location_primary warehouse's stock lives in
+        // inventory_location_stocks, not the stale product_warehouse row.
+        $split = app(\App\Services\InventoryReadService::class)->splitWarehousesByMode($scopeWarehouseIds);
+        $legacyWarehouseIds = $split['legacy'];
+        $nativeLocationIds = array_values(array_unique($split['locationByWarehouse']));
+
+        // Build warehouse filter (legacy-only rows now)
+        $warehouseFilter = function ($query) use ($legacyWarehouseIds) {
+            return $query->whereIn('product_warehouse.warehouse_id', $legacyWarehouseIds);
         };
 
-        // Calculate stock value by cost
-        $stockByCost = product_warehouse::join('products', 'product_warehouse.product_id', '=', 'products.id')
-            ->leftJoin('product_variants', function ($join) {
-                $join->on('product_warehouse.product_variant_id', '=', 'product_variants.id')
-                     ->where('products.is_variant', '=', 1);
-            })
-            ->where('product_warehouse.deleted_at', '=', null)
-            ->where('products.deleted_at', '=', null)
-            ->where('product_warehouse.qte', '>', 0)
-            ->where(function ($query) use ($warehouseFilter) {
-                $warehouseFilter($query);
-            })
-            ->select(DB::raw('SUM(
-                CASE 
-                    WHEN products.is_variant = 1 AND product_variants.id IS NOT NULL 
-                    THEN product_warehouse.qte * COALESCE(product_variants.cost, 0)
-                    ELSE product_warehouse.qte * COALESCE(products.cost, 0)
-                END
-            ) as total_value'))
-            ->first();
+        $valueExprs = [
+            'by_cost' => [
+                'legacy' => 'product_warehouse.qte * COALESCE(product_variants.cost, 0)',
+                'legacy_default' => 'product_warehouse.qte * COALESCE(products.cost, 0)',
+                'native' => 'inventory_location_stocks.quantity * COALESCE(product_variants.cost, 0)',
+                'native_default' => 'inventory_location_stocks.quantity * COALESCE(products.cost, 0)',
+            ],
+            'by_retail' => [
+                'legacy' => 'product_warehouse.qte * COALESCE(product_variants.price, 0)',
+                'legacy_default' => 'product_warehouse.qte * COALESCE(products.price, 0)',
+                'native' => 'inventory_location_stocks.quantity * COALESCE(product_variants.price, 0)',
+                'native_default' => 'inventory_location_stocks.quantity * COALESCE(products.price, 0)',
+            ],
+            'by_wholesale' => [
+                'legacy' => 'product_warehouse.qte * COALESCE(product_variants.wholesale, product_variants.price, 0)',
+                'legacy_default' => 'product_warehouse.qte * COALESCE(products.wholesale_price, products.price, 0)',
+                'native' => 'inventory_location_stocks.quantity * COALESCE(product_variants.wholesale, product_variants.price, 0)',
+                'native_default' => 'inventory_location_stocks.quantity * COALESCE(products.wholesale_price, products.price, 0)',
+            ],
+        ];
 
-        // Calculate stock value by retail (price)
-        $stockByRetail = product_warehouse::join('products', 'product_warehouse.product_id', '=', 'products.id')
-            ->leftJoin('product_variants', function ($join) {
-                $join->on('product_warehouse.product_variant_id', '=', 'product_variants.id')
-                     ->where('products.is_variant', '=', 1);
-            })
-            ->where('product_warehouse.deleted_at', '=', null)
-            ->where('products.deleted_at', '=', null)
-            ->where('product_warehouse.qte', '>', 0)
-            ->where(function ($query) use ($warehouseFilter) {
-                $warehouseFilter($query);
-            })
-            ->select(DB::raw('SUM(
-                CASE 
-                    WHEN products.is_variant = 1 AND product_variants.id IS NOT NULL 
-                    THEN product_warehouse.qte * COALESCE(product_variants.price, 0)
-                    ELSE product_warehouse.qte * COALESCE(products.price, 0)
-                END
-            ) as total_value'))
-            ->first();
+        $totals = ['by_cost' => 0.0, 'by_retail' => 0.0, 'by_wholesale' => 0.0];
 
-        // Calculate stock value by wholesale
-        $stockByWholesale = product_warehouse::join('products', 'product_warehouse.product_id', '=', 'products.id')
-            ->leftJoin('product_variants', function ($join) {
-                $join->on('product_warehouse.product_variant_id', '=', 'product_variants.id')
-                     ->where('products.is_variant', '=', 1);
-            })
-            ->where('product_warehouse.deleted_at', '=', null)
-            ->where('products.deleted_at', '=', null)
-            ->where('product_warehouse.qte', '>', 0)
-            ->where(function ($query) use ($warehouseFilter) {
-                $warehouseFilter($query);
-            })
-            ->select(DB::raw('SUM(
-                CASE 
-                    WHEN products.is_variant = 1 AND product_variants.id IS NOT NULL 
-                    THEN product_warehouse.qte * COALESCE(product_variants.wholesale, product_variants.price, 0)
-                    ELSE product_warehouse.qte * COALESCE(products.wholesale_price, products.price, 0)
-                END
-            ) as total_value'))
-            ->first();
+        if (! empty($legacyWarehouseIds)) {
+            foreach ($valueExprs as $key => $expr) {
+                $row = product_warehouse::join('products', 'product_warehouse.product_id', '=', 'products.id')
+                    ->leftJoin('product_variants', function ($join) {
+                        $join->on('product_warehouse.product_variant_id', '=', 'product_variants.id')
+                             ->where('products.is_variant', '=', 1);
+                    })
+                    ->where('product_warehouse.deleted_at', '=', null)
+                    ->where('products.deleted_at', '=', null)
+                    ->where('product_warehouse.qte', '>', 0)
+                    ->where(fn ($query) => $warehouseFilter($query))
+                    ->select(DB::raw("SUM(
+                        CASE
+                            WHEN products.is_variant = 1 AND product_variants.id IS NOT NULL
+                            THEN {$expr['legacy']}
+                            ELSE {$expr['legacy_default']}
+                        END
+                    ) as total_value"))
+                    ->first();
+                $totals[$key] += (float) ($row->total_value ?? 0);
+            }
+        }
+
+        if (! empty($nativeLocationIds)) {
+            foreach ($valueExprs as $key => $expr) {
+                $row = DB::table('inventory_location_stocks')
+                    ->join('products', 'products.id', '=', 'inventory_location_stocks.product_id')
+                    ->leftJoin('product_variants', function ($join) {
+                        $join->on('inventory_location_stocks.product_variant_id', '=', 'product_variants.id')
+                             ->where('products.is_variant', '=', 1);
+                    })
+                    ->where('products.deleted_at', '=', null)
+                    ->where('inventory_location_stocks.quantity', '>', 0)
+                    ->whereIn('inventory_location_stocks.inventory_location_id', $nativeLocationIds)
+                    ->select(DB::raw("SUM(
+                        CASE
+                            WHEN products.is_variant = 1 AND product_variants.id IS NOT NULL
+                            THEN {$expr['native']}
+                            ELSE {$expr['native_default']}
+                        END
+                    ) as total_value"))
+                    ->first();
+                $totals[$key] += (float) ($row->total_value ?? 0);
+            }
+        }
+
+        $stockByCost = (object) ['total_value' => $totals['by_cost']];
+        $stockByRetail = (object) ['total_value' => $totals['by_retail']];
+        $stockByWholesale = (object) ['total_value' => $totals['by_wholesale']];
 
         return [
             'by_cost' => (float) ($stockByCost->total_value ?? 0),

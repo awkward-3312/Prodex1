@@ -2104,42 +2104,92 @@ class ReportController extends BaseController
                 ->toArray();
         }
 
+        // MS7-B3 — a location_primary warehouse's stock lives in
+        // inventory_location_stocks, not the stale product_warehouse row.
+        // Scope the legacy queries below to non-native warehouses, and
+        // union in a parallel native read for the rest, merged by
+        // warehouse name (same shape either query produces).
+        $scopeWarehouseIds = $is_all_warehouses
+            ? Warehouse::whereNull('deleted_at')->pluck('id')->all()
+            : $allowedWarehouseIds;
+        $split = app(\App\Services\InventoryReadService::class)->splitWarehousesByMode($scopeWarehouseIds);
+        $legacyWarehouseIds = $split['legacy'];
+        $nativeLocationByWarehouse = $split['locationByWarehouse'];
+
         // ✅ Stock Count (restricted by user warehouses)
-        $stock_count = product_warehouse::join('products', 'product_warehouse.product_id', '=', 'products.id')
-            ->join('warehouses', 'product_warehouse.warehouse_id', '=', 'warehouses.id')
-            ->whereNull('product_warehouse.deleted_at')
-            ->when(! $is_all_warehouses, function ($q) use ($allowedWarehouseIds) {
-                $q->whereIn('product_warehouse.warehouse_id', $allowedWarehouseIds);
-            })
-            ->select(
-                DB::raw('count(DISTINCT products.id) as value'),
-                DB::raw('warehouses.name as name'),
-                DB::raw('(IFNULL(SUM(qte),0)) AS value1')
-            )
-            ->where('qte', '>', 0)
-            ->groupBy('warehouses.name')
-            ->get();
+        $stock_count = collect();
+        if ($legacyWarehouseIds) {
+            $stock_count = product_warehouse::join('products', 'product_warehouse.product_id', '=', 'products.id')
+                ->join('warehouses', 'product_warehouse.warehouse_id', '=', 'warehouses.id')
+                ->whereNull('product_warehouse.deleted_at')
+                ->whereIn('product_warehouse.warehouse_id', $legacyWarehouseIds)
+                ->select(
+                    DB::raw('count(DISTINCT products.id) as value'),
+                    DB::raw('warehouses.name as name'),
+                    DB::raw('(IFNULL(SUM(qte),0)) AS value1')
+                )
+                ->where('qte', '>', 0)
+                ->groupBy('warehouses.name')
+                ->get();
+        }
+        if ($nativeLocationByWarehouse) {
+            $nativeCount = DB::table('inventory_location_stocks')
+                ->join('products', 'products.id', '=', 'inventory_location_stocks.product_id')
+                ->join('inventory_locations', 'inventory_locations.id', '=', 'inventory_location_stocks.inventory_location_id')
+                ->join('warehouses', 'warehouses.id', '=', 'inventory_locations.warehouse_id')
+                ->whereIn('inventory_locations.id', array_values(array_unique($nativeLocationByWarehouse)))
+                ->select(
+                    DB::raw('count(DISTINCT products.id) as value'),
+                    DB::raw('warehouses.name as name'),
+                    DB::raw('(IFNULL(SUM(inventory_location_stocks.quantity),0)) AS value1')
+                )
+                ->where('inventory_location_stocks.quantity', '>', 0)
+                ->groupBy('warehouses.name')
+                ->get();
+            $stock_count = $stock_count->concat($nativeCount);
+        }
 
         // ✅ Stock Value (restricted by user warehouses)
-        $stock_value = DB::table('product_warehouse')
-            ->leftJoin('products', 'product_warehouse.product_id', '=', 'products.id')
-            ->leftJoin('warehouses', 'product_warehouse.warehouse_id', '=', 'warehouses.id')
-            ->leftJoin('product_variants', function ($join) {
-                $join->on('product_warehouse.product_variant_id', '=', 'product_variants.id')
-                    ->whereNotNull('product_warehouse.product_variant_id');
-            })
-            ->whereNull('product_warehouse.deleted_at')
-            ->when(! $is_all_warehouses, function ($q) use ($allowedWarehouseIds) {
-                $q->whereIn('product_warehouse.warehouse_id', $allowedWarehouseIds);
-            })
-            ->select(
-                DB::raw('SUM(COALESCE(product_variants.price, products.price) * qte) as price'),
-                DB::raw('SUM(COALESCE(product_variants.cost, products.cost) * qte) as cost'),
-                'warehouses.name as name'
-            )
-            ->where('qte', '>', 0)
-            ->groupBy('warehouses.name')
-            ->get();
+        $stock_value = collect();
+        if ($legacyWarehouseIds) {
+            $stock_value = DB::table('product_warehouse')
+                ->leftJoin('products', 'product_warehouse.product_id', '=', 'products.id')
+                ->leftJoin('warehouses', 'product_warehouse.warehouse_id', '=', 'warehouses.id')
+                ->leftJoin('product_variants', function ($join) {
+                    $join->on('product_warehouse.product_variant_id', '=', 'product_variants.id')
+                        ->whereNotNull('product_warehouse.product_variant_id');
+                })
+                ->whereNull('product_warehouse.deleted_at')
+                ->whereIn('product_warehouse.warehouse_id', $legacyWarehouseIds)
+                ->select(
+                    DB::raw('SUM(COALESCE(product_variants.price, products.price) * qte) as price'),
+                    DB::raw('SUM(COALESCE(product_variants.cost, products.cost) * qte) as cost'),
+                    'warehouses.name as name'
+                )
+                ->where('qte', '>', 0)
+                ->groupBy('warehouses.name')
+                ->get();
+        }
+        if ($nativeLocationByWarehouse) {
+            $nativeValue = DB::table('inventory_location_stocks')
+                ->leftJoin('products', 'products.id', '=', 'inventory_location_stocks.product_id')
+                ->leftJoin('inventory_locations', 'inventory_locations.id', '=', 'inventory_location_stocks.inventory_location_id')
+                ->leftJoin('warehouses', 'warehouses.id', '=', 'inventory_locations.warehouse_id')
+                ->leftJoin('product_variants', function ($join) {
+                    $join->on('inventory_location_stocks.product_variant_id', '=', 'product_variants.id')
+                        ->whereNotNull('inventory_location_stocks.product_variant_id');
+                })
+                ->whereIn('inventory_locations.id', array_values(array_unique($nativeLocationByWarehouse)))
+                ->select(
+                    DB::raw('SUM(COALESCE(product_variants.price, products.price) * inventory_location_stocks.quantity) as price'),
+                    DB::raw('SUM(COALESCE(product_variants.cost, products.cost) * inventory_location_stocks.quantity) as cost'),
+                    'warehouses.name as name'
+                )
+                ->where('inventory_location_stocks.quantity', '>', 0)
+                ->groupBy('warehouses.name')
+                ->get();
+            $stock_value = $stock_value->concat($nativeValue);
+        }
 
         $data = [];
         foreach ($stock_value as $value) {
@@ -2187,10 +2237,26 @@ class ReportController extends BaseController
 
     public function count_quantity_alert(request $request)
     {
+        // MS7-B3 — a location_primary warehouse's product_warehouse.qte is
+        // stale; count its rows from inventory_location_stocks instead.
+        $allWarehouseIds = Warehouse::whereNull('deleted_at')->pluck('id')->all();
+        $split = app(\App\Services\InventoryReadService::class)->splitWarehousesByMode($allWarehouseIds);
 
         $products_alerts = product_warehouse::join('products', 'product_warehouse.product_id', '=', 'products.id')
             ->whereRaw('qte <= stock_alert')
+            ->when(! empty($split['locationByWarehouse']), function ($q) use ($split) {
+                $q->whereNotIn('product_warehouse.warehouse_id', array_keys($split['locationByWarehouse']));
+            })
             ->count();
+
+        if (! empty($split['locationByWarehouse'])) {
+            $locationIds = array_values(array_unique($split['locationByWarehouse']));
+            $products_alerts += DB::table('inventory_location_stocks')
+                ->join('products', 'products.id', '=', 'inventory_location_stocks.product_id')
+                ->whereIn('inventory_location_stocks.inventory_location_id', $locationIds)
+                ->whereRaw('inventory_location_stocks.quantity <= products.stock_alert')
+                ->count();
+        }
 
         return response()->json($products_alerts);
     }
@@ -3661,15 +3727,15 @@ class ReportController extends BaseController
                 $item['name'] = $product->name;
                 $item['category'] = $product['category']->name;
 
-                $current_stock = product_warehouse::where('product_id', $product->id)
-                    ->where('deleted_at', '=', null)
-                    ->whereIn('warehouse_id', $warehouses_id)
-                    ->where(function ($query) use ($request) {
-                        return $query->when($request->filled('warehouse_id'), function ($query) use ($request) {
-                            return $query->where('warehouse_id', $request->warehouse_id);
-                        });
-                    })
-                    ->sum('qte');
+                // MS7-B3 — location-aware: a location_primary warehouse's
+                // contribution comes from inventory_location_stocks at its
+                // exact fulfillment location, not the stale product_warehouse
+                // row (InventoryReadService::totalForProduct()).
+                $scopedWarehouseIds = $request->filled('warehouse_id')
+                    ? [(int) $request->warehouse_id]
+                    : $warehouses_id;
+                $current_stock = app(\App\Services\InventoryReadService::class)
+                    ->totalForProduct((int) $product->id, $scopedWarehouseIds);
 
                 $item['quantity'] = $current_stock.' '.$product['unit']->ShortName;
 
@@ -4265,14 +4331,22 @@ class ReportController extends BaseController
         }
         $warehouseId = (int) ($request->warehouse_id ?: 0);
 
+        // MS7-B3 — product_warehouse.qte is frozen/stale for a
+        // location_primary warehouse (never mutated by any native writer);
+        // checking it for negativity there is meaningless noise, since the
+        // native engine (InventoryService/LocationAwareSaleStockService)
+        // already enforces the non-negative invariant at write time.
+        // Exclude native warehouses from this legacy-specific report.
+        $legacyWarehouseIds = app(\App\Services\InventoryReadService::class)
+            ->splitWarehousesByMode($warehouseId ? [$warehouseId] : $warehouseIds)['legacy'];
+
         $rowsQuery = product_warehouse::query()
             ->join('products', 'products.id', '=', 'product_warehouse.product_id')
             ->leftJoin('product_variants', 'product_variants.id', '=', 'product_warehouse.product_variant_id')
             ->join('warehouses', 'warehouses.id', '=', 'product_warehouse.warehouse_id')
             ->whereNull('product_warehouse.deleted_at')
             ->where('product_warehouse.qte', '<', 0)
-            ->when($warehouseId, fn ($q) => $q->where('product_warehouse.warehouse_id', $warehouseId),
-                fn ($q) => $q->whereIn('product_warehouse.warehouse_id', $warehouseIds))
+            ->whereIn('product_warehouse.warehouse_id', $legacyWarehouseIds)
             ->where(function ($q) use ($request) {
                 if ($request->filled('search')) {
                     $s = '%'.$request->search.'%';
@@ -5701,26 +5775,20 @@ class ReportController extends BaseController
             ->get()
             ->groupBy('product_id');
 
-        // one grouped query for stock across selected warehouses
-        $stockRows = product_warehouse::select(
-            'product_id',
-            'product_variant_id',
-            DB::raw('SUM(qte) as qty')
-        )
-            ->whereIn('product_id', $productIds)
-            ->whereNull('deleted_at')
-            ->when(! empty($selectedWarehouseIds), function ($q) use ($selectedWarehouseIds) {
-                $q->whereIn('warehouse_id', $selectedWarehouseIds);
-            })
-            ->groupBy('product_id', 'product_variant_id')
-            ->get();
+        // MS7-B3 — location-aware: a location_primary warehouse's stock
+        // comes from inventory_location_stocks, not the stale
+        // product_warehouse row (InventoryReadService::totalsByProductVariant()).
+        $stockWarehouseIds = ! empty($selectedWarehouseIds)
+            ? $selectedWarehouseIds
+            : Warehouse::whereNull('deleted_at')->pluck('id')->all();
+        $stockTotals = app(\App\Services\InventoryReadService::class)
+            ->totalsByProductVariant($productIds, $stockWarehouseIds);
 
         // build lookups: $stockMap[product_id][variant_id or 0] = qty
         $stockMap = [];
-        foreach ($stockRows as $r) {
-            $pid = (int) $r->product_id;
-            $vid = (int) ($r->product_variant_id ?? 0);
-            $stockMap[$pid][$vid] = (float) $r->qty;
+        foreach ($stockTotals as $key => $qty) {
+            [$pid, $vid] = array_map('intval', explode(':', $key));
+            $stockMap[$pid][$vid] = (float) $qty;
         }
 
         $data = [];
@@ -5850,18 +5918,24 @@ class ReportController extends BaseController
             ->get()
             ->groupBy('product_id');
 
-        // Get stock data per warehouse
-        $stockRows = product_warehouse::select(
-            'product_id',
-            'product_variant_id',
-            'warehouse_id',
-            DB::raw('SUM(qte) as qty')
-        )
-            ->whereIn('product_id', $productIds)
-            ->whereNull('deleted_at')
-            ->whereIn('warehouse_id', $selectedWarehouseIds)
-            ->groupBy('product_id', 'product_variant_id', 'warehouse_id')
-            ->get();
+        // MS7-B3 — location-aware: a location_primary warehouse's stock
+        // comes from inventory_location_stocks, not the stale
+        // product_warehouse row. Rebuilt as the SAME row shape
+        // (product_id/product_variant_id/warehouse_id/qty) the code below
+        // already consumes, via InventoryReadService::
+        // totalsByProductVariantWarehouse().
+        $stockTotalsByWarehouse = app(\App\Services\InventoryReadService::class)
+            ->totalsByProductVariantWarehouse($productIds, $selectedWarehouseIds);
+        $stockRows = collect($stockTotalsByWarehouse)->map(function ($qty, $key) {
+            [$pid, $vid, $whId] = array_map('intval', explode(':', $key));
+
+            return (object) [
+                'product_id' => $pid,
+                'product_variant_id' => $vid ?: null,
+                'warehouse_id' => $whId,
+                'qty' => $qty,
+            ];
+        })->values();
 
         // Date range filter — normalize to Y-m-d and default to last 30 days if missing
         $today = Carbon::today();

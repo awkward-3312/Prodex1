@@ -129,6 +129,69 @@ class InventoryReadServiceTest extends TestCase
         $this->assertSame(12.0, (float) $totals[10]);
     }
 
+    // ==================================================================
+    // MS7-B3 — Dashboard/Report location-aware additions
+    // ==================================================================
+
+    public function test_split_warehouses_by_mode(): void
+    {
+        InventoryTransitionState::create([
+            'warehouse_id' => 2, 'inventory_location_id' => 20,
+            'mode' => InventoryTransitionState::MODE_LOCATION_PRIMARY, 'status' => 'healthy',
+        ]);
+
+        $split = app(InventoryReadService::class)->splitWarehousesByMode([1, 2]);
+
+        $this->assertSame([1], $split['legacy']);
+        $this->assertSame([2 => 20], $split['locationByWarehouse']);
+    }
+
+    public function test_totals_by_product_variant_merges_legacy_and_native(): void
+    {
+        $this->legacyVariant(1, 10, 5, 100);
+        InventoryTransitionState::create([
+            'warehouse_id' => 2, 'inventory_location_id' => 20,
+            'mode' => InventoryTransitionState::MODE_LOCATION_PRIMARY, 'status' => 'healthy',
+        ]);
+        $this->locationVariant(20, 10, 7, 100);
+
+        $totals = app(InventoryReadService::class)->totalsByProductVariant([10], [1, 2]);
+
+        $this->assertSame(12.0, $totals['10:100']);
+    }
+
+    public function test_totals_by_product_variant_warehouse_keeps_warehouse_dimension(): void
+    {
+        $this->legacy(1, 10, 5);
+        InventoryTransitionState::create([
+            'warehouse_id' => 2, 'inventory_location_id' => 20,
+            'mode' => InventoryTransitionState::MODE_LOCATION_PRIMARY, 'status' => 'healthy',
+        ]);
+        $this->location(20, 10, 7);
+
+        $totals = app(InventoryReadService::class)->totalsByProductVariantWarehouse([10], [1, 2]);
+
+        $this->assertSame(5.0, $totals['10:0:1']);
+        $this->assertSame(7.0, $totals['10:0:2']);
+    }
+
+    private function legacyVariant(int $warehouseId, int $productId, float $quantity, int $variantId): void
+    {
+        DB::table('product_warehouse')->insert([
+            'product_id' => $productId, 'warehouse_id' => $warehouseId, 'product_variant_id' => $variantId,
+            'qte' => $quantity, 'manage_stock' => 1, 'created_at' => now(), 'updated_at' => now(), 'deleted_at' => null,
+        ]);
+    }
+
+    private function locationVariant(int $locationId, int $productId, float $quantity, int $variantId): void
+    {
+        DB::table('inventory_location_stocks')->insert([
+            'inventory_location_id' => $locationId, 'product_id' => $productId, 'product_variant_id' => $variantId,
+            'variant_key' => $variantId, 'quantity' => $quantity, 'reserved_quantity' => 0,
+            'manage_stock' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
     private function legacy(int $warehouseId, int $productId, float $quantity): void
     {
         DB::table('product_warehouse')->insert([
