@@ -1,13 +1,16 @@
 <template>
-  <div class="main-content p-2 p-md-4">
-    <breadcumb :page="$t('Analytics_Report')" :folder="$t('Reports')" />
+  <div class="px-next pxrp">
+    <px-page-header :title="$t('Analytics_Report')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('Analytics_Report') }]">
+      <template #actions>
+        <px-button variant="secondary" icon="printer" @click="printReport">{{ $t('print') }}</px-button>
+        <px-button variant="primary" icon="refresh-cw" @click="fetchReport">{{ $t('Refresh') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <!-- Toolbar -->
-    <b-card class="toolbar-card shadow-soft mb-3 border-0">
-      <div class="d-flex flex-wrap align-items-center">
-        <!-- Date Range -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('DateRange')}}</label>
+    <px-card class="pxrp__filters">
+      <div class="pxrp__filterrow">
+        <div class="pxrp__field">
+          <label class="pxrp__label">{{ $t('DateRange') }}</label>
           <date-range-picker
             v-model="dateRange"
             :startDate="dateRange.startDate"
@@ -15,197 +18,96 @@
             :locale-data="locale"
             :autoApply="true"
             :showDropdowns="true"
-            :opens="picker.opens" 
-            :drops="picker.drops" 
+            :opens="picker.opens"
+            :drops="picker.drops"
             :parentEl="'body'"
             @update="onDateChange"
           >
             <template v-slot:input="pickerSlot">
-              <b-button variant="light" class="btn-pill" :class="{ 'w-100': isMobile }">
-                <lucide-icon class="mr-1" name="calendar-days" />
-                <span class="d-none d-sm-inline">
-                  {{ fmtDate(pickerSlot.startDate) }} — {{ fmtDate(pickerSlot.endDate) }}
-                </span>
-                <span class="d-inline d-sm-none">
-                  {{ fmtShort(pickerSlot.startDate) }}–{{ fmtShort(pickerSlot.endDate) }}
-                </span>
-              </b-button>
+              <button type="button" class="pxrp__daterange pxn-ring">
+                <lucide-icon name="calendar-days" :size="14" />
+                {{ fmtDate(pickerSlot.startDate) }} — {{ fmtDate(pickerSlot.endDate) }}
+              </button>
             </template>
           </date-range-picker>
         </div>
 
-        <!-- Quick ranges -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
-          <div class="btn-group quick-ranges">
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('today')">{{ $t('Today') || 'Today' }}</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('yesterday')">{{ $t('Yesterday') || 'Yesterday' }}</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('7d')">7D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('30d')">30D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('90d')">90D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('mtd')">{{$t('MTD')}}</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('ytd')">{{$t('YTD')}}</b-button>
+        <div class="pxrp__field">
+          <label class="pxrp__label">{{ $t('QuickRanges') }}</label>
+          <div class="pxrp__quick">
+            <px-button size="sm" variant="subtle" @click="applyQuick('today')">{{ $t('Today') || 'Today' }}</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('yesterday')">{{ $t('Yesterday') || 'Yesterday' }}</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('7d')">7D</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('30d')">30D</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('90d')">90D</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('mtd')">{{ $t('MTD') }}</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('ytd')">{{ $t('YTD') }}</px-button>
           </div>
         </div>
 
-        <!-- Warehouse -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
-          <v-select
-            class="w-280"
-            @input="onWarehouseChange"
+        <div class="pxrp__field pxrp__field--wh">
+          <label class="pxrp__label">{{ $t('warehouse') }}</label>
+          <vs-px
             v-model="warehouse_id"
             :reduce="opt => opt.value"
             :placeholder="$t('Choose_Warehouse')"
-            :options="warehouses.map(w => ({label: w.name, value: w.id}))"
-            :clearable="true"
+            :options="warehouses.map(w => ({ label: w.name, value: w.id }))"
+            @input="onWarehouseChange"
           />
         </div>
-
-        <div class="ml-auto mb-2">
-          <b-button variant="primary" class="btn-pill mr-2" @click="fetchReport">
-            <lucide-icon class="mr-1" name="refresh-cw" /> {{$t('Refresh')}}
-          </b-button>
-          <b-button variant="outline-secondary" class="btn-pill mr-2" @click="printReport">
-            <lucide-icon class="mr-1" name="printer" />{{$t('print')}}
-          </b-button>
-        </div>
       </div>
-    </b-card>
+    </px-card>
 
-    <!-- Loading -->
-    <div v-if="isLoading" class="mb-4">
-      <b-row>
-        <b-col md="6" v-for="n in 2" :key="'skel-'+n" class="mb-3">
-          <b-skeleton-img class="rounded-xl shadow-soft" height="400px" />
-        </b-col>
-      </b-row>
+    <px-alert tone="info" icon="clock" class="pxrp__range">
+      <strong>{{ fmtDate(dateRange.startDate) }}</strong> — <strong>{{ fmtDate(dateRange.endDate) }}</strong>
+      <span v-if="warehouseLabel" class="pxrp__whtag">{{ warehouseLabel }}</span>
+    </px-alert>
+
+    <div v-if="isLoading" class="pxrp__pad">
+      <px-skeleton variant="lines" :rows="10" />
     </div>
 
-    <!-- Content -->
     <div v-else class="analytics-report">
-      <b-row>
-        <b-col md="12" class="mb-3">
-          <b-alert show variant="light" class="shadow-soft border-0">
-            <div class="d-flex align-items-center">
-              <div class="mr-2"><lucide-icon class="text-primary" name="clock" /></div>
-              <div>
-                <strong>{{ fmtDate(dateRange.startDate) }}</strong> — <strong>{{ fmtDate(dateRange.endDate) }}</strong>
-                <span v-if="warehouseLabel" class="ml-2 badge badge-light">{{ warehouseLabel }}</span>
-              </div>
-            </div>
-          </b-alert>
-        </b-col>
-      </b-row>
-      <b-row>
-        <!-- LEFT CARD: Opening/Purchase Side -->
-        <b-col md="6" class="mb-3">
-          <b-card class="analytics-card shadow-soft border-0">
-            <h6 class="card-title mb-3">Opening/Purchase</h6>
-            <div class="analytics-rows">
-              <div class="analytics-row">
-                <span class="label">Opening Stock (By purchase price)</span>
-                <span class="value">{{ money(data.opening_stock_purchase_price) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Opening Stock (By sale price)</span>
-                <span class="value">{{ money(data.opening_stock_sale_price) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total Purchase (Excl. tax, Discount)</span>
-                <span class="value">{{ money(data.total_purchase_excl_tax) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total Stock Adjustment</span>
-                <span class="value">{{ money(data.total_stock_adjustment) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total Expense</span>
-                <span class="value">{{ money(data.total_expense) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total purchase shipping charge</span>
-                <span class="value">{{ money(data.total_purchase_shipping_charge) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total transfer shipping charge</span>
-                <span class="value">{{ money(data.total_transfer_shipping_charge) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total Sell discount</span>
-                <span class="value">{{ money(data.total_sell_discount) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total customer reward</span>
-                <span class="value">{{ money(data.total_customer_reward) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total Sell Return</span>
-                <span class="value">{{ money(data.total_sell_return) }}</span>
-              </div>
-            </div>
-          </b-card>
-        </b-col>
+      <div class="pxrp__cols">
+        <px-card title="Opening/Purchase">
+          <div class="pxrp__dl">
+            <div class="pxrp__dlrow"><span>Opening Stock (By purchase price)</span><span class="pxn-num">{{ money(data.opening_stock_purchase_price) }}</span></div>
+            <div class="pxrp__dlrow"><span>Opening Stock (By sale price)</span><span class="pxn-num">{{ money(data.opening_stock_sale_price) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total Purchase (Excl. tax, Discount)</span><span class="pxn-num">{{ money(data.total_purchase_excl_tax) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total Stock Adjustment</span><span class="pxn-num">{{ money(data.total_stock_adjustment) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total Expense</span><span class="pxn-num">{{ money(data.total_expense) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total purchase shipping charge</span><span class="pxn-num">{{ money(data.total_purchase_shipping_charge) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total transfer shipping charge</span><span class="pxn-num">{{ money(data.total_transfer_shipping_charge) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total Sell discount</span><span class="pxn-num">{{ money(data.total_sell_discount) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total customer reward</span><span class="pxn-num">{{ money(data.total_customer_reward) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total Sell Return</span><span class="pxn-num">{{ money(data.total_sell_return) }}</span></div>
+          </div>
+        </px-card>
 
-        <!-- RIGHT CARD: Closing/Sales Side -->
-        <b-col md="6" class="mb-3">
-          <b-card class="analytics-card shadow-soft border-0">
-            <h6 class="card-title mb-3">Closing/Sales</h6>
-            <div class="analytics-rows">
-              <div class="analytics-row">
-                <span class="label">Closing stock (By purchase price)</span>
-                <span class="value">{{ money(data.closing_stock_purchase_price) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Closing stock (By sale price)</span>
-                <span class="value">{{ money(data.closing_stock_sale_price) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total Sales (Excl. tax, Discount)</span>
-                <span class="value">{{ money(data.total_sales_excl_tax) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total sell shipping charge</span>
-                <span class="value">{{ money(data.total_sell_shipping_charge) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total Purchase Return</span>
-                <span class="value">{{ money(data.total_purchase_return) }}</span>
-              </div>
-              <div class="analytics-row">
-                <span class="label">Total Purchase discount</span>
-                <span class="value">{{ money(data.total_purchase_discount) }}</span>
-              </div>
-            </div>
-          </b-card>
-        </b-col>
-      </b-row>
+        <px-card title="Closing/Sales">
+          <div class="pxrp__dl">
+            <div class="pxrp__dlrow"><span>Closing stock (By purchase price)</span><span class="pxn-num">{{ money(data.closing_stock_purchase_price) }}</span></div>
+            <div class="pxrp__dlrow"><span>Closing stock (By sale price)</span><span class="pxn-num">{{ money(data.closing_stock_sale_price) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total Sales (Excl. tax, Discount)</span><span class="pxn-num">{{ money(data.total_sales_excl_tax) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total sell shipping charge</span><span class="pxn-num">{{ money(data.total_sell_shipping_charge) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total Purchase Return</span><span class="pxn-num">{{ money(data.total_purchase_return) }}</span></div>
+            <div class="pxrp__dlrow"><span>Total Purchase discount</span><span class="pxn-num">{{ money(data.total_purchase_discount) }}</span></div>
+          </div>
+        </px-card>
+      </div>
 
-      <!-- Profit Calculations Section -->
-      <b-row class="mt-3">
-        <b-col md="12">
-          <b-card class="profit-card shadow-soft border-0">
-            <div class="profit-section">
-              <div class="profit-row">
-                <div class="profit-label">Gross Profit:</div>
-                <div class="profit-value">{{ money(grossProfit) }}</div>
-              </div>
-              <div class="profit-formula">
-                Formula: (Total sell price - Total purchase price)
-              </div>
-            </div>
-            <div class="profit-section mt-3">
-              <div class="profit-row">
-                <div class="profit-label">Net Profit:</div>
-                <div class="profit-value">{{ money(netProfit) }}</div>
-              </div>
-              <div class="profit-formula">
-                Formula: Gross Profit - (Total Expense + Total transfer shipping charge)
-              </div>
-            </div>
-          </b-card>
-        </b-col>
-      </b-row>
+      <px-card class="pxrp__profit">
+        <div class="pxrp__profitrow">
+          <span class="pxrp__profitlabel">Gross Profit:</span>
+          <span class="pxrp__profitval pxn-num">{{ money(grossProfit) }}</span>
+        </div>
+        <p class="pxrp__profitformula">Formula: (Total sell price - Total purchase price)</p>
+        <div class="pxrp__profitrow pxrp__profitrow--gap">
+          <span class="pxrp__profitlabel">Net Profit:</span>
+          <span class="pxrp__profitval pxn-num">{{ money(netProfit) }}</span>
+        </div>
+        <p class="pxrp__profitformula">Formula: Gross Profit - (Total Expense + Total transfer shipping charge)</p>
+      </px-card>
     </div>
   </div>
 </template>
@@ -220,11 +122,17 @@ import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: "Analytics Report" },
   components: {
-    "date-range-picker": DateRangePicker
+    "date-range-picker": DateRangePicker,
+    PxPageHeader, PxCard, PxButton, PxAlert, "vs-px": VsPx
   },
   data() {
     const end = moment().endOf('day').toDate();
@@ -275,36 +183,21 @@ export default {
       const w = this.warehouses.find(w => w.id === this.warehouse_id);
       return w ? w.name : null;
     },
-    // Calculate total purchase price (opening stock + purchases)
     totalPurchasePrice() {
       return (
         Number(this.data.opening_stock_purchase_price || 0) +
         Number(this.data.total_purchase_excl_tax || 0)
       );
     },
-    // Calculate total sell price (closing stock + sales)
     totalSellPrice() {
       return (
         Number(this.data.closing_stock_sale_price || 0) +
         Number(this.data.total_sales_excl_tax || 0)
       );
     },
-    // Gross Profit = Total sell price - Total purchase price
     grossProfit() {
       return this.totalSellPrice - this.totalPurchasePrice;
     },
-    // Net Profit = Gross Profit - operating costs that aren't already reflected
-    // in the inventory/sales figures that make up Gross Profit.
-    //
-    // Gross Profit already accounts for:
-    //   - sell/purchase shipping (included in GrandTotal of each sale/purchase)
-    //   - sell/purchase discounts (already netted in total_sales_excl_tax / total_purchase_excl_tax)
-    //   - customer reward points (subtracted in total_sales_excl_tax)
-    //   - stock adjustments (the written-off/added units are reflected in closing stock)
-    //
-    // What remains to deduct are pure operating costs:
-    //   - total_expense: general operating expenses
-    //   - total_transfer_shipping_charge: inter-warehouse shipping (not part of sale/purchase GrandTotals)
     netProfit() {
       const deductions =
         Number(this.data.total_expense || 0) +
@@ -313,7 +206,6 @@ export default {
     }
   },
   methods: {
-    // Responsiveness
     handleResize() {
       this.isMobile = window.innerWidth < 576;
     },
@@ -368,7 +260,6 @@ export default {
       const n = parseFloat(v || 0);
       return isNaN(n) ? 0 : n;
     },
-    // Price formatting for display
     money(v) {
       try {
         const n = this.num(v);
@@ -399,7 +290,7 @@ export default {
         from: this.fmtDate(this.dateRange.startDate),
         to: this.fmtDate(this.dateRange.endDate)
       });
-      
+
       if (this.warehouse_id) {
         params.append('warehouse_id', this.warehouse_id);
       }
@@ -467,10 +358,8 @@ export default {
         .map((s) => s.outerHTML)
         .join("\n");
 
-      // Build HTML for the report
       let reportHtml = `<div class="analytics-report">`;
-      
-      // Left Card
+
       reportHtml += `<div class="card mb-3" style="page-break-inside: avoid;">
         <div class="card-body">
           <h6 class="mb-3">Opening/Purchase</h6>
@@ -495,7 +384,6 @@ export default {
       });
       reportHtml += `</table></div></div>`;
 
-      // Right Card
       reportHtml += `<div class="card mb-3" style="page-break-inside: avoid;">
         <div class="card-body">
           <h6 class="mb-3">Closing/Sales</h6>
@@ -516,7 +404,6 @@ export default {
       });
       reportHtml += `</table></div></div>`;
 
-      // Profit Section
       reportHtml += `<div class="card mt-3" style="page-break-inside: avoid;">
         <div class="card-body">
           <div style="margin-bottom: 16px;">
@@ -556,7 +443,7 @@ export default {
     ${links}
     ${inlineStyles}
     <style>
-      @media print { 
+      @media print {
         body, body * { visibility: visible !important; }
         @page { size: A4; margin: 1cm; }
       }
@@ -606,147 +493,39 @@ export default {
 };
 </script>
 
-<style scoped>
-.rounded-xl {
-  border-radius: 1rem;
-}
-.shadow-soft {
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-.toolbar-card {
-  background: #fff;
-}
-.btn-pill {
-  border-radius: 999px;
-}
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-.analytics-card {
-  min-height: 450px;
+<style lang="scss" scoped>
+.pxrp { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrp { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrp__pad { padding: var(--pxn-space-6) 0; }
+.pxrp__filters { margin-top: var(--pxn-space-5); }
+.pxrp__filterrow { display: flex; flex-wrap: wrap; gap: var(--pxn-space-6); align-items: flex-start; }
+.pxrp__field { display: flex; flex-direction: column; gap: var(--pxn-space-2); }
+.pxrp__field--wh { min-width: 240px; }
+.pxrp__label { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); }
+.pxrp__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-md); padding: 0 var(--pxn-space-5);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
 }
-.card-title {
-  font-weight: 600;
-  font-size: 1rem;
-  color: #333;
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 12px;
-}
-
-.analytics-rows {
-  display: flex;
-  flex-direction: column;
-}
-
-.analytics-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.analytics-row:last-child {
-  border-bottom: none;
-}
-
-.analytics-row .label {
-  flex: 1;
-  text-align: left;
-  color: #555;
-  font-size: 0.9rem;
-}
-
-.analytics-row .value {
-  flex: 0 0 auto;
-  text-align: right;
-  font-weight: 500;
-  color: #333;
-  font-size: 0.9rem;
-  margin-left: 16px;
-}
-
-.profit-card {
-  background: #fafbfc;
-}
-
-.profit-section {
-  padding: 8px 0;
-}
-
-.profit-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.profit-label {
-  font-weight: 600;
-  font-size: 1rem;
-  color: #333;
-}
-
-.profit-value {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #333;
-}
-
-.profit-formula {
-  font-size: 0.75rem;
-  color: #666;
-  font-style: italic;
-  margin-top: 4px;
-}
-
-/* Mobile responsive */
-@media (max-width: 767.98px) {
-  .analytics-card {
-    min-height: auto;
-  }
-
-  .analytics-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .analytics-row .value {
-    margin-left: 0;
-    margin-top: 4px;
-    text-align: left;
-  }
-}
-
-.w-280 {
-  width: 280px;
-}
-
-/* Date range picker responsiveness */
-@media (max-width: 575.98px) {
-  .daterangepicker {
-    left: 8px !important;
-    right: 8px !important;
-    width: auto !important;
-    max-width: calc(100vw - 16px) !important;
-  }
-  .daterangepicker .drp-calendar,
-  .daterangepicker .ranges {
-    float: none !important;
-    width: 100% !important;
-  }
-
-  .quick-ranges {
-    display: flex !important;
-    flex-wrap: wrap;
-    width: 100%;
-  }
-  .quick-ranges .btn {
-    flex: 1 1 calc(50% - 6px);
-    margin-bottom: 6px;
-  }
-}
-
-/* Keep the picker above navbars/modals/offcanvas */
-.daterangepicker {
-  z-index: 2055 !important;
-}
+.pxrp__daterange:hover { background: var(--pxn-surface-2); }
+.pxrp__quick { display: flex; flex-wrap: wrap; gap: var(--pxn-space-2); }
+.pxrp__range { margin-top: var(--pxn-space-4); }
+.pxrp__whtag { margin-left: var(--pxn-space-3); padding: 2px var(--pxn-space-3); border-radius: var(--pxn-radius-sm); background: var(--pxn-surface-3); font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-medium); }
+.pxrp__cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); margin-top: var(--pxn-space-5); }
+@media (max-width: 820px) { .pxrp__cols { grid-template-columns: minmax(0, 1fr); } }
+.pxrp__dl { display: flex; flex-direction: column; }
+.pxrp__dlrow { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-5); padding: var(--pxn-space-3) 0; border-bottom: 1px solid var(--pxn-border); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+.pxrp__dlrow:last-child { border-bottom: 0; }
+.pxrp__dlrow .pxn-num { color: var(--pxn-ink); font-weight: var(--pxn-fw-medium); }
+.pxrp__profit { margin-top: var(--pxn-space-5); }
+.pxrp__profitrow { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-4); }
+.pxrp__profitrow--gap { margin-top: var(--pxn-space-6); }
+.pxrp__profitlabel { font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrp__profitval { font-size: var(--pxn-fs-lg); font-weight: var(--pxn-fw-bold); color: var(--pxn-ink); }
+.pxrp__profitformula { margin-top: var(--pxn-space-2); font-size: var(--pxn-fs-xs); font-style: italic; color: var(--pxn-ink-3); }
+.pxrp ::v-deep .daterangepicker { z-index: 2055 !important; }
 </style>

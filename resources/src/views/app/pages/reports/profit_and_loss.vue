@@ -1,13 +1,16 @@
 <template>
-  <div class="main-content p-2 p-md-4">
-    <breadcumb :page="$t('ProfitandLoss')" :folder="$t('Reports')" />
+  <div class="px-next pxrp">
+    <px-page-header :title="$t('ProfitandLoss')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('ProfitandLoss') }]">
+      <template #actions>
+        <px-button variant="secondary" icon="printer" @click="printTableOnly()">{{ $t('print') }}</px-button>
+        <px-button variant="primary" icon="refresh-cw" @click="fetchPnl">{{ $t('Refresh') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <!-- Toolbar -->
-    <b-card class="toolbar-card shadow-soft mb-3 border-0">
-      <div class="d-flex flex-wrap align-items-center">
-        <!-- Date Range -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('DateRange')}}</label>
+    <px-card class="pxrp__filters">
+      <div class="pxrp__filterrow">
+        <div class="pxrp__field">
+          <label class="pxrp__label">{{ $t('DateRange') }}</label>
           <date-range-picker
             v-model="dateRange"
             :startDate="dateRange.startDate"
@@ -15,144 +18,76 @@
             :locale-data="locale"
             :autoApply="true"
             :showDropdowns="true"
-            :opens="picker.opens" 
-            :drops="picker.drops" 
+            :opens="picker.opens"
+            :drops="picker.drops"
             :parentEl="'body'"
             @update="onDateChange"
           >
             <template v-slot:input="pickerSlot">
-              <b-button variant="light" class="btn-pill">
-                <lucide-icon class="mr-1" name="calendar-days" />
+              <button type="button" class="pxrp__daterange pxn-ring">
+                <lucide-icon name="calendar-days" :size="14" />
                 {{ fmtDate(pickerSlot.startDate) }} — {{ fmtDate(pickerSlot.endDate) }}
-              </b-button>
+              </button>
             </template>
           </date-range-picker>
-
         </div>
 
-        <!-- Quick ranges -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
-          <div class="btn-group quick-ranges">
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('today')">{{ $t('Today') || 'Today' }}</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('yesterday')">{{ $t('Yesterday') || 'Yesterday' }}</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('7d')">7D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('30d')">30D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('90d')">90D</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('mtd')">{{$t('MTD')}}</b-button>
-            <b-button size="sm" variant="outline-primary" @click="applyQuick('ytd')">{{$t('YTD')}}</b-button>
+        <div class="pxrp__field">
+          <label class="pxrp__label">{{ $t('QuickRanges') }}</label>
+          <div class="pxrp__quick">
+            <px-button size="sm" variant="subtle" @click="applyQuick('today')">{{ $t('Today') || 'Today' }}</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('yesterday')">{{ $t('Yesterday') || 'Yesterday' }}</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('7d')">7D</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('30d')">30D</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('90d')">90D</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('mtd')">{{ $t('MTD') }}</px-button>
+            <px-button size="sm" variant="subtle" @click="applyQuick('ytd')">{{ $t('YTD') }}</px-button>
           </div>
         </div>
 
-        <!-- Warehouse -->
-        <div class="mr-3 mb-2">
-          <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
-          <v-select
-            class="w-280"
-            @input="onWarehouseChange"
+        <div class="pxrp__field pxrp__field--wh">
+          <label class="pxrp__label">{{ $t('warehouse') }}</label>
+          <vs-px
             v-model="warehouse_id"
             :reduce="opt => opt.value"
             :placeholder="$t('Choose_Warehouse')"
-            :options="warehouses.map(w => ({label: w.name, value: w.id}))"
-            :clearable="true"
+            :options="warehouses.map(w => ({ label: w.name, value: w.id }))"
+            @input="onWarehouseChange"
           />
         </div>
-
-        <div class="ml-auto mb-2">
-          <b-button @click="printTableOnly()" variant="outline-secondary" class="btn-pill mr-2">
-            <lucide-icon class="mr-1" name="printer" /> {{ $t("print") }}
-          </b-button>
-          <b-button variant="primary" class="btn-pill" @click="fetchPnl">
-            <lucide-icon class="mr-1" name="refresh-cw" />{{$t('Refresh')}}
-          </b-button>
-        </div>
       </div>
-    </b-card>
+    </px-card>
 
-    <!-- Loading skeletons -->
-    <div v-if="isLoading" class="mb-4">
-      <b-row>
-        <b-col md="4" v-for="n in 6" :key="n" class="mb-3">
-          <b-skeleton-img class="rounded-xl shadow-soft" height="110px" />
-        </b-col>
-      </b-row>
+    <px-alert tone="info" icon="clock" class="pxrp__range">
+      <strong>{{ fmtDate(dateRange.startDate) }}</strong> — <strong>{{ fmtDate(dateRange.endDate) }}</strong>
+      <span v-if="warehouseLabel" class="pxrp__whtag">{{ warehouseLabel }}</span>
+    </px-alert>
+
+    <div v-if="isLoading" class="pxrp__pad">
+      <px-skeleton variant="lines" :rows="8" />
     </div>
 
-    <!-- Content -->
-    <b-row v-else>
-      <b-col md="12" class="mb-3">
-        <b-alert show variant="light" class="shadow-soft border-0">
-          <div class="d-flex align-items-center">
-            <div class="mr-2"><lucide-icon class="text-primary" name="clock" /></div>
-            <div>
-              <strong>{{ fmtDate(dateRange.startDate) }}</strong> — <strong>{{ fmtDate(dateRange.endDate) }}</strong>
-              <span v-if="warehouseLabel" class="ml-2 badge badge-light">{{ warehouseLabel }}</span>
-            </div>
-          </div>
-        </b-alert>
-      </b-col>
+    <template v-else>
+      <div class="pxrp__grid">
+        <px-stat bordered icon="banknote" :label="$t('Sales')" :sub="`(${num(infos.sales_count)})`" :value="money(infos.sales_sum)" />
+        <px-stat bordered icon="shopping-cart" :label="$t('Purchases')" :sub="`(${num(infos.purchases_count)})`" :value="money(infos.purchases_sum)" />
+        <px-stat bordered icon="repeat" :label="$t('SalesReturn')" :sub="`(${num(infos.returns_sales_count)})`" :value="money(infos.returns_sales_sum)" />
+        <px-stat bordered icon="undo" :label="$t('PurchasesReturn')" :sub="`(${num(infos.returns_purchases_count)})`" :value="money(infos.returns_purchases_sum)" />
 
-      <!-- KPI Tiles -->
-      <b-col md="6" sm="6" class="mb-3">
-        <StatTile icon="banknote" :label="$t('Sales')" :sub="`(${num(infos.sales_count)})`" :value="money(infos.sales_sum)" theme="blue" />
-      </b-col>
-      <b-col md="6" sm="6" class="mb-3">
-        <StatTile icon="shopping-cart" :label="$t('Purchases')" :sub="`(${num(infos.purchases_count)})`" :value="money(infos.purchases_sum)" theme="teal" />
-      </b-col>
-      <b-col md="6" sm="6" class="mb-3">
-        <StatTile icon="repeat" :label="$t('SalesReturn')" :sub="`(${num(infos.returns_sales_count)})`" :value="money(infos.returns_sales_sum)" theme="orange" />
-      </b-col>
-      <b-col md="6" sm="6" class="mb-3">
-        <StatTile icon="undo" :label="$t('PurchasesReturn')" :sub="`(${num(infos.returns_purchases_count)})`" :value="money(infos.returns_purchases_sum)" theme="purple" />
-      </b-col>
+        <px-stat bordered icon="trending-up" :label="$t('Revenue')" :value="money(infos.total_revenue)" :sub="`${$t('Sales')} – ${$t('SalesReturn')}`" />
+        <px-stat bordered icon="wallet" :label="$t('PaiementsReceived')" :value="money(infos.payment_received)" :sub="`${$t('PaymentsSales')} + ${$t('PurchasesReturn')}`" />
+        <px-stat bordered icon="user-minus" :label="$t('PaiementsSent')" :value="money(infos.payment_sent)" :sub="`${$t('PaymentsPurchases')} + ${$t('SalesReturn')} + ${$t('Expenses')}`" />
+        <px-stat bordered icon="receipt" :label="$t('Expenses')" :value="money(infos.expenses_sum)" />
+        <px-stat bordered icon="banknote" :label="$t('PaiementsNet')" :value="money(infos.paiement_net)" :sub="`${$t('Recieved')} – ${$t('Sent')}`" />
 
-      <b-col md="6" sm="6" class="mb-3">
-        <StatTile icon="trending-up" :label="$t('Revenue')" :value="money(infos.total_revenue)" theme="indigo"
-                  :hint="`${$t('Sales')} – ${$t('SalesReturn')}`" />
-      </b-col>
-      <b-col md="6" sm="6" class="mb-3">
-        <StatTile icon="wallet" :label="$t('PaiementsReceived')" :value="money(infos.payment_received)" theme="green"
-                  :hint="`${$t('PaymentsSales')} + ${$t('PurchasesReturn')}`" />
-      </b-col>
-      <b-col md="6" sm="6" class="mb-3">
-        <StatTile icon="user-minus" :label="$t('PaiementsSent')" :value="money(infos.payment_sent)" theme="rose"
-                  :hint="`${$t('PaymentsPurchases')} + ${$t('SalesReturn')} + ${$t('Expenses')}`" />
-      </b-col>
-      <b-col md="6" sm="6" class="mb-3">
-        <StatTile icon="receipt" :label="$t('Expenses')" :value="money(infos.expenses_sum)" theme="rose" />
-      </b-col>
-      <b-col md="6" sm="6" class="mb-3">
-        <StatTile icon="banknote" :label="$t('PaiementsNet')" :value="money(infos.paiement_net)" theme="slate"
-                  :hint="`${$t('Recieved')} – ${$t('Sent')}`" />
-      </b-col>
+        <px-stat bordered icon="wrench" :label="`${$t('Service_Jobs')} – ${$t('Revenue')}`" :sub="`(${num(infos.service_jobs_count)})`" :value="money(infos.service_revenue_sum)" />
+        <px-stat bordered icon="package" :label="`${$t('Service_Jobs')} – ${$t('Product_Cost')}`" :value="money(infos.service_parts_cost)" />
+        <px-stat bordered icon="bar-chart" :label="`${$t('Service_Jobs')} – ${$t('ProfitNet')}`" :value="money(infos.service_profit)" :sub="`${$t('Revenue')} – ${$t('Product_Cost')}`" />
 
-      <!-- Service / repair jobs (counted on delivery, when their parts leave stock) -->
-      <b-col md="4" sm="6" class="mb-3">
-        <StatTile icon="wrench" :label="`${$t('Service_Jobs')} – ${$t('Revenue')}`"
-                  :sub="`(${num(infos.service_jobs_count)})`"
-                  :value="money(infos.service_revenue_sum)" theme="teal" />
-      </b-col>
-      <b-col md="4" sm="6" class="mb-3">
-        <StatTile icon="package" :label="`${$t('Service_Jobs')} – ${$t('Product_Cost')}`"
-                  :value="money(infos.service_parts_cost)" theme="purple" />
-      </b-col>
-      <b-col md="4" sm="6" class="mb-3">
-        <StatTile icon="bar-chart" :label="`${$t('Service_Jobs')} – ${$t('ProfitNet')}`"
-                  :value="money(infos.service_profit)" theme="green"
-                  :hint="`${$t('Revenue')} – ${$t('Product_Cost')}`" />
-      </b-col>
-
-      <!-- Profit cards -->
-      <b-col md="6" class="mb-3">
-        <StatTile icon="bar-chart" :label="$t('ProfitNet') + ' (FIFO)'" :value="money(infos.profit_fifo)" theme="cyan"
-                  :hint="`${$t('Sales')} – ${$t('Product_Cost')} – ${$t('Expenses')} + ${$t('Service_Jobs')}`" />
-      </b-col>
-
-      <b-col md="6" class="mb-3">
-        <StatTile icon="bar-chart" :label="$t('ProfitNet') + ' (' + $t('AverageCost') + ')'" :value="money(infos.profit_average_cost)" theme="amber"
-                  :hint="`${$t('Sales')} – ${$t('Product_Cost')} – ${$t('Expenses')} + ${$t('Service_Jobs')}`" />
-      </b-col>
-    </b-row>
+        <px-stat bordered icon="bar-chart" :label="$t('ProfitNet') + ' (FIFO)'" :value="money(infos.profit_fifo)" :sub="`${$t('Sales')} – ${$t('Product_Cost')} – ${$t('Expenses')} + ${$t('Service_Jobs')}`" />
+        <px-stat bordered icon="bar-chart" :label="$t('ProfitNet') + ' (' + $t('AverageCost') + ')'" :value="money(infos.profit_average_cost)" :sub="`${$t('Sales')} – ${$t('Product_Cost')} – ${$t('Expenses')} + ${$t('Service_Jobs')}`" />
+      </div>
+    </template>
   </div>
 </template>
 
@@ -167,31 +102,18 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
-
-const StatTile = {
-  name: "StatTile",
-  functional: true,
-  props: { icon:String, label:String, sub:String, value:[String,Number], hint:String, theme:{type:String,default:'blue'} },
-  render(h,{props}) {
-    return h('div',{class:['stat-card',`theme-${props.theme}`,'shadow-soft','rounded-xl','mb-2']},[
-      h('div',{class:'stat-inner'},[
-        h('div',{class:'stat-icon'},[ h('lucide-icon', { props: { name: props.icon } }) ]),
-        h('div',{class:'stat-content'},[
-          h('div',{class:'stat-label'},props.label),
-          props.sub ? h('div',{class:'stat-sub text-muted'},props.sub) : null,
-          h('div',{class:'stat-value'},props.value),
-          props.hint ? h('div',{class:'stat-hint text-muted'},props.hint) : null
-        ])
-      ])
-    ]);
-  }
-};
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxStat from "@/components/px-next/PxStat.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: "Profit & Loss" },
   components: {
     "date-range-picker": DateRangePicker,
-    StatTile
+    PxPageHeader, PxCard, PxStat, PxButton, PxAlert, "vs-px": VsPx
   },
   data() {
     const start = moment().startOf('day').toDate();
@@ -201,6 +123,7 @@ export default {
       warehouse_id: null,
       isLoading: true,
       infos: {},
+      price_format_key: null,
       dateRange: { startDate: start, endDate: end }, // default: Today
       picker: { opens: 'right', drops: 'auto' },
       locale: {
@@ -231,21 +154,19 @@ export default {
     this.updatePickerPlacement();
     window.addEventListener('resize', this.updatePickerPlacement);
   },
-  beforeDestroy() { // or unmounted() in Vue 3
+  beforeDestroy() {
     window.removeEventListener('resize', this.updatePickerPlacement);
   },
   methods: {
     updatePickerPlacement() {
       const isXs = window.matchMedia('(max-width: 576px)').matches;
       this.picker.opens = isXs ? 'center' : 'right';
-      this.picker.drops = 'auto'; // lets it choose up/down to stay visible
+      this.picker.drops = 'auto';
     },
 
     fmtDate(d){ return moment(d).format('YYYY-MM-DD'); },
     num(v){ const n = parseFloat(v || 0); return isNaN(n)?0:n; },
     // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing Intl.NumberFormat behavior to preserve current behavior.
     money(v){
       try {
         const n = this.num(v);
@@ -294,64 +215,28 @@ export default {
       const dateRangeText = `${this.fmtDate(this.dateRange.startDate)} — ${this.fmtDate(this.dateRange.endDate)}`;
       const warehouseText = this.warehouseLabel ? ` (${this.warehouseLabel})` : '';
 
-      // Build table HTML with all KPI information
       let tableHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 16px;">`;
-      
-      // Header section
       tableHtml += `<thead><tr><th colspan="2" style="border: 1px solid #ddd; padding: 12px; background-color: #f5f5f5; font-weight: bold; text-align: left;">${title}</th></tr>`;
       tableHtml += `<tr><td colspan="2" style="border: 1px solid #ddd; padding: 8px; background-color: #f9f9f9; font-size: 10px;">${dateRangeText}${warehouseText}</td></tr>`;
       tableHtml += `</thead>`;
-
-      // Body with all KPIs
       tableHtml += `<tbody>`;
-      
-      // Sales
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">${this.$t('Sales')} (${this.num(this.infos.sales_count)})</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.infos.sales_sum)}</td></tr>`;
-      
-      // Purchases
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">${this.$t('Purchases')} (${this.num(this.infos.purchases_count)})</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.infos.purchases_sum)}</td></tr>`;
-      
-      // Sales Return
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">${this.$t('SalesReturn')} (${this.num(this.infos.returns_sales_count)})</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.infos.returns_sales_sum)}</td></tr>`;
-      
-      // Purchases Return
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">${this.$t('PurchasesReturn')} (${this.num(this.infos.returns_purchases_count)})</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.infos.returns_purchases_sum)}</td></tr>`;
-      
-      // Separator
       tableHtml += `<tr><td colspan="2" style="border: 1px solid #ddd; padding: 4px; background-color: #f5f5f5;"></td></tr>`;
-      
-      // Revenue
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 700; background-color: #eef0ff;">${this.$t('Revenue')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: 700; background-color: #eef0ff;">${this.money(this.infos.total_revenue)}</td></tr>`;
-      
-      // Payments Received
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">${this.$t('PaiementsReceived')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.infos.payment_received)}</td></tr>`;
-      
-      // Payments Sent
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">${this.$t('PaiementsSent')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.infos.payment_sent)}</td></tr>`;
-      
-      // Expenses
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">${this.$t('Expenses')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.infos.expenses_sum)}</td></tr>`;
-      
-      // Payments Net
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 700; background-color: #eef2f7;">${this.$t('PaiementsNet')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: 700; background-color: #eef2f7;">${this.money(this.infos.paiement_net)}</td></tr>`;
-      
-      // Separator
       tableHtml += `<tr><td colspan="2" style="border: 1px solid #ddd; padding: 4px; background-color: #f5f5f5;"></td></tr>`;
-
-      // Service / repair jobs
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">${this.$t('Service_Jobs')} – ${this.$t('Revenue')} (${this.num(this.infos.service_jobs_count)})</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.infos.service_revenue_sum)}</td></tr>`;
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">${this.$t('Service_Jobs')} – ${this.$t('Product_Cost')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${this.money(this.infos.service_parts_cost)}</td></tr>`;
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 700; background-color: #eaf7ef;">${this.$t('Service_Jobs')} – ${this.$t('ProfitNet')}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: 700; background-color: #eaf7ef;">${this.money(this.infos.service_profit)}</td></tr>`;
-
-      // Separator
       tableHtml += `<tr><td colspan="2" style="border: 1px solid #ddd; padding: 4px; background-color: #f5f5f5;"></td></tr>`;
-
-      // Profit Net (FIFO)
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 700; background-color: #e6fbff;">${this.$t('ProfitNet')} (FIFO)</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: 700; background-color: #e6fbff;">${this.money(this.infos.profit_fifo)}</td></tr>`;
-      
-      // Profit Net (Average Cost)
       tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: 700; background-color: #fff8e1;">${this.$t('ProfitNet')} (${this.$t('AverageCost')})</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: 700; background-color: #fff8e1;">${this.money(this.infos.profit_average_cost)}</td></tr>`;
-      
       tableHtml += `</tbody></table>`;
 
       const w = window.open("", "_blank");
@@ -375,7 +260,7 @@ export default {
     <title>${title}</title>
     ${links}
     <style>
-      @media print { 
+      @media print {
         body, body * { visibility: visible !important; }
         @page { size: A4; margin: 1cm; }
       }
@@ -420,71 +305,31 @@ export default {
 };
 </script>
 
-<style scoped>
-.rounded-xl { border-radius: 1rem; }
-.shadow-soft { box-shadow: 0 12px 24px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.05); }
-.toolbar-card { background: #fff; }
-.btn-pill { border-radius: 999px; }
-.w-280 { width: 280px; }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-.stat-card {
-  background: linear-gradient(135deg, var(--gradA,#f7f9ff), var(--gradB,#ffffff));
-  padding: 14px 16px; min-height: 110px; position: relative;
+<style lang="scss" scoped>
+.pxrp { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrp { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrp__pad { padding: var(--pxn-space-6) 0; }
+.pxrp__filters { margin-top: var(--pxn-space-5); }
+.pxrp__filterrow { display: flex; flex-wrap: wrap; gap: var(--pxn-space-6); align-items: flex-start; }
+.pxrp__field { display: flex; flex-direction: column; gap: var(--pxn-space-2); }
+.pxrp__field--wh { min-width: 240px; }
+.pxrp__label { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); }
+.pxrp__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-md); padding: 0 var(--pxn-space-5);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
 }
-.stat-inner { display: flex; align-items: center; }
-.stat-icon {
-  width: 48px; height: 48px; border-radius: 12px; margin-right: 12px;
-  display:flex; align-items:center; justify-content:center;
-  background: rgba(255,255,255,0.75);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 2px rgba(0,0,0,0.05);
-}
-.stat-icon i{ font-size: 22px; }
-.stat-label{ font-size: .85rem; font-weight: 600; }
-.stat-sub{ font-size: .75rem; margin-top: -2px; }
-.stat-value{ font-size: 1.35rem; font-weight: 700; line-height: 1.2; margin-top: 2px; }
-.stat-hint{ font-size: .75rem; margin-top: 2px; }
-
-.theme-blue   { --gradA:#e6f0ff; --gradB:#ffffff; color:#0b5fff; }
-.theme-teal   { --gradA:#e6fbf6; --gradB:#ffffff; color:#138f7a; }
-.theme-orange { --gradA:#fff4e6; --gradB:#ffffff; color:#cc6b00; }
-.theme-purple { --gradA:#f5e6ff; --gradB:#ffffff; color:#6a2ecc; }
-.theme-indigo { --gradA:#eef0ff; --gradB:#ffffff; color:#3949ab; }
-.theme-green  { --gradA:#edf9ee; --gradB:#ffffff; color:#2e7d32; }
-.theme-rose   { --gradA:#ffe8f0; --gradB:#ffffff; color:#c2185b; }
-.theme-slate  { --gradA:#eef2f7; --gradB:#ffffff; color:#455a64; }
-.theme-cyan   { --gradA:#e6fbff; --gradB:#ffffff; color:#00838f; }
-.theme-amber  { --gradA:#fff8e1; --gradB:#ffffff; color:#b28704; }
-
-.formula { background: #fafbff; }
-
-/* Keep the picker above navbars/modals/offcanvas */
-.daterangepicker { z-index: 2055 !important; }
-
-/* Mobile layout: full-width-ish and stacked */
-@media (max-width: 576px) {
-  .daterangepicker {
-    left: 8px !important;
-    right: 8px !important;
-    width: auto !important;
-    max-width: calc(100vw - 16px) !important;
-  }
-  .daterangepicker .drp-calendar,
-  .daterangepicker .ranges {
-    float: none !important;
-    width: 100% !important;
-  }
-
-  /* Make Quick ranges wrap into two columns on small screens */
-  .quick-ranges {
-    display: flex !important;
-    flex-wrap: wrap;
-    width: 100%;
-  }
-  .quick-ranges .btn {
-    flex: 1 1 calc(50% - 6px);
-    margin-bottom: 6px;
-  }
-}
-
-
+.pxrp__daterange:hover { background: var(--pxn-surface-2); }
+.pxrp__quick { display: flex; flex-wrap: wrap; gap: var(--pxn-space-2); }
+.pxrp__range { margin-top: var(--pxn-space-4); }
+.pxrp__whtag { margin-left: var(--pxn-space-3); padding: 2px var(--pxn-space-3); border-radius: var(--pxn-radius-sm); background: var(--pxn-surface-3); font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-medium); }
+.pxrp__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--pxn-space-5); margin-top: var(--pxn-space-5); }
+@media (max-width: 1100px) { .pxrp__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 820px) { .pxrp__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .pxrp__grid { grid-template-columns: minmax(0, 1fr); } }
+.pxrp ::v-deep .daterangepicker { z-index: 2055 !important; }
 </style>

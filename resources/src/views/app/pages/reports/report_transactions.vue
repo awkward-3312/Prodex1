@@ -1,218 +1,149 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Report_Transactions')" :folder="$t('Reports')"/>
-
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-
-      <b-col md="12" class="text-center" v-if="!isLoading">
-        <date-range-picker 
-          v-model="dateRange" 
-          :startDate="startDate" 
-          :endDate="endDate" 
-           @update="Submit_filter_dateRange"
-          :locale-data="locale" > 
-
-          <template v-slot:input="picker" style="min-width: 350px;">
-              {{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}
-          </template>        
+  <div class="px-next pxrt">
+    <px-page-header :title="$t('Report_Transactions')" :breadcrumbs="[{ label: $t('Reports'), href: '#/app/reports/all' }, { label: $t('Report_Transactions') }]">
+      <template #actions>
+        <px-menu :items="exportMenu" align="end" @select="onExport">
+          <template #trigger>
+            <px-button variant="secondary" size="sm" icon="file-spreadsheet" trailing-icon="chevron-down">{{ $t('Export') || 'Exportar' }}</px-button>
+          </template>
+        </px-menu>
+      </template>
+      <template #meta>
+        <date-range-picker
+          v-model="dateRange"
+          :startDate="startDate"
+          :endDate="endDate"
+          @update="Submit_filter_dateRange"
+          :locale-data="locale"
+        >
+          <template v-slot:input="picker">
+            <button type="button" class="pxrt__daterange pxn-ring">
+              <lucide-icon name="calendar-days" :size="14" />
+              {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
+            </button>
+          </template>
         </date-range-picker>
-      </b-col>
+      </template>
+    </px-page-header>
 
-    <b-card class="wrapper print-table-only" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="rows"
-        :group-options="{
-          enabled: true,
-          headerPosition: 'bottom',
-        }"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        placeholder: $t('Search_this_table'),
-        enabled: true,
-      }"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field === 'date'">
-            {{ formatDisplayDate(props.row.date) }}
-          </span>
-          <span v-else-if="props.column.field === 'Ref_Sale' && props.row.type === 'sale' && props.row.sale_id">
-            <router-link :to="{ name: 'detail_sale', params: { id: props.row.sale_id } }" class="text-primary">
-              {{ props.formattedRow[props.column.field] }}
-            </router-link>
-          </span>
-          <span v-else-if="props.column.field === 'Ref_Sale' && props.row.type === 'purchase' && props.row.purchase_id">
-            <router-link :to="{ name: 'detail_purchase', params: { id: props.row.purchase_id } }" class="text-primary">
-              {{ props.formattedRow[props.column.field] }}
-            </router-link>
-          </span>
-          <span v-else-if="props.column.field == 'montant'">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.montant, 2) }}
-          </span>
-          <span v-else>{{ props.formattedRow[props.column.field] }}</span>
-        </template>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
-            <lucide-icon name="filter" />
-            {{ $t("Filter") }}
-          </b-button>
-          <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
-            <lucide-icon name="printer" /> {{ $t("print") }}
-          </b-button>
-          <b-button @click="Payment_PDF()" size="sm" variant="outline-success ripple m-1">
-            <lucide-icon name="copy" /> PDF
-          </b-button>
-          <vue-excel-xlsx
-              class="btn btn-sm btn-outline-danger ripple m-1"
-              :data="payments"
-              :columns="columns"
-              :file-name="'payments'"
-              :file-type="'xlsx'"
-              :sheet-name="'payments'"
-              >
-              <lucide-icon name="file-spreadsheet" /> EXCEL
-          </vue-excel-xlsx>
-        </div>
-      </vue-good-table>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      :filter-count="activeFilterCount"
+      @update:search="onSearchInput"
+      @open-filters="filtersOpen = !filtersOpen"
+    />
 
-       <!-- 🔽 Payment Summary Table Below -->
-      <b-card class="mt-4" header="Summary by Payment Method">
-          <!-- PDF Button -->
-          <div class="mb-3 text-right">
-            <b-button @click="Payment_Summary_PDF()" size="sm" variant="outline-primary ripple">
-              <lucide-icon name="copy" /> Summary PDF
-            </b-button>
-          </div>
-
-        <b-table striped hover small :items="payment_summary" :fields="[
-          { key: 'payment_method', label: 'Payment Method' },
-          { key: 'sale_total', label: 'Total Sales' },
-          { key: 'sale_return_total', label: 'Sale Refunds' },
-          { key: 'purchase_total', label: 'Total Purchases' },
-          { key: 'purchase_return_total', label: 'Purchase Refunds' },
-          { key: 'expense_total', label: 'Total Expenses' }
-        ]" responsive>
-          <template #cell(sale_total)="data">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, data.item.sale_total, 2) }}
+    <div v-if="filtersOpen" class="pxrt__filters">
+      <div class="pxrt__filters-grid">
+        <px-field :label="$t('Customer')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_client" :reduce="o => o.value" :placeholder="$t('Choose_Customer')"
+              :options="clients.map(c => ({ label: c.name, value: c.id }))" />
           </template>
-          <template #cell(sale_return_total)="data">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, data.item.sale_return_total || 0, 2) }}
+        </px-field>
+        <px-field :label="$t('Sale')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_sale" :reduce="o => o.value" :placeholder="$t('PleaseSelect')"
+              :options="sales.map(s => ({ label: s.Ref, value: s.id }))" />
           </template>
-          <template #cell(purchase_total)="data">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, data.item.purchase_total, 2) }}
+        </px-field>
+        <px-field :label="$t('Supplier')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_provider" :reduce="o => o.value" :placeholder="$t('Choose_Supplier')"
+              :options="suppliers.map(s => ({ label: s.name, value: s.id }))" />
           </template>
-          <template #cell(purchase_return_total)="data">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, data.item.purchase_return_total || 0, 2) }}
+        </px-field>
+        <px-field :label="$t('Purchase')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_purchase" :reduce="o => o.value" :placeholder="$t('PleaseSelect')"
+              :options="purchases.map(p => ({ label: p.Ref, value: p.id }))" />
           </template>
-          <template #cell(expense_total)="data">
-            {{ formatPriceWithSymbol(currentUser && currentUser.currency, data.item.expense_total, 2) }}
+        </px-field>
+        <px-field :label="$t('Paymentchoice')">
+          <template #default="{ id }">
+            <vs-px :input-id="id" v-model="Filter_Reg" :reduce="o => o.value" :placeholder="$t('PleaseSelect')"
+              :options="payment_methods.map(m => ({ label: m.name, value: m.id }))" />
           </template>
-        </b-table>
-      </b-card>
-    </b-card>
-
-
-
-    <!-- Sidebar Filter -->
-    <b-sidebar id="sidebar-right" :title="$t('Filter')" bg-variant="white" right shadow>
-      <div class="px-3 py-2">
-        <b-row>
-         
-          <!-- Customers  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Customer')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Customer')"
-                v-model="Filter_client"
-                :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Sale  -->
-          <b-col md="12">
-            <b-form-group :label="$t('Sale')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('PleaseSelect')"
-                v-model="Filter_sale"
-                :options="sales.map(sales => ({label: sales.Ref, value: sales.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-
-           <!-- Supplier  -->
-           <b-col md="12">
-            <b-form-group :label="$t('Supplier')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Supplier')"
-                v-model="Filter_provider"
-                :options="suppliers.map(suppliers => ({label: suppliers.name, value: suppliers.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-       
-           <!-- Purchase  -->
-           <b-col md="12">
-            <b-form-group :label="$t('Purchase')">
-              <v-select
-                :reduce="label => label.value"
-                :placeholder="$t('PleaseSelect')"
-                v-model="Filter_purchase"
-                :options="purchases.map(purchases => ({label: purchases.Ref, value: purchases.id}))"
-              />
-            </b-form-group>
-          </b-col>
-
-          <!-- Payment choice -->
-          <b-col md="12">
-            <b-form-group :label="$t('Paymentchoice')">
-              <v-select
-                v-model="Filter_Reg"
-                :reduce="label => label.value"
-                :placeholder="$t('PleaseSelect')"
-                :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
-
-              ></v-select>
-            </b-form-group>
-          </b-col>
-
-          <b-col md="6" sm="12">
-            <b-button
-              @click="Payments_Sales(serverParams.page)"
-              variant="primary ripple m-1"
-              size="sm"
-              block
-            >
-              <lucide-icon name="filter" />
-              {{ $t("Filter") }}
-            </b-button>
-          </b-col>
-          <b-col md="6" sm="12">
-            <b-button @click="Reset_Filter()" variant="danger ripple m-1" size="sm" block>
-              <lucide-icon name="power" />
-              {{ $t("Reset") }}
-            </b-button>
-          </b-col>
-        </b-row>
+        </px-field>
       </div>
-    </b-sidebar>
+      <div class="pxrt__filters-act">
+        <px-button size="sm" variant="primary" icon="filter" @click="applyFilters">{{ $t('Filter') }}</px-button>
+        <px-button size="sm" variant="ghost" icon="x" @click="Reset_Filter">{{ $t('Reset') }}</px-button>
+      </div>
+    </div>
+
+    <div v-if="isLoading" class="pxrt__pad">
+      <px-skeleton variant="table" :rows="10" :columns="8" />
+    </div>
+
+    <template v-else>
+      <div class="pxrt__tablewrap">
+        <px-table
+          v-if="payments.length"
+          :columns="columns"
+          :rows="payments"
+          row-key="__rowkey"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+        >
+          <template #cell-date="{ row }">{{ formatDisplayDate(row.date) }}</template>
+          <template #cell-Ref_Sale="{ row }">
+            <router-link v-if="row.type === 'sale' && row.sale_id" :to="{ name: 'detail_sale', params: { id: row.sale_id } }" class="pxrt__link">{{ row.Ref_Sale }}</router-link>
+            <router-link v-else-if="row.type === 'purchase' && row.purchase_id" :to="{ name: 'detail_purchase', params: { id: row.purchase_id } }" class="pxrt__link">{{ row.Ref_Sale }}</router-link>
+            <span v-else>{{ row.Ref_Sale }}</span>
+          </template>
+          <template #cell-montant="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, row.montant, 2) }}</span></template>
+        </px-table>
+
+        <px-empty-state v-else icon="files" :title="$t('NodataAvailable') || 'Sin transacciones'" />
+      </div>
+
+      <div v-if="payments.length" class="pxrt__totalrow">
+        <span>{{ $t('Total') }}</span>
+        <span class="pxn-num">{{ sumCount(rows[0]) }}</span>
+      </div>
+
+      <px-pagination
+        v-if="payments.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+
+      <px-card :title="$t('Summary_by_Payment_Method') || 'Resumen por método de pago'" class="pxrt__summary">
+        <template #actions>
+          <px-button size="sm" variant="secondary" icon="file-text" @click="Payment_Summary_PDF()">{{ $t('Summary_PDF') || 'PDF resumen' }}</px-button>
+        </template>
+        <div class="pxrt-tbl__wrap pxn-scroll">
+          <table class="pxrt-tbl">
+            <thead>
+              <tr>
+                <th>{{ $t('Payment_Method') }}</th>
+                <th class="is-right">{{ $t('Total_Sales') || 'Total ventas' }}</th>
+                <th class="is-right">{{ $t('Sale_Refunds') || 'Reembolsos venta' }}</th>
+                <th class="is-right">{{ $t('Total_Purchases') || 'Total compras' }}</th>
+                <th class="is-right">{{ $t('Purchase_Refunds') || 'Reembolsos compra' }}</th>
+                <th class="is-right">{{ $t('Total_Expenses') || 'Total gastos' }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!payment_summary.length"><td colspan="6" class="pxrt-tbl__empty">{{ $t('NodataAvailable') }}</td></tr>
+              <tr v-for="(item, i) in payment_summary" :key="i">
+                <td>{{ item.payment_method }}</td>
+                <td class="is-right pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, item.sale_total, 2) }}</td>
+                <td class="is-right pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, item.sale_return_total || 0, 2) }}</td>
+                <td class="is-right pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, item.purchase_total, 2) }}</td>
+                <td class="is-right pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, item.purchase_return_total || 0, 2) }}</td>
+                <td class="is-right pxn-num">{{ formatPriceWithSymbol(currentUser && currentUser.currency, item.expense_total, 2) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </px-card>
+    </template>
   </div>
 </template>
 
@@ -222,7 +153,6 @@ import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import DateRangePicker from 'vue2-daterange-picker'
-//you need to import the CSS manually
 import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
 import moment from 'moment'
 import Util from '../../../../utils'
@@ -232,15 +162,31 @@ import {
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxMenu from "@/components/px-next/PxMenu.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Report Transactions"
   },
-  components: { DateRangePicker },
+  components: {
+    "date-range-picker": DateRangePicker,
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxCard,
+    PxField, PxEmptyState, "vs-px": VsPx
+  },
 
   data() {
     return {
+      _searchTimer: null,
+      filtersOpen: false,
       isLoading: true,
       serverParams: {
         sort: {
@@ -265,111 +211,63 @@ export default {
       payment_summary: [],
       rows: [{
         payment_method: 'Total',
-         
           children: [
-             
           ],
       },],
       sales: [],
       purchases: [],
       today_mode: true,
-      startDate: "", 
-      endDate: "", 
-      dateRange: { 
-       startDate: "", 
-       endDate: "" 
-      }, 
-      locale:{ 
-          //separator between the two ranges apply
-          Label: "Apply", 
-          cancelLabel: "Cancel", 
-          weekLabel: "W", 
-          customRangeLabel: "Custom Range", 
-          daysOfWeek: moment.weekdaysMin(), 
-          //array of days - see moment documenations for details 
-          monthNames: moment.monthsShort(), //array of month names - see moment documenations for details 
-          firstDay: 1 //ISO first day of week - see moment documenations for details
+      startDate: "",
+      endDate: "",
+      dateRange: {
+       startDate: "",
+       endDate: ""
+      },
+      locale:{
+          Label: "Apply",
+          cancelLabel: "Cancel",
+          weekLabel: "W",
+          customRangeLabel: "Custom Range",
+          daysOfWeek: moment.weekdaysMin(),
+          monthNames: moment.monthsShort(),
+          firstDay: 1
         },
-      // Optional price format key for frontend display (loaded from system settings/localStorage)
       price_format_key: null
     };
   },
 
   computed: {
     ...mapGetters(["currentUser"]),
-    // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.
     priceDecimals() {
       return getPriceDecimals({ store: this.$store });
     },
+    activeFilterCount() {
+      return [this.Filter_client, this.Filter_sale, this.Filter_provider, this.Filter_purchase, this.Filter_Reg]
+        .filter(v => v !== "" && v !== null && v !== undefined).length;
+    },
+    exportMenu() {
+      return [
+        { key: "print", label: this.$t("print"), icon: "printer" },
+        { key: "pdf", label: "PDF", icon: "file-text" },
+        { key: "xlsx", label: "CSV / Excel", icon: "file-spreadsheet" }
+      ];
+    },
     columns() {
       return [
-        {
-          label: this.$t("Date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Reference"),
-          field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Sale_Purchase_Ref"),
-          field: "Ref_Sale",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Customer_Provider"),
-          field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Payment_Method"),
-          field: "payment_method",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Account"),
-          field: "account_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Amount"),
-          field: "montant",
-          // Let headerField return a formatted string; avoid vue-good-table's decimal re-formatting.
-          headerField: this.sumCount,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("AddedBy"),
-          field: "user_name",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "date", label: this.$t("Date") },
+        { key: "Ref", label: this.$t("Reference") },
+        { key: "Ref_Sale", label: this.$t("Sale_Purchase_Ref") },
+        { key: "client_name", label: this.$t("Customer_Provider") },
+        { key: "payment_method", label: this.$t("Payment_Method") },
+        { key: "account_name", label: this.$t("Account") },
+        { key: "montant", label: this.$t("Amount"), align: "right" },
+        { key: "user_name", label: this.$t("AddedBy") }
       ];
     }
 
   },
   methods: {
 
-    // Group footer helper for vue-good-table.
-    // Returns a formatted string so the footer row inside the table
-    // looks like a normal data row, but uses the global price format & currency.
     sumCount(rowObj) {
       if (!rowObj || !Array.isArray(rowObj.children)) {
         return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, 0, 2);
@@ -384,60 +282,61 @@ export default {
       return this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, sum, 2);
     },
 
-    //---- update Params Table
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Payments_Sales(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Payments_Sales(1); }, 350);
     },
 
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Payments_Sales(1);
-      }
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Payments_Sales(p); } },
+
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Payments_Sales(1); } },
+
+    applyFilters() { this.updateParams({ page: 1 }); this.Payments_Sales(this.serverParams.page); },
+
+    onExport(item) {
+      const k = item && item.key;
+      if (k === "print") this.printTableOnly();
+      else if (k === "pdf") this.Payment_PDF();
+      else if (k === "xlsx") this.exportCsv();
     },
 
-    //---- Event on Sort Change
-    onSortChange(params) {
-      let field = "";
-      if (params[0].field == "Ref_Sale") {
-        field = "sale_id";
-      } else {
-        field = params[0].field;
-      }
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: field
-        }
-      });
-      this.Payments_Sales(this.serverParams.page);
+    exportCsv() {
+      const head = this.columns.map(c => c.label);
+      const lines = [head.join(",")].concat(
+        (this.payments || []).map(r =>
+          this.columns.map(c => {
+            let v = r[c.key];
+            if (c.key === "date") v = this.formatDisplayDate(r.date);
+            else if (c.key === "montant") v = r.montant;
+            else if (c.key === "Ref_Sale") v = r.Ref_Sale || "";
+            return `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+          }).join(",")
+        )
+      );
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "payments.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     },
-    //----------------------------------------- Format Display Date (for tables) -------------------------------\\
+
     formatDisplayDate(value) {
       if (!value) return '';
-      // Get date format from Vuex store (loaded from database) or fallback
       const dateFormat = this.$store.getters.getDateFormat || Util.getDateFormat(this.$store);
       return Util.formatDisplayDate(value, dateFormat);
     },
 
-    // Same as dashboard: format date for picker display (YYYY-MM-DD, local time via moment)
     fmt(d) {
       return moment(d).format("YYYY-MM-DD");
     },
 
-    // Price formatting for display only (does NOT affect calculations or stored values)
-    // Uses the global/system price_format setting when available; otherwise falls back
-    // to the existing behavior to preserve current behavior.
     formatPriceDisplay(number, dec) {
       try {
         const n = Number(number || 0);
@@ -445,9 +344,8 @@ export default {
           const n2 = Number(number || 0);
           return n2.toLocaleString(undefined, { maximumFractionDigits: dec || 2 });
         }
-        
+
         const decimals = this.priceDecimals;
-        // Always check store directly to ensure we get the latest value
         const key = getPriceFormatSetting({ store: this.$store });
         if (key) {
           this.price_format_key = key;
@@ -472,13 +370,6 @@ export default {
       }
     },
 
-    //---- Event on Search
-
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Payments_Sales(this.serverParams.page);
-    },
-
     //------ Reset Filter
     Reset_Filter() {
       this.search = "";
@@ -492,45 +383,27 @@ export default {
 
     //------ Print Table Only
     printTableOnly() {
-      const root = this.$el;
-      if (!root) {
-        window.print();
-        return;
-      }
-
-      const tableCard = root.querySelector(".print-table-only");
-      if (!tableCard) {
-        window.print();
-        return;
-      }
-
       // Get payments data from rows[0].children or this.payments
-      const paymentsData = Array.isArray(this.rows[0]?.children) && this.rows[0].children.length > 0 
-        ? this.rows[0].children 
+      const paymentsData = Array.isArray(this.rows[0]?.children) && this.rows[0].children.length > 0
+        ? this.rows[0].children
         : (this.payments || []);
 
-      // Manually construct the table HTML from payments data
       let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
-
-      // Table Header
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
         tableHtml += `<th class="text-left">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
-
-      // Table Body
       tableHtml += `<tbody>`;
       paymentsData.forEach(row => {
         tableHtml += `<tr>`;
         this.columns.forEach(col => {
-          let cellContent = row[col.field];
-          if (col.field === 'date') {
+          let cellContent = row[col.key];
+          if (col.key === 'date') {
             cellContent = this.formatDisplayDate(row.date);
-          } else if (col.field === 'montant') {
+          } else if (col.key === 'montant') {
             cellContent = this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, row.montant, 2);
-          } else if (col.field === 'Ref_Sale') {
-            // Just the ref text, not the router-link
+          } else if (col.key === 'Ref_Sale') {
             cellContent = row.Ref_Sale || '';
           }
           tableHtml += `<td class="text-left">${cellContent || ''}</td>`;
@@ -539,15 +412,13 @@ export default {
       });
       tableHtml += `</tbody>`;
 
-      // Table Footer (Totals)
       const totalAmount = this.sumCount(this.rows[0]);
       tableHtml += `<tfoot><tr>`;
       tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
-      tableHtml += `<td colspan="6"></td>`; // Span for other columns
+      tableHtml += `<td colspan="5"></td>`;
       tableHtml += `<td class="text-left font-weight-bold">${totalAmount}</td>`;
-      tableHtml += `<td colspan="1"></td>`; // Span for AddedBy column
+      tableHtml += `<td colspan="1"></td>`;
       tableHtml += `</tr></tfoot>`;
-
       tableHtml += `</table>`;
 
       const w = window.open("", "_blank");
@@ -602,7 +473,6 @@ export default {
 
     //---------------------------------------- Set To Strings-------------------------\\
     setToStrings() {
-      // Simply replaces null values with strings=''
       if (this.Filter_client === null) {
         this.Filter_client = "";
       } else if (this.Filter_sale === null) {
@@ -617,7 +487,6 @@ export default {
     Payment_PDF() {
       const pdf = new jsPDF("p", "pt");
 
-      // Use custom font
       const fontPath = "/fonts/Vazirmatn-Bold.ttf";
       pdf.addFont(fontPath, "VazirmatnBold", "bold");
       pdf.setFont("VazirmatnBold");
@@ -633,7 +502,6 @@ export default {
         { header: "Added By", dataKey: "user_name" }
       ];
 
-      // Calculate total amount
       const totalGrandTotal = this.payments.reduce(
         (sum, payment) => sum + parseFloat(payment.montant || 0),
         0
@@ -755,11 +623,9 @@ export default {
 
     //-------------------------------- Get All Payments Sales ---------------------\\
     Payments_Sales(page) {
-      // Start the progress bar
       NProgress.start();
       NProgress.set(0.1);
 
-      // Mark loading
       this.isLoading = true;
       this.get_data_loaded();
 
@@ -769,8 +635,8 @@ export default {
             page: page,
             client_id: this.Filter_client,
             sale_id: this.Filter_sale,
-            provider_id: this.Filter_provider,      // <-- added
-            purchase_id: this.Filter_purchase,      // <-- added
+            provider_id: this.Filter_provider,
+            purchase_id: this.Filter_purchase,
             payment_method_id: this.Filter_Reg,
             SortField: this.serverParams.sort.field,
             SortType: this.serverParams.sort.type,
@@ -781,7 +647,7 @@ export default {
           }
         })
         .then(response => {
-          this.payments = response.data.payments;
+          this.payments = (response.data.payments || []).map((p, i) => Object.assign({ __rowkey: p.id != null ? `${p.type || 'x'}-${p.id}-${i}` : `r-${i}` }, p));
           this.clients = response.data.clients;
           this.suppliers = response.data.suppliers;
           this.sales = response.data.sales;
@@ -790,7 +656,6 @@ export default {
           this.payment_summary = response.data.payment_summary;
           this.totalRows = response.data.totalRows;
 
-          // if using a tree-table or nested row grouping
           if (this.rows && this.rows[0]) {
             this.rows[0].children = this.payments;
           }
@@ -812,7 +677,6 @@ export default {
 
   //----------------------------- Created function-------------------\\
   created: function() {
-    // Initialize price format key from Vuex store (get_user_auth API)
     try {
       const key = getPriceFormatSetting({ store: this.$store });
       if (key) {
@@ -826,113 +690,35 @@ export default {
 };
 </script>
 
-<style>
-@media print {
-  /* Hide everything by default */
-  body * {
-    visibility: hidden !important;
-  }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-  /* Show only main-content and all its children */
-  .main-content,
-  .main-content * {
-    visibility: visible !important;
-  }
-
-  /* Keep main-content with original positioning and styling */
-  .main-content {
-    position: static !important;
-    width: 100% !important;
-  }
-
-  /* Hide only UI elements that shouldn't be printed - keep original design for everything else */
-  .main-content .breadcumb,
-  .main-content .loading_page,
-  .main-content .spinner,
-  .main-content button,
-  .main-content .sidebar,
-  .main-content #sidebar-right,
-  .main-content .vgt-global-search,
-  .main-content .vgt-pagination,
-  .main-content .vgt-table-actions,
-  .main-content .date-range-picker,
-  .main-content .daterangepicker,
-  .main-content .text-center {
-    display: none !important;
-    visibility: hidden !important;
-  }
-
-  /* Preserve original design for wrapper and cards */
-  .main-content .wrapper,
-  .main-content .b-card,
-  .main-content .card {
-    /* Keep original styling - don't override */
-    display: block !important;
-    visibility: visible !important;
-  }
-
-  /* Preserve vue-good-table original design */
-  .main-content .vue-good-table,
-  .main-content .vgt-table,
-  .main-content .vgt-table-wrapper {
-    display: block !important;
-    visibility: visible !important;
-    /* Keep original overflow behavior */
-  }
-
-  /* Preserve table original design */
-  .main-content table,
-  .main-content .vgt-table table,
-  .main-content .table {
-    display: table !important;
-    visibility: visible !important;
-    /* Keep original table styling */
-  }
-
-  /* Ensure table header is visible with original styling */
-  .main-content thead,
-  .main-content .vgt-table thead,
-  .main-content .vgt-header-row {
-    display: table-header-group !important;
-    visibility: visible !important;
-  }
-
-  /* Ensure table body and rows are visible with original styling */
-  .main-content tbody,
-  .main-content .vgt-table tbody,
-  .main-content .vgt-body {
-    display: table-row-group !important;
-    visibility: visible !important;
-  }
-
-  .main-content tbody tr,
-  .main-content .vgt-table tbody tr,
-  .main-content .vgt-row,
-  .main-content .table tbody tr {
-    display: table-row !important;
-    visibility: visible !important;
-  }
-
-  /* Keep original table cells styling - don't override */
-  .main-content th,
-  .main-content td,
-  .main-content .vgt-table th,
-  .main-content .vgt-table td,
-  .main-content .table th,
-  .main-content .table td {
-    display: table-cell !important;
-    visibility: visible !important;
-    /* Keep original padding, font-size, colors etc. */
-  }
-
-  /* Page setup - reasonable margins */
-  body {
-    margin: 0 !important;
-  }
-
-  @page {
-    size: A4 landscape;
-    margin: 1cm;
-  }
+<style lang="scss" scoped>
+.pxrt { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxrt { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxrt__pad { padding: var(--pxn-space-6) 0; }
+.pxrt__daterange {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  height: var(--pxn-control-h-sm); padding: 0 var(--pxn-space-4);
+  border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface); font: inherit; font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink); cursor: pointer;
 }
+.pxrt__daterange:hover { background: var(--pxn-surface-2); }
+.pxrt__filters { margin-top: var(--pxn-space-4); padding: var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pxrt__filters-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-5); }
+@media (max-width: 900px) { .pxrt__filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .pxrt__filters-grid { grid-template-columns: minmax(0, 1fr); } }
+.pxrt__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
+.pxrt__tablewrap { margin-top: var(--pxn-space-5); }
+.pxrt__link { color: var(--pxn-primary); }
+.pxrt__totalrow { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxrt__summary { margin-top: var(--pxn-space-6); }
+.pxrt-tbl__wrap { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); overflow-x: auto; }
+.pxrt-tbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pxrt-tbl th { padding: var(--pxn-space-3) var(--pxn-space-4); text-align: left; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); background: var(--pxn-surface-2); border-bottom: 1px solid var(--pxn-border); white-space: nowrap; }
+.pxrt-tbl td { padding: var(--pxn-space-3) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink); }
+.pxrt-tbl tr:last-child td { border-bottom: 0; }
+.pxrt-tbl .is-right { text-align: right; }
+.pxrt-tbl__empty { text-align: center; color: var(--pxn-ink-3); }
+.pxrt ::v-deep .daterangepicker { z-index: 2055 !important; }
 </style>
