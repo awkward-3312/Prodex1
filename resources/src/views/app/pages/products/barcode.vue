@@ -1,281 +1,222 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Printbarcode')" :folder="$t('Products')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    
-    <div v-if="!isLoading" class="barcode-container">
-      <b-modal hide-footer id="open_scan" size="md" title="Barcode Scanner">
+  <div class="px-next pxbc">
+    <px-page-header
+      title="Imprimir códigos de barras"
+      :breadcrumbs="[{ label: $t('Products') }, { label: 'Códigos de barra' }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" icon="arrow-left" @click="$router.push({ name: 'index_products' })">Volver a productos</px-button>
+      </template>
+    </px-page-header>
+
+    <p class="pxbc__lead">Configura e imprime etiquetas de código de barras para tus productos.</p>
+
+    <div v-if="isLoading" class="pxbc__loading">
+      <px-skeleton variant="lines" :rows="6" />
+    </div>
+
+    <template v-else>
+      <!-- Barcode scanner -->
+      <px-modal v-model="scanOpen" title="Escáner de código de barras" size="md">
         <qrcode-scanner
-          :qrbox="250" 
-          :fps="10" 
-          style="width: 100%; height: calc(100vh - 56px);"
+          :qrbox="250"
+          :fps="10"
+          class="pxbc__scanner"
           @result="onScan"
         />
-      </b-modal>
+      </px-modal>
 
-      <b-row>
-        <!-- Configuration Card -->
-        <b-col md="12" class="mb-4">
-          <b-card class="config-card shadow-sm">
-            <b-card-header class="config-header">
-              <h5 class="mb-0">
-                <lucide-icon class="mr-2" name="settings-2" />
-                {{$t('Configuration') || 'Configuration'}}
-              </h5>
-            </b-card-header>
-            <b-card-body>
-              <b-row>
-                <!-- Warehouse -->
-                <b-col md="6" class="mb-3">
-                  <validation-observer ref="show_Barcode">
-                    <validation-provider name="warehouse" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' ' + '*'">
-                        <v-select
-                          :class="{'is-invalid': !!errors.length}"
-                          :state="errors[0] ? false : (valid ? true : null)"
-                          @input="Selected_Warehouse"
-                          v-model="barcode.warehouse_id"
-                          :reduce="label => label.value"
-                          :placeholder="$t('Choose_Warehouse')"
-                          :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
-                        />
-                        <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </validation-observer>
-                </b-col>
-
-                <!-- Paper Size -->
-                <b-col md="6" class="mb-3">
-                  <b-form-group :label="$t('Paper_size')">
-                    <v-select
-                      v-model="paper_size"
-                      @input="Selected_Paper_size"
+      <div class="pxbc__stack">
+        <!-- Configuration -->
+        <px-card :title="$t('Configuration') || 'Configuración'">
+          <div class="pxbc__grid2">
+            <validation-observer ref="show_Barcode" tag="div">
+              <validation-provider name="warehouse" :rules="{ required: true }" v-slot="v">
+                <px-field :label="$t('warehouse')" required :error="v.errors[0]">
+                  <template #default="{ id }">
+                    <vs-px
+                      :input-id="id"
+                      :invalid="!!v.errors.length"
+                      @input="val => { Selected_Warehouse(val); v.validate(val); }"
+                      v-model="barcode.warehouse_id"
                       :reduce="label => label.value"
-                      :placeholder="$t('Paper_size')"
-                      :options="getPaperSizeOptions()"
-                    ></v-select>
-                  </b-form-group>
-                </b-col>
+                      :placeholder="$t('Choose_Warehouse')"
+                      :options="warehouses.map(w => ({ label: w.name, value: w.id }))"
+                    />
+                  </template>
+                </px-field>
+              </validation-provider>
+            </validation-observer>
 
-                <!-- Custom Sticker Dimensions -->
-                <b-col md="12" v-if="paper_size === 'customstyle' || (paper_size && paper_size.startsWith('sticker_'))" class="mb-3">
-                  <b-form-group :label="paper_size === 'customstyle' ? 'Custom Sticker Dimensions' : 'Sticker Dimensions'">
-                    <b-row class="custom-dimensions-input">
-                      <b-col md="6">
-                        <b-form-input
-                          v-model.number="custom_sticker_width"
-                          type="number"
-                          min="1"
-                          placeholder="Width"
-                          @input="updateCustomStickerLabel"
-                          class="form-control"
-                          :disabled="paper_size !== 'customstyle'"
-                        ></b-form-input>
-                        <small class="text-muted">Width (mm)</small>
-                      </b-col>
-                      <b-col md="6">
-                        <b-form-input
-                          v-model.number="custom_sticker_height"
-                          type="number"
-                          min="1"
-                          placeholder="Height"
-                          @input="updateCustomStickerLabel"
-                          class="form-control"
-                          :disabled="paper_size !== 'customstyle'"
-                        ></b-form-input>
-                        <small class="text-muted">Height (mm)</small>
-                      </b-col>
-                    </b-row>
-                    <small v-if="paper_size !== 'customstyle'" class="text-muted d-block mt-2">
-                      <lucide-icon class="mr-1" name="info" />
-                      Dimensions are preset. Select "Stickers - Custom" to enter custom dimensions.
-                    </small>
-                  </b-form-group>
-                </b-col>
+            <px-field :label="$t('Paper_size')">
+              <template #default="{ id }">
+                <vs-px
+                  :input-id="id"
+                  v-model="paper_size"
+                  @input="Selected_Paper_size"
+                  :reduce="label => label.value"
+                  :placeholder="$t('Paper_size')"
+                  :options="getPaperSizeOptions()"
+                />
+              </template>
+            </px-field>
+          </div>
 
-                <!-- Display Price -->
-                <b-col md="6" class="mb-3">
-                  <div class="psx-form-check modern-checkbox">
-                    <input type="checkbox" v-model="show_price" class="psx-checkbox psx-form-check-input" id="show_price">
-                    <label class="psx-form-check-label" for="show_price">
-                      <span class="checkbox-label">{{$t('Display_Price') || 'Display Price'}}</span>
-                    </label>
-                  </div>
-                </b-col>
+          <div
+            v-if="paper_size === 'customstyle' || (paper_size && paper_size.startsWith('sticker_'))"
+            class="pxbc__grid2 pxbc__mt"
+          >
+            <px-field label="Ancho (mm)">
+              <template #default="{ id }">
+                <px-input
+                  :id="id"
+                  type="number"
+                  min="1"
+                  v-model.number="custom_sticker_width"
+                  :disabled="paper_size !== 'customstyle'"
+                  @input="updateCustomStickerLabel"
+                />
+              </template>
+            </px-field>
+            <px-field label="Alto (mm)">
+              <template #default="{ id }">
+                <px-input
+                  :id="id"
+                  type="number"
+                  min="1"
+                  v-model.number="custom_sticker_height"
+                  :disabled="paper_size !== 'customstyle'"
+                  @input="updateCustomStickerLabel"
+                />
+              </template>
+            </px-field>
+            <p v-if="paper_size !== 'customstyle'" class="pxbc__hint pxbc__span2">
+              <lucide-icon name="info" :size="13" />
+              Las dimensiones son predefinidas. Elige «Stickers - Custom Value» para introducir medidas propias.
+            </p>
+          </div>
 
-                <!-- Auto Print Toggle -->
-                <b-col md="6" class="mb-3">
-                  <div class="psx-form-check modern-checkbox">
-                    <input type="checkbox" v-model="auto_print" class="psx-checkbox psx-form-check-input" id="auto_print">
-                    <label class="psx-form-check-label" for="auto_print">
-                      <span class="checkbox-label">{{$t('Auto_Print') || 'Auto Print'}}</span>
-                    </label>
-                  </div>
-                </b-col>
-              </b-row>
-            </b-card-body>
-          </b-card>
-        </b-col>
+          <div class="pxbc__toggles">
+            <label class="pxbc__toggle">
+              <px-check type="switch" v-model="show_price" />
+              {{ $t('Display_Price') || 'Mostrar precio' }}
+            </label>
+            <label class="pxbc__toggle">
+              <px-check type="switch" v-model="auto_print" />
+              {{ $t('Auto_Print') || 'Impresión automática' }}
+            </label>
+          </div>
+        </px-card>
 
-        <!-- Product Search Card -->
-        <b-col md="12" class="mb-4">
-          <b-card class="search-card shadow-sm">
-            <b-card-header class="search-header">
-              <h5 class="mb-0">
-                <lucide-icon class="mr-2" name="search" />
-                {{$t('ProductName')}}
-              </h5>
-            </b-card-header>
-            <b-card-body>
-              <div id="autocomplete" class="autocomplete">
-                <div class="input-with-icon">
-                  <button type="button" class="scan-btn" @click="showModal" :title="$t('Scan_Barcode') || 'Scan Barcode'">
-                    <lucide-icon name="qr-code" />
-                  </button>
-                  <input 
-                    :placeholder="$t('Scan_Search_Product_by_Code_Name')"
-                    @input='e => search_input = e.target.value' 
-                    @keyup="search(search_input)"
-                    @focus="handleFocus"
-                    @blur="handleBlur"
-                    ref="product_autocomplete"
-                    class="autocomplete-input modern-input" />
-                </div>
-                <ul class="autocomplete-result-list" v-show="focused">
-                  <li class="autocomplete-result" v-for="product_fil in product_filter" @mousedown="SearchProduct(product_fil)">
-                    {{getResultValue(product_fil)}}
-                  </li>
-                </ul>
-              </div>
-            </b-card-body>
-          </b-card>
-        </b-col>
-
-        <!-- Products List Card -->
-        <b-col md="12" class="mb-4">
-          <b-card class="products-card shadow-sm">
-            <b-card-header class="products-header d-flex justify-content-between align-items-center">
-              <div class="d-flex align-items-center">
-                <h5 class="mb-0">
-                  <lucide-icon class="mr-2" name="package" />
-                  {{$t('Selected_Products') || $t('ProductName')}}
-                </h5>
-                <span class="badge badge-primary ml-2" v-if="products_added.length > 0">{{products_added.length}}</span>
-              </div>
-              <div class="action-buttons">
-                <button @click="reset()" type="button" class="btn btn-outline-danger btn-sm">
-                  <lucide-icon class="mr-1" name="power" />
-                  {{$t('Reset')}}
-                </button>
-                <button
-                  v-if="ShowCard"
-                  @click="print_all_Barcode()"
-                  type="button"
-                  class="btn btn-sm print-btn"
-                >
-                  <lucide-icon class="mr-1" name="receipt" />
-                  {{$t('print')}}
-                </button>
-              </div>
-            </b-card-header>
-            <b-card-body>
-              <div class="table-responsive">
-                <table class="table table-hover modern-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">{{$t('ProductName')}}</th>
-                      <th scope="col">{{$t('CodeProduct')}}</th>
-                      <th scope="col" class="text-center">{{$t('Quantity')}}</th>
-                      <th scope="col" class="text-center">{{$t('Actions') || 'Actions'}}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-if="products_added.length === 0">
-                      <td colspan="4" class="text-center text-muted py-4">
-                        <lucide-icon class="mr-2" name="inbox" />
-                        {{$t('NodataAvailable')}}
-                      </td>
-                    </tr>
-                    <tr v-for="product in products_added" :key="product.code" class="product-row">
-                      <td class="product-name">{{product.name}}</td>
-                      <td class="product-code">{{product.code}}</td>
-                      <td class="text-center">
-                        <input
-                          v-model.number="product.qte"
-                          class="form-control quantity-input"
-                          type="number"
-                          min="1"
-                          @input="autoGenerateBarcodes"
-                        >
-                      </td>
-                      <td class="text-center">
-                        <button 
-                          @click="delete_Product(product.code)" 
-                          class="btn btn-sm btn-outline-danger delete-btn"
-                          :title="$t('Delete')"
-                        >
-                          <lucide-icon name="x" />
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </b-card-body>
-          </b-card>
-        </b-col>
-
-        <!-- Barcode Preview Card -->
-        <b-col md="12" v-if="ShowCard">
-          <b-card class="preview-card shadow-sm">
-            <b-card-header class="preview-header d-flex justify-content-between align-items-center">
-              <div class="d-flex align-items-center">
-                <h5 class="mb-0">
-                  <lucide-icon class="mr-2" name="receipt" />
-                  {{$t('Barcode_Preview') || 'Barcode Preview'}}
-                </h5>
-                <span class="badge badge-info ml-2" v-if="pages.length > 0">
-                  {{pages.length}} {{$t('Pages') || 'Pages'}}
-                </span>
-              </div>
-              <button
-                @click="print_all_Barcode()"
-                type="button"
-                class="btn btn-sm print-btn-large"
+        <!-- Product search -->
+        <px-card :title="$t('ProductName')" class="pxbc__searchcard">
+          <div class="pxbc__search">
+            <button
+              type="button"
+              class="pxbc__scanbtn"
+              @click="showModal"
+              :title="$t('Scan_Barcode') || 'Escanear'"
+            >
+              <lucide-icon name="qr-code" :size="18" />
+            </button>
+            <input
+              :placeholder="$t('Scan_Search_Product_by_Code_Name')"
+              @input="e => search_input = e.target.value"
+              @keyup="search(search_input)"
+              @focus="handleFocus"
+              @blur="handleBlur"
+              ref="product_autocomplete"
+              class="pxbc__searchinput"
+            />
+            <ul class="pxbc__results pxn-scroll" v-show="focused && product_filter.length">
+              <li
+                class="pxbc__result"
+                v-for="product_fil in product_filter"
+                :key="product_fil.code"
+                @mousedown="SearchProduct(product_fil)"
               >
-                <lucide-icon class="mr-1" name="receipt" />
-                {{$t('print')}}
-              </button>
-            </b-card-header>
-            <b-card-body>
-              <div class="barcode-row" id="print_barcode_label">
-                <div v-for="(page, pageIndex) in pages" :key="pageIndex">
-                  <div :class="class_type_page">
-                    <div class="barcode-item" :class="class_sheet" v-for="(barcode, index) in page" :key="index">
-                      <div class="head_barcode text-left" style="padding-left: 10px; font-weight: bold;font-size: 10px;">
-                        <span class="barcode-name">{{barcode.name}}</span>
-                        <span class="barcode-price" v-if="show_price">{{currentUser.currency}} {{barcode.Net_price}}</span>
-                      </div>
-                      <barcode
-                        class="barcode"
-                        :format="barcode.Type_barcode"
-                        :value="barcode.barcode"
-                        textmargin="0"
-                        fontoptions="bold"
-                        fontSize="15"
-                        height="25"
-                        width="1"
-                      ></barcode>
-                    </div>
+                {{ getResultValue(product_fil) }}
+              </li>
+            </ul>
+          </div>
+        </px-card>
+
+        <!-- Selected products -->
+        <px-card :title="$t('Selected_Products') || $t('ProductName')">
+          <template #actions>
+            <px-badge v-if="products_added.length > 0" tone="neutral">{{ products_added.length }}</px-badge>
+            <px-button
+              v-if="products_added.length > 0"
+              variant="ghost"
+              size="sm"
+              icon="rotate-ccw"
+              @click="reset"
+            >{{ $t('Reset') }}</px-button>
+          </template>
+          <px-table :columns="cols" :rows="products_added" row-key="code" has-row-actions>
+            <template #cell-code="{ row }">
+              <span class="pxn-mono">{{ row.code }}</span>
+            </template>
+            <template #cell-qte="{ row }">
+              <input
+                v-model.number="row.qte"
+                class="pxbc__qty"
+                type="number"
+                min="1"
+                @input="autoGenerateBarcodes"
+              />
+            </template>
+            <template #row-actions="{ row }">
+              <px-button
+                variant="ghost"
+                size="sm"
+                icon-only
+                icon="x"
+                :title="$t('Delete')"
+                @click="delete_Product(row.code)"
+              />
+            </template>
+            <template #empty>
+              <px-empty-state
+                icon="inbox"
+                :title="$t('NodataAvailable')"
+                description="Busca un producto arriba para añadirlo a la lista."
+              />
+            </template>
+          </px-table>
+        </px-card>
+
+        <!-- Barcode preview -->
+        <px-card v-if="ShowCard" :title="$t('Barcode_Preview') || 'Vista previa'">
+          <template #actions>
+            <px-badge v-if="pages.length > 0" tone="info">{{ pages.length }} {{ $t('Pages') || 'páginas' }}</px-badge>
+            <px-button variant="primary" size="sm" icon="printer" @click="print_all_Barcode">{{ $t('print') }}</px-button>
+          </template>
+          <div class="pxbc__preview" id="print_barcode_label">
+            <div v-for="(page, pageIndex) in pages" :key="pageIndex">
+              <div :class="class_type_page">
+                <div class="barcode-item" :class="class_sheet" v-for="(bc, index) in page" :key="index">
+                  <div class="head_barcode text-left" style="padding-left: 10px; font-weight: bold;font-size: 10px;">
+                    <span class="barcode-name">{{ bc.name }}</span>
+                    <span class="barcode-price" v-if="show_price">{{ currentUser.currency }} {{ bc.Net_price }}</span>
                   </div>
+                  <barcode
+                    class="barcode"
+                    :format="bc.Type_barcode"
+                    :value="bc.barcode"
+                    textmargin="0"
+                    fontoptions="bold"
+                    fontSize="15"
+                    height="25"
+                    width="1"
+                  ></barcode>
                 </div>
               </div>
-            </b-card-body>
-          </b-card>
-        </b-col>
-      </b-row>
-    </div>
+            </div>
+          </div>
+        </px-card>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -283,11 +224,33 @@
 import VueBarcode from "vue-barcode";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: "Imprimir código de barras" },
   components: {
-    barcode: VueBarcode
+    barcode: VueBarcode,
+    PxPageHeader,
+    PxCard,
+    PxField,
+    PxInput,
+    PxCheck,
+    PxTable,
+    PxButton,
+    PxBadge,
+    PxModal,
+    PxEmptyState,
+    "vs-px": VsPx
   },
   data() {
     return {
@@ -297,6 +260,7 @@ export default {
       product_filter:[],
       isLoading: true,
       ShowCard: false,
+      scanOpen: false,
       barcode: {
         product_id: "",
         warehouse_id: "",
@@ -308,7 +272,7 @@ export default {
       total_a4:'',
       class_sheet:'',
       class_type_page:'',
-      rest:'',     
+      rest:'',
       warehouses: [],
       submitStatus: null,
       show_price:true,
@@ -332,12 +296,19 @@ export default {
 
   computed: {
     ...mapGetters(["currentUser"]),
+    cols() {
+      return [
+        { key: "name", label: this.$t("ProductName"), strong: true },
+        { key: "code", label: this.$t("CodeProduct") },
+        { key: "qte", label: this.$t("Quantity"), align: "center" }
+      ];
+    },
     canGenerateBarcodes() {
-      const hasPaperSize = this.paper_size && 
-                          (this.sheets > 0 || 
-                           this.paper_size === 'customstyle' || 
+      const hasPaperSize = this.paper_size &&
+                          (this.sheets > 0 ||
+                           this.paper_size === 'customstyle' ||
                            (this.paper_size && this.paper_size.startsWith('sticker_')));
-      return this.products_added.length > 0 && 
+      return this.products_added.length > 0 &&
              hasPaperSize &&
              this.barcode.warehouse_id;
     }
@@ -426,15 +397,14 @@ export default {
     },
 
     showModal() {
-      this.$bvModal.show('open_scan');
-      
+      this.scanOpen = true;
     },
 
     onScan (decodedText, decodedResult) {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      this.scanOpen = false;
     },
 
     Per_Page(){
@@ -486,7 +456,7 @@ export default {
         this.sheets = 1;
         this.class_sheet = 'customstyle';
         this.class_type_page = 'barcode_custom';
-        
+
         // Extract dimensions from option
         const option = this.getPaperSizeOptions().find(opt => opt.value === value);
         if (option && option.width && option.height) {
@@ -495,9 +465,9 @@ export default {
           this.applyCustomStickerDimensions();
         }
       }
-     
+
       this.Per_Page();
-      
+
       // Force regeneration when paper size changes (skip auto-print so user can preview first)
       this.$nextTick(() => {
         if (this.canGenerateBarcodes) {
@@ -520,7 +490,7 @@ export default {
         {label: '12 per sheet (a4) (2.5 * 2.834)', value: 'style12'},
         {label: '10 per sheet (4 * 2)', value: 'style10'},
       ];
-      
+
       // Add sticker size options
       const stickerOptions = [
         {label: 'Stickers - 50mm x 25mm', value: 'sticker_50x25', width: 50, height: 25},
@@ -540,7 +510,7 @@ export default {
         {label: 'Stickers - 105mm x 74mm', value: 'sticker_105x74', width: 105, height: 74},
         {label: 'Stickers - 148mm x 105mm (A5)', value: 'sticker_148x105', width: 148, height: 105},
       ];
-      
+
       // Add sticker options to base options
       stickerOptions.forEach(option => {
         baseOptions.push({
@@ -550,10 +520,10 @@ export default {
           height: option.height
         });
       });
-      
+
       // Add custom sticker option
       baseOptions.push({label: 'Stickers - Custom Value', value: 'customstyle'});
-      
+
       return baseOptions;
     },
     // Update custom sticker label in options
@@ -570,16 +540,16 @@ export default {
       this.$nextTick(() => {
         const styleId = 'custom-sticker-dimensions';
         let styleElement = document.getElementById(styleId);
-        
+
         if (!styleElement) {
           styleElement = document.createElement('style');
           styleElement.id = styleId;
           document.head.appendChild(styleElement);
         }
-        
+
         const widthMM = this.custom_sticker_width || 50;
         const heightMM = this.custom_sticker_height || 25;
-        
+
         // Convert mm to CSS units (1mm = 3.7795275590551px, but we'll use mm directly)
         styleElement.textContent = `
           .barcode_custom {
@@ -592,9 +562,9 @@ export default {
     //------ Auto Generate Barcodes
     autoGenerateBarcodes(skipAutoPrint = false) {
       if (this.isGenerating) return;
-      
+
       this.isGenerating = true;
-      
+
       // Clear any pending print timeout
       if (this.printTimeout) {
         clearTimeout(this.printTimeout);
@@ -606,7 +576,7 @@ export default {
         if (this.canGenerateBarcodes) {
           this.generatePages();
           this.ShowCard = true;
-          
+
           // Auto-print after a short delay if enabled and not skipped
           if (this.auto_print && this.pages.length > 0 && !skipAutoPrint) {
             this.printTimeout = setTimeout(() => {
@@ -616,7 +586,7 @@ export default {
         } else {
           this.ShowCard = false;
         }
-        
+
         this.isGenerating = false;
       });
     },
@@ -657,7 +627,7 @@ export default {
         }
       }
     },
-    
+
    // Search Products
     search(){
       if (this.timer) {
@@ -677,7 +647,7 @@ export default {
                 this.product_filter=  this.products.filter(product => {
 
                   return tokens.every(token =>
-                      product.name.toLowerCase().includes(token) 
+                      product.name.toLowerCase().includes(token)
                       ||  product.code.toLowerCase().includes(token)
                       ||  product.barcode.toLowerCase().includes(token)
                       ||  (product.note && product.note.toLowerCase().includes(token))
@@ -712,7 +682,7 @@ export default {
     getResultValue(result) {
       return result.code + " " + "(" + result.name + ")";
     },
-   
+
      //------ Submit Search Product
      SearchProduct(result) {
       const existingProduct = this.products_added.find(product => product.code === result.code);
@@ -837,7 +807,7 @@ export default {
          a.print();
       }, 1000);
 
-      
+
     },
 
     generatePages() {
@@ -858,7 +828,7 @@ export default {
         this.pages.push(allBarcodes.splice(0, this.sheets));
       }
     },
-   
+
     //-------------------------------------- Show Barcode -------------------------\\
     showBarcode() {
       // this.Per_Page();
@@ -907,19 +877,19 @@ export default {
       this.pages = [];
       this.custom_sticker_width = 50;
       this.custom_sticker_height = 25;
-      
+
       // Clear any pending print timeout
       if (this.printTimeout) {
         clearTimeout(this.printTimeout);
         this.printTimeout = null;
       }
-      
+
       // Remove custom style
       const styleElement = document.getElementById('custom-sticker-dimensions');
       if (styleElement) {
         styleElement.remove();
       }
-      
+
       // Reset sheets for sticker sizes
       if (this.paper_size && this.paper_size.startsWith('sticker_')) {
         this.sheets = 1;
@@ -957,625 +927,135 @@ export default {
 };
 </script>
 
-
-<style scoped>
-  .barcode-container {
-    padding: 0;
-  }
-
-  /* Card Styles */
-  .config-card,
-  .search-card,
-  .products-card,
-  .preview-card {
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    background: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    transition: all 0.2s ease;
-  }
-
-  .config-card:hover,
-  .search-card:hover,
-  .products-card:hover,
-  .preview-card:hover {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
-    border-color: #d1d5db;
-  }
-
-  .config-header,
-  .search-header,
-  .products-header,
-  .preview-header {
-    background: #f9fafb;
-    color: #1f2937;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 1rem 1.5rem;
-    border-radius: 8px 8px 0 0;
-  }
-
-  .config-header h5,
-  .search-header h5,
-  .products-header h5,
-  .preview-header h5 {
-    color: #1f2937;
-    font-weight: 600;
-    font-size: 1rem;
-    margin: 0;
-  }
-
-  .config-header h5 i,
-  .search-header h5 i,
-  .products-header h5 i,
-  .preview-header h5 i {
-    color: #8b5cf6;
-    margin-right: 0.5rem;
-  }
-
-  /* Input Styles */
-  .input-with-icon {
-    display: flex;
-    align-items: stretch;
-    position: relative;
-  }
-
-  .scan-btn {
-    background: #8b5cf6;
-    border: 1px solid #7c3aed;
-    color: white;
-    padding: 0.625rem 1rem;
-    border-radius: 6px 0 0 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 48px;
-  }
-
-  .scan-btn:hover {
-    background: #7c3aed;
-    border-color: #6d28d9;
-  }
-
-  .scan-btn:active {
-    transform: scale(0.98);
-  }
-
-  .scan-btn i {
-    font-size: 1.1rem;
-  }
-
-  .modern-input {
-    flex: 1;
-    padding: 0.625rem 1rem;
-    border: 1px solid #d1d5db;
-    border-left: none;
-    border-radius: 0 6px 6px 0;
-    font-size: 0.9375rem;
-    transition: all 0.2s ease;
-    background: #ffffff;
-  }
-
-  .modern-input:focus {
-    outline: none;
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-  }
-
-  .modern-input::placeholder {
-    color: #9ca3af;
-  }
-
-  /* Autocomplete */
-  .autocomplete {
-    position: relative;
-  }
-
-  .autocomplete-result-list {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #d1d5db;
-    border-top: none;
-    border-radius: 0 0 6px 6px;
-    max-height: 280px;
-    overflow-y: auto;
-    z-index: 1000;
-    margin-top: -1px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-
-  .autocomplete-result {
-    padding: 0.75rem 3rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    border-bottom: 1px solid #f3f4f6;
-    font-size: 0.9375rem;
-    color: #374151;
-  }
-
-  .autocomplete-result:hover {
-    background: #f9fafb;
-    color: #1f2937;
-  }
-
-  .autocomplete-result:last-child {
-    border-bottom: none;
-  }
-
-  /* Table Styles */
-  .modern-table {
-    margin-bottom: 0;
-    border-collapse: separate;
-    border-spacing: 0;
-  }
-
-  .modern-table thead th {
-    background: #f9fafb;
-    border-bottom: 1px solid #e5e7eb;
-    font-weight: 600;
-    color: #374151;
-    padding: 0.875rem 1rem;
-    font-size: 0.8125rem;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-  }
-
-  .modern-table tbody tr {
-    transition: background-color 0.15s ease;
-    border-bottom: 1px solid #f3f4f6;
-  }
-
-  .modern-table tbody tr:hover {
-    background: #f9fafb;
-  }
-
-  .modern-table tbody tr:last-child {
-    border-bottom: none;
-  }
-
-  .product-row td {
-    padding: 1rem;
-    vertical-align: middle;
-    font-size: 0.9375rem;
-  }
-
-  .product-name {
-    font-weight: 500;
-    color: #1f2937;
-  }
-
-  .product-code {
-    color: #6b7280;
-    font-family: 'Courier New', monospace;
-    font-size: 0.875rem;
-  }
-
-  .quantity-input {
-    width: 90px;
-    text-align: center;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
-    transition: all 0.2s ease;
-    font-size: 0.9375rem;
-  }
-
-  .quantity-input:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-    outline: none;
-  }
-
-  .delete-btn {
-    border: 1px solid #fee2e2;
-    background: #fef2f2;
-    color: #dc2626;
-    padding: 0.5rem 0.75rem;
-    transition: all 0.2s ease;
-    border-radius: 6px;
-    font-size: 0.875rem;
-  }
-
-  .delete-btn:hover {
-    background: #fee2e2;
-    border-color: #fecaca;
-    color: #b91c1c;
-  }
-
-  /* Checkbox Styles */
-  .modern-checkbox {
-    display: flex;
-    align-items: center;
-    padding: 0.875rem 1rem;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-  }
-
-  .modern-checkbox:hover {
-    background: #f3f4f6;
-    border-color: #d1d5db;
-  }
-
-  .modern-checkbox input[type="checkbox"] {
-    margin-right: 0.75rem;
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #8b5cf6;
-  }
-
-  .checkbox-label {
-    font-weight: 500;
-    color: #374151;
-    cursor: pointer;
-    font-size: 0.9375rem;
-    user-select: none;
-  }
-
-  /* Buttons */
-  .action-buttons {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .print-btn,
-  .print-btn-large {
-    background: #8b5cf6;
-    border: 1px solid #7c3aed;
-    color: white;
-    font-weight: 500;
-    transition: all 0.2s ease;
-  }
-
-  .print-btn:hover,
-  .print-btn-large:hover {
-    background: #7c3aed;
-    border-color: #6d28d9;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
-  }
-
-  .print-btn:active,
-  .print-btn-large:active {
-    transform: translateY(0);
-  }
-
-  .print-btn-large {
-    padding: 0.625rem 1.5rem;
-    font-size: 0.9375rem;
-  }
-
-  /* Badge Styles */
-  .badge {
-    padding: 0.375em 0.75em;
-    font-weight: 600;
-    border-radius: 4px;
-    font-size: 0.75rem;
-  }
-
-  .badge-primary {
-    background: #ede9fe;
-    color: #6d28d9;
-  }
-
-  .badge-info {
-    background: #dbeafe;
-    color: #1e40af;
-  }
-
-  /* Barcode Preview */
-  .barcode-row {
-    background: #ffffff;
-    padding: 1.5rem;
-    border-radius: 6px;
-    border: 1px solid #e5e7eb;
-  }
-
-  /* Form Group Labels */
-  ::v-deep .form-group label {
-    font-weight: 500;
-    color: #374151;
-    font-size: 0.875rem;
-    margin-bottom: 0.5rem;
-  }
-
-  /* Card Body */
-  ::v-deep .card-body {
-    padding: 1.5rem;
-  }
-
-  /* Empty State */
-  .modern-table tbody tr td.text-center.text-muted {
-    padding: 2rem 1rem;
-    font-size: 0.9375rem;
-  }
-
-  .modern-table tbody tr td.text-center.text-muted i {
-    font-size: 2rem;
-    opacity: 0.3;
-    margin-bottom: 0.5rem;
-    display: block;
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .action-buttons {
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .action-buttons button {
-      flex: 1;
-      min-width: 120px;
-    }
-
-    .scan-btn {
-      min-width: 44px;
-      padding: 0.625rem 0.875rem;
-    }
-
-    .products-header,
-    .preview-header {
-      flex-direction: column;
-      align-items: flex-start !important;
-      gap: 1rem;
-    }
-
-    .products-header .d-flex,
-    .preview-header .d-flex {
-      width: 100%;
-      justify-content: space-between;
-    }
-  }
-
-  /* Loading State */
-  .loading_page {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 400px;
-  }
-
-  /* Custom Sticker Dimensions */
-  .custom-dimensions-input {
-    margin-top: 0.5rem;
-  }
-
-  .custom-dimensions-input .form-control {
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.9375rem;
-    transition: all 0.2s ease;
-  }
-
-  .custom-dimensions-input .form-control:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-    outline: none;
-  }
-
-  .custom-dimensions-input .form-control:disabled {
-    background-color: #f9fafb;
-    border-color: #e5e7eb;
-    color: #6b7280;
-    cursor: not-allowed;
-  }
-
-  .custom-dimensions-input small {
-    display: block;
-    margin-top: 0.25rem;
-    font-size: 0.75rem;
-    color: #6b7280;
-  }
-
-  .custom-dimensions-input small.text-muted i {
-    font-size: 0.875rem;
-    margin-right: 0.25rem;
-  }
-
-  /* Additional refinements */
-  ::v-deep .v-select .vs__dropdown-toggle {
-    border-color: #d1d5db;
-    border-radius: 6px;
-    padding: 0.5rem;
-  }
-
-  ::v-deep .v-select .vs__dropdown-toggle:focus-within {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-  }
-
-  ::v-deep .v-select.vs--open .vs__dropdown-toggle {
-    border-color: #8b5cf6;
-  }
-</style>
-
-<!-- Non-scoped dark-mode overrides. The scoped block above gets a
-     [data-v-xxxx] attribute on every selector and beats the global
-     dark-theme rules in _dark.scss. Re-declare this page's surfaces
-     (without `scoped`) so .dark-theme on <body> can reach them. -->
-<style>
-/* Cards — white bg + light border on every card on the page. */
-.dark-theme .barcode-container .config-card,
-.dark-theme .barcode-container .search-card,
-.dark-theme .barcode-container .products-card,
-.dark-theme .barcode-container .preview-card {
-  background: #202020;
-  border-color: #2a2a2a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxbc {
+  min-height: 100%;
+  background: var(--pxn-bg);
+  padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9);
 }
-.dark-theme .barcode-container .config-card:hover,
-.dark-theme .barcode-container .search-card:hover,
-.dark-theme .barcode-container .products-card:hover,
-.dark-theme .barcode-container .preview-card:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
-  border-color: #2f2f2f;
+@media (max-width: 620px) {
+  .pxbc { padding: var(--pxn-space-6) var(--pxn-space-5); }
 }
 
-/* Card headers */
-.dark-theme .barcode-container .config-header,
-.dark-theme .barcode-container .search-header,
-.dark-theme .barcode-container .products-header,
-.dark-theme .barcode-container .preview-header {
-  background: #292929;
-  color: #d8d8d8;
-  border-bottom-color: #2a2a2a;
+.pxbc__lead {
+  margin: 0 0 var(--pxn-space-6);
+  font-size: var(--pxn-fs-sm);
+  color: var(--pxn-ink-3);
 }
-.dark-theme .barcode-container .config-header h5,
-.dark-theme .barcode-container .search-header h5,
-.dark-theme .barcode-container .products-header h5,
-.dark-theme .barcode-container .preview-header h5 {
-  color: #d8d8d8;
+.pxbc__loading { padding: var(--pxn-space-7) 0; }
+
+.pxbc__stack { display: flex; flex-direction: column; gap: var(--pxn-space-6); }
+
+.pxbc__grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pxn-space-5) var(--pxn-space-6);
+}
+@media (max-width: 720px) {
+  .pxbc__grid2 { grid-template-columns: 1fr; }
+}
+.pxbc__mt { margin-top: var(--pxn-space-5); }
+.pxbc__span2 { grid-column: 1 / -1; }
+.pxbc__hint {
+  display: flex; align-items: center; gap: var(--pxn-space-2);
+  margin: 0; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3);
 }
 
-/* Search input + autocomplete dropdown */
-.dark-theme .barcode-container .modern-input {
-  background: #1a1a1a;
-  border-color: #2a2a2a;
-  color: #d8d8d8;
+.pxbc__toggles {
+  display: flex; flex-wrap: wrap; gap: var(--pxn-space-4) var(--pxn-space-7);
+  margin-top: var(--pxn-space-6);
+  padding-top: var(--pxn-space-6);
+  border-top: 1px solid var(--pxn-border);
 }
-.dark-theme .barcode-container .modern-input::placeholder {
-  color: rgba(216, 216, 216, 0.45);
+@media (max-width: 620px) {
+  .pxbc__toggles { flex-direction: column; }
 }
-.dark-theme .barcode-container .modern-input:focus {
-  border-color: #a78bfa;
-  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.18);
-}
-.dark-theme .barcode-container .autocomplete-result-list {
-  background: #202020;
-  border-color: #2a2a2a;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
-}
-.dark-theme .barcode-container .autocomplete-result {
-  background: #202020;
-  color: #d8d8d8;
-  border-bottom-color: #2a2a2a;
-}
-.dark-theme .barcode-container .autocomplete-result:hover {
-  background: rgba(139, 92, 246, 0.18);
-  color: #a78bfa;
+.pxbc__toggle {
+  display: inline-flex; align-items: center; gap: var(--pxn-space-3);
+  font-size: var(--pxn-fs-body); color: var(--pxn-ink-2); cursor: pointer;
 }
 
-/* Selected-products table */
-.dark-theme .barcode-container .modern-table thead th {
-  background: #292929;
-  color: rgba(216, 216, 216, 0.85);
-  border-bottom-color: #2a2a2a;
+/* Product search */
+/* The bespoke autocomplete list is position:absolute; PxCard clips its body
+   (overflow:clip) so let this one card overflow to show the dropdown. */
+.pxbc__searchcard { overflow: visible; }
+.pxbc__search { position: relative; display: flex; align-items: stretch; }
+.pxbc__scanbtn {
+  display: flex; align-items: center; justify-content: center; min-width: 44px;
+  border: 1px solid var(--pxn-primary);
+  background: var(--pxn-primary);
+  color: var(--pxn-primary-contrast);
+  border-radius: var(--pxn-radius-md) 0 0 var(--pxn-radius-md);
+  cursor: pointer;
+  transition: background var(--pxn-dur-1) var(--pxn-ease), border-color var(--pxn-dur-1) var(--pxn-ease);
 }
-.dark-theme .barcode-container .modern-table tbody tr {
-  border-bottom-color: #2a2a2a;
+.pxbc__scanbtn:hover { background: var(--pxn-primary-hover); border-color: var(--pxn-primary-hover); }
+.pxbc__scanbtn:active { transform: translateY(1px); }
+.pxbc__searchinput {
+  flex: 1; min-width: 0;
+  height: var(--pxn-control-h-md);
+  padding: 0 var(--pxn-space-5);
+  border: 1px solid var(--pxn-border-control);
+  border-left: none;
+  border-radius: 0 var(--pxn-radius-md) var(--pxn-radius-md) 0;
+  background: var(--pxn-surface);
+  color: var(--pxn-ink);
+  font-size: var(--pxn-fs-body);
 }
-.dark-theme .barcode-container .modern-table tbody tr:hover {
-  background: rgba(139, 92, 246, 0.08);
+.pxbc__searchinput:focus {
+  outline: none;
+  border-color: var(--pxn-primary);
+  box-shadow: 0 0 0 3px var(--pxn-primary-softer);
 }
-.dark-theme .barcode-container .product-row td {
-  color: #d8d8d8;
+.pxbc__searchinput::placeholder { color: var(--pxn-ink-3); }
+
+.pxbc__results {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  z-index: var(--pxn-z-dropdown);
+  background: var(--pxn-surface);
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-md);
+  box-shadow: var(--pxn-shadow-menu);
+  max-height: 280px; overflow-y: auto;
+  padding: var(--pxn-space-2);
 }
-.dark-theme .barcode-container .product-name {
-  color: #d8d8d8;
+.pxbc__result {
+  padding: var(--pxn-space-3) var(--pxn-space-4);
+  border-radius: var(--pxn-radius-sm);
+  font-size: var(--pxn-fs-sm);
+  color: var(--pxn-ink-2);
+  cursor: pointer;
 }
-.dark-theme .barcode-container .product-code {
-  color: rgba(216, 216, 216, 0.65);
+.pxbc__result:hover { background: var(--pxn-primary-soft); color: var(--pxn-primary-ink); }
+
+/* Quantity cell input */
+.pxbc__qty {
+  width: 84px; text-align: center;
+  height: var(--pxn-control-h-sm);
+  border: 1px solid var(--pxn-border-control);
+  border-radius: var(--pxn-radius-sm);
+  background: var(--pxn-surface);
+  color: var(--pxn-ink);
+  font-size: var(--pxn-fs-sm);
 }
-.dark-theme .barcode-container .modern-table tbody tr td.text-center.text-muted {
-  color: rgba(216, 216, 216, 0.55) !important;
+.pxbc__qty:focus {
+  outline: none;
+  border-color: var(--pxn-primary);
+  box-shadow: 0 0 0 3px var(--pxn-primary-softer);
 }
 
-/* Quantity input + delete button */
-.dark-theme .barcode-container .quantity-input {
-  background: #1a1a1a;
-  border-color: #2a2a2a;
-  color: #d8d8d8;
-}
-.dark-theme .barcode-container .quantity-input:focus {
-  border-color: #a78bfa;
-  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.18);
-}
-.dark-theme .barcode-container .delete-btn {
-  background: rgba(220, 38, 38, 0.12);
-  border-color: rgba(220, 38, 38, 0.35);
-  color: #f87171;
-}
-.dark-theme .barcode-container .delete-btn:hover {
-  background: rgba(220, 38, 38, 0.22);
-  border-color: rgba(220, 38, 38, 0.55);
-  color: #fff;
-}
+.pxbc__scanner { width: 100%; }
 
-/* Modern-checkbox tiles */
-.dark-theme .barcode-container .modern-checkbox {
-  background: #292929;
-  border-color: #2a2a2a;
-}
-.dark-theme .barcode-container .modern-checkbox:hover {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: #2f2f2f;
-}
-.dark-theme .barcode-container .checkbox-label {
-  color: #d8d8d8;
-}
-
-/* Badges (count badges next to the section titles) */
-.dark-theme .barcode-container .badge-primary {
-  background: rgba(139, 92, 246, 0.2);
-  color: #a78bfa;
-}
-.dark-theme .barcode-container .badge-info {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
-}
-
-/* Barcode preview surface — keep the printed area readable.
-   Use a near-black surface; the inner barcode SVGs render their own
-   black bars so they stay visible. */
-.dark-theme .barcode-container .barcode-row {
-  background: #1a1a1a;
-  border-color: #2a2a2a;
-}
-
-/* Custom sticker dimensions inputs */
-.dark-theme .barcode-container .custom-dimensions-input .form-control {
-  background: #1a1a1a;
-  border-color: #2a2a2a;
-  color: #d8d8d8;
-}
-.dark-theme .barcode-container .custom-dimensions-input .form-control:focus {
-  border-color: #a78bfa;
-  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.18);
-}
-.dark-theme .barcode-container .custom-dimensions-input .form-control:disabled {
-  background: #232323;
-  border-color: #2a2a2a;
-  color: rgba(216, 216, 216, 0.45);
-}
-.dark-theme .barcode-container .custom-dimensions-input small,
-.dark-theme .barcode-container .custom-dimensions-input small.text-muted {
-  color: rgba(216, 216, 216, 0.6);
-}
-
-/* Form-group labels — the scoped ::v-deep rule pins them to #374151
-   (dark slate), which becomes unreadable on dark. We have to use the
-   same ::v-deep route so we can outweigh the scoped specificity. */
-.dark-theme .barcode-container >>> .form-group label {
-  color: #d8d8d8;
-}
-
-/* v-select toggle (scan barcode warehouse + paper size dropdowns) */
-.dark-theme .barcode-container >>> .v-select .vs__dropdown-toggle {
-  background: #1a1a1a;
-  border-color: #2a2a2a;
-}
-.dark-theme .barcode-container >>> .v-select .vs__selected,
-.dark-theme .barcode-container >>> .v-select .vs__search {
-  color: #d8d8d8;
+/* On-screen preview surface. The inner print classes (class_type_page /
+   class_sheet / barcode-item / head_barcode / barcode) are untouched — they
+   drive print_all_Barcode() and /assets_setup/css/print_label.css. */
+.pxbc__preview {
+  background: var(--pxn-surface);
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-md);
+  padding: var(--pxn-space-6);
+  overflow-x: auto;
 }
 </style>
