@@ -1,582 +1,281 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Import_Purchases')" :folder="$t('ListPurchases')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+  <div class="px-next pximpp">
+    <px-page-header
+      :title="$t('Import_Purchases') || 'Importar compras'"
+      :breadcrumbs="[{ label: $t('Purchases') }, { label: $t('ListPurchases') }, { label: $t('Import_Purchases') || 'Importar compras' }]"
+    >
+      <template #actions>
+        <px-button variant="ghost" icon="arrow-left" @click="$router.push({ name: 'index_purchases' })">{{ $t('BackToList') || 'Volver al listado' }}</px-button>
+        <px-button variant="secondary" icon="file-spreadsheet" @click="downloadExample">{{ $t('Download_exemple') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <validation-observer ref="create_purchase" v-if="!isLoading">
-      <b-form @submit.prevent="Submit_Purchase">
-        <!-- Hero Header -->
-        <div :style="heroStyle">
-          <div :style="heroInnerStyle">
-            <div :style="heroLeftStyle">
-              <div :style="heroIconCircleStyle">
-                <lucide-icon name="file-up" :style="heroIconStyle" />
+    <p class="pximpp__lead">{{ $t('Import_Purchase_Sub') || 'Sube un archivo CSV con códigos de producto y cantidades para crear una compra de forma masiva.' }}</p>
+
+    <div v-if="isLoading" class="pximpp__pad">
+      <px-skeleton variant="lines" :rows="8" />
+    </div>
+
+    <validation-observer v-else ref="create_purchase" tag="div">
+      <div class="pximpp__grid">
+        <!-- Left: Purchase details -->
+        <px-card :title="$t('PurchaseDetails') || 'Detalles de la compra'" class="pximpp__sec">
+          <validation-provider ref="dateProvider" name="date" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('date')" required :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" type="date" v-model="purchase.date" @input="v.validate" /></template>
+            </px-field>
+          </validation-provider>
+
+          <validation-provider ref="supplierProvider" name="Supplier" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Supplier')" required :error="v.errors[0]" class="pximpp__gap">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="purchase.supplier_id" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Supplier')" @input="v.validate"
+                  :options="suppliers.map(s => ({ label: s.name, value: s.id }))" />
+              </template>
+            </px-field>
+          </validation-provider>
+
+          <validation-provider ref="warehouseProvider" name="warehouse" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('warehouse')" required :error="v.errors[0]" class="pximpp__gap">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="purchase.warehouse_id" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Warehouse')" @input="v.validate"
+                  :options="warehouses.map(w => ({ label: w.name, value: w.id }))" />
+              </template>
+            </px-field>
+          </validation-provider>
+
+          <validation-provider v-if="location_meta.requires" ref="locProvider" name="inventory_location" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Inventory_Location')" required :error="v.errors[0]" class="pximpp__gap">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" :disabled="!purchase.warehouse_id"
+                  v-model="purchase.inventory_location_id" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Inventory_Location')" @input="v.validate"
+                  :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))" />
+              </template>
+            </px-field>
+          </validation-provider>
+
+          <px-alert v-if="location_meta.blocked" tone="danger" class="pximpp__gap">
+            {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado. No se puede importar la compra hasta resolverlo.' }}
+          </px-alert>
+
+          <px-alert v-if="location_meta.requires && incompatibleRows.length" tone="warning" class="pximpp__gap">
+            {{ $t('Import_Location_Incompatible_Rows') || 'Algunas filas del CSV no se pueden importar a un almacén por ubicación (productos con variantes o serie/IMEI). Corrige el archivo antes de importar:' }}
+            <ul class="pximpp__inclist">
+              <li v-for="(row, i) in incompatibleRows" :key="'inc-' + i">
+                <code>{{ row.code }}</code> — {{ warningLabel(row.validation_warning) }}
+              </li>
+            </ul>
+          </px-alert>
+
+          <validation-provider ref="statutProvider" name="Status" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('Status')" required :error="v.errors[0]" class="pximpp__gap">
+              <template #default="{ id }">
+                <vs-px :input-id="id" :invalid="!!v.errors.length" v-model="purchase.statut" :reduce="o => o.value"
+                  :placeholder="$t('Choose_Status')" @input="v.validate"
+                  :options="[{ label: 'received', value: 'received' }, { label: 'pending', value: 'pending' }, { label: 'ordered', value: 'ordered' }]" />
+              </template>
+            </px-field>
+          </validation-provider>
+
+          <div v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_purchase')" class="pximpp__grid2 pximpp__gap">
+            <validation-provider name="Order Tax" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="v">
+              <px-field :label="$t('OrderTax')" :error="v.errors[0]">
+                <template #default="{ id }"><px-input :id="id" v-model.number="purchase.tax_rate" suffix="%" @input="v.validate($event); keyup_OrderTax()" /></template>
+              </px-field>
+            </validation-provider>
+            <validation-provider name="Discount" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="v">
+              <px-field :label="$t('Discount')" :error="v.errors[0]">
+                <template #default="{ id }"><px-input :id="id" v-model.number="purchase.discount" :suffix="currentUser.currency" @input="v.validate($event); keyup_Discount()" /></template>
+              </px-field>
+            </validation-provider>
+          </div>
+
+          <validation-provider v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_purchase')" name="Shipping" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="v">
+            <px-field :label="$t('Shipping')" :error="v.errors[0]" class="pximpp__gap">
+              <template #default="{ id }"><px-input :id="id" v-model.number="purchase.shipping" :suffix="currentUser.currency" @input="v.validate($event); keyup_Shipping()" /></template>
+            </px-field>
+          </validation-provider>
+
+          <px-field :label="$t('Note')" class="pximpp__gap">
+            <template #default="{ id }"><px-textarea :id="id" v-model="purchase.notes" :rows="3" :placeholder="$t('Afewwords')" /></template>
+          </px-field>
+        </px-card>
+
+        <!-- Right: CSV import + preview -->
+        <div class="pximpp__sec">
+          <px-card :title="$t('CSV_Import') || 'Importar CSV'">
+            <label
+              for="csv-file-input"
+              class="pximpp-dz"
+              :class="{ 'is-drag': dropzoneHover, 'has-file': !!import_products }"
+              @dragover.prevent="onDragOver"
+              @dragleave.prevent="onDragLeave"
+              @drop.prevent="onDrop"
+            >
+              <input id="csv-file-input" type="file" accept=".csv,text/csv" @change="onFileSelected" hidden />
+              <div class="pximpp-dz__inner">
+                <lucide-icon :name="import_products ? 'file-text' : 'cloud-upload'" :size="28" class="pximpp-dz__ico" />
+                <template v-if="!import_products">
+                  <div class="pximpp-dz__title">{{ $t('Click_Or_Drop_CSV') || 'Haz clic para elegir un archivo o arrástralo aquí' }}</div>
+                  <div class="pximpp-dz__hint">{{ $t('Accepted_Format_CSV') || 'Solo archivos .csv · separador punto y coma (;)' }}</div>
+                </template>
+                <template v-else>
+                  <div class="pximpp-dz__title">{{ import_products.name }}</div>
+                  <div class="pximpp-dz__hint">{{ formatBytes(import_products.size) }}</div>
+                  <px-button size="sm" variant="ghost" icon="x" @click.stop.prevent="clearFile">{{ $t('Remove') || 'Quitar' }}</px-button>
+                </template>
               </div>
-              <div>
-                <div :style="heroTitleStyle">{{ $t('Import_Purchases') }}</div>
-                <div :style="heroSubtitleStyle">
-                  {{ $t('Import_Purchase_Sub') || 'Upload a CSV file with product codes and quantities to create a purchase in bulk.' }}
-                </div>
+            </label>
+
+            <div v-if="previewLoading" class="pximpp__status is-loading">
+              <span class="px-skeleton" style="width:16px;height:16px;border-radius:999px;display:inline-block" />
+              {{ $t('Parsing_CSV') || 'Analizando y validando el CSV…' }}
+            </div>
+
+            <px-alert v-if="previewError" tone="danger" class="pximpp__gap">{{ previewError }}</px-alert>
+
+            <div v-if="previewRows.length" class="pximpp__preview">
+              <div class="pximpp__previewhead">
+                <span><lucide-icon name="check" :size="15" /> {{ $t('Preview') || 'Vista previa' }}</span>
+                <px-badge tone="info">{{ previewRows.length }} {{ $t('items') || 'items' }}</px-badge>
+                <span class="pximpp__muted">{{ $t('Review_Before_Submit') || 'Revisa los elementos antes de enviar' }}</span>
               </div>
+
+              <div class="pximpp-tbl__wrap pxn-scroll">
+                <table class="pximpp-tbl">
+                  <thead>
+                    <tr>
+                      <th style="width:40px">#</th>
+                      <th>{{ $t('Code') || 'Code' }}</th>
+                      <th>{{ $t('product_name') || 'Product' }}</th>
+                      <th class="is-right">{{ $t('Quantity') }}</th>
+                      <th class="is-right">{{ $t('Cost') }}</th>
+                      <th class="is-right">{{ $t('Subtotal') || 'Subtotal' }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template v-for="(row, idx) in previewRows">
+                      <tr :key="'prv-' + idx">
+                        <td class="pxn-num">{{ idx + 1 }}</td>
+                        <td>
+                          <span class="pxn-mono">{{ row.code }}</span>
+                          <px-badge v-if="row.is_batch_tracked" tone="info" icon="package" class="pximpp__badgeline">{{ $t('Batches') || 'Batches' }}</px-badge>
+                        </td>
+                        <td>{{ row.name }}</td>
+                        <td class="is-right pxn-num">{{ formatNumber(row.qty, 2) }} <span class="pximpp__muted">{{ row.unit }}</span></td>
+                        <td class="is-right pxn-num">{{ formatNumber(row.cost, priceDecimals) }}</td>
+                        <td class="is-right pxn-num">{{ formatNumber(row.total, priceDecimals) }}</td>
+                      </tr>
+
+                      <tr v-if="row.is_batch_tracked" :key="'batch-' + idx" class="pximpp__subrow">
+                        <td colspan="6">
+                          <div class="pximpp__panel">
+                            <div class="pximpp__panelhead">
+                              <span><lucide-icon name="package" :size="14" /> {{ $t('Batches') || 'Batches' }}
+                                <px-badge v-if="purchase.statut === 'received'" tone="neutral">{{ (row.batches || []).length }} {{ $t('items') || 'items' }}</px-badge>
+                              </span>
+                              <px-button v-if="purchase.statut === 'received'" size="sm" variant="secondary" icon="plus" @click="add_batch(row)">{{ $t('Add') || 'Add' }}</px-button>
+                            </div>
+
+                            <div v-if="purchase.statut !== 'received'" class="pximpp__panelmuted">
+                              <lucide-icon name="info" :size="13" /> {{ $t('Batches_Assigned_On_Receipt') || 'Los lotes se asignarán cuando la compra se marque como recibida.' }}
+                            </div>
+                            <div v-else-if="!row.batches || row.batches.length === 0" class="pximpp__panelmuted">
+                              <lucide-icon name="info" :size="13" /> {{ $t('Click_Add_To_Start') || 'Click "Add" to create a batch' }}
+                            </div>
+
+                            <table v-else class="pximpp-batchtbl">
+                              <thead>
+                                <tr>
+                                  <th>{{ $t('Batch_No') }} *</th>
+                                  <th>{{ $t('Mfg_Date') }}</th>
+                                  <th>{{ $t('Expiry_Date') }}</th>
+                                  <th class="is-right">{{ $t('Quantity') }} *</th>
+                                  <th class="is-right">{{ $t('Cost') }}</th>
+                                  <th style="width:40px"></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr v-for="(b, bIdx) in row.batches" :key="'b-' + idx + '-' + bIdx">
+                                  <td><input class="pximpp__bin" type="text" v-model="b.batch_no" :placeholder="$t('Batch_No')" /></td>
+                                  <td><input class="pximpp__bin" type="date" v-model="b.mfg_date" /></td>
+                                  <td><input class="pximpp__bin" type="date" v-model="b.expiry_date" /></td>
+                                  <td><input class="pximpp__bin is-right" type="text" inputmode="decimal" lang="en" pattern="[0-9]*[.,]?[0-9]*" :value="b.qty" @input="val => onBatchNumberInput(b, 'qty', val.target ? val.target.value : val)" placeholder="0" /></td>
+                                  <td><input class="pximpp__bin is-right" type="text" inputmode="decimal" lang="en" pattern="[0-9]*[.,]?[0-9]*" :value="b.unit_cost" @input="val => onBatchNumberInput(b, 'unit_cost', val.target ? val.target.value : val)" :placeholder="String(row.cost)" /></td>
+                                  <td class="is-center"><lucide-icon class="pximpp__ico is-del" name="x" :title="$t('Del') || 'Remove'" @click="remove_batch(row, bIdx)" /></td>
+                                </tr>
+                              </tbody>
+                            </table>
+
+                            <div v-if="purchase.statut === 'received' && batchQtyMismatch(row)" class="pximpp__panelwarn">
+                              <lucide-icon name="info" :size="13" />
+                              {{ $t('Total_batch_qty_mismatch') || 'Total batch quantity does not match the line quantity' }}
+                              ({{ formatNumber(batchTotalQty(row), 2) }} / {{ formatNumber(row.qty, 2) }})
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+
+                      <tr v-if="row.is_imei && !row.is_variant && !row.is_batch_tracked && location_meta.requires" :key="'serial-' + idx" class="pximpp__subrow">
+                        <td colspan="6">
+                          <div class="pximpp__panel">
+                            <div class="pximpp__panelhead">
+                              <span><lucide-icon name="scan-line" :size="14" /> {{ $t('Serials_IMEI') || 'Series / IMEI' }}
+                                <px-badge v-if="purchase.statut === 'received'" tone="neutral">{{ (row.serial_numbers || []).length }} / {{ serialRequiredCount(row) }}</px-badge>
+                              </span>
+                            </div>
+                            <div v-if="purchase.statut !== 'received'" class="pximpp__panelmuted">
+                              <lucide-icon name="info" :size="13" /> {{ $t('Serials_Assigned_On_Receipt') || 'Los seriales se asignarán cuando la compra se marque como recibida.' }}
+                            </div>
+                            <serial-numbers-field v-else mode="entry" v-model="row.serial_numbers" :required-count="serialRequiredCount(row)" />
+                            <div v-if="purchase.statut === 'received' && serialBaseIsFractional(row)" class="pximpp__panelwarn">
+                              <lucide-icon name="info" :size="13" />
+                              {{ $t('Serial_Fractional_Base') || 'La cantidad base de series/IMEI para esta línea no es un número entero. Corrige la cantidad o la unidad de compra.' }}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                  <tfoot>
+                    <tr class="pximpp__totrow">
+                      <td colspan="5">{{ $t('Subtotal') || 'Subtotal' }}</td>
+                      <td class="is-right pxn-num">{{ formatNumber(previewSubtotal, priceDecimals) }}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <px-alert v-if="hasBatchValidationErrors" tone="warning" icon="info" class="pximpp__gap">{{ firstBatchErrorDetail }}</px-alert>
+              <px-alert v-if="hasSerialValidationErrors" tone="warning" icon="info" class="pximpp__gap">{{ firstSerialErrorDetail }}</px-alert>
             </div>
-            <div :style="heroRightStyle">
-              <a
-                href="/import/exemples/import_purchases.csv"
-                :style="downloadBtnStyle"
-                download
-              >
-                <lucide-icon name="download" />
-                <span style="margin-left: 6px;">{{ $t('Download_exemple') }}</span>
-              </a>
+
+            <px-alert v-if="!import_products && !previewLoading && !previewError" tone="info" icon="info" class="pximpp__gap"
+              :title="$t('CSV_Format_Hint_Title') || 'Formato de CSV esperado'">
+              {{ $t('CSV_Format_Hint_Body') || 'Columnas: productcode;qty — usa el archivo de ejemplo como referencia.' }}
+            </px-alert>
+          </px-card>
+
+          <div class="pximpp__submitbar">
+            <div class="pximpp__submitinfo">
+              <template v-if="previewRows.length">
+                <strong>{{ previewRows.length }}</strong> {{ $t('items_ready') || 'items listos para importar' }} ·
+                <strong>{{ formatNumber(previewSubtotal, priceDecimals) }}</strong>
+              </template>
+              <template v-else>{{ $t('Upload_CSV_To_Preview') || 'Sube un archivo CSV para ver los elementos antes de enviar' }}</template>
             </div>
+            <px-button
+              variant="primary" icon="check"
+              :loading="SubmitProcessing"
+              :disabled="SubmitProcessing || !previewRows.length || hasBatchValidationErrors || hasSerialValidationErrors || locationGateBlocked"
+              @click="Submit_Purchase"
+            >{{ $t('submit') }}</px-button>
           </div>
         </div>
-
-        <b-row>
-          <!-- Left: Form -->
-          <b-col lg="5" md="12" sm="12">
-            <div :style="cardStyle">
-              <div :style="cardHeaderStyle">
-                <lucide-icon name="receipt" style="font-size: 16px; margin-right: 8px;" />
-                {{ $t('PurchaseDetails') || 'Purchase Details' }}
-              </div>
-              <div style="padding: 20px;">
-                <b-row>
-                  <!-- date -->
-                  <b-col md="12" class="mb-3">
-                    <validation-provider
-                      name="date"
-                      :rules="{ required: true}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group :label="$t('date') + ' *'">
-                        <b-form-input
-                          :state="getValidationState(validationContext)"
-                          type="date"
-                          v-model="purchase.date"
-                        ></b-form-input>
-                        <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Supplier -->
-                  <b-col md="12" class="mb-3">
-                    <validation-provider name="Supplier" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Supplier') + ' *'">
-                        <v-select
-                          :class="{'is-invalid': !!errors.length}"
-                          :state="errors[0] ? false : (valid ? true : null)"
-                          v-model="purchase.supplier_id"
-                          :reduce="label => label.value"
-                          :placeholder="$t('Choose_Supplier')"
-                          :options="suppliers.map(s => ({label: s.name, value: s.id}))"
-                        />
-                        <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- warehouse -->
-                  <b-col md="12" class="mb-3">
-                    <validation-provider name="warehouse" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' *'">
-                        <v-select
-                          :class="{'is-invalid': !!errors.length}"
-                          :state="errors[0] ? false : (valid ? true : null)"
-                          v-model="purchase.warehouse_id"
-                          :reduce="label => label.value"
-                          :placeholder="$t('Choose_Warehouse')"
-                          :options="warehouses.map(w => ({label: w.name, value: w.id}))"
-                        />
-                        <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- inventory location (MS4 · only location_primary warehouses) -->
-                  <b-col v-if="location_meta.requires" md="12" class="mb-3">
-                    <validation-provider name="inventory_location" :rules="{ required: true }">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
-                        <v-select
-                          :class="{'is-invalid': !!errors.length}"
-                          :state="errors[0] ? false : (valid ? true : null)"
-                          :disabled="!purchase.warehouse_id"
-                          v-model="purchase.inventory_location_id"
-                          :reduce="label => label.value"
-                          :placeholder="$t('Choose_Inventory_Location')"
-                          :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
-                        />
-                        <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- location_primary but not reconciled: block the import -->
-                  <b-col v-if="location_meta.blocked" md="12" class="mb-3">
-                    <b-alert show variant="danger" class="mb-0">
-                      {{ $t('Inventory_Location_Warehouse_Not_Ready') || 'Este almacén usa inventario por ubicación pero aún no está reconciliado. No se puede importar la compra hasta resolverlo.' }}
-                    </b-alert>
-                  </b-col>
-
-                  <!-- rows the location-native import cannot accept -->
-                  <b-col v-if="location_meta.requires && incompatibleRows.length" md="12" class="mb-3">
-                    <b-alert show variant="warning" class="mb-0">
-                      {{ $t('Import_Location_Incompatible_Rows') || 'Algunas filas del CSV no se pueden importar a un almacén por ubicación (productos con variantes o serie/IMEI). Corrige el archivo antes de importar:' }}
-                      <ul class="mb-0 mt-2" style="padding-left: 18px;">
-                        <li v-for="(row, i) in incompatibleRows" :key="'inc-' + i">
-                          <code>{{ row.code }}</code> — {{ warningLabel(row.validation_warning) }}
-                        </li>
-                      </ul>
-                    </b-alert>
-                  </b-col>
-
-                  <!-- Status -->
-                  <b-col md="12" class="mb-3">
-                    <validation-provider name="Status" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' *'">
-                        <v-select
-                          :class="{'is-invalid': !!errors.length}"
-                          :state="errors[0] ? false : (valid ? true : null)"
-                          v-model="purchase.statut"
-                          :reduce="label => label.value"
-                          :placeholder="$t('Choose_Status')"
-                          :options="[
-                            {label: 'received', value: 'received'},
-                            {label: 'pending', value: 'pending'},
-                            {label: 'ordered', value: 'ordered'}
-                          ]"
-                        ></v-select>
-                        <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Order Tax -->
-                  <b-col md="6" class="mb-3" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_purchase')">
-                    <validation-provider
-                      name="Order Tax"
-                      :rules="{ regex: /^\d*\.?\d*$/}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group :label="$t('OrderTax')">
-                        <b-input-group append="%">
-                          <b-form-input
-                            :state="getValidationState(validationContext)"
-                            v-model.number="purchase.tax_rate"
-                            @keyup="keyup_OrderTax()"
-                          ></b-form-input>
-                        </b-input-group>
-                        <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Discount -->
-                  <b-col md="6" class="mb-3" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_purchase')">
-                    <validation-provider
-                      name="Discount"
-                      :rules="{ regex: /^\d*\.?\d*$/}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group :label="$t('Discount')">
-                        <b-input-group :append="currentUser.currency">
-                          <b-form-input
-                            :state="getValidationState(validationContext)"
-                            v-model.number="purchase.discount"
-                            @keyup="keyup_Discount()"
-                          ></b-form-input>
-                        </b-input-group>
-                        <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Shipping -->
-                  <b-col md="12" class="mb-3" v-if="currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_purchase')">
-                    <validation-provider
-                      name="Shipping"
-                      :rules="{ regex: /^\d*\.?\d*$/}"
-                      v-slot="validationContext"
-                    >
-                      <b-form-group :label="$t('Shipping')">
-                        <b-input-group :append="currentUser.currency">
-                          <b-form-input
-                            :state="getValidationState(validationContext)"
-                            v-model.number="purchase.shipping"
-                            @keyup="keyup_Shipping()"
-                          ></b-form-input>
-                        </b-input-group>
-                        <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
-                    </validation-provider>
-                  </b-col>
-
-                  <!-- Notes -->
-                  <b-col md="12">
-                    <b-form-group :label="$t('Note')">
-                      <textarea
-                        v-model="purchase.notes"
-                        rows="3"
-                        class="form-control"
-                        :placeholder="$t('Afewwords')"
-                      ></textarea>
-                    </b-form-group>
-                  </b-col>
-                </b-row>
-              </div>
-            </div>
-          </b-col>
-
-          <!-- Right: CSV Upload + Preview -->
-          <b-col lg="7" md="12" sm="12">
-            <div :style="cardStyle">
-              <div :style="cardHeaderStyle">
-                <lucide-icon name="clipboard-list" style="font-size: 16px; margin-right: 8px;" />
-                {{ $t('CSV_Import') || 'CSV Import' }}
-              </div>
-              <div style="padding: 20px;">
-                <!-- Dropzone -->
-                <label
-                  for="csv-file-input"
-                  :style="dropzoneStyle"
-                  @dragover.prevent="onDragOver"
-                  @dragleave.prevent="onDragLeave"
-                  @drop.prevent="onDrop"
-                >
-                  <input
-                    id="csv-file-input"
-                    type="file"
-                    accept=".csv,text/csv"
-                    @change="onFileSelected"
-                    style="display: none;"
-                  />
-                  <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                    <div :style="dropzoneIconStyle">
-                      <lucide-icon name="cloud-sun" v-if="!import_products" />
-                      <lucide-icon name="file-text" v-else />
-                    </div>
-                    <div v-if="!import_products">
-                      <div style="font-size: 15px; font-weight: 600; color: #1f2937;">
-                        {{ $t('Click_Or_Drop_CSV') || 'Click to browse or drop your CSV file here' }}
-                      </div>
-                      <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
-                        {{ $t('Accepted_Format_CSV') || 'Only .csv files are supported · semicolon (;) separator' }}
-                      </div>
-                    </div>
-                    <div v-else style="text-align: center;">
-                      <div style="font-size: 14px; font-weight: 600; color: #1f2937;">
-                        {{ import_products.name }}
-                      </div>
-                      <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
-                        {{ formatBytes(import_products.size) }}
-                      </div>
-                      <button
-                        type="button"
-                        @click.stop.prevent="clearFile"
-                        :style="clearFileBtnStyle"
-                      >
-                        <lucide-icon name="x" style="margin-right: 4px;" />
-                        {{ $t('Remove') || 'Remove' }}
-                      </button>
-                    </div>
-                  </div>
-                </label>
-
-                <!-- Loading -->
-                <div v-if="previewLoading" :style="previewStatusStyle('loading')">
-                  <div class="spinner sm spinner-primary" style="display: inline-block; margin-right: 10px;"></div>
-                  {{ $t('Parsing_CSV') || 'Parsing and validating CSV...' }}
-                </div>
-
-                <!-- Error -->
-                <div v-if="previewError" :style="previewStatusStyle('error')">
-                  <lucide-icon name="x" style="margin-right: 8px; font-weight: bold;" />
-                  {{ previewError }}
-                </div>
-
-                <!-- Preview Table -->
-                <div v-if="previewRows.length" style="margin-top: 20px;">
-                  <div :style="previewHeaderStyle">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <lucide-icon name="check" style="font-size: 18px;" />
-                      <span>{{ $t('Preview') || 'Preview' }}</span>
-                      <span :style="previewBadgeStyle">
-                        {{ previewRows.length }} {{ $t('items') || 'items' }}
-                      </span>
-                    </div>
-                    <div style="font-size: 12px; opacity: 0.92;">
-                      {{ $t('Review_Before_Submit') || 'Review the items below before submitting' }}
-                    </div>
-                  </div>
-
-                  <div :style="previewTableWrapStyle">
-                    <table :style="previewTableStyle">
-                      <thead>
-                        <tr>
-                          <th :style="previewThStyle('left', 40)">#</th>
-                          <th :style="previewThStyle('left')">{{ $t('Code') || 'Code' }}</th>
-                          <th :style="previewThStyle('left')">{{ $t('product_name') || $t('Product_Name') || 'Product' }}</th>
-                          <th :style="previewThStyle('right')">{{ $t('Quantity') }}</th>
-                          <th :style="previewThStyle('right')">{{ $t('Cost') }}</th>
-                          <th :style="previewThStyle('right')">{{ $t('Subtotal') || 'Subtotal' }}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <template v-for="(row, idx) in previewRows">
-                          <tr
-                            :key="'prv-' + idx"
-                            :style="{ background: idx % 2 === 1 ? '#f9fafb' : '#ffffff', borderTop: '1px solid #e5e7eb' }"
-                          >
-                            <td :style="previewTdStyle('left')">
-                              <span :style="rowNumBadgeStyle">{{ idx + 1 }}</span>
-                            </td>
-                            <td :style="previewTdStyle('left')">
-                              <code :style="codeStyle">{{ row.code }}</code>
-                              <div v-if="row.is_batch_tracked" :style="batchPillStyle">
-                                <lucide-icon name="package" style="margin-right: 3px;" />
-                                {{ $t('Batches') || 'Batches' }}
-                              </div>
-                            </td>
-                            <td :style="previewTdStyle('left', true)">
-                              {{ row.name }}
-                            </td>
-                            <td :style="previewTdStyle('right')">
-                              {{ formatNumber(row.qty, 2) }} <span style="color: #9ca3af; font-size: 11px;">{{ row.unit }}</span>
-                            </td>
-                            <td :style="previewTdStyle('right')">
-                              {{ formatNumber(row.cost, priceDecimals) }}
-                            </td>
-                            <td :style="previewTdStyle('right', false, true)">
-                              {{ formatNumber(row.total, priceDecimals) }}
-                            </td>
-                          </tr>
-                          <tr v-if="row.is_batch_tracked" :key="'batch-' + idx">
-                            <td colspan="6" style="padding: 0; background: #ffffff;">
-                              <div :style="batchPanelStyle">
-                                <div :style="batchPanelHeaderStyle">
-                                  <div style="display: flex; align-items: center; gap: 8px;">
-                                    <lucide-icon name="package" style="font-size: 14px;" />
-                                    <span>{{ $t('Batches') || 'Batches' }}</span>
-                                    <span v-if="purchase.statut === 'received'" :style="batchCountBadgeStyle">
-                                      {{ (row.batches || []).length }} {{ $t('items') || 'items' }}
-                                    </span>
-                                  </div>
-                                  <button
-                                    v-if="purchase.statut === 'received'"
-                                    type="button"
-                                    @click="add_batch(row)"
-                                    :style="addBatchBtnStyle"
-                                  >
-                                    <lucide-icon name="plus" style="margin-right: 4px;" />
-                                    {{ $t('Add') || 'Add' }}
-                                  </button>
-                                </div>
-
-                                <div v-if="purchase.statut !== 'received'" :style="batchEmptyStyle">
-                                  <lucide-icon name="info" style="margin-right: 6px;" />
-                                  {{ $t('Batches_Assigned_On_Receipt') || 'Los lotes se asignarán cuando la compra se marque como recibida.' }}
-                                </div>
-
-                                <div v-else-if="!row.batches || row.batches.length === 0" :style="batchEmptyStyle">
-                                  <lucide-icon name="info" style="margin-right: 6px;" />
-                                  {{ $t('Click_Add_To_Start') || 'Click "Add" to create a batch' }}
-                                </div>
-
-                                <table v-else style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                                  <thead>
-                                    <tr style="background: #eef2ff;">
-                                      <th :style="batchThStyle">{{ $t('Batch_No') }} *</th>
-                                      <th :style="batchThStyle">{{ $t('Mfg_Date') }}</th>
-                                      <th :style="batchThStyle">{{ $t('Expiry_Date') }}</th>
-                                      <th :style="batchThRightStyle">{{ $t('Quantity') }} *</th>
-                                      <th :style="batchThRightStyle">{{ $t('Cost') }}</th>
-                                      <th :style="batchThStyle" style="width: 40px;"></th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    <tr
-                                      v-for="(b, bIdx) in row.batches"
-                                      :key="'b-' + idx + '-' + bIdx"
-                                      :style="{ background: bIdx % 2 === 1 ? '#f8faff' : '#ffffff', borderTop: '1px solid #e0e7ff' }"
-                                    >
-                                      <td :style="batchTdStyle">
-                                        <b-form-input
-                                          size="sm"
-                                          type="text"
-                                          v-model="b.batch_no"
-                                          :placeholder="$t('Batch_No')"
-                                          :style="batchInputStyle"
-                                        ></b-form-input>
-                                      </td>
-                                      <td :style="batchTdStyle">
-                                        <b-form-input
-                                          size="sm"
-                                          type="date"
-                                          v-model="b.mfg_date"
-                                          :style="batchInputStyle"
-                                        ></b-form-input>
-                                      </td>
-                                      <td :style="batchTdStyle">
-                                        <b-form-input
-                                          size="sm"
-                                          type="date"
-                                          v-model="b.expiry_date"
-                                          :style="batchInputStyle"
-                                        ></b-form-input>
-                                      </td>
-                                      <td :style="batchTdStyle">
-                                        <b-form-input
-                                          size="sm"
-                                          type="text"
-                                          inputmode="decimal"
-                                          lang="en"
-                                          pattern="[0-9]*[.,]?[0-9]*"
-                                          :value="b.qty"
-                                          @input="val => onBatchNumberInput(b, 'qty', val)"
-                                          placeholder="0"
-                                          :style="[batchInputStyle, { textAlign: 'right' }]"
-                                        ></b-form-input>
-                                      </td>
-                                      <td :style="batchTdStyle">
-                                        <b-form-input
-                                          size="sm"
-                                          type="text"
-                                          inputmode="decimal"
-                                          lang="en"
-                                          pattern="[0-9]*[.,]?[0-9]*"
-                                          :value="b.unit_cost"
-                                          @input="val => onBatchNumberInput(b, 'unit_cost', val)"
-                                          :placeholder="String(row.cost)"
-                                          :style="[batchInputStyle, { textAlign: 'right' }]"
-                                        ></b-form-input>
-                                      </td>
-                                      <td :style="batchTdStyle" style="text-align: center;">
-                                        <button
-                                          type="button"
-                                          @click="remove_batch(row, bIdx)"
-                                          :style="removeBatchBtnStyle"
-                                          :title="$t('Del') || 'Remove'"
-                                        >
-                                          <lucide-icon name="x" />
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-
-                                <div v-if="purchase.statut === 'received' && batchQtyMismatch(row)" :style="batchWarnStyle">
-                                  <lucide-icon name="info" style="margin-right: 6px;" />
-                                  {{ $t('Total_batch_qty_mismatch') || 'Total batch quantity does not match the line quantity' }}
-                                  ({{ formatNumber(batchTotalQty(row), 2) }} / {{ formatNumber(row.qty, 2) }})
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-
-                          <!-- Serial / IMEI entry: only a plain serialized row (not
-                               variant, not also batch-tracked) on a location_primary import -->
-                          <tr v-if="row.is_imei && !row.is_variant && !row.is_batch_tracked && location_meta.requires" :key="'serial-' + idx">
-                            <td colspan="6" style="padding: 0; background: #ffffff;">
-                              <div :style="batchPanelStyle">
-                                <div :style="batchPanelHeaderStyle">
-                                  <div style="display: flex; align-items: center; gap: 8px;">
-                                    <lucide-icon name="scan-barcode" style="font-size: 14px;" />
-                                    <span>{{ $t('Serials_IMEI') || 'Series / IMEI' }}</span>
-                                    <span v-if="purchase.statut === 'received'" :style="batchCountBadgeStyle">
-                                      {{ (row.serial_numbers || []).length }} / {{ serialRequiredCount(row) }}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                <div v-if="purchase.statut !== 'received'" :style="batchEmptyStyle">
-                                  <lucide-icon name="info" style="margin-right: 6px;" />
-                                  {{ $t('Serials_Assigned_On_Receipt') || 'Los seriales se asignarán cuando la compra se marque como recibida.' }}
-                                </div>
-
-                                <serial-numbers-field
-                                  v-else
-                                  mode="entry"
-                                  v-model="row.serial_numbers"
-                                  :required-count="serialRequiredCount(row)"
-                                />
-
-                                <div v-if="purchase.statut === 'received' && serialBaseIsFractional(row)" :style="batchWarnStyle">
-                                  <lucide-icon name="info" style="margin-right: 6px;" />
-                                  {{ $t('Serial_Fractional_Base') || 'La cantidad base de series/IMEI para esta línea no es un número entero. Corrige la cantidad o la unidad de compra.' }}
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        </template>
-                      </tbody>
-                      <tfoot>
-                        <tr :style="tfootRowStyle">
-                          <td :colspan="5" :style="tfootLabelStyle">
-                            {{ $t('Subtotal') || 'Subtotal' }}
-                          </td>
-                          <td :style="tfootValueStyle">
-                            {{ formatNumber(previewSubtotal, priceDecimals) }}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-
-                  <div v-if="hasBatchValidationErrors" :style="globalBatchWarnStyle">
-                    <lucide-icon name="info" style="margin-right: 6px; font-size: 16px;" />
-                    {{ firstBatchErrorDetail }}
-                  </div>
-                  <div v-if="hasSerialValidationErrors" :style="globalBatchWarnStyle">
-                    <lucide-icon name="info" style="margin-right: 6px; font-size: 16px;" />
-                    {{ firstSerialErrorDetail }}
-                  </div>
-                </div>
-
-                <!-- Empty helper when no file yet -->
-                <div
-                  v-if="!import_products && !previewLoading && !previewError"
-                  :style="emptyHintStyle"
-                >
-                  <lucide-icon name="info" style="font-size: 22px; color: #4f46e5;" />
-                  <div>
-                    <div style="font-weight: 600; color: #1f2937; margin-bottom: 2px;">
-                      {{ $t('CSV_Format_Hint_Title') || 'Expected CSV format' }}
-                    </div>
-                    <div style="font-size: 12px; color: #6b7280;">
-                      {{ $t('CSV_Format_Hint_Body') || 'Columns: productcode;qty — use the example file as a reference.' }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Submit bar -->
-            <div :style="submitBarStyle">
-              <div style="flex: 1;">
-                <div v-if="previewRows.length" style="font-size: 13px; color: #6b7280;">
-                  <strong style="color: #1f2937;">{{ previewRows.length }}</strong>
-                  {{ $t('items_ready') || 'items ready to import' }} ·
-                  <strong style="color: #4f46e5;">{{ formatNumber(previewSubtotal, priceDecimals) }}</strong>
-                </div>
-                <div v-else style="font-size: 13px; color: #6b7280;">
-                  {{ $t('Upload_CSV_To_Preview') || 'Upload a CSV file to preview items before submitting' }}
-                </div>
-              </div>
-              <b-button
-                variant="primary"
-                @click="Submit_Purchase"
-                :disabled="SubmitProcessing || !previewRows.length || hasBatchValidationErrors || hasSerialValidationErrors || locationGateBlocked"
-                :style="submitBtnStyle"
-              >
-                <lucide-icon name="check" style="margin-right: 6px;" />
-                {{ $t('submit') }}
-              </b-button>
-              <div v-if="SubmitProcessing" class="spinner sm spinner-primary" style="margin-left: 10px;"></div>
-            </div>
-          </b-col>
-        </b-row>
-      </b-form>
+      </div>
     </validation-observer>
   </div>
 </template>
@@ -584,6 +283,15 @@
 
 <script>
 import { mapActions, mapGetters } from "vuex";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
@@ -591,6 +299,9 @@ import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocatio
 export default {
   metaInfo: {
     title: "Import Purchase"
+  },
+  components: {
+    PxPageHeader, PxCard, PxField, PxInput, PxTextarea, PxButton, PxBadge, PxAlert, "vs-px": VsPx
   },
   data() {
     return {
@@ -1149,6 +860,21 @@ export default {
   },
 
   methods: {
+
+    downloadExample() {
+      window.open("/import/exemples/import_purchases.csv", "_blank", "noopener");
+    },
+
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.dateProvider) this.$refs.dateProvider.syncValue(this.purchase.date);
+        if (this.$refs.supplierProvider) this.$refs.supplierProvider.syncValue(this.purchase.supplier_id);
+        if (this.$refs.warehouseProvider) this.$refs.warehouseProvider.syncValue(this.purchase.warehouse_id);
+        if (this.$refs.statutProvider) this.$refs.statutProvider.syncValue(this.purchase.statut);
+        if (this.$refs.locProvider) this.$refs.locProvider.syncValue(this.purchase.inventory_location_id);
+      });
+    },
+
     previewThStyle(align, width) {
       return {
         padding: "11px 14px",
@@ -1642,6 +1368,7 @@ export default {
           this.suppliers = response.data.suppliers;
           this.warehouses = response.data.warehouses;
           this.isLoading = false;
+          this.syncValidators();
         })
         .catch(() => {
           setTimeout(() => {
@@ -1656,6 +1383,61 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pximpp { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pximpp { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pximpp__pad { padding: var(--pxn-space-6) 0; }
+.pximpp__lead { margin: var(--pxn-space-3) 0 0; font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+.pximpp__grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--pxn-space-6); margin-top: var(--pxn-space-5); }
+@media (max-width: 1000px) { .pximpp__grid { grid-template-columns: minmax(0, 1fr); } }
+.pximpp__sec { display: flex; flex-direction: column; gap: var(--pxn-space-4); }
+.pximpp__gap { margin-top: var(--pxn-space-4); }
+.pximpp__grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4); }
+.pximpp__muted { color: var(--pxn-ink-3); font-size: var(--pxn-fs-xs); }
+.pximpp__inclist { margin: var(--pxn-space-2) 0 0; padding-left: 18px; }
+
+.pximpp-dz { display: block; border: 2px dashed var(--pxn-border-control); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); padding: var(--pxn-space-8) var(--pxn-space-5); text-align: center; cursor: pointer; transition: border-color var(--pxn-dur-2) var(--pxn-ease), background var(--pxn-dur-2) var(--pxn-ease); }
+.pximpp-dz:hover, .pximpp-dz.is-drag { border-color: var(--pxn-primary); background: var(--pxn-primary-soft); }
+.pximpp-dz.has-file { border-style: solid; border-color: var(--pxn-border); }
+.pximpp-dz__inner { display: flex; flex-direction: column; align-items: center; gap: var(--pxn-space-2); }
+.pximpp-dz__ico { color: var(--pxn-ink-3); }
+.pximpp-dz__title { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pximpp-dz__hint { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+
+.pximpp__status { margin-top: var(--pxn-space-4); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); display: flex; align-items: center; gap: var(--pxn-space-2); }
+.pximpp__preview { margin-top: var(--pxn-space-5); }
+.pximpp__previewhead { display: flex; align-items: center; gap: var(--pxn-space-3); flex-wrap: wrap; margin-bottom: var(--pxn-space-3); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+
+.pximpp-tbl__wrap { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); overflow-x: auto; }
+.pximpp-tbl { width: 100%; border-collapse: collapse; font-size: var(--pxn-fs-sm); }
+.pximpp-tbl th { padding: var(--pxn-space-3) var(--pxn-space-4); text-align: left; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--pxn-ink-3); background: var(--pxn-surface-2); border-bottom: 1px solid var(--pxn-border); white-space: nowrap; }
+.pximpp-tbl td { padding: var(--pxn-space-3) var(--pxn-space-4); border-bottom: 1px solid var(--pxn-border); color: var(--pxn-ink); vertical-align: top; }
+.pximpp-tbl .is-right { text-align: right; }
+.pximpp-tbl .is-center { text-align: center; }
+.pximpp__badgeline { margin-left: var(--pxn-space-2); }
+.pximpp__totrow td { font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); background: var(--pxn-surface-2); border-top: 1px solid var(--pxn-border); }
+.pximpp__ico { cursor: pointer; width: 16px; height: 16px; }
+.pximpp__ico.is-del { color: var(--pxn-danger); }
+
+.pximpp__subrow td { background: transparent !important; padding: 0 var(--pxn-space-3) var(--pxn-space-4) !important; border-bottom: 0; }
+.pximpp__panel { background: var(--pxn-info-soft); border: 1px solid var(--pxn-info-border); border-left: 4px solid var(--pxn-info); border-radius: var(--pxn-radius-md); padding: var(--pxn-space-4) var(--pxn-space-5); }
+.pximpp__panelhead { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-3); margin-bottom: var(--pxn-space-3); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); flex-wrap: wrap; }
+.pximpp__panelmuted { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); display: flex; align-items: center; gap: var(--pxn-space-2); }
+.pximpp__panelwarn { margin-top: var(--pxn-space-3); padding: var(--pxn-space-2) var(--pxn-space-3); background: var(--pxn-warning-soft); color: var(--pxn-warning-ink); border: 1px solid var(--pxn-warning-border); border-radius: var(--pxn-radius-sm); font-size: var(--pxn-fs-xs); display: flex; align-items: center; gap: var(--pxn-space-2); }
+.pximpp-batchtbl { width: 100%; border-collapse: collapse; background: var(--pxn-surface); border-radius: var(--pxn-radius-sm); overflow: hidden; }
+.pximpp-batchtbl th { padding: var(--pxn-space-2) var(--pxn-space-3); text-align: left; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink-3); background: var(--pxn-surface-2); }
+.pximpp-batchtbl th.is-right { text-align: right; }
+.pximpp-batchtbl td { padding: var(--pxn-space-2) var(--pxn-space-3); border-top: 1px solid var(--pxn-border); }
+.pximpp-batchtbl td.is-center { text-align: center; }
+.pximpp__bin { width: 100%; height: 32px; padding: 0 var(--pxn-space-3); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-sm); background: var(--pxn-surface); color: var(--pxn-ink); font-size: var(--pxn-fs-sm); }
+.pximpp__bin.is-right { text-align: right; }
+
+.pximpp__submitbar { display: flex; align-items: center; gap: var(--pxn-space-4); padding: var(--pxn-space-4) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); background: var(--pxn-surface); }
+.pximpp__submitinfo { flex: 1; font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); }
+</style>
 
 <style scoped>
 .main-content {
