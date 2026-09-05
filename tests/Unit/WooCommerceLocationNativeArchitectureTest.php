@@ -33,8 +33,10 @@ use PHPUnit\Framework\TestCase;
  *     via a genuine hard delete ($sale->details()->delete()), matching
  *     SalesController::destroy()'s own canonical contract.
  *   - pullProducts() absolute-set and every stock-push implementation
- *     (WooCommerceStockSyncJob, WooCommercePushProducts, WooCommerceSyncStock,
- *     SyncService::syncStock()) are untouched by this milestone.
+ *     (WooCommerceStockSyncJob, WooCommercePushProducts, WooCommerceSyncStock)
+ *     are untouched by this milestone. SyncService::syncStock() itself was
+ *     later removed as dead code by MS7-B2-2E — see
+ *     WooCommerceStockPushLocationNativeArchitectureTest for that pin.
  *   - B2-1 Store, B2-3 Shopify, MS7-B1 Admin Sale/SaleReturn, Subscription,
  *     Dashboard/Report, promotion all stay untouched by this milestone.
  */
@@ -197,8 +199,10 @@ class WooCommerceLocationNativeArchitectureTest extends TestCase
             $this->assertStringNotContainsString('MS7-B2-2B', $src, "{$rel} must stay untouched by MS7-B2-2B.");
         }
 
+        // MS7-B2-2E removed SyncService::syncStock() entirely (confirmed
+        // dead, zero callers) — nothing left here to pin against.
         $syncServiceSrc = $this->read('app/Services/WooCommerce/SyncService.php');
-        $this->assertStringNotContainsString('MS7-B2-2B', $this->extractFunction($syncServiceSrc, 'syncStock'));
+        $this->assertStringNotContainsString('public function syncStock(', $syncServiceSrc);
     }
 
     public function test_out_of_scope_surfaces_are_untouched(): void

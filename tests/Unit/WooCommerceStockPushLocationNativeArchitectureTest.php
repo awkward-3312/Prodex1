@@ -29,7 +29,8 @@ use PHPUnit\Framework\TestCase;
  *     the same inconsistency this hardening fixes).
  *   - WooCommercePushProducts and WooCommerceSyncStock (manual, secondary
  *     paths) reuse the SAME canonical calculator — no duplicated logic.
- *   - SyncService::syncStock() remains dead/untouched (still zero callers).
+ *   - SyncService::syncStock() was removed entirely by MS7-B2-2E
+ *     (confirmed dead, zero callers, across the whole B2 series).
  *   - stockMetrics reads the SAME single canonical warehouse/location, not
  *     an aggregate.
  *   - batch/serial coverage is checked at the canonical location only.
@@ -161,12 +162,15 @@ class WooCommerceStockPushLocationNativeArchitectureTest extends TestCase
         }
     }
 
-    public function test_sync_service_sync_stock_remains_dead_and_untouched(): void
+    public function test_sync_service_sync_stock_was_removed_as_dead_code(): void
     {
+        // MS7-B2-2E — confirmed dead (zero callers, verified repeatedly
+        // across B2-2C/B2-2C.1/B2-2E) and removed entirely, rather than
+        // left in place as untouched dead code.
         $src = $this->read('app/Services/WooCommerce/SyncService.php');
-        $this->assertStringNotContainsString('MS7-B2-2C.1', $this->extractFunction($src, 'syncStock'));
+        $this->assertStringNotContainsString('public function syncStock(', $src);
 
-        // Confirm it's still uncalled anywhere outside its own definition.
+        // Confirm it's still uncalled anywhere (nothing broke by removing it).
         $callers = 0;
         foreach ([
             'app/Http/Controllers/WooCommerceSyncController.php',
@@ -181,7 +185,7 @@ class WooCommerceStockPushLocationNativeArchitectureTest extends TestCase
             }
             $callers += substr_count(file_get_contents($path), '->syncStock(');
         }
-        $this->assertSame(0, $callers, 'SyncService::syncStock() must still have zero external callers');
+        $this->assertSame(0, $callers, 'SyncService::syncStock() must have had zero external callers before removal');
     }
 
     public function test_stock_metrics_reads_single_canonical_warehouse(): void
