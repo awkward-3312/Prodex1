@@ -1719,7 +1719,9 @@ export default {
     rowActions(row) {
       const p = this.currentUserPermissions || [];
       const items = [{ key: "view", label: this.$t("SaleDetail"), icon: "eye" }];
-      if (p.includes("Sales_edit") && row.sale_has_return == "no") items.push({ key: "edit", label: this.$t("EditSale"), icon: "pencil" });
+      // POS-ONLY MANUAL SALES — a POS sale (is_pos = 1) cannot be edited as a
+      // full transaction; historical admin sales (is_pos = 0) keep "Editar venta".
+      if (p.includes("Sales_edit") && row.sale_has_return == "no" && Number(row.is_pos) !== 1) items.push({ key: "edit", label: this.$t("EditSale"), icon: "pencil" });
       if (p.includes("Sale_Returns_add") && row.sale_has_return == "no" && row.statut == "completed") items.push({ key: "return", label: this.$t("Sell_Return"), icon: "arrow-left" });
       if (p.includes("Sale_Returns_add") && row.sale_has_return == "yes") items.push({ key: "return_edit", label: this.$t("Sell_Return"), icon: "arrow-left" });
       if (p.includes("payment_sales_view")) items.push({ key: "showpay", label: this.$t("ShowPayment"), icon: "wallet" });

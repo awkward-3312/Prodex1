@@ -85,6 +85,9 @@ class OperationalSalesController extends SalesController
 
             $data[] = [
                 'id' => $sale->id,
+                // POS-ONLY MANUAL SALES — the list hides "Editar venta" for POS
+                // sales (is_pos = 1); historical admin sales (0) keep it.
+                'is_pos' => (int) $sale->is_pos,
                 'date' => trim($sale->date.' '.$sale->time),
                 'Ref' => $sale->Ref,
                 'created_by' => optional($sale->user)->username ?: '—',

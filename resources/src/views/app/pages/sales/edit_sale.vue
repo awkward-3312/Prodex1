@@ -2159,7 +2159,21 @@ export default {
             this.isLoading = false;
           }
         })
-        .catch(response => {
+        .catch(error => {
+          // POS-ONLY MANUAL SALES — the backend returns 403 for a POS sale
+          // (is_pos = 1). Full-transaction editing of POS sales is not allowed;
+          // send the user back to the list with feedback.
+          const status = error && error.response && error.response.status;
+          const code = error && error.response && error.response.data && error.response.data.code;
+          if (status === 403 && code === "POS_SALE_NOT_EDITABLE") {
+            this.makeToast(
+              "warning",
+              "Una venta emitida desde el POS no puede editarse como transacción completa.",
+              this.$t("Failed")
+            );
+            this.$router.replace({ name: "index_sales" });
+            return;
+          }
           setTimeout(() => {
             this.isLoading = false;
           }, 500);

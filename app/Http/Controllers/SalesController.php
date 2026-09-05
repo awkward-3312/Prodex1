@@ -179,6 +179,9 @@ class SalesController extends BaseController
         foreach ($Sales as $Sale) {
 
             $item['id'] = $Sale['id'];
+            // POS-ONLY MANUAL SALES — the list uses this to hide "Editar venta"
+            // for POS sales (is_pos = 1); historical admin sales (0) keep it.
+            $item['is_pos'] = (int) $Sale['is_pos'];
             $item['date'] = $Sale['date'].' '.$Sale['time'];
             $item['Ref'] = $Sale['Ref'];
             $item['created_by'] = $Sale['user']->username;
@@ -865,6 +868,30 @@ class SalesController extends BaseController
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Sale::class);
+
+        // ---------------------------------------------------------------------
+        // POS-ONLY MANUAL SALES (PRODEX business rule)
+        //
+        // A sale created by the POS (is_pos = 1) carries operational
+        // traceability (server date/time, user, branch, cash drawer, inventory
+        // location, batch/serial ledger, location-native stock). update() is a
+        // FULL transaction rewrite — it reverses and re-applies inventory,
+        // batches, serials, prices, discounts, taxes, client and warehouse — so
+        // allowing it on a POS sale would let the emitted transaction be
+        // reconstructed after the fact and break that traceability.
+        //
+        // Historical administrative sales (is_pos = 0, created before this
+        // rule) intentionally KEEP full edit for now: legacy records may still
+        // need correction. This block is scoped to is_pos === 1 only.
+        // ---------------------------------------------------------------------
+        $__saleForEditGuard = Sale::select('id', 'is_pos')->find($id);
+        if ($__saleForEditGuard && (int) $__saleForEditGuard->is_pos === 1) {
+            return response()->json([
+                'success' => false,
+                'code' => 'POS_SALE_NOT_EDITABLE',
+                'message' => 'Una venta emitida desde el POS no puede editarse como transacción completa.',
+            ], 403);
+        }
 
         request()->validate([
             'warehouse_id' => 'required',
@@ -3226,6 +3253,18 @@ class SalesController extends BaseController
 
     public function edit(Request $request, $id)
     {
+        // POS-ONLY MANUAL SALES (PRODEX business rule) — a POS sale (is_pos = 1)
+        // cannot be loaded into the full-transaction edit form. Historical
+        // administrative sales (is_pos = 0) still load. Scoped to is_pos === 1.
+        $__saleForEditGuard = Sale::select('id', 'is_pos')->find($id);
+        if ($__saleForEditGuard && (int) $__saleForEditGuard->is_pos === 1) {
+            return response()->json([
+                'success' => false,
+                'code' => 'POS_SALE_NOT_EDITABLE',
+                'message' => 'Una venta emitida desde el POS no puede editarse como transacción completa.',
+            ], 403);
+        }
+
         if (SaleReturn::where('sale_id', $id)->where('deleted_at', '=', null)->exists()) {
             return response()->json(['success' => false, 'Return exist for the Transaction' => false], 403);
         } else {
