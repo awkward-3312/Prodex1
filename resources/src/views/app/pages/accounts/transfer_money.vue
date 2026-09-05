@@ -1,166 +1,149 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Transfers_Money')" :folder="$t('Accounting')"/>
+  <div class="px-next pxfl">
+    <px-page-header :title="$t('Transfers_Money')" :breadcrumbs="[{ label: $t('Accounting') }, { label: $t('Transfers_Money') }]">
+      <template #actions>
+        <px-button variant="primary" icon="plus" @click="New_Transfer">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="transfers"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-          enabled: true,
-          placeholder: $t('Search_this_table'),  
-        }"
-      
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-      
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button
-            @click="New_Transfer()"
-            class="btn-rounded"
-            variant="btn btn-primary btn-icon m-1"
-          >
-            <lucide-icon name="plus" />
-            {{$t('Add')}}
-          </b-button>
-        </div>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a @click="Edit_transfer_money(props.row)" title="Edit" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success cursor-pointer" name="pencil" />
-            </a>
-            <a title="Delete" v-b-tooltip.hover @click="Remove_transfers_money(props.row.id)">
-              <lucide-icon class="text-25 text-danger cursor-pointer" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+    <div v-if="isLoading" class="pxfl__pad">
+      <px-skeleton variant="table" :rows="8" :columns="5" />
+    </div>
+
+    <template v-else>
+      <div class="pxfl__tablewrap">
+        <px-table
+          v-if="transfers.length"
+          :columns="columns"
+          :rows="transfers"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-date="{ row }">{{ formatDisplayDate(row.date) }}</template>
+          <template #cell-amount="{ row }"><span class="pxn-num">{{ formatPriceWithSymbol(currentUser.currency, row.amount, priceDecimals) }}</span></template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
+
+        <px-empty-state
+          v-else
+          icon="arrow-left-right"
+          :title="$t('No_transfers_yet') || 'Sin transferencias todavía'"
+          :description="$t('No_transfers_desc') || 'Cuando registres una transferencia entre cuentas, aparecerá aquí.'"
+        >
+          <px-button variant="primary" icon="plus" size="sm" @click="New_Transfer">{{ $t('Add') }}</px-button>
+        </px-empty-state>
+      </div>
+
+      <px-pagination
+        v-if="transfers.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
     <validation-observer ref="Create_transfer_money">
-      <b-modal hide-footer size="lg" id="New_Transfer" :title="editmode?$t('Edit'):$t('Add')">
+      <px-modal v-model="modalOpen" size="md" :title="editmode ? $t('Edit') : $t('Add')">
         <b-form @submit.prevent="Submit_transfer_money">
-          <b-row>
+          <div class="pxfl__formgrid">
+            <validation-provider ref="dateProvider" name="date" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('date')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <px-input :id="id" type="date" v-model="transfer.date" @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-             <!-- date  -->
-             <b-col lg="6" md="6" sm="12">
-                  <validation-provider
-                    name="date"
-                    :rules="{ required: true}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('date') + ' ' + '*'">
-                      <b-form-input
-                        :state="getValidationState(validationContext)"
-                        aria-describedby="date-feedback"
-                        type="date"
-                        v-model="transfer.date"
-                      ></b-form-input>
-                      <b-form-invalid-feedback
-                        id="OrderTax-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+            <validation-provider ref="amountProvider" name="Amount" :rules="{ required: true, regex: /^\d*\.?\d*$/ }" v-slot="v">
+              <px-field :label="$t('Amount')" required :error="v.errors[0]">
+                <template #default="{ id }">
+                  <px-input :id="id" type="text" v-model.number="transfer.amount" :placeholder="$t('Amount')" @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-                 <!-- Amount  -->
-                 <b-col lg="6" md="6" sm="12">
-                  <validation-provider
-                    name="Amount"
-                    :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                    v-slot="validationContext"
-                  >
-                    <b-form-group :label="$t('Amount') + ' ' + '*'">
-                      <b-form-input
-                        :state="getValidationState(validationContext)"
-                        aria-describedby="Amount-feedback"
-                        label="Amount"
-                        type="text"
-                        :placeholder="$t('Amount')"
-                        v-model.number="transfer.amount"
-                      ></b-form-input>
-                      <b-form-invalid-feedback
-                        id="Amount-feedback"
-                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+            <validation-provider v-if="!editmode" ref="fromProvider" name="From_Account" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('From_Account')" required :error="v.errors[0]" :class="{ 'is-invalid': !!v.errors.length }">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="transfer.from_account_id" :reduce="o => o.value" :invalid="!!v.errors.length"
+                    :placeholder="$t('Choose_Account')"
+                    :options="accounts.map(a => ({ label: a.account_name, value: a.id }))"
+                    @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
 
-                <!-- From Account -->
-                <b-col lg="6" md="6" sm="12" v-if="!editmode">
-                  <validation-provider name="From_Account" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('From_Account') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="transfer.from_account_id"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Account')"
-                        :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+            <validation-provider v-if="!editmode" ref="toProvider" name="To_Account" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('To_Account')" required :error="v.errors[0]" :class="{ 'is-invalid': !!v.errors.length }">
+                <template #default="{ id }">
+                  <vs-px :input-id="id" v-model="transfer.to_account_id" :reduce="o => o.value" :invalid="!!v.errors.length"
+                    :placeholder="$t('Choose_Account')"
+                    :options="accounts.map(a => ({ label: a.account_name, value: a.id }))"
+                    @input="v.validate" />
+                </template>
+              </px-field>
+            </validation-provider>
+          </div>
 
-                  <!-- To Account -->
-                  <b-col lg="6" md="6" sm="12" v-if="!editmode">
-                  <validation-provider name="To_Account" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('To_Account') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="transfer.to_account_id"
-                        :reduce="label => label.value"
-                        :placeholder="$t('Choose_Account')"
-                        :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
-          
-
-             <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
-
-          </b-row>
+          <div class="pxfl__actionbar">
+            <px-button variant="secondary" type="button" @click="modalOpen = false">{{ $t('Cancel') }}</px-button>
+            <px-button variant="primary" type="submit" icon="check" :loading="SubmitProcessing">{{ $t('submit') }}</px-button>
+          </div>
         </b-form>
-      </b-modal>
+      </px-modal>
     </validation-observer>
   </div>
 </template>
 
 
 <script>
+import { mapGetters } from "vuex";
 import NProgress from "nprogress";
+import Util from '../../../../utils';
+import {
+  formatPriceDisplay as formatPriceDisplayHelper,
+  getPriceFormatSetting,
+  getPriceDecimals
+} from "../../../../utils/priceFormat";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: {
     title: "Transfer Money"
   },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
+    PxField, PxInput, PxModal, PxEmptyState, "vs-px": VsPx
+  },
   data() {
     return {
+      _searchTimer: null,
       isLoading: true,
-      SubmitProcessing:false,
+      SubmitProcessing: false,
+      modalOpen: false,
       serverParams: {
         columnFilters: {},
         sort: {
@@ -176,6 +159,7 @@ export default {
       transfers: [],
       accounts: [],
       editmode: false,
+      price_format_key: null,
 
       transfer: {
         id: "",
@@ -187,43 +171,22 @@ export default {
     };
   },
   computed: {
+    ...mapGetters(["currentUser"]),
+    priceDecimals() {
+      return getPriceDecimals({ store: this.$store });
+    },
+    rowActions() {
+      return [
+        { key: "edit", label: this.$t("Edit"), icon: "pencil" },
+        { key: "delete", label: this.$t("Del"), icon: "x", tone: "danger" }
+      ];
+    },
     columns() {
       return [
-      
-        {
-          label: this.$t("date"),
-          field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("From_Account"),
-          field: "from_account",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-
-        {
-          label: this.$t("To_Account"),
-          field: "to_account",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-
-        {
-          label: this.$t("Amount"),
-          field: "amount",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "date", label: this.$t("date"), sortable: true },
+        { key: "from_account", label: this.$t("From_Account"), sortable: true },
+        { key: "to_account", label: this.$t("To_Account"), sortable: true },
+        { key: "amount", label: this.$t("Amount"), align: "right", sortable: true }
       ];
     }
   },
@@ -234,53 +197,76 @@ export default {
       this.serverParams = Object.assign({}, this.serverParams, newProps);
     },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.get_transfers_money(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.get_transfers_money(1); }, 350);
     },
 
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.get_transfers_money(1);
-      }
-    },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.get_transfers_money(p); } },
 
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
-    },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.get_transfers_money(1); } },
 
-    //---- Event on Sort Change
-    onSortChange(params) {
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { type: dir, field: key } });
       this.get_transfers_money(this.serverParams.page);
     },
 
-    //---- Event on Search
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.Edit_transfer_money(row);
+      else if (k === "delete") this.Remove_transfers_money(row.id);
+    },
 
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.get_transfers_money(this.serverParams.page);
+    //------------------------------ Money display formatting -------------------------\\
+    formatNumber(number, dec) {
+      const value = (typeof number === "string" ? number : Number(number || 0).toString()).split(".");
+      if (dec <= 0) return value[0];
+      let formated = value[1] || "";
+      if (formated.length > dec) return `${value[0]}.${formated.substr(0, dec)}`;
+      while (formated.length < dec) formated += "0";
+      return `${value[0]}.${formated}`;
+    },
+    formatPriceDisplay(number, dec) {
+      try {
+        const decimals = this.priceDecimals;
+        const key = this.price_format_key || getPriceFormatSetting({ store: this.$store });
+        if (key) this.price_format_key = key;
+        return formatPriceDisplayHelper(number, decimals, key || null);
+      } catch (e) {
+        return this.formatNumber(number, dec);
+      }
+    },
+    formatPriceWithSymbol(symbol, number, dec) {
+      const safeSymbol = symbol || "";
+      const value = this.formatPriceDisplay(number, dec);
+      return safeSymbol ? `${safeSymbol} ${value}` : value;
+    },
+    formatDisplayDate(value) {
+      if (!value) return '';
+      const dateFormat = this.$store.getters.getDateFormat || Util.getDateFormat(this.$store);
+      return Util.formatDisplayDate(value, dateFormat);
     },
 
     //---- Validation State Form
-
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
+    },
+
+    syncValidators() {
+      this.$nextTick(() => {
+        const map = {
+          dateProvider: this.transfer.date,
+          amountProvider: this.transfer.amount,
+          fromProvider: this.transfer.from_account_id,
+          toProvider: this.transfer.to_account_id
+        };
+        Object.keys(map).forEach(ref => {
+          if (this.$refs[ref] && typeof this.$refs[ref].syncValue === "function") {
+            this.$refs[ref].syncValue(map[ref]);
+          }
+        });
+      });
     },
 
     //------------- Submit Validation
@@ -315,7 +301,8 @@ export default {
     New_Transfer() {
       this.reset_Form();
       this.editmode = false;
-      this.$bvModal.show("New_Transfer");
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
     //------------------------------ Modal (Update transfer) -------------------------------\\
@@ -324,7 +311,8 @@ export default {
       this.reset_Form();
       this.transfer = transfer;
       this.editmode = true;
-      this.$bvModal.show("New_Transfer");
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
     //--------------------------Get ALL Categories & Sub account ---------------------------\\
@@ -466,7 +454,7 @@ export default {
       });
     },
 
- 
+
   }, //end Methods
 
   //----------------------------- Created function-------------------
@@ -477,7 +465,7 @@ export default {
     Fire.$on("event_transfers_money", () => {
       setTimeout(() => {
         this.get_transfers_money(this.serverParams.page);
-        this.$bvModal.hide("New_Transfer");
+        this.modalOpen = false;
       }, 500);
     });
 
@@ -489,3 +477,16 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxfl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxfl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxfl__pad { padding: var(--pxn-space-6) 0; }
+.pxfl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxfl__formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
+@media (max-width: 520px) { .pxfl__formgrid { grid-template-columns: minmax(0, 1fr); } }
+.pxfl__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+.pxfl ::v-deep .pxn-field.is-invalid .vs__dropdown-toggle { border-color: var(--pxn-danger); }
+</style>
