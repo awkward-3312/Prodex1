@@ -1,118 +1,111 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Deposit_Category')" :folder="$t('Expenses')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <div v-else>
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="categories"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        enabled: true,
-        placeholder: $t('Search_this_table'),  
-      }"
-       
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="tableOne table-hover vgt-table"
-      >
-        <div slot="selected-row-actions" v-if="currentUserPermissions && currentUserPermissions.includes('deposit_delete')">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button
-            v-if="currentUserPermissions && currentUserPermissions.includes('deposit_add')"
-            @click="New_Category()"
-            size="sm"
-            variant="primary ripple m-1"
-          >
-            <lucide-icon name="plus" />
-            {{$t('Add')}}
-          </b-button>
-        </div>
+  <div class="px-next pxfl">
+    <px-page-header :title="$t('Deposit_Category')" :breadcrumbs="[{ label: $t('Deposits') }, { label: $t('Deposit_Category') }]">
+      <template #actions>
+        <px-button
+          v-if="currentUserPermissions && currentUserPermissions.includes('deposit_add')"
+          variant="primary" icon="plus" @click="New_Category"
+        >{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a
-              @click="Edit_Category(props.row)"
-              v-if="currentUserPermissions && currentUserPermissions.includes('deposit_edit')"
-              title="Edit"
-              class="cursor-pointer"
-              v-b-tooltip.hover
-            >
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a
-              title="Delete"
-              class="cursor-pointer"
-              v-b-tooltip.hover
-              v-if="currentUserPermissions && currentUserPermissions.includes('deposit_delete')"
-              @click="Delete_Category(props.row.id)"
-            >
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
+
+    <div v-if="isLoading" class="pxfl__pad">
+      <px-skeleton variant="table" :rows="8" :columns="2" />
     </div>
 
-    <validation-observer ref="Create_Category">
-      <b-modal hide-footer size="md" id="New_Category" :title="editmode?$t('Edit'):$t('Add')">
-        <b-form @submit.prevent="Submit_Category">
-          <b-row>
-            <!-- Name Category -->
-            <b-col md="12">
-              <validation-provider
-                name="Name category"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('title') + ' ' + '*'">
-                  <b-form-input
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="category-feedback"
-                    label="name"
-                    v-model="category.title"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="category-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+    <template v-else>
+      <div class="pxfl__tablewrap">
+        <px-table
+          v-if="categories.length"
+          :columns="columns"
+          :rows="categories"
+          row-key="id"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          :has-row-actions="canRowActions"
+          @sort="onSort"
+        >
+          <template #row-actions="{ row }">
+            <px-kebab v-if="canRowActions" :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
 
-            <b-col md="12" class="mt-3">
-              <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                <div v-once class="typo__p" v-if="SubmitProcessing">
-                  <div class="spinner sm spinner-primary mt-3"></div>
-                </div>
-            </b-col>
-          </b-row>
+        <px-empty-state
+          v-else
+          icon="folder"
+          :title="$t('No_deposit_categories_yet') || 'Sin categorías de depósito todavía'"
+          :description="$t('No_deposit_categories_desc') || 'Crea una categoría para clasificar tus depósitos.'"
+        >
+          <px-button
+            v-if="currentUserPermissions && currentUserPermissions.includes('deposit_add')"
+            variant="primary" icon="plus" size="sm" @click="New_Category"
+          >{{ $t('Add') }}</px-button>
+        </px-empty-state>
+      </div>
+
+      <px-pagination
+        v-if="categories.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
+
+    <validation-observer ref="Create_Category">
+      <px-modal v-model="modalOpen" size="md" :title="editmode ? $t('Edit') : $t('Add')">
+        <b-form @submit.prevent="Submit_Category">
+          <validation-provider ref="titleProvider" name="Name category" :rules="{ required: true }" v-slot="v">
+            <px-field :label="$t('title')" required :error="v.errors[0]">
+              <template #default="{ id }"><px-input :id="id" v-model="category.title" @input="v.validate" /></template>
+            </px-field>
+          </validation-provider>
+
+          <div class="pxfl__actionbar">
+            <px-button variant="secondary" type="button" @click="modalOpen = false">{{ $t('Cancel') }}</px-button>
+            <px-button variant="primary" type="submit" icon="check" :loading="SubmitProcessing">{{ $t('submit') }}</px-button>
+          </div>
         </b-form>
-      </b-modal>
+      </px-modal>
     </validation-observer>
   </div>
 </template>
 
 <script>
-import { mapActions, mapGetters } from "vuex";
+import { mapGetters } from "vuex";
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
   metaInfo: {
     title: "Deposit Category"
   },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
+    PxField, PxInput, PxModal, PxEmptyState
+  },
   data() {
     return {
+      _searchTimer: null,
       isLoading: true,
-      SubmitProcessing:false,
+      SubmitProcessing: false,
+      modalOpen: false,
       serverParams: {
         columnFilters: {},
         sort: {
@@ -130,34 +123,63 @@ export default {
       limit: "10",
       category: {
         id: "",
-        title: "",
+        title: ""
       }
     };
   },
 
   computed: {
     ...mapGetters(["currentUserPermissions"]),
+    canRowActions() {
+      const p = this.currentUserPermissions || [];
+      return p.includes("deposit_edit") || p.includes("deposit_delete");
+    },
+    rowActions() {
+      const p = this.currentUserPermissions || [];
+      const items = [];
+      if (p.includes("deposit_edit")) items.push({ key: "edit", label: this.$t("Edit"), icon: "pencil" });
+      if (p.includes("deposit_delete")) items.push({ key: "delete", label: this.$t("Del"), icon: "x", tone: "danger" });
+      return items;
+    },
     columns() {
       return [
-        {
-          label: this.$t("title"),
-          field: "title",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "title", label: this.$t("title"), sortable: true, strong: true }
       ];
     }
   },
 
   methods: {
+    updateParams(newProps) {
+      this.serverParams = Object.assign({}, this.serverParams, newProps);
+    },
+
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Categories(1); }, 350);
+    },
+
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Categories(p); } },
+
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: Number(v) }); this.Get_Categories(1); } },
+
+    onSort({ key, dir }) {
+      this.updateParams({ sort: { type: dir, field: key } });
+      this.Get_Categories(this.serverParams.page);
+    },
+
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.Edit_Category(row);
+      else if (k === "delete") this.Delete_Category(row.id);
+    },
+
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.titleProvider) this.$refs.titleProvider.syncValue(this.category.title);
+      });
+    },
+
     //------------- Submit Validation Create & Edit Category
     Submit_Category() {
       this.$refs.Create_Category.validate().then(success => {
@@ -186,53 +208,6 @@ export default {
       });
     },
 
-    //------ Update Params Table
-    updateParams(newProps) {
-      this.serverParams = Object.assign({}, this.serverParams, newProps);
-    },
-
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Categories(currentPage);
-      }
-    },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Categories(1);
-      }
-    },
-
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
-    },
-
-    //------ Event Sort change
-    onSortChange(params) {
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
-      this.Get_Categories(this.serverParams.page);
-    },
-
-    //------ Event Search
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Categories(this.serverParams.page);
-    },
-
     //------ Event Validation State
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
@@ -242,7 +217,8 @@ export default {
     New_Category() {
       this.reset_Form();
       this.editmode = false;
-      this.$bvModal.show("New_Category");
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
     //-------------------------- Show Modal (Edit Category) ----------------\\
@@ -251,14 +227,15 @@ export default {
       this.reset_Form();
       this.category = cat;
       this.editmode = true;
-      this.$bvModal.show("New_Category");
+      this.modalOpen = true;
+      this.syncValidators();
     },
 
     //--------------------------- reset Form ----------------\\
     reset_Form() {
       this.category = {
         id: "",
-        title: "",
+        title: ""
       };
     },
 
@@ -377,7 +354,7 @@ export default {
       });
     },
 
-   
+
   }, //end Methods
 
   //----------------------------- Created function-------------------
@@ -387,7 +364,7 @@ export default {
 
     Fire.$on("event_Category_deposit", () => {
       this.Get_Categories(this.serverParams.page);
-      this.$bvModal.hide("New_Category");
+      this.modalOpen = false;
     });
 
     Fire.$on("event_delete_category_deposit", () => {
@@ -396,3 +373,13 @@ export default {
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxfl { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxfl { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxfl__pad { padding: var(--pxn-space-6) 0; }
+.pxfl__tablewrap { margin-top: var(--pxn-space-5); }
+.pxfl__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
+</style>
