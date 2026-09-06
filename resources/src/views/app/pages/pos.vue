@@ -2500,29 +2500,28 @@
             </b-form-group>
           </b-col>
 
-          <b-col md="6" sm="12" class="mt-4 mb-4">
-            <div class="psx-form-check">
-              <input type="checkbox" v-model="client.is_royalty_eligible" class="psx-checkbox psx-form-check-input" id="is_royalty_eligible">
-              <label class="psx-form-check-label" for="is_royalty_eligible">
-                <h5>{{ $t('Is_Royalty_Eligible') }}</h5>
-              </label>
-            </div>
+          <b-col md="12" sm="12" class="mt-2 mb-2">
+            <b-form-group>
+              <div class="loyalty-eligible-row">
+                <b-form-checkbox v-model="client.is_royalty_eligible" switch class="mb-0 loyalty-switch" id="is_royalty_eligible">
+                  {{ $t('Is_Royalty_Eligible') }}
+                </b-form-checkbox>
+              </div>
+            </b-form-group>
           </b-col>
 
           <!-- Custom Fields (same as CreateCustomer.vue, but for quick add) -->
-          <b-col md="12" sm="12" class="mt-3">
+          <b-col md="12" sm="12" class="mt-2">
             <CustomFieldsForm
               entity-type="client"
               v-model="quickAddCustomFieldValues"
             />
           </b-col>
 
-          <b-col md="12" class="mt-3">
+          <b-col md="12" class="mt-3 d-flex justify-content-end align-items-center">
+            <div v-if="SubmitProcessing" class="spinner sm spinner-primary mr-3"></div>
             <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
-            <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{$t('submit')}}</b-button>
-            <div v-once class="typo__p" v-if="SubmitProcessing">
-              <div class="spinner sm spinner-primary mt-3"></div>
-            </div>
+            <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{ $t('Save') }}</b-button>
           </b-col>
 
         </b-row>
@@ -12532,47 +12531,34 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-direction: column;
 }
 
-/* ---- Hero ---- */
+/* ---- Header (flat) ---- */
 .ts-hero {
   position: relative;
-  padding: 22px 24px 24px;
-  background:
-    radial-gradient(1200px 200px at -10% -40%, rgba(255,255,255,0.18), transparent 60%),
-    radial-gradient(900px 220px at 110% 0%, rgba(255,255,255,0.14), transparent 55%),
-    linear-gradient(135deg, #6f53d9 0%, #8a6cf0 45%, #b58cff 100%);
-  color: #fff;
-  overflow: hidden;
-}
-.ts-hero::after {
-  content: "";
-  position: absolute;
-  inset: auto -40px -60px auto;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%);
-  pointer-events: none;
+  padding: var(--pxn-space-6) var(--pxn-space-7);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
 }
 
 .ts-close {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  border: 0;
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  top: var(--pxn-space-5);
+  right: var(--pxn-space-5);
+  width: var(--pxn-control-h-sm);
+  height: var(--pxn-control-h-sm);
+  border-radius: var(--pxn-radius-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-3);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 150ms ease, transform 150ms ease;
+  transition: background-color var(--pxn-dur-1) var(--pxn-ease), border-color var(--pxn-dur-1) var(--pxn-ease);
   z-index: 2;
   i { font-size: 16px; }
   svg { width: 16px; height: 16px; }
-  &:hover { background: rgba(255, 255, 255, 0.28); transform: rotate(90deg); }
+  &:hover { background: var(--soft); border-color: var(--line-strong); color: var(--ink); }
 }
 
 .ts-hero-top {
@@ -12581,43 +12567,47 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: var(--pxn-space-5);
+  margin-bottom: var(--pxn-space-5);
 }
 .ts-hero-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.85);
-  letter-spacing: 0.2px;
+  gap: var(--pxn-space-2);
+  font-size: var(--pxn-fs-xs);
+  font-weight: var(--pxn-fw-medium);
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   i { font-size: 13px; }
   svg { width: 13px; height: 13px; }
 }
 .ts-hero-heading {
-  margin-top: 4px;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
+  margin-top: 2px;
+  font-size: var(--pxn-fs-h1);
+  font-weight: var(--pxn-fw-semibold);
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 .ts-hero-amount-wrap {
   position: relative;
   z-index: 1;
-  margin-bottom: 18px;
+  margin-bottom: var(--pxn-space-5);
 }
 .ts-hero-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.8);
+  font-size: var(--pxn-fs-xs);
+  font-weight: var(--pxn-fw-medium);
+  color: var(--ink-3);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.04em;
 }
 .ts-hero-amount {
-  margin-top: 4px;
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: -0.8px;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: var(--pxn-fw-bold);
+  letter-spacing: -0.01em;
+  color: var(--ink);
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
 }
@@ -12626,89 +12616,86 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 14px;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pxn-space-5);
   align-items: stretch;
-  padding: 12px;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.14);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.18);
+  padding: var(--pxn-space-5);
+  border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface-2);
+  border: 1px solid var(--line);
 }
 .ts-hero-stat {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--pxn-space-4);
   min-width: 0;
 }
 .ts-hero-stat-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--pxn-radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 38px;
-  color: #fff;
-  background: rgba(255,255,255,0.22);
-  i { font-size: 18px; }
-  svg { width: 18px; height: 18px; }
-  &.paid { background: linear-gradient(135deg, #10b981, #34d399); }
-  &.due  { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+  flex: 0 0 30px;
+  background: var(--surface);
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  i { font-size: 16px; }
+  svg { width: 16px; height: 16px; }
+  &.paid { background: var(--pxn-success-soft); color: var(--pxn-success-ink); border-color: var(--pxn-success-border); }
+  &.due  { background: var(--pxn-warning-soft); color: var(--pxn-warning-ink); border-color: var(--pxn-warning-border); }
 }
 .ts-hero-stat-info { min-width: 0; display: flex; flex-direction: column; }
 .ts-hero-stat-label {
-  font-size: 11px;
-  color: rgba(255,255,255,0.85);
+  font-size: var(--pxn-fs-xs);
+  color: var(--ink-3);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.04em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .ts-hero-stat-val {
   margin-top: 2px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
+  font-family: var(--font-mono);
+  font-size: var(--pxn-fs-h3);
+  font-weight: var(--pxn-fw-semibold);
+  color: var(--ink);
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ts-hero-divider {
-  width: 1px;
-  background: rgba(255,255,255,0.22);
-}
+.ts-hero-divider { display: none; }
 
 /* ---- Section ---- */
 .ts-section {
-  padding: 18px 20px 20px;
+  padding: var(--pxn-space-6) var(--pxn-space-7) var(--pxn-space-7);
 }
 .ts-section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: var(--pxn-space-4);
+  margin-bottom: var(--pxn-space-4);
 }
 .ts-section-title {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  color: $color-text-primary;
-  letter-spacing: 0.1px;
-  i { font-size: 15px; color: #6f53d9; }
-  svg { width: 15px; height: 15px; color: #6f53d9; }
+  gap: var(--pxn-space-3);
+  font-size: var(--pxn-fs-sm);
+  font-weight: var(--pxn-fw-semibold);
+  color: var(--ink);
+  i { font-size: 15px; color: var(--ink-3); }
+  svg { width: 15px; height: 15px; color: var(--ink-3); }
 }
 .ts-section-sub {
-  font-size: 12px;
-  font-weight: 600;
-  color: $color-text-tertiary;
+  font-family: var(--font-mono);
+  font-size: var(--pxn-fs-sm);
+  font-weight: var(--pxn-fw-medium);
+  color: var(--ink-2);
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
 }
@@ -12716,93 +12703,93 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .ts-methods {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--pxn-space-3);
 }
 .ts-method {
   display: grid;
-  grid-template-columns: 38px 1fr;
-  gap: 12px;
+  grid-template-columns: 32px 1fr;
+  gap: var(--pxn-space-4);
   align-items: center;
-  padding: 12px;
-  background: #fff;
-  border: 1px solid $color-border-light;
-  border-radius: 12px;
-  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  padding: var(--pxn-space-4) var(--pxn-space-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--pxn-radius-md);
+  transition: border-color var(--pxn-dur-1) var(--pxn-ease), background-color var(--pxn-dur-1) var(--pxn-ease);
 }
 .ts-method:hover {
-  border-color: rgba(111, 83, 217, 0.35);
-  box-shadow: 0 4px 14px -8px rgba(111, 83, 217, 0.45);
-  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  background: var(--soft);
 }
 .ts-method-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--pxn-radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(111,83,217,0.12), rgba(138,108,240,0.12));
-  color: #6f53d9;
-  i { font-size: 18px; }
-  svg { width: 18px; height: 18px; }
+  background: var(--pxn-surface-2);
+  color: var(--ink-2);
+  i { font-size: 16px; }
+  svg { width: 16px; height: 16px; }
 }
-.ts-method-body { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ts-method-body { min-width: 0; display: flex; flex-direction: column; gap: var(--pxn-space-3); }
 .ts-method-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--pxn-space-4);
 }
 .ts-method-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: $color-text-primary;
+  font-size: var(--pxn-fs-body);
+  font-weight: var(--pxn-fw-medium);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .ts-method-amount {
-  font-size: 14px;
-  font-weight: 700;
-  color: $color-text-primary;
+  font-family: var(--font-mono);
+  font-size: var(--pxn-fs-h3);
+  font-weight: var(--pxn-fw-semibold);
+  color: var(--ink);
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .ts-method-bar-wrap {
-  height: 6px;
-  border-radius: 999px;
-  background: #eef0f5;
+  height: 4px;
+  border-radius: var(--pxn-radius-pill);
+  background: var(--pxn-surface-3);
   overflow: hidden;
 }
 .ts-method-bar {
   height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #6f53d9, #8a6cf0, #b58cff);
-  transition: width 400ms cubic-bezier(.4, 0, .2, 1);
+  border-radius: var(--pxn-radius-pill);
+  background: var(--pxn-primary);
+  transition: width 300ms var(--pxn-ease-out);
   min-width: 2%;
 }
 
 /* ---- Empty state ---- */
 .ts-empty {
-  padding: 32px 24px 36px;
+  padding: var(--pxn-space-9) var(--pxn-space-7);
   text-align: center;
-  color: $color-text-tertiary;
+  color: var(--ink-3);
 }
 .ts-empty-icon {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 10px;
-  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto var(--pxn-space-4);
+  border-radius: var(--pxn-radius-md);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(111, 83, 217, 0.08);
-  color: #6f53d9;
-  i { font-size: 24px; }
-  svg { width: 24px; height: 24px; }
+  background: var(--pxn-surface-2);
+  color: var(--ink-3);
+  i { font-size: 22px; }
+  svg { width: 22px; height: 22px; }
 }
-.ts-empty-text { font-size: 13px; font-weight: 500; }
+.ts-empty-text { font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-medium); }
 
 /* ---- Cash register close ---- */
 .cr-close {
@@ -19283,4 +19270,56 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
   border-color: var(--pxn-border);
 }
 .modal.px-next .modal-body .table td { border-color: var(--pxn-border); color: var(--pxn-ink); }
+
+/* --- Forms inside POS modals (New / Quick-add customer, etc.) --- */
+.modal.px-next .modal-body .form-group { margin-bottom: var(--pxn-space-6); }
+.modal.px-next .modal-body .form-group > label,
+.modal.px-next .modal-body .b-form-group > legend {
+  font-size: var(--pxn-fs-sm);
+  font-weight: var(--pxn-fw-medium);
+  color: var(--pxn-ink-2);
+  margin-bottom: var(--pxn-space-2);
+}
+.modal.px-next .modal-body .form-control,
+.modal.px-next .modal-body textarea.form-control,
+.modal.px-next .modal-body .custom-select {
+  height: auto;
+  min-height: var(--pxn-control-h-md);
+  padding: var(--pxn-space-3) var(--pxn-space-4);
+  font-size: var(--pxn-fs-body);
+}
+.modal.px-next .modal-body textarea.form-control { min-height: 80px; }
+.modal.px-next .modal-body .form-control::placeholder { color: var(--pxn-ink-3); }
+.modal.px-next .modal-body .invalid-feedback { color: var(--pxn-danger-ink); font-size: var(--pxn-fs-xs); }
+.modal.px-next .modal-body .is-invalid,
+.modal.px-next .modal-body .form-control.is-invalid { border-color: var(--pxn-danger); }
+
+/* Loyalty / boolean rows -> px-next switch look */
+.modal.px-next .modal-body .loyalty-eligible-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pxn-space-2);
+  padding: var(--pxn-space-4) var(--pxn-space-5);
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface-2);
+}
+.modal.px-next .modal-body .loyalty-help,
+.modal.px-next .modal-body .loyalty-eligible-row small { color: var(--pxn-ink-3); font-size: var(--pxn-fs-xs); }
+.modal.px-next .modal-body .custom-control-label { color: var(--pxn-ink); font-weight: var(--pxn-fw-medium); }
+.modal.px-next .modal-body .custom-control-input:checked ~ .custom-control-label::before {
+  background: var(--pxn-primary);
+  border-color: var(--pxn-primary);
+}
+.modal.px-next .modal-body .custom-switch .custom-control-label::before { border-color: var(--pxn-border-control); }
+
+/* Buttons row footer inside body */
+.modal.px-next .modal-body .btn {
+  height: auto;
+  min-height: var(--pxn-control-h-md);
+  padding: var(--pxn-space-3) var(--pxn-space-6);
+  font-size: var(--pxn-fs-body);
+  font-weight: var(--pxn-fw-medium);
+  border-radius: var(--pxn-radius-md);
+}
 </style>

@@ -1558,77 +1558,62 @@ export default {
    ======================================== */
 
 .payment-header {
-  background: var(--pxn-primary);
-  padding: 14px 24px;
+  background: var(--pxn-surface);
+  border-bottom: 1px solid var(--pxn-border);
+  padding: var(--pxn-space-5) var(--pxn-space-7);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-    border-radius: 50%;
-  }
 
   .header-left {
-        display: flex;
-        align-items: center;
-    gap: 14px;
-    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--pxn-space-4);
   }
 
   .icon-wrapper {
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    background: var(--pxn-surface-2);
+    border-radius: var(--pxn-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
-    color: white;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+    color: var(--pxn-ink-2);
+    svg { width: 18px; height: 18px; }
   }
 
   .header-text {
     .modal-title {
       margin: 0;
-      font-size: 18px;
-      font-weight: 700;
-      color: white;
-      letter-spacing: -0.5px;
+      font-family: var(--pxn-font-sans);
+      font-size: var(--pxn-fs-h2);
+      font-weight: var(--pxn-fw-semibold);
+      color: var(--pxn-ink);
+      letter-spacing: -0.01em;
     }
   }
 
   .close-button {
-    width: 36px;
-    height: 36px;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    width: var(--pxn-control-h-sm);
+    height: var(--pxn-control-h-sm);
+    background: var(--pxn-surface);
+    border: 1px solid var(--pxn-border);
+    border-radius: var(--pxn-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-      transition: all 0.3s ease;
-    z-index: 1;
-    color: white;
+    transition: background-color var(--pxn-dur-1) var(--pxn-ease), border-color var(--pxn-dur-1) var(--pxn-ease);
+    color: var(--pxn-ink-3);
 
-      &:hover {
-      background: rgba(255, 255, 255, 0.25);
-        transform: rotate(90deg);
-      }
+    &:hover {
+      background: var(--pxn-surface-hover);
+      border-color: var(--pxn-border-control);
+      color: var(--pxn-ink);
     }
   }
+}
 
 /* ========================================
    CONTENT AREA
@@ -1658,7 +1643,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  border-right: 1px solid var(--pxn-border);
   overflow-y: auto;
   overflow-x: hidden;
 
@@ -1682,54 +1667,46 @@ export default {
 }
 
 .amount-card {
-  background: white;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: var(--pxn-surface);
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-lg);
+  padding: var(--pxn-space-5);
 
   .amount-card-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-    color: var(--pxn-primary);
-    font-weight: 600;
-    font-size: 10px;
+    gap: var(--pxn-space-3);
+    margin-bottom: var(--pxn-space-3);
+    color: var(--pxn-ink-3);
+    font-weight: var(--pxn-fw-semibold);
+    font-size: var(--pxn-fs-xs);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.04em;
 
-    svg {
-      flex-shrink: 0;
-      width: 16px;
-      height: 16px;
-    }
+    svg { flex-shrink: 0; width: 14px; height: 14px; }
   }
 
   .amount-display {
-    text-align: center;
-    padding: 12px 0;
-    border-radius: 10px;
-    background: var(--pxn-primary-softer);
+    text-align: left;
+    padding: 0;
 
     .currency-label {
       display: block;
-      font-size: 10px;
-      color: var(--pxn-ink-2);
-      font-weight: 500;
+      font-size: var(--pxn-fs-xs);
+      color: var(--pxn-ink-3);
+      font-weight: var(--pxn-fw-medium);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
     }
 
     .amount-large {
       display: block;
+      font-family: var(--pxn-font-mono);
       font-size: 26px;
-      font-weight: 800;
-      background: var(--pxn-primary);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-weight: var(--pxn-fw-bold);
+      color: var(--pxn-ink);
+      letter-spacing: -0.01em;
     }
   }
 
@@ -1790,19 +1767,18 @@ export default {
 }
 
 .payment-status-card {
-  background: white;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: var(--pxn-surface);
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-lg);
+  padding: var(--pxn-space-5);
 
   .card-title {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--pxn-ink);
-    margin: 0 0 10px 0;
+    font-size: var(--pxn-fs-xs);
+    font-weight: var(--pxn-fw-semibold);
+    color: var(--pxn-ink-3);
+    margin: 0 0 var(--pxn-space-3) 0;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.04em;
   }
 
   .status-grid {
@@ -1814,73 +1790,52 @@ export default {
   .status-box {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background: var(--pxn-surface-2);
-    border-radius: 10px;
-    transition: all 0.3s ease;
+    gap: var(--pxn-space-4);
+    padding: var(--pxn-space-4) 0;
 
-    &:hover {
-      background: var(--pxn-surface-2);
-      transform: translateX(4px);
-    }
+    & + .status-box { border-top: 1px solid var(--pxn-border); }
 
     .status-icon {
-      width: 30px;
-      height: 30px;
-      border-radius: 8px;
+      width: 26px;
+      height: 26px;
+      border-radius: var(--pxn-radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      background: var(--pxn-surface-2);
+      color: var(--pxn-ink-3);
 
-      &.paying {
-        background: var(--pxn-success);
-        color: white;
-      }
+      &.paying   { background: var(--pxn-surface-2); color: var(--pxn-ink-3); }
+      &.balance  { background: var(--pxn-warning-soft); color: var(--pxn-warning-ink); }
+      &.change   { background: var(--pxn-info-soft); color: var(--pxn-info-ink); }
 
-      &.balance {
-        background: var(--pxn-warning);
-        color: white;
-      }
-
-      &.change {
-        background: var(--pxn-info);
-        color: white;
-      }
-
-      svg {
-        width: 14px;
-        height: 14px;
-      }
+      svg { width: 14px; height: 14px; }
     }
 
     .status-details {
       flex: 1;
       display: flex;
-      flex-direction: column;
-      gap: 2px;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--pxn-space-3);
 
       .status-name {
-        font-size: 9px;
-        color: var(--pxn-ink-2);
-        font-weight: 500;
+        font-size: var(--pxn-fs-xs);
+        color: var(--pxn-ink-3);
+        font-weight: var(--pxn-fw-medium);
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.04em;
       }
 
       .status-amount {
-        font-size: 14px;
-        font-weight: 700;
+        font-family: var(--pxn-font-mono);
+        font-size: var(--pxn-fs-h3);
+        font-weight: var(--pxn-fw-semibold);
         color: var(--pxn-ink);
 
-        &.balance-text {
-          color: var(--pxn-warning);
-        }
-
-        &.change-text {
-          color: var(--pxn-info);
-        }
+        &.balance-text { color: var(--pxn-warning-ink); }
+        &.change-text  { color: var(--pxn-info-ink); }
       }
     }
   }
@@ -2025,20 +1980,16 @@ export default {
     position: absolute;
     top: 4px;
     right: 4px;
-    width: 18px;
-    height: 18px;
-    background: var(--pxn-success);
+    width: 16px;
+    height: 16px;
+    background: var(--pxn-primary);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    box-shadow: 0 2px 6px var(--pxn-success-border);
+    color: var(--pxn-primary-contrast);
 
-    svg {
-      width: 10px;
-      height: 10px;
-    }
+    svg { width: 10px; height: 10px; }
   }
 }
 
@@ -2075,13 +2026,14 @@ export default {
 
   .form-input {
     width: 100%;
-    padding: 10px 12px 10px 10px;
-    border: 2px solid var(--pxn-border);
-    border-radius: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--pxn-border-control);
+    border-radius: var(--pxn-radius-md);
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--pxn-ink);
-    transition: all 0.3s ease;
+    font-family: var(--pxn-font-mono);
+    transition: border-color var(--pxn-dur-1) var(--pxn-ease), box-shadow var(--pxn-dur-1) var(--pxn-ease);
     background: white;
 
     &:focus {
@@ -2344,13 +2296,27 @@ export default {
 }
 
 .quick-btn {
-  outline: none !important;
-  box-shadow: none !important;
-  &:focus,
-  &:active,
+  height: 32px;
+  padding: 0 var(--pxn-space-4);
+  border: 1px solid var(--pxn-border-control);
+  border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface);
+  color: var(--pxn-ink-2);
+  font-family: var(--pxn-font-mono);
+  font-size: var(--pxn-fs-sm);
+  font-weight: var(--pxn-fw-medium);
+  cursor: pointer;
+  transition: background-color var(--pxn-dur-1) var(--pxn-ease), border-color var(--pxn-dur-1) var(--pxn-ease), color var(--pxn-dur-1) var(--pxn-ease);
+  outline: none;
+
+  &:hover {
+    background: var(--pxn-surface-hover);
+    border-color: var(--pxn-primary);
+    color: var(--pxn-primary-ink);
+  }
   &:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
+    border-color: var(--pxn-primary);
+    box-shadow: 0 0 0 3px var(--pxn-focus-ring);
   }
 }
 
@@ -2441,11 +2407,11 @@ export default {
   position: sticky;
   bottom: 0;
   display: flex;
-  gap: 10px;
-  padding: 12px 20px;
-  background: white;
-  border-top: 2px solid var(--pxn-border);
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  justify-content: flex-end;
+  gap: var(--pxn-space-4);
+  padding: var(--pxn-space-5) var(--pxn-space-7);
+  background: var(--pxn-surface);
+  border-top: 1px solid var(--pxn-border);
   z-index: 20;
 }
 
@@ -2519,33 +2485,37 @@ export default {
 }
 
 .footer-btn {
-  flex: 1;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 0 var(--pxn-space-6);
+  border: 1px solid transparent;
+  border-radius: var(--pxn-radius-md);
+  font-family: var(--pxn-font-sans);
+  font-size: var(--pxn-fs-body);
+  font-weight: var(--pxn-fw-medium);
   cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
+  transition: background-color var(--pxn-dur-1) var(--pxn-ease), border-color var(--pxn-dur-1) var(--pxn-ease), filter var(--pxn-dur-1) var(--pxn-ease);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  min-height: 42px;
+  gap: var(--pxn-space-3);
+  min-height: var(--pxn-control-h-lg);
+
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 
 .footer-cancel {
-  background: var(--pxn-surface-2);
+  background: transparent;
   color: var(--pxn-ink-2);
-  border: 2px solid var(--pxn-border);
+  border-color: var(--pxn-border-control);
+
+  &:hover:not(:disabled) { background: var(--pxn-surface-hover); border-color: var(--pxn-border-control); color: var(--pxn-ink); }
 }
 
 .footer-submit {
-  background: var(--pxn-success);
-  color: white;
-  box-shadow: 0 4px 12px var(--pxn-success-border);
+  background: var(--pxn-primary);
+  color: var(--pxn-primary-contrast);
+  border-color: var(--pxn-primary);
+
+  &:hover:not(:disabled) { filter: brightness(0.96); }
 }
 
 /* Loading Spinner */
