@@ -1,152 +1,140 @@
 <template>
-  <div class="main-content kb-page">
-    <breadcumb page="Manual PRODEX" :folder="$t('App')" />
+  <div class="px-next pxkb">
+    <px-page-header
+      title="Manual PRODEX"
+      subtitle="Guías oficiales paso a paso para aprender a utilizar PRODEX y resolver las dudas más frecuentes."
+      :breadcrumbs="[{ label: $t('App') || 'Inicio' }, { label: 'Manual PRODEX' }]"
+    />
 
-    <div class="kb-hero mb-4">
-      <div class="kb-hero-inner">
-        <div class="kb-hero-icon">
-          <lucide-icon name="book-open" />
-        </div>
-        <h1 class="kb-hero-title">Manual PRODEX</h1>
-        <p class="kb-hero-subtitle">Guías oficiales paso a paso para aprender a utilizar PRODEX y resolver las dudas más frecuentes.</p>
-
-        <div class="kb-hero-search">
-          <b-input-group>
-            <b-input-group-prepend is-text>
-              <lucide-icon name="search" />
-            </b-input-group-prepend>
-            <b-form-input
-              v-model.trim="searchQ"
-              placeholder="¿Qué necesitas hacer? Ej.: crear producto, cerrar caja, CAI..."
-              @keyup.enter="search"
-            />
-            <b-input-group-append>
-              <b-button variant="light" @click="search" :disabled="loading">Buscar</b-button>
-            </b-input-group-append>
-          </b-input-group>
+    <section class="pxkb__hero">
+      <div class="pxkb__hero-icon"><lucide-icon name="book-open" /></div>
+      <div class="pxkb__hero-body">
+        <h2 class="pxkb__hero-title">¿Qué necesitas hacer?</h2>
+        <p class="pxkb__hero-sub">Busca por tarea — crear producto, cerrar caja, configurar el CAI…</p>
+        <div class="pxkb__hero-search">
+          <px-input
+            :value="searchQ"
+            icon-lead="search"
+            placeholder="Ej.: crear producto, cerrar caja, CAI..."
+            @input="v => searchQ = tv(v)"
+            @keyup.native.enter="search"
+          />
+          <px-button variant="primary" :loading="loading" :disabled="loading" @click="search">Buscar</px-button>
         </div>
       </div>
+    </section>
+
+    <div v-if="isLoading" class="pxkb__pad">
+      <px-skeleton variant="lines" :rows="6" />
     </div>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-
     <template v-else>
-      <section v-if="categories.length" class="kb-category-section mb-4">
-        <div class="kb-section-heading">
+      <section v-if="categories.length" class="pxkb__section">
+        <div class="pxkb__section-head">
           <div>
-            <h2>Explora por tema</h2>
-            <p>Selecciona un área para ver únicamente sus guías.</p>
+            <h3 class="pxkb__section-title">Explora por tema</h3>
+            <p class="pxkb__section-sub">Selecciona un área para ver únicamente sus guías.</p>
           </div>
-          <button v-if="filterCategoryId" type="button" class="btn btn-sm btn-outline-secondary" @click="clearCategory">
-            Ver todas
-          </button>
+          <px-button v-if="filterCategoryId" variant="ghost" size="sm" @click="clearCategory">Ver todas</px-button>
         </div>
 
-        <div class="kb-category-grid">
+        <div class="pxkb__cat-grid">
           <button
             v-for="category in categories"
             :key="category.id"
             type="button"
-            :class="['kb-category-card', { active: Number(filterCategoryId) === Number(category.id) }]"
+            :class="['pxkb__cat', { 'is-active': Number(filterCategoryId) === Number(category.id) }]"
             @click="selectCategory(category.id)"
           >
-            <span class="kb-category-icon"><lucide-icon name="folder-open" /></span>
-            <span class="kb-category-copy">
+            <span class="pxkb__cat-icon"><lucide-icon name="folder-open" /></span>
+            <span class="pxkb__cat-copy">
               <strong>{{ category.name }}</strong>
               <small v-if="category.description">{{ category.description }}</small>
-              <span class="kb-category-count">{{ category.published_articles_count || 0 }} {{ Number(category.published_articles_count) === 1 ? 'guía' : 'guías' }}</span>
+              <span class="pxkb__cat-count">{{ category.published_articles_count || 0 }} {{ Number(category.published_articles_count) === 1 ? 'guía' : 'guías' }}</span>
             </span>
-            <lucide-icon class="kb-category-arrow" name="chevron-right" />
+            <lucide-icon class="pxkb__cat-arrow" name="chevron-right" />
           </button>
         </div>
       </section>
 
-      <b-card class="kb-card shadow-sm">
-        <div class="kb-toolbar">
-          <div class="kb-toolbar-top">
+      <px-card flush class="pxkb__results">
+        <div class="pxkb__toolbar">
+          <div class="pxkb__toolbar-top">
             <div>
-              <h2 class="kb-results-title">{{ resultsTitle }}</h2>
-              <p class="text-muted small mb-0">{{ total }} {{ total === 1 ? 'manual encontrado' : 'manuales encontrados' }}</p>
+              <h3 class="pxkb__results-title">{{ resultsTitle }}</h3>
+              <p class="pxkb__muted">{{ total }} {{ total === 1 ? 'manual encontrado' : 'manuales encontrados' }}</p>
             </div>
-
-            <b-form-select
-              v-model="filterCategoryId"
-              :options="categoryOptions"
-              value-field="id"
-              text-field="name"
-              class="kb-group-select"
-            >
-              <template #first>
-                <b-form-select-option :value="null">Todas las categorías</b-form-select-option>
-              </template>
-            </b-form-select>
+            <vs-px
+              class="pxkb__cat-select"
+              :options="categorySelectOptions"
+              :reduce="o => o.value"
+              :value="filterCategoryId"
+              placeholder="Todas las categorías"
+              @input="v => filterCategoryId = v || null"
+            />
           </div>
 
-          <div class="kb-quick-searches">
+          <div class="pxkb__quick">
             <span>Temas frecuentes:</span>
             <button v-for="term in quickSearches" :key="term" type="button" @click="quickSearch(term)">{{ term }}</button>
           </div>
         </div>
 
-        <div class="kb-articles-list" v-if="articles.length">
-          <div
-            v-for="article in articles"
-            :key="article.id"
-            class="kb-article-item"
-          >
-            <div class="kb-article-item-icon"><lucide-icon name="file-text" /></div>
-            <div class="kb-article-item-body">
+        <div v-if="articles.length" class="pxkb__list">
+          <div v-for="article in articles" :key="article.id" class="pxkb__row">
+            <div class="pxkb__row-icon"><lucide-icon name="file-text" /></div>
+            <div class="pxkb__row-body">
               <router-link
                 :to="{ name: 'KnowledgeBaseArticleView', params: { id: article.id } }"
-                class="kb-article-title"
-              >
-                {{ article.title }}
-              </router-link>
-              <div class="kb-article-meta">
-                <span class="kb-article-group">{{ article.category ? article.category.name : 'General' }}</span>
-                <span v-if="article.updated_at" class="text-muted small">
-                  Actualizado {{ formatDate(article.updated_at) }}
-                </span>
+                class="pxkb__row-title"
+              >{{ article.title }}</router-link>
+              <div class="pxkb__row-meta">
+                <span class="pxkb__row-group">{{ article.category ? article.category.name : 'General' }}</span>
+                <span v-if="article.updated_at" class="pxkb__muted">Actualizado {{ formatDate(article.updated_at) }}</span>
               </div>
             </div>
-
-            <router-link
-              :to="{ name: 'KnowledgeBaseArticleView', params: { id: article.id } }"
-              class="btn btn-sm btn-outline-primary kb-open-btn"
-              title="Abrir manual"
-            >
-              Abrir <lucide-icon name="chevron-right" />
-            </router-link>
+            <px-button
+              variant="secondary"
+              size="sm"
+              trailing-icon="chevron-right"
+              @click="$router.push({ name: 'KnowledgeBaseArticleView', params: { id: article.id } })"
+            >Abrir</px-button>
           </div>
         </div>
 
-        <div v-else-if="!loading" class="kb-empty">
-          <div class="kb-empty-icon"><lucide-icon name="search-x" /></div>
-          <p class="kb-empty-title">No encontramos una guía con esos filtros</p>
-          <p class="kb-empty-text text-muted">Prueba con otra palabra o vuelve a ver todas las categorías.</p>
-          <b-button variant="outline-primary" @click="resetFilters">Limpiar búsqueda</b-button>
-        </div>
+        <px-empty-state
+          v-else-if="!loading"
+          icon="search-x"
+          title="No encontramos una guía con esos filtros"
+          description="Prueba con otra palabra o vuelve a ver todas las categorías."
+        >
+          <px-button variant="secondary" @click="resetFilters">Limpiar búsqueda</px-button>
+        </px-empty-state>
 
-        <div v-if="totalPages > 1" class="kb-pagination">
-          <span class="text-muted small">Página {{ currentPage }} de {{ totalPages }}</span>
-          <div>
-            <b-button size="sm" variant="outline-secondary" :disabled="currentPage <= 1" @click="goPage(currentPage - 1)">
-              Anterior
-            </b-button>
-            <b-button size="sm" variant="outline-secondary" class="ml-2" :disabled="currentPage >= totalPages" @click="goPage(currentPage + 1)">
-              Siguiente
-            </b-button>
+        <div v-if="totalPages > 1" class="pxkb__pager">
+          <span class="pxkb__muted">Página {{ currentPage }} de {{ totalPages }}</span>
+          <div class="pxkb__pager-btns">
+            <px-button size="sm" variant="ghost" icon="chevron-left" :disabled="currentPage <= 1" @click="goPage(currentPage - 1)">Anterior</px-button>
+            <px-button size="sm" variant="ghost" trailing-icon="chevron-right" :disabled="currentPage >= totalPages" @click="goPage(currentPage + 1)">Siguiente</px-button>
           </div>
         </div>
-      </b-card>
+      </px-card>
     </template>
   </div>
 </template>
 
 <script>
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
+
 export default {
   name: 'KnowledgeBaseList',
   metaInfo: { title: 'Manual PRODEX' },
+  components: { PxPageHeader, PxCard, PxButton, PxInput, PxEmptyState, VsPx },
   data() {
     return {
       isLoading: true,
@@ -162,8 +150,8 @@ export default {
     };
   },
   computed: {
-    categoryOptions() {
-      return this.categories;
+    categorySelectOptions() {
+      return this.categories.map(c => ({ label: c.name, value: c.id }));
     },
     selectedCategory() {
       if (!this.filterCategoryId) return null;
@@ -189,6 +177,7 @@ export default {
     this.fetchArticles();
   },
   methods: {
+    tv(v) { return typeof v === 'string' ? v.trim() : v; },
     async fetchCategories() {
       try {
         const res = await axios.get('/prodex-manual/categories', {
@@ -272,91 +261,93 @@ export default {
 };
 </script>
 
-<style scoped>
-.kb-page { padding-bottom: 2rem; }
-.kb-hero {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 14px;
-  padding: 2rem 1.75rem;
-  color: #fff;
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxkb { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxkb { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxkb__pad { padding: var(--pxn-space-6) 0; }
+.pxkb__muted { color: var(--pxn-text-muted); font-size: var(--pxn-fs-sm); margin: 0; }
+
+.pxkb__hero {
+  display: flex; gap: var(--pxn-space-4); align-items: flex-start;
+  background: var(--pxn-surface);
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-lg, 12px);
+  padding: var(--pxn-space-6);
+  margin-top: var(--pxn-space-5);
 }
-.kb-hero-inner { max-width: 780px; }
-.kb-hero-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1rem;
+.pxkb__hero-icon {
+  flex: 0 0 auto; width: 44px; height: 44px; border-radius: var(--pxn-radius-md, 10px);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--pxn-primary-soft, rgba(94,106,210,0.12)); color: var(--pxn-primary);
 }
-.kb-hero-title { font-size: 1.65rem; font-weight: 700; margin: 0 0 0.25rem 0; }
-.kb-hero-subtitle { margin: 0; opacity: 0.94; font-size: 0.98rem; }
-.kb-hero-search { margin-top: 1.25rem; max-width: 680px; }
-.kb-hero-search .input-group { background: #fff; border-radius: 10px; overflow: hidden; }
-.kb-hero-search .form-control, .kb-hero-search .input-group-text { border: 0; background: #fff; }
-.kb-hero-search .btn { border-radius: 0; font-weight: 600; color: #5b5fc7; }
-.kb-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 0.9rem; }
-.kb-section-heading h2 { font-size: 1.15rem; margin: 0 0 0.2rem; color: #2d3748; font-weight: 700; }
-.kb-section-heading p { margin: 0; color: #718096; font-size: 0.9rem; }
-.kb-category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
-.kb-category-card {
-  appearance: none;
-  width: 100%;
-  border: 1px solid #e6e9ef;
-  background: #fff;
-  border-radius: 12px;
-  padding: 0.95rem 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color .2s, box-shadow .2s, transform .2s;
+.pxkb__hero-body { flex: 1; min-width: 0; }
+.pxkb__hero-title { margin: 0 0 var(--pxn-space-1); font-size: var(--pxn-fs-lg, 1.05rem); font-weight: 600; color: var(--pxn-text); }
+.pxkb__hero-sub { margin: 0 0 var(--pxn-space-4); color: var(--pxn-text-muted); font-size: var(--pxn-fs-sm); }
+.pxkb__hero-search { display: flex; gap: var(--pxn-space-2); align-items: center; max-width: 640px; }
+.pxkb__hero-search > *:first-child { flex: 1; }
+@media (max-width: 560px) { .pxkb__hero { flex-direction: column; } .pxkb__hero-search { flex-direction: column; align-items: stretch; } }
+
+.pxkb__section { margin-top: var(--pxn-space-6); }
+.pxkb__section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--pxn-space-4); margin-bottom: var(--pxn-space-3); }
+.pxkb__section-title { margin: 0 0 var(--pxn-space-1); font-size: var(--pxn-fs-md, 0.98rem); font-weight: 600; color: var(--pxn-text); }
+.pxkb__section-sub { margin: 0; color: var(--pxn-text-muted); font-size: var(--pxn-fs-sm); }
+
+.pxkb__cat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-3); }
+@media (max-width: 768px) { .pxkb__cat-grid { grid-template-columns: 1fr; } }
+.pxkb__cat {
+  appearance: none; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid var(--pxn-border); background: var(--pxn-surface);
+  border-radius: var(--pxn-radius-md, 12px);
+  padding: var(--pxn-space-4);
+  display: flex; align-items: center; gap: var(--pxn-space-3);
+  transition: border-color .12s ease, background .12s ease;
 }
-.kb-category-card:hover { border-color: #aeb8f4; box-shadow: 0 4px 14px rgba(45,55,72,.06); transform: translateY(-1px); }
-.kb-category-card.active { border-color: #667eea; background: #f8f8ff; box-shadow: 0 0 0 2px rgba(102,126,234,.08); }
-.kb-category-icon { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #eef0ff; color: #667eea; }
-.kb-category-copy { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.kb-category-copy strong { color: #303746; font-size: 0.94rem; margin-bottom: 0.15rem; }
-.kb-category-copy small { color: #7a8492; font-size: 0.78rem; line-height: 1.35; }
-.kb-category-count { color: #667eea; font-size: 0.74rem; font-weight: 600; margin-top: 0.3rem; }
-.kb-category-arrow { color: #a0a8b3; flex: 0 0 auto; }
-.kb-card { border-radius: 12px; border: none; }
-.kb-toolbar { margin-bottom: 1.25rem; }
-.kb-toolbar-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.85rem; }
-.kb-results-title { margin: 0 0 0.15rem; color: #2d3748; font-size: 1.1rem; font-weight: 700; }
-.kb-group-select { max-width: 270px; border-radius: 8px; }
-.kb-quick-searches { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
-.kb-quick-searches > span { color: #718096; font-size: 0.8rem; margin-right: 0.15rem; }
-.kb-quick-searches button { border: 1px solid #e1e5ec; background: #f8fafc; color: #596579; border-radius: 999px; padding: 0.27rem 0.58rem; font-size: 0.77rem; cursor: pointer; }
-.kb-quick-searches button:hover { border-color: #aeb8f4; color: #5b5fc7; background: #f5f5ff; }
-.kb-articles-list { border-top: 1px solid #eee; }
-.kb-article-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f0f0f0; gap: 0.9rem; }
-.kb-article-item:last-child { border-bottom: none; }
-.kb-article-item-icon { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: #f4f5ff; color: #667eea; }
-.kb-article-item-body { flex: 1; min-width: 0; }
-.kb-article-title { font-weight: 600; color: #333; display: block; margin-bottom: 0.35rem; text-decoration: none; transition: color 0.2s; }
-.kb-article-title:hover { color: #667eea; }
-.kb-article-meta { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
-.kb-article-group { font-size: 0.8rem; color: #667eea; background: rgba(102,126,234,0.1); padding: 0.2rem 0.5rem; border-radius: 6px; }
-.kb-open-btn { display: inline-flex; align-items: center; gap: 0.15rem; border-radius: 8px; }
-.kb-empty { text-align: center; padding: 3rem 1.5rem; }
-.kb-empty-icon { font-size: 3rem; color: #dee2e6; margin-bottom: 1rem; }
-.kb-empty-title { font-weight: 600; margin-bottom: 0.25rem; }
-.kb-empty-text { font-size: 0.9rem; margin-bottom: 1rem; }
-.kb-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #eee; }
-@media (max-width: 768px) {
-  .kb-category-grid { grid-template-columns: 1fr; }
-  .kb-toolbar-top { align-items: stretch; flex-direction: column; }
-  .kb-group-select { max-width: none; }
-  .kb-open-btn { padding-left: 0.55rem; padding-right: 0.55rem; }
+.pxkb__cat:hover { border-color: var(--pxn-border-strong, var(--pxn-primary)); }
+.pxkb__cat.is-active { border-color: var(--pxn-primary); background: var(--pxn-primary-soft, rgba(94,106,210,0.06)); }
+.pxkb__cat-icon {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: var(--pxn-radius-md, 10px);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--pxn-primary-soft, rgba(94,106,210,0.12)); color: var(--pxn-primary);
 }
-@media (max-width: 576px) {
-  .kb-hero { padding: 1.5rem 1.1rem; }
-  .kb-article-item-icon { display: none; }
-  .kb-open-btn { font-size: 0; }
-  .kb-open-btn svg { font-size: initial; }
+.pxkb__cat-copy { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.pxkb__cat-copy strong { color: var(--pxn-text); font-size: var(--pxn-fs-sm); margin-bottom: 2px; }
+.pxkb__cat-copy small { color: var(--pxn-text-muted); font-size: var(--pxn-fs-xs, 0.78rem); line-height: 1.35; }
+.pxkb__cat-count { color: var(--pxn-primary); font-size: var(--pxn-fs-xs, 0.74rem); font-weight: 600; margin-top: var(--pxn-space-1); }
+.pxkb__cat-arrow { color: var(--pxn-text-muted); flex: 0 0 auto; }
+
+.pxkb__results { margin-top: var(--pxn-space-6); }
+.pxkb__toolbar { padding: var(--pxn-space-5) var(--pxn-space-5) var(--pxn-space-3); }
+.pxkb__toolbar-top { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-4); margin-bottom: var(--pxn-space-3); }
+.pxkb__toolbar-top > div:first-child { flex: 1 1 auto; min-width: 0; }
+.pxkb__results-title { margin: 0 0 2px; font-size: var(--pxn-fs-md, 1rem); font-weight: 600; color: var(--pxn-text); }
+.pxkb__cat-select { flex: 0 0 auto; width: 280px; }
+@media (max-width: 640px) { .pxkb__toolbar-top { flex-direction: column; align-items: stretch; } .pxkb__cat-select { width: 100%; } }
+.pxkb__quick { display: flex; align-items: center; flex-wrap: wrap; gap: var(--pxn-space-2); }
+.pxkb__quick > span { color: var(--pxn-text-muted); font-size: var(--pxn-fs-xs, 0.8rem); }
+.pxkb__quick button {
+  border: 1px solid var(--pxn-border); background: var(--pxn-surface-2, var(--pxn-surface)); color: var(--pxn-text-muted);
+  border-radius: 9999px; padding: 3px 10px; font-size: var(--pxn-fs-xs, 0.77rem); cursor: pointer;
+  transition: color .12s ease, border-color .12s ease;
 }
+.pxkb__quick button:hover { border-color: var(--pxn-primary); color: var(--pxn-primary); }
+
+.pxkb__list { border-top: 1px solid var(--pxn-border); }
+.pxkb__row { display: flex; align-items: center; gap: var(--pxn-space-3); padding: var(--pxn-space-4) var(--pxn-space-5); border-bottom: 1px solid var(--pxn-border); }
+.pxkb__row:last-child { border-bottom: none; }
+.pxkb__row-icon {
+  flex: 0 0 auto; width: 36px; height: 36px; border-radius: var(--pxn-radius-md, 9px);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--pxn-primary-soft, rgba(94,106,210,0.1)); color: var(--pxn-primary);
+}
+.pxkb__row-body { flex: 1; min-width: 0; }
+.pxkb__row-title { font-weight: 600; color: var(--pxn-text); display: block; margin-bottom: 4px; text-decoration: none; }
+.pxkb__row-title:hover { color: var(--pxn-primary); }
+.pxkb__row-meta { display: flex; align-items: center; gap: var(--pxn-space-3); flex-wrap: wrap; }
+.pxkb__row-group { font-size: var(--pxn-fs-xs, 0.8rem); color: var(--pxn-primary); background: var(--pxn-primary-soft, rgba(94,106,210,0.1)); padding: 2px 8px; border-radius: var(--pxn-radius-sm, 6px); }
+@media (max-width: 560px) { .pxkb__row-icon { display: none; } }
+
+.pxkb__pager { display: flex; justify-content: space-between; align-items: center; padding: var(--pxn-space-4) var(--pxn-space-5); border-top: 1px solid var(--pxn-border); }
+.pxkb__pager-btns { display: flex; gap: var(--pxn-space-2); }
 </style>
