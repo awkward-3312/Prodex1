@@ -523,29 +523,29 @@
         </div>
 
         <!-- Totals / charges -->
-        <div class="pos-shell-totals" style="padding: 8px 12px; background: #f7f7fb;">
+        <div class="pos-shell-totals" style="padding: 10px 12px; background: var(--bg);">
 
           <!-- Charges row — matches POS.html FieldNum (no uppercase, prefix/suffix inside box without borders) -->
-          <div class="pos-shell-charges-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+          <div class="pos-shell-charges-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--pxn-space-3); margin-bottom: var(--pxn-space-4);">
             <label style="display: block;">
-              <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: #8d8da0; margin-bottom: 4px;">{{ isTaxLocked ? 'ISV' : $t('pos.Tax') }} %</div>
-              <div style="display: flex; align-items: center; height: 28px; border: 1px solid #e6e6ec; border-radius: 6px; background: #ffffff; opacity: isTaxLocked ? 0.8 : 1;">
-                <input v-model.number="sale.tax_rate" type="text" placeholder="0" :disabled="isTaxLocked" :readonly="isTaxLocked" @keyup="keyup_OrderTax" style="width: 100%; border: 0; padding: 0 8px; background: transparent; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; outline: none; min-width: 0;" />
-                <span style="padding-right: 8px; color: #8d8da0; font-size: 12px; font-family: 'JetBrains Mono', monospace;">%</span>
+              <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 4px; text-transform: uppercase;">{{ isTaxLocked ? 'ISV' : $t('pos.Tax') }} %</div>
+              <div style="display: flex; align-items: center; height: 30px; border: 1px solid var(--line); border-radius: var(--pxn-radius-sm); background: var(--surface);" :style="{ opacity: isTaxLocked ? 0.85 : 1 }">
+                <input v-model.number="sale.tax_rate" type="text" placeholder="0" :disabled="isTaxLocked" :readonly="isTaxLocked" @keyup="keyup_OrderTax" style="width: 100%; border: 0; padding: 0 8px; background: transparent; font-size: 12px; font-family: var(--font-mono); color: var(--ink); outline: none; min-width: 0;" />
+                <span style="padding-right: 8px; color: var(--ink-3); font-size: 12px; font-family: var(--font-mono);">%</span>
               </div>
             </label>
             <label style="display: block;">
-              <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: #8d8da0; margin-bottom: 4px;">{{ $t('Discount') }}</div>
-              <div style="display: flex; align-items: center; height: 28px; border: 1px solid #e6e6ec; border-radius: 6px; background: #ffffff;">
-                <button type="button" @click="toggleDiscountType" :title="sale.discount_Method === '1' ? $t('Switch_to_Fixed') : $t('Switch_to_Percentage')" style="padding-left: 8px; padding-right: 0; background: transparent; border: 0; color: #8d8da0; font-size: 12px; cursor: pointer; font-family: 'JetBrains Mono', monospace;">{{ sale.discount_Method === '1' ? '%' : currentUser.currency }}</button>
-                <input v-model.number="sale.discount" type="text" placeholder="0" @keyup="keyup_Discount" style="width: 100%; border: 0; padding: 0 8px; background: transparent; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; outline: none; min-width: 0;" />
+              <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 4px; text-transform: uppercase;">{{ $t('Discount') }}</div>
+              <div style="display: flex; align-items: center; height: 30px; border: 1px solid var(--line); border-radius: var(--pxn-radius-sm); background: var(--surface);">
+                <button type="button" @click="toggleDiscountType" :title="sale.discount_Method === '1' ? $t('Switch_to_Fixed') : $t('Switch_to_Percentage')" style="padding-left: 8px; padding-right: 0; background: transparent; border: 0; color: var(--ink-3); font-size: 12px; cursor: pointer; font-family: var(--font-mono);">{{ sale.discount_Method === '1' ? '%' : currentUser.currency }}</button>
+                <input v-model.number="sale.discount" type="text" placeholder="0" @keyup="keyup_Discount" style="width: 100%; border: 0; padding: 0 8px; background: transparent; font-size: 12px; font-family: var(--font-mono); color: var(--ink); outline: none; min-width: 0;" />
               </div>
             </label>
             <label style="display: block;">
-              <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: #8d8da0; margin-bottom: 4px;">{{ $t('Shipping') }}</div>
-              <div style="display: flex; align-items: center; height: 28px; border: 1px solid #e6e6ec; border-radius: 6px; background: #ffffff;">
-                <span style="padding-left: 8px; color: #8d8da0; font-size: 12px; font-family: 'JetBrains Mono', monospace;">{{ currentUser.currency }}</span>
-                <input v-model.number="sale.shipping" type="text" placeholder="0" @keyup="keyup_Shipping" style="width: 100%; border: 0; padding: 0 8px; background: transparent; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; outline: none; min-width: 0;" />
+              <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 4px; text-transform: uppercase;">{{ $t('Shipping') }}</div>
+              <div style="display: flex; align-items: center; height: 30px; border: 1px solid var(--line); border-radius: var(--pxn-radius-sm); background: var(--surface);">
+                <span style="padding-left: 8px; color: var(--ink-3); font-size: 12px; font-family: var(--font-mono);">{{ currentUser.currency }}</span>
+                <input v-model.number="sale.shipping" type="text" placeholder="0" @keyup="keyup_Shipping" style="width: 100%; border: 0; padding: 0 8px; background: transparent; font-size: 12px; font-family: var(--font-mono); color: var(--ink); outline: none; min-width: 0;" />
               </div>
             </label>
           </div>
@@ -553,14 +553,14 @@
           <!-- Points convert row -->
           <div
             v-if="isOnline && pos_settings.enable_customer_points && clientIsEligible && currentUserPermissions && currentUserPermissions.includes('edit_tax_discount_shipping_sale')"
-            :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px', background: pointsConverted ? '#eaf7ef' : '#f5f3fd', borderRadius: '8px', marginBottom: '10px' }">
+            :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px', background: pointsConverted ? 'var(--pxn-success-soft)' : 'var(--pxn-surface-2)', border: '1px solid ' + (pointsConverted ? 'var(--pxn-success-border)' : 'var(--line)'), borderRadius: 'var(--pxn-radius-md)', marginBottom: '10px' }">
             <div style="min-width: 0;">
-              <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #54546a;">
+              <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-2);">
                 <lucide-icon name="check" v-if="pointsConverted" />
                 <span>{{ $t('Available_Points') }}</span>
-                <span style="font-size: 14px; font-weight: 700; color: #6f53d9; font-family: 'JetBrains Mono', monospace; margin-left: 4px;">{{ selectedClientPoints }}</span>
+                <span style="font-size: 13px; font-weight: 700; color: var(--ink); font-family: var(--font-mono); margin-left: 4px;">{{ selectedClientPoints }}</span>
               </div>
-              <div v-if="discount_from_points > 0" style="font-size: 10px; color: #1e7a44; margin-top: 2px;">✅ {{ $t('Discount') }} {{ discount_from_points }} {{ currentUser.currency }} {{ $t('pos.will_be_applied') }}</div>
+              <div v-if="discount_from_points > 0" style="font-size: 10px; color: var(--pxn-success-ink); margin-top: 2px;">✅ {{ $t('Discount') }} {{ discount_from_points }} {{ currentUser.currency }} {{ $t('pos.will_be_applied') }}</div>
             </div>
             <div style="display: inline-flex; align-items: center; gap: 6px;">
               <input
@@ -574,12 +574,12 @@
                 inputmode="numeric"
                 pattern="[0-9]*"
                 placeholder="0"
-                style="width: 60px; height: 28px; padding: 0 8px; border: 1px solid #e6e6ec; border-radius: 6px; background: #ffffff; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; outline: none; text-align: center;"
+                style="width: 60px; height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--pxn-radius-sm); background: var(--surface); font-size: 12px; font-family: var(--font-mono); color: var(--ink); outline: none; text-align: center;"
               />
               <button
                 :disabled="selectedClientPoints === 0"
                 @click="convertPointsToDiscount"
-                :style="{ height: '28px', padding: '0 10px', background: pointsConverted ? '#2fae5e' : '#6f53d9', color: '#fff', border: 0, borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }">
+                :style="{ height: '30px', padding: '0 12px', background: pointsConverted ? 'var(--pxn-success-soft)' : 'var(--surface)', color: pointsConverted ? 'var(--pxn-success-ink)' : 'var(--accent)', border: '1px solid ' + (pointsConverted ? 'var(--pxn-success-border)' : 'var(--pxn-border-control)'), borderRadius: 'var(--pxn-radius-sm)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }">
                 <template v-if="!pointsConverted"><lucide-icon name="banknote" /> {{ $t('Convert') }}</template>
                 <template v-else><lucide-icon name="check" /> {{ $t('Unconverted') }}</template>
               </button>
@@ -589,83 +589,83 @@
           <!-- Totals — Subtotal + Tax always, Discount + Shipping only when > 0 (matches POS.html) -->
           <div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
-              <span style="color: #54546a;">{{ $t('pos.Subtotal') }}</span>
-              <span style="color: #1f1f2c; font-family: 'JetBrains Mono', monospace; font-weight: 500;">{{ formatPriceWithCurrentCurrency(total, 2) }}</span>
+              <span style="color: var(--ink-2);">{{ $t('pos.Subtotal') }}</span>
+              <span style="color: var(--ink); font-family: var(--font-mono); font-weight: 500;">{{ formatPriceWithCurrentCurrency(total, 2) }}</span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
-              <span style="color: #8d8da0;">{{ $t('pos.Tax') }}</span>
-              <span style="color: #54546a; font-family: 'JetBrains Mono', monospace; font-weight: 500;">{{ formatPriceWithCurrentCurrency(sale.TaxNet, 2) }}</span>
+              <span style="color: var(--ink-3);">{{ $t('pos.Tax') }}</span>
+              <span style="color: var(--ink-2); font-family: var(--font-mono); font-weight: 500;">{{ formatPriceWithCurrentCurrency(sale.TaxNet, 2) }}</span>
             </div>
             <div v-if="getCurrentSaleDiscountAmount() > 0" style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
-              <span style="color: #54546a;">{{ $t('pos.Discount') }}</span>
-              <span style="color: #d64545; font-family: 'JetBrains Mono', monospace; font-weight: 500;">−{{ formatPriceWithCurrentCurrency(getCurrentSaleDiscountAmount(), 2) }}</span>
+              <span style="color: var(--ink-2);">{{ $t('pos.Discount') }}</span>
+              <span style="color: var(--pxn-danger-ink); font-family: var(--font-mono); font-weight: 500;">−{{ formatPriceWithCurrentCurrency(getCurrentSaleDiscountAmount(), 2) }}</span>
             </div>
             <div v-if="Number(promotionDiscount) > 0" style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
-              <span style="color: #54546a;">{{ $t('Promotions') || 'Promotions' }}<span v-if="appliedPromotions.length" style="color: #8d8da0; font-weight: 400;"> ({{ appliedPromotions.map(p => p.name).join(', ') }})</span></span>
-              <span style="color: #d64545; font-family: 'JetBrains Mono', monospace; font-weight: 500;">−{{ formatPriceWithCurrentCurrency(promotionDiscount, 2) }}</span>
+              <span style="color: var(--ink-2);">{{ $t('Promotions') || 'Promotions' }}<span v-if="appliedPromotions.length" style="color: var(--ink-3); font-weight: 400;"> ({{ appliedPromotions.map(p => p.name).join(', ') }})</span></span>
+              <span style="color: var(--pxn-danger-ink); font-family: var(--font-mono); font-weight: 500;">−{{ formatPriceWithCurrentCurrency(promotionDiscount, 2) }}</span>
             </div>
             <div v-if="storeCreditApplied > 0" style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
-              <span style="color: #54546a;">{{ $t('Store_Credit') || 'Vale aplicado' }} <span style="color:#8d8da0;">({{ appliedStoreCredit.code }})</span></span>
-              <span style="color: #d64545; font-family: 'JetBrains Mono', monospace; font-weight: 500;">−{{ formatPriceWithCurrentCurrency(storeCreditApplied, 2) }}</span>
+              <span style="color: var(--ink-2);">{{ $t('Store_Credit') || 'Vale aplicado' }} <span style="color: var(--ink-3);">({{ appliedStoreCredit.code }})</span></span>
+              <span style="color: var(--pxn-danger-ink); font-family: var(--font-mono); font-weight: 500;">−{{ formatPriceWithCurrentCurrency(storeCreditApplied, 2) }}</span>
             </div>
             <div v-if="Number(sale.shipping) > 0" style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
-              <span style="color: #8d8da0;">{{ $t('pos.Shipping') }}</span>
-              <span style="color: #54546a; font-family: 'JetBrains Mono', monospace; font-weight: 500;">{{ formatPriceWithCurrentCurrency(sale.shipping, 2) }}</span>
+              <span style="color: var(--ink-3);">{{ $t('pos.Shipping') }}</span>
+              <span style="color: var(--ink-2); font-family: var(--font-mono); font-weight: 500;">{{ formatPriceWithCurrentCurrency(sale.shipping, 2) }}</span>
             </div>
           </div>
 
           <!-- Promo code input -->
-          <div style="margin-top: 6px;">
-            <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: #8d8da0; margin-bottom: 4px;">{{ $t('PromoCode') || 'Promo code' }}</div>
+          <div style="margin-top: var(--pxn-space-4);">
+            <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 4px; text-transform: uppercase;">{{ $t('PromoCode') || 'Promo code' }}</div>
             <div style="display: flex; gap: 6px; align-items: center;">
               <input
                 v-model="promotionCode"
                 type="text"
                 :placeholder="$t('EnterCode') || 'Enter code'"
                 @keyup.enter="Apply_Promotion_Code"
-                style="flex: 1; height: 28px; padding: 0 8px; border: 1px solid #e6e6ec; border-radius: 6px; background: #ffffff; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; outline: none;"
+                style="flex: 1; height: 30px; padding: 0 8px; border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-sm); background: var(--surface); font-size: 12px; font-family: var(--font-mono); color: var(--ink); outline: none;"
               />
               <button
                 type="button"
                 @click="Apply_Promotion_Code"
-                style="height: 28px; padding: 0 10px; background: #6f53d9; color: #fff; border: 0; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;"
+                style="height: 30px; padding: 0 12px; background: var(--surface); color: var(--accent); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-sm); font-size: 11px; font-weight: 600; cursor: pointer;"
               >{{ $t('Apply') || 'Apply' }}</button>
               <button
                 v-if="promotionCode"
                 type="button"
                 @click="Clear_Promotion_Code"
-                style="height: 28px; padding: 0 8px; background: transparent; color: #8d8da0; border: 1px solid #e6e6ec; border-radius: 6px; font-size: 11px; cursor: pointer;"
+                style="height: 30px; padding: 0 8px; background: transparent; color: var(--ink-3); border: 1px solid var(--line); border-radius: var(--pxn-radius-sm); font-size: 11px; cursor: pointer;"
               >×</button>
             </div>
-            <div v-if="promotionCodeStatus" :style="{ marginTop: '4px', fontSize: '10px', color: promotionCodeStatus === 'ok' ? '#1e7a44' : '#d64545' }">
+            <div v-if="promotionCodeStatus" :style="{ marginTop: '4px', fontSize: '10px', color: promotionCodeStatus === 'ok' ? 'var(--pxn-success-ink)' : 'var(--pxn-danger-ink)' }">
               {{ promotionCodeMessage }}
             </div>
           </div>
 
-          <div style="margin-top: 6px;">
-            <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: #8d8da0; margin-bottom: 4px;">{{ $t('Store_Credit') || 'Aplicar Vale / Crédito de Tienda' }}</div>
+          <div style="margin-top: var(--pxn-space-4);">
+            <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 4px; text-transform: uppercase;">{{ $t('Store_Credit') || 'Aplicar Vale / Crédito de Tienda' }}</div>
             <div style="display: flex; gap: 6px; align-items: center;">
               <input
                 v-model="storeCreditCode"
                 type="text"
                 :placeholder="$t('EnterCode') || 'VAL-HN-20260816-X7K92P'"
                 @keyup.enter="Validate_Store_Credit"
-                style="flex: 1; height: 28px; min-width:0; padding: 0 8px; border: 1px solid #e6e6ec; border-radius: 6px; background: #ffffff; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; outline: none;"
+                style="flex: 1; height: 30px; min-width:0; padding: 0 8px; border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-sm); background: var(--surface); font-size: 12px; font-family: var(--font-mono); color: var(--ink); outline: none;"
               />
               <button
                 type="button"
                 @click="Validate_Store_Credit"
                 :disabled="storeCreditLoading"
-                style="height: 28px; padding: 0 10px; background: #1f7a5a; color: #fff; border: 0; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;"
+                style="height: 30px; padding: 0 12px; background: var(--surface); color: var(--accent); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-sm); font-size: 11px; font-weight: 600; cursor: pointer;"
               >{{ storeCreditLoading ? ($t('Loading') || '...') : ($t('Apply') || 'Aplicar') }}</button>
               <button
                 v-if="appliedStoreCredit"
                 type="button"
                 @click="Clear_Store_Credit"
-                style="height: 28px; padding: 0 8px; background: transparent; color: #8d8da0; border: 1px solid #e6e6ec; border-radius: 6px; font-size: 11px; cursor: pointer;"
+                style="height: 30px; padding: 0 8px; background: transparent; color: var(--ink-3); border: 1px solid var(--line); border-radius: var(--pxn-radius-sm); font-size: 11px; cursor: pointer;"
               >×</button>
             </div>
-            <div v-if="storeCreditMessage" :style="{ marginTop: '4px', fontSize: '10px', color: storeCreditStatus === 'ok' ? '#1e7a44' : '#d64545' }">
+            <div v-if="storeCreditMessage" :style="{ marginTop: '4px', fontSize: '10px', color: storeCreditStatus === 'ok' ? 'var(--pxn-success-ink)' : 'var(--pxn-danger-ink)' }">
               {{ storeCreditMessage }}
             </div>
           </div>
@@ -17731,10 +17731,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  background:
-    linear-gradient(180deg, #ffffff 0%, #fafafe 100%);
-  border-bottom: 1px solid #ececf3;
-  box-shadow: 0 4px 8px -6px rgba(20, 20, 40, 0.08);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 }
 .pos-codecanyon .pos-cart-header-left {
   display: flex;
@@ -17750,8 +17748,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   align-items: center;
   justify-content: center;
   flex: 0 0 34px;
-  background: linear-gradient(135deg, rgba(111,83,217,0.12), rgba(138,108,240,0.12));
-  color: #6f53d9;
+  background: var(--pxn-surface-2);
+  color: var(--ink-2);
   i { font-size: 16px; }
   svg { width: 16px; height: 16px; }
 }
@@ -17764,7 +17762,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .pos-codecanyon .pos-cart-header-title {
   font-size: 13px;
   font-weight: 700;
-  color: #1f1f2c;
+  color: var(--ink);
   letter-spacing: -0.1px;
   white-space: nowrap;
   overflow: hidden;
@@ -17773,7 +17771,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .pos-codecanyon .pos-cart-header-sub {
   font-size: 11px;
   font-weight: 500;
-  color: #8d8da0;
+  color: var(--ink-3);
   margin-top: 1px;
 }
 
@@ -17792,14 +17790,15 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .pos-codecanyon .pos-cart-header-total-label {
   font-size: 10px;
   font-weight: 600;
-  color: #8d8da0;
+  color: var(--ink-3);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .pos-codecanyon .pos-cart-header-total-value {
   font-size: 14px;
   font-weight: 800;
-  color: #1f1f2c;
+  color: var(--ink);
+  font-family: var(--font-mono);
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.2px;
@@ -17808,35 +17807,34 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .pos-codecanyon .pos-cart-header-clear-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid #fbe3e3;
-  background: #fff5f5;
-  color: #d64545;
+  width: var(--pxn-control-h-sm);
+  height: var(--pxn-control-h-sm);
+  border-radius: var(--pxn-radius-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-3);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  flex: 0 0 34px;
-  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease, color 150ms ease;
+  flex: 0 0 var(--pxn-control-h-sm);
+  transition: background-color var(--pxn-dur-1) var(--pxn-ease), border-color var(--pxn-dur-1) var(--pxn-ease), color var(--pxn-dur-1) var(--pxn-ease);
   i { font-size: 15px; }
   svg { width: 15px; height: 15px; }
 }
 .pos-codecanyon .pos-cart-header-clear-btn:hover:not(.is-disabled):not(:disabled) {
-  background: #d64545;
-  color: #fff;
-  border-color: #d64545;
-  transform: scale(1.05);
+  background: var(--pxn-danger-soft);
+  color: var(--pxn-danger-ink);
+  border-color: var(--pxn-danger-border);
 }
 .pos-codecanyon .pos-cart-header-clear-btn.is-disabled,
 .pos-codecanyon .pos-cart-header-clear-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-  background: #f7f7fb;
-  border-color: #ececf3;
-  color: #b0b0c0;
+  background: var(--soft);
+  border-color: var(--line);
+  color: var(--ink-disabled, var(--ink-3));
 }
 
 /* Mobile-cart-header (the existing simple label) is now redundant — the new
