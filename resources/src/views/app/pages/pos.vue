@@ -1,14 +1,14 @@
 <template>
-  <div class="pos-codecanyon" style="display: flex; flex-direction: column; height: 100vh; background: #f7f7fb; color: #1f1f2c; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden;">
+  <div class="pos-codecanyon px-next" data-pxn-type="plex" style="display: flex; flex-direction: column; height: 100vh; background: var(--pxn-bg); color: var(--pxn-ink); font-family: var(--pxn-font-sans); -webkit-font-smoothing: antialiased; overflow: hidden;">
 
     <!-- ============================================================
          TOP TOOLBAR (desktop / tablet)
          ============================================================ -->
-    <nav v-if="productsReady" class="pos-shell-header" style="display: flex; align-items: center; gap: 8px; padding: 0 16px; flex-shrink: 0; flex-grow: 0; border-bottom: 1px solid #e6e6ec; background: #ffffff;">
+    <nav v-if="productsReady" class="pos-shell-header" style="display: flex; align-items: center; gap: 8px; padding: 0 16px; flex-shrink: 0; flex-grow: 0; border-bottom: 1px solid var(--line); background: var(--surface);">
 
       <!-- Brand block (28x28 logo only on mobile; register info follows as a sibling) -->
       <div class="pos-shell-brand-block" style="display: flex; align-items: center; gap: 10px; padding-right: 12px; border-right: 1px solid #e6e6ec; height: 32px;">
-        <div style="width: 28px; height: 28px; border-radius: 8px; background: transparent; display: grid; place-items: center; color: #1f1f2c; font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; overflow: hidden; flex-shrink: 0;">
+        <div style="width: 28px; height: 28px; border-radius: 8px; background: transparent; display: grid; place-items: center; color: var(--ink); font-weight: 700; font-size: 13px; font-family: var(--font-mono); overflow: hidden; flex-shrink: 0;">
           <img v-if="currentUser && currentUser.logo" :src="$imgUrl('settings', currentUser.logo)" alt="logo" style="width: 100%; height: 100%; object-fit: cover;" />
           <span v-else>{{ (currentUser && currentUser.company) ? (currentUser.company[0] || 'P') : 'P' }}</span>
         </div>
@@ -22,11 +22,11 @@
         <button
           v-if="isOnline"
           type="button"
+          class="pos-shell-register-pill"
+          :class="(currentRegister && currentRegister.status === 'open') ? 'is-open' : 'is-closed'"
           @click="(currentRegister && currentRegister.status === 'open') ? $bvModal.show('CloseRegisterModal') : $bvModal.show('OpenRegisterModal')"
-          :title="(currentRegister && currentRegister.status === 'open') ? $t('Close Register') : $t('Open Register')"
-          style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; font-family: inherit; text-transform: uppercase; cursor: pointer; border: 0;"
-          :style="{ background: (currentRegister && currentRegister.status === 'open') ? '#eaf7ef' : '#fdecec', color: (currentRegister && currentRegister.status === 'open') ? '#1e7a44' : '#a83232' }">
-          <span style="width: 6px; height: 6px; border-radius: 99px; background: currentColor;"></span>
+          :title="(currentRegister && currentRegister.status === 'open') ? $t('Close Register') : $t('Open Register')">
+          <span class="pos-shell-register-pill-dot"></span>
           <span v-if="currentRegister && currentRegister.status === 'open'">OPEN</span>
           <span v-else>CLOSED</span>
         </button>
@@ -696,7 +696,7 @@
       </div>
 
       <!-- ============ PRODUCTS (RIGHT) ============ -->
-      <section class="pos-shell-section" style="flex: 1 1 auto; min-width: 0; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; background: #ffffff; overflow: hidden;">
+      <section class="pos-shell-section" style="flex: 1 1 auto; min-width: 0; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; background: var(--surface); overflow: hidden;">
 
         <!-- Search row (search input + Scanner button) -->
         <div class="pos-shell-search-row" style="padding: 4px 6px; display: flex; gap: 8px; align-items: center;">
@@ -832,7 +832,7 @@
         </div>
 
         <!-- Pagination -->
-        <div v-if="paginated_Products.length > 0" class="pos-shell-pagination" style="padding: 0px 16px; border-top: 1px solid rgb(230, 230, 236); background: rgb(255, 255, 255); display: flex; align-items: center; justify-content: space-between; gap: 7px; font-size: 11px; color: rgb(141, 141, 160); min-height: 30px;">
+        <div v-if="paginated_Products.length > 0" class="pos-shell-pagination" style="padding: 0px 16px; border-top: 1px solid var(--line); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 7px; font-size: 11px; color: var(--ink-3); min-height: 30px;">
           <button
             @click="Product_onPageChanged(product_currentPage - 1)"
             :disabled="product_currentPage === 1"
@@ -869,7 +869,7 @@
     <!-- ============================================================
          BOTTOM PAY BAR
          ============================================================ -->
-    <div v-if="productsReady" class="pos-shell-pay-bar" style="display: flex; background: rgb(255, 255, 255); align-items: center; gap: 8px; padding: 8px 16px 8px 20px; flex-shrink: 0; flex-grow: 0; border-top: 1px solid rgb(230, 230, 236);">
+    <div v-if="productsReady" class="pos-shell-pay-bar" style="display: flex; background: var(--surface); align-items: center; gap: 8px; padding: 8px 16px 8px 20px; flex-shrink: 0; flex-grow: 0; border-top: 1px solid var(--line);">
 
       <!-- Online indicator -->
       <div :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 500, color: isOnline ? '#1e7a44' : '#a83232' }" :title="offlineStatusTitle">
@@ -10612,34 +10612,113 @@ export default {
   }
 };
 </script>
-<style scoped lang="scss">
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
-/* ============================================
-   REFINED CLASSIC — DESIGN TOKENS
-   Sourced from POS.html visual reference.
-   Scoped to .pos-codecanyon so they don't leak.
-   ============================================ */
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style scoped lang="scss">
+/* ==========================================================================
+   POS · px-next workspace
+   --------------------------------------------------------------------------
+   The POS keeps its own scoped shell (`.pos-codecanyon`) and its bespoke
+   `--*` semantic layer, but that layer is now REBOUND to the px-next tokens
+   (`--pxn-*`, brought in by production.scss + the `.px-next` class on the
+   root). Nothing structural changes here — every `var(--accent)`,
+   `var(--line)`, `var(--ink)`, `var(--font-*)`… downstream now resolves to
+   the shared PRODEX system, tenant accent and IBM Plex included.
+   Self-hosted IBM Plex replaces the former Google-Fonts @import.
+   ========================================================================== */
 .pos-codecanyon {
-  --accent: #6f53d9;
-  --accent-soft: #ece9fb;
-  --accent-tint: #f5f3fd;
-  --accent-shadow: rgba(111, 83, 217, 0.32);
-  --bg: #f7f7fb;
-  --bg-deep: #f1f1f6;
-  --surface: #ffffff;
-  --soft: #f3f3f7;
-  --line: #e6e6ec;
-  --line-strong: #d8d8e0;
-  --ink: #1f1f2c;
-  --ink-2: #54546a;
-  --ink-3: #8d8da0;
-  --danger: #d64545;
-  --success: #2fae5e;
-  --success-soft: #eaf7ef;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  --accent: var(--pxn-primary);
+  --accent-soft: var(--pxn-primary-soft);
+  --accent-tint: var(--pxn-primary-softer);
+  --accent-shadow: var(--pxn-focus-ring);
+  --bg: var(--pxn-bg);
+  --bg-deep: var(--pxn-surface-2);
+  --surface: var(--pxn-surface);
+  --soft: var(--pxn-surface-2);
+  --line: var(--pxn-border-strong);
+  --line-strong: var(--pxn-border-control);
+  --ink: var(--pxn-ink);
+  --ink-2: var(--pxn-ink-2);
+  --ink-3: var(--pxn-ink-3);
+  --danger: var(--pxn-danger);
+  --success: var(--pxn-success);
+  --success-soft: var(--pxn-success-soft);
+  --font-sans: var(--pxn-font-sans);
+  --font-mono: var(--pxn-font-mono);
+
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: var(--bg);
 }
+
+/* Browser surfaces the design system should own inside the POS scope. */
+.pos-codecanyon ::selection { background: var(--pxn-selected-bg); }
+.pos-codecanyon :focus-visible {
+  outline: 2px solid var(--pxn-primary);
+  outline-offset: 1px;
+}
+.pos-codecanyon ::-webkit-scrollbar { width: 10px; height: 10px; }
+.pos-codecanyon ::-webkit-scrollbar-thumb {
+  background: var(--pxn-surface-3);
+  border: 2px solid var(--surface);
+  border-radius: var(--pxn-radius-pill);
+}
+.pos-codecanyon ::-webkit-scrollbar-thumb:hover { background: var(--pxn-border-control); }
+.pos-codecanyon ::-webkit-scrollbar-track { background: transparent; }
+
+/* Bridge: the ~40 inline `font-family: 'JetBrains Mono'` money/quantity spans
+   in this file now render IBM Plex Mono (the approved technical face). The
+   literal strings are swapped to var(--font-mono) progressively as each
+   region is modernised in later commits. */
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/js/bundle/fonts/px-next/plex-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("/js/bundle/fonts/px-next/plex-mono-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("/js/bundle/fonts/px-next/plex-mono-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 700; font-display: swap;
+  src: url("/js/bundle/fonts/px-next/plex-mono-600.woff2") format("woff2");
+}
+
+/* Register state pill — semantic, discreet, icon + label + hairline. */
+.pos-codecanyon .pos-shell-register-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pxn-space-3);
+  padding: 3px var(--pxn-space-4);
+  border-radius: var(--pxn-radius-sm);
+  font-size: var(--pxn-fs-xs);
+  font-weight: var(--pxn-fw-semibold);
+  font-family: inherit;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color var(--pxn-dur-1) var(--pxn-ease), border-color var(--pxn-dur-1) var(--pxn-ease);
+}
+.pos-codecanyon .pos-shell-register-pill-dot {
+  width: 6px; height: 6px; border-radius: var(--pxn-radius-pill);
+  background: currentColor;
+}
+.pos-codecanyon .pos-shell-register-pill.is-open {
+  background: var(--pxn-success-soft);
+  color: var(--pxn-success-ink);
+  border-color: var(--pxn-success-border);
+}
+.pos-codecanyon .pos-shell-register-pill.is-closed {
+  background: var(--pxn-danger-soft);
+  color: var(--pxn-danger-ink);
+  border-color: var(--pxn-danger-border);
+}
+.pos-codecanyon .pos-shell-register-pill:hover { filter: brightness(0.98); }
 
 .pos-codecanyon .pos-shell-main.is-resizing,
 .pos-codecanyon .pos-shell-main.is-resizing * {
@@ -10653,8 +10732,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
-  transition: background-color 120ms ease, box-shadow 120ms ease;
+  background: var(--surface);
+  transition: background-color var(--pxn-dur-1) var(--pxn-ease), box-shadow var(--pxn-dur-1) var(--pxn-ease);
 }
 
 .pos-codecanyon .pos-shell-resizer::before {
@@ -10736,7 +10815,7 @@ $color-success: #10b981;
 $color-warning: #f59e0b;
 $color-danger: #ef4444;
 
-$font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+$font-family-primary: var(--pxn-font-sans);
 $font-size-xs: 12px;
 $font-size-sm: 14px;
 $font-size-base: 16px;
@@ -17486,19 +17565,19 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .pos-codecanyon .pos-shell-icon-btn,
 .pos-codecanyon button.pos-shell-icon-btn,
 .pos-codecanyon a.pos-shell-icon-btn {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px;
-  border-radius: 8px !important;
-  border: 1px solid #e6e6ec !important;
-  background: #ffffff !important;
-  color: #54546a !important;
+  width: var(--pxn-control-h-sm) !important;
+  height: var(--pxn-control-h-sm) !important;
+  min-width: var(--pxn-control-h-sm);
+  border-radius: var(--pxn-radius-md) !important;
+  border: 1px solid var(--line) !important;
+  background: var(--surface) !important;
+  color: var(--ink-2) !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   padding: 0 !important;
   cursor: pointer;
-  transition: all 120ms ease;
+  transition: background-color var(--pxn-dur-1) var(--pxn-ease), border-color var(--pxn-dur-1) var(--pxn-ease), color var(--pxn-dur-1) var(--pxn-ease);
   box-shadow: none !important;
   line-height: 1;
 }
@@ -17508,9 +17587,19 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   line-height: 1;
 }
 .pos-codecanyon .pos-shell-icon-btn:hover {
-  background: #f3f3f7 !important;
-  color: #1f1f2c !important;
-  border-color: #d8d8e0 !important;
+  background: var(--soft) !important;
+  color: var(--ink) !important;
+  border-color: var(--line-strong) !important;
+}
+.pos-codecanyon .pos-shell-icon-btn:focus-visible {
+  outline: none;
+  border-color: var(--pxn-primary) !important;
+  box-shadow: 0 0 0 3px var(--accent-shadow) !important;
+}
+.pos-codecanyon .pos-shell-icon-btn:disabled,
+.pos-codecanyon .pos-shell-icon-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 /* ===== Calculator widget ===== */
 .pos-calc { padding: 2px; }
