@@ -2322,8 +2322,9 @@
           <!-- Serial / IMEI numbers are selected inline in the cart (serial panel). -->
 
           <b-col md="12">
-            <b-form-group>
-              <b-button variant="primary" type="submit">{{$t('submit')}}</b-button>
+            <b-form-group class="d-flex justify-content-end mt-2">
+              <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('form_Update_Detail')">{{ $t('Cancel') }}</b-button>
+              <b-button variant="primary" type="submit">{{ $t('Save') }}</b-button>
             </b-form-group>
           </b-col>
         </b-row>
