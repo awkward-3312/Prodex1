@@ -599,6 +599,7 @@ export default {
         try {
           this.$store.dispatch("shellScope/syncBranches", {
             branches: (data && data.branches) || [],
+            isOwner: !!(data && data.scope && data.scope.is_owner),
             userId: this.currentUser && this.currentUser.id
           });
         } catch (e) { /* store del shell no crítico para el dashboard */ }

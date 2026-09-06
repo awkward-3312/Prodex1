@@ -173,47 +173,61 @@
           v-if="branchScopeVisible"
           ref="scopechip"
           class="pxn-scopechip"
-          :class="{ 'is-open': scopeOpen }"
+          :class="{ 'is-open': scopeOpen && !isSingleBranchScope, 'is-static': isSingleBranchScope }"
         >
-          <button
-            type="button"
-            class="pxn-scopechip__btn pxn-ring"
-            :aria-expanded="scopeOpen ? 'true' : 'false'"
-            aria-haspopup="listbox"
-            aria-label="Alcance de sucursal para el panel"
-            @click="toggleScope"
+          <!-- Una sola sucursal en el alcance del usuario: no hay nada que
+               seleccionar → chip estático (sin caret, sin menú). -->
+          <div
+            v-if="isSingleBranchScope"
+            class="pxn-scopechip__btn pxn-scopechip__btn--static"
+            :title="'Sucursal del panel: ' + scopeLabel"
           >
             <lucide-icon name="building-2" :size="15" class="pxn-scopechip__lead" />
             <span class="pxn-scopechip__label">{{ scopeLabel }}</span>
-            <lucide-icon name="chevron-down" :size="14" class="pxn-scopechip__caret" />
-          </button>
-
-          <div v-if="scopeOpen" class="pxn-scopechip__menu" role="listbox">
-            <button
-              type="button" role="option"
-              class="pxn-scopechip__opt"
-              :class="{ 'is-active': !shellBranchId }"
-              :aria-selected="!shellBranchId ? 'true' : 'false'"
-              @click="pickBranch(0)"
-            >
-              <lucide-icon v-if="!shellBranchId" name="check" :size="14" class="pxn-scopechip__check" />
-              <span v-else class="pxn-scopechip__check-sp" aria-hidden="true"></span>
-              <span>Todas las sucursales</span>
-            </button>
-            <button
-              v-for="b in scopeBranches"
-              :key="b.id"
-              type="button" role="option"
-              class="pxn-scopechip__opt"
-              :class="{ 'is-active': Number(shellBranchId) === Number(b.id) }"
-              :aria-selected="Number(shellBranchId) === Number(b.id) ? 'true' : 'false'"
-              @click="pickBranch(b.id)"
-            >
-              <lucide-icon v-if="Number(shellBranchId) === Number(b.id)" name="check" :size="14" class="pxn-scopechip__check" />
-              <span v-else class="pxn-scopechip__check-sp" aria-hidden="true"></span>
-              <span>{{ b.name }}</span>
-            </button>
           </div>
+
+          <!-- Varias sucursales en el alcance: selector. -->
+          <template v-else>
+            <button
+              type="button"
+              class="pxn-scopechip__btn pxn-ring"
+              :aria-expanded="scopeOpen ? 'true' : 'false'"
+              aria-haspopup="listbox"
+              aria-label="Alcance de sucursal para el panel"
+              @click="toggleScope"
+            >
+              <lucide-icon name="building-2" :size="15" class="pxn-scopechip__lead" />
+              <span class="pxn-scopechip__label">{{ scopeLabel }}</span>
+              <lucide-icon name="chevron-down" :size="14" class="pxn-scopechip__caret" />
+            </button>
+
+            <div v-if="scopeOpen" class="pxn-scopechip__menu" role="listbox">
+              <button
+                type="button" role="option"
+                class="pxn-scopechip__opt"
+                :class="{ 'is-active': !shellBranchId }"
+                :aria-selected="!shellBranchId ? 'true' : 'false'"
+                @click="pickBranch(0)"
+              >
+                <lucide-icon v-if="!shellBranchId" name="check" :size="14" class="pxn-scopechip__check" />
+                <span v-else class="pxn-scopechip__check-sp" aria-hidden="true"></span>
+                <span>{{ allScopeLabel }}</span>
+              </button>
+              <button
+                v-for="b in scopeBranches"
+                :key="b.id"
+                type="button" role="option"
+                class="pxn-scopechip__opt"
+                :class="{ 'is-active': Number(shellBranchId) === Number(b.id) }"
+                :aria-selected="Number(shellBranchId) === Number(b.id) ? 'true' : 'false'"
+                @click="pickBranch(b.id)"
+              >
+                <lucide-icon v-if="Number(shellBranchId) === Number(b.id)" name="check" :size="14" class="pxn-scopechip__check" />
+                <span v-else class="pxn-scopechip__check-sp" aria-hidden="true"></span>
+                <span>{{ b.name }}</span>
+              </button>
+            </div>
+          </template>
         </div>
 
         <!-- Cluster de ATENCIÓN: incidencias operacionales + notificaciones.
@@ -379,7 +393,7 @@ export default {
   },
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
-    ...mapGetters("shellScope", ["shellBranchId", "shellBranches", "shellScopeLabel"]),
+    ...mapGetters("shellScope", ["shellBranchId", "shellBranches", "shellScopeLabel", "shellAllScopeLabel"]),
 
     // ---- Logo del rail ------------------------------------------------
     // Reutiliza settings.logo (misma fuente que TopNav). Fallback: marca
@@ -399,8 +413,19 @@ export default {
     scopeLabel() {
       return this.shellScopeLabel;
     },
+    // Texto de la opción "todas": del negocio para el propietario,
+    // "mis sucursales" para gerente / operativo multi-sucursal.
+    allScopeLabel() {
+      return this.shellAllScopeLabel;
+    },
+    // Con una sola sucursal en el alcance no hay nada que seleccionar: el chip
+    // se vuelve estático (sin caret, sin menú, sin foco).
+    isSingleBranchScope() {
+      return this.scopeBranches.length === 1;
+    },
     // El branch scope hoy sólo afecta al Dashboard. Se muestra únicamente en el
     // dominio Panel para no presentar un filtro falso en Reportes/Finanzas/etc.
+    // Sin sucursales en el alcance no se muestra ningún selector.
     branchScopeVisible() {
       return this.scopeBranches.length > 0 && this.activeDomain === "panel";
     },
@@ -1436,6 +1461,9 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 }
 .pxn-scopechip__btn:hover { background: var(--pxn-surface-hover); border-color: var(--pxn-border-strong); color: var(--pxn-ink); }
 .pxn-scopechip.is-open .pxn-scopechip__btn { border-color: var(--pxn-primary-border); color: var(--pxn-ink); }
+/* Alcance con una sola sucursal: el chip es informativo, no un control. */
+.pxn-scopechip__btn--static { cursor: default; }
+.pxn-scopechip__btn--static:hover { background: var(--pxn-surface); border-color: var(--pxn-border); color: var(--pxn-ink-2); }
 .pxn-scopechip__lead { flex: none; color: var(--pxn-ink-3); }
 .pxn-scopechip__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--pxn-fw-medium); }
 .pxn-scopechip__caret { flex: none; color: var(--pxn-ink-3); transition: transform var(--pxn-dur-1) var(--pxn-ease); }

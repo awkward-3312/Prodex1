@@ -35,17 +35,23 @@ function writeLS(userId, branchId) {
 export default {
   namespaced: true,
   state: {
-    branchId: 0,        // 0 = "Todas las sucursales"
+    branchId: 0,        // 0 = alcance completo permitido (todas las sucursales del usuario)
     branches: [],       // [{ id, name }] — autoridad: respuesta de dashboard_data
+    isOwner: false,     // dashboard_data → scope.is_owner. Sólo afecta el texto del selector.
     hydrated: false
   },
   getters: {
     shellBranchId: s => s.branchId,
     shellBranches: s => s.branches,
-    shellScopeLabel: s => {
-      if (!s.branchId) return "Todas las sucursales";
+    shellIsOwner: s => s.isOwner,
+    // Etiqueta "todas": del negocio para el propietario, "mis sucursales" para el resto.
+    shellAllScopeLabel: s => (s.isOwner ? "Todas las sucursales" : "Todas mis sucursales"),
+    shellScopeLabel: (s, g) => {
+      // Una sola sucursal en el alcance: no hay nada que elegir → su nombre.
+      if (s.branches.length === 1) return s.branches[0].name;
+      if (!s.branchId) return g.shellAllScopeLabel;
       const b = s.branches.find(x => Number(x.id) === Number(s.branchId));
-      return b ? b.name : "Todas las sucursales";
+      return b ? b.name : g.shellAllScopeLabel;
     }
   },
   mutations: {
@@ -54,6 +60,9 @@ export default {
     },
     setBranches(s, list) {
       s.branches = Array.isArray(list) ? list.map(b => ({ id: Number(b.id), name: String(b.name) })) : [];
+    },
+    setIsOwner(s, v) {
+      s.isOwner = !!v;
     },
     setHydrated(s, v) {
       s.hydrated = !!v;
@@ -72,8 +81,9 @@ export default {
 
     // Publica el catálogo de sucursales visible (viene de dashboard_data) y
     // revalida la selección actual contra él.
-    syncBranches({ commit, state }, { branches, userId }) {
+    syncBranches({ commit, state }, { branches, isOwner, userId }) {
       commit("setBranches", branches);
+      if (isOwner !== undefined) commit("setIsOwner", isOwner);
       const ids = state.branches.map(b => Number(b.id));
       if (state.branchId && ids.indexOf(state.branchId) === -1) {
         // perdió permiso / dejó de existir → alcance permitido seguro
