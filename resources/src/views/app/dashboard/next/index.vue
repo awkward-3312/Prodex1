@@ -56,7 +56,16 @@
         <template #actions><px-button size="sm" variant="secondary" @click="load">Reintentar</px-button></template>
       </px-alert>
 
-      <template v-if="loading || adapted">
+      <!-- usuario operativo sin sucursal resoluble: cero datos, estado informativo -->
+      <div v-if="adapted && !hasBranch" class="pxb1__denied">
+        <px-empty-state
+          icon="building-2"
+          title="No tienes una sucursal asignada"
+          description="Pide a un administrador que te asigne una sucursal operativa para ver el panel de tu tienda."
+        />
+      </div>
+
+      <template v-else-if="loading || adapted">
       <!-- KPI row — cifras inmediatas, sin count-up -->
       <div class="pxb1__kpis">
         <px-card v-for="c in kpiCards" :key="c.key">
@@ -65,8 +74,8 @@
         </px-card>
       </div>
 
-      <!-- Valorización de inventario: la cifra "a costo" del KPI, con sus 3 bases -->
-      <px-card class="pxb1__valuation" flush>
+      <!-- Valorización de inventario (FINANCIAL_MANAGEMENT: owner / gerente) -->
+      <px-card v-if="canSeeFinancial" class="pxb1__valuation" flush>
         <div class="pxb1__valuation-grid">
           <div class="pxb1__valuation-head">
             <lucide-icon name="boxes" :size="15" />
@@ -96,6 +105,7 @@
           empty-title="Sin ventas ni compras en el rango"
         />
         <px-apex-frame
+          v-if="canSeeFinancial"
           class="pxb1__chart"
           title="Pagos recibidos y enviados"
           type="area"
@@ -119,6 +129,7 @@
           empty-title="Sin ventas de productos"
         />
         <px-apex-frame
+          v-if="canSeeFinancial"
           class="pxb1__chart"
           title="Top clientes"
           type="donut"
@@ -146,7 +157,7 @@
 
       <!-- tablas -->
       <div class="pxb1__tables">
-        <px-card title="Ventas recientes" flush class="pxb1__recent">
+        <px-card :title="canSeeTeam ? 'Ventas recientes' : 'Mis ventas recientes'" flush class="pxb1__recent">
           <template #actions><span class="pxn-fs-xs pxn-muted pxn-num">{{ (adapted && adapted.recentSales.length) || 0 }}</span></template>
           <px-table
             v-if="!loading && adapted && adapted.recentSales.length"
@@ -174,6 +185,26 @@
         </px-card>
 
         <div class="pxb1__side">
+          <!-- TEAM: desglose por cajero — sólo owner / gerente de la sucursal -->
+          <px-card v-if="canSeeTeam" title="Ventas por cajero" flush>
+            <px-table
+              v-if="!loading && salesByCashierRows.length"
+              :columns="cashierColumns"
+              :rows="salesByCashierRows"
+              row-key="userId"
+              density="compact"
+            >
+              <template #cell-total="{ row }"><span class="pxn-num">{{ money(row.total) }}</span></template>
+              <template #cell-due="{ row }">
+                <span class="pxn-num" :class="{ 'pxb1__due': row.due > 0 }">{{ money(row.due) }}</span>
+              </template>
+            </px-table>
+            <div v-else class="pxb1__pad">
+              <px-skeleton v-if="loading" variant="table" :rows="4" :columns="4" />
+              <px-empty-state v-else inline icon="users" title="Sin ventas del equipo" description="Ningún cajero registró ventas en el rango." />
+            </div>
+          </px-card>
+
           <px-card title="Top productos" flush>
             <px-table
               v-if="!loading && topProductsRows.length"
@@ -296,6 +327,12 @@ export default {
         { key: "name", label: "Producto", strong: true },
         { key: "qty", label: "Stock", align: "right", numeric: true },
         { key: "alert", label: "Alerta", align: "right", numeric: true }
+      ],
+      cashierColumns: [
+        { key: "name", label: "Cajero", strong: true },
+        { key: "invoices", label: "Facturas", align: "right", numeric: true },
+        { key: "total", label: "Total", align: "right", numeric: true },
+        { key: "due", label: "Por cobrar", align: "right", numeric: true }
       ]
     };
   },
@@ -304,10 +341,30 @@ export default {
     // Alcance de sucursal del shell px-next (0 = todas). Fuera del shell vale 0
     // y el comportamiento es idéntico al anterior.
     ...mapGetters("shellScope", ["shellBranchId"]),
+    // El Panel PRODEX es accesible para TODO usuario de tenant autenticado. Lo
+    // que cambia no es SI lo ve, sino QUÉ datos muestra — eso lo resuelve el
+    // backend (DashboardScopeService) y llega en `adapted.scope`. El permiso
+    // legacy `dashboard` deja de ser condición para abrir la pantalla.
     hasDashboardPermission() {
-      const p = Array.isArray(this.currentUserPermissions) ? this.currentUserPermissions : [];
-      return p.includes("dashboard");
+      return true;
     },
+    // Contrato de alcance del backend (gobierna selector, bloque financiero,
+    // tabla de equipo y estado "sin sucursal").
+    scope() {
+      return (this.adapted && this.adapted.scope) ||
+        { hasBranch: true, canSeeTeam: false, canSeeFinancial: false, consolidated: true, isOwner: false, selectedBranchId: 0 };
+    },
+    canSeeFinancial() { return !!this.scope.canSeeFinancial; },
+    canSeeTeam() { return !!this.scope.canSeeTeam; },
+    hasBranch() { return this.scope.hasBranch !== false; },
+    mySalesCard() {
+      const ms = (this.adapted && this.adapted.mySales) || {};
+      return {
+        total: this.kpiMoney(ms.total || 0),
+        invoices: this.number(ms.invoices || 0)
+      };
+    },
+    salesByCashierRows() { return (this.adapted && this.adapted.salesByCashier) || []; },
     fmt() {
       return makeFormatters(this.currentUser && this.currentUser.currency);
     },
@@ -348,19 +405,28 @@ export default {
     kpiCards() {
       const k = this.k;
       const m = v => this.kpiMoney(v);
-      return [
-        { key: "sales", label: "Total ventas", icon: "trending-up",
+      // BRANCH_OPERATIONAL + PERSONAL: visibles para todo usuario del alcance.
+      const cards = [
+        { key: "sales", label: "Ventas de la sucursal", icon: "trending-up",
           ...m(k.sales), sub: `${this.number(k.invoices)} facturas` },
-        { key: "purch", label: "Total compras", icon: "shopping-cart",
-          ...m(k.purchases), sub: k.returnPurch ? `Devoluciones ${this.money(k.returnPurch)}` : null },
-        { key: "sdue", label: "Por cobrar", icon: "coins",
-          ...m(k.salesDue), sub: k.purchaseDue ? `Por pagar ${this.money(k.purchaseDue)}` : null },
-        { key: "profit", label: "Utilidad", icon: "percent",
-          ...m(k.profit),
-          sub: k.sales ? `Margen ${this.number(k.sales ? (k.profit / k.sales) * 100 : 0, 1)} %` : null },
-        { key: "stock", label: "Inventario a costo", icon: "boxes",
-          ...m(this.sv.byCost), sub: `Valorización a venta y mayoreo abajo` }
+        { key: "mysales", label: "Mis ventas", icon: "user",
+          ...this.mySalesCard.total, sub: `${this.mySalesCard.invoices} facturas mías` }
       ];
+      // FINANCIAL_MANAGEMENT: sólo owner / gerente.
+      if (this.canSeeFinancial) {
+        cards.push(
+          { key: "purch", label: "Total compras", icon: "shopping-cart",
+            ...m(k.purchases), sub: k.returnPurch ? `Devoluciones ${this.money(k.returnPurch)}` : null },
+          { key: "sdue", label: "Por cobrar", icon: "coins",
+            ...m(k.salesDue), sub: k.purchaseDue ? `Por pagar ${this.money(k.purchaseDue)}` : null },
+          { key: "profit", label: "Utilidad", icon: "percent",
+            ...m(k.profit),
+            sub: k.sales ? `Margen ${this.number(k.sales ? (k.profit / k.sales) * 100 : 0, 1)} %` : null },
+          { key: "stock", label: "Inventario a costo", icon: "boxes",
+            ...m(this.sv.byCost), sub: `Valorización a venta y mayoreo abajo` }
+        );
+      }
+      return cards;
     },
 
     // ---- series de gráficos (mismo set que dashboard.vue) --------------------

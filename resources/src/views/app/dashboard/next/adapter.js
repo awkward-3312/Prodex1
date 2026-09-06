@@ -44,19 +44,55 @@ export function adaptDashboard(raw) {
 
   const rd = r.report_dashboard && typeof r.report_dashboard === "object" ? r.report_dashboard : {};
   const report = rd.report && typeof rd.report === "object" ? rd.report : {};
+  // Bloque financiero: el backend SÓLO lo envía para owner / gerente. Ausente
+  // para el cajero → todas las cifras financieras quedan en 0 y sus widgets se
+  // ocultan vía `scope.canSeeFinancial`.
+  const fin = r.financial && typeof r.financial === "object" ? r.financial : {};
   const sv = r.stock_value && typeof r.stock_value === "object" ? r.stock_value : {};
 
-  // ---- KPIs (paridad con el dashboard actual) -------------------------------
+  // ---- Contrato de alcance (gobierna selector, financiero, equipo, vacío) ---
+  const rawScope = r.scope && typeof r.scope === "object" ? r.scope : null;
+  const scope = {
+    isOwner:          !!(rawScope && rawScope.is_owner),
+    selectedBranchId: num(rawScope && rawScope.selected_branch_id),
+    consolidated:     !!(rawScope && rawScope.consolidated),
+    // Sin objeto `scope` (respuesta legacy) asumimos acceso normal para no
+    // romper; el backend actual siempre lo incluye.
+    hasBranch:        rawScope ? !!rawScope.has_branch : true,
+    canSeeTeam:       !!(rawScope && rawScope.can_see_team),
+    canSeeFinancial:  !!(rawScope && rawScope.can_see_financial)
+  };
+
+  // ---- KPIs. Operativas (todos) vs financieras (owner / gerente). ----------
   const kpis = {
     sales:        num(report.today_sales),
-    purchases:    num(report.today_purchases),
-    salesDue:     num(report.sales_due),
-    purchaseDue:  num(report.purchase_due),
-    profit:       num(report.today_profit),
     invoices:     num(report.today_invoices),
     returnSales:  num(report.return_sales),
-    returnPurch:  num(report.return_purchases)
+    purchases:    num(fin.today_purchases),
+    salesDue:     num(fin.sales_due),
+    purchaseDue:  num(fin.purchase_due),
+    profit:       num(fin.today_profit),
+    returnPurch:  num(fin.return_purchases)
   };
+
+  // ---- PERSONAL — "Mis ventas": SIEMPRE el usuario autenticado. ------------
+  const ms = r.my_sales && typeof r.my_sales === "object" ? r.my_sales : {};
+  const mySales = {
+    total:    num(ms.total),
+    paid:     num(ms.paid),
+    due:      num(ms.due),
+    invoices: num(ms.invoices)
+  };
+
+  // ---- TEAM — desglose por cajero: sólo llega para owner / gerente. --------
+  const salesByCashier = arr(r.sales_by_cashier).map(x => ({
+    userId:   num(x.user_id),
+    name:     x.cashier_name || "—",
+    invoices: num(x.invoices),
+    total:    num(x.total_sales),
+    paid:     num(x.paid_amount),
+    due:      num(x.due)
+  }));
 
   const stockValue = {
     byCost:      num(sv.by_cost),
@@ -107,7 +143,9 @@ export function adaptDashboard(raw) {
   }));
 
   // ---- Tablas ------------------------------------------------------------- ---
-  const recentSales = arr(rd.last_sales).map(s => ({
+  // `recent_sales` es la clave nueva; `last_sales` se mantiene como alias.
+  const recentSrc = arr(rd.recent_sales).length ? arr(rd.recent_sales) : arr(rd.last_sales);
+  const recentSales = recentSrc.map(s => ({
     id:     s.id,
     ref:    s.Ref || s.ref || "—",
     client: s.client_name || "—",
@@ -132,9 +170,7 @@ export function adaptDashboard(raw) {
 
   // ---- Datos extra reales (post-migración) — disponibles, no en la paridad --
   const extras = {
-    salesByCashier: arr(r.sales_by_cashier).map(x => ({
-      name: x.cashier_name || "—", invoices: num(x.invoices), total: num(x.total_sales), paid: num(x.paid_amount), due: num(x.due)
-    })),
+    salesByCashier, // alias por compatibilidad; la fuente es el top-level.
     salesByBranch: arr(r.sales_by_branch).map(x => ({
       name: x.branch_name || "—", invoices: num(x.invoices), total: num(x.total_sales)
     })),
@@ -142,13 +178,13 @@ export function adaptDashboard(raw) {
   };
 
   const hasAnyData =
-    kpis.sales || kpis.purchases || kpis.invoices ||
+    kpis.sales || kpis.purchases || kpis.invoices || mySales.total ||
     recentSales.length || topProducts.length || customerChart.length ||
     salesSeries.data.some(Boolean) || salesByPayment.length ||
     stockValue.byCost || stockValue.byRetail;
 
   return {
-    kpis, stockValue,
+    scope, kpis, mySales, salesByCashier, stockValue,
     salesSeries, purchasesSeries, paymentsSeries,
     productChart, customerChart, topProducts, salesByPayment,
     recentSales, stockAlerts,

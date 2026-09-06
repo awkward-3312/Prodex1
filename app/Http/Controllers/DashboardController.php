@@ -18,135 +18,129 @@ use App\Models\SaleDetail;
 use App\Models\SaleReturn;
 use App\Models\UserWarehouse;
 use App\Models\Warehouse;
-use App\Services\BranchScopeService;
+use App\Services\DashboardScopeService;
+use App\Support\DashboardScope;
 use App\Traits\CalculatesCogsAndAverageCost;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
     use CalculatesCogsAndAverageCost;
     // ----------------- dashboard_data -----------------------\\
 
+    /**
+     * Alcance analítico del Panel — dos dimensiones independientes resueltas en
+     * un único lugar (DashboardScopeService):
+     *   A. ORGANIZATION SCOPE  — allowedBranchIds / selectedBranchId /
+     *      effectiveBranchIds / effectiveWarehouseIds / hasBranch.
+     *   B. METRIC VISIBILITY   — canSeeTeam / canSeeFinancialManagement /
+     *      personalUserId.
+     * El controlador NO vuelve a preguntar por rol, record_view ni manager.
+     * `OperationalDashboardController` reutiliza este mismo resolver.
+     */
+    protected function resolveDashboardScope(Request $request): DashboardScope
+    {
+        return app(DashboardScopeService::class)->resolve(
+            $request->user('api') ?? auth()->user(),
+            (int) $request->input('branch_id', 0)
+        );
+    }
+
     public function dashboard_data(Request $request)
     {
-        $user_auth = auth()->user();
+        $scope = $this->resolveDashboardScope($request);
 
-        // Conjunto COMPLETO de almacenes permitidos al usuario (semántica intacta:
-        // is_all_warehouses => todos; en otro caso, los de user_warehouse).
-        if ($user_auth->is_all_warehouses) {
-            $permitted_warehouses_id = Warehouse::where('deleted_at', '=', null)->pluck('id')->toArray();
-        } else {
-            $permitted_warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-        }
-        $permitted_warehouses_id = array_values(array_unique(array_map('intval', $permitted_warehouses_id)));
-
-        // -------------------------------------------------------------------
-        // ALCANCE DE SUCURSAL — únicamente "view/analytics scope" del dashboard.
-        // Sólo restringe qué warehouse_id entran en los SELECT de abajo. NO toca
-        // asignación operacional, permisos, default warehouse, ubicación de
-        // movimientos, caja ni POS. Es opcional y aditivo: sin branch_id el
-        // comportamiento es idéntico al anterior.
-        // -------------------------------------------------------------------
-        $array_warehouses_id = $permitted_warehouses_id;
-        $active_branch_id = 0;
+        // Selector de sucursal: autoridad = alcance resuelto.
         $branches = [];
-
-        if (Schema::hasTable('branches') && Schema::hasColumn('warehouses', 'branch_id')) {
-            $allowed_branch_ids = app(BranchScopeService::class)->allowedBranchIds($user_auth);
-
-            // Sólo ofrecemos sucursales que además tengan ≥1 almacén permitido.
-            $branch_ids_with_permitted_wh = Warehouse::whereNull('deleted_at')
-                ->whereIn('id', $permitted_warehouses_id ?: [0])
-                ->whereNotNull('branch_id')
-                ->pluck('branch_id')->map(fn ($i) => (int) $i)->unique()->values()->all();
-
-            $visible_branch_ids = array_values(array_intersect($allowed_branch_ids, $branch_ids_with_permitted_wh));
-
-            if ($visible_branch_ids) {
-                $branches = Branch::whereNull('deleted_at')
-                    ->whereIn('id', $visible_branch_ids)
-                    ->orderBy('name')
-                    ->get(['id', 'name']);
-            }
-
-            $requested_branch_id = (int) $request->input('branch_id', 0);
-            if ($requested_branch_id > 0 && in_array($requested_branch_id, $visible_branch_ids, true)) {
-                $active_branch_id = $requested_branch_id;
-                $branch_warehouse_ids = Warehouse::whereNull('deleted_at')
-                    ->where('branch_id', $requested_branch_id)
-                    ->pluck('id')->map(fn ($i) => (int) $i)->all();
-                $array_warehouses_id = array_values(array_intersect($permitted_warehouses_id, $branch_warehouse_ids));
-            }
+        if ($scope->allowedBranchIds !== []) {
+            $branches = Branch::whereNull('deleted_at')
+                ->whereIn('id', $scope->allowedBranchIds)
+                ->orderBy('name')
+                ->get(['id', 'name']);
         }
 
-        // Opciones de "Almacén" del dashboard: sólo las del alcance activo
-        // (así, con una sucursal seleccionada, el filtro interno de almacén
-        // ya sólo ofrece almacenes de esa sucursal).
+        // Usuario operativo sin sucursal resoluble => cero datos + estado suave.
+        // NUNCA se hace fallback a "todos los almacenes permitidos".
+        if (! $scope->hasBranch) {
+            return response()->json([
+                'branches' => [],
+                'active_branch_id' => 0,
+                'scope' => $scope->toClientArray(),
+                'warehouses' => [],
+            ]);
+        }
+
+        // Opciones de "Almacén": sólo las del alcance efectivo. El warehouse_id
+        // solicitado por el cliente se valida contra ese alcance.
         $warehouses = Warehouse::where('deleted_at', '=', null)
-            ->whereIn('id', $array_warehouses_id ?: [0])
+            ->whereIn('id', $scope->warehouseFilterIds())
             ->get(['id', 'name']);
 
-        if (empty($request->warehouse_id)) {
+        $warehouse_id = (int) $request->input('warehouse_id', 0);
+        if ($warehouse_id !== 0 && ! in_array($warehouse_id, $scope->effectiveWarehouseIds, true)) {
             $warehouse_id = 0;
-        } else {
-            $warehouse_id = (int) $request->warehouse_id;
-            // Un almacén concreto debe pertenecer al alcance permitido/activo.
-            if (! in_array($warehouse_id, $array_warehouses_id, true)) {
-                $warehouse_id = 0;
-            }
         }
 
-        // Sales & Purchases chart: use header date range + warehouse filter
-        $dataSales = $this->SalesChart($warehouse_id, $array_warehouses_id, $request->from, $request->to);
-        $datapurchases = $this->PurchasesChart($warehouse_id, $array_warehouses_id, $request->from, $request->to);
-
-        // Payment Sent & Received chart: also use header date range + warehouse filter
-        $Payment_chart = $this->Payment_chart($warehouse_id, $array_warehouses_id, $request->from, $request->to);
-        $TopCustomers = $this->TopCustomers($warehouse_id, $array_warehouses_id);
-        $Top_Products_Year = $this->Top_Products_Year($warehouse_id, $array_warehouses_id);
-        
-        // Stat cards and Sales by Payment: Use date range + warehouse filter
-        $report_dashboard = $this->report_dashboard($request, $warehouse_id, $array_warehouses_id);
-        $sales_by_payment = $this->SalesByPayment($warehouse_id, $array_warehouses_id, $request->from, $request->to);
-        
-        // Stock Value: Only warehouse filter (no date range)
-        $stock_value = $this->StockValue($warehouse_id, $array_warehouses_id);
-
-        return response()->json([
+        $payload = [
             'branches' => $branches,
-            'active_branch_id' => $active_branch_id,
+            'active_branch_id' => $scope->selectedBranchId,
+            'scope' => $scope->toClientArray(),
             'warehouses' => $warehouses,
-            'sales' => $dataSales,
-            'purchases' => $datapurchases,
-            'payments' => $Payment_chart,
-            'customers' => $TopCustomers,
-            'product_report' => $Top_Products_Year,
-            'report_dashboard' => $report_dashboard,
-            'sales_by_payment' => $sales_by_payment,
-            'stock_value' => $stock_value,
-        ]);
+        ];
 
+        // --- BRANCH_OPERATIONAL: agregado de la sucursal en alcance, visible
+        //     para TODO usuario del alcance (incluido el cajero). Sin filtro por
+        //     usuario: es el total de la sucursal, no la actividad de nadie.
+        $payload['sales'] = $this->SalesChart($scope, $warehouse_id, $request->from, $request->to);
+        $payload['product_report'] = $this->Top_Products_Year($scope, $warehouse_id);
+        $payload['sales_by_payment'] = $this->SalesByPayment($scope, $warehouse_id, $request->from, $request->to);
+        $payload['report_dashboard'] = $this->report_dashboard($request, $scope, $warehouse_id);
+
+        // --- PERSONAL: SIEMPRE el usuario autenticado. "Mis ventas" nunca revela
+        //     la actividad individual de otro cajero.
+        $payload['my_sales'] = $this->MySales($scope, $warehouse_id, $request->from, $request->to);
+
+        // --- TEAM: sólo owner o gerente de la(s) sucursal(es) en alcance. El
+        //     backend NO incluye la clave para el cajero (no se oculta en Vue).
+        if ($scope->canSeeTeam) {
+            $payload['sales_by_cashier'] = $this->SalesByCashier($scope, $warehouse_id, $request->from, $request->to);
+        }
+
+        // --- FINANCIAL_MANAGEMENT: nunca para el cajero/operativo. El backend
+        //     omite estas claves por completo según contrato.
+        if ($scope->canSeeFinancialManagement) {
+            $payload['purchases'] = $this->PurchasesChart($scope, $warehouse_id, $request->from, $request->to);
+            $payload['payments'] = $this->Payment_chart($scope, $warehouse_id, $request->from, $request->to);
+            $payload['customers'] = $this->TopCustomers($scope, $warehouse_id);
+            $payload['stock_value'] = $this->StockValue($scope, $warehouse_id);
+            $payload['financial'] = $this->FinancialReport($request, $scope, $warehouse_id);
+        }
+
+        return response()->json($payload);
+    }
+
+    /**
+     * Resuelve la lista de `warehouse_id` para un `whereIn`, respetando el
+     * selector interno de almacén del Panel dentro del alcance efectivo.
+     *
+     * @return list<int>
+     */
+    private function scopedWarehouseIds(DashboardScope $scope, int $warehouseId): array
+    {
+        return $scope->resolveWarehouseFilter($warehouseId);
     }
 
     // ----------------- Sales Chart js -----------------------\\
 
-    public function SalesChart($warehouse_id, $array_warehouses_id, $from = null, $to = null)
+    public function SalesChart(DashboardScope $scope, $warehouse_id, $from = null, $to = null)
     {
-        $user = Auth::user();
-        // New way: Check user's record_view field (user-level boolean)
-        // Backward compatibility: If record_view is null, fall back to role permission check
-        $view_records = $user->hasRecordView();
-        $is_all_warehouses = $user->is_all_warehouses;
-        // If the user is restricted, fetch their assigned warehouse IDs once and reuse below.
-        if (! $is_all_warehouses) {
-            $warehouse_ids = UserWarehouse::where('user_id', $user->id)
-                ->pluck('warehouse_id')
-                ->toArray();
-        }
+        // BRANCH_OPERATIONAL: serie de ventas de la sucursal en alcance, sin
+        // filtro por usuario (es el total de la sucursal, no la actividad de
+        // nadie en particular).
+        $array_warehouses_id = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
 
         // Determine date window: either custom [from, to] or default last 7 days
         if (! empty($from) && ! empty($to)) {
@@ -169,18 +163,7 @@ class DashboardController extends Controller
         // Get the sales counts within the same window used for the dashboard filter
         $sales = Sale::whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->where('deleted_at', '=', null)
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('warehouse_id', $array_warehouses_id);
-                }
-            })
+            ->whereIn('warehouse_id', $array_warehouses_id)
             ->groupBy(DB::raw("DATE_FORMAT(date,'%Y-%m-%d')"))
             ->orderBy('date', 'asc')
             ->get([
@@ -205,20 +188,11 @@ class DashboardController extends Controller
 
     // ----------------- Purchases Chart -----------------------\\
 
-    public function PurchasesChart($warehouse_id, $array_warehouses_id, $from = null, $to = null)
+    public function PurchasesChart(DashboardScope $scope, $warehouse_id, $from = null, $to = null)
     {
-
-        $user = Auth::user();
-        // New way: Check user's record_view field (user-level boolean)
-        // Backward compatibility: If record_view is null, fall back to role permission check
-        $view_records = $user->hasRecordView();
-        $is_all_warehouses = $user->is_all_warehouses;
-        // If the user is restricted, fetch their assigned warehouse IDs once and reuse below.
-        if (! $is_all_warehouses) {
-            $warehouse_ids = UserWarehouse::where('user_id', $user->id)
-                ->pluck('warehouse_id')
-                ->toArray();
-        }
+        // FINANCIAL_MANAGEMENT: sólo llega aquí owner o gerente. Agregado de la
+        // sucursal en alcance, sin filtro por usuario.
+        $array_warehouses_id = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
 
         // Determine date window: either custom [from, to] or default last 7 days
         if (! empty($from) && ! empty($to)) {
@@ -241,18 +215,7 @@ class DashboardController extends Controller
         // Get the purchases counts within the same window used for the dashboard filter
         $purchases = Purchase::whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->where('deleted_at', '=', null)
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('warehouse_id', $array_warehouses_id);
-                }
-            })
+            ->whereIn('warehouse_id', $array_warehouses_id)
             ->groupBy(DB::raw("DATE_FORMAT(date,'%Y-%m-%d')"))
             ->orderBy('date', 'asc')
             ->get([
@@ -277,37 +240,18 @@ class DashboardController extends Controller
 
     // -------------------- Get Top 5 Customers -------------\\
 
-    public function TopCustomers($warehouse_id, $array_warehouses_id)
+    public function TopCustomers(DashboardScope $scope, $warehouse_id)
     {
-        $user = Auth::user();
-        // New way: Check user's record_view field (user-level boolean)
-        // Backward compatibility: If record_view is null, fall back to role permission check
-        $view_records = $user->hasRecordView();
-        $is_all_warehouses = $user->is_all_warehouses;
-        // If the user is restricted, fetch their assigned warehouse IDs once and reuse below.
-        if (! $is_all_warehouses) {
-            $warehouse_ids = UserWarehouse::where('user_id', $user->id)
-                ->pluck('warehouse_id')
-                ->toArray();
-        }
+        // FINANCIAL_MANAGEMENT: métrica de gestión (clientes identificables).
+        // Sólo llega aquí owner o gerente. Agregado de la sucursal, sin filtro
+        // por usuario.
+        $array_warehouses_id = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
 
         $data = Sale::whereBetween('date', [
             Carbon::now()->startOfMonth(),
             Carbon::now()->endOfMonth(),
         ])->where('sales.deleted_at', '=', null)
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('sales.user_id', '=', Auth::user()->id);
-                }
-            })
-
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('sales.warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('sales.warehouse_id', $array_warehouses_id);
-                }
-            })
+            ->whereIn('sales.warehouse_id', $array_warehouses_id)
 
             ->join('clients', 'sales.client_id', '=', 'clients.id')
             ->select(DB::raw('clients.name'), DB::raw('count(*) as value'))
@@ -321,20 +265,11 @@ class DashboardController extends Controller
 
     // -------------------- Get Top 5 Products This YEAR -------------\\
 
-    public function Top_Products_Year($warehouse_id, $array_warehouses_id)
+    public function Top_Products_Year(DashboardScope $scope, $warehouse_id)
     {
-
-        $user = Auth::user();
-        // New way: Check user's record_view field (user-level boolean)
-        // Backward compatibility: If record_view is null, fall back to role permission check
-        $view_records = $user->hasRecordView();
-        $is_all_warehouses = $user->is_all_warehouses;
-        // If the user is restricted, fetch their assigned warehouse IDs once and reuse below.
-        if (! $is_all_warehouses) {
-            $warehouse_ids = UserWarehouse::where('user_id', $user->id)
-                ->pluck('warehouse_id')
-                ->toArray();
-        }
+        // BRANCH_OPERATIONAL: top de productos de la sucursal en alcance, sin
+        // filtro por usuario. Visible para todo usuario del alcance.
+        $array_warehouses_id = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
 
         $products = SaleDetail::join('sales', 'sale_details.sale_id', '=', 'sales.id')
             ->join('products', 'sale_details.product_id', '=', 'products.id')
@@ -342,19 +277,7 @@ class DashboardController extends Controller
                 Carbon::now()->startOfYear(),
                 Carbon::now()->endOfYear(),
             ])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('sales.user_id', '=', Auth::user()->id);
-                }
-            })
-
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('sales.warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('sales.warehouse_id', $array_warehouses_id);
-                }
-            })
+            ->whereIn('sales.warehouse_id', $array_warehouses_id)
             ->select(
                 DB::raw('products.name as name'),
                 DB::raw('count(*) as value'),
@@ -369,14 +292,16 @@ class DashboardController extends Controller
 
     // -------------------- General Report dashboard -------------\\
 
-    public function report_dashboard($request, $warehouse_id, $array_warehouses_id)
+    public function report_dashboard($request, DashboardScope $scope, $warehouse_id)
     {
-
-        $user = Auth::user();
-        // New way: Check user's record_view field (user-level boolean)
-        // Backward compatibility: If record_view is null, fall back to role permission check
-        $view_records = $user->hasRecordView();
-        
+        // BRANCH_OPERATIONAL + PERSONAL/TEAM.
+        //   - products / stock_alert / today_sales / today_invoices /
+        //     return_sales  => agregado de la sucursal, sin filtro por usuario.
+        //   - recent_sales  => PERSONAL para el operativo; equipo/sucursal si el
+        //     usuario tiene autoridad de equipo (owner / gerente).
+        // Las métricas FINANCIERAS viven en FinancialReport() y sólo se calculan
+        // para owner / gerente.
+        $array_warehouses_id = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
 
         // top selling product this month
         $products = SaleDetail::join('sales', 'sale_details.sale_id', '=', 'sales.id')
@@ -385,18 +310,7 @@ class DashboardController extends Controller
                 Carbon::now()->startOfMonth(),
                 Carbon::now()->endOfMonth(),
             ])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('sales.user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('sales.warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('sales.warehouse_id', $array_warehouses_id);
-                }
-            })
+            ->whereIn('sales.warehouse_id', $array_warehouses_id)
             ->select(
                 DB::raw('products.name as name'),
                 DB::raw('count(*) as total_sales'),
@@ -410,7 +324,7 @@ class DashboardController extends Controller
         // Stock Alerts — MS7-B3: a location_primary warehouse's
         // product_warehouse row is stale; read those from
         // inventory_location_stocks instead, merged with the legacy list.
-        $alertScopeWarehouseIds = $warehouse_id !== 0 ? [$warehouse_id] : $array_warehouses_id;
+        $alertScopeWarehouseIds = $array_warehouses_id;
         $alertSplit = app(\App\Services\InventoryReadService::class)->splitWarehousesByMode($alertScopeWarehouseIds);
 
         $product_warehouse_data = collect();
@@ -477,24 +391,168 @@ class DashboardController extends Controller
             }
         }
 
-        // ---------------- sales + payments (for due) -------------
+        // ---------------- BRANCH_OPERATIONAL aggregates -------------
+        // Total de ventas de la sucursal en alcance (no la actividad de nadie).
 
-        $salesBase = Sale::where('deleted_at', '=', null)
+        $data = [];
+
+        $salesAgg = Sale::where('deleted_at', '=', null)
             ->whereBetween('date', [$request->from, $request->to])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('warehouse_id', $array_warehouses_id);
-                }
-            });
+            ->whereIn('warehouse_id', $array_warehouses_id)
+            ->select(DB::raw('COALESCE(SUM(GrandTotal),0) AS total'))
+            ->first();
 
-        $salesAgg = (clone $salesBase)
+        $data['today_sales'] = (float) ($salesAgg->total ?? 0);
+
+        $data['return_sales'] = (float) SaleReturn::where('deleted_at', '=', null)
+            ->whereBetween('date', [$request->from, $request->to])
+            ->whereIn('warehouse_id', $array_warehouses_id)
+            ->sum('GrandTotal');
+
+        $data['today_invoices'] = Sale::where('deleted_at', '=', null)
+            ->whereBetween('date', [$request->from, $request->to])
+            ->whereIn('warehouse_id', $array_warehouses_id)
+            ->count();
+
+        // ---------------- recent sales (PERSONAL / TEAM) -----------
+        // El operativo ve SOLO sus ventas recientes; el owner/gerente ve las de
+        // la sucursal en alcance (equipo).
+        $recentSalesQuery = Sale::with('details', 'client', 'facture', 'warehouse')
+            ->where('deleted_at', '=', null)
+            ->whereIn('warehouse_id', $array_warehouses_id);
+
+        if (! $scope->canSeeTeam) {
+            $recentSalesQuery->where('user_id', $scope->personalUserId);
+        }
+
+        $Sales = $recentSalesQuery->orderBy('id', 'desc')->take(5)->get();
+
+        $recent_sales = [];
+        foreach ($Sales as $Sale) {
+            $recent_sales[] = [
+                'Ref' => $Sale['Ref'],
+                'statut' => $Sale['statut'],
+                'client_name' => $Sale['client']['name'] ?? null,
+                'warehouse_name' => $Sale['warehouse']['name'] ?? null,
+                'GrandTotal' => $Sale['GrandTotal'],
+                'paid_amount' => $Sale['paid_amount'],
+                'due' => $Sale['GrandTotal'] - $Sale['paid_amount'],
+                'payment_status' => $Sale['payment_statut'],
+            ];
+        }
+
+        return response()->json([
+            'products' => $products,
+            'stock_alert' => $stock_alert,
+            'report' => $data,
+            // clave nueva; se mantiene `last_sales` como alias para no romper a
+            // ningún consumidor que aún lo lea.
+            'recent_sales' => $recent_sales,
+            'last_sales' => $recent_sales,
+        ]);
+    }
+
+    // ----------------- Mis ventas (PERSONAL) -----------------------\\
+
+    /**
+     * PERSONAL — actividad de ventas del usuario autenticado dentro del rango y
+     * la sucursal efectiva del Panel. Nunca revela la actividad de otro cajero.
+     * No se mezcla con `cash_register_id`: una métrica estricta de turno/caja
+     * abierta sería una métrica separada en el futuro.
+     */
+    public function MySales(DashboardScope $scope, $warehouse_id, $from = null, $to = null)
+    {
+        $array_warehouses_id = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
+
+        [$start, $end] = $this->resolveDateWindow($from, $to);
+
+        $agg = Sale::where('deleted_at', '=', null)
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->whereIn('warehouse_id', $array_warehouses_id)
+            ->where('user_id', $scope->personalUserId)
+            ->select(
+                DB::raw('COALESCE(SUM(GrandTotal),0) AS total'),
+                DB::raw('COALESCE(SUM(paid_amount),0) AS paid'),
+                DB::raw('COUNT(*) AS invoices')
+            )
+            ->first();
+
+        $total = (float) ($agg->total ?? 0);
+        $paid = (float) ($agg->paid ?? 0);
+
+        return [
+            'total' => $total,
+            'paid' => $paid,
+            'due' => max(0, $total - $paid),
+            'invoices' => (int) ($agg->invoices ?? 0),
+        ];
+    }
+
+    // ----------------- Ventas por cajero (TEAM) -------------------\\
+
+    /**
+     * TEAM — desglose por cajero de la sucursal en alcance. El controlador SÓLO
+     * llama a este método cuando $scope->canSeeTeam es verdadero (owner o
+     * gerente de la sucursal). El cajero nunca recibe esta clave.
+     */
+    public function SalesByCashier(DashboardScope $scope, $warehouse_id, $from = null, $to = null)
+    {
+        $array_warehouses_id = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
+
+        [$start, $end] = $this->resolveDateWindow($from, $to);
+
+        return Sale::query()
+            ->where('sales.deleted_at', '=', null)
+            ->whereBetween('sales.date', [$start->toDateString(), $end->toDateString()])
+            ->whereIn('sales.warehouse_id', $array_warehouses_id)
+            ->leftJoin('users', 'sales.user_id', '=', 'users.id')
+            ->groupBy('sales.user_id', 'users.firstname', 'users.lastname')
+            ->select(
+                'sales.user_id',
+                DB::raw("TRIM(CONCAT(COALESCE(users.firstname,''),' ',COALESCE(users.lastname,''))) as cashier_name"),
+                DB::raw('COUNT(*) as invoices'),
+                DB::raw('COALESCE(SUM(sales.GrandTotal),0) as total_sales'),
+                DB::raw('COALESCE(SUM(sales.paid_amount),0) as paid_amount')
+            )
+            ->orderByDesc('total_sales')
+            ->get()
+            ->map(function ($r) {
+                $total = (float) $r->total_sales;
+                $paid = (float) $r->paid_amount;
+
+                return [
+                    'user_id' => (int) $r->user_id,
+                    'cashier_name' => trim((string) $r->cashier_name) !== '' ? $r->cashier_name : '—',
+                    'invoices' => (int) $r->invoices,
+                    'total_sales' => $total,
+                    'paid_amount' => $paid,
+                    'due' => max(0, $total - $paid),
+                ];
+            })
+            ->values();
+    }
+
+    // ----------------- Reporte financiero (FINANCIAL_MANAGEMENT) --\\
+
+    /**
+     * FINANCIAL_MANAGEMENT — por cobrar, compras, por pagar, devoluciones de
+     * compra, utilidad (ProfitNet FIFO) y servicio técnico. El controlador SÓLO
+     * llama a este método cuando $scope->canSeeFinancialManagement es verdadero
+     * (owner o gerente). El cajero nunca recibe estas cifras.
+     *
+     * Todos los sumandos de la utilidad se calculan sobre el MISMO alcance
+     * (sucursal efectiva + rango), corrigiendo el híbrido anterior que mezclaba
+     * ventas propias con COGS/servicio de toda la sucursal.
+     */
+    public function FinancialReport($request, DashboardScope $scope, $warehouse_id)
+    {
+        $array_warehouses_id = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
+
+        $data = [];
+
+        $salesAgg = Sale::where('deleted_at', '=', null)
+            ->whereBetween('date', [$request->from, $request->to])
+            ->whereIn('warehouse_id', $array_warehouses_id)
             ->select(
                 DB::raw('COALESCE(SUM(GrandTotal),0) AS total'),
                 DB::raw('COALESCE(SUM(paid_amount),0) AS paid')
@@ -503,58 +561,17 @@ class DashboardController extends Controller
 
         $today_sales_total = (float) ($salesAgg->total ?? 0);
         $today_sales_paid = (float) ($salesAgg->paid ?? 0);
-        $today_sales_due_amount = $today_sales_total - $today_sales_paid;
+        $data['sales_due'] = $today_sales_total - $today_sales_paid;
 
-        /**
-         * 🔹 Completed sales only
-        */
-        $completedSalesTotal = (clone $salesBase)
+        $completedSalesTotal = (float) Sale::where('deleted_at', '=', null)
+            ->whereBetween('date', [$request->from, $request->to])
+            ->whereIn('warehouse_id', $array_warehouses_id)
             ->where('statut', 'completed')
             ->sum('GrandTotal');
 
-        // Return raw numeric values for frontend price formatting
-        $data['today_sales'] = $today_sales_total;
-        $data['sales_due'] = $today_sales_due_amount;
-
-        // --------------- return_sales
-
-        $return_sales_total = SaleReturn::where('deleted_at', '=', null)
+        $purchasesAgg = Purchase::where('deleted_at', '=', null)
             ->whereBetween('date', [$request->from, $request->to])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('warehouse_id', $array_warehouses_id);
-                }
-            })
-            ->sum('GrandTotal');
-
-        // Return raw numeric value for frontend price formatting
-        $data['return_sales'] = (float) $return_sales_total;
-
-        // ------------------- purchases + payments (for due) ------
-
-        $purchasesBase = Purchase::where('deleted_at', '=', null)
-            ->whereBetween('date', [$request->from, $request->to])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('warehouse_id', $array_warehouses_id);
-                }
-            });
-
-        $purchasesAgg = (clone $purchasesBase)
+            ->whereIn('warehouse_id', $array_warehouses_id)
             ->select(
                 DB::raw('COALESCE(SUM(GrandTotal),0) AS total'),
                 DB::raw('COALESCE(SUM(paid_amount),0) AS paid')
@@ -563,147 +580,61 @@ class DashboardController extends Controller
 
         $today_purchases_total = (float) ($purchasesAgg->total ?? 0);
         $today_purchases_paid = (float) ($purchasesAgg->paid ?? 0);
-        $today_purchases_due_amount = $today_purchases_total - $today_purchases_paid;
-
-        // Return raw numeric values for frontend price formatting
         $data['today_purchases'] = $today_purchases_total;
-        $data['purchase_due'] = $today_purchases_due_amount;
-
-        // ------------------------- return_purchases --------------
+        $data['purchase_due'] = $today_purchases_total - $today_purchases_paid;
 
         $return_purchases_total = PurchaseReturn::where('deleted_at', '=', null)
             ->whereBetween('date', [$request->from, $request->to])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('warehouse_id', $array_warehouses_id);
-                }
-            })
+            ->whereIn('warehouse_id', $array_warehouses_id)
             ->sum('GrandTotal');
 
         $data['return_purchases'] = number_format($return_purchases_total, \App\utils\helpers::price_decimals(), '.', ',');
 
-        // ------------------------- today invoices (count) --------
-
-        $data['today_invoices'] = Sale::where('deleted_at', '=', null)
+        // ----- utilidad (ProfitNet FIFO), todo sobre el mismo alcance ----------
+        $expenses_total = (float) Expense::where('deleted_at', '=', null)
             ->whereBetween('date', [$request->from, $request->to])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('warehouse_id', $array_warehouses_id);
-                }
-            })
-            ->count();
-
-        // ------------------------- today profit (ProfitNet FIFO) ------------------
-        // Use same ProfitNet (FIFO) logic as the Profit & Loss report:
-        // profit_fifo = salesSum - COGS_FIFO - expenses + service job profit
-
-        $expenses_total = Expense::where('deleted_at', '=', null)
-            ->whereBetween('date', [$request->from, $request->to])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('warehouse_id', $array_warehouses_id);
-                }
-            })
+            ->whereIn('warehouse_id', $array_warehouses_id)
             ->sum('amount');
 
-        // COGS using fast FIFO helper shared with Profit & Loss report
         $cogsPack = $this->calcCogsAndAvgCostFast($request->from, $request->to, (int) $warehouse_id, $array_warehouses_id);
         $cogsFIFO = (float) ($cogsPack['fifo'] ?? 0.0);
 
-        // Service / repair jobs delivered in the period, using the same helper as the
-        // Profit & Loss report so both screens agree.
         $service = $this->serviceJobTotals($request->from, $request->to, (int) $warehouse_id, $array_warehouses_id);
 
-        $today_profit_numeric = $completedSalesTotal - $cogsFIFO - $expenses_total + $service['profit'];
-        // Return raw numeric value for frontend price formatting
-        $data['today_profit'] = $today_profit_numeric;
+        $data['today_profit'] = $completedSalesTotal - $cogsFIFO - $expenses_total + $service['profit'];
         $data['today_service_revenue'] = (float) $service['revenue'];
         $data['today_service_parts_cost'] = (float) $service['parts_cost'];
         $data['today_service_profit'] = (float) $service['profit'];
         $data['today_service_jobs'] = (int) $service['count'];
 
-        $last_sales = [];
+        return $data;
+    }
 
-        // last sales
-        $Sales = Sale::with('details', 'client', 'facture', 'warehouse')->where('deleted_at', '=', null)
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('warehouse_id', $array_warehouses_id);
-                }
-            })
-            ->orderBy('id', 'desc')
-            ->take(5)
-            ->get();
-
-        foreach ($Sales as $Sale) {
-
-            $item_sale['Ref'] = $Sale['Ref'];
-            $item_sale['statut'] = $Sale['statut'];
-            $item_sale['client_name'] = $Sale['client']['name'];
-            $item_sale['warehouse_name'] = $Sale['warehouse']['name'];
-            $item_sale['GrandTotal'] = $Sale['GrandTotal'];
-            $item_sale['paid_amount'] = $Sale['paid_amount'];
-            $item_sale['due'] = $Sale['GrandTotal'] - $Sale['paid_amount'];
-            $item_sale['payment_status'] = $Sale['payment_statut'];
-
-            $last_sales[] = $item_sale;
+    /**
+     * Ventana de fechas del Panel: [from, to] explícitos o los últimos 7 días.
+     *
+     * @return array{0: \Carbon\Carbon, 1: \Carbon\Carbon}
+     */
+    private function resolveDateWindow($from, $to): array
+    {
+        if (! empty($from) && ! empty($to)) {
+            return [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()];
         }
 
-        return response()->json([
-            'products' => $products,
-            'stock_alert' => $stock_alert,
-            'report' => $data,
-            'last_sales' => $last_sales,
-        ]);
+        $end = Carbon::today()->endOfDay();
 
+        return [$end->copy()->subDays(6)->startOfDay(), $end];
     }
 
     // ----------------- Payment Chart js -----------------------\\
 
-    public function Payment_chart($warehouse_id, $array_warehouses_id, $from = null, $to = null)
+    public function Payment_chart(DashboardScope $scope, $warehouse_id, $from = null, $to = null)
     {
+        // FINANCIAL_MANAGEMENT: sólo llega aquí owner o gerente. Series de pagos
+        // recibidos/enviados de la sucursal en alcance, sin filtro por usuario.
+        $array_warehouses_id = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
 
-        $user = Auth::user();
-        // New way: Check user's record_view field (user-level boolean)
-        // Backward compatibility: If record_view is null, fall back to role permission check
-        $view_records = $user->hasRecordView();
-
-        // Determine date window: either custom [from, to] or default last 7 days
-        if (! empty($from) && ! empty($to)) {
-            $start = Carbon::parse($from)->startOfDay();
-            $end = Carbon::parse($to)->endOfDay();
-        } else {
-            $end = Carbon::today()->endOfDay();
-            $start = $end->copy()->subDays(6)->startOfDay();
-        }
+        [$start, $end] = $this->resolveDateWindow($from, $to);
 
         // Build an array of the dates we want to show, oldest first
         $dates = collect();
@@ -714,26 +645,12 @@ class DashboardController extends Controller
             $cursor->addDay();
         }
 
+        $inScopeSale = fn ($q) => $q->whereIn('warehouse_id', $array_warehouses_id);
+
         // Get the sales counts
         $Payment_Sale = PaymentSale::with('sale')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->whereHas('sale', function ($q) use ($warehouse_id) {
-                        $q->where('warehouse_id', $warehouse_id);
-                    });
-                } else {
-                    return $query->whereHas('sale', function ($q) use ($array_warehouses_id) {
-                        $q->whereIn('warehouse_id', $array_warehouses_id);
-                    });
-
-                }
-            })
+            ->whereHas('sale', $inScopeSale)
             ->groupBy(DB::raw("DATE_FORMAT(date,'%Y-%m-%d')"))
             ->orderBy('date', 'asc')
             ->get([
@@ -744,23 +661,7 @@ class DashboardController extends Controller
 
         $Payment_Sale_Returns = PaymentSaleReturns::with('SaleReturn')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->whereHas('SaleReturn', function ($q) use ($warehouse_id) {
-                        $q->where('warehouse_id', $warehouse_id);
-                    });
-                } else {
-                    return $query->whereHas('SaleReturn', function ($q) use ($array_warehouses_id) {
-                        $q->whereIn('warehouse_id', $array_warehouses_id);
-                    });
-
-                }
-            })
+            ->whereHas('SaleReturn', $inScopeSale)
             ->groupBy(DB::raw("DATE_FORMAT(date,'%Y-%m-%d')"))
             ->orderBy('date', 'asc')
             ->get([
@@ -771,23 +672,7 @@ class DashboardController extends Controller
 
         $Payment_Purchases = PaymentPurchase::with('purchase')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->whereHas('purchase', function ($q) use ($warehouse_id) {
-                        $q->where('warehouse_id', $warehouse_id);
-                    });
-                } else {
-                    return $query->whereHas('purchase', function ($q) use ($array_warehouses_id) {
-                        $q->whereIn('warehouse_id', $array_warehouses_id);
-                    });
-
-                }
-            })
+            ->whereHas('purchase', $inScopeSale)
             ->groupBy(DB::raw("DATE_FORMAT(date,'%Y-%m-%d')"))
             ->orderBy('date', 'asc')
             ->get([
@@ -798,23 +683,7 @@ class DashboardController extends Controller
 
         $Payment_Purchase_Returns = PaymentPurchaseReturns::with('PurchaseReturn')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->whereHas('PurchaseReturn', function ($q) use ($warehouse_id) {
-                        $q->where('warehouse_id', $warehouse_id);
-                    });
-                } else {
-                    return $query->whereHas('PurchaseReturn', function ($q) use ($array_warehouses_id) {
-                        $q->whereIn('warehouse_id', $array_warehouses_id);
-                    });
-
-                }
-            })
+            ->whereHas('PurchaseReturn', $inScopeSale)
             ->groupBy(DB::raw("DATE_FORMAT(date,'%Y-%m-%d')"))
             ->orderBy('date', 'asc')
             ->get([
@@ -824,18 +693,7 @@ class DashboardController extends Controller
             ->pluck('count', 'date');
 
         $Payment_Expense = Expense::whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->where('warehouse_id', $warehouse_id);
-                } else {
-                    return $query->whereIn('warehouse_id', $array_warehouses_id);
-                }
-            })
+            ->whereIn('warehouse_id', $array_warehouses_id)
             ->groupBy(DB::raw("DATE_FORMAT(date,'%Y-%m-%d')"))
             ->orderBy('date', 'asc')
             ->get([
@@ -896,19 +754,13 @@ class DashboardController extends Controller
     //
     // Return ALL payment methods with their sales amounts and percentages
     // for the selected date range + warehouse filter.
-    public function SalesByPayment($warehouse_id, $array_warehouses_id, $from = null, $to = null)
+    public function SalesByPayment(DashboardScope $scope, $warehouse_id, $from = null, $to = null)
     {
-        $user = Auth::user();
-        $view_records = $user->hasRecordView();
+        // BRANCH_OPERATIONAL: desglose por método de pago de la sucursal en
+        // alcance, sin filtro por usuario. Visible para todo usuario del alcance.
+        $array_warehouses_id = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
 
-        // Determine date window: either custom [from, to] or default last 7 days
-        if (! empty($from) && ! empty($to)) {
-            $start = Carbon::parse($from)->startOfDay();
-            $end = Carbon::parse($to)->endOfDay();
-        } else {
-            $end = Carbon::today()->endOfDay();
-            $start = $end->copy()->subDays(6)->startOfDay();
-        }
+        [$start, $end] = $this->resolveDateWindow($from, $to);
 
         // Fetch all active payment methods (we will show every one of them)
         $paymentMethods = \App\Models\PaymentMethod::where('deleted_at', '=', null)
@@ -927,23 +779,9 @@ class DashboardController extends Controller
         // Get sales payments grouped by payment method
         $payments = PaymentSale::with('sale', 'payment_method')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->where(function ($query) use ($view_records) {
-                if (! $view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            })
-            ->where(function ($query) use ($warehouse_id, $array_warehouses_id) {
-                if ($warehouse_id !== 0) {
-                    return $query->whereHas('sale', function ($q) use ($warehouse_id) {
-                        $q->where('warehouse_id', $warehouse_id)
-                          ->where('deleted_at', '=', null);
-                    });
-                } else {
-                    return $query->whereHas('sale', function ($q) use ($array_warehouses_id) {
-                        $q->whereIn('warehouse_id', $array_warehouses_id)
-                          ->where('deleted_at', '=', null);
-                    });
-                }
+            ->whereHas('sale', function ($q) use ($array_warehouses_id) {
+                $q->whereIn('warehouse_id', $array_warehouses_id)
+                  ->where('deleted_at', '=', null);
             })
             ->whereNotNull('payment_method_id')
             ->select(
@@ -993,12 +831,11 @@ class DashboardController extends Controller
 
     // ----------------- Stock Value -----------------------\\
 
-    public function StockValue($warehouse_id, $array_warehouses_id)
+    public function StockValue(DashboardScope $scope, $warehouse_id)
     {
-        $user = Auth::user();
-        $view_records = $user->hasRecordView();
-
-        $scopeWarehouseIds = $warehouse_id !== 0 ? [$warehouse_id] : $array_warehouses_id;
+        // FINANCIAL_MANAGEMENT: sólo llega aquí owner o gerente. Valorización de
+        // inventario de la sucursal en alcance (el stock no tiene eje de usuario).
+        $scopeWarehouseIds = $this->scopedWarehouseIds($scope, (int) $warehouse_id);
         // MS7-B3 — a location_primary warehouse's stock lives in
         // inventory_location_stocks, not the stale product_warehouse row.
         $split = app(\App\Services\InventoryReadService::class)->splitWarehousesByMode($scopeWarehouseIds);

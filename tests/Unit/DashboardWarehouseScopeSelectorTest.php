@@ -153,18 +153,31 @@ class DashboardWarehouseScopeSelectorTest extends TestCase
     }
 
     /**
-     * El fix NO amplía la visibilidad de datos: el dashboard sigue aplicando el
-     * alcance por sucursal/almacén al no-owner (warehouse_id ausente => "todo
-     * dentro de MI alcance", nunca "todo el tenant").
+     * El Panel operativo sigue SIN ampliar la visibilidad de datos: ahora el
+     * alcance lo resuelve DashboardScopeService (sucursal + almacén efectivos),
+     * nunca "todo el tenant", y ya NO usa record_view como palanca de
+     * granularidad (eso se movió a métricas PERSONAL / TEAM / FINANCIAL).
      */
     public function test_dashboard_still_scopes_data_by_branch_and_warehouse(): void
     {
         $ctrl = file_get_contents(base_path('app/Http/Controllers/OperationalDashboardController.php'));
-        $this->assertStringContainsString('$scope->apply($base, $user, \'sales\', $warehouseId, $branchId)', $ctrl);
-        $this->assertStringContainsString('$scope->applyRecordVisibility($base, $user, \'sales\')', $ctrl);
 
+        // El alcance viene del resolver central, heredado del padre.
+        $this->assertStringContainsString('$scope = $this->resolveDashboardScope($request);', $ctrl);
+        $this->assertStringContainsString('$this->applySaleScope($base, $scope)', $ctrl);
+        // Filtro consciente de branch_id + almacén efectivo, sin fallback global.
+        $this->assertStringContainsString('$scope->branchFilterIds()', $ctrl);
+        $this->assertStringContainsString('$scope->warehouseFilterIds()', $ctrl);
+        // El Panel operativo dejó de usar el binario record_view.
+        $this->assertStringNotContainsString('applyRecordVisibility', $ctrl);
+        // Sin sucursal resoluble => el padre ya devolvió el estado vacío.
+        $this->assertStringContainsString('if (! $scope->hasBranch) {', $ctrl);
+        // TEAM sólo con autoridad; nunca se AÑADE para el cajero.
+        $this->assertStringContainsString('if ($scope->canSeeTeam) {', $ctrl);
+        $this->assertStringContainsString("unset(\$payload['sales_by_cashier'], \$payload['sales_by_branch']);", $ctrl);
+
+        // SalesReportingScopeService conserva su modelo (lo usan otros reportes).
         $scope = file_get_contents(base_path('app/Services/SalesReportingScopeService.php'));
-        // Non-owner sin selector => se limita a sus branchIds / warehouseIds.
         $this->assertStringContainsString('$branchIds = $this->allowedBranchIds($user);', $scope);
         $this->assertStringContainsString('$warehouseIds = $this->allowedWarehouseIds($user);', $scope);
         $this->assertStringContainsString("\$q->whereRaw('1 = 0');", $scope);
