@@ -1,69 +1,88 @@
 <template>
-  <div class="main-content kb-page">
-    <breadcumb :page="$t('Articles')" :folder="$t('Knowledge_Base') || 'Knowledge Base'" />
+  <div class="px-next pxkb">
+    <px-page-header
+      :title="$t('Articles')"
+      :breadcrumbs="[
+        { label: 'Manual PRODEX', href: '#/app/knowledge-base/list' },
+        { label: $t('Articles') }
+      ]"
+    >
+      <template #actions>
+        <px-button variant="ghost" size="sm" icon="chevron-left" @click="$router.push({ name: 'KnowledgeBaseList' })">{{ $t('Back') }}</px-button>
+        <px-button variant="primary" size="sm" icon="plus" @click="$router.push({ name: 'KnowledgeBaseArticleCreate' })">{{ $t('New_Article') || 'Nuevo artículo' }}</px-button>
+      </template>
+    </px-page-header>
 
-    <b-card class="kb-card shadow-sm">
-      <div class="kb-toolbar">
-        <div class="kb-search-row">
-          <b-input-group class="kb-search-input">
-            <b-input-group-prepend is-text><lucide-icon name="search" /></b-input-group-prepend>
-            <b-form-input v-model.trim="searchQ" :placeholder="$t('Search') + '…'" @keyup.enter="fetch" />
-          </b-input-group>
-          <b-form-select v-model="filterGroupId" :options="groupOptions" value-field="id" text-field="name" class="kb-group-select">
-            <template #first>
-              <b-form-select-option :value="null">{{ $t('All_Groups') || 'All groups' }}</b-form-select-option>
-            </template>
-          </b-form-select>
-          <b-button variant="outline-primary" size="sm" @click="fetch">{{ $t('Search') }}</b-button>
-        </div>
-        <div class="kb-actions">
-          <router-link :to="{ name: 'KnowledgeBaseArticleCreate' }" class="btn btn-primary btn-sm">
-            <lucide-icon name="plus" /> {{ $t('New_Article') || 'New article' }}
-          </router-link>
-          <router-link :to="{ name: 'KnowledgeBaseList' }" class="btn btn-outline-secondary btn-sm">
-            <lucide-icon name="chevron-left" /> {{ $t('Back') }}
-          </router-link>
-        </div>
-      </div>
+    <px-toolbar
+      :search="searchQ"
+      :search-placeholder="$t('Search') + '…'"
+      @update:search="v => searchQ = tv(v)"
+    >
+      <template #filters>
+        <vs-px
+          style="min-width: 200px"
+          :options="groupSelectOptions"
+          :reduce="o => o.value"
+          :value="filterGroupId"
+          :placeholder="$t('All_Groups') || 'Todos los grupos'"
+          @input="v => filterGroupId = v || null"
+        />
+      </template>
+      <template #actions>
+        <px-button variant="secondary" size="sm" @click="fetch">{{ $t('Search') }}</px-button>
+      </template>
+    </px-toolbar>
 
-      <div v-if="isLoading" class="loading_page spinner spinner-primary"></div>
+    <div v-if="isLoading" class="pxkb__pad">
+      <px-skeleton variant="table" :rows="8" :columns="3" />
+    </div>
 
-      <div v-else class="kb-articles-list" v-if="articles.length">
-        <div v-for="a in articles" :key="a.id" class="kb-article-item">
-          <div class="kb-article-item-body">
-            <span class="kb-article-title-text">{{ a.title }}</span>
-            <div class="kb-article-meta">
-              <span class="kb-article-group">{{ a.group ? a.group.name : '—' }}</span>
-              <b-badge v-if="a.is_internal" variant="warning" class="kb-badge-internal">{{ $t('Internal') }}</b-badge>
+    <template v-else>
+      <div class="pxkb__tablewrap">
+        <px-table
+          v-if="articles.length"
+          :columns="columns"
+          :rows="articles"
+          row-key="id"
+          has-row-actions
+        >
+          <template #cell-title="{ row }">
+            <div class="pxkb__strong">{{ row.title }}</div>
+            <div class="pxkb__row-meta">
+              <span class="pxkb__row-group">{{ row.group ? row.group.name : '—' }}</span>
+              <px-badge v-if="row.is_internal" tone="warning">{{ $t('Internal') }}</px-badge>
             </div>
-          </div>
-          <div class="kb-article-item-actions">
-            <router-link :to="{ name: 'KnowledgeBaseArticleView', params: { id: a.id } }" class="btn btn-sm btn-outline-info" title="View">
-              <lucide-icon name="eye" />
-            </router-link>
-            <router-link :to="{ name: 'KnowledgeBaseArticleEdit', params: { id: a.id } }" class="btn btn-sm btn-outline-primary" title="Edit">
-              <lucide-icon name="pen" />
-            </router-link>
-            <b-button variant="outline-danger" size="sm" :disabled="busyId === a.id" @click="destroy(a)" title="Delete">
-              <lucide-icon name="x" />
-            </b-button>
-          </div>
-        </div>
-      </div>
+          </template>
+          <template #row-actions="{ row }">
+            <div class="pxkb__rowbtns">
+              <px-button variant="ghost" size="sm" icon-only icon="eye" aria-label="Ver" @click="$router.push({ name: 'KnowledgeBaseArticleView', params: { id: row.id } })" />
+              <px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Editar" @click="$router.push({ name: 'KnowledgeBaseArticleEdit', params: { id: row.id } })" />
+              <px-button class="pxkb__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Eliminar" :disabled="busyId === row.id" @click="destroy(row)" />
+            </div>
+          </template>
+        </px-table>
 
-      <div v-else class="kb-empty">
-        <div class="kb-empty-icon"><lucide-icon name="files" /></div>
-        <p class="kb-empty-title">{{ $t('No_items') }}</p>
-        <router-link :to="{ name: 'KnowledgeBaseArticleCreate' }" class="btn btn-primary"><lucide-icon name="plus" /> {{ $t('New_Article') }}</router-link>
+        <px-empty-state v-else icon="files" :title="$t('No_items')">
+          <px-button variant="primary" icon="plus" @click="$router.push({ name: 'KnowledgeBaseArticleCreate' })">{{ $t('New_Article') || 'Nuevo artículo' }}</px-button>
+        </px-empty-state>
       </div>
-    </b-card>
+    </template>
   </div>
 </template>
 
 <script>
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
+
 export default {
   name: 'KnowledgeBaseArticles',
   metaInfo: { title: 'Knowledge Base - Articles' },
+  components: { PxPageHeader, PxToolbar, PxTable, PxButton, PxBadge, PxEmptyState, VsPx },
   data() {
     return {
       isLoading: true,
@@ -75,8 +94,13 @@ export default {
     };
   },
   computed: {
-    groupOptions() {
-      return this.groups;
+    columns() {
+      return [
+        { key: 'title', label: this.$t('Title'), strong: true },
+      ];
+    },
+    groupSelectOptions() {
+      return this.groups.map(g => ({ label: g.name, value: g.id }));
     }
   },
   watch: {
@@ -89,6 +113,7 @@ export default {
     this.fetch();
   },
   methods: {
+    tv(v) { return typeof v === 'string' ? v.trim() : v; },
     async fetchGroups() {
       try {
         const res = await axios.get('/knowledge-base/groups');
@@ -134,27 +159,16 @@ export default {
 };
 </script>
 
-<style scoped>
-.kb-page { padding-bottom: 2rem; }
-.kb-card { border-radius: 12px; border: none; }
-.kb-toolbar { margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.kb-search-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
-.kb-search-input { max-width: 260px; }
-.kb-search-input .input-group-text { border-radius: 8px 0 0 8px; background: #f8f9fa; }
-.kb-group-select { max-width: 200px; border-radius: 8px; }
-.kb-actions { display: flex; gap: 0.5rem; }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-.kb-articles-list { border-top: 1px solid #eee; }
-.kb-article-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f0f0f0; gap: 1rem; }
-.kb-article-item:last-child { border-bottom: none; }
-.kb-article-item-body { flex: 1; min-width: 0; }
-.kb-article-title-text { font-weight: 600; color: #2d3748; display: block; margin-bottom: 0.25rem; }
-.kb-article-meta { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.kb-article-group { font-size: 0.8rem; color: #667eea; background: rgba(102, 126, 234, 0.1); padding: 0.2rem 0.5rem; border-radius: 6px; }
-.kb-badge-internal { font-size: 0.7rem; }
-.kb-article-item-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
-
-.kb-empty { text-align: center; padding: 3rem 1.5rem; }
-.kb-empty-icon { font-size: 2.5rem; color: #dee2e6; margin-bottom: 1rem; }
-.kb-empty-title { font-weight: 600; margin-bottom: 1rem; }
+<style lang="scss" scoped>
+.pxkb { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxkb { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxkb__pad { padding: var(--pxn-space-6) 0; }
+.pxkb__tablewrap { margin-top: var(--pxn-space-5); }
+.pxkb__strong { font-weight: 600; color: var(--pxn-text); }
+.pxkb__row-meta { display: flex; align-items: center; gap: var(--pxn-space-2); flex-wrap: wrap; margin-top: 3px; }
+.pxkb__row-group { font-size: var(--pxn-fs-xs, 0.8rem); color: var(--pxn-primary); background: var(--pxn-primary-soft, rgba(94,106,210,0.1)); padding: 2px 8px; border-radius: var(--pxn-radius-sm, 6px); }
+.pxkb__rowbtns { display: flex; gap: var(--pxn-space-1); justify-content: flex-end; }
+.pxkb__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
 </style>

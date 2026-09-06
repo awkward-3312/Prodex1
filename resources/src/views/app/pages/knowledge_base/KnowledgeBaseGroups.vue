@@ -1,68 +1,79 @@
 <template>
-  <div class="main-content kb-page">
-    <breadcumb :page="$t('Article_Groups') || 'Article groups'" :folder="$t('Knowledge_Base') || 'Knowledge Base'" />
+  <div class="px-next pxkb">
+    <px-page-header
+      :title="$t('Article_Groups') || 'Grupos de artículos'"
+      :breadcrumbs="[
+        { label: 'Manual PRODEX', href: '#/app/knowledge-base/list' },
+        { label: $t('Article_Groups') || 'Grupos de artículos' }
+      ]"
+    >
+      <template #actions>
+        <px-button variant="ghost" size="sm" icon="chevron-left" @click="$router.push({ name: 'KnowledgeBaseList' })">{{ $t('Back') }}</px-button>
+        <px-button variant="primary" size="sm" icon="plus" @click="$router.push({ name: 'KnowledgeBaseGroupCreate' })">{{ $t('New') }}</px-button>
+      </template>
+    </px-page-header>
 
-    <b-card class="kb-card shadow-sm">
-      <div class="kb-toolbar">
-        <div class="kb-search-row">
-          <b-input-group class="kb-search-input">
-            <b-input-group-prepend is-text><lucide-icon name="search" /></b-input-group-prepend>
-            <b-form-input v-model.trim="q" :placeholder="$t('Search') + '…'" />
-          </b-input-group>
-        </div>
-        <div class="kb-actions">
-          <router-link :to="{ name: 'KnowledgeBaseGroupCreate' }" class="btn btn-primary btn-sm">
-            <lucide-icon name="plus" /> {{ $t('New') }}
-          </router-link>
-          <router-link :to="{ name: 'KnowledgeBaseList' }" class="btn btn-outline-secondary btn-sm">
-            <lucide-icon name="chevron-left" /> {{ $t('Back') }}
-          </router-link>
-        </div>
+    <px-toolbar :search="q" :search-placeholder="$t('Search') + '…'" @update:search="v => q = tv(v)" />
+
+    <div v-if="isLoading" class="pxkb__pad">
+      <px-skeleton variant="table" :rows="6" :columns="3" />
+    </div>
+
+    <template v-else>
+      <div class="pxkb__tablewrap">
+        <px-table
+          v-if="filtered.length"
+          :columns="columns"
+          :rows="filtered"
+          row-key="id"
+          has-row-actions
+        >
+          <template #cell-name="{ row }">
+            <div class="pxkb__strong">{{ row.name }}</div>
+            <div v-if="row.description" class="pxkb__muted pxkb__clamp">{{ row.description }}</div>
+            <code class="pxkb__slug">{{ row.slug }}</code>
+          </template>
+          <template #cell-articles_count="{ row }">
+            <px-badge tone="neutral">{{ row.articles_count != null ? row.articles_count : 0 }}</px-badge>
+          </template>
+          <template #row-actions="{ row }">
+            <div class="pxkb__rowbtns">
+              <px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Editar" @click="$router.push({ name: 'KnowledgeBaseGroupEdit', params: { id: row.id } })" />
+              <px-button class="pxkb__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Eliminar" :disabled="busyId === row.id" @click="destroy(row)" />
+            </div>
+          </template>
+        </px-table>
+
+        <px-empty-state v-else icon="folder" :title="$t('No_items')">
+          <px-button variant="primary" icon="plus" @click="$router.push({ name: 'KnowledgeBaseGroupCreate' })">{{ $t('New') }}</px-button>
+        </px-empty-state>
       </div>
-
-      <div v-if="isLoading" class="loading_page spinner spinner-primary"></div>
-
-      <div v-else class="kb-groups-list" v-if="filtered.length">
-        <div v-for="(g, idx) in filtered" :key="g.id" class="kb-group-item">
-          <div class="kb-group-order">#{{ idx + 1 }}</div>
-          <div class="kb-group-icon"><lucide-icon name="folder" /></div>
-          <div class="kb-group-body">
-            <div class="kb-group-name">{{ g.name }}</div>
-            <div class="kb-group-desc text-muted small" v-if="g.description">{{ g.description }}</div>
-            <span class="kb-group-slug">{{ g.slug }}</span>
-          </div>
-          <div class="kb-group-count">
-            <span class="badge badge-pill badge-light">{{ g.articles_count != null ? g.articles_count : '0' }}</span>
-            <span class="small text-muted">{{ $t('Articles') }}</span>
-          </div>
-          <div class="kb-group-actions">
-            <router-link :to="{ name: 'KnowledgeBaseGroupEdit', params: { id: g.id } }" class="btn btn-sm btn-outline-primary" title="Edit">
-              <lucide-icon name="pen" />
-            </router-link>
-            <b-button variant="outline-danger" size="sm" :disabled="busyId === g.id" @click="destroy(g)" title="Delete">
-              <lucide-icon name="x" />
-            </b-button>
-          </div>
-        </div>
-      </div>
-
-      <div v-else-if="!isLoading" class="kb-empty">
-        <div class="kb-empty-icon"><lucide-icon name="folder" /></div>
-        <p class="kb-empty-title">{{ $t('No_items') }}</p>
-        <router-link :to="{ name: 'KnowledgeBaseGroupCreate' }" class="btn btn-primary"><lucide-icon name="plus" /> {{ $t('New') }}</router-link>
-      </div>
-    </b-card>
+    </template>
   </div>
 </template>
 
 <script>
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+
 export default {
   name: 'KnowledgeBaseGroups',
   metaInfo: { title: 'Knowledge Base - Groups' },
+  components: { PxPageHeader, PxToolbar, PxTable, PxButton, PxBadge, PxEmptyState },
   data() {
     return { isLoading: true, busyId: null, q: '', groups: [] };
   },
   computed: {
+    columns() {
+      return [
+        { key: 'name', label: this.$t('Name'), strong: true },
+        { key: 'articles_count', label: this.$t('Articles'), align: 'center' },
+      ];
+    },
     filtered() {
       const term = (this.q || '').toLowerCase();
       if (!term) return this.groups;
@@ -76,6 +87,7 @@ export default {
     this.fetch();
   },
   methods: {
+    tv(v) { return typeof v === 'string' ? v.trim() : v; },
     makeToast(variant, msg) {
       if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(msg, { variant, solid: true });
     },
@@ -108,44 +120,17 @@ export default {
 };
 </script>
 
-<style scoped>
-.kb-page { padding-bottom: 2rem; }
-.kb-card { border-radius: 12px; border: none; }
-.kb-toolbar { margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.kb-search-input { max-width: 280px; }
-.kb-search-input .input-group-text { border-radius: 8px 0 0 8px; background: #f8f9fa; }
-.kb-actions { display: flex; gap: 0.5rem; }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
 
-.kb-groups-list { border-top: 1px solid #eee; }
-.kb-group-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-.kb-group-item:last-child { border-bottom: none; }
-.kb-group-order { width: 36px; text-align: center; color: #adb5bd; font-size: 0.85rem; }
-.kb-group-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.kb-group-body { flex: 1; min-width: 0; }
-.kb-group-name { font-weight: 600; color: #2d3748; margin-bottom: 0.15rem; }
-.kb-group-desc { max-width: 400px; margin-bottom: 0.25rem; }
-.kb-group-slug { font-size: 0.75rem; color: #718096; background: #f1f3f5; padding: 0.15rem 0.4rem; border-radius: 4px; }
-.kb-group-count { text-align: center; min-width: 70px; }
-.kb-group-count .badge { font-size: 0.9rem; }
-.kb-group-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
-
-.kb-empty { text-align: center; padding: 3rem 1.5rem; }
-.kb-empty-icon { font-size: 2.5rem; color: #dee2e6; margin-bottom: 1rem; }
-.kb-empty-title { font-weight: 600; margin-bottom: 1rem; }
+<style lang="scss" scoped>
+.pxkb { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxkb { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxkb__pad { padding: var(--pxn-space-6) 0; }
+.pxkb__tablewrap { margin-top: var(--pxn-space-5); }
+.pxkb__muted { color: var(--pxn-text-muted); font-size: var(--pxn-fs-sm); }
+.pxkb__strong { font-weight: 600; color: var(--pxn-text); }
+.pxkb__clamp { max-width: 460px; margin: 2px 0; }
+.pxkb__slug { font-size: var(--pxn-fs-xs, 0.75rem); color: var(--pxn-text-muted); background: var(--pxn-surface-2, var(--pxn-surface)); padding: 1px 6px; border-radius: var(--pxn-radius-sm, 4px); }
+.pxkb__rowbtns { display: flex; gap: var(--pxn-space-1); justify-content: flex-end; }
+.pxkb__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
 </style>

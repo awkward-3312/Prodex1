@@ -1,77 +1,99 @@
 <template>
-  <div class="main-content kb-page">
-    <breadcumb
-      :page="isEdit ? ($t('Edit') + ' ' + $t('Article')) : ($t('New') + ' ' + $t('Article'))"
-      :folder="$t('Knowledge_Base') || 'Knowledge Base'"
+  <div class="px-next pxkb">
+    <px-page-header
+      :title="isEdit ? ($t('Edit') + ' ' + $t('Article')) : ($t('New') + ' ' + $t('Article'))"
+      :breadcrumbs="[
+        { label: 'Manual PRODEX', href: '#/app/knowledge-base/list' },
+        { label: $t('Articles'), href: '#/app/knowledge-base/articles' },
+        { label: isEdit ? $t('Edit') : $t('New') }
+      ]"
     />
-    <b-card class="kb-card shadow-sm">
-      <div class="card-body">
-        <div class="kb-form-header">
-          <h5 class="kb-form-title">{{ isEdit ? ($t('Edit') + ' ' + $t('Article')) : ($t('New') + ' ' + $t('Article')) }}</h5>
-        </div>
-        <b-form @submit.prevent="save" class="kb-form">
-          <b-row>
-            <b-col cols="12" md="8">
-            <b-form-group :label="$t('Group')" label-for="group_id">
-              <b-form-select
-                id="group_id"
-                v-model="form.knowledge_base_article_group_id"
-                :options="groupOptions"
-                value-field="id"
-                text-field="name"
-                class="kb-input"
-                required
-              />
-            </b-form-group>
-            <b-form-group :label="$t('Title')" label-for="title">
-              <b-form-input id="title" v-model.trim="form.title" class="kb-input" required />
-            </b-form-group>
-            <b-form-group :label="$t('Slug')" label-for="slug">
-              <b-form-input id="slug" v-model.trim="form.slug" class="kb-input" required />
-            </b-form-group>
-            <b-form-group :label="$t('Content')" label-for="content">
-              <div class="kb-editor-wrap">
-                <RichTextEditor
-                  :value="form.content"
-                  @input="form.content = $event"
-                  editor-id="kb-article-editor"
-                />
-              </div>
-            </b-form-group>
-            <b-form-group>
-              <b-form-checkbox v-model="form.is_internal" class="kb-checkbox">
-                {{ $t('Internal_Article') || 'Internal article (visible only to users with Knowledge Base manage permission)' }}
-              </b-form-checkbox>
-            </b-form-group>
-            <b-form-group :label="$t('Publication_date') || 'Publication date'" label-for="published_at">
-              <b-form-input id="published_at" type="date" v-model="form.published_at" class="kb-input" style="max-width: 200px;" />
-              <small class="text-muted">{{ $t('Leave_empty_for_now') || 'Optional — leave empty for an unpublished draft.' }}</small>
-            </b-form-group>
-            <b-form-group :label="$t('Sort_order') || 'Sort order'" label-for="sort_order">
-              <b-form-input id="sort_order" type="number" v-model.number="form.sort_order" min="0" class="kb-input" style="max-width: 120px;" />
-            </b-form-group>
-          </b-col>
-          </b-row>
-          <div class="kb-form-actions">
-            <b-button type="submit" variant="primary" :disabled="saving" class="kb-btn-primary">
-              <span v-if="saving" class="spinner-border spinner-border-sm mr-2"></span>
-              {{ $t('Save') }}
-            </b-button>
-            <router-link :to="{ name: 'KnowledgeBaseArticles' }" class="btn btn-outline-secondary">{{ $t('Cancel') }}</router-link>
-            <router-link v-if="isEdit" :to="{ name: 'KnowledgeBaseArticleView', params: { id: id } }" class="btn btn-outline-info">{{ $t('View') }}</router-link>
+
+    <px-card :title="isEdit ? ($t('Edit') + ' ' + $t('Article')) : ($t('New') + ' ' + $t('Article'))" class="pxkb__card">
+      <validation-observer ref="form_article">
+        <form @submit.prevent="save">
+          <div class="pxkb__formgrid">
+            <validation-provider ref="groupProvider" name="Group" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('Group') + ' *'" :error="v.errors[0]">
+                <template #default="{ id }">
+                  <vs-px
+                    :input-id="id"
+                    v-model="form.knowledge_base_article_group_id"
+                    :reduce="o => o.value"
+                    :options="groupSelectOptions"
+                    :placeholder="$t('PleaseSelect')"
+                    @input="val => { if ($refs.groupProvider) { $refs.groupProvider.syncValue(val); $refs.groupProvider.validate(); } }"
+                  />
+                </template>
+              </px-field>
+            </validation-provider>
+
+            <validation-provider ref="titleProvider" name="Title" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('Title') + ' *'" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="form.title" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+
+            <validation-provider ref="slugProvider" name="Slug" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('Slug') + ' *'" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="form.slug" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+
+            <px-field :label="$t('Content')">
+              <template #default>
+                <div class="pxkb__editor">
+                  <RichTextEditor
+                    :value="form.content"
+                    @input="form.content = $event"
+                    editor-id="kb-article-editor"
+                  />
+                </div>
+              </template>
+            </px-field>
+
+            <px-field :label="$t('Visibility') || 'Visibilidad'">
+              <template #default>
+                <px-check type="switch" :modelValue="!!form.is_internal" @change="v => form.is_internal = v">
+                  {{ $t('Internal_Article') || 'Artículo interno (visible solo para usuarios con permiso de gestión del Manual)' }}
+                </px-check>
+              </template>
+            </px-field>
+
+            <div class="pxkb__grid2">
+              <px-field :label="$t('Publication_date') || 'Fecha de publicación'" :hint="$t('Leave_empty_for_now') || 'Opcional — déjalo vacío para un borrador sin publicar.'">
+                <template #default="{ id }"><px-input :id="id" type="date" v-model="form.published_at" /></template>
+              </px-field>
+              <px-field :label="$t('Sort_order') || 'Orden'" class="pxkb__narrow">
+                <template #default="{ id }"><px-input :id="id" type="number" min="0" v-model.number="form.sort_order" /></template>
+              </px-field>
+            </div>
           </div>
-        </b-form>
-      </div>
-    </b-card>
+        </form>
+      </validation-observer>
+
+      <template #footer>
+        <px-button variant="ghost" @click="$router.push({ name: 'KnowledgeBaseArticles' })">{{ $t('Cancel') }}</px-button>
+        <px-button v-if="isEdit" variant="secondary" icon="eye" @click="$router.push({ name: 'KnowledgeBaseArticleView', params: { id: id } })">{{ $t('View') }}</px-button>
+        <px-button variant="primary" icon="check" :loading="saving" :disabled="saving" @click="save">{{ $t('Save') }}</px-button>
+      </template>
+    </px-card>
   </div>
 </template>
 
 <script>
 import RichTextEditor from '@/components/RichTextEditor.vue';
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxCheck from "@/components/px-next/PxCheck.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   name: 'KnowledgeBaseArticleForm',
-  components: { RichTextEditor },
+  components: { RichTextEditor, PxPageHeader, PxCard, PxButton, PxField, PxInput, PxCheck, VsPx },
   props: {
     id: { type: [String, Number], default: null }
   },
@@ -94,8 +116,8 @@ export default {
     isEdit() {
       return this.id != null && this.id !== '';
     },
-    groupOptions() {
-      return this.groups;
+    groupSelectOptions() {
+      return this.groups.map(g => ({ label: g.name, value: g.id }));
     }
   },
   mounted() {
@@ -103,6 +125,13 @@ export default {
     if (this.isEdit) this.fetch();
   },
   methods: {
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.groupProvider && this.$refs.groupProvider.syncValue) this.$refs.groupProvider.syncValue(this.form.knowledge_base_article_group_id);
+        if (this.$refs.titleProvider && this.$refs.titleProvider.syncValue) this.$refs.titleProvider.syncValue(this.form.title);
+        if (this.$refs.slugProvider && this.$refs.slugProvider.syncValue) this.$refs.slugProvider.syncValue(this.form.slug);
+      });
+    },
     async fetchGroups() {
       try {
         const res = await axios.get('/knowledge-base/groups');
@@ -110,6 +139,7 @@ export default {
         if (this.groups.length && !this.form.knowledge_base_article_group_id) {
           this.form.knowledge_base_article_group_id = this.groups[0].id;
         }
+        this.syncValidators();
       } catch (e) {
         this.groups = [];
       }
@@ -127,6 +157,7 @@ export default {
           sort_order: a.sort_order ?? 0,
           published_at: a.published_at ? String(a.published_at).slice(0, 10) : ''
         };
+        this.syncValidators();
       } catch (e) {
         if (this.$root && this.$root.$bvToast) {
           this.$root.$bvToast.toast(this.$t('Failed_to_load') || 'Failed to load', { variant: 'danger', solid: true });
@@ -134,6 +165,8 @@ export default {
       }
     },
     async save() {
+      const ok = await this.$refs.form_article.validate();
+      if (!ok) return;
       this.saving = true;
       try {
         const payload = { ...this.form };
@@ -163,17 +196,17 @@ export default {
 };
 </script>
 
-<style scoped>
-.kb-page { padding-bottom: 2rem; min-height: 400px; }
-.kb-card { border-radius: 12px; border: none; }
-.kb-card .card-body { padding: 1.5rem; }
-.kb-form-header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #eee; }
-.kb-form-title { margin: 0; font-weight: 600; color: #2d3748; }
-.kb-input { border-radius: 8px; }
-.kb-editor-wrap { border-radius: 8px; overflow: hidden; border: 1px solid #ced4da; }
-.kb-editor-wrap >>> .ql-toolbar { border-radius: 8px 8px 0 0; background: #f8f9fa; }
-.kb-editor-wrap >>> .ql-container { border-radius: 0 0 8px 8px; min-height: 220px; }
-.kb-checkbox >>> label { font-weight: 500; color: #4a5568; }
-.kb-form-actions { margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; }
-.kb-btn-primary { border-radius: 8px; }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxkb { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxkb { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxkb__card { margin-top: var(--pxn-space-5); max-width: 820px; }
+.pxkb__formgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--pxn-space-4); }
+.pxkb__grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); align-items: start; }
+@media (max-width: 560px) { .pxkb__grid2 { grid-template-columns: minmax(0, 1fr); } }
+.pxkb__narrow { max-width: 160px; }
+.pxkb__editor { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md, 8px); overflow: hidden; }
+.pxkb__editor ::v-deep .ql-toolbar { border: 0; border-bottom: 1px solid var(--pxn-border); background: var(--pxn-surface-2, var(--pxn-surface)); }
+.pxkb__editor ::v-deep .ql-container { border: 0; min-height: 220px; }
 </style>

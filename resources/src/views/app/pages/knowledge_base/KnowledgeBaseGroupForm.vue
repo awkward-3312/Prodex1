@@ -1,47 +1,60 @@
 <template>
-  <div class="main-content kb-page">
-    <breadcumb
-      :page="isEdit ? ($t('Edit') + ' ' + $t('Group')) : ($t('New') + ' ' + $t('Group'))"
-      :folder="$t('Knowledge_Base') || 'Knowledge Base'"
+  <div class="px-next pxkb">
+    <px-page-header
+      :title="isEdit ? ($t('Edit') + ' ' + $t('Group')) : ($t('New') + ' ' + $t('Group'))"
+      :breadcrumbs="[
+        { label: 'Manual PRODEX', href: '#/app/knowledge-base/list' },
+        { label: $t('Article_Groups') || 'Grupos de artículos', href: '#/app/knowledge-base/groups' },
+        { label: isEdit ? $t('Edit') : $t('New') }
+      ]"
     />
-    <b-card class="kb-card shadow-sm">
-      <div class="card-body">
-        <div class="kb-form-header">
-          <h5 class="kb-form-title">{{ isEdit ? ($t('Edit') + ' ' + $t('Group')) : ($t('New') + ' ' + $t('Group')) }}</h5>
-        </div>
-        <b-form @submit.prevent="save" class="kb-form">
-          <b-row>
-            <b-col cols="12" md="8">
-            <b-form-group :label="$t('Name')" label-for="name">
-              <b-form-input id="name" v-model.trim="form.name" class="kb-input" required />
-            </b-form-group>
-            <b-form-group :label="$t('Slug')" label-for="slug">
-              <b-form-input id="slug" v-model.trim="form.slug" class="kb-input" required />
-            </b-form-group>
-            <b-form-group :label="$t('Description')" label-for="description">
-              <b-form-textarea id="description" rows="3" v-model.trim="form.description" class="kb-input" />
-            </b-form-group>
-            <b-form-group :label="$t('Sort_order') || 'Sort order'" label-for="sort_order">
-              <b-form-input id="sort_order" type="number" v-model.number="form.sort_order" min="0" class="kb-input" style="max-width: 120px;" />
-            </b-form-group>
-          </b-col>
-          </b-row>
-          <div class="kb-form-actions">
-            <b-button type="submit" variant="primary" :disabled="saving" class="kb-btn-primary">
-              <span v-if="saving" class="spinner-border spinner-border-sm mr-2"></span>
-              {{ $t('Save') }}
-            </b-button>
-            <router-link :to="{ name: 'KnowledgeBaseGroups' }" class="btn btn-outline-secondary">{{ $t('Cancel') }}</router-link>
+
+    <px-card :title="isEdit ? ($t('Edit') + ' ' + $t('Group')) : ($t('New') + ' ' + $t('Group'))" class="pxkb__card">
+      <validation-observer ref="form_group">
+        <form @submit.prevent="save">
+          <div class="pxkb__formgrid">
+            <validation-provider ref="nameProvider" name="Name" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('Name') + ' *'" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="form.name" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+
+            <validation-provider ref="slugProvider" name="Slug" :rules="{ required: true }" v-slot="v">
+              <px-field :label="$t('Slug') + ' *'" :error="v.errors[0]">
+                <template #default="{ id, invalid }"><px-input :id="id" v-model="form.slug" :invalid="invalid" @input="v.validate" /></template>
+              </px-field>
+            </validation-provider>
+
+            <px-field :label="$t('Description')">
+              <template #default="{ id }"><px-textarea :id="id" v-model="form.description" :rows="3" /></template>
+            </px-field>
+
+            <px-field :label="$t('Sort_order') || 'Orden'" class="pxkb__narrow">
+              <template #default="{ id }"><px-input :id="id" type="number" min="0" v-model.number="form.sort_order" /></template>
+            </px-field>
           </div>
-        </b-form>
-      </div>
-    </b-card>
+        </form>
+      </validation-observer>
+
+      <template #footer>
+        <px-button variant="ghost" @click="$router.push({ name: 'KnowledgeBaseGroups' })">{{ $t('Cancel') }}</px-button>
+        <px-button variant="primary" icon="check" :loading="saving" :disabled="saving" @click="save">{{ $t('Save') }}</px-button>
+      </template>
+    </px-card>
   </div>
 </template>
 
 <script>
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxCard from "@/components/px-next/PxCard.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+
 export default {
   name: 'KnowledgeBaseGroupForm',
+  components: { PxPageHeader, PxCard, PxButton, PxField, PxInput, PxTextarea },
   props: {
     id: { type: [String, Number], default: null }
   },
@@ -60,11 +73,18 @@ export default {
     if (this.isEdit) this.fetch();
   },
   methods: {
+    syncValidators() {
+      this.$nextTick(() => {
+        if (this.$refs.nameProvider && this.$refs.nameProvider.syncValue) this.$refs.nameProvider.syncValue(this.form.name);
+        if (this.$refs.slugProvider && this.$refs.slugProvider.syncValue) this.$refs.slugProvider.syncValue(this.form.slug);
+      });
+    },
     async fetch() {
       try {
         const res = await axios.get('/knowledge-base/groups/' + this.id);
         const g = res.data;
         this.form = { name: g.name, slug: g.slug, description: g.description || '', sort_order: g.sort_order ?? 0 };
+        this.syncValidators();
       } catch (e) {
         if (this.$root && this.$root.$bvToast) {
           this.$root.$bvToast.toast(this.$t('Failed_to_load') || 'Failed to load', { variant: 'danger', solid: true });
@@ -72,6 +92,8 @@ export default {
       }
     },
     async save() {
+      const ok = await this.$refs.form_group.validate();
+      if (!ok) return;
       this.saving = true;
       try {
         if (this.isEdit) {
@@ -93,13 +115,12 @@ export default {
 };
 </script>
 
-<style scoped>
-.kb-page { padding-bottom: 2rem; min-height: 400px; }
-.kb-card { border-radius: 12px; border: none; }
-.kb-card .card-body { padding: 1.5rem; }
-.kb-form-header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #eee; }
-.kb-form-title { margin: 0; font-weight: 600; color: #2d3748; }
-.kb-input { border-radius: 8px; }
-.kb-form-actions { margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; }
-.kb-btn-primary { border-radius: 8px; }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxkb { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxkb { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxkb__card { margin-top: var(--pxn-space-5); max-width: 720px; }
+.pxkb__formgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--pxn-space-4); }
+.pxkb__narrow { max-width: 160px; }
 </style>
