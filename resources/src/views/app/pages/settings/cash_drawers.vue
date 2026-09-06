@@ -67,7 +67,7 @@
             <validation-provider ref="nameProvider" name="Nombre" rules="required" v-slot="v">
               <px-field label="Nombre *" :error="v.errors[0]">
                 <template #default="{ id, invalid }">
-                  <px-input :id="id" :value="form.name" @input="val => { form.name = val.trim ? val.trim() : val; v.validate(); }" placeholder="Ej. Caja 1" :invalid="invalid" />
+                  <px-input :id="id" :value="form.name" @input="val => onTextInput('name', 'nameProvider', val)" placeholder="Ej. Caja 1" :invalid="invalid" />
                 </template>
               </px-field>
             </validation-provider>
@@ -75,7 +75,7 @@
             <validation-provider ref="codeProvider" name="Código" rules="required" v-slot="v">
               <px-field label="Código *" :error="v.errors[0]">
                 <template #default="{ id, invalid }">
-                  <px-input :id="id" :value="form.code" @input="val => { form.code = val.trim ? val.trim() : val; v.validate(); }" placeholder="Ej. SPS-PISO-CAJA-01" :invalid="invalid" />
+                  <px-input :id="id" :value="form.code" @input="val => onTextInput('code', 'codeProvider', val)" placeholder="Ej. SPS-PISO-CAJA-01" :invalid="invalid" />
                 </template>
               </px-field>
             </validation-provider>
@@ -84,7 +84,7 @@
               <px-field label="Sucursal *" :error="v.errors[0]">
                 <template #default="{ id }">
                   <vs-px :input-id="id" v-model="form.branch_id" :reduce="option => option.value" :options="branchOptions"
-                    :disabled="!!contextBranchId" placeholder="Selecciona una sucursal" @input="onBranchChangeAndValidate(v)" />
+                    :disabled="!!contextBranchId" placeholder="Selecciona una sucursal" @input="onBranchSelected" />
                 </template>
               </px-field>
             </validation-provider>
@@ -94,7 +94,7 @@
                 hint="Solo aparecen ubicaciones activas y habilitadas para venta de la sucursal seleccionada.">
                 <template #default="{ id }">
                   <vs-px :input-id="id" v-model="form.inventory_location_id" :reduce="option => option.value" :options="locationOptions"
-                    placeholder="Ej. Piso de venta" @input="v.validate" />
+                    placeholder="Ej. Piso de venta" @input="onLocationSelected" />
                 </template>
               </px-field>
             </validation-provider>
@@ -226,20 +226,47 @@ export default {
       }
       return (data && (data.message || data.error)) || "No se pudo completar la operación.";
     },
+    // The provider's value is bound to a control nested inside PxField's scoped
+    // slot, which VeeValidate cannot auto-detect. So we push `form.*` — the one
+    // source of truth — into every provider explicitly: a silent sync on open
+    // (no premature "required"), and a real `validate(value)` on every change.
+    providerFieldMap() {
+      return { nameProvider: "name", codeProvider: "code", branchProvider: "branch_id", locationProvider: "inventory_location_id" };
+    },
     syncValidators() {
       this.$nextTick(() => {
-        const map = { nameProvider: "name", codeProvider: "code", branchProvider: "branch_id", locationProvider: "inventory_location_id" };
+        const observer = this.$refs.CashDrawerForm;
+        if (observer && observer.reset) observer.reset();
+        const map = this.providerFieldMap();
         Object.keys(map).forEach(ref => {
           const p = this.$refs[ref];
           if (p && p.syncValue) p.syncValue(this.form[map[ref]]);
         });
       });
     },
-    onBranchChangeAndValidate(v) {
+    validateProvider(ref, value) {
+      const p = this.$refs[ref];
+      if (p && p.validate) p.validate(value);
+    },
+    onTextInput(field, ref, rawValue) {
+      const value = rawValue && rawValue.trim ? rawValue.trim() : rawValue;
+      this.form[field] = value;
+      this.validateProvider(ref, value);
+    },
+    onBranchSelected() {
+      // v-model already updated form.branch_id; recompute the dependent location.
       this.onBranchChange();
-      if (v && v.validate) v.validate();
-      const lp = this.$refs.locationProvider;
-      if (lp && lp.syncValue) lp.syncValue(this.form.inventory_location_id);
+      this.validateProvider("branchProvider", this.form.branch_id);
+      this.validateProvider("locationProvider", this.form.inventory_location_id);
+    },
+    onLocationSelected() {
+      this.validateProvider("locationProvider", this.form.inventory_location_id);
+    },
+    focusFirstInvalid() {
+      const root = this.$refs.CashDrawerForm && this.$refs.CashDrawerForm.$el;
+      if (!root) return;
+      const el = root.querySelector('input[aria-invalid="true"], .pxn-field.is-invalid input, .pxn-field.is-invalid .vs__search');
+      if (el && typeof el.focus === "function") el.focus();
     },
     resetForm() {
       this.form = this.emptyForm();
@@ -310,12 +337,29 @@ export default {
       }
     },
     submitDrawer() {
+      // Re-sync every provider from the live form before the observer aggregates
+      // them — covers auto-selected defaults, edit-mode prefill and any path that
+      // never emitted an input event.
+      const map = this.providerFieldMap();
+      Object.keys(map).forEach(ref => {
+        const p = this.$refs[ref];
+        if (p && p.syncValue) p.syncValue(this.form[map[ref]]);
+      });
+
       this.$refs.CashDrawerForm.validate().then(valid => {
-        if (!valid || !this.form.branch_id || !this.form.inventory_location_id) {
-          this.toast("warning", "Selecciona la sucursal y una ubicación de venta válida.", "Atención");
+        if (valid) {
+          this.saveDrawer();
           return;
         }
-        this.saveDrawer();
+        // Not valid: tell the truth about what's missing. Required errors for
+        // Nombre / Código already render inline under their fields; only warn
+        // about branch / location when those are the actual gap.
+        if (!this.form.branch_id) {
+          this.toast("warning", "Selecciona una sucursal.", "Falta la sucursal");
+        } else if (!this.form.inventory_location_id) {
+          this.toast("warning", "Selecciona una ubicación de venta válida.", "Falta la ubicación");
+        }
+        this.$nextTick(() => this.focusFirstInvalid());
       });
     },
     async saveDrawer() {
