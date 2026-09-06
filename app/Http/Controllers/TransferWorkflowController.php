@@ -112,18 +112,18 @@ class TransferWorkflowController extends BaseController
         $inTransit = in_array((string) $transfer->logistics_status, ['in_transit', 'partially_received'], true);
         $canOperateSource = $this->canAccessSource($user, $transfer) && $this->canOperateRecord($user, $transfer);
 
-        // Recepción física: la autoridad es exclusivamente
+        // Recepción física: la autoridad es EXCLUSIVAMENTE
         // TransferLogisticsService::userCanReceive() (permiso transfer_receive +
-        // InventoryLocationScopeService::canReceiveAt sobre la ubicación destino).
-        // Aquí NO se reimplementa ninguna regla; sólo se expone el flag para que
-        // el detalle ofrezca "Revisar y recibir" (que abre la bandeja de
-        // recepción px-next por id — /app/transfers/receptions/{id} —, la cual
-        // vuelve a validar la autorización en el servidor). No se emite ningún
-        // receiving_token en este payload.
+        // InventoryLocationScopeService::canReceiveAt, que usa el alcance de
+        // RECEPCIÓN — receivingLocationIds —, más amplio que el operativo).
+        //
+        // NO se añade canAccessDestination() aquí: eso usaría canAccess() ->
+        // allowedLocationIds() (alcance operativo normal) y bloquearía al gerente
+        // cuya ubicación operativa es el Piso de venta pero que SÍ puede recibir
+        // en la bodega principal de su sucursal.
         $canReceive = $inTransit
             && ! empty($transfer->receiving_token)
-            && $this->canAccessDestination($user, $transfer)
-            && app(TransferLogisticsService::class)->userCanReceive($user, $transfer);
+            && $this->canReceiveTransfer($user, $transfer);
 
         return response()->json([
             'transfer' => [
@@ -153,8 +153,27 @@ class TransferWorkflowController extends BaseController
 
     private function assertViewScope(User $user, Transfer $transfer): void
     {
-        abort_unless($this->canAccessSource($user, $transfer) || $this->canAccessDestination($user, $transfer), 403,
-            'No tienes acceso al origen ni al destino de esta transferencia.');
+        // El detalle es visible si el usuario puede ver el origen, puede ver el
+        // destino OPERATIVAMENTE, o está autorizado ESPECÍFICAMENTE para recibir
+        // esta transferencia (alcance de recepción, no operativo). `transfer_view`
+        // ya se exigió en payload() vía authorizeForUser($user, 'view', ...).
+        abort_unless(
+            $this->canAccessSource($user, $transfer)
+                || $this->canAccessDestination($user, $transfer)
+                || $this->canReceiveTransfer($user, $transfer),
+            403,
+            'No tienes acceso al origen ni al destino de esta transferencia.'
+        );
+    }
+
+    /**
+     * Autoridad ÚNICA para recibir físicamente: permiso `transfer_receive` +
+     * InventoryLocationScopeService::canReceiveAt() (alcance de recepción, más
+     * amplio que el operativo). No amplía allowedLocationIds ni ningún otro scope.
+     */
+    private function canReceiveTransfer(User $user, Transfer $transfer): bool
+    {
+        return app(TransferLogisticsService::class)->userCanReceive($user, $transfer);
     }
 
     private function assertSourceScope(User $user, Transfer $transfer): void

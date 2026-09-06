@@ -29,15 +29,46 @@ class TransferReceivingEntryFlowArchitectureTest extends TestCase
         $this->assertStringContainsString('use App\Services\TransferLogisticsService;', $c);
         $this->assertStringContainsString("'can_receive' => \$canReceive,", $c);
 
-        // can_receive = en tránsito + hay token + acceso al destino + userCanReceive.
+        // can_receive = en tránsito + hay token + userCanReceive. SIN
+        // canAccessDestination() (usa alcance operativo, más estrecho que el de
+        // recepción y rompería el caso del gerente que opera desde el Piso).
         $this->assertMatchesRegularExpression(
-            '/\$canReceive = \$inTransit\s*\n\s*&& ! empty\(\$transfer->receiving_token\)\s*\n\s*&& \$this->canAccessDestination\(\$user, \$transfer\)\s*\n\s*&& app\(TransferLogisticsService::class\)->userCanReceive\(\$user, \$transfer\);/s',
+            '/\$canReceive = \$inTransit\s*\n\s*&& ! empty\(\$transfer->receiving_token\)\s*\n\s*&& \$this->canReceiveTransfer\(\$user, \$transfer\);/s',
             $c
         );
+        // La expresión de $canReceive (hasta el `;`) no menciona canAccessDestination.
+        $this->assertSame(
+            1,
+            preg_match('/\$canReceive = ([^;]+);/s', $c, $m),
+            'No se encontró la asignación de $canReceive.'
+        );
+        $this->assertStringNotContainsString('canAccessDestination', $m[1]);
+        $this->assertStringNotContainsString('canAccess(', $m[1]);
+
+        // canReceiveTransfer() delega SÓLO en userCanReceive() — autoridad única.
+        $this->assertMatchesRegularExpression(
+            '/private function canReceiveTransfer\(User \$user, Transfer \$transfer\): bool\s*\{\s*return app\(TransferLogisticsService::class\)->userCanReceive\(\$user, \$transfer\);\s*\}/s',
+            $c
+        );
+
         // El payload de workflow NO expone ningún receiving_token.
         $this->assertStringNotContainsString("'receiving_token' =>", $c);
         // No se reimplementan reglas: nada de hasPermissionName('transfer_receive') suelto aquí.
         $this->assertStringNotContainsString("hasPermissionName('transfer_receive')", $c);
+    }
+
+    public function test_assert_view_scope_adds_receiving_as_a_third_path(): void
+    {
+        $c = $this->read('app/Http/Controllers/TransferWorkflowController.php');
+
+        // origen OR destino operativo OR autorizado a RECIBIR — sin sustituir
+        // allowedLocationIds por receivingLocationIds globalmente.
+        $this->assertMatchesRegularExpression(
+            '/function assertViewScope\(.*?abort_unless\(\s*\$this->canAccessSource\(\$user, \$transfer\)\s*\n\s*\|\| \$this->canAccessDestination\(\$user, \$transfer\)\s*\n\s*\|\| \$this->canReceiveTransfer\(\$user, \$transfer\),/s',
+            $c
+        );
+        // transfer_view sigue siendo obligatorio (en payload()).
+        $this->assertStringContainsString("\$this->authorizeForUser(\$user, 'view', Transfer::class);", $c);
     }
 
     public function test_notification_center_routes_incoming_transfer_to_the_receive_task(): void

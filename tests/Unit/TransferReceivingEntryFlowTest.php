@@ -153,9 +153,12 @@ class TransferReceivingEntryFlowTest extends TestCase
         $this->roleGerente = DB::table('roles')->insertGetId(['name' => 'Gerente', 'created_at' => now(), 'updated_at' => now()]);
         $this->roleCajero = DB::table('roles')->insertGetId(['name' => 'Cajero', 'created_at' => now(), 'updated_at' => now()]);
         $pRecv = DB::table('permissions')->insertGetId(['name' => 'transfer_receive', 'created_at' => now(), 'updated_at' => now()]);
-        DB::table('permissions')->insert(['name' => 'transfer_view', 'created_at' => now(), 'updated_at' => now()]);
-        DB::table('permission_role')->insert(['permission_id' => $pRecv, 'role_id' => $this->roleGerente]);
-        // Cajero: sin transfer_receive.
+        $pView = DB::table('permissions')->insertGetId(['name' => 'transfer_view', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('permission_role')->insert([
+            ['permission_id' => $pRecv, 'role_id' => $this->roleGerente],
+            ['permission_id' => $pView, 'role_id' => $this->roleGerente],
+        ]);
+        // Cajero: sin transfer_receive ni transfer_view.
 
         // --- branches ---
         $this->branch1 = DB::table('branches')->insertGetId(['name' => 'Sucursal 1', 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()]);
@@ -171,9 +174,12 @@ class TransferReceivingEntryFlowTest extends TestCase
         DB::table('branches')->where('id', $this->branch2)->update(['default_inventory_location_id' => $this->piso2]);
 
         // --- users ---
-        $this->gerente1 = $this->user('GERENTE1', $this->roleGerente, $this->branch1, $this->bodega1);
+        // CASO CRÍTICO: la ubicación OPERATIVA del gerente es el Piso de venta.
+        // La Bodega NO está en su allowedLocationIds; sólo entra en
+        // receivingLocationIds por (branch1 + transfer_receive).
+        $this->gerente1 = $this->user('GERENTE1', $this->roleGerente, $this->branch1, $this->piso1);
         $this->cajero1 = $this->user('CAJERO1', $this->roleCajero, $this->branch1, $this->piso1);
-        $this->gerente2 = $this->user('GERENTE2', $this->roleGerente, $this->branch2, $this->bodega2);
+        $this->gerente2 = $this->user('GERENTE2', $this->roleGerente, $this->branch2, $this->piso2);
         $this->owner = $this->user('OWNER', 1, null, null, ['is_all_warehouses' => 1]);
 
         // --- the transfer: CD -> Bodega Sucursal 1, in transit ---
@@ -217,7 +223,56 @@ class TransferReceivingEntryFlowTest extends TestCase
         return $id;
     }
 
-    // --- authority matrix (the negative cases the brief asks for) ---------
+    // --- CASO CRÍTICO: alcance de recepción ≠ alcance operativo -----------
+
+    public function test_manager_receives_into_primary_storage_that_is_not_in_operational_scope(): void
+    {
+        $logistics = app(TransferLogisticsService::class);
+        $ils = app(InventoryLocationScopeService::class);
+        $transfer = Transfer::findOrFail($this->transferId);
+        $g1 = User::find($this->gerente1);
+
+        // La Bodega NO está en el alcance operativo del gerente…
+        $this->assertNotContains($this->bodega1, $ils->allowedLocationIds($g1));
+        $this->assertSame([$this->piso1], $ils->allowedLocationIds($g1));
+        $this->assertFalse($ils->canAccess($g1, $this->bodega1));
+
+        // …pero SÍ en el alcance de recepción (branch + transfer_receive).
+        $this->assertContains($this->bodega1, $ils->receivingLocationIds($g1));
+        $this->assertTrue($ils->canReceiveAt($g1, $this->bodega1));
+
+        // Por tanto puede recibir esta transferencia.
+        $this->assertTrue($logistics->userCanReceive($g1, $transfer));
+    }
+
+    public function test_workflow_payload_grants_can_receive_and_view_via_receiving_scope(): void
+    {
+        $g1 = User::find($this->gerente1);
+        $request = \Illuminate\Http\Request::create('/api/transfer-workflow/'.$this->transferId, 'GET');
+        $request->setUserResolver(fn () => $g1);
+
+        $controller = app(\App\Http\Controllers\TransferWorkflowController::class);
+        $response = $controller->show($request, $this->transferId); // assertViewScope pasa por el receiving scope
+
+        $this->assertSame(200, $response->getStatusCode());
+        $data = $response->getData(true);
+        $this->assertTrue($data['actions']['can_receive'], 'actions.can_receive debe ser true para un gerente que puede recibir en la bodega.');
+        $this->assertArrayNotHasKey('receiving_token', $data['transfer'], 'El payload de workflow NO debe exponer receiving_token.');
+        $this->assertFalse($data['actions']['can_approve']);
+        $this->assertFalse($data['actions']['can_dispatch']);
+    }
+
+    public function test_cajero_without_transfer_view_cannot_load_the_workflow_detail(): void
+    {
+        $c1 = User::find($this->cajero1);
+        $request = \Illuminate\Http\Request::create('/api/transfer-workflow/'.$this->transferId, 'GET');
+        $request->setUserResolver(fn () => $c1);
+
+        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        app(\App\Http\Controllers\TransferWorkflowController::class)->show($request, $this->transferId);
+    }
+
+    // --- authority matrix (negative cases) -------------------------------
 
     public function test_userCanReceive_matrix_for_TR_0011(): void
     {
@@ -230,8 +285,7 @@ class TransferReceivingEntryFlowTest extends TestCase
         $g2 = User::find($this->gerente2);
         $ow = User::find($this->owner);
 
-        // Gerente S1 con transfer_receive → PUEDE recibir en Bodega S1.
-        $this->assertTrue($ils->canReceiveAt($g1, $this->bodega1));
+        // Gerente S1 → PUEDE.
         $this->assertTrue($logistics->userCanReceive($g1, $transfer));
 
         // Cajero S1 SIN transfer_receive → NO.
@@ -241,16 +295,34 @@ class TransferReceivingEntryFlowTest extends TestCase
         $this->assertFalse($ils->canReceiveAt($g2, $this->bodega1));
         $this->assertFalse($logistics->userCanReceive($g2, $transfer));
 
-        // Owner (is_all_warehouses=1, role 1) → según reglas actuales del binding:
-        // FinalTransferLogisticsService exige el permiso transfer_receive incluso
-        // para el owner. Aquí el rol Owner NO lo tiene → NO.
+        // Owner (role 1) → el binding exige transfer_receive incluso para el
+        // owner; el rol Owner de este fixture NO lo tiene → NO.
         $this->assertFalse($ow->hasPermissionName('transfer_receive'));
         $this->assertFalse($logistics->userCanReceive($ow, $transfer));
+    }
 
-        // El "special manager receiving" NO abre la ubicación para operar (POS/
-        // orígenes/ajustes): sólo recepción.
-        $this->assertFalse($ils->canAccess($g1, $this->bodega1) && ! in_array($this->bodega1, $ils->receivingLocationIds($g1), true));
-        $this->assertContains($this->bodega1, $ils->receivingLocationIds($g1));
+    // --- REGRESIÓN DE SEGURIDAD: el alcance ampliado es SÓLO recepción ---
+
+    public function test_receiving_scope_does_not_widen_operational_scope(): void
+    {
+        $ils = app(InventoryLocationScopeService::class);
+        $g1 = User::find($this->gerente1);
+
+        // La Bodega NO entra en allowedLocationIds → POS, ajustes y origen de
+        // traslado (que consultan allowedLocationIds/canAccess) NO pueden usarla.
+        $allowed = $ils->allowedLocationIds($g1);
+        $this->assertNotContains($this->bodega1, $allowed);
+        $this->assertFalse($ils->canAccess($g1, $this->bodega1));   // POS / ajustes / origen
+        $this->assertFalse($ils->canAccess($g1, $this->cd));        // el CD tampoco
+
+        // El alcance de recepción amplía el operativo EXACTAMENTE en {bodega1}.
+        $receiving = $ils->receivingLocationIds($g1);
+        sort($allowed);
+        sort($receiving);
+        $expected = [$this->piso1, $this->bodega1];
+        sort($expected);
+        $this->assertSame($expected, $receiving);
+        $this->assertSame([$this->bodega1], array_values(array_diff($receiving, $allowed)));
     }
 
     // --- notification action routing --------------------------------------
