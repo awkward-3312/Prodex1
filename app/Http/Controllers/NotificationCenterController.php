@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Transfer;
 use App\Models\User;
 use App\Services\BranchScopeService;
 use App\Services\InventoryLocationScopeService;
@@ -83,15 +84,55 @@ class NotificationCenterController extends Controller
             return;
         }
 
+        $hasToken = Schema::hasColumn('transfers', 'receiving_token');
+        $hasLogistics = Schema::hasColumn('transfers', 'logistics_status');
+        $hasType = Schema::hasColumn('transfer_notifications', 'type');
+
+        $columns = ['n.id', 'n.transfer_id', 'n.title', 'n.message', 'n.read_at', 'n.created_at', 't.Ref as reference'];
+        if ($hasType) $columns[] = 'n.type';
+        if ($hasToken) $columns[] = 't.receiving_token';
+        if ($hasLogistics) $columns[] = 't.logistics_status';
+
         $rows = DB::table('transfer_notifications as n')
             ->join('transfers as t', 't.id', '=', 'n.transfer_id')
             ->where('n.user_id', $user->id)
             ->whereNull('t.deleted_at')
             ->orderByDesc('n.created_at')
             ->limit(20)
-            ->get(['n.id', 'n.transfer_id', 'n.title', 'n.message', 'n.read_at', 'n.created_at', 't.Ref as reference']);
+            ->get($columns);
+
+        // Una notificación de "traslado en camino" debe llevar a la tarea real
+        // (revisar y recibir), no a la pantalla de flujo que sólo aprueba/
+        // despacha. Se enruta por id a la bandeja de recepción px-next
+        // (/app/transfers/receptions/{id}, ruta SPA — navegable con router.push
+        // desde la campana), y SÓLO si TransferLogisticsService::userCanReceive()
+        // lo confirma aquí — no se confía en que la fila exista. No se expone
+        // ningún receiving_token.
+        $receivable = [];
+        $candidateIds = $rows->filter(function ($row) use ($hasType, $hasToken, $hasLogistics) {
+            $type = $hasType ? (string) ($row->type ?? '') : '';
+            $inTransit = $hasLogistics
+                ? in_array((string) ($row->logistics_status ?? ''), ['in_transit', 'partially_received'], true)
+                : false;
+
+            return $type === 'incoming_transfer' && $inTransit && $hasToken && ! empty($row->receiving_token);
+        })->pluck('transfer_id')->unique()->values();
+
+        if ($candidateIds->isNotEmpty()) {
+            $logistics = app(TransferLogisticsService::class);
+            Transfer::whereIn('id', $candidateIds)->get()->each(function ($transfer) use (&$receivable, $logistics, $user) {
+                if ($logistics->userCanReceive($user, $transfer)) {
+                    $receivable[(int) $transfer->id] = true;
+                }
+            });
+        }
 
         foreach ($rows as $row) {
+            $canReceive = isset($receivable[(int) $row->transfer_id]);
+            $action = $canReceive
+                ? '/app/transfers/receptions/'.$row->transfer_id
+                : '/app/transfers/detail/'.$row->transfer_id;
+
             $items->push([
                 'key' => 'transfer:'.$row->id,
                 'category' => 'transfers',
@@ -101,7 +142,7 @@ class NotificationCenterController extends Controller
                 'unread' => ! $row->read_at,
                 'persistent' => true,
                 'created_at' => $row->created_at,
-                'action' => '/app/transfers/detail/'.$row->transfer_id,
+                'action' => $action,
                 'read_endpoint' => '/api/transfer-logistics/notifications/'.$row->id.'/read',
             ]);
         }

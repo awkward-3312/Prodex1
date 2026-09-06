@@ -97,7 +97,12 @@ class RoleTemplateController extends Controller
                 'key' => 'branch_manager',
                 'name' => 'Gerente de sucursal',
                 'description' => 'Supervisa la operación de una sucursal sin convertirse en administrador global.',
-                'permissions' => ['dashboard', 'Sales_view', 'Purchases_view', 'products_view', 'Customers_view', 'Suppliers_view', 'transfer_view', 'transfer_issue_manage', 'stock_report', 'Warehouse_report', 'Reports_sales', 'Reports_purchase', 'Reports_profit', 'view_employee', 'attendance', 'branches_view'],
+                // `transfer_receive`: un gerente de sucursal debe poder recibir
+                // físicamente los traslados destinados a la bodega principal de
+                // su sucursal (InventoryLocationScopeService::receivingLocationIds
+                // ya amplía el alcance de recepción a ese primary storage sin
+                // ampliar su scope operativo de POS/orígenes/ajustes).
+                'permissions' => ['dashboard', 'Sales_view', 'Purchases_view', 'products_view', 'Customers_view', 'Suppliers_view', 'transfer_view', 'transfer_receive', 'transfer_issue_manage', 'stock_report', 'Warehouse_report', 'Reports_sales', 'Reports_purchase', 'Reports_profit', 'view_employee', 'attendance', 'branches_view'],
             ],
             [
                 'key' => 'branch_admin',

@@ -6,6 +6,7 @@ use App\Models\Transfer;
 use App\Models\User;
 use App\Models\UserWarehouse;
 use App\Services\InventoryLocationScopeService;
+use App\Services\TransferLogisticsService;
 use App\Services\TransferWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -111,6 +112,19 @@ class TransferWorkflowController extends BaseController
         $inTransit = in_array((string) $transfer->logistics_status, ['in_transit', 'partially_received'], true);
         $canOperateSource = $this->canAccessSource($user, $transfer) && $this->canOperateRecord($user, $transfer);
 
+        // Recepción física: la autoridad es exclusivamente
+        // TransferLogisticsService::userCanReceive() (permiso transfer_receive +
+        // InventoryLocationScopeService::canReceiveAt sobre la ubicación destino).
+        // Aquí NO se reimplementa ninguna regla; sólo se expone el flag para que
+        // el detalle ofrezca "Revisar y recibir" (que abre la bandeja de
+        // recepción px-next por id — /app/transfers/receptions/{id} —, la cual
+        // vuelve a validar la autorización en el servidor). No se emite ningún
+        // receiving_token en este payload.
+        $canReceive = $inTransit
+            && ! empty($transfer->receiving_token)
+            && $this->canAccessDestination($user, $transfer)
+            && app(TransferLogisticsService::class)->userCanReceive($user, $transfer);
+
         return response()->json([
             'transfer' => [
                 'id' => (int) $transfer->id,
@@ -132,6 +146,7 @@ class TransferWorkflowController extends BaseController
                 'can_dispatch' => $transfer->isApproved() && $canOperateSource && ! $inTransit
                     && ! in_array((string) $transfer->logistics_status, ['received', 'received_with_issues'], true)
                     && $user->hasPermissionName('transfer_edit'),
+                'can_receive' => $canReceive,
             ],
         ]);
     }

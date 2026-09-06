@@ -95,6 +95,11 @@
               variant="secondary" icon="truck" size="sm" :loading="acting === 'dispatch'"
               @click="dispatchOpen = true"
             >Despachar</px-button>
+            <px-button
+              v-if="actions.can_receive"
+              variant="primary" icon="package-check" size="sm"
+              @click="goReceive"
+            >Revisar y recibir</px-button>
           </div>
           <p v-else-if="!workflowError" class="pxtrd__flow-none">
             <lucide-icon name="info" :size="13" /> No hay acciones de flujo disponibles para tu usuario en el estado actual.
@@ -298,7 +303,7 @@ export default {
     },
     hasAnyAction() {
       const a = this.actions;
-      return !!(a.can_approve || a.can_reject || a.can_dispatch);
+      return !!(a.can_approve || a.can_reject || a.can_dispatch || a.can_receive);
     }
   },
   created() {
@@ -416,6 +421,15 @@ export default {
     },
     doDispatch() {
       this.runAction("dispatch", `transfer-workflow/${this.$route.params.id}/dispatch`, {});
+    },
+    // La recepción física NO se implementa aquí: se reutiliza la bandeja de
+    // recepción px-next existente (transfers/next/receive.vue), que vuelve a
+    // validar la autorización en el servidor (GET transfer-logistics/{id} →
+    // userCanReceive). El backend ya expuso actions.can_receive.
+    goReceive() {
+      const id = this.$route.params.id;
+      if (!id) return;
+      this.$router.push({ name: "transfer_reception", params: { id: String(id) } }).catch(() => {});
     },
     doDelete() {
       this.deleting = true;
