@@ -872,16 +872,16 @@
     <div v-if="productsReady" class="pos-shell-pay-bar" style="display: flex; background: var(--surface); align-items: center; gap: 8px; padding: 8px 16px 8px 20px; flex-shrink: 0; flex-grow: 0; border-top: 1px solid var(--line);">
 
       <!-- Online indicator -->
-      <div :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 500, color: isOnline ? '#1e7a44' : '#a83232' }" :title="offlineStatusTitle">
-        <span :style="{ width: '6px', height: '6px', borderRadius: '99px', background: isOnline ? '#2fae5e' : '#d64545' }"></span>
+      <div :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 500, color: isOnline ? 'var(--pxn-success-ink)' : 'var(--pxn-danger-ink)' }" :title="offlineStatusTitle">
+        <span :style="{ width: '6px', height: '6px', borderRadius: '99px', background: isOnline ? 'var(--pxn-success)' : 'var(--pxn-danger)' }"></span>
         <span v-if="isOnline">{{ $t('Online') || 'Online' }} <span v-if="lastProductsSyncAt" style="opacity: 0.7;">· {{ $t('pos.Synced') || 'synced' }}</span></span>
         <span v-else>{{ $t('pos.Offline_Mode') }}<span v-if="offlineSalesCount > 0" style="opacity: 0.7;"> · {{ offlineSalesCount }} {{ $t('pos.Pending') || 'pending' }}</span></span>
       </div>
 
-      <div style="width: 1px; height: 24px; background: #e6e6ec; margin: 0 8px;"></div>
+      <div style="width: 1px; height: 22px; background: var(--line); margin: 0 8px;"></div>
 
       <!-- Action buttons -->
-      <router-link v-if="isOnline" to="/app/dashboard" :title="$t('pos.Home')" class="pos-shell-action-btn" style="height: 36px; padding: 0 14px; background: transparent; color: #1f1f2c; border: 1px solid #e6e6ec; border-radius: 8px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; text-decoration: none; transition: all 120ms ease;">
+      <router-link v-if="isOnline" to="/app/dashboard" :title="$t('pos.Home')" class="pos-shell-action-btn" style="height: 38px; padding: 0 14px; background: var(--surface); color: var(--ink); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; text-decoration: none; transition: background-color 120ms var(--pxn-ease), border-color 120ms var(--pxn-ease);">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
           <path d="M3 11l9-8 9 8"></path>
           <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path>
@@ -889,7 +889,7 @@
         <span>{{ $t('pos.Home') }}</span>
       </router-link>
 
-      <button v-if="isOnline" @click="Reset_Pos" :title="$t('pos.Clear_all_items')" class="pos-shell-action-btn" style="height: 36px; padding: 0 14px; background: transparent; color: #1f1f2c; border: 1px solid #e6e6ec; border-radius: 8px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 120ms ease;">
+      <button v-if="isOnline" @click="Reset_Pos" :title="$t('pos.Clear_all_items')" class="pos-shell-action-btn" style="height: 38px; padding: 0 14px; background: var(--surface); color: var(--ink); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: background-color 120ms var(--pxn-ease), border-color 120ms var(--pxn-ease);">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
           <path d="M1 4v6h6"></path>
           <path d="M23 20v-6h-6"></path>
@@ -899,13 +899,13 @@
         <span>{{ $t('pos.Reset') }}</span>
       </button>
 
-      <button v-if="isOnline" @click="Show_Draft_Sales" :title="$t('pos.Drafts_list')" class="pos-shell-action-btn" style="height: 36px; padding: 0 14px; background: transparent; color: #1f1f2c; border: 1px solid #e6e6ec; border-radius: 8px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 120ms ease;">
+      <button v-if="isOnline" @click="Show_Draft_Sales" :title="$t('pos.Drafts_list')" class="pos-shell-action-btn" style="height: 38px; padding: 0 14px; background: var(--surface); color: var(--ink); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: background-color 120ms var(--pxn-ease), border-color 120ms var(--pxn-ease);">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
           <rect x="3" y="4" width="18" height="14" rx="2" ry="2"></rect>
           <path d="M7 8h10M7 12h8"></path>
         </svg>
         <span>{{ $t('pos.Recent_Drafts') }}</span>
-        <span v-if="totalRows_draft_sales > 0" style="background: #f3f3f7; color: #54546a; padding: 1px 7px; border-radius: 99px; font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 600; margin-left: 2px;">{{ totalRows_draft_sales }}</span>
+        <span v-if="totalRows_draft_sales > 0" style="background: var(--pxn-surface-2); color: var(--ink-2); padding: 1px 7px; border-radius: var(--pxn-radius-pill); font-size: 11px; font-family: var(--font-mono); font-weight: 600; margin-left: 2px;">{{ totalRows_draft_sales }}</span>
       </button>
 
       <button
@@ -914,7 +914,7 @@
         :disabled="DraftProcessing"
         :title="$t('pos.Hold_this_sale')"
         class="pos-shell-action-btn"
-        style="height: 36px; padding: 0 14px; background: transparent; color: #1f1f2c; border: 1px solid #e6e6ec; border-radius: 8px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 120ms ease;">
+        style="height: 38px; padding: 0 14px; background: var(--surface); color: var(--ink); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: background-color 120ms var(--pxn-ease), border-color 120ms var(--pxn-ease);">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M10 9v6"></path>
@@ -926,9 +926,9 @@
       <div style="flex: 1;"></div>
 
       <!-- Total payable -->
-      <div style="display: flex; flex-direction: column; align-items: flex-end; text-align: right; margin-right: 12px;">
-        <span style="font-size: 10px; color: #8d8da0; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">{{ $t('pos.Total_Payable') }}</span>
-        <span style="font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; letter-spacing: -0.01em;">{{ formatPriceWithCurrentCurrency(GrandTotal, 2) }}</span>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; text-align: right; margin-right: 14px;">
+        <span style="font-size: 10px; color: var(--ink-3); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">{{ $t('pos.Total_Payable') }}</span>
+        <span style="font-size: 22px; font-weight: 700; font-family: var(--font-mono); color: var(--ink); letter-spacing: -0.01em;">{{ formatPriceWithCurrentCurrency(GrandTotal, 2) }}</span>
       </div>
 
       <!-- Pay now -->
@@ -937,7 +937,7 @@
         :disabled="paymentProcessing || details.length === 0 || payNowBatchGate.blocked"
         :title="payNowBatchGate.blocked ? payNowBatchGate.reason : $t('pos.Complete_and_process_payment')"
         class="pos-shell-pay-btn"
-        :style="{ height: '48px', padding: '0 28px', background: '#6f53d9', color: '#fff', border: 0, borderRadius: '10px', fontSize: '15px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: (paymentProcessing || details.length === 0 || payNowBatchGate.blocked) ? 'not-allowed' : 'pointer', opacity: (paymentProcessing || details.length === 0 || payNowBatchGate.blocked) ? 0.5 : 1, boxShadow: '0 4px 14px rgba(111,83,217,0.32)', transition: 'all 120ms ease' }">
+        :style="{ height: '44px', padding: '0 26px', background: 'var(--accent)', color: 'var(--pxn-primary-contrast)', border: '1px solid var(--accent)', borderRadius: 'var(--pxn-radius-md)', fontSize: '15px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: (paymentProcessing || details.length === 0 || payNowBatchGate.blocked) ? 'not-allowed' : 'pointer', opacity: (paymentProcessing || details.length === 0 || payNowBatchGate.blocked) ? 0.55 : 1, boxShadow: 'none', transition: 'background-color 120ms var(--pxn-ease), filter 120ms var(--pxn-ease)' }">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px;">
           <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
         </svg>
