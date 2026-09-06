@@ -523,9 +523,17 @@ class UserController extends BaseController
 
     public function GetInfoProfile(Request $request)
     {
-        $data = Auth::user();
+        $user = Auth::user();
 
-        return response()->json(['success' => true, 'user' => $data]);
+        // Self-only: the authenticated user's OWN role name. Lets the px-next
+        // shell render the account chip without calling GET /api/roles, which
+        // requires `permissions_view` (a restricted role — e.g. Cajero — gets a
+        // 403 there and the global axios interceptor sends the whole SPA to
+        // /app/not_authorize). This exposes nothing beyond the caller's own role.
+        $payload = $user->toArray();
+        $payload['role_name'] = optional($user->roles()->first())->name;
+
+        return response()->json(['success' => true, 'user' => $payload]);
     }
 
 }

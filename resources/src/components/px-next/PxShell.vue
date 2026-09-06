@@ -355,8 +355,8 @@ export default {
       brandLogoBroken: false,
       // Profile chip (topbar)
       userMenuOpen: false,
-      profile: null,      // GET /api/Get_user_profile → firstname/lastname/role_id
-      roleName: "",        // resuelto contra GET /api/roles (best-effort)
+      profile: null,      // GET /api/Get_user_profile → firstname/lastname/role_id/role_name
+      roleName: "",        // nombre del rol propio, viene en el perfil (self)
       avatarBroken: false,
       // Selector de alcance de sucursal
       scopeOpen: false,
@@ -678,26 +678,23 @@ export default {
     // ---- Profile chip -----------------------------------------------------
     ...mapActions(["logout"]),
 
-    // Datos reales del usuario autenticado. Endpoints ya usados por la app
-    // (perfil + catálogo de roles); ambos best-effort, sin romper el shell.
+    // Datos reales del usuario autenticado. Sólo el endpoint self de perfil:
+    // trae firstname/lastname/role_id y el nombre del rol propio (role_name).
+    //
+    // NO se consulta GET /api/roles para resolver el nombre del rol: ese
+    // endpoint exige `permissions_view`, así que un rol restringido (p. ej.
+    // Cajero) recibiría 403 y el interceptor global mandaría toda la SPA a
+    // /app/not_authorize. El chip de cuenta es decoración; nunca debe poder
+    // tumbar la navegación.
     loadUserMeta() {
       const ax = window.axios;
       if (!ax) return;
       ax.get("Get_user_profile")
         .then(r => {
           this.profile = (r && r.data && r.data.user) || null;
-          const rid = this.profile && this.profile.role_id;
-          if (!rid) return;
-          return ax
-            .get("roles", { params: { limit: -1, page: 1, SortField: "id", SortType: "asc" } })
-            .then(rr => {
-              const list = (rr && rr.data && rr.data.roles) || [];
-              const hit = list.find(x => Number(x.id) === Number(rid));
-              if (hit && hit.name) this.roleName = hit.name;
-            })
-            .catch(() => {
-              /* rol restringido para este usuario: se usa el fallback "Cuenta" */
-            });
+          if (this.profile && this.profile.role_name) {
+            this.roleName = String(this.profile.role_name);
+          }
         })
         .catch(() => {
           /* sin perfil: displayName cae al username del store */
