@@ -11,9 +11,9 @@
       centered
       @hidden="resetForm"
       body-class="modal-body-custom"
-      modal-class="premium-modal"
+      modal-class="premium-modal px-next"
     >
-      <div class="payment-container">
+      <div class="payment-container px-next">
         <!-- Enhanced Header -->
         <div class="payment-header">
           <div class="header-left">
@@ -1431,6 +1431,8 @@ export default {
 };
 </script>
 
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
 <style lang="scss">
 /* ========================================
    PREMIUM PAYMENT MODAL DESIGN
@@ -1448,7 +1450,7 @@ export default {
   align-items: center;
   gap: 6px;
   padding: 8px 10px;
-  border: 1px solid #d9dee3;
+  border: 1px solid var(--pxn-border);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
@@ -1456,8 +1458,8 @@ export default {
   transition: all 0.15s ease;
 
   &.active {
-    border-color: #007bff;
-    background: rgba(0, 123, 255, 0.08);
+    border-color: var(--pxn-info);
+    background: var(--pxn-info-soft);
     font-weight: 600;
   }
 }
@@ -1508,16 +1510,16 @@ export default {
 .external-card-section {
   margin-top: 10px;
   padding: 12px;
-  border: 1px solid #d9e2ec;
+  border: 1px solid var(--pxn-border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--pxn-surface-2);
 }
 
 .external-card-message {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #344054;
+  color: var(--pxn-ink-2);
   font-weight: 600;
   margin-bottom: 10px;
 }
@@ -1544,7 +1546,7 @@ export default {
    ======================================== */
 
 .payment-container {
-  background: #ffffff;
+  background: var(--pxn-surface);
   min-height: 450px;
   max-height: 85vh;
   display: flex;
@@ -1556,7 +1558,7 @@ export default {
    ======================================== */
 
 .payment-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--pxn-primary);
   padding: 14px 24px;
   display: flex;
   justify-content: space-between;
@@ -1651,7 +1653,7 @@ export default {
    ======================================== */
 
 .transaction-info {
-  background: linear-gradient(180deg, #f8f9fc 0%, #eef2f7 100%);
+  background: var(--pxn-surface-2);
   padding: 14px 12px;
   display: flex;
   flex-direction: column;
@@ -1670,11 +1672,11 @@ export default {
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #d1d5db;
+    background: var(--pxn-border-control);
     border-radius: 3px;
 
     &:hover {
-      background: #9ca3af;
+      background: var(--pxn-ink-3);
     }
   }
 }
@@ -1691,7 +1693,7 @@ export default {
     align-items: center;
     gap: 8px;
     margin-bottom: 10px;
-    color: #667eea;
+    color: var(--pxn-primary);
     font-weight: 600;
     font-size: 10px;
     text-transform: uppercase;
@@ -1708,12 +1710,12 @@ export default {
     text-align: center;
     padding: 12px 0;
     border-radius: 10px;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    background: var(--pxn-primary-softer);
 
     .currency-label {
       display: block;
       font-size: 10px;
-      color: #6b7280;
+      color: var(--pxn-ink-2);
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -1724,7 +1726,7 @@ export default {
       display: block;
       font-size: 26px;
       font-weight: 800;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--pxn-primary);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -1746,7 +1748,7 @@ export default {
 
       .meta-label {
         font-size: 9px;
-        color: #9ca3af;
+        color: var(--pxn-ink-3);
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -1755,7 +1757,7 @@ export default {
       .meta-value {
         font-size: 12px;
         font-weight: 700;
-        color: #1f2937;
+        color: var(--pxn-ink);
       }
     }
 
@@ -1769,7 +1771,7 @@ export default {
       display: flex;
       align-items: center;
       gap: 4px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--pxn-primary);
       color: white;
       padding: 4px 10px;
       border-radius: 16px;
@@ -1797,7 +1799,7 @@ export default {
   .card-title {
     font-size: 11px;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--pxn-ink);
     margin: 0 0 10px 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1814,12 +1816,12 @@ export default {
     align-items: center;
     gap: 10px;
     padding: 10px;
-    background: #f9fafb;
+    background: var(--pxn-surface-2);
     border-radius: 10px;
     transition: all 0.3s ease;
 
     &:hover {
-      background: #f3f4f6;
+      background: var(--pxn-surface-2);
       transform: translateX(4px);
     }
 
@@ -1833,17 +1835,17 @@ export default {
       flex-shrink: 0;
 
       &.paying {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: var(--pxn-success);
         color: white;
       }
 
       &.balance {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        background: var(--pxn-warning);
         color: white;
       }
 
       &.change {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        background: var(--pxn-info);
         color: white;
       }
 
@@ -1861,7 +1863,7 @@ export default {
 
       .status-name {
         font-size: 9px;
-        color: #6b7280;
+        color: var(--pxn-ink-2);
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -1870,14 +1872,14 @@ export default {
       .status-amount {
         font-size: 14px;
         font-weight: 700;
-        color: #1f2937;
+        color: var(--pxn-ink);
 
         &.balance-text {
-          color: #f59e0b;
+          color: var(--pxn-warning);
         }
 
         &.change-text {
-          color: #3b82f6;
+          color: var(--pxn-info);
         }
       }
     }
@@ -1901,16 +1903,16 @@ export default {
   }
 
   &::-webkit-scrollbar-track {
-    background: #f3f4f6;
+    background: var(--pxn-surface-2);
     border-radius: 4px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #d1d5db;
+    background: var(--pxn-border-control);
     border-radius: 4px;
 
     &:hover {
-      background: #9ca3af;
+      background: var(--pxn-ink-3);
     }
   }
 
@@ -1938,12 +1940,12 @@ export default {
   gap: 6px;
   font-size: 11px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--pxn-ink);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 
   svg {
-    color: #667eea;
+    color: var(--pxn-primary);
     flex-shrink: 0;
     width: 13px;
     height: 13px;
@@ -1953,7 +1955,7 @@ export default {
 .field-label {
   font-size: 11px;
   font-weight: 600;
-  color: #4b5563;
+  color: var(--pxn-ink-2);
   margin-bottom: 4px;
 }
 
@@ -1971,11 +1973,11 @@ export default {
 .method-card {
   position: relative;
   padding: 10px 8px;
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 10px;
+  background: var(--pxn-surface);
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-md);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: border-color var(--pxn-dur-1) var(--pxn-ease), background-color var(--pxn-dur-1) var(--pxn-ease);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1983,16 +1985,14 @@ export default {
   min-height: 70px;
 
   &:hover {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.12);
+    border-color: var(--pxn-border-control);
+    background: var(--pxn-surface-hover);
   }
 
   &.selected {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.15);
+    border-color: var(--pxn-primary);
+    background: var(--pxn-selected-bg);
+    .method-icon-wrapper { background: var(--pxn-primary); color: var(--pxn-primary-contrast); }
   }
 
   .method-content {
@@ -2006,20 +2006,19 @@ export default {
   .method-icon-wrapper {
     width: 32px;
     height: 32px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 8px;
+    background: var(--pxn-surface-2);
+    border-radius: var(--pxn-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 16px;
-    color: white;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
+    color: var(--pxn-ink-2);
   }
 
   .method-label {
     font-size: 11px;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--pxn-ink);
   }
 
   .selected-indicator {
@@ -2028,13 +2027,13 @@ export default {
     right: 4px;
     width: 18px;
     height: 18px;
-    background: #10b981;
+    background: var(--pxn-success);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 2px 6px var(--pxn-success-border);
 
     svg {
       width: 10px;
@@ -2070,29 +2069,29 @@ export default {
     left: 16px;
     font-size: 16px;
     font-weight: 700;
-        color: #667eea;
+        color: var(--pxn-primary);
     pointer-events: none;
   }
 
   .form-input {
     width: 100%;
     padding: 10px 12px 10px 10px;
-    border: 2px solid #e5e7eb;
+    border: 2px solid var(--pxn-border);
     border-radius: 8px;
     font-size: 13px;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--pxn-ink);
     transition: all 0.3s ease;
     background: white;
 
     &:focus {
       outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      border-color: var(--pxn-primary);
+      box-shadow: 0 0 0 3px var(--pxn-primary-soft);
     }
 
     &::placeholder {
-      color: #9ca3af;
+      color: var(--pxn-ink-3);
       font-weight: 400;
     }
   }
@@ -2104,8 +2103,8 @@ export default {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: linear-gradient(135deg, #10b98110 0%, #05966910 100%);
-  border: 2px solid #10b981;
+  background: var(--pxn-success-soft);
+  border: 2px solid var(--pxn-success);
   border-radius: 8px;
   margin-top: 8px;
   animation: slideIn 0.4s ease;
@@ -2113,7 +2112,7 @@ export default {
   .change-icon {
     width: 30px;
     height: 30px;
-    background: #10b981;
+    background: var(--pxn-success);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -2144,7 +2143,7 @@ export default {
     .change-amount {
       font-size: 16px;
       font-weight: 800;
-      color: #10b981;
+      color: var(--pxn-success);
     }
   }
 }
@@ -2163,30 +2162,30 @@ export default {
 .form-select {
   width: 100%;
   padding: 10px 12px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--pxn-border);
   border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--pxn-ink);
   transition: all 0.3s ease;
   background: white;
   cursor: pointer;
 
   &:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--pxn-primary);
+    box-shadow: 0 0 0 3px var(--pxn-primary-soft);
   }
 }
 
 .form-textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--pxn-border);
   border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--pxn-ink);
   transition: all 0.3s ease;
   background: white;
   resize: vertical;
@@ -2195,12 +2194,12 @@ export default {
 
   &:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--pxn-primary);
+    box-shadow: 0 0 0 3px var(--pxn-primary-soft);
   }
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--pxn-ink-3);
   }
 }
 
@@ -2222,15 +2221,15 @@ export default {
 }
 
 .payment-line-card {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--pxn-surface-2);
+  border: 1px solid var(--pxn-border);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .payment-line-header {
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--pxn-border);
   padding: 10px 12px;
   display: flex;
   align-items: center;
@@ -2238,7 +2237,7 @@ export default {
 }
 
 .line-badge {
-  background: #667eea;
+  background: var(--pxn-primary);
   color: white;
   width: 22px;
   height: 22px;
@@ -2254,11 +2253,11 @@ export default {
   flex: 1;
   font-size: 12px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--pxn-ink);
 }
 
 .line-remove-btn {
-  color: #ef4444;
+  color: var(--pxn-danger);
   padding: 0;
   background: none;
   border: none;
@@ -2267,7 +2266,7 @@ export default {
   font-size: 18px;
 
   &:hover {
-    color: #dc2626;
+    color: var(--pxn-danger-ink);
     transform: scale(1.1);
   }
 }
@@ -2291,8 +2290,8 @@ export default {
 
 .method-pill {
   padding: 8px 10px;
-  border: 2px solid #e5e7eb;
-  background: #fff;
+  border: 2px solid var(--pxn-border);
+  background:  var(--pxn-surface);
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
@@ -2300,13 +2299,13 @@ export default {
   transition: all .2s ease;
 
   &:hover {
-    border-color: #667eea;
-    background: rgba(102,126,234,.06);
+    border-color: var(--pxn-primary);
+    background: var(--pxn-primary-softer);
   }
 
   &.selected {
-    border-color: #667eea;
-    background: rgba(102,126,234,.12);
+    border-color: var(--pxn-primary);
+    background: var(--pxn-primary-soft);
     color: #2b2e83;
   }
 }
@@ -2333,7 +2332,7 @@ export default {
 .quick-amount-title {
   font-size: 11px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--pxn-ink);
   text-transform: uppercase;
   letter-spacing: .5px;
 }
@@ -2364,7 +2363,7 @@ export default {
   padding: 12px 20px;
   margin: 16px -20px -16px -20px;
   background: white;
-  border-top: 2px solid #e5e7eb;
+  border-top: 2px solid var(--pxn-border);
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
   z-index: 10;
 
@@ -2411,24 +2410,24 @@ export default {
 }
 
 .cancel-btn {
-  background: #f3f4f6;
-  color: #4b5563;
-  border: 2px solid #e5e7eb;
+  background: var(--pxn-surface-2);
+  color: var(--pxn-ink-2);
+  border: 2px solid var(--pxn-border);
 
   &:hover:not(:disabled) {
-    background: #e5e7eb;
-    border-color: #d1d5db;
+    background: var(--pxn-border);
+    border-color: var(--pxn-border-control);
     transform: none;
   }
 }
 
 .submit-btn {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: var(--pxn-success);
   color: white;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 4px 12px var(--pxn-success-border);
 
   &:hover:not(:disabled) {
-    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+    box-shadow: 0 6px 16px var(--pxn-success-border);
     transform: none;
   }
 
@@ -2445,15 +2444,15 @@ export default {
   gap: 10px;
   padding: 12px 20px;
   background: white;
-  border-top: 2px solid #e5e7eb;
+  border-top: 2px solid var(--pxn-border);
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
   z-index: 20;
 }
 
 /* Saved Cards minimal styling */
 .saved-cards {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--pxn-surface);
+  border: 1px solid var(--pxn-border);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -2462,11 +2461,11 @@ export default {
   padding: 10px 12px;
   font-size: 11px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--pxn-ink);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--pxn-surface-2);
+  border-bottom: 1px solid var(--pxn-border);
 }
 
 .saved-cards-table {
@@ -2477,11 +2476,11 @@ export default {
 .saved-cards-table thead th {
   font-size: 11px;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--pxn-ink-2);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--pxn-surface-2);
+  border-bottom: 1px solid var(--pxn-border);
 }
 
 .saved-cards-table tbody td {
@@ -2490,7 +2489,7 @@ export default {
 }
 
 .bg-selected-card {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.06) 0%, rgba(118, 75, 162, 0.06) 100%);
+  background: var(--pxn-primary-softer);
 }
 
 .default-badge {
@@ -2498,7 +2497,7 @@ export default {
   margin-left: 8px;
   padding: 2px 6px;
   border-radius: 999px;
-  background: #ecfeff;
+  background: var(--pxn-info-soft);
   color: #0369a1;
   border: 1px solid #67e8f9;
   font-size: 10px;
@@ -2511,9 +2510,9 @@ export default {
   margin-left: 6px;
   padding: 2px 6px;
   border-radius: 999px;
-  background: #e8fff3;
+  background: var(--pxn-success-soft);
   color: #065f46;
-  border: 1px solid #6ee7b7;
+  border: 1px solid var(--pxn-success-border);
   font-size: 10px;
   font-weight: 700;
   vertical-align: middle;
@@ -2538,15 +2537,15 @@ export default {
 }
 
 .footer-cancel {
-  background: #f3f4f6;
-  color: #4b5563;
-  border: 2px solid #e5e7eb;
+  background: var(--pxn-surface-2);
+  color: var(--pxn-ink-2);
+  border: 2px solid var(--pxn-border);
 }
 
 .footer-submit {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: var(--pxn-success);
   color: white;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 4px 12px var(--pxn-success-border);
 }
 
 /* Loading Spinner */
