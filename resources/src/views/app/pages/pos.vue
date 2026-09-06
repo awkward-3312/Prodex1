@@ -1018,7 +1018,7 @@
          MODALS (preserved verbatim from original; teleport to body)
          ============================================================ -->
   <!-- Calculator -->
-  <b-modal id="pos_calculator" hide-footer size="sm" :title="$t('Calculator') || 'Calculator'">
+  <b-modal id="pos_calculator" hide-footer size="sm" :title="$t('Calculator') || 'Calculator'" modal-class="px-next">
     <div class="pos-calc">
       <div class="pos-calc-display">
         <div class="pos-calc-expr">{{ calc.expression || ' ' }}</div>
@@ -1052,7 +1052,7 @@
     </div>
   </b-modal>
 
-  <b-modal id="open_scan" hide-footer :title="$t('Scan')">
+  <b-modal id="open_scan" hide-footer :title="$t('Scan')" modal-class="px-next">
     <qrcode-scanner
       :qrbox="250"
       :fps="10"
@@ -1107,6 +1107,7 @@
     centered
     size="md"
     id="store-credit-voucher-generated"
+    modal-class="px-next"
     :title="$t('Store_Credit') || 'Vale de devolución generado'"
   >
     <div v-if="generatedReturnVoucher" class="voucher-generated-modal">
@@ -1192,7 +1193,7 @@
     </div>
   </b-modal>
 
-  <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Invoice_POS')" @shown="onInvoiceModalShown">
+  <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Invoice_POS')" @shown="onInvoiceModalShown" modal-class="px-next">
         <div id="invoice-POS">
           <div style="max-width:400px;margin:0px auto">
             <!-- Layout 1 - Standard (existing layout) -->
@@ -2120,7 +2121,7 @@
           </button>
         </b-modal>
 
-  <b-modal id="show_draft_sales" size="lg" hide-footer :title="$t('Recent_Drafts')">
+  <b-modal id="show_draft_sales" size="lg" hide-footer :title="$t('Recent_Drafts')" modal-class="px-next">
     <div>
       <table class="table table-sm">
         <thead>
@@ -2176,7 +2177,7 @@
   </b-modal>
 
   <validation-observer ref="Update_Detail">
-    <b-modal hide-footer size="lg" id="form_Update_Detail" :title="detail.name">
+    <b-modal hide-footer size="lg" id="form_Update_Detail" :title="detail.name" modal-class="px-next">
     <b-form @submit.prevent="submit_Update_Detail">
         <b-row>
           <!-- Unit Price + Price Type -->
@@ -2331,7 +2332,7 @@
   </validation-observer>
 
   <validation-observer ref="Create_Customer">
-  <b-modal id="New_Customer" hide-footer size="lg" :title="$t('New_Customer')">
+  <b-modal id="New_Customer" hide-footer size="lg" :title="$t('New_Customer')" modal-class="px-next">
     <b-form @submit.prevent="Submit_Customer" class="new-customer-form">
       <b-row>
         <b-col md="6" sm="12">
@@ -2395,7 +2396,7 @@
 
   <!-- Quick Add Customer Modal -->
   <validation-observer ref="Quick_Add_Customer_Form">
-    <b-modal hide-footer size="lg" id="Quick_Add_Customer" :title="$t('Quick_Add_Customer')">
+    <b-modal hide-footer size="lg" id="Quick_Add_Customer" :title="$t('Quick_Add_Customer')" modal-class="px-next">
       <b-form @submit.prevent="Submit_Quick_Add_Customer" class="quick-add-customer-form">
         <b-row>
           <!-- Honduras fiscal flow: RTN first, Cliente Final by default -->
@@ -2534,7 +2535,7 @@
     hide-footer
     hide-header
     size="lg"
-    modal-class="ts-modal-modern"
+    modal-class="ts-modal-modern px-next"
     body-class="ts-modal-body-wrap"
     :title="$t('Today_Sales')"
   >
@@ -2640,7 +2641,7 @@
     hide-footer
     hide-header
     size="lg"
-    modal-class="ps-modal-modern"
+    modal-class="ps-modal-modern px-next"
     body-class="ps-modal-body-wrap"
     :title="$t('POS_Settings')"
   >
@@ -2890,7 +2891,7 @@
     </div>
   </b-modal>
 
-    <b-modal id="OpenRegisterModal" :title="$t('Open Register')" hide-footer>
+    <b-modal id="OpenRegisterModal" :title="$t('Open Register')" hide-footer modal-class="px-next">
       <div class="form-group">
         <label>{{$t('warehouse')}}</label>
         <b-form-select
@@ -2923,7 +2924,7 @@
     </b-modal>
 
     <!-- Close Register Modal -->
-    <b-modal id="CloseRegisterModal" :title="$t('Close Register')" hide-footer size="xl" modal-class="cr-close-modal" @show="prepareCloseRegister">
+    <b-modal id="CloseRegisterModal" :title="$t('Close Register')" hide-footer size="xl" modal-class="cr-close-modal px-next" @show="prepareCloseRegister">
       <div class="cr-close">
         <div class="cr-summary-grid">
           <div class="cr-summary-item">
@@ -3090,6 +3091,7 @@
     <b-modal
       id="OnlineReloadModal"
       v-model="onlineReloadModalVisible"
+      modal-class="px-next"
       :hide-footer="true"
       :hide-header-close="true"
       :no-close-on-backdrop="true"
@@ -3114,6 +3116,7 @@
     <b-modal
       id="pos-keyboard-shortcuts-help"
       size="lg"
+      modal-class="px-next"
       scrollable
       hide-footer
       :title="$t('Keyboard_Shortcuts') || 'Keyboard Shortcuts'"
@@ -3150,7 +3153,7 @@
       hide-header
       centered
       size="sm"
-      modal-class="pos-confirm-clear-modal"
+      modal-class="pos-confirm-clear-modal px-next"
       body-class="pos-confirm-clear-body"
     >
       <div class="pos-confirm-clear">
@@ -17491,9 +17494,10 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 /* ===== Calculator widget ===== */
 .pos-calc { padding: 2px; }
 .pos-calc-display {
-  background: #1f1f2c;
-  color: #fff;
-  border-radius: 10px;
+  background: var(--pxn-surface-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--pxn-radius-md);
   padding: 14px 16px;
   margin-bottom: 12px;
   text-align: right;
@@ -17502,8 +17506,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .pos-calc-expr {
   min-height: 18px;
   font-size: 13px;
-  color: #b6b6c6;
-  font-family: 'JetBrains Mono', monospace;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -17511,7 +17515,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .pos-calc-result {
   font-size: 30px;
   font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -17522,24 +17526,24 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   gap: 8px;
 }
 .pos-calc-key {
-  height: 52px;
-  border: 1px solid #e6e6ec;
-  background: #ffffff;
-  color: #1f1f2c;
-  border-radius: 10px;
+  height: 48px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--pxn-radius-md);
   font-size: 18px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 120ms ease;
+  transition: background-color 120ms var(--pxn-ease), border-color 120ms var(--pxn-ease);
 }
-.pos-calc-key:hover { background: #f3f3f7; border-color: #d8d8e0; }
+.pos-calc-key:hover { background: var(--soft); border-color: var(--line-strong); }
 .pos-calc-key:active { transform: translateY(1px); }
-.pos-calc-key-fn { background: #f5f5f8; color: #54546a; }
-.pos-calc-key-op { background: #f5f3fd; color: #6f53d9; border-color: #ece9fb; }
-.pos-calc-key-op:hover { background: #ece9fb; }
+.pos-calc-key-fn { background: var(--pxn-surface-2); color: var(--ink-2); }
+.pos-calc-key-op { background: var(--pxn-surface-2); color: var(--accent); border-color: var(--line); }
+.pos-calc-key-op:hover { background: var(--soft); }
 .pos-calc-key-zero { grid-column: span 2; }
-.pos-calc-key-eq { background: #6f53d9; color: #fff; border-color: #6f53d9; }
-.pos-calc-key-eq:hover { background: #5e44c4; border-color: #5e44c4; }
+.pos-calc-key-eq { background: var(--accent); color: var(--pxn-primary-contrast); border-color: var(--accent); }
+.pos-calc-key-eq:hover { filter: brightness(0.96); }
 /* When the icon button is the toggle of a b-dropdown, the wrapper is .dropdown.
    Make sure the dropdown wrapper doesn't add unwanted spacing. */
 .pos-codecanyon .dropdown > .pos-shell-icon-btn {
@@ -19172,4 +19176,111 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
     flex-direction: column;
   }
 }
+
+/* ==========================================================================
+   POS secondary dialogs · px-next chrome
+   Every POS b-modal carries `modal-class="px-next"` — which both scopes the
+   --pxn-* tokens and lets these rules theme the BootstrapVue shell without
+   touching any other modal in the app.
+   ========================================================================== */
+/* The POS modals teleport out of `.pos-codecanyon`, so its local
+   semantic aliases (`--accent`, `--ink`, `--line`, `--font-mono`, …) are
+   re-declared here for the bespoke widgets rendered inside them
+   (calculator, receipt, etc.). */
+.modal.px-next {
+  --accent: var(--pxn-primary);
+  --accent-soft: var(--pxn-primary-soft);
+  --accent-tint: var(--pxn-primary-softer);
+  --accent-shadow: var(--pxn-focus-ring);
+  --bg: var(--pxn-bg);
+  --bg-deep: var(--pxn-surface-2);
+  --surface: var(--pxn-surface);
+  --soft: var(--pxn-surface-2);
+  --line: var(--pxn-border-strong);
+  --line-strong: var(--pxn-border-control);
+  --ink: var(--pxn-ink);
+  --ink-2: var(--pxn-ink-2);
+  --ink-3: var(--pxn-ink-3);
+  --danger: var(--pxn-danger);
+  --success: var(--pxn-success);
+  --success-soft: var(--pxn-success-soft);
+  --font-sans: var(--pxn-font-sans);
+  --font-mono: var(--pxn-font-mono);
+}
+.modal.px-next .modal-content {
+  border: 1px solid var(--pxn-border);
+  border-radius: var(--pxn-radius-lg);
+  box-shadow: var(--pxn-shadow-modal);
+  background: var(--pxn-surface);
+  color: var(--pxn-ink);
+}
+.modal.px-next .modal-header {
+  border-bottom: 1px solid var(--pxn-border);
+  padding: var(--pxn-space-5) var(--pxn-space-6);
+  background: var(--pxn-surface);
+  border-top-left-radius: var(--pxn-radius-lg);
+  border-top-right-radius: var(--pxn-radius-lg);
+}
+.modal.px-next .modal-header .modal-title {
+  font-family: var(--pxn-font-sans);
+  font-size: var(--pxn-fs-h2);
+  font-weight: var(--pxn-fw-semibold);
+  color: var(--pxn-ink);
+}
+.modal.px-next .modal-header .close {
+  color: var(--pxn-ink-3);
+  opacity: 1;
+  text-shadow: none;
+  font-weight: 400;
+  transition: color var(--pxn-dur-1) var(--pxn-ease);
+}
+.modal.px-next .modal-header .close:hover { color: var(--pxn-ink); }
+.modal.px-next .modal-body {
+  padding: var(--pxn-space-5) var(--pxn-space-6);
+  font-family: var(--pxn-font-sans);
+  color: var(--pxn-ink);
+}
+.modal.px-next .modal-footer {
+  border-top: 1px solid var(--pxn-border);
+  padding: var(--pxn-space-5) var(--pxn-space-6);
+  gap: var(--pxn-space-4);
+}
+.modal.px-next .modal-body .form-control,
+.modal.px-next .modal-body .custom-select {
+  border: 1px solid var(--pxn-border-control);
+  border-radius: var(--pxn-radius-md);
+  color: var(--pxn-ink);
+  background: var(--pxn-surface);
+}
+.modal.px-next .modal-body .form-control:focus,
+.modal.px-next .modal-body .custom-select:focus {
+  border-color: var(--pxn-primary);
+  box-shadow: 0 0 0 3px var(--pxn-focus-ring);
+}
+.modal.px-next .modal-body label,
+.modal.px-next .modal-body .col-form-label {
+  color: var(--pxn-ink-2);
+  font-weight: var(--pxn-fw-medium);
+}
+.modal.px-next .modal-body .btn-primary {
+  background: var(--pxn-primary);
+  border-color: var(--pxn-primary);
+  color: var(--pxn-primary-contrast);
+  border-radius: var(--pxn-radius-md);
+}
+.modal.px-next .modal-body .btn-secondary,
+.modal.px-next .modal-footer .btn-secondary {
+  background: var(--pxn-surface);
+  border: 1px solid var(--pxn-border-control);
+  color: var(--pxn-ink);
+  border-radius: var(--pxn-radius-md);
+}
+.modal.px-next .modal-body .btn-danger { background: var(--pxn-danger); border-color: var(--pxn-danger); border-radius: var(--pxn-radius-md); }
+.modal.px-next .modal-body .btn-success { background: var(--pxn-success); border-color: var(--pxn-success); border-radius: var(--pxn-radius-md); }
+.modal.px-next .modal-body .table th {
+  background: var(--pxn-surface-2);
+  color: var(--pxn-ink-2);
+  border-color: var(--pxn-border);
+}
+.modal.px-next .modal-body .table td { border-color: var(--pxn-border); color: var(--pxn-ink); }
 </style>
