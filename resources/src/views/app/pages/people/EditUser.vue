@@ -21,17 +21,17 @@
           <div class="pxcfg__grid">
             <validation-provider ref="firstnameProvider" name="Nombre" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
               <px-field label="Nombre *" :error="v.errors[0]">
-                <template #default="{ id, invalid }"><px-input :id="id" v-model="user.firstname" :invalid="invalid" @input="v.validate" /></template>
+                <template #default="{ id, invalid }"><px-input :id="id" :value="user.firstname" :invalid="invalid" @input="val => onTextInput('firstname', 'firstnameProvider', val)" /></template>
               </px-field>
             </validation-provider>
             <validation-provider ref="lastnameProvider" name="Apellido" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
               <px-field label="Apellido *" :error="v.errors[0]">
-                <template #default="{ id, invalid }"><px-input :id="id" v-model="user.lastname" :invalid="invalid" @input="v.validate" /></template>
+                <template #default="{ id, invalid }"><px-input :id="id" :value="user.lastname" :invalid="invalid" @input="val => onTextInput('lastname', 'lastnameProvider', val)" /></template>
               </px-field>
             </validation-provider>
             <validation-provider ref="usernameProvider" name="Usuario" :rules="{ required: true, min: 3, max: 60 }" v-slot="v">
               <px-field label="Nombre de usuario *" :error="v.errors[0]">
-                <template #default="{ id, invalid }"><px-input :id="id" v-model="user.username" :invalid="invalid" @input="v.validate" /></template>
+                <template #default="{ id, invalid }"><px-input :id="id" :value="user.username" :invalid="invalid" @input="val => onTextInput('username', 'usernameProvider', val)" /></template>
               </px-field>
             </validation-provider>
             <px-field label="Teléfono">
@@ -39,7 +39,7 @@
             </px-field>
             <validation-provider ref="emailProvider" name="Correo" :rules="{ required: true, email: true }" v-slot="v">
               <px-field label="Correo *" :error="v.errors[0]">
-                <template #default="{ id, invalid }"><px-input :id="id" type="email" v-model="user.email" :invalid="invalid" @input="v.validate" /></template>
+                <template #default="{ id, invalid }"><px-input :id="id" type="email" :value="user.email" :invalid="invalid" @input="val => onTextInput('email', 'emailProvider', val)" /></template>
               </px-field>
             </validation-provider>
             <px-field label="Nueva contraseña" hint="Déjala vacía para conservar la actual. Si la cambias, usa mínimo 8 caracteres.">
@@ -49,7 +49,7 @@
               <px-field label="Rol *" :error="v.errors[0]">
                 <template #default="{ id }">
                   <vs-px :input-id="id" v-model="user.role_id" :reduce="o => o.value" :options="roleOptions" placeholder="Seleccionar rol"
-                    @input="() => { roleChanged(); if ($refs.roleProvider) $refs.roleProvider.validate(); }" />
+                    @input="onRoleSelected" />
                 </template>
               </px-field>
             </validation-provider>
@@ -199,7 +199,7 @@
         <px-alert v-if="form_error" tone="danger" class="pxcfg__alert">{{ form_error }}</px-alert>
 
         <div class="pxcfg__actions">
-          <px-button variant="primary" icon="check" type="submit" :loading="SubmitProcessing" :disabled="SubmitProcessing" @click="Submit_User">
+          <px-button variant="primary" icon="check" type="submit" :loading="SubmitProcessing" :disabled="SubmitProcessing">
             {{ SubmitProcessing ? 'Guardando…' : 'Guardar cambios' }}
           </px-button>
           <px-button variant="ghost" @click="$router.push({ name: 'Users' })">Cancelar</px-button>
@@ -267,17 +267,55 @@ export default {
     goto(path) { this.$router.push(path).catch(() => {}); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
     makeToast(variant, msg, title) { if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(msg, { title, variant, solid: true }); },
-    syncValidators() {
-      this.$nextTick(() => {
-        const map = {
-          firstnameProvider: 'firstname', lastnameProvider: 'lastname', usernameProvider: 'username',
-          emailProvider: 'email', roleProvider: 'role_id'
-        };
-        Object.keys(map).forEach(ref => {
-          const p = this.$refs[ref];
-          if (p && p.syncValue) p.syncValue(this.user[map[ref]]);
-        });
+    // user.* is the single source of truth. The model-carrying control sits
+    // inside PxField's scoped slot, which VeeValidate 3.4.15 cannot auto-detect,
+    // so every required provider is fed its real value explicitly. (No password
+    // here — it is optional on edit.)
+    providerFieldMap() {
+      return {
+        firstnameProvider: 'firstname', lastnameProvider: 'lastname', usernameProvider: 'username',
+        emailProvider: 'email', roleProvider: 'role_id'
+      };
+    },
+    syncProvidersFromUser() {
+      const map = this.providerFieldMap();
+      Object.keys(map).forEach(ref => {
+        const p = this.$refs[ref];
+        if (p && p.syncValue) p.syncValue(this.user[map[ref]]);
       });
+    },
+    syncValidators() { this.$nextTick(() => this.syncProvidersFromUser()); },
+    validateProvider(ref, value) {
+      const p = this.$refs[ref];
+      if (p && p.validate) p.validate(value);
+    },
+    onRoleSelected(value) {
+      this.user.role_id = value;
+      this.roleChanged();
+      this.validateProvider('roleProvider', this.user.role_id);
+    },
+    onTextInput(field, providerRef, value) {
+      this.user[field] = value;
+      this.validateProvider(providerRef, value);
+    },
+    accessFieldLabels() {
+      return {
+        firstnameProvider: 'Nombre', lastnameProvider: 'Apellido', usernameProvider: 'Usuario',
+        emailProvider: 'Correo', roleProvider: 'Rol'
+      };
+    },
+    invalidAccessFields() {
+      const labels = this.accessFieldLabels();
+      return Object.keys(labels).filter(ref => {
+        const p = this.$refs[ref];
+        return p && p.flags && p.flags.invalid;
+      }).map(ref => labels[ref]);
+    },
+    focusFirstInvalid() {
+      const root = this.$refs.Edit_User && this.$refs.Edit_User.$el;
+      if (!root) return;
+      const el = root.querySelector('.pxn-field.is-invalid input, .pxn-field.is-invalid .vs__search, input[aria-invalid="true"]');
+      if (el && typeof el.focus === 'function') el.focus();
     },
     async load() {
       NProgress.start();
@@ -318,11 +356,40 @@ export default {
     selectSingleDrawerWhenUnambiguous() { if (this.selectedRole && this.selectedRole.uses_pos && this.defaultCashDrawerOptions.length === 1) this.user.default_cash_drawer_id = this.defaultCashDrawerOptions[0].value; },
     onFileSelected(e) { this.user.avatar = e.target.files && e.target.files[0] ? e.target.files[0] : null; },
     Submit_User() {
+      // Feed every provider its live value before the observer aggregates them —
+      // the role select and any field that never emitted an input event.
+      this.syncProvidersFromUser();
       this.$refs.Edit_User.validate().then(success => {
-        if (!success) { this.makeToast('danger', this.$t('Please_fill_the_form_correctly'), this.$t('Failed')); return; }
-        if (this.user.password && this.user.password.length < 8) { this.form_error = 'La nueva contraseña debe tener al menos 8 caracteres.'; return; }
-        if (this.user.scope !== 'all' && !this.selectedBranchIds.length) { this.form_error = 'Selecciona al menos una sucursal.'; return; }
-        if (this.selectedRole && this.selectedRole.requires_cash_drawer && !this.user.default_cash_drawer_id) { this.form_error = 'Este rol necesita una caja física predeterminada para operar POS.'; return; }
+        // Group A — access data (VeeValidate). Name the offending fields and
+        // focus the first one instead of a blank "complete the form".
+        if (!success) {
+          const fields = this.invalidAccessFields();
+          const message = fields.length
+            ? `Revisa estos campos obligatorios: ${fields.join(', ')}.`
+            : this.$t('Please_fill_the_form_correctly');
+          this.form_error = message;
+          this.makeToast('danger', message, this.$t('Failed'));
+          this.$nextTick(() => this.focusFirstInvalid());
+          return;
+        }
+        // Group B — operational rules. Specific message per rule; never mixed
+        // with the required-field errors above.
+        if (this.user.password && this.user.password.length < 8) {
+          this.form_error = 'La nueva contraseña debe tener al menos 8 caracteres.';
+          this.makeToast('warning', this.form_error, 'Contraseña'); return;
+        }
+        if (this.user.scope !== 'all' && !this.selectedBranchIds.length) {
+          this.form_error = 'Selecciona al menos una sucursal para el alcance operativo.';
+          this.makeToast('warning', this.form_error, 'Alcance operativo'); return;
+        }
+        if (this.user.scope !== 'all' && !this.user.default_branch_id) {
+          this.form_error = 'Selecciona la sucursal predeterminada.';
+          this.makeToast('warning', this.form_error, 'Alcance operativo'); return;
+        }
+        if (this.selectedRole && this.selectedRole.requires_cash_drawer && !this.user.default_cash_drawer_id) {
+          this.form_error = 'Este rol necesita una caja física predeterminada para operar POS.';
+          this.makeToast('warning', this.form_error, 'Alcance operativo'); return;
+        }
         this.Update_User();
       });
     },
