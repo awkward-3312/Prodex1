@@ -353,12 +353,12 @@
           </div>
 
           <!-- Empty state — cart icon + 2-line copy (matches POS.html) -->
-          <div v-if="details.length === 0" style="padding: 32px 16px; text-align: center; color: #8d8da0;">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width: 32px; height: 32px; opacity: 0.3; margin: 0 auto 8px;">
+          <div v-if="details.length === 0" style="padding: 40px 16px; text-align: center; color: var(--ink-3);">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width: 28px; height: 28px; opacity: 0.5; margin: 0 auto 8px;">
               <path d="M3 4h2l2 9h9l1.5-6H6"/><circle cx="8" cy="16.5" r="1"/><circle cx="15" cy="16.5" r="1"/>
             </svg>
-            <div style="font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #54546a;">{{ $t('pos.No_items_added') || 'Cart is empty' }}</div>
-            <div style="font-size: 11px; color: #8d8da0;">{{ $t('pos.Select_products_from_right_panel') || 'Scan or click a product to begin' }}</div>
+            <div style="font-size: 13px; font-weight: 600; margin-bottom: 2px; color: var(--ink-2);">{{ $t('pos.No_items_added') || 'Cart is empty' }}</div>
+            <div style="font-size: 12px; color: var(--ink-3);">{{ $t('pos.Select_products_from_right_panel') || 'Scan or click a product to begin' }}</div>
           </div>
 
           <!-- Cart items list — 3-col grid: thumb | details | actions/total -->
@@ -367,24 +367,24 @@
               v-for="(item, index) in details"
               :key="index"
               class="pos-shell-cart-row"
-              style="display: grid; grid-template-columns: 32px 1fr auto; gap: 8px; padding: 6px 8px; border-radius: 8px; margin-bottom: 2px; transition: background 120ms ease;">
+              style="display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; padding: 8px; border-radius: var(--pxn-radius-md); margin-bottom: 2px; transition: background-color 120ms var(--pxn-ease);">
 
               <!-- Thumb: product image when available + setting on, else initials swatch.
                    Mirrors the product-card behaviour at the grid above so the
                    cart row reuses the same image source / fallback rules. -->
               <div
-                style="width: 32px; height: 32px; border-radius: 6px; align-self: center; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 10px; color: rgba(31,31,44,0.55); letter-spacing: 0.02em; text-transform: uppercase;"
+                style="width: 34px; height: 34px; border-radius: var(--pxn-radius-sm); align-self: center; display: grid; place-items: center; font-family: var(--font-mono); font-weight: 700; font-size: 10px; color: var(--ink-3); letter-spacing: 0.02em; text-transform: uppercase;"
                 :style="{
                   background: (pos_settings.show_product_images && item.image)
-                    ? '#ffffff'
-                    : 'repeating-linear-gradient(135deg, #ece9fb, #ece9fb 6px, #f5f3fd 6px, #f5f3fd 12px)',
+                    ? 'var(--surface)'
+                    : 'var(--pxn-surface-2)',
                   backgroundImage: (pos_settings.show_product_images && item.image)
                     ? 'url(' + resolveProductImage(item.image) + ')'
                     : null,
                   backgroundRepeat: 'no-repeat',
                   backgroundPosition: 'center',
                   backgroundSize: 'contain',
-                  border: (pos_settings.show_product_images && item.image) ? '1px solid #e6e6ec' : '0'
+                  border: '1px solid var(--line)'
                 }">
                 <span v-if="!(pos_settings.show_product_images && item.image)">
                   {{ (item.name || 'P').split(/[ ·]/).filter(Boolean).slice(0,2).map(w => w[0]).join('') }}
@@ -399,28 +399,28 @@
                    column reads top-to-bottom as title / subtitle / controls. -->
               <div style="min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px;">
                 <!-- Name -->
-                <div style="font-size: 13px; font-weight: 600; color: #1f1f2c; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ item.name }}</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ item.name }}</div>
 
                 <!-- SKU subtitle -->
-                <div v-if="item.code" style="font-size: 10px; color: #8d8da0; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">SKU · {{ item.code }}</div>
+                <div v-if="item.code" style="font-size: 10px; color: var(--ink-3); font-family: var(--font-mono); letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">SKU · {{ item.code }}</div>
 
                 <!-- Controls row: qty stepper + unit price + price-type -->
                 <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
                   <!-- qty stepper -->
-                  <div style="display: inline-flex; align-items: center; border: 1px solid #e6e6ec; border-radius: 5px; height: 24px; background: #ffffff; flex-shrink: 0;">
-                    <button @click="decrement(item, item.detail_id)" :title="$t('pos.Decrease')" style="width: 22px; height: 22px; background: transparent; border: 0; color: #54546a; font-size: 14px; cursor: pointer; padding: 0;">−</button>
-                    <input v-model.number="item.quantity" type="text" @change="Verified_Qty(item, item.detail_id)" style="width: 32px; height: 100%; border: 0; text-align: center; font-size: 12px; font-family: 'JetBrains Mono', monospace; background: transparent; color: #1f1f2c; outline: none; padding: 0;" />
-                    <button @click="increment(item.detail_id)" :title="$t('pos.Increase')" style="width: 22px; height: 22px; background: transparent; border: 0; color: #54546a; font-size: 14px; cursor: pointer; padding: 0;">+</button>
+                  <div style="display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--pxn-radius-sm); height: 30px; background: var(--surface); flex-shrink: 0; overflow: hidden;">
+                    <button @click="decrement(item, item.detail_id)" :title="$t('pos.Decrease')" style="width: 30px; height: 28px; background: transparent; border: 0; color: var(--ink-2); font-size: 16px; line-height: 1; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center;">−</button>
+                    <input v-model.number="item.quantity" type="text" @change="Verified_Qty(item, item.detail_id)" style="width: 36px; height: 100%; border: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line); text-align: center; font-size: 12px; font-family: var(--font-mono); background: transparent; color: var(--ink); outline: none; padding: 0;" />
+                    <button @click="increment(item.detail_id)" :title="$t('pos.Increase')" style="width: 30px; height: 28px; background: transparent; border: 0; color: var(--ink-2); font-size: 16px; line-height: 1; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center;">+</button>
                   </div>
                   <!-- × unit price (darker + larger so the per-unit math reads at a glance) -->
-                  <span style="font-size: 12px; color: #54546a; font-weight: 500; font-family: 'JetBrains Mono', monospace; white-space: nowrap;">× {{ formatPriceWithCurrentCurrency(item.Total_price, 2) }}</span>
+                  <span style="font-size: 12px; color: var(--ink-2); font-weight: 500; font-family: var(--font-mono); white-space: nowrap;">× {{ formatPriceWithCurrentCurrency(item.Total_price, 2) }}</span>
                   <!-- Price type (sized to match qty stepper, dark text instead of muted) -->
-                  <select v-model="item.price_type" @change="onChangePriceType(item)" style="height: 24px; padding: 0 6px; font-size: 11px; font-weight: 500; border: 1px solid #d8d8e0; border-radius: 5px; background: #ffffff; color: #1f1f2c; outline: none; cursor: pointer; flex-shrink: 0;">
+                  <select v-model="item.price_type" @change="onChangePriceType(item)" style="height: 30px; padding: 0 6px; font-size: 11px; font-weight: 500; border: 1px solid var(--line); border-radius: var(--pxn-radius-sm); background: var(--surface); color: var(--ink); outline: none; cursor: pointer; flex-shrink: 0;">
                     <option value="retail">{{ $t('Retail Price') }}</option>
                     <option value="wholesale">{{ $t('Wholesale Price') }}</option>
                   </select>
                   <!-- Multi-Pack Selling: per-line pack picker (only when packs exist) -->
-                  <select v-if="item.packs && item.packs.length" v-model="item.product_pack_id" @change="onChangePack(item)" :title="$t('Pack')" style="height: 24px; padding: 0 6px; font-size: 11px; font-weight: 500; border: 1px solid #d8d8e0; border-radius: 5px; background: #ffffff; color: #1f1f2c; outline: none; cursor: pointer; flex-shrink: 0;">
+                  <select v-if="item.packs && item.packs.length" v-model="item.product_pack_id" @change="onChangePack(item)" :title="$t('Pack')" style="height: 30px; padding: 0 6px; font-size: 11px; font-weight: 500; border: 1px solid var(--line); border-radius: var(--pxn-radius-sm); background: var(--surface); color: var(--ink); outline: none; cursor: pointer; flex-shrink: 0;">
                     <option v-for="pack in item.packs" :key="'pk-'+item.detail_id+'-'+pack.id" :value="pack.id" :disabled="!isOversellingAllowed && item.product_type !== 'is_service' && Number(pack.multiplier) > 1 && Number(pack.multiplier) > Number(item.current)">{{ pack.name }} (×{{ pack.multiplier }})<template v-if="!isOversellingAllowed && item.product_type !== 'is_service' && Number(pack.multiplier) > 1 && Number(pack.multiplier) > Number(item.current)"> — {{ $t('Out_of_Stock') || 'out of stock' }}</template></option>
                   </select>
                 </div>
@@ -435,8 +435,8 @@
                     @mousedown.prevent
                     @click="Modal_Updat_Detail(item)"
                     :title="$t('pos.Edit')"
-                    style="background: transparent; border: 0; padding: 4px; border-radius: 4px; cursor: pointer; color: #8d8da0; display: inline-flex; align-items: center; justify-content: center;">
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px;">
+                    style="background: transparent; border: 0; padding: 5px; border-radius: var(--pxn-radius-xs); cursor: pointer; color: var(--ink-3); display: inline-flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
                       <path d="M14 3l3 3-9 9H5v-3z"/>
                     </svg>
                   </button>
@@ -445,33 +445,33 @@
                     @mousedown.prevent
                     @click="delete_Product_Detail(item.detail_id)"
                     :title="$t('pos.Remove')"
-                    style="background: transparent; border: 0; padding: 4px; border-radius: 4px; cursor: pointer; color: #8d8da0; display: inline-flex; align-items: center; justify-content: center;">
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="width: 14px; height: 14px;">
+                    style="background: transparent; border: 0; padding: 5px; border-radius: var(--pxn-radius-xs); cursor: pointer; color: var(--ink-3); display: inline-flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="width: 15px; height: 15px;">
                       <path d="m5 5 10 10M15 5 5 15"/>
                     </svg>
                   </button>
                 </div>
-                <div style="font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #1f1f2c;">{{ formatPriceWithCurrentCurrency(item.subtotal, 2) }}</div>
+                <div style="font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--ink);">{{ formatPriceWithCurrentCurrency(item.subtotal, 2) }}</div>
               </div>
 
               <!-- Batches panel (full-width, only for tracked items) -->
-              <div v-if="item.is_batch_tracked" style="grid-column: 1 / -1; margin-top: 6px; padding: 8px; background: #f3f3f7; border-radius: 8px;">
+              <div v-if="item.is_batch_tracked" style="grid-column: 1 / -1; margin-top: 6px; padding: 10px; background: var(--pxn-surface-2); border: 1px solid var(--line); border-radius: var(--pxn-radius-md);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                  <div style="font-size: 11px; font-weight: 600; color: #54546a; display: inline-flex; align-items: center; gap: 4px;">
+                  <div style="font-size: 11px; font-weight: 600; color: var(--ink-2); display: inline-flex; align-items: center; gap: 4px;">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
                       <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.24L19.53 8 12 11.76 4.47 8 12 4.24zM4 9.51l7 3.5V20l-7-3.5V9.51zm16 0V16.5L13 20v-7l7-3.49z"/>
                     </svg>
                     <span>{{ $t('Batches') || 'Batches' }}</span>
-                    <span style="font-size: 10px; color: #8d8da0; font-family: 'JetBrains Mono', monospace; font-weight: 400; margin-left: 4px;">
+                    <span style="font-size: 10px; color: var(--ink-3); font-family: var(--font-mono); font-weight: 400; margin-left: 4px;">
                       {{ (item.batches || []).length }} {{ $t('items') || 'items' }}
                       <template v-if="(item.batches || []).length">· {{ formatNumber(batch_total_qty(item), 2) }} / {{ formatNumber(Number(item.quantity) || 0, 2) }}</template>
                     </span>
                   </div>
-                  <button type="button" @click="add_batch_to_detail(item)" style="height: 24px; padding: 0 8px; background: #f5f3fd; color: #6f53d9; border: 0; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;">+ {{ $t('Add') || 'Add' }}</button>
+                  <button type="button" @click="add_batch_to_detail(item)" style="height: 26px; padding: 0 10px; background: var(--surface); color: var(--accent); border: 1px solid var(--line); border-radius: var(--pxn-radius-sm); font-size: 11px; font-weight: 600; cursor: pointer;">+ {{ $t('Add') || 'Add' }}</button>
                 </div>
-                <div v-if="item.batches_loading" style="font-size: 11px; color: #8d8da0; padding: 4px 0;">{{ $t('Loading') || 'Loading...' }}</div>
-                <div v-else-if="!(item.available_batches && item.available_batches.length)" style="font-size: 11px; color: #d64545; padding: 4px 0;">{{ $t('No_Batches_Available') || 'No available batches for this product in the selected warehouse' }}</div>
-                <div v-else-if="!item.batches || item.batches.length === 0" style="font-size: 11px; color: #d64545; padding: 4px 0;">{{ $t('Choose_Batch') || 'Choose a batch' }}</div>
+                <div v-if="item.batches_loading" style="font-size: 11px; color: var(--ink-3); padding: 4px 0;">{{ $t('Loading') || 'Loading...' }}</div>
+                <div v-else-if="!(item.available_batches && item.available_batches.length)" style="font-size: 11px; color: var(--danger); padding: 4px 0;">{{ $t('No_Batches_Available') || 'No available batches for this product in the selected warehouse' }}</div>
+                <div v-else-if="!item.batches || item.batches.length === 0" style="font-size: 11px; color: var(--danger); padding: 4px 0;">{{ $t('Choose_Batch') || 'Choose a batch' }}</div>
                 <div v-else style="display: flex; flex-direction: column; gap: 6px;">
                   <div v-for="(b, bIdx) in item.batches" :key="'pb-' + item.detail_id + '-' + bIdx" style="display: grid; grid-template-columns: 1fr 80px 24px; gap: 6px; align-items: center;">
                     <v-select
@@ -488,17 +488,17 @@
                       :value="b.qty"
                       @input="evt => on_batch_qty_input(b, evt.target.value)"
                       :placeholder="$t('Quantity')"
-                      style="height: 32px; padding: 0 8px; border-radius: 6px; background: #ffffff; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #1f1f2c; outline: none; width: 100%;"
-                      :style="{ border: '1px solid ' + ((Number(b.qty) > (Number(b.qty_available) || 0)) ? '#fca5a5' : '#e6e6ec') }"
+                      style="height: 32px; padding: 0 8px; border-radius: var(--pxn-radius-sm); background: var(--surface); font-size: 12px; font-family: var(--font-mono); color: var(--ink); outline: none; width: 100%;"
+                      :style="{ border: '1px solid ' + ((Number(b.qty) > (Number(b.qty_available) || 0)) ? 'var(--pxn-danger-border)' : 'var(--line)') }"
                     />
                     <button type="button" @click="remove_batch_from_detail(item, bIdx)" :title="$t('pos.Remove')" style="width: 24px; height: 24px; background: transparent; border: 0; color: #8d8da0; cursor: pointer; padding: 0; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px;">×</button>
                   </div>
                 </div>
-                <div v-if="!item.batches_loading && batch_line_error(item)" style="margin-top: 6px; font-size: 11px; color: #d64545;">{{ batch_line_error(item) }}</div>
+                <div v-if="!item.batches_loading && batch_line_error(item)" style="margin-top: 6px; font-size: 11px; color: var(--danger);">{{ batch_line_error(item) }}</div>
               </div>
 
               <!-- Serial / IMEI panel (full-width, only for serialized items) -->
-              <div v-if="item.is_imei" style="grid-column: 1 / -1; margin-top: 6px; padding: 8px; background: #f3f3f7; border-radius: 8px;">
+              <div v-if="item.is_imei" style="grid-column: 1 / -1; margin-top: 6px; padding: 10px; background: var(--pxn-surface-2); border: 1px solid var(--line); border-radius: var(--pxn-radius-md);">
                 <serial-numbers-field
                   mode="select"
                   v-model="item.serial_numbers"
@@ -701,7 +701,7 @@
         <!-- Search row (search input + Scanner button) -->
         <div class="pos-shell-search-row" style="padding: 4px 6px; display: flex; gap: 8px; align-items: center;">
           <div class="pos-shell-search-wrap" style="flex: 1; position: relative;">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #8d8da0; pointer-events: none;">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--ink-3); pointer-events: none;">
               <path d="M3 7V4h3M14 4h3v3M17 13v3h-3M6 16H3v-3"/><path d="M5 10h10"/>
             </svg>
             <input
@@ -710,21 +710,21 @@
               v-model="search_input"
               @keyup="search"
               class="pos-shell-search-input"
-              style="width: 100%; height: 36px; padding: 0 12px 0 38px; background: #ffffff; border: 1px solid #e6e6ec; border-radius: 8px; font-size: 13px; color: #1f1f2c; outline: none; font-family: inherit; transition: border-color 120ms ease, box-shadow 120ms ease;"
+              style="width: 100%; height: 38px; padding: 0 12px 0 40px; background: var(--surface); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md); font-size: 13px; color: var(--ink); outline: none; font-family: inherit; transition: border-color 120ms var(--pxn-ease), box-shadow 120ms var(--pxn-ease);"
             />
-            <ul v-if="product_filter && product_filter.length" style="position: absolute; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px; list-style: none; background: #ffffff; border: 1px solid #e6e6ec; border-radius: 10px; box-shadow: 0 8px 24px rgba(20,20,40,0.08); max-height: 280px; overflow: auto; z-index: 10;">
+            <ul v-if="product_filter && product_filter.length" style="position: absolute; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--pxn-radius-md); box-shadow: var(--pxn-shadow-menu); max-height: 280px; overflow: auto; z-index: 10;">
               <li
                 v-for="product_fil in product_filter"
                 :key="product_fil.id"
                 @mousedown="SearchProduct(product_fil)"
                 class="pos-shell-autocomplete-item"
-                style="padding: 8px 12px; font-size: 13px; color: #1f1f2c; cursor: pointer; border-radius: 6px;">
+                style="padding: 8px 12px; font-size: 13px; color: var(--ink); cursor: pointer; border-radius: var(--pxn-radius-sm);">
                 {{ getResultValue(product_fil) }}
               </li>
             </ul>
           </div>
           <!-- Scanner button (matches POS.html ghost lg button) -->
-          <button @click="showModal" :title="$t('Scan')" class="pos-shell-action-btn" style="height: 36px; padding: 0 12px; background: transparent; color: #1f1f2c; border: 1px solid #e6e6ec; border-radius: 8px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 120ms ease;">
+          <button @click="showModal" :title="$t('Scan')" class="pos-shell-action-btn" style="height: 38px; padding: 0 14px; background: var(--surface); color: var(--ink); border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md); font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: background-color 120ms var(--pxn-ease), border-color 120ms var(--pxn-ease);">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="width: 16px; height: 16px;">
               <path d="M3 7V4h3M14 4h3v3M17 13v3h-3M6 16H3v-3"/><path d="M5 10h10"/>
             </svg>
@@ -743,12 +743,12 @@
           @touchend="onProductsTouchEnd"
           @touchcancel="onProductsTouchEnd">
           <!-- Empty state -->
-          <div v-if="paginated_Products.length === 0" style="padding: 48px 16px; text-align: center; color: #8d8da0;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 40px; height: 40px; opacity: 0.3; margin: 0 auto 8px;">
+          <div v-if="paginated_Products.length === 0" style="padding: 56px 16px; text-align: center; color: var(--ink-3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 32px; height: 32px; opacity: 0.5; margin: 0 auto 8px;">
               <circle cx="11" cy="11" r="8"></circle>
               <path d="m21 21-4.35-4.35"></path>
             </svg>
-            <div style="font-size: 13px; color: #54546a;">{{ $t('pos.No_products_found') }}</div>
+            <div style="font-size: 13px; color: var(--ink-2);">{{ $t('pos.No_products_found') }}</div>
           </div>
 
           <div v-else class="pos-shell-products-grid">
@@ -758,9 +758,9 @@
               type="button"
               class="pos-shell-product-card"
               @click="handleProductClick(product)"
-              style="background: #ffffff; border: 1px solid #e6e6ec; border-radius: 12px; padding: 10px; text-align: left; cursor: pointer; position: relative; transition: all 120ms ease; font-family: inherit;">
+              style="background: var(--surface); border: 1px solid var(--line); border-radius: var(--pxn-radius-lg); padding: 10px; text-align: left; cursor: pointer; position: relative; transition: border-color 120ms var(--pxn-ease), background-color 120ms var(--pxn-ease); font-family: inherit;">
 
-              <div v-if="uiLoadingProductId === (product.product_variant_id ? (product.id + '-' + product.product_variant_id) : product.id)" style="position: absolute; inset: 0; background: rgba(255,255,255,0.7); border-radius: 12px; display: grid; place-items: center; z-index: 2;">
+              <div v-if="uiLoadingProductId === (product.product_variant_id ? (product.id + '-' + product.product_variant_id) : product.id)" style="position: absolute; inset: 0; background: rgba(255,255,255,0.72); border-radius: var(--pxn-radius-lg); display: grid; place-items: center; z-index: 2;">
                 <div class="spinner sm spinner-primary"></div>
               </div>
 
@@ -774,8 +774,8 @@
                     overflow: 'hidden',
                     position: 'relative',
                     background: (pos_settings.show_product_images && product.image)
-                      ? '#ffffff'
-                      : 'repeating-linear-gradient(135deg, #ece9fb, #ece9fb 8px, #f5f3fd 8px, #f5f3fd 16px)',
+                      ? 'var(--surface)'
+                      : 'var(--pxn-surface-2)',
                     backgroundImage: (pos_settings.show_product_images && product.image)
                       ? 'url(' + resolveProductImage(product.image) + ')'
                       : null,
@@ -783,19 +783,19 @@
                     backgroundPosition: 'center',
                     backgroundSize: 'contain'
                   }">
-                  <span v-if="!(pos_settings.show_product_images && product.image)" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 16px; color: rgba(31,31,44,0.6); letter-spacing: 0.02em; text-transform: uppercase;">
+                  <span v-if="!(pos_settings.show_product_images && product.image)" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 700; font-size: 16px; color: var(--ink-3); letter-spacing: 0.02em; text-transform: uppercase;">
                     {{ (product.name || 'P').split(/[ ·]/).filter(Boolean).slice(0,2).map(w => w[0]).join('') }}
                   </span>
                 </div>
                 <!-- Discount % badge (top-left) -->
-                <div v-if="product.discount" style="position: absolute; top: 6px; left: 6px; background: rgba(255,255,255,0.9); border-radius: 6px; padding: 2px 6px; color: #d64545; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;">-{{ product.discount }}%</div>
+                <div v-if="product.discount" style="position: absolute; top: 6px; left: 6px; background: var(--pxn-danger-soft); border: 1px solid var(--pxn-danger-border); border-radius: var(--pxn-radius-xs); padding: 1px 6px; color: var(--pxn-danger-ink); font-family: var(--font-mono); font-size: 10px; font-weight: 700;">-{{ product.discount }}%</div>
               </div>
 
               <!-- Name (single 13px line) -->
-              <div style="font-size: 13px; font-weight: 500; margin-bottom: 2px; line-height: 1.2; color: #1f1f2c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ product.name }}</div>
+              <div style="font-size: 13px; font-weight: 600; margin-bottom: 2px; line-height: 1.2; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ product.name }}</div>
 
               <!-- SKU · X in stock -->
-              <div style="font-size: 10px; color: #8d8da0; font-family: 'JetBrains Mono', monospace; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div style="font-size: 10px; color: var(--ink-3); font-family: var(--font-mono); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 <span v-if="product.code">SKU {{ product.code }}</span>
                 <span
                   v-if="product.product_type !== 'is_service' && pos_settings.show_stock_quantity"
@@ -806,10 +806,10 @@
 
               <!-- Price + plus button row -->
               <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div style="font-size: 14px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #6f53d9; letter-spacing: -0.01em;">{{ formatPriceWithCurrentCurrency(product.Net_price, 2) }}</div>
+                <div style="font-size: 14px; font-weight: 700; font-family: var(--font-mono); color: var(--ink); letter-spacing: -0.01em;">{{ formatPriceWithCurrentCurrency(product.Net_price, 2) }}</div>
                 <span
                   class="pos-shell-add-btn"
-                  :style="{ width: '24px', height: '24px', background: '#f0ecfb', color: '#6f53d9', borderRadius: '6px', display: 'grid', placeItems: 'center', opacity: (!isOversellingAllowed && product.product_type !== 'is_service' && product.qte_sale <= 0) ? 0.4 : 1 }">
+                  :style="{ width: '28px', height: '28px', background: 'var(--pxn-primary-soft)', color: 'var(--pxn-primary-ink)', borderRadius: 'var(--pxn-radius-sm)', display: 'grid', placeItems: 'center', opacity: (!isOversellingAllowed && product.product_type !== 'is_service' && product.qte_sale <= 0) ? 0.4 : 1 }">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="width: 14px; height: 14px;">
                     <path d="M10 4v12M4 10h12"/>
                   </svg>
@@ -837,11 +837,11 @@
             @click="Product_onPageChanged(product_currentPage - 1)"
             :disabled="product_currentPage === 1"
             :title="$t('pos.Previous_Page')"
-            style="width: 28px; height: 28px; border-radius: 6px; border: 1px solid #e6e6ec; background: #ffffff; color: #54546a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0;">
+            style="width: 28px; height: 28px; border-radius: var(--pxn-radius-sm); border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polyline points="15 18 9 12 15 6"></polyline></svg>
           </button>
-          <div style="display: inline-flex; flex-direction: column; align-items: center; font-size: 11px; color: #8d8da0;">
-            <span style="font-family: 'JetBrains Mono', monospace; color: #54546a;">{{ $t('pos.Page') }} {{ product_currentPage }}</span>
+          <div style="display: inline-flex; flex-direction: column; align-items: center; font-size: 11px; color: var(--ink-3);">
+            <span style="font-family: var(--font-mono); color: var(--ink-2);">{{ $t('pos.Page') }} {{ product_currentPage }}</span>
             <span>{{ product_totalRows }} {{ $t('pos.products') }}</span>
           </div>
           <div style="display: inline-flex; gap: 4px;">
@@ -851,7 +851,7 @@
               :disabled="item === '…'"
               @click="onProductPageItemClick(item)"
               :title="item === '…' ? '' : `${$t('pos.Go_to_page')} ${item}`"
-              :style="{ width: '28px', height: '28px', borderRadius: '6px', border: item === '…' ? 0 : '1px solid #e6e6ec', background: item === product_currentPage ? '#6f53d9' : (item === '…' ? 'transparent' : '#ffffff'), color: item === product_currentPage ? '#fff' : '#54546a', fontSize: '12px', cursor: item === '…' ? 'default' : 'pointer', fontWeight: item === product_currentPage ? 600 : 400, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }">
+              :style="{ width: '28px', height: '28px', borderRadius: 'var(--pxn-radius-sm)', border: item === '…' ? 0 : '1px solid var(--line)', background: item === product_currentPage ? 'var(--accent)' : (item === '…' ? 'transparent' : 'var(--surface)'), color: item === product_currentPage ? 'var(--pxn-primary-contrast)' : 'var(--ink-2)', fontSize: '12px', cursor: item === '…' ? 'default' : 'pointer', fontWeight: item === product_currentPage ? 600 : 400, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }">
               {{ item }}
             </button>
           </div>
@@ -17444,7 +17444,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 /* Keep the search input's purple ring from the .pos-shell-search-input:focus rule below */
 .pos-codecanyon .pos-shell-search-input:focus {
-  box-shadow: 0 0 0 3px #f5f3fd !important;
+  box-shadow: 0 0 0 3px var(--accent-shadow) !important;
 }
 
 /* Base style for icon buttons — applied to both regular <button>s and to
@@ -17566,22 +17566,24 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .pos-codecanyon .pos-shell-pay-btn:hover:not(:disabled) {
-  filter: brightness(1.05);
-  box-shadow: 0 6px 18px rgba(111, 83, 217, 0.45) !important;
+  filter: brightness(1.04);
 }
 
 .pos-codecanyon .pos-shell-product-card:hover {
-  border-color: #6f53d9 !important;
-  box-shadow: 0 4px 12px rgba(20, 20, 40, 0.06);
+  border-color: var(--line-strong) !important;
+  background: var(--soft);
+}
+.pos-codecanyon .pos-shell-product-card:active {
+  border-color: var(--pxn-selected-border) !important;
 }
 
 .pos-codecanyon .pos-shell-cart-row:hover {
-  background: #f3f3f7;
+  background: var(--soft);
 }
 
 .pos-codecanyon .pos-shell-add-btn:hover:not(:disabled) {
-  background: #6f53d9 !important;
-  color: #ffffff !important;
+  background: var(--accent) !important;
+  color: var(--pxn-primary-contrast) !important;
 }
 .pos-codecanyon .pos-shell-add-btn:disabled {
   opacity: 0.4;
@@ -17589,16 +17591,16 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .pos-codecanyon .pos-shell-search-input:focus {
-  border-color: #6f53d9 !important;
-  box-shadow: 0 0 0 3px #f5f3fd;
+  border-color: var(--pxn-primary) !important;
+  box-shadow: 0 0 0 3px var(--accent-shadow);
 }
 .pos-codecanyon .pos-shell-search-input::placeholder {
-  color: #8d8da0;
+  color: var(--ink-3);
 }
 
 .pos-codecanyon .pos-shell-autocomplete-item:hover {
-  background: #f5f3fd;
-  color: #6f53d9;
+  background: var(--soft);
+  color: var(--ink);
 }
 
 /* Header v-select skin (deep into vue-select internals) */
