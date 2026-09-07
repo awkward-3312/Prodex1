@@ -40,6 +40,9 @@ class InventoryReportScope
 
     private bool $denied = false;
 
+    /** true = usuario con visión total del tenant y sin selector → sin filtrar. */
+    private bool $unscoped = false;
+
     private array $branchNameById;
 
     private array $warehouseBranchById;
@@ -56,50 +59,68 @@ class InventoryReportScope
         $allowedBranches = $branchScope->allowedBranchIds($user);
         $allowedWarehouses = $warehouseScope->allowedWarehouseIds($user);
         $isOwner = (int) $user->role_id === 1;
+        $seesWholeTenant = $isOwner || (int) $user->is_all_warehouses === 1;
+        $hasSelector = (bool) $branchId || (bool) $warehouseId;
+        $locTable = Schema::hasTable('inventory_locations');
 
-        // --- 1. Sucursales efectivas ---
-        if ($branchId) {
+        $allWarehouseIds = DB::table('warehouses')->whereNull('deleted_at')->pluck('id')->map('intval')->all();
+        $allLocationIds = $locTable
+            ? DB::table('inventory_locations')->whereNull('deleted_at')->pluck('id')->map('intval')->all()
+            : [];
+
+        // --- SIN selector + visión total del tenant → SIN filtrar ---------------
+        // Mismo criterio que SalesReportingScopeService::apply: no ocultar
+        // movimientos/stock por `warehouse_id`/`branch_id` NULL cuando el usuario
+        // puede ver todo. Incluye sucursales inactivas y almacenes sin sucursal.
+        if (! $hasSelector && $seesWholeTenant) {
+            $this->unscoped = true;
+            $this->branchIds = $this->allBranchIds();
+            $this->legacyWarehouseIds = $allWarehouseIds;
+            $this->locationIds = $allLocationIds;
+        } elseif ($branchId) {
             if (! $isOwner && ! in_array($branchId, $allowedBranches, true)) {
                 $this->denied = true;
             }
             $this->branchIds = [$branchId];
+            $branchWh = DB::table('warehouses')->whereNull('deleted_at')->where('branch_id', $branchId)
+                ->pluck('id')->map('intval')->all();
+            $this->legacyWarehouseIds = $isOwner ? $branchWh : array_values(array_intersect($branchWh, $allowedWarehouses));
+            $this->locationIds = $locTable
+                ? DB::table('inventory_locations')->whereNull('deleted_at')->where('branch_id', $branchId)
+                    ->pluck('id')->map('intval')->all()
+                : [];
         } elseif ($warehouseId) {
             $wBranch = (int) (DB::table('warehouses')->where('id', $warehouseId)->value('branch_id') ?: 0);
             if (! $isOwner && ! $warehouseScope->canAccess($user, $warehouseId)) {
                 $this->denied = true;
             }
             $this->branchIds = $wBranch ? [$wBranch] : [];
+            $this->legacyWarehouseIds = [$warehouseId];
+            $this->locationIds = $locTable
+                ? DB::table('inventory_locations')->whereNull('deleted_at')
+                    ->where(function ($q) use ($warehouseId, $wBranch) {
+                        $q->where('warehouse_id', $warehouseId);
+                        if ($wBranch) {
+                            $q->orWhere(fn ($qq) => $qq->where('branch_id', $wBranch)->whereNull('warehouse_id'));
+                        }
+                    })
+                    ->pluck('id')->map('intval')->all()
+                : [];
         } else {
-            $this->branchIds = $isOwner ? $this->allActiveBranchIds() : $allowedBranches;
+            // Usuario NO privilegiado, sin selector → su alcance asignado
+            // (almacenes DIRECTAMENTE asignados, no "almacenes de sus sucursales").
+            $this->branchIds = $allowedBranches;
+            $this->legacyWarehouseIds = $allowedWarehouses;
+            $this->locationIds = ($locTable && $allowedBranches)
+                ? DB::table('inventory_locations')->whereNull('deleted_at')->whereIn('branch_id', $allowedBranches)
+                    ->pluck('id')->map('intval')->all()
+                : [];
         }
 
-        // --- 2. Almacenes legacy de esas sucursales (acotados a lo permitido) ---
-        $branchWarehouses = DB::table('warehouses')
-            ->whereNull('deleted_at')
-            ->when($this->branchIds, fn ($q) => $q->whereIn('branch_id', $this->branchIds), fn ($q) => $q->whereRaw('1 = 0'))
-            ->pluck('id')->map('intval')->all();
+        $this->legacyWarehouseIds = array_values(array_unique(array_map('intval', $this->legacyWarehouseIds)));
+        $this->locationIds = array_values(array_unique(array_map('intval', $this->locationIds)));
 
-        if ($warehouseId) {
-            $branchWarehouses = array_values(array_intersect($branchWarehouses ?: [$warehouseId], [$warehouseId]));
-        }
-        if (! $isOwner) {
-            $branchWarehouses = array_values(array_intersect($branchWarehouses, $allowedWarehouses));
-        }
-        $this->legacyWarehouseIds = array_values(array_unique($branchWarehouses));
-
-        // --- 3. InventoryLocation modernas de esas sucursales ---
-        $this->locationIds = [];
-        if (Schema::hasTable('inventory_locations') && $this->branchIds) {
-            $this->locationIds = DB::table('inventory_locations')
-                ->whereNull('deleted_at')
-                ->whereIn('branch_id', $this->branchIds)
-                ->when($warehouseId, fn ($q) => $q->where(function ($qq) use ($warehouseId) {
-                    $qq->where('warehouse_id', $warehouseId)->orWhereNull('warehouse_id');
-                }))
-                ->pluck('id')->map('intval')->all();
-        }
-
-        // --- 4. Diccionarios de presentación ---
+        // --- Diccionarios de presentación ---
         $this->branchNameById = DB::table('branches')->pluck('name', 'id')->all();
         $whRows = DB::table('warehouses')->get(['id', 'name', 'branch_id']);
         $this->warehouseNameById = $whRows->pluck('name', 'id')->all();
@@ -115,6 +136,11 @@ class InventoryReportScope
     public function isDenied(): bool
     {
         return $this->denied;
+    }
+
+    public function isUnscoped(): bool
+    {
+        return $this->unscoped;
     }
 
     /** @return int[] */
@@ -149,6 +175,27 @@ class InventoryReportScope
         return $this->legacyWarehouseIds;
     }
 
+    /**
+     * Ubicaciones del alcance SIN almacén (`warehouse_id IS NULL`): su stock vive
+     * sólo en `inventory_location_stocks` y {@see InventoryReadService} (warehouse-
+     * keyed) no lo alcanza. El servicio suma este stock aparte para reconciliar
+     * — sin doble conteo, porque estas ubicaciones no mapean a ningún almacén.
+     *
+     * @return int[]
+     */
+    public function stockLocationIds(): array
+    {
+        $out = [];
+        foreach ($this->locationIds as $id) {
+            $l = $this->locationById[$id] ?? null;
+            if ($l && ($l->warehouse_id === null || (int) $l->warehouse_id === 0)) {
+                $out[] = $id;
+            }
+        }
+
+        return $out;
+    }
+
     public function hasModernLocations(): bool
     {
         return ! empty($this->locationIds);
@@ -163,6 +210,9 @@ class InventoryReportScope
     {
         if ($this->denied) {
             return $query->whereRaw('1 = 0');
+        }
+        if ($this->unscoped) {
+            return $query; // visión total del tenant → sin filtrar
         }
         $branchIds = $this->branchIds;
         $legacy = $this->legacyWarehouseIds;
@@ -194,6 +244,9 @@ class InventoryReportScope
         if ($this->denied) {
             return $query->whereRaw('1 = 0');
         }
+        if ($this->unscoped) {
+            return $query;
+        }
         $locations = $this->locationIds;
         $legacy = $this->legacyWarehouseIds;
 
@@ -218,6 +271,9 @@ class InventoryReportScope
     {
         if ($this->denied) {
             return false;
+        }
+        if ($this->unscoped) {
+            return $locationId !== null || $warehouseId !== null;
         }
         if ($locationId) {
             return in_array($locationId, $this->locationIds, true);
@@ -258,11 +314,9 @@ class InventoryReportScope
         return ['name' => null, 'basis' => 'none'];
     }
 
-    private function allActiveBranchIds(): array
+    /** TODAS las sucursales del tenant (incl. inactivas): la visión total no oculta historia. */
+    private function allBranchIds(): array
     {
-        return DB::table('branches')
-            ->whereNull('deleted_at')
-            ->when(Schema::hasColumn('branches', 'is_active'), fn ($q) => $q->where('is_active', true))
-            ->pluck('id')->map('intval')->all();
+        return DB::table('branches')->whereNull('deleted_at')->pluck('id')->map('intval')->all();
     }
 }

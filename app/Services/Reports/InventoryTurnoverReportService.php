@@ -95,10 +95,25 @@ class InventoryTurnoverReportService
         }
 
         // --- Existencia actual real (final) por producto ---
+        // InventoryReadService (warehouse-keyed) + stock de las InventoryLocation
+        // del alcance SIN almacén (no las alcanza), sin doble conteo.
         $stockByProduct = [];
-        foreach ($this->inventoryRead->totalsByProductVariant($productIds, $scope->stockWarehouseIds()) as $key => $qty) {
-            [$pid] = explode(':', $key);
-            $stockByProduct[(int) $pid] = ($stockByProduct[(int) $pid] ?? 0.0) + (float) $qty;
+        $whIds = $scope->stockWarehouseIds();
+        if ($whIds) {
+            foreach ($this->inventoryRead->totalsByProductVariant($productIds, $whIds) as $key => $qty) {
+                [$pid] = explode(':', $key);
+                $stockByProduct[(int) $pid] = ($stockByProduct[(int) $pid] ?? 0.0) + (float) $qty;
+            }
+        }
+        $locIds = $scope->stockLocationIds();
+        if ($locIds) {
+            foreach (DB::table('inventory_location_stocks')
+                ->whereIn('product_id', $productIds)
+                ->whereIn('inventory_location_id', $locIds)
+                ->selectRaw('product_id, SUM(quantity) q')
+                ->groupBy('product_id')->get() as $r) {
+                $stockByProduct[(int) $r->product_id] = ($stockByProduct[(int) $r->product_id] ?? 0.0) + (float) $r->q;
+            }
         }
 
         // --- Movimientos del período (branch-first) ---
@@ -212,20 +227,22 @@ class InventoryTurnoverReportService
 
     private function unitFactorResolver(): callable
     {
-        $val = Unit::pluck('operator_value', 'id')->all();
-        $op = Unit::pluck('operator', 'id')->all();
+        $units = [];
+        foreach (Unit::get(['id', 'operator', 'operator_value']) as $u) {
+            $units[(int) $u->id] = [$u->operator, (float) $u->operator_value];
+        }
 
-        return function ($qty, $unitId) use ($val, $op) {
+        return function ($qty, $unitId) use ($units) {
             $qty = (float) $qty;
-            if (! $unitId || ! isset($val[$unitId])) {
+            if (! $unitId || ! isset($units[$unitId])) {
                 return $qty;
             }
-            $factor = (float) ($val[$unitId] ?: 1);
-            if ($factor == 0.0) {
+            [$op, $factor] = $units[$unitId];
+            if (! $factor) {
                 return $qty;
             }
 
-            return ($op[$unitId] ?? '*') === '/' ? $qty / $factor : $qty * $factor;
+            return $op === '/' ? $qty / $factor : $qty * $factor;
         };
     }
 

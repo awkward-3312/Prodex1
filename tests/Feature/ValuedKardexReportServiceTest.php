@@ -313,6 +313,70 @@ class ValuedKardexReportServiceTest extends TestCase
         $this->assertTrue($r['reconciliation']['reconciled']);
     }
 
+    public function test_owner_without_a_selector_sees_the_whole_tenant_including_branchless_warehouses(): void
+    {
+        // Almacén legacy SIN sucursal + venta legacy con branch_id NULL apuntando a él.
+        $orphanWh = $this->warehouse('WH-Huérfano', null);
+        $p = $this->product('Legacy', 1.00);
+        $this->onHand($p, $orphanWh, 20);
+        $this->sale(['warehouse_id' => $orphanWh, 'branch_id' => null], '2026-01-10', [['product_id' => $p, 'qty' => 5]]);
+
+        // Owner, sin branch_id → unscoped → NO debe ocultar ese movimiento.
+        $r = $this->svc->build(['user' => $this->owner, 'product_id' => $p, 'branch_id' => 0, 'from' => null, 'to' => null]);
+
+        $this->assertTrue(collect($r['rows'])->contains('reference', collect($r['rows'])->firstWhere('movement_type', 'venta')['reference'] ?? '_none_'));
+        $this->assertSame(5.0, $r['summary']['out_qty']);
+        $this->assertTrue($r['reconciliation']['reconciled']);
+    }
+
+    public function test_missing_product_returns_an_empty_payload_not_an_exception(): void
+    {
+        $r = $this->svc->build(['user' => $this->owner, 'product_id' => 999999, 'branch_id' => $this->b1, 'from' => null, 'to' => null]);
+
+        $this->assertTrue($r['not_found']);
+        $this->assertSame([], $r['rows']);
+        $this->assertTrue($r['reconciliation']['reconciled']);
+    }
+
+    public function test_out_of_order_documents_flag_went_negative_without_clamping_value(): void
+    {
+        $p = $this->product('Retro', 1.00);
+        $this->onHand($p, $this->wh1, 3); // plug pequeño → la venta lo agota
+        // Venta el 05, compra retro-fechada el 10 (después): al procesar la venta
+        // el saldo intermedio baja de 0.
+        $this->sale($this->wh1, '2026-01-05', [['product_id' => $p, 'qty' => 8]], $this->b1);
+        $this->purchase($this->wh1, '2026-01-10', [['product_id' => $p, 'cost' => 2.0, 'qty' => 8]]);
+
+        $r = $this->build(['product_id' => $p]);
+
+        $this->assertTrue($r['quantity_quality']['went_negative']);
+        $this->assertNotSame('exact', $r['valuation_quality']['basis']); // nunca "exacta" con saldo negativo
+        // El saldo final sigue reconciliando con la existencia real (3).
+        $this->assertTrue($r['reconciliation']['reconciled']);
+        $this->assertSame(3.0, $r['reconciliation']['ledger_closing_qty']);
+    }
+
+    public function test_on_hand_includes_stock_in_a_branch_location_with_no_warehouse(): void
+    {
+        $loc = $this->location('Punto Norte (sin almacén)', $this->b2, null);
+        $p = $this->product('Móvil', 1.00);
+        // Stock moderno en una ubicación SIN almacén (InventoryReadService no la ve).
+        DB::table('inventory_location_stocks')->insert([
+            'inventory_location_id' => $loc, 'product_id' => $p, 'product_variant_id' => null,
+            'variant_key' => 0, 'quantity' => 15, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        // Una compra moderna a esa ubicación (12) para dar movimiento.
+        $this->purchase(['warehouse_id' => null, 'inventory_location_id' => $loc, 'statut' => 'received'],
+            '2026-01-04', [['product_id' => $p, 'cost' => 2.0, 'qty' => 12]]);
+
+        $r = $this->build(['product_id' => $p, 'branch_id' => $this->b2]);
+
+        // on_hand = 15 (location_stocks), no 0 → reconcilia (opening plug = 3).
+        $this->assertSame(15.0, $r['reconciliation']['stock_on_hand']);
+        $this->assertTrue($r['reconciliation']['reconciled']);
+        $this->assertSame(3.0, $r['summary']['opening_qty']);
+    }
+
     public function test_summary_totals_foot_with_the_ledger_when_a_date_filter_is_applied(): void
     {
         $r = $this->build(['from' => '2026-01-14', 'to' => '2026-01-31']);

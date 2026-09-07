@@ -71,7 +71,12 @@ class ValuedKardexReportService
         $user = $filters['user'];
         $scope = new InventoryReportScope($user, (int) ($filters['branch_id'] ?? 0) ?: null, (int) ($filters['warehouse_id'] ?? 0) ?: null);
 
-        $product = Product::whereNull('deleted_at')->findOrFail($productId);
+        // Producto inexistente / soft-deleted → payload vacío (no 404): la vista
+        // muestra el estado "Sin movimientos", igual que Rotación degrada.
+        $product = Product::whereNull('deleted_at')->find($productId);
+        if (! $product) {
+            return $this->notFoundPayload($productId, $scope);
+        }
         $variant = $variantId ? ProductVariant::whereNull('deleted_at')->find($variantId) : null;
 
         $decimals = helpers::price_decimals();
@@ -85,7 +90,7 @@ class ValuedKardexReportService
         });
 
         // --- 2. Existencia actual real (reconciliación) ---
-        $onHand = $scope->isDenied() ? 0.0 : $this->currentOnHand($productId, $variantId, $scope->stockWarehouseIds());
+        $onHand = $scope->isDenied() ? 0.0 : $this->currentOnHand($productId, $variantId, $scope);
 
         // --- 3. Costo de referencia del saldo inicial ---
         [$openingUnitCost, $openingCostBasis] = $this->openingUnitCost($movements, $product, $variant);
@@ -103,6 +108,7 @@ class ValuedKardexReportService
         $earliestDocDate = $movements[0]['date'] ?? null;
         $isReconstructed = abs($openingQty) > 0.0005;
         $usedWac = false;
+        $wentNegative = false;
 
         if ($isReconstructed || ! $movements) {
             $balQty = $openingQty;
@@ -158,8 +164,13 @@ class ValuedKardexReportService
                 $inQty = null;
                 $outQty = $m['out_qty'];
                 $moveValue = -$value;
-                if ($balQty < 0) {
-                    $balVal = 0.0;
+                if ($balQty < -0.0005) {
+                    // Documentos fuera de orden (salida antes de su compra
+                    // retro-fechada). NO se acota el valor: cantidad y valor
+                    // quedan negativos y consistentes, y se corrigen solos
+                    // cuando un documento posterior restaura la existencia.
+                    // El WAC ya cae a `openingUnitCost` mientras balQty <= 0.
+                    $wentNegative = true;
                 }
             }
 
@@ -225,11 +236,14 @@ class ValuedKardexReportService
         // --- 7. Calidad: CANTIDAD y VALORIZACIÓN por separado ---
         $valuationBasis = ($isReconstructed || $openingCostBasis === 'sin_historial')
             ? 'approximate'
-            : ($usedWac ? 'partially_reconstructed' : 'exact');
+            : (($usedWac || $wentNegative) ? 'partially_reconstructed' : 'exact');
 
         $qtyMessage = $reconciled
             ? 'Existencia reconciliada con el stock real del alcance seleccionado.'
             : 'La existencia del libro NO reconcilia: revisa movimientos anulados o registrados fuera del alcance.';
+        if ($wentNegative) {
+            $qtyMessage .= ' Aviso: hay documentos fuera de orden (una salida antes de su compra); el saldo intermedio quedó negativo.';
+        }
 
         $valMessage = match ($valuationBasis) {
             'exact' => 'Valorización exacta: todos los movimientos tienen costo documental.',
@@ -278,6 +292,7 @@ class ValuedKardexReportService
             'quantity_quality' => [
                 'reconciled' => $reconciled,
                 'reconstructed_opening' => $isReconstructed,
+                'went_negative' => $wentNegative,
                 'opening_qty' => $openingQty,
                 'difference' => round($finalQty - $onHand, 3),
                 'message' => $qtyMessage,
@@ -297,19 +312,21 @@ class ValuedKardexReportService
     /** @return list<array> */
     private function collectMovements(int $productId, ?int $variantId, InventoryReportScope $scope): array
     {
-        $units = Unit::pluck('operator_value', 'id')->all();
-        $unitOps = Unit::pluck('operator', 'id')->all();
-        $convert = function ($qty, $unitId) use ($units, $unitOps) {
+        $units = [];
+        foreach (Unit::get(['id', 'operator', 'operator_value']) as $u) {
+            $units[(int) $u->id] = [$u->operator, (float) $u->operator_value];
+        }
+        $convert = function ($qty, $unitId) use ($units) {
             $qty = (float) $qty;
             if (! $unitId || ! isset($units[$unitId])) {
                 return $qty;
             }
-            $val = (float) ($units[$unitId] ?: 1);
-            if ($val == 0.0) {
+            [$op, $val] = $units[$unitId];
+            if (! $val) {
                 return $qty;
             }
 
-            return ($unitOps[$unitId] ?? '*') === '/' ? $qty / $val : $qty * $val;
+            return $op === '/' ? $qty / $val : $qty * $val;
         };
 
         $vWhere = fn ($q) => $variantId ? $q->where('d.product_variant_id', $variantId) : $q;
@@ -419,23 +436,38 @@ class ValuedKardexReportService
         return $out;
     }
 
-    private function currentOnHand(int $productId, ?int $variantId, array $warehouseIds): float
+    /**
+     * Existencia actual real del alcance = `InventoryReadService` (warehouse-keyed,
+     * legacy XOR moderno por almacén) + el stock de las InventoryLocation del
+     * alcance SIN almacén, que el servicio warehouse-keyed no puede ver. No hay
+     * doble conteo: esas ubicaciones no mapean a ningún almacén.
+     */
+    private function currentOnHand(int $productId, ?int $variantId, InventoryReportScope $scope): float
     {
-        if (! $warehouseIds) {
-            return 0.0;
-        }
-        $totals = $this->inventoryRead->totalsByProductVariant([$productId], $warehouseIds);
-        if ($variantId) {
-            return (float) ($totals[$productId.':'.$variantId] ?? 0.0);
-        }
+        $warehouseIds = $scope->stockWarehouseIds();
         $sum = 0.0;
-        foreach ($totals as $key => $qty) {
-            if (str_starts_with($key, $productId.':')) {
-                $sum += (float) $qty;
+
+        if ($warehouseIds) {
+            $totals = $this->inventoryRead->totalsByProductVariant([$productId], $warehouseIds);
+            foreach ($totals as $key => $qty) {
+                if ($variantId ? $key === $productId.':'.$variantId : str_starts_with($key, $productId.':')) {
+                    $sum += (float) $qty;
+                }
             }
         }
 
-        return $sum;
+        $locIds = $scope->stockLocationIds();
+        if ($locIds) {
+            $q = DB::table('inventory_location_stocks')
+                ->where('product_id', $productId)
+                ->whereIn('inventory_location_id', $locIds);
+            if ($variantId) {
+                $q->where('product_variant_id', $variantId);
+            }
+            $sum += (float) $q->sum('quantity');
+        }
+
+        return round($sum, 3);
     }
 
     /** @return array{0: float, 1: string} */
@@ -449,6 +481,30 @@ class ValuedKardexReportService
         $ref = $variant ? (float) $variant->cost : (float) $product->cost;
 
         return [$ref, 'sin_historial'];
+    }
+
+    /** Producto inexistente: payload vacío coherente (HTTP 200), no una excepción. */
+    private function notFoundPayload(int $productId, InventoryReportScope $scope): array
+    {
+        return [
+            'product' => ['id' => $productId, 'code' => null, 'name' => null, 'variant_id' => null, 'variant_name' => null, 'unit' => ''],
+            'scope' => [
+                'branch_ids' => $scope->branchIds(),
+                'legacy_warehouse_ids' => $scope->legacyWarehouseIds(),
+                'has_modern_locations' => $scope->hasModernLocations(),
+                'denied' => $scope->isDenied(),
+            ],
+            'rows' => [],
+            'summary' => [
+                'opening_qty' => 0.0, 'opening_value' => 0.0, 'in_qty' => 0.0, 'out_qty' => 0.0,
+                'in_value' => 0.0, 'out_value' => 0.0, 'closing_qty' => 0.0, 'closing_value' => 0.0,
+                'closing_avg_cost' => 0.0, 'ledger_closing_qty' => 0.0, 'ledger_closing_value' => 0.0,
+            ],
+            'reconciliation' => ['reconciled' => true, 'ledger_closing_qty' => 0.0, 'stock_on_hand' => 0.0, 'difference' => 0.0],
+            'quantity_quality' => ['reconciled' => true, 'reconstructed_opening' => false, 'went_negative' => false, 'opening_qty' => 0.0, 'difference' => 0.0, 'message' => 'El producto no existe o fue eliminado.'],
+            'valuation_quality' => ['basis' => 'exact', 'historical_document_cost' => true, 'reconstructed_wac' => false, 'reference_cost' => false, 'exact_from' => null, 'reconstructed_before' => null, 'message' => ''],
+            'not_found' => true,
+        ];
     }
 
     private function syntheticRow(string $kind, string $label, float $balQty, float $balVal, float $unitCost, string $costBasis, bool $reconstructed): array

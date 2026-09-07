@@ -73,7 +73,7 @@
         <template v-else>
           <px-alert
             v-if="quantityQuality"
-            :tone="quantityQuality.reconciled ? 'info' : 'warning'"
+            :tone="(quantityQuality.reconciled && !quantityQuality.went_negative) ? 'info' : 'warning'"
             :title="quantityQuality.reconciled ? 'Existencia reconciliada' : 'La existencia NO reconcilia'"
             class="pxvk__alert"
           >
