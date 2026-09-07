@@ -3,41 +3,42 @@
 namespace App\Services\Reports;
 
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\InventoryReadService;
-use App\utils\helpers;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Rotación de inventario — reporte OPERATIVO por producto.
+ * Rotación de inventario — reporte OPERATIVO por producto (sólo unidades).
  *
- * MÉTRICA PRIMARIA (unidades), documentada:
  *   rotación = unidades vendidas netas del período / inventario promedio (unid.)
  *   inventario promedio = (stock_inicial + stock_final) / 2
- *   stock_final  = existencia actual real ({@see InventoryReadService})
- *   stock_inicial = stock_final − (Σ entradas − Σ salidas del período)
- *                   reconstruido desde los DOCUMENTOS reales del período
+ *   stock_final   = existencia actual real ({@see InventoryReadService})
+ *   stock_inicial = stock_final − (Σ entradas − Σ salidas del período),
+ *                   reconstruido de los DOCUMENTOS reales del período
  *   días de inventario = días del período / rotación   (sólo si rotación > 0)
  *
- * MÉTRICA FINANCIERA (secundaria, columnas aparte, NUNCA mezclada con la
- * operativa): rotación financiera ≈ costo de ventas / inventario promedio
- * valorizado, con costo unitario = WAC de compras del producto (o products.cost
- * marcado `sin_historial` si no hay compras). Se rotula "aprox. WAC".
+ * NO se ofrece rotación financiera: PRODEX no conserva COGS histórico por
+ * venta/ajuste/daño y el WAC de compras no puede acotarse de forma fiable al
+ * período/sucursal, así que una cifra financiera aquí sería contablemente
+ * ambigua. Para análisis de costo, usar los reportes contables canónicos.
  *
- * CASOS SIN DATO — se devuelven como null (la UI muestra "N/A / datos
- * insuficientes"); NUNCA infinito, 0 engañoso ni valores fabricados:
+ * ALCANCE branch-first / legacy-fallback: ver {@see InventoryReportScope}.
+ * Ventas / dev. de venta → `branch_id`; compras / dev. compra / ajustes / daños
+ * / traslados → `inventory_location_id`; `warehouse_id` sólo como fallback legacy.
+ *
+ * CASOS SIN DATO → null (UI: "N/A"); nunca infinito, 0 engañoso ni fabricado:
  *   · inventario promedio = 0
  *   · sin ventas en el período
  *   · stock_inicial reconstruido < 0 (historial documental insuficiente)
  */
 class InventoryTurnoverReportService
 {
-    /** Umbrales de clasificación (días de inventario). Explícitos y documentados. */
     public const FAST_MAX_DAYS = 30;
 
     public const MEDIUM_MAX_DAYS = 90;
 
-    /** Cota de productos evaluados por corrida (ordenación por métrica derivada). */
+    /** Cota de productos evaluados por corrida (orden por métrica derivada). */
     public const MAX_PRODUCTS = 5000;
 
     public function __construct(private InventoryReadService $inventoryRead)
@@ -45,13 +46,16 @@ class InventoryTurnoverReportService
     }
 
     /**
-     * @param  array  $filters  warehouse_ids (int[]), from (Y-m-d), to (Y-m-d),
-     *                           category_id (int|0), search (string), page, limit,
-     *                           sort_field, sort_dir
+     * @param  array  $filters  user (App\Models\User), branch_id (int|0),
+     *                           warehouse_id (int|0), from, to, category_id,
+     *                           search, page, limit, sort_field, sort_dir
      */
     public function build(array $filters): array
     {
-        $warehouseIds = array_values(array_unique(array_map('intval', $filters['warehouse_ids'] ?? [])));
+        /** @var User $user */
+        $user = $filters['user'];
+        $scope = new InventoryReportScope($user, (int) ($filters['branch_id'] ?? 0) ?: null, (int) ($filters['warehouse_id'] ?? 0) ?: null);
+
         $from = $filters['from'] ?? Carbon::now()->subDays(90)->toDateString();
         $to = $filters['to'] ?? Carbon::now()->toDateString();
         $categoryId = (int) ($filters['category_id'] ?? 0);
@@ -62,13 +66,11 @@ class InventoryTurnoverReportService
         $sortDir = strtolower((string) ($filters['sort_dir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
 
         $periodDays = (int) max(1, Carbon::parse($from)->diffInDays(Carbon::parse($to)) + 1);
-        $decimals = helpers::price_decimals();
 
-        if (! $warehouseIds) {
+        if ($scope->isDenied()) {
             return $this->emptyResult($from, $to, $periodDays);
         }
 
-        // --- Universo de productos en alcance ---
         $productsQuery = DB::table('products as p')
             ->whereNull('p.deleted_at')
             ->where('p.type', '!=', 'is_service')
@@ -79,53 +81,41 @@ class InventoryTurnoverReportService
             ->leftJoin('categories as c', 'c.id', '=', 'p.category_id');
 
         $matched = (clone $productsQuery)->count('p.id');
-
-        // La rotación se ordena por métricas DERIVADAS (no columnas SQL), así que
-        // hay que traer y calcular todo el universo filtrado antes de paginar en
-        // PHP. Cota de seguridad para catálogos gigantes: se acota a los primeros
-        // MAX_PRODUCTS por nombre (el usuario acota más con categoría / búsqueda).
-        // `totalRows` refleja las filas realmente evaluadas — si se aplicó la
-        // cota, `meta.capped` lo avisa y la paginación no muestra páginas
-        // fantasma más allá de lo calculado.
         $capped = $matched > self::MAX_PRODUCTS;
         $totalRows = $capped ? self::MAX_PRODUCTS : $matched;
 
         $products = $productsQuery
             ->orderBy('p.name')
             ->limit(self::MAX_PRODUCTS)
-            ->get(['p.id', 'p.code', 'p.name', 'p.cost', 'p.category_id', 'c.name as category_name']);
+            ->get(['p.id', 'p.code', 'p.name', 'p.category_id', 'c.name as category_name']);
 
         $productIds = $products->pluck('id')->map('intval')->all();
         if (! $productIds) {
             return $this->emptyResult($from, $to, $periodDays);
         }
 
-        // --- Existencia actual real (final), por producto ---
+        // --- Existencia actual real (final) por producto ---
         $stockByProduct = [];
-        foreach ($this->inventoryRead->totalsByProductVariant($productIds, $warehouseIds) as $key => $qty) {
+        foreach ($this->inventoryRead->totalsByProductVariant($productIds, $scope->stockWarehouseIds()) as $key => $qty) {
             [$pid] = explode(':', $key);
             $stockByProduct[(int) $pid] = ($stockByProduct[(int) $pid] ?? 0.0) + (float) $qty;
         }
 
-        // --- Movimientos del período (para reconstruir stock_inicial y ventas) ---
-        $unitFactor = $this->unitFactorResolver();
+        // --- Movimientos del período (branch-first) ---
+        $factor = $this->unitFactorResolver();
 
-        $salesUnits = $this->periodQty('sale_details', 'sales', 'sale_id', 'sale_unit_id', $productIds, $warehouseIds, $from, $to, $unitFactor);
-        $saleReturnUnits = $this->periodQty('sale_return_details', 'sale_returns', 'sale_return_id', 'sale_unit_id', $productIds, $warehouseIds, $from, $to, $unitFactor);
-        $purchaseUnits = $this->periodQty('purchase_details', 'purchases', 'purchase_id', 'purchase_unit_id', $productIds, $warehouseIds, $from, $to, $unitFactor);
-        $purchaseReturnUnits = $this->periodQty('purchase_return_details', 'purchase_returns', 'purchase_return_id', 'purchase_unit_id', $productIds, $warehouseIds, $from, $to, $unitFactor);
-        $damageUnits = $this->periodQty('damage_details', 'damages', 'damage_id', null, $productIds, $warehouseIds, $from, $to, $unitFactor);
-        [$adjAdd, $adjSub] = $this->periodAdjustments($productIds, $warehouseIds, $from, $to);
-        [$transferIn, $transferOut] = $this->periodTransfers($productIds, $warehouseIds, $from, $to, $unitFactor);
-
-        // --- WAC de compras por producto (para métrica financiera) ---
-        $wacByProduct = $this->purchaseWac($productIds);
+        $salesUnits = $this->periodQtyBranch('sale_details', 'sales', 'sale_id', 'sale_unit_id', 'completed', $productIds, $scope, $from, $to, $factor);
+        $saleReturnUnits = $this->periodQtyBranch('sale_return_details', 'sale_returns', 'sale_return_id', 'sale_unit_id', null, $productIds, $scope, $from, $to, $factor);
+        $purchaseUnits = $this->periodQtyLocation('purchase_details', 'purchases', 'purchase_id', 'purchase_unit_id', 'received', $productIds, $scope, $from, $to, $factor);
+        $purchaseReturnUnits = $this->periodQtyLocation('purchase_return_details', 'purchase_returns', 'purchase_return_id', 'purchase_unit_id', null, $productIds, $scope, $from, $to, $factor);
+        $damageUnits = $this->periodQtyLocation('damage_details', 'damages', 'damage_id', null, null, $productIds, $scope, $from, $to, $factor);
+        [$adjAdd, $adjSub] = $this->periodAdjustments($productIds, $scope, $from, $to);
+        [$transferIn, $transferOut] = $this->periodTransfers($productIds, $scope, $from, $to, $factor);
 
         $rows = [];
         foreach ($products as $p) {
             $pid = (int) $p->id;
             $stockFinal = round($stockByProduct[$pid] ?? 0.0, 3);
-
             $unitsSold = round(($salesUnits[$pid] ?? 0.0) - ($saleReturnUnits[$pid] ?? 0.0), 3);
 
             $netInPeriod = round(
@@ -142,7 +132,6 @@ class InventoryTurnoverReportService
             );
 
             $stockInitial = round($stockFinal - $netInPeriod, 3);
-
             $insufficient = $stockInitial < -0.0005;
             $avgStock = $insufficient ? null : round(($stockInitial + $stockFinal) / 2, 3);
 
@@ -168,15 +157,6 @@ class InventoryTurnoverReportService
                 }
             }
 
-            // --- Financiera (secundaria) ---
-            [$unitCost, $costBasis] = $wacByProduct[$pid] ?? [(float) $p->cost, 'sin_historial'];
-            $cogs = $unitsSold > 0 ? round($unitsSold * $unitCost, $decimals) : 0.0;
-            $avgStockValue = $avgStock !== null ? round($avgStock * $unitCost, $decimals) : null;
-            $turnoverFin = ($avgStockValue !== null && $avgStockValue > 0.0005 && $cogs > 0)
-                ? round($cogs / $avgStockValue, 4)
-                : null;
-            $daysInventoryFin = ($turnoverFin !== null && $turnoverFin > 0) ? round($periodDays / $turnoverFin, 1) : null;
-
             $rows[] = [
                 'product_id' => $pid,
                 'code' => $p->code,
@@ -190,18 +170,9 @@ class InventoryTurnoverReportService
                 'days_inventory' => $daysInventory,
                 'classification' => $classification,
                 'reason' => $reason,
-                'financial' => [
-                    'unit_cost' => round($unitCost, $decimals),
-                    'cost_basis' => $costBasis,
-                    'cogs' => $cogs,
-                    'avg_stock_value' => $avgStockValue,
-                    'turnover' => $turnoverFin,
-                    'days_inventory' => $daysInventoryFin,
-                ],
             ];
         }
 
-        // --- Orden + paginación en PHP (métricas derivadas, nulls al final) ---
         usort($rows, function ($a, $b) use ($sortField, $sortDir) {
             $va = $a[$sortField] ?? null;
             $vb = $b[$sortField] ?? null;
@@ -231,9 +202,10 @@ class InventoryTurnoverReportService
                 'capped' => $capped,
                 'max_products' => self::MAX_PRODUCTS,
                 'matched_products' => $matched,
+                'branch_ids' => $scope->branchIds(),
+                'has_modern_locations' => $scope->hasModernLocations(),
                 'formula' => 'rotación = unidades vendidas netas / inventario promedio (unidades). inventario promedio = (stock_inicial + stock_final) / 2. días de inventario = días del período / rotación.',
                 'thresholds' => ['alta_max_dias' => self::FAST_MAX_DAYS, 'media_max_dias' => self::MEDIUM_MAX_DAYS],
-                'financial_note' => 'La rotación financiera usa costo unitario WAC de compras (o products.cost si el producto no tiene compras registradas, marcado "sin historial"). Es una aproximación y NO debe compararse con la rotación operativa en unidades.',
             ],
         ];
     }
@@ -257,24 +229,34 @@ class InventoryTurnoverReportService
         };
     }
 
-    /**
-     * Σ cantidad (unidad base) por producto para un par detalle/cabecera en el
-     * período y alcance dados. `$unitCol` null → cantidad ya en unidad base.
-     *
-     * @return array<int,float>
-     */
-    private function periodQty(string $detailTable, string $headerTable, string $fkCol, ?string $unitCol, array $productIds, array $warehouseIds, string $from, string $to, callable $factor): array
+    /** Σ cantidad (unidad base) por producto — fuente con `branch_id`. @return array<int,float> */
+    private function periodQtyBranch(string $detail, string $header, string $fk, ?string $unitCol, ?string $statut, array $productIds, InventoryReportScope $scope, string $from, string $to, callable $factor): array
     {
-        $rows = DB::table($detailTable.' as d')
-            ->join($headerTable.' as h', 'h.id', '=', 'd.'.$fkCol)
+        $q = DB::table($detail.' as d')->join($header.' as h', 'h.id', '=', 'd.'.$fk)
             ->whereNull('h.deleted_at')
-            ->when($headerTable === 'sales', fn ($q) => $q->where('h.statut', 'completed'))
-            ->when($headerTable === 'purchases', fn ($q) => $q->where('h.statut', 'received'))
+            ->when($statut, fn ($qq) => $qq->where('h.statut', $statut))
             ->whereIn('d.product_id', $productIds)
-            ->whereIn('h.warehouse_id', $warehouseIds)
-            ->whereBetween('h.date', [$from, $to])
-            ->get(array_filter(['d.product_id', 'd.quantity', $unitCol ? 'd.'.$unitCol : null]));
+            ->whereBetween('h.date', [$from, $to]);
+        $scope->applyBranchScope($q, 'h');
 
+        return $this->sumByProduct($q->get(array_values(array_filter(['d.product_id', 'd.quantity', $unitCol ? 'd.'.$unitCol : null]))), $unitCol, $factor);
+    }
+
+    /** Σ cantidad (unidad base) por producto — fuente con `inventory_location_id`. @return array<int,float> */
+    private function periodQtyLocation(string $detail, string $header, string $fk, ?string $unitCol, ?string $statut, array $productIds, InventoryReportScope $scope, string $from, string $to, callable $factor): array
+    {
+        $q = DB::table($detail.' as d')->join($header.' as h', 'h.id', '=', 'd.'.$fk)
+            ->whereNull('h.deleted_at')
+            ->when($statut, fn ($qq) => $qq->where('h.statut', $statut))
+            ->whereIn('d.product_id', $productIds)
+            ->whereBetween('h.date', [$from, $to]);
+        $scope->applyLocationScope($q, 'h');
+
+        return $this->sumByProduct($q->get(array_values(array_filter(['d.product_id', 'd.quantity', $unitCol ? 'd.'.$unitCol : null]))), $unitCol, $factor);
+    }
+
+    private function sumByProduct($rows, ?string $unitCol, callable $factor): array
+    {
         $out = [];
         foreach ($rows as $r) {
             $pid = (int) $r->product_id;
@@ -286,19 +268,17 @@ class InventoryTurnoverReportService
     }
 
     /** @return array{0: array<int,float>, 1: array<int,float>} [add, sub] */
-    private function periodAdjustments(array $productIds, array $warehouseIds, string $from, string $to): array
+    private function periodAdjustments(array $productIds, InventoryReportScope $scope, string $from, string $to): array
     {
-        $rows = DB::table('adjustment_details as d')
-            ->join('adjustments as h', 'h.id', '=', 'd.adjustment_id')
+        $q = DB::table('adjustment_details as d')->join('adjustments as h', 'h.id', '=', 'd.adjustment_id')
             ->whereNull('h.deleted_at')
             ->whereIn('d.product_id', $productIds)
-            ->whereIn('h.warehouse_id', $warehouseIds)
-            ->whereBetween('h.date', [$from, $to])
-            ->get(['d.product_id', 'd.quantity', 'd.type']);
+            ->whereBetween('h.date', [$from, $to]);
+        $scope->applyLocationScope($q, 'h');
 
         $add = [];
         $sub = [];
-        foreach ($rows as $r) {
+        foreach ($q->get(['d.product_id', 'd.quantity', 'd.type']) as $r) {
             $pid = (int) $r->product_id;
             if (strtolower((string) $r->type) === 'add') {
                 $add[$pid] = ($add[$pid] ?? 0.0) + (float) $r->quantity;
@@ -311,25 +291,24 @@ class InventoryTurnoverReportService
     }
 
     /** @return array{0: array<int,float>, 1: array<int,float>} [in, out] */
-    private function periodTransfers(array $productIds, array $warehouseIds, string $from, string $to, callable $factor): array
+    private function periodTransfers(array $productIds, InventoryReportScope $scope, string $from, string $to, callable $factor): array
     {
-        $rows = DB::table('transfer_details as d')
-            ->join('transfers as h', 'h.id', '=', 'd.transfer_id')
+        $rows = DB::table('transfer_details as d')->join('transfers as h', 'h.id', '=', 'd.transfer_id')
             ->whereNull('h.deleted_at')
             ->whereIn('d.product_id', $productIds)
             ->whereBetween('h.date', [$from, $to])
-            ->where(fn ($q) => $q->whereIn('h.from_warehouse_id', $warehouseIds)->orWhereIn('h.to_warehouse_id', $warehouseIds))
-            ->get(['d.product_id', 'd.quantity', 'd.purchase_unit_id', 'h.from_warehouse_id', 'h.to_warehouse_id']);
+            ->get(['d.product_id', 'd.quantity', 'd.purchase_unit_id',
+                'h.from_warehouse_id', 'h.to_warehouse_id', 'h.from_inventory_location_id', 'h.to_inventory_location_id']);
 
         $in = [];
         $out = [];
         foreach ($rows as $r) {
             $pid = (int) $r->product_id;
             $qty = $factor($r->quantity, $r->purchase_unit_id);
-            if (in_array((int) $r->from_warehouse_id, $warehouseIds, true)) {
+            if ($scope->rowInScope(((int) ($r->from_inventory_location_id ?? 0)) ?: null, ((int) ($r->from_warehouse_id ?? 0)) ?: null)) {
                 $out[$pid] = ($out[$pid] ?? 0.0) + $qty;
             }
-            if (in_array((int) $r->to_warehouse_id, $warehouseIds, true)) {
+            if ($scope->rowInScope(((int) ($r->to_inventory_location_id ?? 0)) ?: null, ((int) ($r->to_warehouse_id ?? 0)) ?: null)) {
                 $in[$pid] = ($in[$pid] ?? 0.0) + $qty;
             }
         }
@@ -337,40 +316,12 @@ class InventoryTurnoverReportService
         return [$in, $out];
     }
 
-    /**
-     * WAC de compras por producto: Σ(cost*qty) / Σ(qty) sobre TODA la historia
-     * de compras. `sin_historial` cuando el producto no tiene compras.
-     *
-     * @return array<int,array{0: float, 1: string}>
-     */
-    private function purchaseWac(array $productIds): array
-    {
-        $rows = DB::table('purchase_details as d')
-            ->join('purchases as h', 'h.id', '=', 'd.purchase_id')
-            ->whereNull('h.deleted_at')
-            ->where('h.statut', 'received')
-            ->whereIn('d.product_id', $productIds)
-            ->selectRaw('d.product_id, SUM(d.cost * d.quantity) as val, SUM(d.quantity) as qty')
-            ->groupBy('d.product_id')
-            ->get();
-
-        $out = [];
-        foreach ($rows as $r) {
-            $qty = (float) $r->qty;
-            if ($qty > 0.0005) {
-                $out[(int) $r->product_id] = [(float) $r->val / $qty, 'wac'];
-            }
-        }
-
-        return $out;
-    }
-
     private function emptyResult(string $from, string $to, int $periodDays): array
     {
         return [
             'rows' => [],
             'totalRows' => 0,
-            'meta' => ['from' => $from, 'to' => $to, 'period_days' => $periodDays],
+            'meta' => ['from' => $from, 'to' => $to, 'period_days' => $periodDays, 'capped' => false, 'matched_products' => 0],
         ];
     }
 }

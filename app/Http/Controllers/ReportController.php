@@ -9719,58 +9719,18 @@ public function draftInvoices(Request $request)
     // App\Services\Reports\* (documentada allí).
     // ==================================================================
 
-    /** IDs de almacén visibles para el usuario, opcionalmente acotados a una sucursal. */
-    private function inventoryReportWarehouseScope(Request $request): array
+    /**
+     * Selectores de sucursal / almacén / categoría para los reportes de
+     * inventario. Sucursales y almacenes salen de los servicios de alcance
+     * canónicos (Owner ve todo; el resto sólo lo asignado). El alcance real de
+     * los datos lo resuelve InventoryReportScope dentro de cada servicio.
+     */
+    private function inventoryReportFilterOptions(\App\Models\User $user): array
     {
-        $user = $request->user('api') ?: Auth::user();
-
-        if ($user->is_all_warehouses) {
-            $allowed = Warehouse::whereNull('deleted_at')->pluck('id')->map('intval')->all();
-        } else {
-            $allowed = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->map('intval')->all();
-        }
-
-        $warehouseId = (int) $request->input('warehouse_id', 0);
-        if ($warehouseId) {
-            $allowed = array_values(array_intersect($allowed, [$warehouseId]));
-        }
-
-        $branchId = (int) $request->input('branch_id', 0);
-        if ($branchId) {
-            $branchWarehouses = Warehouse::whereNull('deleted_at')
-                ->where('branch_id', $branchId)
-                ->pluck('id')->map('intval')->all();
-
-            if (Schema::hasTable('inventory_locations')) {
-                $locWarehouses = DB::table('inventory_locations')
-                    ->whereNull('deleted_at')
-                    ->where('branch_id', $branchId)
-                    ->whereNotNull('warehouse_id')
-                    ->pluck('warehouse_id')->map('intval')->all();
-                $branchWarehouses = array_values(array_unique(array_merge($branchWarehouses, $locWarehouses)));
-            }
-
-            $allowed = array_values(array_intersect($allowed, $branchWarehouses));
-        }
-
-        return array_values(array_unique($allowed));
-    }
-
-    /** Sucursales + almacenes para los selects de los reportes de inventario. */
-    private function inventoryReportFilterOptions(array $warehouseIds): array
-    {
-        $warehouses = Warehouse::whereNull('deleted_at')
-            ->whereIn('id', $warehouseIds ?: [0])
-            ->get(['id', 'name', 'branch_id']);
-
-        $branchIds = $warehouses->pluck('branch_id')->filter()->unique()->values();
-        $branches = Branch::whereNull('deleted_at')
-            ->whereIn('id', $branchIds->all() ?: [0])
-            ->get(['id', 'name']);
-
         return [
-            'warehouses' => $warehouses,
-            'branches' => $branches,
+            'branches' => app(\App\Services\SalesReportingScopeService::class)->branchesFor($user),
+            'warehouses' => app(\App\Services\WarehouseScopeService::class)->visibleWarehouses($user)
+                ->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'branch_id' => $w->branch_id]),
             'categories' => Category::whereNull('deleted_at')->orderBy('name')->get(['id', 'name']),
         ];
     }
@@ -9778,9 +9738,8 @@ public function draftInvoices(Request $request)
     public function valued_kardex(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'valued_kardex_report', Product::class);
-
-        $warehouseIds = $this->inventoryReportWarehouseScope($request);
-        $options = $this->inventoryReportFilterOptions($warehouseIds);
+        $user = $request->user('api') ?: Auth::user();
+        $options = $this->inventoryReportFilterOptions($user);
 
         $productId = (int) $request->input('product_id', 0);
 
@@ -9805,10 +9764,11 @@ public function draftInvoices(Request $request)
         }
 
         $report = app(\App\Services\Reports\ValuedKardexReportService::class)->build([
+            'user' => $user,
             'product_id' => $productId,
             'product_variant_id' => $request->input('product_variant_id'),
-            'warehouse_ids' => $warehouseIds,
             'branch_id' => (int) $request->input('branch_id', 0),
+            'warehouse_id' => (int) $request->input('warehouse_id', 0),
             'from' => $request->input('from') ?: null,
             'to' => $request->input('to') ?: null,
         ]);
@@ -9823,12 +9783,13 @@ public function draftInvoices(Request $request)
     public function inventory_turnover(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'inventory_turnover_report', Product::class);
-
-        $warehouseIds = $this->inventoryReportWarehouseScope($request);
-        $options = $this->inventoryReportFilterOptions($warehouseIds);
+        $user = $request->user('api') ?: Auth::user();
+        $options = $this->inventoryReportFilterOptions($user);
 
         $report = app(\App\Services\Reports\InventoryTurnoverReportService::class)->build([
-            'warehouse_ids' => $warehouseIds,
+            'user' => $user,
+            'branch_id' => (int) $request->input('branch_id', 0),
+            'warehouse_id' => (int) $request->input('warehouse_id', 0),
             'from' => $request->input('from') ?: null,
             'to' => $request->input('to') ?: null,
             'category_id' => (int) $request->input('category_id', 0),

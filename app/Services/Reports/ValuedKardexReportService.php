@@ -5,6 +5,7 @@ namespace App\Services\Reports;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\InventoryReadService;
 use App\utils\helpers;
 use Illuminate\Support\Facades\DB;
@@ -13,38 +14,37 @@ use Illuminate\Support\Facades\DB;
  * Kardex valorizado — libro de movimientos de inventario por producto con saldo
  * de unidades y saldo valorizado corridos.
  *
- * ARQUITECTURA DE DATOS (auditada 2026-09-07)
+ * ALCANCE branch-first / legacy-fallback
  * ------------------------------------------------------------------------------
- * Los movimientos se reconstruyen desde los DOCUMENTOS reales (compras, ventas,
- * devoluciones, ajustes, traslados, daños). `inventory_location_movements` es
- * una proyección derivada de esos mismos documentos (hoy vacía en varios
- * tenants) — usar los documentos evita doble conteo y funciona igual en tenants
- * legacy y modernos. La existencia ACTUAL (para reconciliar) viene de
- * {@see InventoryReadService} que ya resuelve modern-first / legacy-fallback por
- * almacén sin sumar las dos fuentes.
+ * Cada fuente se filtra por la MISMA regla que {@see \App\Services\SalesReportingScopeService}
+ * (ver {@see InventoryReportScope}):
+ *   · ventas / dev. de venta        → `branch_id` (moderno) | `warehouse_id` (legacy)
+ *   · compras / dev. compra /
+ *     ajustes / daños / traslados   → `inventory_location_id` (moderno) | `warehouse_id` (legacy)
+ * `warehouse_id` nunca es la fuente primaria de un registro moderno, así que las
+ * ventas POS modernas (`branch_id != NULL`, `warehouse_id NULL`) SÍ aparecen.
  *
- * COSTO — LIMITACIÓN CONOCIDA
+ * COSTO
  * ------------------------------------------------------------------------------
- * PRODEX SÓLO persiste costo unitario histórico en los documentos de ENTRADA:
- *   · purchase_details.cost
- *   · purchase_return_details.cost
- *   · transfer_details.cost
- * NO existe COGS histórico en sale_details / adjustment_details / damage_details.
- * Por tanto el costo de las SALIDAS (y de entradas sin costo documental: ajuste
- * positivo, devolución de venta) se valora con COSTO PROMEDIO PONDERADO (WAC)
- * corrido, reconstruido cronológicamente desde los costos documentales reales.
- * NUNCA se usa `products.cost` actual para revalorizar un movimiento histórico;
- * `products.cost` sólo interviene como "costo de referencia" del saldo inicial
- * reconstruido de un producto sin ninguna compra registrada, y queda marcado
- * como tal (`cost_basis = 'sin_historial'`).
+ * Entradas con costo documental real → ese costo:
+ *   · compras                 `purchase_details.cost`
+ *   · traslado de entrada     costo del traslado pareado (WAC del origen si su
+ *                             pierna de salida está en el mismo libro; si no,
+ *                             `transfer_details.cost`)
+ * Salidas con costo documental real → ese costo:
+ *   · devolución a proveedor  `purchase_return_details.cost`
+ * El resto (ventas, dev. de venta, ajustes, daños, traslado de salida) se valora
+ * con COSTO PROMEDIO PONDERADO (WAC) corrido reconstruido de los costos
+ * documentales reales. NUNCA `products.cost` actual para revalorizar historia;
+ * `products.cost` sólo participa como "costo de referencia" del saldo inicial
+ * reconstruido de un producto sin compras (marcado `sin_historial`).
  *
  * SALDO INICIAL RECONSTRUIDO
  * ------------------------------------------------------------------------------
- * Cuando la existencia actual no se explica sólo con los documentos registrados
- * (típico en catálogos migrados desde product_warehouse), la diferencia se emite
- * como una primera fila explícita `opening` (`is_reconstructed = true`). El
- * kardex es EXACTO a partir de `exact_from` (fecha del primer documento real);
- * antes de esa fecha el saldo es una reconstrucción contra la existencia actual.
+ * Si la existencia actual real no se explica sólo con los documentos, la
+ * diferencia se emite como fila `opening` (`is_reconstructed = true`). El saldo
+ * de UNIDADES reconcilia siempre; la VALORIZACIÓN previa a `exact_from` es
+ * aproximada — ver `valuation_quality`.
  */
 class ValuedKardexReportService
 {
@@ -53,14 +53,10 @@ class ValuedKardexReportService
     }
 
     /**
-     * @param  array  $filters  product_id (int, requerido para el libro),
-     *                           product_variant_id (int|null),
-     *                           warehouse_ids (int[] — alcance ya resuelto por el controlador),
-     *                           branch_id (int|0), from (Y-m-d|null), to (Y-m-d|null)
-     * @return array{
-     *   product: array, rows: list<array>, summary: array,
-     *   reconciliation: array, data_quality: array
-     * }
+     * @param  array  $filters  user (App\Models\User, requerido para el alcance),
+     *                           product_id (int, requerido), product_variant_id (int|null),
+     *                           branch_id (int|0), warehouse_id (int|0),
+     *                           from (Y-m-d|null), to (Y-m-d|null)
      */
     public function build(array $filters): array
     {
@@ -68,37 +64,35 @@ class ValuedKardexReportService
         $variantId = isset($filters['product_variant_id']) && $filters['product_variant_id'] !== null && $filters['product_variant_id'] !== ''
             ? (int) $filters['product_variant_id']
             : null;
-        $warehouseIds = array_values(array_unique(array_map('intval', $filters['warehouse_ids'] ?? [])));
         $from = $filters['from'] ?? null;
         $to = $filters['to'] ?? null;
+
+        /** @var User $user */
+        $user = $filters['user'];
+        $scope = new InventoryReportScope($user, (int) ($filters['branch_id'] ?? 0) ?: null, (int) ($filters['warehouse_id'] ?? 0) ?: null);
 
         $product = Product::whereNull('deleted_at')->findOrFail($productId);
         $variant = $variantId ? ProductVariant::whereNull('deleted_at')->find($variantId) : null;
 
         $decimals = helpers::price_decimals();
 
-        // --- 1. Reunir TODOS los movimientos documentales (historia completa) ---
-        $movements = $this->collectMovements($productId, $variantId, $warehouseIds);
+        // --- 1. Movimientos documentales (historia completa dentro del alcance) ---
+        $movements = $scope->isDenied() ? [] : $this->collectMovements($productId, $variantId, $scope);
 
-        // Orden cronológico estable: fecha, prioridad de tipo (entradas antes que
-        // salidas el mismo día para no forzar saldo negativo espurio), id.
         usort($movements, function ($a, $b) {
             return [$a['date'], $a['sort_bucket'], $a['sort_id']]
                 <=> [$b['date'], $b['sort_bucket'], $b['sort_id']];
         });
 
-        // --- 2. Existencia actual real (fuente de reconciliación) ---
-        $onHand = $this->currentOnHand($productId, $variantId, $warehouseIds);
+        // --- 2. Existencia actual real (reconciliación) ---
+        $onHand = $scope->isDenied() ? 0.0 : $this->currentOnHand($productId, $variantId, $scope->stockWarehouseIds());
 
-        // --- 3. Costo de referencia para el saldo inicial ---
+        // --- 3. Costo de referencia del saldo inicial ---
         [$openingUnitCost, $openingCostBasis] = $this->openingUnitCost($movements, $product, $variant);
 
-        // --- 4. Réplica cronológica con WAC corrido ---------------------------
+        // --- 4. Réplica cronológica con WAC corrido ---
         $balQty = 0.0;
         $balVal = 0.0;
-
-        // Saldo inicial = existencia actual − Σentradas + Σsalidas de TODA la
-        // historia documental. Es el "tapón" no registrado (migración legacy).
         $netDocQty = 0.0;
         foreach ($movements as $m) {
             $netDocQty += $m['in_qty'] - $m['out_qty'];
@@ -107,43 +101,38 @@ class ValuedKardexReportService
 
         $rows = [];
         $earliestDocDate = $movements[0]['date'] ?? null;
-
         $isReconstructed = abs($openingQty) > 0.0005;
+        $usedWac = false;
+
         if ($isReconstructed || ! $movements) {
-            $openingVal = round($openingQty * $openingUnitCost, $decimals);
             $balQty = $openingQty;
-            $balVal = $openingVal;
-            $rows[] = [
-                'kind' => 'opening',
-                'is_reconstructed' => true,
-                'date' => null,                       // "Saldo inicial", sin fecha exacta
-                'movement_type' => 'Saldo inicial (reconstruido)',
-                'reference' => null,
-                'branch_name' => null,
-                'location_name' => null,
-                'in_qty' => null,
-                'out_qty' => null,
-                'balance_qty' => round($balQty, 3),
-                'unit_cost' => round($openingUnitCost, $decimals),
-                'cost_basis' => $openingCostBasis,
-                'movement_value' => null,
-                'balance_value' => $balVal,
-            ];
+            $balVal = round($openingQty * $openingUnitCost, $decimals);
+            $rows[] = $this->syntheticRow('opening', 'Saldo inicial (reconstruido)', $balQty, $balVal, round($openingUnitCost, $decimals), $openingCostBasis, true);
         }
+
+        // Traslados internos value-neutrales: el costo unitario con que salió cada
+        // Ref se reutiliza cuando su pierna de entrada también está en el libro.
+        $transferOutUnitCost = [];
 
         foreach ($movements as $m) {
             $wac = $balQty > 0.0005 ? ($balVal / $balQty) : $openingUnitCost;
             $costBasis = $balQty > 0.0005 ? 'wac' : $openingCostBasis;
 
             if ($m['in_qty'] > 0) {
-                // Entrada: costo documental si existe; si no, WAC corrido.
-                if ($m['doc_value'] !== null) {
+                if ($m['movement_key'] === 'transfer_in' && isset($transferOutUnitCost[$m['reference']])) {
+                    // Traslado interno con ambas piernas visibles → entra al mismo
+                    // costo unitario con que salió: no crea ni destruye valor.
+                    $unitCost = $transferOutUnitCost[$m['reference']];
+                    $value = round($m['in_qty'] * $unitCost, $decimals);
+                    $costBasis = 'wac';
+                } elseif ($m['doc_value'] !== null) {
                     $value = round($m['doc_value'], $decimals);
                     $unitCost = $m['in_qty'] > 0 ? $value / $m['in_qty'] : 0.0;
                     $costBasis = 'documento';
                 } else {
                     $unitCost = $wac;
                     $value = round($m['in_qty'] * $wac, $decimals);
+                    $usedWac = true;
                 }
                 $balQty = round($balQty + $m['in_qty'], 3);
                 $balVal = round($balVal + $value, $decimals);
@@ -151,17 +140,25 @@ class ValuedKardexReportService
                 $outQty = null;
                 $moveValue = $value;
             } else {
-                // Salida: SIEMPRE al WAC corrido (no hay COGS histórico).
-                $unitCost = $wac;
-                $value = round($m['out_qty'] * $wac, $decimals);
+                if ($m['doc_value'] !== null) {
+                    // Devolución a proveedor: sale al costo documental registrado.
+                    $value = round($m['doc_value'], $decimals);
+                    $unitCost = $m['out_qty'] > 0 ? $value / $m['out_qty'] : 0.0;
+                    $costBasis = 'documento';
+                } else {
+                    $unitCost = $wac;
+                    $value = round($m['out_qty'] * $wac, $decimals);
+                    $usedWac = true;
+                }
+                if ($m['movement_key'] === 'transfer_out') {
+                    $transferOutUnitCost[$m['reference']] = $unitCost;
+                }
                 $balQty = round($balQty - $m['out_qty'], 3);
                 $balVal = round($balVal - $value, $decimals);
                 $inQty = null;
                 $outQty = $m['out_qty'];
                 $moveValue = -$value;
                 if ($balQty < 0) {
-                    // Inconsistencia de datos: existencia insuficiente para la
-                    // salida. Se registra pero se acota el saldo valorizado a 0.
                     $balVal = 0.0;
                 }
             }
@@ -172,9 +169,11 @@ class ValuedKardexReportService
                 'date' => $m['date'],
                 'datetime' => $m['datetime'],
                 'movement_type' => $m['movement_type'],
+                'movement_key' => $m['movement_key'],
                 'reference' => $m['reference'],
                 'branch_name' => $m['branch_name'],
                 'location_name' => $m['location_name'],
+                'location_basis' => $m['location_basis'],
                 'in_qty' => $inQty,
                 'out_qty' => $outQty,
                 'balance_qty' => round($balQty, 3),
@@ -187,35 +186,22 @@ class ValuedKardexReportService
 
         $finalQty = round($balQty, 3);
         $finalVal = round($balVal, $decimals);
-
-        // --- 5. Reconciliación: saldo final del libro == existencia real ------
         $reconciled = abs($finalQty - $onHand) < 0.001;
 
-        // --- 6. Filtro de período para la PRESENTACIÓN ----------------------
-        // Se replica siempre la historia completa (para un WAC correcto); aquí se
-        // recorta la vista. Los movimientos anteriores a `from` se colapsan en
-        // una fila "saldo al inicio del período".
+        // --- 5. Ventana de período para la presentación ---
         $displayRows = $this->applyPeriodWindow($rows, $from, $to, $decimals);
 
-        // Totales + saldos de PERÍODO. El resumen debe cuadrar con el libro
-        // mostrado: saldo inicial del período + entradas − salidas = saldo final
-        // del período. Sin filtro de fechas, inicial = saldo inicial del kardex
-        // y final = existencia real.
+        // --- 6. Totales + saldos de PERÍODO (cuadran con el libro mostrado) ---
         $periodOpenQty = $openingQty;
         $periodOpenVal = round($openingQty * $openingUnitCost, $decimals);
         $periodCloseQty = $finalQty;
         $periodCloseVal = $finalVal;
-        $totIn = 0.0;
-        $totOut = 0.0;
-        $totInVal = 0.0;
-        $totOutVal = 0.0;
+        $totIn = $totOut = $totInVal = $totOutVal = 0.0;
 
         foreach ($rows as $r) {
             if ($r['kind'] !== 'movement') {
                 continue;
             }
-            // Saldo antes de la ventana: se acarrea hasta el último movimiento
-            // anterior a `from`.
             if ($from && $r['date'] < $from) {
                 $periodOpenQty = $r['balance_qty'];
                 $periodOpenVal = $r['balance_value'];
@@ -225,10 +211,8 @@ class ValuedKardexReportService
             if ($to && $r['date'] > $to) {
                 continue;
             }
-            // Último movimiento dentro de la ventana → saldo final del período.
             $periodCloseQty = $r['balance_qty'];
             $periodCloseVal = $r['balance_value'];
-
             $totIn += (float) ($r['in_qty'] ?? 0);
             $totOut += (float) ($r['out_qty'] ?? 0);
             if (($r['in_qty'] ?? 0) > 0) {
@@ -238,6 +222,24 @@ class ValuedKardexReportService
             }
         }
 
+        // --- 7. Calidad: CANTIDAD y VALORIZACIÓN por separado ---
+        $valuationBasis = ($isReconstructed || $openingCostBasis === 'sin_historial')
+            ? 'approximate'
+            : ($usedWac ? 'partially_reconstructed' : 'exact');
+
+        $qtyMessage = $reconciled
+            ? 'Existencia reconciliada con el stock real del alcance seleccionado.'
+            : 'La existencia del libro NO reconcilia: revisa movimientos anulados o registrados fuera del alcance.';
+
+        $valMessage = match ($valuationBasis) {
+            'exact' => 'Valorización exacta: todos los movimientos tienen costo documental.',
+            'partially_reconstructed' => 'Valorización parcialmente reconstruida: el costo de las salidas usa promedio ponderado (PRODEX no conserva COGS histórico por venta/ajuste/daño).'
+                .($earliestDocDate ? " Costo histórico disponible desde {$earliestDocDate}." : ''),
+            default => $earliestDocDate
+                ? "Valorización aproximada: hay saldo inicial reconstruido. El costo histórico no está disponible antes de {$earliestDocDate}."
+                : 'Valorización aproximada: no hay documentos de inventario; el costo usa el costo de referencia del producto (sin historial).',
+        };
+
         return [
             'product' => [
                 'id' => $product->id,
@@ -246,6 +248,12 @@ class ValuedKardexReportService
                 'variant_id' => $variant?->id,
                 'variant_name' => $variant?->name,
                 'unit' => optional($product->unit)->ShortName ?: '',
+            ],
+            'scope' => [
+                'branch_ids' => $scope->branchIds(),
+                'legacy_warehouse_ids' => $scope->legacyWarehouseIds(),
+                'has_modern_locations' => $scope->hasModernLocations(),
+                'denied' => $scope->isDenied(),
             ],
             'rows' => $displayRows,
             'summary' => [
@@ -258,7 +266,6 @@ class ValuedKardexReportService
                 'closing_qty' => round($periodCloseQty, 3),
                 'closing_value' => round($periodCloseVal, $decimals),
                 'closing_avg_cost' => $periodCloseQty > 0.0005 ? round($periodCloseVal / $periodCloseQty, $decimals) : 0.0,
-                // Saldo final del libro completo (siempre = existencia real).
                 'ledger_closing_qty' => $finalQty,
                 'ledger_closing_value' => $finalVal,
             ],
@@ -268,31 +275,28 @@ class ValuedKardexReportService
                 'stock_on_hand' => round($onHand, 3),
                 'difference' => round($finalQty - $onHand, 3),
             ],
-            'data_quality' => [
-                'is_reconstructed_opening' => $isReconstructed,
-                'exact_from' => $earliestDocDate,
-                'opening_cost_basis' => $openingCostBasis,
-                'note' => $earliestDocDate
-                    ? "El kardex es exacto a partir de {$earliestDocDate}. El saldo previo a esa fecha se reconstruye contra la existencia actual porque PRODEX no conserva el saldo inicial histórico ni el costo de las salidas."
-                    : 'No hay documentos de inventario registrados para este producto en el alcance seleccionado; el saldo mostrado es la existencia actual sin historial reconstruible.',
+            'quantity_quality' => [
+                'reconciled' => $reconciled,
+                'reconstructed_opening' => $isReconstructed,
+                'opening_qty' => $openingQty,
+                'difference' => round($finalQty - $onHand, 3),
+                'message' => $qtyMessage,
+            ],
+            'valuation_quality' => [
+                'basis' => $valuationBasis, // exact | partially_reconstructed | approximate
+                'historical_document_cost' => ! $usedWac || $openingCostBasis === 'documento',
+                'reconstructed_wac' => $usedWac,
+                'reference_cost' => $openingCostBasis === 'sin_historial',
+                'exact_from' => $valuationBasis === 'exact' ? $earliestDocDate : null,
+                'reconstructed_before' => $isReconstructed ? $earliestDocDate : null,
+                'message' => $valMessage,
             ],
         ];
     }
 
-    /**
-     * Recolecta movimientos de todas las fuentes documentales, normalizados a:
-     * date, datetime, movement_type, reference, branch_name, location_name,
-     * in_qty (base unit), out_qty (base unit), doc_value (float|null),
-     * sort_bucket, sort_id.
-     *
-     * @return list<array>
-     */
-    private function collectMovements(int $productId, ?int $variantId, array $warehouseIds): array
+    /** @return list<array> */
+    private function collectMovements(int $productId, ?int $variantId, InventoryReportScope $scope): array
     {
-        if (! $warehouseIds) {
-            return [];
-        }
-
         $units = Unit::pluck('operator_value', 'id')->all();
         $unitOps = Unit::pluck('operator', 'id')->all();
         $convert = function ($qty, $unitId) use ($units, $unitOps) {
@@ -300,158 +304,119 @@ class ValuedKardexReportService
             if (! $unitId || ! isset($units[$unitId])) {
                 return $qty;
             }
-            $op = $unitOps[$unitId] ?? '*';
             $val = (float) ($units[$unitId] ?: 1);
             if ($val == 0.0) {
                 return $qty;
             }
 
-            return $op === '/' ? $qty / $val : $qty * $val;
+            return ($unitOps[$unitId] ?? '*') === '/' ? $qty / $val : $qty * $val;
         };
 
-        $branchByWarehouse = DB::table('warehouses')->whereIn('id', $warehouseIds)
-            ->pluck('branch_id', 'id')->all();
-        $branchNames = DB::table('branches')->pluck('name', 'id')->all();
-        $branchName = fn ($whId) => $branchNames[$branchByWarehouse[$whId] ?? 0] ?? null;
-        $warehouseNames = DB::table('warehouses')->whereIn('id', $warehouseIds)->pluck('name', 'id')->all();
-
-        $variantWhere = function ($q, string $col = 'product_variant_id') use ($variantId) {
-            if ($variantId) {
-                $q->where($col, $variantId);
-            }
-        };
-
+        $vWhere = fn ($q) => $variantId ? $q->where('d.product_variant_id', $variantId) : $q;
         $out = [];
 
+        $push = function (array &$out, string $key, string $label, $r, float $inQty, float $outQty, ?float $docValue, int $bucket) use ($scope) {
+            $branchId = ((int) ($r->branch_id ?? 0)) ?: null;
+            $locId = ((int) ($r->inventory_location_id ?? 0)) ?: null;
+            $whId = ((int) ($r->warehouse_id ?? 0)) ?: null;
+            $loc = $scope->resolveLocation($locId, $whId);
+            $out[] = [
+                'movement_type' => $label,
+                'movement_key' => $key,
+                'reference' => $r->Ref,
+                'date' => $r->date,
+                'datetime' => trim(($r->date ?? '').' '.($r->time ?? '')),
+                'branch_name' => $scope->resolveBranchName($branchId, $locId, $whId),
+                'location_name' => $loc['name'],
+                'location_basis' => $loc['basis'],
+                'in_qty' => round($inQty, 3),
+                'out_qty' => round($outQty, 3),
+                'doc_value' => $docValue,
+                'sort_bucket' => $bucket,
+                'sort_id' => (int) $r->id,
+            ];
+        };
+
         // --- Compras (ENTRADA, costo documental) ---
-        $rows = DB::table('purchase_details as d')
-            ->join('purchases as h', 'h.id', '=', 'd.purchase_id')
-            ->whereNull('h.deleted_at')
-            ->where('h.statut', 'received') // igual que CalculatesCogsAndAverageCost
-            ->where('d.product_id', $productId)
-            ->whereIn('h.warehouse_id', $warehouseIds)
-            ->when($variantId, fn ($q) => $q->where('d.product_variant_id', $variantId))
-            ->get(['d.id', 'd.cost', 'd.quantity', 'd.purchase_unit_id', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id']);
-        foreach ($rows as $r) {
-            $qty = $convert($r->quantity, $r->purchase_unit_id);
-            $out[] = $this->row('purchase', 'compra', $r->Ref, $r->date, $r->time, $branchName($r->warehouse_id), $warehouseNames[$r->warehouse_id] ?? null,
-                inQty: $qty, outQty: 0.0, docValue: (float) $r->cost * (float) $r->quantity, bucket: 0, id: (int) $r->id);
+        $q = DB::table('purchase_details as d')->join('purchases as h', 'h.id', '=', 'd.purchase_id')
+            ->whereNull('h.deleted_at')->where('h.statut', 'received')->where('d.product_id', $productId);
+        $vWhere($q);
+        $scope->applyLocationScope($q, 'h');
+        foreach ($q->get(['d.id', 'd.cost', 'd.quantity', 'd.purchase_unit_id', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id', 'h.inventory_location_id']) as $r) {
+            $push($out, 'purchase', 'compra', $r, $convert($r->quantity, $r->purchase_unit_id), 0.0, (float) $r->cost * (float) $r->quantity, 0);
         }
 
         // --- Devoluciones a proveedor (SALIDA, costo documental) ---
-        $rows = DB::table('purchase_return_details as d')
-            ->join('purchase_returns as h', 'h.id', '=', 'd.purchase_return_id')
-            ->whereNull('h.deleted_at')
-            ->where('d.product_id', $productId)
-            ->whereIn('h.warehouse_id', $warehouseIds)
-            ->when($variantId, fn ($q) => $q->where('d.product_variant_id', $variantId))
-            ->get(['d.id', 'd.cost', 'd.quantity', 'd.purchase_unit_id', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id']);
-        foreach ($rows as $r) {
-            $qty = $convert($r->quantity, $r->purchase_unit_id);
-            $out[] = $this->row('purchase_return', 'devolución a proveedor', $r->Ref, $r->date, $r->time, $branchName($r->warehouse_id), $warehouseNames[$r->warehouse_id] ?? null,
-                inQty: 0.0, outQty: $qty, docValue: null, bucket: 3, id: (int) $r->id);
+        $q = DB::table('purchase_return_details as d')->join('purchase_returns as h', 'h.id', '=', 'd.purchase_return_id')
+            ->whereNull('h.deleted_at')->where('d.product_id', $productId);
+        $vWhere($q);
+        $scope->applyLocationScope($q, 'h');
+        foreach ($q->get(['d.id', 'd.cost', 'd.quantity', 'd.purchase_unit_id', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id', 'h.inventory_location_id']) as $r) {
+            $push($out, 'purchase_return', 'devolución a proveedor', $r, 0.0, $convert($r->quantity, $r->purchase_unit_id), (float) $r->cost * (float) $r->quantity, 3);
         }
 
-        // --- Ventas (SALIDA, WAC) ---
-        $rows = DB::table('sale_details as d')
-            ->join('sales as h', 'h.id', '=', 'd.sale_id')
-            ->whereNull('h.deleted_at')
-            ->where('h.statut', 'completed') // igual que CalculatesCogsAndAverageCost
-            ->where('d.product_id', $productId)
-            ->whereIn('h.warehouse_id', $warehouseIds)
-            ->when($variantId, fn ($q) => $q->where('d.product_variant_id', $variantId))
-            ->get(['d.id', 'd.quantity', 'd.sale_unit_id', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id']);
-        foreach ($rows as $r) {
-            $qty = $convert($r->quantity, $r->sale_unit_id);
-            $out[] = $this->row('sale', 'venta', $r->Ref, $r->date, $r->time, $branchName($r->warehouse_id), $warehouseNames[$r->warehouse_id] ?? null,
-                inQty: 0.0, outQty: $qty, docValue: null, bucket: 2, id: (int) $r->id);
+        // --- Ventas (SALIDA, WAC) — branch-first ---
+        $q = DB::table('sale_details as d')->join('sales as h', 'h.id', '=', 'd.sale_id')
+            ->whereNull('h.deleted_at')->where('h.statut', 'completed')->where('d.product_id', $productId);
+        $vWhere($q);
+        $scope->applyBranchScope($q, 'h');
+        foreach ($q->get(['d.id', 'd.quantity', 'd.sale_unit_id', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id', 'h.branch_id', 'h.inventory_location_id']) as $r) {
+            $push($out, 'sale', 'venta', $r, 0.0, $convert($r->quantity, $r->sale_unit_id), null, 2);
         }
 
-        // --- Devoluciones de venta (ENTRADA, WAC) ---
-        $rows = DB::table('sale_return_details as d')
-            ->join('sale_returns as h', 'h.id', '=', 'd.sale_return_id')
-            ->whereNull('h.deleted_at')
-            ->where('d.product_id', $productId)
-            ->whereIn('h.warehouse_id', $warehouseIds)
-            ->when($variantId, fn ($q) => $q->where('d.product_variant_id', $variantId))
-            ->get(['d.id', 'd.quantity', 'd.sale_unit_id', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id']);
-        foreach ($rows as $r) {
-            $qty = $convert($r->quantity, $r->sale_unit_id);
-            $out[] = $this->row('sale_return', 'devolución de venta', $r->Ref, $r->date, $r->time, $branchName($r->warehouse_id), $warehouseNames[$r->warehouse_id] ?? null,
-                inQty: $qty, outQty: 0.0, docValue: null, bucket: 1, id: (int) $r->id);
+        // --- Devoluciones de venta (ENTRADA, WAC) — branch-first ---
+        $q = DB::table('sale_return_details as d')->join('sale_returns as h', 'h.id', '=', 'd.sale_return_id')
+            ->whereNull('h.deleted_at')->where('d.product_id', $productId);
+        $vWhere($q);
+        $scope->applyBranchScope($q, 'h');
+        foreach ($q->get(['d.id', 'd.quantity', 'd.sale_unit_id', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id', 'h.branch_id', 'h.inventory_location_id']) as $r) {
+            $push($out, 'sale_return', 'devolución de venta', $r, $convert($r->quantity, $r->sale_unit_id), 0.0, null, 1);
         }
 
-        // --- Ajustes (ENTRADA o SALIDA según type, WAC) ---
-        $rows = DB::table('adjustment_details as d')
-            ->join('adjustments as h', 'h.id', '=', 'd.adjustment_id')
-            ->whereNull('h.deleted_at')
-            ->where('d.product_id', $productId)
-            ->whereIn('h.warehouse_id', $warehouseIds)
-            ->when($variantId, fn ($q) => $q->where('d.product_variant_id', $variantId))
-            ->get(['d.id', 'd.quantity', 'd.type', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id']);
-        foreach ($rows as $r) {
-            $qty = (float) $r->quantity; // los ajustes se registran en unidad base
+        // --- Ajustes (ENTRADA/SALIDA según type, WAC) ---
+        $q = DB::table('adjustment_details as d')->join('adjustments as h', 'h.id', '=', 'd.adjustment_id')
+            ->whereNull('h.deleted_at')->where('d.product_id', $productId);
+        $vWhere($q);
+        $scope->applyLocationScope($q, 'h');
+        foreach ($q->get(['d.id', 'd.quantity', 'd.type', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id', 'h.inventory_location_id']) as $r) {
             $isAdd = strtolower((string) $r->type) === 'add';
-            $out[] = $this->row('adjustment', $isAdd ? 'ajuste (+)' : 'ajuste (−)', $r->Ref, $r->date, $r->time, $branchName($r->warehouse_id), $warehouseNames[$r->warehouse_id] ?? null,
-                inQty: $isAdd ? $qty : 0.0, outQty: $isAdd ? 0.0 : $qty, docValue: null, bucket: $isAdd ? 1 : 3, id: (int) $r->id);
+            $push($out, 'adjustment', $isAdd ? 'ajuste (+)' : 'ajuste (−)', $r, $isAdd ? (float) $r->quantity : 0.0, $isAdd ? 0.0 : (float) $r->quantity, null, $isAdd ? 1 : 3);
         }
 
         // --- Daños (SALIDA, WAC) ---
-        $rows = DB::table('damage_details as d')
-            ->join('damages as h', 'h.id', '=', 'd.damage_id')
-            ->whereNull('h.deleted_at')
-            ->where('d.product_id', $productId)
-            ->whereIn('h.warehouse_id', $warehouseIds)
-            ->when($variantId, fn ($q) => $q->where('d.product_variant_id', $variantId))
-            ->get(['d.id', 'd.quantity', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id']);
-        foreach ($rows as $r) {
-            $out[] = $this->row('damage', 'daño', $r->Ref, $r->date, $r->time, $branchName($r->warehouse_id), $warehouseNames[$r->warehouse_id] ?? null,
-                inQty: 0.0, outQty: (float) $r->quantity, docValue: null, bucket: 3, id: (int) $r->id);
+        $q = DB::table('damage_details as d')->join('damages as h', 'h.id', '=', 'd.damage_id')
+            ->whereNull('h.deleted_at')->where('d.product_id', $productId);
+        $vWhere($q);
+        $scope->applyLocationScope($q, 'h');
+        foreach ($q->get(['d.id', 'd.quantity', 'h.Ref', 'h.date', 'h.time', 'h.warehouse_id', 'h.inventory_location_id']) as $r) {
+            $push($out, 'damage', 'daño', $r, 0.0, (float) $r->quantity, null, 3);
         }
 
-        // --- Traslados (SALIDA del origen / ENTRADA al destino, costo documental) ---
-        $rows = DB::table('transfer_details as d')
-            ->join('transfers as h', 'h.id', '=', 'd.transfer_id')
-            ->whereNull('h.deleted_at')
-            ->where('d.product_id', $productId)
-            ->when($variantId, fn ($q) => $q->where('d.product_variant_id', $variantId))
-            ->where(function ($q) use ($warehouseIds) {
-                $q->whereIn('h.from_warehouse_id', $warehouseIds)
-                    ->orWhereIn('h.to_warehouse_id', $warehouseIds);
-            })
-            ->get(['d.id', 'd.quantity', 'd.cost', 'd.purchase_unit_id', 'h.Ref', 'h.date', 'h.time', 'h.from_warehouse_id', 'h.to_warehouse_id']);
-        foreach ($rows as $r) {
+        // --- Traslados: pierna de salida / entrada evaluada por separado ---
+        $q = DB::table('transfer_details as d')->join('transfers as h', 'h.id', '=', 'd.transfer_id')
+            ->whereNull('h.deleted_at')->where('d.product_id', $productId);
+        $vWhere($q);
+        foreach ($q->get(['d.id', 'd.quantity', 'd.cost', 'd.purchase_unit_id', 'h.Ref', 'h.date', 'h.time',
+            'h.from_warehouse_id', 'h.to_warehouse_id', 'h.from_inventory_location_id', 'h.to_inventory_location_id']) as $r) {
             $qty = $convert($r->quantity, $r->purchase_unit_id);
             $docValue = (float) $r->cost * (float) $r->quantity;
-            if (in_array((int) $r->from_warehouse_id, $warehouseIds, true)) {
-                $out[] = $this->row('transfer_out', 'traslado (salida)', $r->Ref, $r->date, $r->time, $branchName($r->from_warehouse_id), $warehouseNames[$r->from_warehouse_id] ?? null,
-                    inQty: 0.0, outQty: $qty, docValue: null, bucket: 3, id: (int) $r->id);
+
+            if ($scope->rowInScope((int) ($r->from_inventory_location_id ?? 0) ?: null, (int) ($r->from_warehouse_id ?? 0) ?: null)) {
+                $leg = (object) ['id' => $r->id, 'Ref' => $r->Ref, 'date' => $r->date, 'time' => $r->time,
+                    'warehouse_id' => $r->from_warehouse_id, 'inventory_location_id' => $r->from_inventory_location_id];
+                $push($out, 'transfer_out', 'traslado (salida)', $leg, 0.0, $qty, null, 3);
             }
-            if (in_array((int) $r->to_warehouse_id, $warehouseIds, true)) {
-                $out[] = $this->row('transfer_in', 'traslado (entrada)', $r->Ref, $r->date, $r->time, $branchName($r->to_warehouse_id), $warehouseNames[$r->to_warehouse_id] ?? null,
-                    inQty: $qty, outQty: 0.0, docValue: $docValue, bucket: 0, id: (int) $r->id);
+            if ($scope->rowInScope((int) ($r->to_inventory_location_id ?? 0) ?: null, (int) ($r->to_warehouse_id ?? 0) ?: null)) {
+                $leg = (object) ['id' => $r->id, 'Ref' => $r->Ref, 'date' => $r->date, 'time' => $r->time,
+                    'warehouse_id' => $r->to_warehouse_id, 'inventory_location_id' => $r->to_inventory_location_id];
+                // bucket 4: la ENTRADA del traslado se procesa DESPUÉS de su
+                // SALIDA (bucket 3) para poder reutilizar el WAC del origen y que
+                // el traslado interno sea value-neutral.
+                $push($out, 'transfer_in', 'traslado (entrada)', $leg, $qty, 0.0, $docValue, 4);
             }
         }
 
         return $out;
-    }
-
-    private function row(string $type, string $label, ?string $ref, ?string $date, ?string $time, ?string $branch, ?string $location, float $inQty, float $outQty, ?float $docValue, int $bucket, int $id): array
-    {
-        return [
-            'movement_type' => $label,
-            'movement_key' => $type,
-            'reference' => $ref,
-            'date' => $date,
-            'datetime' => trim(($date ?? '').' '.($time ?? '')),
-            'branch_name' => $branch,
-            'location_name' => $location,
-            'in_qty' => round($inQty, 3),
-            'out_qty' => round($outQty, 3),
-            'doc_value' => $docValue,
-            'sort_bucket' => $bucket,
-            'sort_id' => $id,
-        ];
     }
 
     private function currentOnHand(int $productId, ?int $variantId, array $warehouseIds): float
@@ -473,13 +438,7 @@ class ValuedKardexReportService
         return $sum;
     }
 
-    /**
-     * Costo unitario para valorizar el saldo inicial reconstruido:
-     *  1) primer costo documental de ENTRADA disponible (base real);
-     *  2) products.cost / variant.cost como "costo de referencia (sin historial)".
-     *
-     * @return array{0: float, 1: string}
-     */
+    /** @return array{0: float, 1: string} */
     private function openingUnitCost(array $movements, Product $product, ?ProductVariant $variant): array
     {
         foreach ($movements as $m) {
@@ -492,9 +451,31 @@ class ValuedKardexReportService
         return [$ref, 'sin_historial'];
     }
 
+    private function syntheticRow(string $kind, string $label, float $balQty, float $balVal, float $unitCost, string $costBasis, bool $reconstructed): array
+    {
+        return [
+            'kind' => $kind,
+            'is_reconstructed' => $reconstructed,
+            'date' => null,
+            'movement_type' => $label,
+            'movement_key' => $kind,
+            'reference' => null,
+            'branch_name' => null,
+            'location_name' => null,
+            'location_basis' => null,
+            'in_qty' => null,
+            'out_qty' => null,
+            'balance_qty' => round($balQty, 3),
+            'unit_cost' => $unitCost,
+            'cost_basis' => $costBasis,
+            'movement_value' => null,
+            'balance_value' => round($balVal, 2),
+        ];
+    }
+
     /**
-     * Colapsa los movimientos anteriores a `from` en una fila "saldo al inicio
-     * del período" y descarta los posteriores a `to`.
+     * Colapsa los movimientos anteriores a `from` en "saldo al inicio del
+     * período" y descarta los posteriores a `to`.
      *
      * @param  list<array>  $rows
      * @return list<array>
@@ -509,12 +490,12 @@ class ValuedKardexReportService
         $inWindow = [];
         foreach ($rows as $r) {
             $d = $r['date'];
-            if ($from && $d !== null && $d < $from && $r['kind'] !== 'opening') {
+            if ($from && $r['kind'] === 'opening') {
                 $before[] = $r;
 
                 continue;
             }
-            if ($from && $r['kind'] === 'opening') {
+            if ($from && $d !== null && $d < $from) {
                 $before[] = $r;
 
                 continue;
@@ -530,22 +511,16 @@ class ValuedKardexReportService
         }
 
         $last = end($before);
-        $periodOpening = [
-            'kind' => 'period_opening',
-            'is_reconstructed' => (bool) collect($before)->contains(fn ($r) => ! empty($r['is_reconstructed'])),
-            'date' => $from,
-            'movement_type' => 'saldo al inicio del período',
-            'reference' => null,
-            'branch_name' => null,
-            'location_name' => null,
-            'in_qty' => null,
-            'out_qty' => null,
-            'balance_qty' => $last['balance_qty'],
-            'unit_cost' => $last['balance_qty'] > 0.0005 ? round($last['balance_value'] / $last['balance_qty'], $decimals) : 0.0,
-            'cost_basis' => 'wac',
-            'movement_value' => null,
-            'balance_value' => $last['balance_value'],
-        ];
+        $periodOpening = $this->syntheticRow(
+            'period_opening',
+            'saldo al inicio del período',
+            $last['balance_qty'],
+            $last['balance_value'],
+            $last['balance_qty'] > 0.0005 ? round($last['balance_value'] / $last['balance_qty'], $decimals) : 0.0,
+            'wac',
+            (bool) collect($before)->contains(fn ($r) => ! empty($r['is_reconstructed']))
+        );
+        $periodOpening['date'] = $from;
 
         return array_merge([$periodOpening], $inWindow);
     }

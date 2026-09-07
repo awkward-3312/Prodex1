@@ -2,6 +2,7 @@
 
 namespace Tests\Support;
 
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -10,18 +11,34 @@ use Illuminate\Support\Facades\Schema;
  * {@see \App\Services\Reports\ValuedKardexReportService} y
  * {@see \App\Services\Reports\InventoryTurnoverReportService}.
  *
- * Crea sólo las columnas que esos servicios y `InventoryReadService` leen. Todo
- * el stock de estos fixtures vive en `product_warehouse` (legacy);
- * `inventory_transition_states` se deja vacío → InventoryReadService trata cada
- * almacén como legacy (transición legacy → moderna).
+ * Cubre AMBOS mundos de la transición:
+ *  · LEGACY  stock en `product_warehouse`, documentos con `warehouse_id`.
+ *  · MODERNO documentos con `branch_id` (ventas / dev. venta) o
+ *            `inventory_location_id` (compras / dev. compra / ajustes / daños /
+ *            traslados). `inventory_transition_states` vacío → InventoryReadService
+ *            lee `product_warehouse` para la existencia (el motor moderno de
+ *            stock no se puebla en estos fixtures — sólo los DOCUMENTOS modernos).
  */
 trait InventoryMovementReportSchema
 {
     protected function buildInventoryReportSchema(): void
     {
+        Schema::create('users', function ($t) {
+            $t->increments('id');
+            $t->string('username')->nullable();
+            $t->integer('role_id')->default(1);
+            $t->tinyInteger('is_all_warehouses')->default(1);
+            $t->integer('default_branch_id')->nullable();
+            $t->integer('default_inventory_location_id')->nullable();
+            $t->integer('default_warehouse_id')->nullable();
+            $t->timestamps();
+            $t->softDeletes();
+        });
         Schema::create('branches', function ($t) {
             $t->increments('id');
             $t->string('name');
+            $t->boolean('is_active')->default(true);
+            $t->integer('default_inventory_location_id')->nullable();
             $t->timestamps();
             $t->softDeletes();
         });
@@ -29,6 +46,17 @@ trait InventoryMovementReportSchema
             $t->increments('id');
             $t->integer('branch_id')->nullable();
             $t->string('name');
+            $t->integer('default_inventory_location_id')->nullable();
+            $t->timestamps();
+            $t->softDeletes();
+        });
+        Schema::create('inventory_locations', function ($t) {
+            $t->increments('id');
+            $t->integer('branch_id')->nullable();
+            $t->integer('warehouse_id')->nullable();
+            $t->string('code')->nullable();
+            $t->string('name');
+            $t->boolean('is_active')->default(true);
             $t->timestamps();
             $t->softDeletes();
         });
@@ -95,17 +123,23 @@ trait InventoryMovementReportSchema
             $t->timestamps();
         });
 
+        // Cabeceras de documento. `warehouse_id` + `inventory_location_id` en
+        // todas; `branch_id` sólo en ventas / dev. de venta (como en producción).
         $header = function ($t) {
             $t->increments('id');
             $t->date('date')->nullable();
             $t->string('time')->nullable();
             $t->string('Ref')->nullable();
             $t->integer('warehouse_id')->nullable();
+            $t->integer('inventory_location_id')->nullable();
             $t->string('statut')->nullable();
             $t->timestamps();
             $t->softDeletes();
         };
         Schema::create('purchases', $header);
+        Schema::create('purchase_returns', $header);
+        Schema::create('adjustments', $header);
+        Schema::create('damages', $header);
         Schema::create('sales', function ($t) use ($header) {
             $header($t);
             $t->integer('branch_id')->nullable();
@@ -114,9 +148,6 @@ trait InventoryMovementReportSchema
             $header($t);
             $t->integer('branch_id')->nullable();
         });
-        Schema::create('purchase_returns', $header);
-        Schema::create('adjustments', $header);
-        Schema::create('damages', $header);
         Schema::create('transfers', function ($t) {
             $t->increments('id');
             $t->date('date')->nullable();
@@ -124,6 +155,8 @@ trait InventoryMovementReportSchema
             $t->string('Ref')->nullable();
             $t->integer('from_warehouse_id')->nullable();
             $t->integer('to_warehouse_id')->nullable();
+            $t->integer('from_inventory_location_id')->nullable();
+            $t->integer('to_inventory_location_id')->nullable();
             $t->string('statut')->nullable();
             $t->timestamps();
             $t->softDeletes();
@@ -198,14 +231,33 @@ trait InventoryMovementReportSchema
         });
     }
 
+    protected function owner(): User
+    {
+        $id = DB::table('users')->insertGetId([
+            'username' => 'owner', 'role_id' => 1, 'is_all_warehouses' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return User::find($id);
+    }
+
     protected function branch(string $name): int
     {
-        return DB::table('branches')->insertGetId(['name' => $name, 'created_at' => now(), 'updated_at' => now()]);
+        return DB::table('branches')->insertGetId(['name' => $name, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
     }
 
     protected function warehouse(string $name, ?int $branchId = null): int
     {
         return DB::table('warehouses')->insertGetId(['name' => $name, 'branch_id' => $branchId, 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    protected function location(string $name, int $branchId, ?int $warehouseId = null): int
+    {
+        return DB::table('inventory_locations')->insertGetId([
+            'name' => $name, 'code' => strtoupper(substr($name, 0, 6)),
+            'branch_id' => $branchId, 'warehouse_id' => $warehouseId, 'is_active' => true,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
     }
 
     protected function product(string $name, float $cost, array $extra = []): int
@@ -225,18 +277,29 @@ trait InventoryMovementReportSchema
         ]);
     }
 
-    protected function purchase(int $warehouseId, string $date, array $lines, string $statut = 'received'): int
+    /**
+     * @param  array  $ctx  warehouse_id?, inventory_location_id?, branch_id?, statut?, ref?
+     */
+    private function insertDoc(string $table, string $date, string $time, array $ctx): int
     {
-        $id = DB::table('purchases')->insertGetId([
-            'date' => $date, 'time' => '10:00:00', 'Ref' => 'PU-'.uniqid(),
-            'warehouse_id' => $warehouseId, 'statut' => $statut, 'created_at' => now(), 'updated_at' => now(),
-        ]);
+        return DB::table($table)->insertGetId(array_merge([
+            'date' => $date, 'time' => $time, 'Ref' => ($ctx['ref'] ?? strtoupper(substr($table, 0, 2)).'-'.uniqid()),
+            'warehouse_id' => $ctx['warehouse_id'] ?? null,
+            'inventory_location_id' => $ctx['inventory_location_id'] ?? null,
+            'statut' => $ctx['statut'] ?? null,
+            'created_at' => now(), 'updated_at' => now(),
+        ], array_key_exists('branch_id', $ctx) ? ['branch_id' => $ctx['branch_id']] : []));
+    }
+
+    protected function purchase($ctx, string $date, array $lines): int
+    {
+        $ctx = is_array($ctx) ? $ctx : ['warehouse_id' => $ctx];
+        $ctx['statut'] ??= 'received';
+        $id = $this->insertDoc('purchases', $date, '10:00:00', $ctx);
         foreach ($lines as $l) {
             DB::table('purchase_details')->insert([
-                'purchase_id' => $id, 'product_id' => $l['product_id'],
-                'product_variant_id' => $l['variant_id'] ?? null,
-                'cost' => $l['cost'], 'quantity' => $l['qty'],
-                'purchase_unit_id' => $l['unit_id'] ?? null,
+                'purchase_id' => $id, 'product_id' => $l['product_id'], 'product_variant_id' => $l['variant_id'] ?? null,
+                'cost' => $l['cost'], 'quantity' => $l['qty'], 'purchase_unit_id' => $l['unit_id'] ?? null,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
@@ -244,17 +307,30 @@ trait InventoryMovementReportSchema
         return $id;
     }
 
-    protected function sale(int $warehouseId, string $date, array $lines, ?int $branchId = null, string $statut = 'completed'): int
+    protected function purchaseReturn($ctx, string $date, array $lines): int
     {
-        $id = DB::table('sales')->insertGetId([
-            'date' => $date, 'time' => '11:00:00', 'Ref' => 'SL-'.uniqid(),
-            'warehouse_id' => $warehouseId, 'branch_id' => $branchId, 'statut' => $statut,
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
+        $ctx = is_array($ctx) ? $ctx : ['warehouse_id' => $ctx];
+        $id = $this->insertDoc('purchase_returns', $date, '10:30:00', $ctx);
+        foreach ($lines as $l) {
+            DB::table('purchase_return_details')->insert([
+                'purchase_return_id' => $id, 'product_id' => $l['product_id'], 'product_variant_id' => $l['variant_id'] ?? null,
+                'cost' => $l['cost'], 'quantity' => $l['qty'], 'purchase_unit_id' => $l['unit_id'] ?? null,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        return $id;
+    }
+
+    protected function sale($ctx, string $date, array $lines, ?int $branchId = null, string $statut = 'completed'): int
+    {
+        $ctx = is_array($ctx) ? $ctx : ['warehouse_id' => $ctx, 'branch_id' => $branchId];
+        $ctx['branch_id'] = array_key_exists('branch_id', $ctx) ? $ctx['branch_id'] : $branchId;
+        $ctx['statut'] ??= $statut;
+        $id = $this->insertDoc('sales', $date, '11:00:00', $ctx);
         foreach ($lines as $l) {
             DB::table('sale_details')->insert([
-                'date' => $date, 'sale_id' => $id, 'product_id' => $l['product_id'],
-                'product_variant_id' => $l['variant_id'] ?? null,
+                'date' => $date, 'sale_id' => $id, 'product_id' => $l['product_id'], 'product_variant_id' => $l['variant_id'] ?? null,
                 'quantity' => $l['qty'], 'sale_unit_id' => $l['unit_id'] ?? null,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
@@ -263,17 +339,15 @@ trait InventoryMovementReportSchema
         return $id;
     }
 
-    protected function saleReturn(int $warehouseId, string $date, array $lines, ?int $branchId = null): int
+    protected function saleReturn($ctx, string $date, array $lines, ?int $branchId = null): int
     {
-        $id = DB::table('sale_returns')->insertGetId([
-            'date' => $date, 'time' => '12:00:00', 'Ref' => 'SR-'.uniqid(),
-            'warehouse_id' => $warehouseId, 'branch_id' => $branchId, 'statut' => 'received',
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
+        $ctx = is_array($ctx) ? $ctx : ['warehouse_id' => $ctx, 'branch_id' => $branchId];
+        $ctx['branch_id'] = array_key_exists('branch_id', $ctx) ? $ctx['branch_id'] : $branchId;
+        $ctx['statut'] ??= 'received';
+        $id = $this->insertDoc('sale_returns', $date, '12:00:00', $ctx);
         foreach ($lines as $l) {
             DB::table('sale_return_details')->insert([
-                'sale_return_id' => $id, 'product_id' => $l['product_id'],
-                'product_variant_id' => $l['variant_id'] ?? null,
+                'sale_return_id' => $id, 'product_id' => $l['product_id'], 'product_variant_id' => $l['variant_id'] ?? null,
                 'quantity' => $l['qty'], 'sale_unit_id' => $l['unit_id'] ?? null,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
@@ -282,16 +356,13 @@ trait InventoryMovementReportSchema
         return $id;
     }
 
-    protected function adjustment(int $warehouseId, string $date, array $lines): int
+    protected function adjustment($ctx, string $date, array $lines): int
     {
-        $id = DB::table('adjustments')->insertGetId([
-            'date' => $date, 'time' => '13:00:00', 'Ref' => 'AD-'.uniqid(),
-            'warehouse_id' => $warehouseId, 'created_at' => now(), 'updated_at' => now(),
-        ]);
+        $ctx = is_array($ctx) ? $ctx : ['warehouse_id' => $ctx];
+        $id = $this->insertDoc('adjustments', $date, '13:00:00', $ctx);
         foreach ($lines as $l) {
             DB::table('adjustment_details')->insert([
-                'adjustment_id' => $id, 'product_id' => $l['product_id'],
-                'product_variant_id' => $l['variant_id'] ?? null,
+                'adjustment_id' => $id, 'product_id' => $l['product_id'], 'product_variant_id' => $l['variant_id'] ?? null,
                 'quantity' => $l['qty'], 'type' => $l['type'],
                 'created_at' => now(), 'updated_at' => now(),
             ]);
@@ -300,16 +371,13 @@ trait InventoryMovementReportSchema
         return $id;
     }
 
-    protected function damage(int $warehouseId, string $date, array $lines): int
+    protected function damage($ctx, string $date, array $lines): int
     {
-        $id = DB::table('damages')->insertGetId([
-            'date' => $date, 'time' => '14:00:00', 'Ref' => 'DM-'.uniqid(),
-            'warehouse_id' => $warehouseId, 'created_at' => now(), 'updated_at' => now(),
-        ]);
+        $ctx = is_array($ctx) ? $ctx : ['warehouse_id' => $ctx];
+        $id = $this->insertDoc('damages', $date, '14:00:00', $ctx);
         foreach ($lines as $l) {
             DB::table('damage_details')->insert([
-                'damage_id' => $id, 'product_id' => $l['product_id'],
-                'product_variant_id' => $l['variant_id'] ?? null,
+                'damage_id' => $id, 'product_id' => $l['product_id'], 'product_variant_id' => $l['variant_id'] ?? null,
                 'quantity' => $l['qty'], 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
@@ -317,19 +385,26 @@ trait InventoryMovementReportSchema
         return $id;
     }
 
-    protected function transfer(int $fromWh, int $toWh, string $date, array $lines): int
+    /**
+     * @param  int|array  $from  warehouse id, or ['warehouse_id'=>, 'inventory_location_id'=>]
+     * @param  int|array  $to    idem
+     */
+    protected function transfer($from, $to, string $date, array $lines): int
     {
+        $from = is_array($from) ? $from : ['warehouse_id' => $from];
+        $to = is_array($to) ? $to : ['warehouse_id' => $to];
         $id = DB::table('transfers')->insertGetId([
             'date' => $date, 'time' => '15:00:00', 'Ref' => 'TR-'.uniqid(),
-            'from_warehouse_id' => $fromWh, 'to_warehouse_id' => $toWh, 'statut' => 'completed',
-            'created_at' => now(), 'updated_at' => now(),
+            'from_warehouse_id' => $from['warehouse_id'] ?? null,
+            'to_warehouse_id' => $to['warehouse_id'] ?? null,
+            'from_inventory_location_id' => $from['inventory_location_id'] ?? null,
+            'to_inventory_location_id' => $to['inventory_location_id'] ?? null,
+            'statut' => 'completed', 'created_at' => now(), 'updated_at' => now(),
         ]);
         foreach ($lines as $l) {
             DB::table('transfer_details')->insert([
-                'transfer_id' => $id, 'product_id' => $l['product_id'],
-                'product_variant_id' => $l['variant_id'] ?? null,
-                'cost' => $l['cost'] ?? 0, 'quantity' => $l['qty'],
-                'purchase_unit_id' => $l['unit_id'] ?? null,
+                'transfer_id' => $id, 'product_id' => $l['product_id'], 'product_variant_id' => $l['variant_id'] ?? null,
+                'cost' => $l['cost'] ?? 0, 'quantity' => $l['qty'], 'purchase_unit_id' => $l['unit_id'] ?? null,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }

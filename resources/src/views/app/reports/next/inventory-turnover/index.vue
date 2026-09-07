@@ -4,10 +4,11 @@
       Rotación de inventario px-next (solo lectura). Ruta real
       /app/reports/inventory_turnover (name inventory_turnover). Endpoint
       GET report/inventory_turnover.
-      Métrica primaria en UNIDADES (rotación = unidades vendidas netas /
-      inventario promedio). Métrica financiera WAC en columnas aparte,
-      claramente rotulada. Los casos sin dato se muestran como "N/A" — nunca
-      infinito ni 0 engañoso. Fórmula y umbrales los devuelve el backend.
+      Métrica ÚNICA en UNIDADES (rotación = unidades vendidas netas /
+      inventario promedio). No hay rotación financiera: PRODEX no conserva COGS
+      histórico y el WAC no se puede acotar de forma fiable al período/sucursal.
+      Alcance branch-first / legacy-fallback. Los casos sin dato se muestran
+      como "N/A" — nunca infinito ni 0 engañoso. Fórmula y umbrales del backend.
     -->
     <div v-if="!can('inventory_turnover_report')" class="pxrot__denied">
       <px-empty-state icon="lock" title="No tienes permiso para este reporte"
@@ -55,14 +56,6 @@
                 :options="categoryOptions" @input="refresh" />
             </template>
           </px-field>
-          <px-field label="Rotación financiera">
-            <template #default="{ id }">
-              <label :for="id" class="pxrot__toggle">
-                <input :id="id" v-model="showFinancial" type="checkbox" />
-                <span>Mostrar columnas WAC (aprox.)</span>
-              </label>
-            </template>
-          </px-field>
         </div>
       </div>
 
@@ -72,7 +65,7 @@
           <br>Clasificación por días de inventario: <b>alta</b> ≤ {{ meta.thresholds.alta_max_dias }} ·
           <b>media</b> ≤ {{ meta.thresholds.media_max_dias }} · <b>baja</b> &gt; {{ meta.thresholds.media_max_dias }}.
         </template>
-        <template v-if="showFinancial && meta.financial_note"><br>{{ meta.financial_note }}</template>
+        <br>Rotación en unidades. No se ofrece rotación financiera: PRODEX no conserva COGS histórico por venta/ajuste/daño.
       </px-alert>
 
       <px-alert v-if="meta && meta.capped" tone="warning" title="Reporte acotado" class="pxrot__alert">
@@ -115,9 +108,6 @@
               <px-badge v-if="row.classification" :tone="classTone(row.classification)">{{ classLabel(row.classification) }}</px-badge>
               <span v-else class="pxrot__na" :title="row.reason || ''">N/A</span>
             </template>
-            <template #cell-fin_cogs="{ row }"><span class="pxn-num">{{ money(row.financial.cogs) }}</span></template>
-            <template #cell-fin_avg_value="{ row }"><span class="pxn-num">{{ row.financial.avg_stock_value == null ? '—' : money(row.financial.avg_stock_value) }}</span></template>
-            <template #cell-fin_turnover="{ row }"><span class="pxn-num">{{ row.financial.turnover == null ? '—' : fmtNum(row.financial.turnover) }}</span></template>
           </px-table>
 
           <px-empty-state v-else icon="refresh-cw" title="Sin resultados"
@@ -173,7 +163,6 @@ export default {
       warehouse_id: "",
       branch_id: "",
       category_id: "",
-      showFinancial: false,
       sort: { field: "turnover", type: "desc" },
       page: 1,
       limit: "25",
@@ -197,11 +186,10 @@ export default {
       if (this.warehouse_id !== "" && this.warehouse_id != null) n++;
       if (this.branch_id !== "" && this.branch_id != null) n++;
       if (this.category_id !== "" && this.category_id != null) n++;
-      if (this.showFinancial) n++;
       return n;
     },
     columns() {
-      const base = [
+      return [
         { key: "code", label: "Código", sortable: true, strong: true, width: "120px" },
         { key: "name", label: "Producto", sortable: true },
         { key: "category", label: "Categoría", sortable: true },
@@ -213,17 +201,9 @@ export default {
         { key: "days_inventory", label: "Días inv.", align: "right", numeric: true, sortable: true, width: "100px" },
         { key: "classification", label: "Clasificación", width: "120px" }
       ];
-      if (this.showFinancial) {
-        base.push(
-          { key: "fin_cogs", label: "Costo ventas (WAC)", align: "right", numeric: true, width: "140px" },
-          { key: "fin_avg_value", label: "Inv. prom. valorizado", align: "right", numeric: true, width: "160px" },
-          { key: "fin_turnover", label: "Rotación financiera", align: "right", numeric: true, width: "150px" }
-        );
-      }
-      return base;
     },
     rows() {
-      return (this.report || []).map(r => ({ ...r, financial: r.financial || {} }));
+      return this.report || [];
     }
   },
   created() {
@@ -239,12 +219,6 @@ export default {
       return Number.isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: 3 }) : String(n == null ? "" : n);
     },
     na(v) { return v == null ? "N/A" : this.fmtNum(v); },
-    money(v) {
-      const sym = (this.currentUser && this.currentUser.currency) || "";
-      const n = Number(v);
-      const num = Number.isFinite(n) ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00";
-      return sym ? sym + " " + num : num;
-    },
     classTone(c) { return c === "alta" ? "success" : (c === "media" ? "info" : "warning"); },
     classLabel(c) { return c === "alta" ? "Alta" : (c === "media" ? "Media" : "Baja"); },
     init() { this.fetch(true); },
@@ -317,9 +291,6 @@ export default {
             case "turnover": return r.turnover == null ? "N/A" : this.fmtNum(r.turnover);
             case "days_inventory": return r.days_inventory == null ? "—" : this.fmtNum(r.days_inventory);
             case "classification": return r.classification ? this.classLabel(r.classification) : "N/A";
-            case "fin_cogs": return this.money((r.financial || {}).cogs);
-            case "fin_avg_value": return (r.financial || {}).avg_stock_value == null ? "—" : this.money(r.financial.avg_stock_value);
-            case "fin_turnover": return (r.financial || {}).turnover == null ? "—" : this.fmtNum(r.financial.turnover);
             default: return r[c.key] == null ? "" : r[c.key];
           }
         })
@@ -351,7 +322,6 @@ export default {
   border: 1px solid var(--pxn-border-control); border-radius: var(--pxn-radius-md);
   background: var(--pxn-surface); color: var(--pxn-ink); font: inherit; font-size: var(--pxn-fs-sm);
 }
-.pxrot__toggle { display: inline-flex; align-items: center; gap: var(--pxn-space-3); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); cursor: pointer; height: var(--pxn-control-h-sm); }
 .pxrot__tablewrap { margin-top: var(--pxn-space-5); overflow-x: auto; transition: opacity var(--pxn-dur-1) var(--pxn-ease); }
 .pxrot__tablewrap.is-busy { opacity: 0.55; pointer-events: none; }
 .pxrot__na { color: var(--pxn-ink-3); font-size: var(--pxn-fs-sm); }

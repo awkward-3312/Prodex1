@@ -71,16 +71,27 @@
           description="El kardex valorizado muestra cada entrada y salida de un producto con su saldo de unidades y su saldo valorizado." />
 
         <template v-else>
-          <px-alert v-if="dataQuality" tone="info" title="Calidad de los datos" class="pxvk__alert">
-            {{ dataQuality.note }}
+          <px-alert
+            v-if="quantityQuality"
+            :tone="quantityQuality.reconciled ? 'info' : 'warning'"
+            :title="quantityQuality.reconciled ? 'Existencia reconciliada' : 'La existencia NO reconcilia'"
+            class="pxvk__alert"
+          >
+            {{ quantityQuality.message }}
+            <template v-if="!quantityQuality.reconciled">
+              <br>Saldo del libro: <b class="pxn-num">{{ fmtNum(reconciliation.ledger_closing_qty) }}</b> ·
+              Existencia real: <b class="pxn-num">{{ fmtNum(reconciliation.stock_on_hand) }}</b> ·
+              Diferencia: <b class="pxn-num">{{ fmtNum(reconciliation.difference) }}</b>.
+            </template>
           </px-alert>
 
-          <px-alert v-if="reconciliation && !reconciliation.reconciled" tone="warning"
-            title="El kardex no reconcilia con la existencia actual" class="pxvk__alert">
-            Saldo del libro: <b class="pxn-num">{{ fmtNum(reconciliation.ledger_closing_qty) }}</b> ·
-            Existencia real: <b class="pxn-num">{{ fmtNum(reconciliation.stock_on_hand) }}</b> ·
-            Diferencia: <b class="pxn-num">{{ fmtNum(reconciliation.difference) }}</b>.
-            Revisa movimientos anulados o registrados fuera del alcance seleccionado.
+          <px-alert
+            v-if="valuationQuality"
+            tone="info"
+            :title="valuationTitle"
+            class="pxvk__alert"
+          >
+            {{ valuationQuality.message }}
           </px-alert>
 
           <div class="pxvk__stats">
@@ -106,6 +117,11 @@
               </template>
               <template #cell-reference="{ row }">{{ row.reference || '—' }}</template>
               <template #cell-branch_name="{ row }">{{ row.branch_name || '—' }}</template>
+              <template #cell-location_name="{ row }">
+                <span v-if="row.location_name">{{ row.location_name }}</span>
+                <span v-else class="pxn-ink-3">—</span>
+                <span v-if="row.location_basis === 'legacy'" class="pxvk__basis" title="Ubicación legacy: almacén (fallback)">almacén</span>
+              </template>
               <template #cell-in_qty="{ row }">
                 <span class="pxn-num">{{ row.in_qty != null ? fmtNum(row.in_qty) : '' }}</span>
               </template>
@@ -170,7 +186,8 @@ export default {
       productMeta: null,
       summary: {},
       reconciliation: null,
-      dataQuality: null,
+      quantityQuality: null,
+      valuationQuality: null,
       report: []
     };
   },
@@ -194,6 +211,7 @@ export default {
         { key: "movement_type", label: "Movimiento", width: "170px" },
         { key: "reference", label: "Referencia", width: "130px" },
         { key: "branch_name", label: "Sucursal" },
+        { key: "location_name", label: "Ubicación", width: "160px" },
         { key: "in_qty", label: "Entrada", align: "right", numeric: true, width: "90px" },
         { key: "out_qty", label: "Salida", align: "right", numeric: true, width: "90px" },
         { key: "balance_qty", label: "Saldo unid.", align: "right", numeric: true, width: "100px" },
@@ -204,6 +222,12 @@ export default {
     },
     rows() {
       return (this.report || []).map((r, i) => ({ ...r, rk: (r.kind || "m") + "-" + (r.reference || "") + "-" + i }));
+    },
+    valuationTitle() {
+      const b = this.valuationQuality && this.valuationQuality.basis;
+      if (b === "exact") return "Valorización exacta";
+      if (b === "partially_reconstructed") return "Valorización parcialmente reconstruida";
+      return "Valorización aproximada";
     }
   },
   created() {
@@ -292,7 +316,8 @@ export default {
             this.productMeta = data.product || null;
             this.summary = data.summary || {};
             this.reconciliation = data.reconciliation || null;
-            this.dataQuality = data.data_quality || null;
+            this.quantityQuality = data.quantity_quality || null;
+            this.valuationQuality = data.valuation_quality || null;
             this.report = Array.isArray(data.rows) ? data.rows : [];
             // asegura que el producto elegido aparezca en el selector
             if (this.productMeta && !(this.products || []).some(p => Number(p.id) === Number(this.productMeta.id))) {
@@ -319,6 +344,7 @@ export default {
           if (c.key === "movement_type") return r.kind === "movement" ? r.movement_type : "";
           if (c.key === "reference") return r.reference || "";
           if (c.key === "branch_name") return r.branch_name || "";
+          if (c.key === "location_name") return (r.location_name || "") + (r.location_basis === "legacy" ? " (almacén)" : "");
           if (c.key === "in_qty") return r.in_qty != null ? this.fmtNum(r.in_qty) : "";
           if (c.key === "out_qty") return r.out_qty != null ? this.fmtNum(r.out_qty) : "";
           if (c.key === "balance_qty") return this.fmtNum(r.balance_qty);
