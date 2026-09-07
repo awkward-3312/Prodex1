@@ -88,7 +88,7 @@ class InventoryTurnoverReportServiceTest extends TestCase
         $this->assertArrayNotHasKey('financial', $row); // rotación financiera retirada
     }
 
-    public function test_product_with_stock_but_no_sales_is_low_rotation_not_infinite(): void
+    public function test_no_sales_in_period_is_na_not_a_misleading_zero(): void
     {
         $p = $this->product('Candado', 3.00);
         $this->onHand($p, $this->wh1, 20);
@@ -97,13 +97,28 @@ class InventoryTurnoverReportServiceTest extends TestCase
 
         $this->assertSame(0.0, $row['units_sold']);
         $this->assertSame(20.0, $row['avg_stock']);
-        $this->assertSame(0.0, $row['turnover']);
+        $this->assertNull($row['turnover']);          // N/A, NO 0
         $this->assertNull($row['days_inventory']);
-        $this->assertSame('baja', $row['classification']);
+        $this->assertNull($row['classification']);    // N/A, NO "baja"
         $this->assertSame('sin ventas en el período', $row['reason']);
     }
 
-    public function test_zero_average_stock_returns_na(): void
+    public function test_returns_greater_than_sales_do_not_produce_negative_turnover(): void
+    {
+        $p = $this->product('Sobre-devuelto', 1.00);
+        $this->onHand($p, $this->wh1, 30);
+        $this->sale($this->wh1, '2026-01-10', [['product_id' => $p, 'qty' => 4]], $this->b1);
+        $this->saleReturn($this->wh1, '2026-01-12', [['product_id' => $p, 'qty' => 9]], $this->b1);
+
+        $row = $this->rowFor($this->exec(), $p);
+
+        $this->assertSame(-5.0, $row['units_sold']);   // 4 − 9
+        $this->assertNull($row['turnover']);            // nunca negativo
+        $this->assertNull($row['classification']);
+        $this->assertSame('devoluciones superan ventas', $row['reason']);
+    }
+
+    public function test_zero_average_stock_with_no_sales_returns_na(): void
     {
         $p = $this->product('Descontinuado', 1.00);
         $this->onHand($p, $this->wh1, 0);
@@ -114,7 +129,130 @@ class InventoryTurnoverReportServiceTest extends TestCase
         $this->assertNull($row['turnover']);
         $this->assertNull($row['days_inventory']);
         $this->assertNull($row['classification']);
-        $this->assertSame('inventario promedio 0', $row['reason']);
+        // Sin ventas es el bloqueo primario; sigue siendo N/A.
+        $this->assertContains($row['reason'], ['sin ventas en el período', 'inventario promedio 0']);
+    }
+
+    public function test_historical_report_reflects_stock_at_the_period_end_not_today(): void
+    {
+        $p = $this->product('Histórico', 1.00);
+        $this->onHand($p, $this->wh1, 100);                 // existencia HOY
+        $this->sale($this->wh1, '2026-01-10', [['product_id' => $p, 'qty' => 10]], $this->b1);
+        $this->purchase($this->wh1, '2026-02-15', [['product_id' => $p, 'cost' => 2.0, 'qty' => 40]]); // POSTERIOR al período
+
+        $jan = $this->rowFor($this->exec(['from' => '2026-01-01', 'to' => '2026-01-31']), $p);
+
+        // stock al 31/01 = 100 (hoy) − 40 (compra de febrero) = 60. NO 100.
+        $this->assertSame(60.0, $jan['stock_final']);
+        // stock al 01/01 = 60 − (−10 venta) = 70.
+        $this->assertSame(70.0, $jan['stock_initial']);
+        $this->assertSame(65.0, $jan['avg_stock']);         // (70 + 60) / 2
+        $this->assertSame(10.0, $jan['units_sold']);
+        $this->assertEqualsWithDelta(10 / 65, $jan['turnover'], 0.0001);
+        $this->assertSame(100.0, $jan['stock_now']);        // el actual se expone aparte
+    }
+
+    public function test_february_report_gives_different_correct_values(): void
+    {
+        $p = $this->product('Feb', 1.00);
+        $this->onHand($p, $this->wh1, 100);
+        $this->sale($this->wh1, '2026-01-10', [['product_id' => $p, 'qty' => 10]], $this->b1);
+        $this->purchase($this->wh1, '2026-02-15', [['product_id' => $p, 'cost' => 2.0, 'qty' => 40]]);
+        $this->sale($this->wh1, '2026-02-20', [['product_id' => $p, 'qty' => 5]], $this->b1);
+
+        $feb = $this->rowFor($this->exec(['from' => '2026-02-01', 'to' => '2026-02-28']), $p);
+
+        // nada posterior a febrero → stock al 28/02 = 100.
+        $this->assertSame(100.0, $feb['stock_final']);
+        // stock al 01/02 = 100 − (compra 40 − venta 5) = 65.
+        $this->assertSame(65.0, $feb['stock_initial']);
+        $this->assertSame(82.5, $feb['avg_stock']);
+        $this->assertSame(5.0, $feb['units_sold']);
+    }
+
+    public function test_period_ending_today_still_works(): void
+    {
+        $p = $this->product('Hoy', 1.00);
+        $this->onHand($p, $this->wh1, 40);
+        $this->sale($this->wh1, now()->subDays(3)->toDateString(), [['product_id' => $p, 'qty' => 6]], $this->b1);
+
+        $row = $this->rowFor($this->exec(['from' => now()->subDays(30)->toDateString(), 'to' => now()->toDateString()]), $p);
+
+        // sin movimientos posteriores a hoy → stock_final = existencia actual.
+        $this->assertSame(40.0, $row['stock_final']);
+        $this->assertSame(6.0, $row['units_sold']);
+        $this->assertNotNull($row['turnover']);
+    }
+
+    public function test_historical_reconstruction_works_for_a_warehouse_less_modern_location(): void
+    {
+        $loc = $this->location('Punto Móvil', $this->b2, null);
+        $p = $this->product('LocHist', 1.00);
+        DB::table('inventory_location_stocks')->insert([
+            'inventory_location_id' => $loc, 'product_id' => $p, 'product_variant_id' => null,
+            'variant_key' => 0, 'quantity' => 50, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        // venta moderna en enero (branch b2) + compra moderna posterior (feb, misma location).
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b2, 'inventory_location_id' => $loc], '2026-01-10',
+            [['product_id' => $p, 'qty' => 8]]);
+        $this->purchase(['warehouse_id' => null, 'inventory_location_id' => $loc, 'statut' => 'received'], '2026-02-05',
+            [['product_id' => $p, 'cost' => 2.0, 'qty' => 20]]);
+
+        $jan = $this->rowFor($this->exec(['branch_id' => $this->b2, 'from' => '2026-01-01', 'to' => '2026-01-31']), $p);
+
+        $this->assertSame(30.0, $jan['stock_final']);   // 50 − 20 (compra feb)
+        $this->assertSame(38.0, $jan['stock_initial']); // 30 − (−8 venta)
+        $this->assertSame(8.0, $jan['units_sold']);
+    }
+
+    public function test_invalid_date_returns_an_error(): void
+    {
+        $this->product('X', 1.0);
+        $r = $this->exec(['from' => 'no-es-fecha', 'to' => '2026-01-31']);
+        $this->assertArrayHasKey('error', $r);
+        $this->assertSame([], $r['rows']);
+    }
+
+    public function test_from_after_to_returns_an_error(): void
+    {
+        $this->product('X', 1.0);
+        $r = $this->exec(['from' => '2026-03-01', 'to' => '2026-01-01']);
+        $this->assertArrayHasKey('error', $r);
+    }
+
+    public function test_future_to_is_clamped_to_today(): void
+    {
+        $this->product('X', 1.0);
+        $r = $this->exec(['from' => now()->subDays(10)->toDateString(), 'to' => now()->addYears(5)->toDateString()]);
+        $this->assertArrayNotHasKey('error', $r);
+        $this->assertTrue($r['meta']['to_clamped']);
+        $this->assertSame(now()->toDateString(), $r['meta']['to']);
+    }
+
+    public function test_sort_by_text_and_numeric_fields(): void
+    {
+        $wh = $this->wh1;
+        $b = $this->b1;
+        $this->onHand($z = $this->product('Zeta', 1), $wh, 10);
+        $this->onHand($a = $this->product('Alfa', 1), $wh, 10);
+        $this->sale($wh, '2026-01-10', [['product_id' => $a, 'qty' => 9]], $b); // Alfa vende más
+        $this->sale($wh, '2026-01-10', [['product_id' => $z, 'qty' => 1]], $b);
+
+        $byNameAsc = collect($this->exec(['sort_field' => 'name', 'sort_dir' => 'asc'])['rows'])->pluck('name')->all();
+        $this->assertSame(['Alfa', 'Zeta'], array_values(array_intersect($byNameAsc, ['Alfa', 'Zeta'])));
+
+        $byNameDesc = collect($this->exec(['sort_field' => 'name', 'sort_dir' => 'desc'])['rows'])->pluck('name')->all();
+        $this->assertSame(['Zeta', 'Alfa'], array_values(array_intersect($byNameDesc, ['Zeta', 'Alfa'])));
+
+        $bySoldDesc = collect($this->exec(['sort_field' => 'units_sold', 'sort_dir' => 'desc'])['rows'])->pluck('name')->all();
+        $this->assertLessThan(array_search('Zeta', $bySoldDesc, true), array_search('Alfa', $bySoldDesc, true));
+    }
+
+    public function test_arbitrary_sort_field_is_ignored(): void
+    {
+        $this->product('X', 1);
+        $r = $this->exec(['sort_field' => 'DROP TABLE products']);
+        $this->assertArrayNotHasKey('error', $r); // no rompe; usa el default
     }
 
     public function test_insufficient_history_returns_na(): void

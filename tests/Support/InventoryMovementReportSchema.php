@@ -283,7 +283,7 @@ trait InventoryMovementReportSchema
     private function insertDoc(string $table, string $date, string $time, array $ctx): int
     {
         return DB::table($table)->insertGetId(array_merge([
-            'date' => $date, 'time' => $time, 'Ref' => ($ctx['ref'] ?? strtoupper(substr($table, 0, 2)).'-'.uniqid()),
+            'date' => $date, 'time' => $ctx['time'] ?? $time, 'Ref' => ($ctx['ref'] ?? strtoupper(substr($table, 0, 2)).'-'.uniqid()),
             'warehouse_id' => $ctx['warehouse_id'] ?? null,
             'inventory_location_id' => $ctx['inventory_location_id'] ?? null,
             'statut' => $ctx['statut'] ?? null,

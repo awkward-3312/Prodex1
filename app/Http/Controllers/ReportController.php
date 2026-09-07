@@ -9727,10 +9727,23 @@ public function draftInvoices(Request $request)
      */
     private function inventoryReportFilterOptions(\App\Models\User $user): array
     {
+        $branchIds = collect($branches = app(\App\Services\SalesReportingScopeService::class)->branchesFor($user))
+            ->pluck('id')->map('intval')->all();
+
+        // Ubicaciones acotadas SIEMPRE a las sucursales permitidas del usuario
+        // (`branchesFor` ya devuelve sólo las permitidas para no-Owner).
+        $locations = \Illuminate\Support\Facades\Schema::hasTable('inventory_locations')
+            ? DB::table('inventory_locations')->whereNull('deleted_at')
+                ->whereIn('branch_id', $branchIds ?: [0])
+                ->orderBy('name')
+                ->get(['id', 'name', 'branch_id', 'warehouse_id'])
+            : collect();
+
         return [
-            'branches' => app(\App\Services\SalesReportingScopeService::class)->branchesFor($user),
+            'branches' => $branches,
             'warehouses' => app(\App\Services\WarehouseScopeService::class)->visibleWarehouses($user)
                 ->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'branch_id' => $w->branch_id]),
+            'inventory_locations' => $locations,
             'categories' => Category::whereNull('deleted_at')->orderBy('name')->get(['id', 'name']),
         ];
     }
@@ -9760,6 +9773,7 @@ public function draftInvoices(Request $request)
                 'products' => $products,
                 'warehouses' => $options['warehouses'],
                 'branches' => $options['branches'],
+                'inventory_locations' => $options['inventory_locations'],
             ]);
         }
 
@@ -9768,14 +9782,20 @@ public function draftInvoices(Request $request)
             'product_id' => $productId,
             'product_variant_id' => $request->input('product_variant_id'),
             'branch_id' => (int) $request->input('branch_id', 0),
+            'inventory_location_id' => (int) $request->input('inventory_location_id', 0),
             'warehouse_id' => (int) $request->input('warehouse_id', 0),
             'from' => $request->input('from') ?: null,
             'to' => $request->input('to') ?: null,
         ]);
 
+        if (! empty($report['error'])) {
+            return response()->json(['message' => $report['error']], 422);
+        }
+
         $report['mode'] = 'ledger';
         $report['warehouses'] = $options['warehouses'];
         $report['branches'] = $options['branches'];
+        $report['inventory_locations'] = $options['inventory_locations'];
 
         return response()->json($report);
     }
@@ -9789,6 +9809,7 @@ public function draftInvoices(Request $request)
         $report = app(\App\Services\Reports\InventoryTurnoverReportService::class)->build([
             'user' => $user,
             'branch_id' => (int) $request->input('branch_id', 0),
+            'inventory_location_id' => (int) $request->input('inventory_location_id', 0),
             'warehouse_id' => (int) $request->input('warehouse_id', 0),
             'from' => $request->input('from') ?: null,
             'to' => $request->input('to') ?: null,
@@ -9800,8 +9821,13 @@ public function draftInvoices(Request $request)
             'sort_dir' => $request->input('SortType', 'desc'),
         ]);
 
+        if (! empty($report['error'])) {
+            return response()->json(['message' => $report['error']], 422);
+        }
+
         $report['warehouses'] = $options['warehouses'];
         $report['branches'] = $options['branches'];
+        $report['inventory_locations'] = $options['inventory_locations'];
         $report['categories'] = $options['categories'];
 
         return response()->json($report);

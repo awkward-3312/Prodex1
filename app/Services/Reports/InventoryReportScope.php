@@ -26,6 +26,23 @@ use Illuminate\Support\Facades\Schema;
  *
  * El acceso (qué sucursales/almacenes puede ver el usuario) se delega en los
  * servicios de alcance canónicos; aquí NO se reimplementa esa política.
+ *
+ * GRANULARIDAD DE ALCANCE PARA REPORTES — decisión arquitectónica (auditada)
+ * ------------------------------------------------------------------------------
+ * Un usuario CON el permiso del reporte analiza a nivel SUCURSAL / ALMACÉN
+ * ASIGNADO, NO a nivel InventoryLocation operativa. Evidencia:
+ *   · `ReportController::Internal_Location_Report` (reporte moderno de ubicación)
+ *     acota por `is_all_warehouses` + `UserWarehouse`, no por location.
+ *   · `SalesReportingScopeService` (alcance de LECTURA canónico de ventas) usa
+ *     `BranchScopeService::allowedBranchIds` + `UserOperationalAssignmentService::allowedWarehouseIds`;
+ *     no restringe por InventoryLocation.
+ *   · `InventoryLocationScopeService::allowedLocationIds` se usa SÓLO en
+ *     contextos OPERATIVOS (POS: desde dónde vender; recepción de traslados),
+ *     nunca en reportes.
+ * Por tanto los reportes usan `BranchScopeService` / `WarehouseScopeService` y
+ * el usuario puede ver TODAS las InventoryLocation de sus sucursales permitidas.
+ * El filtro "Ubicación" del reporte es una CONVENIENCIA de análisis, acotada
+ * SIEMPRE al alcance de sucursal permitido (no puede ampliarlo).
  */
 class InventoryReportScope
 {
@@ -51,7 +68,7 @@ class InventoryReportScope
 
     private array $locationById; // id => {name, branch_id, warehouse_id}
 
-    public function __construct(User $user, ?int $branchId = null, ?int $warehouseId = null)
+    public function __construct(User $user, ?int $branchId = null, ?int $locationId = null, ?int $warehouseId = null)
     {
         $branchScope = app(BranchScopeService::class);
         $warehouseScope = app(WarehouseScopeService::class);
@@ -60,7 +77,7 @@ class InventoryReportScope
         $allowedWarehouses = $warehouseScope->allowedWarehouseIds($user);
         $isOwner = (int) $user->role_id === 1;
         $seesWholeTenant = $isOwner || (int) $user->is_all_warehouses === 1;
-        $hasSelector = (bool) $branchId || (bool) $warehouseId;
+        $hasSelector = (bool) $branchId || (bool) $locationId || (bool) $warehouseId;
         $locTable = Schema::hasTable('inventory_locations');
 
         $allWarehouseIds = DB::table('warehouses')->whereNull('deleted_at')->pluck('id')->map('intval')->all();
@@ -77,6 +94,21 @@ class InventoryReportScope
             $this->branchIds = $this->allBranchIds();
             $this->legacyWarehouseIds = $allWarehouseIds;
             $this->locationIds = $allLocationIds;
+        } elseif ($locationId) {
+            // Selector MODERNO: una InventoryLocation concreta. Sólo movimientos y
+            // stock con ESA `inventory_location_id` — los registros legacy
+            // (`warehouse_id`) no se pueden atribuir a una ubicación concreta y
+            // quedan fuera de la vista por ubicación (usa el filtro Sucursal /
+            // el almacén legacy para verlos).
+            $loc = $locTable ? DB::table('inventory_locations')->whereNull('deleted_at')->find($locationId) : null;
+            if (! $loc || (! $isOwner && ! in_array((int) $loc->branch_id, $allowedBranches, true))) {
+                $this->denied = true;
+                $this->branchIds = $loc ? [(int) $loc->branch_id] : [];
+            } else {
+                $this->branchIds = [(int) $loc->branch_id];
+            }
+            $this->legacyWarehouseIds = [];
+            $this->locationIds = [$locationId];
         } elseif ($branchId) {
             if (! $isOwner && ! in_array($branchId, $allowedBranches, true)) {
                 $this->denied = true;
@@ -90,6 +122,9 @@ class InventoryReportScope
                     ->pluck('id')->map('intval')->all()
                 : [];
         } elseif ($warehouseId) {
+            // Selector LEGACY (compatibilidad). Sólo el `warehouse_id` exacto y
+            // las InventoryLocation que SON ese almacén (`warehouse_id = X`). NO
+            // se añaden ubicaciones sueltas de la misma sucursal.
             $wBranch = (int) (DB::table('warehouses')->where('id', $warehouseId)->value('branch_id') ?: 0);
             if (! $isOwner && ! $warehouseScope->canAccess($user, $warehouseId)) {
                 $this->denied = true;
@@ -97,13 +132,7 @@ class InventoryReportScope
             $this->branchIds = $wBranch ? [$wBranch] : [];
             $this->legacyWarehouseIds = [$warehouseId];
             $this->locationIds = $locTable
-                ? DB::table('inventory_locations')->whereNull('deleted_at')
-                    ->where(function ($q) use ($warehouseId, $wBranch) {
-                        $q->where('warehouse_id', $warehouseId);
-                        if ($wBranch) {
-                            $q->orWhere(fn ($qq) => $qq->where('branch_id', $wBranch)->whereNull('warehouse_id'));
-                        }
-                    })
+                ? DB::table('inventory_locations')->whereNull('deleted_at')->where('warehouse_id', $warehouseId)
                     ->pluck('id')->map('intval')->all()
                 : [];
         } else {

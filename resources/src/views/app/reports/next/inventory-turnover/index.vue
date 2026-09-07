@@ -41,13 +41,13 @@
           <px-field label="Sucursal">
             <template #default="{ id }">
               <vs-px :input-id="id" v-model="branch_id" :reduce="o => o.value" placeholder="Todas"
-                :options="branchOptions" @input="refresh" />
+                :options="branchOptions" @input="onBranchChange" />
             </template>
           </px-field>
-          <px-field label="Almacén">
+          <px-field label="Ubicación">
             <template #default="{ id }">
-              <vs-px :input-id="id" v-model="warehouse_id" :reduce="o => o.value" placeholder="Todos"
-                :options="warehouseOptions" @input="refresh" />
+              <vs-px :input-id="id" v-model="inventory_location_id" :reduce="o => o.value" placeholder="Todas"
+                :options="locationOptions" @input="refresh" />
             </template>
           </px-field>
           <px-field label="Categoría">
@@ -66,6 +66,10 @@
           <b>media</b> ≤ {{ meta.thresholds.media_max_dias }} · <b>baja</b> &gt; {{ meta.thresholds.media_max_dias }}.
         </template>
         <br>Rotación en unidades. No se ofrece rotación financiera: PRODEX no conserva COGS histórico por venta/ajuste/daño.
+      </px-alert>
+
+      <px-alert v-if="meta && meta.to_clamped" tone="info" title="Fecha ajustada" class="pxrot__alert">
+        No se puede calcular stock futuro; la fecha "hasta" se ajustó a hoy ({{ meta.to }}).
       </px-alert>
 
       <px-alert v-if="meta && meta.capped" tone="warning" title="Reporte acotado" class="pxrot__alert">
@@ -96,7 +100,7 @@
             <template #cell-code="{ row }"><span class="pxn-mono">{{ row.code }}</span></template>
             <template #cell-units_sold="{ row }"><span class="pxn-num">{{ fmtNum(row.units_sold) }}</span></template>
             <template #cell-stock_initial="{ row }"><span class="pxn-num">{{ na(row.stock_initial) }}</span></template>
-            <template #cell-stock_final="{ row }"><span class="pxn-num">{{ fmtNum(row.stock_final) }}</span></template>
+            <template #cell-stock_final="{ row }"><span class="pxn-num">{{ na(row.stock_final) }}</span></template>
             <template #cell-avg_stock="{ row }"><span class="pxn-num">{{ na(row.avg_stock) }}</span></template>
             <template #cell-turnover="{ row }">
               <span class="pxn-num" :title="row.turnover == null ? (row.reason || '') : ''">{{ row.turnover == null ? 'N/A' : fmtNum(row.turnover) }}</span>
@@ -160,8 +164,9 @@ export default {
       _searchTimer: null,
       from: "",
       to: "",
-      warehouse_id: "",
+      warehouse_id: "",        // sólo compat legacy / deep-link
       branch_id: "",
+      inventory_location_id: "",
       category_id: "",
       sort: { field: "turnover", type: "desc" },
       page: 1,
@@ -169,22 +174,31 @@ export default {
       report: [],
       totalRows: 0,
       meta: null,
-      warehouses: [],
       branches: [],
+      inventoryLocations: [],
       categories: []
     };
   },
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
-    warehouseOptions() { return (this.warehouses || []).map(w => ({ label: w.name, value: Number(w.id) })); },
     branchOptions() { return (this.branches || []).map(b => ({ label: b.name, value: Number(b.id) })); },
     categoryOptions() { return (this.categories || []).map(c => ({ label: c.name, value: Number(c.id) })); },
+    locationOptions() {
+      const b = (this.branch_id !== "" && this.branch_id != null) ? Number(this.branch_id) : null;
+      return (this.inventoryLocations || [])
+        .filter(l => b == null || Number(l.branch_id) === b)
+        .map(l => ({ label: l.name, value: Number(l.id) }));
+    },
+    // Whitelist de campos ordenables (debe coincidir con el backend).
+    sortableFields() {
+      return ["code", "name", "category", "units_sold", "stock_initial", "stock_final", "avg_stock", "turnover", "days_inventory"];
+    },
     activeFilterCount() {
       let n = 0;
       if (this.from) n++;
       if (this.to) n++;
-      if (this.warehouse_id !== "" && this.warehouse_id != null) n++;
       if (this.branch_id !== "" && this.branch_id != null) n++;
+      if (this.inventory_location_id !== "" && this.inventory_location_id != null) n++;
       if (this.category_id !== "" && this.category_id != null) n++;
       return n;
     },
@@ -194,8 +208,8 @@ export default {
         { key: "name", label: "Producto", sortable: true },
         { key: "category", label: "Categoría", sortable: true },
         { key: "units_sold", label: "Unid. vendidas", align: "right", numeric: true, sortable: true, width: "120px" },
-        { key: "stock_initial", label: "Stock inicial", align: "right", numeric: true, width: "110px" },
-        { key: "stock_final", label: "Stock final", align: "right", numeric: true, width: "110px" },
+        { key: "stock_initial", label: "Stock inicio período", align: "right", numeric: true, sortable: true, width: "150px" },
+        { key: "stock_final", label: "Stock fin período", align: "right", numeric: true, sortable: true, width: "140px" },
         { key: "avg_stock", label: "Inv. promedio", align: "right", numeric: true, sortable: true, width: "120px" },
         { key: "turnover", label: "Rotación", align: "right", numeric: true, sortable: true, width: "100px" },
         { key: "days_inventory", label: "Días inv.", align: "right", numeric: true, sortable: true, width: "100px" },
@@ -228,13 +242,20 @@ export default {
       this._searchTimer = setTimeout(() => { this.page = 1; this.fetch(); }, 350);
     },
     onSort({ key, dir }) {
-      let f = key;
-      if (key === "name") f = "name";
-      this.sort = { field: f === "code" || f === "name" || f === "category" ? "units_sold" : f, type: dir };
+      // Cada columna ordenable ordena por SÍ MISMA (texto o numérico); sólo se
+      // ignora una clave fuera de la whitelist.
+      const field = this.sortableFields.includes(key) ? key : this.sort.field;
+      this.sort = { field, type: dir };
       this.fetch();
     },
     onPage(p) { if (p !== this.page) { this.page = p; this.fetch(); } },
     onLimit(v) { this.limit = String(v); this.page = 1; this.fetch(); },
+    onBranchChange() {
+      // Al cambiar de sucursal, una ubicación de otra sucursal deja de aplicar.
+      const ok = this.locationOptions.some(o => o.value === Number(this.inventory_location_id));
+      if (!ok) this.inventory_location_id = "";
+      this.refresh();
+    },
     refresh() { this.page = 1; this.fetch(); },
     qs() {
       const p = {
@@ -247,6 +268,7 @@ export default {
         to: this.to || "",
         warehouse_id: this.warehouse_id != null ? this.warehouse_id : "",
         branch_id: this.branch_id != null ? this.branch_id : "",
+        inventory_location_id: this.inventory_location_id != null ? this.inventory_location_id : "",
         category_id: this.category_id != null ? this.category_id : ""
       };
       return Object.keys(p)
@@ -264,8 +286,8 @@ export default {
           this.report = Array.isArray(data.rows) ? data.rows : [];
           this.totalRows = Number(data.totalRows || 0);
           this.meta = data.meta || null;
-          this.warehouses = data.warehouses || [];
           this.branches = data.branches || [];
+          this.inventoryLocations = data.inventory_locations || [];
           this.categories = data.categories || [];
           NProgress.done();
           this.initialLoading = false;

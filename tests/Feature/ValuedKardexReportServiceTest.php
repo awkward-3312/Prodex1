@@ -377,6 +377,90 @@ class ValuedKardexReportServiceTest extends TestCase
         $this->assertSame(3.0, $r['summary']['opening_qty']);
     }
 
+    public function test_chronological_order_uses_the_real_time_not_the_movement_type(): void
+    {
+        $p = $this->product('Reloj', 1.00);
+        $this->onHand($p, $this->wh1, 0);
+        // Mismo día: venta 09:00, compra 17:00 con costo distinto.
+        $this->sale(['warehouse_id' => $this->wh1, 'branch_id' => $this->b1, 'time' => '09:00:00'], '2026-01-10', [['product_id' => $p, 'qty' => 5]]);
+        $this->purchase(['warehouse_id' => $this->wh1, 'time' => '17:00:00', 'statut' => 'received'], '2026-01-10', [['product_id' => $p, 'cost' => 7.00, 'qty' => 5]]);
+
+        $rows = collect($this->build(['product_id' => $p])['rows'])->where('kind', 'movement')->values();
+
+        // La venta (09:00) va ANTES que la compra (17:00), NO por ser "salida".
+        $this->assertSame('venta', $rows[0]['movement_type']);
+        $this->assertSame('compra', $rows[1]['movement_type']);
+        // La venta NO puede haber usado el costo futuro 7.00 (WAC previo = costo
+        // de referencia del saldo inicial, no la compra de las 17:00).
+        $this->assertLessThan(7.0, abs($rows[0]['unit_cost']));
+    }
+
+    public function test_purchase_before_sale_same_day_makes_the_sale_use_the_new_wac(): void
+    {
+        $p = $this->product('Cronos', 1.00);
+        $this->onHand($p, $this->wh1, 0);
+        $this->purchase(['warehouse_id' => $this->wh1, 'time' => '09:00:00', 'statut' => 'received'], '2026-01-10', [['product_id' => $p, 'cost' => 4.00, 'qty' => 10]]);
+        $this->sale(['warehouse_id' => $this->wh1, 'branch_id' => $this->b1, 'time' => '17:00:00'], '2026-01-10', [['product_id' => $p, 'qty' => 4]]);
+
+        $rows = collect($this->build(['product_id' => $p])['rows'])->where('kind', 'movement')->values();
+        $this->assertSame('compra', $rows[0]['movement_type']);
+        $this->assertSame('venta', $rows[1]['movement_type']);
+        // La venta SÍ usa el WAC de la compra previa (4.00).
+        $this->assertEqualsWithDelta(4.00, $rows[1]['unit_cost'], 0.01);
+    }
+
+    public function test_location_selector_scopes_to_that_location_only_and_excludes_legacy(): void
+    {
+        $loc = $this->location('Zona A', $this->b1, $this->wh1);
+        $p = $this->product('Zonificado', 1.00);
+        $this->onHand($p, $this->wh1, 100); // stock legacy del almacén
+        // Movimiento LEGACY (warehouse_id, sin location).
+        $this->sale($this->wh1, '2026-01-05', [['product_id' => $p, 'qty' => 3]], null);
+        // Movimiento MODERNO en la location.
+        $this->purchase(['warehouse_id' => $this->wh1, 'inventory_location_id' => $loc, 'statut' => 'received'],
+            '2026-01-06', [['product_id' => $p, 'cost' => 2.0, 'qty' => 7]]);
+
+        $r = $this->svc->build(['user' => $this->owner, 'product_id' => $p, 'inventory_location_id' => $loc, 'from' => null, 'to' => null]);
+
+        $rows = collect($r['rows'])->where('kind', 'movement');
+        // Sólo la compra moderna de la location; la venta legacy NO aparece.
+        $this->assertSame(1, $rows->count());
+        $this->assertSame('compra', $rows->first()['movement_type']);
+        $this->assertSame(7.0, $r['summary']['in_qty']);
+        $this->assertSame(0.0, $r['summary']['out_qty']);
+    }
+
+    public function test_warehouse_selector_does_not_pull_unrelated_branch_locations(): void
+    {
+        // Ubicación de la MISMA sucursal pero SIN almacén (independiente de WH1).
+        $orphanLoc = $this->location('Suelto b1', $this->b1, null);
+        $p = $this->product('SoloWh', 1.00);
+        $this->onHand($p, $this->wh1, 20);
+        // Compra moderna a la ubicación suelta (no pertenece a WH1).
+        $this->purchase(['warehouse_id' => null, 'inventory_location_id' => $orphanLoc, 'statut' => 'received'],
+            '2026-01-06', [['product_id' => $p, 'cost' => 2.0, 'qty' => 99]]);
+        // Venta legacy en WH1.
+        $this->sale($this->wh1, '2026-01-08', [['product_id' => $p, 'qty' => 4]], null);
+
+        $r = $this->svc->build(['user' => $this->owner, 'product_id' => $p, 'warehouse_id' => $this->wh1, 'from' => null, 'to' => null]);
+
+        $rows = collect($r['rows'])->where('kind', 'movement');
+        // Sólo la venta legacy de WH1; la compra de 99 a la ubicación suelta NO.
+        $this->assertSame(1, $rows->count());
+        $this->assertSame('venta', $rows->first()['movement_type']);
+        $this->assertSame(0.0, $r['summary']['in_qty']);
+        $this->assertSame(4.0, $r['summary']['out_qty']);
+    }
+
+    public function test_invalid_and_reversed_dates_return_an_error(): void
+    {
+        $bad = $this->svc->build(['user' => $this->owner, 'product_id' => $this->prod, 'branch_id' => $this->b1, 'from' => '2026-13-40', 'to' => '2026-01-31']);
+        $this->assertArrayHasKey('error', $bad);
+
+        $rev = $this->svc->build(['user' => $this->owner, 'product_id' => $this->prod, 'branch_id' => $this->b1, 'from' => '2026-03-01', 'to' => '2026-01-01']);
+        $this->assertArrayHasKey('error', $rev);
+    }
+
     public function test_summary_totals_foot_with_the_ledger_when_a_date_filter_is_applied(): void
     {
         $r = $this->build(['from' => '2026-01-14', 'to' => '2026-01-31']);

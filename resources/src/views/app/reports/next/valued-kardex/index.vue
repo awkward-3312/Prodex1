@@ -32,13 +32,13 @@
           <px-field label="Sucursal">
             <template #default="{ id }">
               <vs-px :input-id="id" v-model="branch_id" :reduce="o => o.value" placeholder="Todas"
-                :options="branchOptions" @input="refresh" />
+                :options="branchOptions" @input="onBranchChange" />
             </template>
           </px-field>
-          <px-field label="Almacén">
+          <px-field label="Ubicación">
             <template #default="{ id }">
-              <vs-px :input-id="id" v-model="warehouse_id" :reduce="o => o.value" placeholder="Todos"
-                :options="warehouseOptions" @input="refresh" />
+              <vs-px :input-id="id" v-model="inventory_location_id" :reduce="o => o.value" placeholder="Todas"
+                :options="locationOptions" @input="refresh" />
             </template>
           </px-field>
           <px-field label="Desde">
@@ -83,6 +83,10 @@
               Existencia real: <b class="pxn-num">{{ fmtNum(reconciliation.stock_on_hand) }}</b> ·
               Diferencia: <b class="pxn-num">{{ fmtNum(reconciliation.difference) }}</b>.
             </template>
+          </px-alert>
+
+          <px-alert v-if="window && window.to_clamped" tone="info" title="Fecha ajustada" class="pxvk__alert">
+            No se puede reconstruir stock futuro; la fecha "hasta" se ajustó a hoy ({{ window.to }}).
           </px-alert>
 
           <px-alert
@@ -175,15 +179,17 @@ export default {
       error: null,
       mode: "picker",
       product_id: "",
-      warehouse_id: "",
+      warehouse_id: "",      // sólo compat legacy / deep-link
       branch_id: "",
+      inventory_location_id: "",
       from: "",
       to: "",
       products: [],
-      warehouses: [],
       branches: [],
+      inventoryLocations: [],
       _searchTimer: null,
       productMeta: null,
+      window: null,
       summary: {},
       reconciliation: null,
       quantityQuality: null,
@@ -199,11 +205,14 @@ export default {
         value: Number(p.id)
       }));
     },
-    warehouseOptions() {
-      return (this.warehouses || []).map(w => ({ label: w.name, value: Number(w.id) }));
-    },
     branchOptions() {
       return (this.branches || []).map(b => ({ label: b.name, value: Number(b.id) }));
+    },
+    locationOptions() {
+      const b = (this.branch_id !== "" && this.branch_id != null) ? Number(this.branch_id) : null;
+      return (this.inventoryLocations || [])
+        .filter(l => b == null || Number(l.branch_id) === b)
+        .map(l => ({ label: l.name, value: Number(l.id) }));
     },
     columns() {
       return [
@@ -263,6 +272,11 @@ export default {
     onProductChange() {
       this.fetch();
     },
+    onBranchChange() {
+      const ok = this.locationOptions.some(o => o.value === Number(this.inventory_location_id));
+      if (!ok) this.inventory_location_id = "";
+      this.fetch();
+    },
     refresh() {
       this.fetch();
     },
@@ -272,8 +286,8 @@ export default {
       // un producto. Sólo búsqueda + alcance.
       const p = {
         search: search || "",
-        warehouse_id: this.warehouse_id != null ? this.warehouse_id : "",
-        branch_id: this.branch_id != null ? this.branch_id : ""
+        branch_id: this.branch_id != null ? this.branch_id : "",
+        inventory_location_id: this.inventory_location_id != null ? this.inventory_location_id : ""
       };
       const qs = Object.keys(p)
         .filter(k => p[k] !== "" && p[k] != null)
@@ -290,6 +304,7 @@ export default {
           product_id: this.product_id || "",
           warehouse_id: this.warehouse_id != null ? this.warehouse_id : "",
           branch_id: this.branch_id != null ? this.branch_id : "",
+          inventory_location_id: this.inventory_location_id != null ? this.inventory_location_id : "",
           from: this.from || "",
           to: this.to || ""
         },
@@ -308,12 +323,13 @@ export default {
         .get("report/valued_kardex?" + this.qs())
         .then(({ data }) => {
           this.mode = data.mode || "picker";
-          this.warehouses = data.warehouses || [];
           this.branches = data.branches || [];
+          this.inventoryLocations = data.inventory_locations || [];
           if (data.mode === "picker") {
             this.products = data.products || [];
           } else {
             this.productMeta = data.product || null;
+            this.window = data.window || null;
             this.summary = data.summary || {};
             this.reconciliation = data.reconciliation || null;
             this.quantityQuality = data.quantity_quality || null;

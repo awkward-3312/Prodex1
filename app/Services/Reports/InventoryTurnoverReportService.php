@@ -5,32 +5,31 @@ namespace App\Services\Reports;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\InventoryReadService;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Rotación de inventario — reporte OPERATIVO por producto (sólo unidades).
  *
  *   rotación = unidades vendidas netas del período / inventario promedio (unid.)
- *   inventario promedio = (stock_inicial + stock_final) / 2
- *   stock_final   = existencia actual real ({@see InventoryReadService})
- *   stock_inicial = stock_final − (Σ entradas − Σ salidas del período),
- *                   reconstruido de los DOCUMENTOS reales del período
- *   días de inventario = días del período / rotación   (sólo si rotación > 0)
+ *   inventario promedio = (stock_at_from + stock_at_to) / 2
  *
- * NO se ofrece rotación financiera: PRODEX no conserva COGS histórico por
- * venta/ajuste/daño y el WAC de compras no puede acotarse de forma fiable al
- * período/sucursal, así que una cifra financiera aquí sería contablemente
- * ambigua. Para análisis de costo, usar los reportes contables canónicos.
+ * RECONSTRUCCIÓN HISTÓRICA (no snapshots inventados)
+ * ------------------------------------------------------------------------------
+ *   stock_now   = existencia ACTUAL real (InventoryReadService + location stocks)
+ *   stock_at_to = stock_now − (Σ entradas − Σ salidas de movimientos DESPUÉS de `to`)
+ *   stock_at_from = stock_at_to − (Σ entradas − Σ salidas dentro de [from, to])
+ * Así el reporte de un mes histórico refleja el stock de ESE mes, no el de hoy.
+ * Si `stock_at_from` o `stock_at_to` resultan negativos → el historial documental
+ * no permite reconstruir con seguridad → N/A "historial insuficiente".
  *
- * ALCANCE branch-first / legacy-fallback: ver {@see InventoryReportScope}.
- * Ventas / dev. de venta → `branch_id`; compras / dev. compra / ajustes / daños
- * / traslados → `inventory_location_id`; `warehouse_id` sólo como fallback legacy.
+ * Fuentes reales, mismo alcance branch/location: ventas, dev. de venta, compras,
+ * dev. de compra, ajustes, daños, traslados (por pierna). Legacy + moderno.
  *
- * CASOS SIN DATO → null (UI: "N/A"); nunca infinito, 0 engañoso ni fabricado:
- *   · inventario promedio = 0
- *   · sin ventas en el período
- *   · stock_inicial reconstruido < 0 (historial documental insuficiente)
+ * CASOS SIN DATO → null (UI "N/A"); nunca infinito, 0 engañoso ni fabricado:
+ *   · inventario promedio ≈ 0
+ *   · sin ventas netas en el período  (unitsSold <= 0)
+ *   · devoluciones superan ventas      (unitsSold < 0)
+ *   · historial documental insuficiente
  */
 class InventoryTurnoverReportService
 {
@@ -38,37 +37,47 @@ class InventoryTurnoverReportService
 
     public const MEDIUM_MAX_DAYS = 90;
 
-    /** Cota de productos evaluados por corrida (orden por métrica derivada). */
     public const MAX_PRODUCTS = 5000;
+
+    /** Campos de ordenación permitidos (whitelist estricta). */
+    public const SORT_FIELDS = [
+        'code', 'name', 'category', 'units_sold', 'stock_initial',
+        'stock_final', 'avg_stock', 'turnover', 'days_inventory',
+    ];
 
     public function __construct(private InventoryReadService $inventoryRead)
     {
     }
 
-    /**
-     * @param  array  $filters  user (App\Models\User), branch_id (int|0),
-     *                           warehouse_id (int|0), from, to, category_id,
-     *                           search, page, limit, sort_field, sort_dir
-     */
     public function build(array $filters): array
     {
         /** @var User $user */
         $user = $filters['user'];
-        $scope = new InventoryReportScope($user, (int) ($filters['branch_id'] ?? 0) ?: null, (int) ($filters['warehouse_id'] ?? 0) ?: null);
+        $scope = new InventoryReportScope(
+            $user,
+            (int) ($filters['branch_id'] ?? 0) ?: null,
+            (int) ($filters['inventory_location_id'] ?? 0) ?: null,
+            (int) ($filters['warehouse_id'] ?? 0) ?: null,
+        );
 
-        $from = $filters['from'] ?? Carbon::now()->subDays(90)->toDateString();
-        $to = $filters['to'] ?? Carbon::now()->toDateString();
+        $range = ReportDateRange::parse($filters['from'] ?? null, $filters['to'] ?? null);
+        if (! $range->isValid()) {
+            return $this->errorResult($range);
+        }
+        $from = $range->from;
+        $to = $range->to;
+        $periodDays = $range->days;
+
         $categoryId = (int) ($filters['category_id'] ?? 0);
         $search = trim((string) ($filters['search'] ?? ''));
         $perPage = (int) ($filters['limit'] ?? 25);
         $page = max(1, (int) ($filters['page'] ?? 1));
-        $sortField = $filters['sort_field'] ?? 'turnover';
+
+        $sortField = in_array($filters['sort_field'] ?? '', self::SORT_FIELDS, true) ? $filters['sort_field'] : 'turnover';
         $sortDir = strtolower((string) ($filters['sort_dir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
 
-        $periodDays = (int) max(1, Carbon::parse($from)->diffInDays(Carbon::parse($to)) + 1);
-
         if ($scope->isDenied()) {
-            return $this->emptyResult($from, $to, $periodDays);
+            return $this->emptyResult($range, $scope);
         }
 
         $productsQuery = DB::table('products as p')
@@ -84,85 +93,53 @@ class InventoryTurnoverReportService
         $capped = $matched > self::MAX_PRODUCTS;
         $totalRows = $capped ? self::MAX_PRODUCTS : $matched;
 
-        $products = $productsQuery
-            ->orderBy('p.name')
-            ->limit(self::MAX_PRODUCTS)
+        $products = $productsQuery->orderBy('p.name')->limit(self::MAX_PRODUCTS)
             ->get(['p.id', 'p.code', 'p.name', 'p.category_id', 'c.name as category_name']);
 
         $productIds = $products->pluck('id')->map('intval')->all();
         if (! $productIds) {
-            return $this->emptyResult($from, $to, $periodDays);
+            return $this->emptyResult($range, $scope);
         }
 
-        // --- Existencia actual real (final) por producto ---
-        // InventoryReadService (warehouse-keyed) + stock de las InventoryLocation
-        // del alcance SIN almacén (no las alcanza), sin doble conteo.
-        $stockByProduct = [];
-        $whIds = $scope->stockWarehouseIds();
-        if ($whIds) {
-            foreach ($this->inventoryRead->totalsByProductVariant($productIds, $whIds) as $key => $qty) {
-                [$pid] = explode(':', $key);
-                $stockByProduct[(int) $pid] = ($stockByProduct[(int) $pid] ?? 0.0) + (float) $qty;
-            }
-        }
-        $locIds = $scope->stockLocationIds();
-        if ($locIds) {
-            foreach (DB::table('inventory_location_stocks')
-                ->whereIn('product_id', $productIds)
-                ->whereIn('inventory_location_id', $locIds)
-                ->selectRaw('product_id, SUM(quantity) q')
-                ->groupBy('product_id')->get() as $r) {
-                $stockByProduct[(int) $r->product_id] = ($stockByProduct[(int) $r->product_id] ?? 0.0) + (float) $r->q;
-            }
-        }
-
-        // --- Movimientos del período (branch-first) ---
         $factor = $this->unitFactorResolver();
 
+        // Existencia ACTUAL real.
+        $stockNow = $this->currentStock($productIds, $scope);
+
+        // Neto (Σin − Σout) DESPUÉS de `to` y DENTRO de [from, to].
+        $netAfter = $this->netUnitsByProduct($productIds, $scope, $factor, fn ($q, $a) => $q->where("{$a}.date", '>', $to));
+        $netInPeriod = $this->netUnitsByProduct($productIds, $scope, $factor, fn ($q, $a) => $q->whereBetween("{$a}.date", [$from, $to]));
+
+        // Ventas netas del período (venta − dev. de venta), para la rotación.
         $salesUnits = $this->periodQtyBranch('sale_details', 'sales', 'sale_id', 'sale_unit_id', 'completed', $productIds, $scope, $from, $to, $factor);
         $saleReturnUnits = $this->periodQtyBranch('sale_return_details', 'sale_returns', 'sale_return_id', 'sale_unit_id', null, $productIds, $scope, $from, $to, $factor);
-        $purchaseUnits = $this->periodQtyLocation('purchase_details', 'purchases', 'purchase_id', 'purchase_unit_id', 'received', $productIds, $scope, $from, $to, $factor);
-        $purchaseReturnUnits = $this->periodQtyLocation('purchase_return_details', 'purchase_returns', 'purchase_return_id', 'purchase_unit_id', null, $productIds, $scope, $from, $to, $factor);
-        $damageUnits = $this->periodQtyLocation('damage_details', 'damages', 'damage_id', null, null, $productIds, $scope, $from, $to, $factor);
-        [$adjAdd, $adjSub] = $this->periodAdjustments($productIds, $scope, $from, $to);
-        [$transferIn, $transferOut] = $this->periodTransfers($productIds, $scope, $from, $to, $factor);
 
         $rows = [];
         foreach ($products as $p) {
             $pid = (int) $p->id;
-            $stockFinal = round($stockByProduct[$pid] ?? 0.0, 3);
+            $stockNowP = round($stockNow[$pid] ?? 0.0, 3);
             $unitsSold = round(($salesUnits[$pid] ?? 0.0) - ($saleReturnUnits[$pid] ?? 0.0), 3);
 
-            $netInPeriod = round(
-                ($purchaseUnits[$pid] ?? 0.0)
-                + ($saleReturnUnits[$pid] ?? 0.0)
-                + ($adjAdd[$pid] ?? 0.0)
-                + ($transferIn[$pid] ?? 0.0)
-                - ($salesUnits[$pid] ?? 0.0)
-                - ($purchaseReturnUnits[$pid] ?? 0.0)
-                - ($damageUnits[$pid] ?? 0.0)
-                - ($adjSub[$pid] ?? 0.0)
-                - ($transferOut[$pid] ?? 0.0),
-                3
-            );
+            $stockAtTo = round($stockNowP - ($netAfter[$pid] ?? 0.0), 3);
+            $stockAtFrom = round($stockAtTo - ($netInPeriod[$pid] ?? 0.0), 3);
 
-            $stockInitial = round($stockFinal - $netInPeriod, 3);
-            $insufficient = $stockInitial < -0.0005;
-            $avgStock = $insufficient ? null : round(($stockInitial + $stockFinal) / 2, 3);
+            // Historial insuficiente: la reconstrucción da un saldo imposible.
+            $insufficient = $stockAtFrom < -0.0005 || $stockAtTo < -0.0005;
+            $avgStock = $insufficient ? null : round(($stockAtFrom + $stockAtTo) / 2, 3);
 
             $turnover = null;
             $daysInventory = null;
             $classification = null;
             $reason = null;
 
-            if ($avgStock === null) {
+            if ($insufficient) {
                 $reason = 'historial insuficiente';
+            } elseif ($unitsSold < -0.0005) {
+                $reason = 'devoluciones superan ventas';
+            } elseif ($unitsSold <= 0.0005) {
+                $reason = 'sin ventas en el período';
             } elseif ($avgStock <= 0.0005) {
                 $reason = 'inventario promedio 0';
-            } elseif ($unitsSold <= 0.0005) {
-                $classification = 'baja';
-                $reason = 'sin ventas en el período';
-                $turnover = 0.0;
             } else {
                 $turnover = round($unitsSold / $avgStock, 4);
                 if ($turnover > 0) {
@@ -178,8 +155,9 @@ class InventoryTurnoverReportService
                 'name' => $p->name,
                 'category' => $p->category_name,
                 'units_sold' => $unitsSold,
-                'stock_initial' => $insufficient ? null : $stockInitial,
-                'stock_final' => $stockFinal,
+                'stock_initial' => $insufficient ? null : $stockAtFrom,
+                'stock_final' => $insufficient ? null : $stockAtTo,
+                'stock_now' => $stockNowP,
                 'avg_stock' => $avgStock,
                 'turnover' => $turnover,
                 'days_inventory' => $daysInventory,
@@ -192,15 +170,17 @@ class InventoryTurnoverReportService
             $va = $a[$sortField] ?? null;
             $vb = $b[$sortField] ?? null;
             if ($va === $vb) {
-                return 0;
+                return $a['product_id'] <=> $b['product_id'];
             }
             if ($va === null) {
-                return 1;
+                return 1;   // nulls siempre al final
             }
             if ($vb === null) {
                 return -1;
             }
-            $cmp = $va <=> $vb;
+            $cmp = is_string($va) || is_string($vb)
+                ? strcasecmp((string) $va, (string) $vb)
+                : ($va <=> $vb);
 
             return $sortDir === 'asc' ? $cmp : -$cmp;
         });
@@ -210,40 +190,104 @@ class InventoryTurnoverReportService
         return [
             'rows' => array_values($paged),
             'totalRows' => $totalRows,
-            'meta' => [
-                'from' => $from,
-                'to' => $to,
-                'period_days' => $periodDays,
-                'capped' => $capped,
-                'max_products' => self::MAX_PRODUCTS,
-                'matched_products' => $matched,
-                'branch_ids' => $scope->branchIds(),
-                'has_modern_locations' => $scope->hasModernLocations(),
-                'formula' => 'rotación = unidades vendidas netas / inventario promedio (unidades). inventario promedio = (stock_inicial + stock_final) / 2. días de inventario = días del período / rotación.',
-                'thresholds' => ['alta_max_dias' => self::FAST_MAX_DAYS, 'media_max_dias' => self::MEDIUM_MAX_DAYS],
-            ],
+            'meta' => $this->meta($range, $scope, $capped, $matched),
         ];
     }
 
-    private function unitFactorResolver(): callable
+    // ------------------------------------------------------------------ helpers
+
+    private function currentStock(array $productIds, InventoryReportScope $scope): array
     {
-        $units = [];
-        foreach (Unit::get(['id', 'operator', 'operator_value']) as $u) {
-            $units[(int) $u->id] = [$u->operator, (float) $u->operator_value];
+        $out = [];
+        $whIds = $scope->stockWarehouseIds();
+        if ($whIds) {
+            foreach ($this->inventoryRead->totalsByProductVariant($productIds, $whIds) as $key => $qty) {
+                [$pid] = explode(':', $key);
+                $out[(int) $pid] = ($out[(int) $pid] ?? 0.0) + (float) $qty;
+            }
+        }
+        $locIds = $scope->stockLocationIds();
+        if ($locIds) {
+            foreach (DB::table('inventory_location_stocks')
+                ->whereIn('product_id', $productIds)
+                ->whereIn('inventory_location_id', $locIds)
+                ->selectRaw('product_id, SUM(quantity) q')->groupBy('product_id')->get() as $r) {
+                $out[(int) $r->product_id] = ($out[(int) $r->product_id] ?? 0.0) + (float) $r->q;
+            }
         }
 
-        return function ($qty, $unitId) use ($units) {
-            $qty = (float) $qty;
-            if (! $unitId || ! isset($units[$unitId])) {
-                return $qty;
-            }
-            [$op, $factor] = $units[$unitId];
-            if (! $factor) {
-                return $qty;
-            }
+        return $out;
+    }
 
-            return $op === '/' ? $qty / $factor : $qty * $factor;
+    /**
+     * Neto (Σ entradas − Σ salidas), en unidades base, por producto, para el
+     * conjunto de documentos que cumplan `$dateFilter($query, $alias)`.
+     *
+     * @return array<int,float>  positivo = el stock aumentó
+     */
+    private function netUnitsByProduct(array $productIds, InventoryReportScope $scope, callable $factor, callable $dateFilter): array
+    {
+        $net = array_fill_keys($productIds, 0.0);
+        $add = function (array $map, float $sign) use (&$net) {
+            foreach ($map as $pid => $q) {
+                $net[$pid] = ($net[$pid] ?? 0.0) + $sign * $q;
+            }
         };
+
+        $branchSrc = function (string $detail, string $header, string $fk, ?string $unitCol, ?string $statut) use ($productIds, $scope, $factor, $dateFilter) {
+            $q = DB::table($detail.' as d')->join($header.' as h', 'h.id', '=', 'd.'.$fk)
+                ->whereNull('h.deleted_at')
+                ->when($statut, fn ($qq) => $qq->where('h.statut', $statut))
+                ->whereIn('d.product_id', $productIds);
+            $dateFilter($q, 'h');
+            $scope->applyBranchScope($q, 'h');
+
+            return $this->sumByProduct($q->get(array_values(array_filter(['d.product_id', 'd.quantity', $unitCol ? 'd.'.$unitCol : null]))), $unitCol, $factor);
+        };
+        $locSrc = function (string $detail, string $header, string $fk, ?string $unitCol, ?string $statut) use ($productIds, $scope, $factor, $dateFilter) {
+            $q = DB::table($detail.' as d')->join($header.' as h', 'h.id', '=', 'd.'.$fk)
+                ->whereNull('h.deleted_at')
+                ->when($statut, fn ($qq) => $qq->where('h.statut', $statut))
+                ->whereIn('d.product_id', $productIds);
+            $dateFilter($q, 'h');
+            $scope->applyLocationScope($q, 'h');
+
+            return $this->sumByProduct($q->get(array_values(array_filter(['d.product_id', 'd.quantity', $unitCol ? 'd.'.$unitCol : null]))), $unitCol, $factor);
+        };
+
+        $add($locSrc('purchase_details', 'purchases', 'purchase_id', 'purchase_unit_id', 'received'), +1);   // compra → +
+        $add($branchSrc('sale_return_details', 'sale_returns', 'sale_return_id', 'sale_unit_id', null), +1);  // dev. venta → +
+        $add($branchSrc('sale_details', 'sales', 'sale_id', 'sale_unit_id', 'completed'), -1);                // venta → −
+        $add($locSrc('purchase_return_details', 'purchase_returns', 'purchase_return_id', 'purchase_unit_id', null), -1); // dev. compra → −
+        $add($locSrc('damage_details', 'damages', 'damage_id', null, null), -1);                             // daño → −
+
+        // Ajustes: +add / −sub.
+        $aq = DB::table('adjustment_details as d')->join('adjustments as h', 'h.id', '=', 'd.adjustment_id')
+            ->whereNull('h.deleted_at')->whereIn('d.product_id', $productIds);
+        $dateFilter($aq, 'h');
+        $scope->applyLocationScope($aq, 'h');
+        foreach ($aq->get(['d.product_id', 'd.quantity', 'd.type']) as $r) {
+            $pid = (int) $r->product_id;
+            $net[$pid] = ($net[$pid] ?? 0.0) + (strtolower((string) $r->type) === 'add' ? 1 : -1) * (float) $r->quantity;
+        }
+
+        // Traslados: por pierna (salida −, entrada +).
+        $tq = DB::table('transfer_details as d')->join('transfers as h', 'h.id', '=', 'd.transfer_id')
+            ->whereNull('h.deleted_at')->whereIn('d.product_id', $productIds);
+        $dateFilter($tq, 'h');
+        foreach ($tq->get(['d.product_id', 'd.quantity', 'd.purchase_unit_id',
+            'h.from_warehouse_id', 'h.to_warehouse_id', 'h.from_inventory_location_id', 'h.to_inventory_location_id']) as $r) {
+            $pid = (int) $r->product_id;
+            $qty = $factor($r->quantity, $r->purchase_unit_id);
+            if ($scope->rowInScope(((int) ($r->from_inventory_location_id ?? 0)) ?: null, ((int) ($r->from_warehouse_id ?? 0)) ?: null)) {
+                $net[$pid] = ($net[$pid] ?? 0.0) - $qty;
+            }
+            if ($scope->rowInScope(((int) ($r->to_inventory_location_id ?? 0)) ?: null, ((int) ($r->to_warehouse_id ?? 0)) ?: null)) {
+                $net[$pid] = ($net[$pid] ?? 0.0) + $qty;
+            }
+        }
+
+        return $net;
     }
 
     /** Σ cantidad (unidad base) por producto — fuente con `branch_id`. @return array<int,float> */
@@ -255,19 +299,6 @@ class InventoryTurnoverReportService
             ->whereIn('d.product_id', $productIds)
             ->whereBetween('h.date', [$from, $to]);
         $scope->applyBranchScope($q, 'h');
-
-        return $this->sumByProduct($q->get(array_values(array_filter(['d.product_id', 'd.quantity', $unitCol ? 'd.'.$unitCol : null]))), $unitCol, $factor);
-    }
-
-    /** Σ cantidad (unidad base) por producto — fuente con `inventory_location_id`. @return array<int,float> */
-    private function periodQtyLocation(string $detail, string $header, string $fk, ?string $unitCol, ?string $statut, array $productIds, InventoryReportScope $scope, string $from, string $to, callable $factor): array
-    {
-        $q = DB::table($detail.' as d')->join($header.' as h', 'h.id', '=', 'd.'.$fk)
-            ->whereNull('h.deleted_at')
-            ->when($statut, fn ($qq) => $qq->where('h.statut', $statut))
-            ->whereIn('d.product_id', $productIds)
-            ->whereBetween('h.date', [$from, $to]);
-        $scope->applyLocationScope($q, 'h');
 
         return $this->sumByProduct($q->get(array_values(array_filter(['d.product_id', 'd.quantity', $unitCol ? 'd.'.$unitCol : null]))), $unitCol, $factor);
     }
@@ -284,61 +315,52 @@ class InventoryTurnoverReportService
         return $out;
     }
 
-    /** @return array{0: array<int,float>, 1: array<int,float>} [add, sub] */
-    private function periodAdjustments(array $productIds, InventoryReportScope $scope, string $from, string $to): array
+    private function unitFactorResolver(): callable
     {
-        $q = DB::table('adjustment_details as d')->join('adjustments as h', 'h.id', '=', 'd.adjustment_id')
-            ->whereNull('h.deleted_at')
-            ->whereIn('d.product_id', $productIds)
-            ->whereBetween('h.date', [$from, $to]);
-        $scope->applyLocationScope($q, 'h');
-
-        $add = [];
-        $sub = [];
-        foreach ($q->get(['d.product_id', 'd.quantity', 'd.type']) as $r) {
-            $pid = (int) $r->product_id;
-            if (strtolower((string) $r->type) === 'add') {
-                $add[$pid] = ($add[$pid] ?? 0.0) + (float) $r->quantity;
-            } else {
-                $sub[$pid] = ($sub[$pid] ?? 0.0) + (float) $r->quantity;
-            }
+        $units = [];
+        foreach (Unit::get(['id', 'operator', 'operator_value']) as $u) {
+            $units[(int) $u->id] = [$u->operator, (float) $u->operator_value];
         }
 
-        return [$add, $sub];
+        return function ($qty, $unitId) use ($units) {
+            $qty = (float) $qty;
+            if (! $unitId || ! isset($units[$unitId])) {
+                return $qty;
+            }
+            [$op, $f] = $units[$unitId];
+
+            return $f ? ($op === '/' ? $qty / $f : $qty * $f) : $qty;
+        };
     }
 
-    /** @return array{0: array<int,float>, 1: array<int,float>} [in, out] */
-    private function periodTransfers(array $productIds, InventoryReportScope $scope, string $from, string $to, callable $factor): array
-    {
-        $rows = DB::table('transfer_details as d')->join('transfers as h', 'h.id', '=', 'd.transfer_id')
-            ->whereNull('h.deleted_at')
-            ->whereIn('d.product_id', $productIds)
-            ->whereBetween('h.date', [$from, $to])
-            ->get(['d.product_id', 'd.quantity', 'd.purchase_unit_id',
-                'h.from_warehouse_id', 'h.to_warehouse_id', 'h.from_inventory_location_id', 'h.to_inventory_location_id']);
-
-        $in = [];
-        $out = [];
-        foreach ($rows as $r) {
-            $pid = (int) $r->product_id;
-            $qty = $factor($r->quantity, $r->purchase_unit_id);
-            if ($scope->rowInScope(((int) ($r->from_inventory_location_id ?? 0)) ?: null, ((int) ($r->from_warehouse_id ?? 0)) ?: null)) {
-                $out[$pid] = ($out[$pid] ?? 0.0) + $qty;
-            }
-            if ($scope->rowInScope(((int) ($r->to_inventory_location_id ?? 0)) ?: null, ((int) ($r->to_warehouse_id ?? 0)) ?: null)) {
-                $in[$pid] = ($in[$pid] ?? 0.0) + $qty;
-            }
-        }
-
-        return [$in, $out];
-    }
-
-    private function emptyResult(string $from, string $to, int $periodDays): array
+    private function meta(ReportDateRange $range, InventoryReportScope $scope, bool $capped, int $matched): array
     {
         return [
-            'rows' => [],
-            'totalRows' => 0,
-            'meta' => ['from' => $from, 'to' => $to, 'period_days' => $periodDays, 'capped' => false, 'matched_products' => 0],
+            'from' => $range->from,
+            'to' => $range->to,
+            'period_days' => $range->days,
+            'to_clamped' => $range->toClamped,
+            'capped' => $capped,
+            'max_products' => self::MAX_PRODUCTS,
+            'matched_products' => $matched,
+            'branch_ids' => $scope->branchIds(),
+            'has_modern_locations' => $scope->hasModernLocations(),
+            'formula' => 'rotación = unidades vendidas netas / inventario promedio (unidades). inventario promedio = (stock al inicio + stock al fin del período) / 2, ambos reconstruidos desde los movimientos reales. días de inventario = días del período / rotación.',
+            'thresholds' => ['alta_max_dias' => self::FAST_MAX_DAYS, 'media_max_dias' => self::MEDIUM_MAX_DAYS],
+        ];
+    }
+
+    private function emptyResult(ReportDateRange $range, InventoryReportScope $scope): array
+    {
+        return ['rows' => [], 'totalRows' => 0, 'meta' => $this->meta($range, $scope, false, 0)];
+    }
+
+    private function errorResult(ReportDateRange $range): array
+    {
+        return [
+            'rows' => [], 'totalRows' => 0,
+            'meta' => ['from' => $range->from, 'to' => $range->to, 'period_days' => $range->days, 'capped' => false, 'matched_products' => 0],
+            'error' => $range->error,
         ];
     }
 }

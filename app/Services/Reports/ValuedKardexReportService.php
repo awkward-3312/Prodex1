@@ -64,12 +64,34 @@ class ValuedKardexReportService
         $variantId = isset($filters['product_variant_id']) && $filters['product_variant_id'] !== null && $filters['product_variant_id'] !== ''
             ? (int) $filters['product_variant_id']
             : null;
-        $from = $filters['from'] ?? null;
-        $to = $filters['to'] ?? null;
 
         /** @var User $user */
         $user = $filters['user'];
-        $scope = new InventoryReportScope($user, (int) ($filters['branch_id'] ?? 0) ?: null, (int) ($filters['warehouse_id'] ?? 0) ?: null);
+        $scope = new InventoryReportScope(
+            $user,
+            (int) ($filters['branch_id'] ?? 0) ?: null,
+            (int) ($filters['inventory_location_id'] ?? 0) ?: null,
+            (int) ($filters['warehouse_id'] ?? 0) ?: null,
+        );
+
+        // Ventana de fechas: sólo se valida si el usuario la envía (el libro
+        // completo, sin `from`/`to`, es el caso por defecto).
+        $from = $to = null;
+        $dateError = null;
+        $toClamped = false;
+        if (($filters['from'] ?? '') !== '' || ($filters['to'] ?? '') !== '') {
+            $range = ReportDateRange::parse($filters['from'] ?? null, $filters['to'] ?? null);
+            if (! $range->isValid()) {
+                $dateError = $range->error;
+            } else {
+                $from = $range->from;
+                $to = $range->to;
+                $toClamped = $range->toClamped;
+            }
+        }
+        if ($dateError !== null) {
+            return ['error' => $dateError, 'mode' => 'ledger', 'rows' => [], 'summary' => [], 'reconciliation' => [], 'quantity_quality' => [], 'valuation_quality' => []];
+        }
 
         // Producto inexistente / soft-deleted → payload vacío (no 404): la vista
         // muestra el estado "Sin movimientos", igual que Rotación degrada.
@@ -84,9 +106,12 @@ class ValuedKardexReportService
         // --- 1. Movimientos documentales (historia completa dentro del alcance) ---
         $movements = $scope->isDenied() ? [] : $this->collectMovements($productId, $variantId, $scope);
 
+        // Orden CRONOLÓGICO real: fecha + hora. `sort_bucket` (entradas antes que
+        // salidas, y salida de traslado antes que su entrada) sólo desempata
+        // cuando el `datetime` es idéntico — NO reordena el día por tipo.
         usort($movements, function ($a, $b) {
-            return [$a['date'], $a['sort_bucket'], $a['sort_id']]
-                <=> [$b['date'], $b['sort_bucket'], $b['sort_id']];
+            return [$a['datetime'], $a['sort_bucket'], $a['sort_id']]
+                <=> [$b['datetime'], $b['sort_bucket'], $b['sort_id']];
         });
 
         // --- 2. Existencia actual real (reconciliación) ---
@@ -108,6 +133,7 @@ class ValuedKardexReportService
         $earliestDocDate = $movements[0]['date'] ?? null;
         $isReconstructed = abs($openingQty) > 0.0005;
         $usedWac = false;
+        $usedReferenceCost = false;
         $wentNegative = false;
 
         if ($isReconstructed || ! $movements) {
@@ -120,9 +146,25 @@ class ValuedKardexReportService
         // Ref se reutiliza cuando su pierna de entrada también está en el libro.
         $transferOutUnitCost = [];
 
+        // Costo de referencia (products.cost / variant.cost) para valorar un
+        // movimiento cuando el saldo corrido es 0 y NO hay saldo inicial
+        // reconstruido: no existe costo histórico real → se usa el de referencia,
+        // NUNCA el costo de una compra futura.
+        $referenceCost = $variant ? (float) $variant->cost : (float) $product->cost;
+
         foreach ($movements as $m) {
-            $wac = $balQty > 0.0005 ? ($balVal / $balQty) : $openingUnitCost;
-            $costBasis = $balQty > 0.0005 ? 'wac' : $openingCostBasis;
+            if ($balQty > 0.0005) {
+                $wac = $balVal / $balQty;
+                $costBasis = 'wac';
+            } elseif ($isReconstructed) {
+                // El saldo inicial reconstruido carga su propio costo.
+                $wac = $openingUnitCost;
+                $costBasis = $openingCostBasis;
+            } else {
+                // Sin stock corrido ni saldo inicial → costo de referencia.
+                $wac = $referenceCost;
+                $costBasis = 'sin_historial';
+            }
 
             if ($m['in_qty'] > 0) {
                 if ($m['movement_key'] === 'transfer_in' && isset($transferOutUnitCost[$m['reference']])) {
@@ -138,7 +180,7 @@ class ValuedKardexReportService
                 } else {
                     $unitCost = $wac;
                     $value = round($m['in_qty'] * $wac, $decimals);
-                    $usedWac = true;
+                    $costBasis === 'sin_historial' ? $usedReferenceCost = true : $usedWac = true;
                 }
                 $balQty = round($balQty + $m['in_qty'], 3);
                 $balVal = round($balVal + $value, $decimals);
@@ -154,7 +196,7 @@ class ValuedKardexReportService
                 } else {
                     $unitCost = $wac;
                     $value = round($m['out_qty'] * $wac, $decimals);
-                    $usedWac = true;
+                    $costBasis === 'sin_historial' ? $usedReferenceCost = true : $usedWac = true;
                 }
                 if ($m['movement_key'] === 'transfer_out') {
                     $transferOutUnitCost[$m['reference']] = $unitCost;
@@ -234,7 +276,7 @@ class ValuedKardexReportService
         }
 
         // --- 7. Calidad: CANTIDAD y VALORIZACIÓN por separado ---
-        $valuationBasis = ($isReconstructed || $openingCostBasis === 'sin_historial')
+        $valuationBasis = ($isReconstructed || $openingCostBasis === 'sin_historial' || $usedReferenceCost)
             ? 'approximate'
             : (($usedWac || $wentNegative) ? 'partially_reconstructed' : 'exact');
 
@@ -269,6 +311,7 @@ class ValuedKardexReportService
                 'has_modern_locations' => $scope->hasModernLocations(),
                 'denied' => $scope->isDenied(),
             ],
+            'window' => ['from' => $from, 'to' => $to, 'to_clamped' => $toClamped],
             'rows' => $displayRows,
             'summary' => [
                 'opening_qty' => round($periodOpenQty, 3),
@@ -342,7 +385,10 @@ class ValuedKardexReportService
                 'movement_key' => $key,
                 'reference' => $r->Ref,
                 'date' => $r->date,
-                'datetime' => trim(($r->date ?? '').' '.($r->time ?? '')),
+                // Clave de orden cronológico: fecha + hora normalizada. Documento
+                // legacy sin hora fiable → fallback explícito 00:00:00 (queda al
+                // inicio de su día; `sort_bucket` lo ubica entre entradas/salidas).
+                'datetime' => ($r->date ?? '0000-00-00').' '.$this->normalizeTime($r->time ?? null),
                 'branch_name' => $scope->resolveBranchName($branchId, $locId, $whId),
                 'location_name' => $loc['name'],
                 'location_basis' => $loc['basis'],
@@ -468,6 +514,17 @@ class ValuedKardexReportService
         }
 
         return round($sum, 3);
+    }
+
+    /** Normaliza `time` a `HH:MM:SS`; entrada vacía/no fiable → `00:00:00`. */
+    private function normalizeTime(?string $time): string
+    {
+        $t = trim((string) $time);
+        if (preg_match('/^(\d{1,2}):(\d{2})(?::(\d{2}))?/', $t, $m)) {
+            return sprintf('%02d:%02d:%02d', (int) $m[1], (int) $m[2], (int) ($m[3] ?? 0));
+        }
+
+        return '00:00:00';
     }
 
     /** @return array{0: float, 1: string} */
