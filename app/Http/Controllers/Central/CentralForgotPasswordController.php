@@ -29,12 +29,15 @@ class CentralForgotPasswordController extends Controller
             'email' => ['required', 'email'],
         ]);
 
+        // Neutral response for every email — never disclose whether an account
+        // exists (account-enumeration protection). A real user gets the mail; an
+        // unknown address gets the same confirmation and nothing is written.
+        $genericStatus = 'If an account exists for that email, we\'ve sent a password reset link.';
+
         $user = CentralUser::where('email', $request->email)->first();
 
         if (! $user) {
-            return back()->withErrors([
-                'email' => 'No account found with that email address.',
-            ])->withInput();
+            return back()->with('status', $genericStatus);
         }
 
         // Delete any existing tokens for this email
@@ -59,7 +62,7 @@ class CentralForgotPasswordController extends Controller
                 ->html($this->resetEmailHtml($user->name ?? 'Admin', $resetUrl));
         });
 
-        return back()->with('status', 'We\'ve sent a password reset link to your email address.');
+        return back()->with('status', $genericStatus);
     }
 
     /**

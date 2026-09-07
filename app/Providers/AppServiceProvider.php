@@ -55,6 +55,16 @@ class AppServiceProvider extends ServiceProvider
     {
         Schema::defaultStringLength(191);
 
+        // Behind the production Nginx proxy TLS terminates upstream. TrustProxies
+        // already restores the real scheme/host from the forwarded headers; this
+        // is the belt-and-suspenders so every generated URL (emails, redirects,
+        // canonical tags) is https in production. Never forced locally.
+        if ($this->app->environment('production')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
+        $this->configurePublicRateLimiters();
+
         // Centralized, fail-open audit trail for critical business models. The
         // service filters the model list before touching the database, so normal
         // framework/internal Eloquent events are effectively ignored.
@@ -133,6 +143,40 @@ class AppServiceProvider extends ServiceProvider
             } catch (\Throwable) {
                 $view->with('app_settings', null);
             }
+        });
+    }
+
+    /**
+     * Abuse protection for unauthenticated public endpoints that send mail or
+     * create resources. Keyed on IP + a normalized identifier so shared NAT /
+     * corporate egress is not blanket-banned, with a wider per-IP ceiling.
+     */
+    protected function configurePublicRateLimiters(): void
+    {
+        $ident = function ($request): string {
+            $id = strtolower(trim((string) ($request->input('admin_email')
+                ?: $request->input('email')
+                ?: $request->input('subdomain'))));
+
+            return sha1($request->ip().'|'.$id);
+        };
+
+        \Illuminate\Support\Facades\RateLimiter::for('central-auth', function ($request) use ($ident) {
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by($ident($request)),
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(20)->by('ip:'.$request->ip()),
+            ];
+        });
+
+        \Illuminate\Support\Facades\RateLimiter::for('central-register', function ($request) use ($ident) {
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(4)->by($ident($request)),
+                \Illuminate\Cache\RateLimiting\Limit::perDay(40)->by('ip:'.$request->ip()),
+            ];
+        });
+
+        \Illuminate\Support\Facades\RateLimiter::for('central-checkout', function ($request) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(12)->by('ip:'.$request->ip());
         });
     }
 }

@@ -29,30 +29,34 @@
     // (ver esa sección); el CMS $howItWorks alimenta sólo la landing legada.
 
     $lpRegisterUrl = route('central.register');
+
+    // Canonical primary CTA = create workspace (register). The hero's primary
+    // button is CMS-editable, but a login link is never a valid top-of-funnel
+    // CTA — if the CMS value resolves to the login route, fall back to register
+    // with the CMS trial/create copy so navbar · hero · pricing · final CTA all
+    // point the same way.
+    $lpLoginUrl = route('central.login');
+    $lpHeroPrimaryUrl = ($hero && $hero->primary_button_url && rtrim($hero->primary_button_url, '/') !== rtrim($lpLoginUrl, '/'))
+        ? $hero->primary_button_url
+        : $lpRegisterUrl;
+    // If we had to override a login link, use the canonical register CTA copy;
+    // otherwise honour the CMS text (deck string as fallback).
+    $lpHeroPrimaryText = ($lpHeroPrimaryUrl === $lpRegisterUrl && $hero && $hero->primary_button_url)
+        ? __('landing_prime.hero_cta')
+        : (optional($hero)->primary_button_text ?: __('landing_prime.hero_cta'));
 @endphp
 <html lang="{{ app()->getLocale() }}" class="scroll-smooth" @if($isRtl) dir="rtl" @endif>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    @if($seo)
-        <title>{{ $seo->meta_title ?? $appName }}</title>
-        <meta name="description" content="{{ $seo->meta_description ?? '' }}">
-        @if($seo->meta_keywords)
-            <meta name="keywords" content="{{ $seo->meta_keywords }}">
-        @endif
-        <meta property="og:title" content="{{ $seo->meta_title ?? $appName }}">
-        <meta property="og:description" content="{{ $seo->meta_description ?? '' }}">
-        @if($seo->og_image)
-            <meta property="og:image" content="{{ asset($seo->og_image) }}">
-        @endif
-        @if($seo->favicon)
-            <link rel="icon" href="{{ asset($seo->favicon) }}">
-        @endif
-    @else
-        <title>{{ $appName }}</title>
-        <link rel="icon" href="{{ asset('images/super/settings/favicon.ico') }}">
-    @endif
+    <title>{{ ($seo->meta_title ?? null) ?: $appName }}</title>
+    @php
+        // Home page: canonical is the site root. All other public meta (OG,
+        // Twitter, favicons, JSON-LD) is emitted by central.partials.seo-head,
+        // pulled in via central.partials.landing-font just below.
+        $seoCanonicalUrl = rtrim(config('seo.base_url', 'https://prodexhub.cloud'), '/') . '/';
+    @endphp
 
     <script src="{{ asset('assets_super/js/tailwindcss.js') }}"></script>
     <link href="{{ asset('assets_super/css/inter.css') }}" rel="stylesheet">
@@ -85,13 +89,15 @@
 {{-- ═══════════════════════ NAVBAR ═══════════════════════ --}}
 <nav id="lpNav" class="lp-nav">
     <div class="max-w-7xl mx-auto h-full px-5 sm:px-6 flex items-center justify-between gap-4">
-        <a href="{{ route('central.welcome') }}" class="flex items-center gap-2.5 shrink-0">
+        @php $lpShowSiteName = $generalSettings->show_site_name ?? true; @endphp
+        <a href="{{ route('central.welcome') }}" class="flex items-center gap-2.5 shrink-0" @if($lpShowSiteName) aria-label="{{ $appName }}" @endif>
             @if($logoUrl)
-                <img src="{{ $logoUrl }}" alt="{{ $appName }}" class="h-7 w-auto">
+                {{-- alt="" when the wordmark text is also shown (decorative), real alt otherwise --}}
+                <img src="{{ $logoUrl }}" alt="{{ $lpShowSiteName ? '' : $appName }}" width="112" height="28" class="h-7 w-auto">
             @else
                 <span class="inline-grid place-items-center w-8 h-8 rounded-lg bg-slate-900 text-white font-bold text-sm">{{ strtoupper(substr($appName, 0, 1)) }}</span>
             @endif
-            @if($generalSettings->show_site_name ?? true)
+            @if($lpShowSiteName)
                 <span class="font-bold text-slate-950">{{ $appName }}</span>
             @endif
         </a>
@@ -117,7 +123,7 @@
                             <form method="POST" action="{{ route('central.locale', $lang->locale) }}">
                                 @csrf
                                 <button type="submit" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-50 {{ ($currentLocale ?? app()->getLocale()) === $lang->locale ? 'font-semibold text-indigo-600' : '' }}">
-                                    @if($lang->flag)<img src="{{ asset('flags/' . $lang->flag) }}" alt="" class="w-4 h-4 rounded-sm">@endif
+                                    @if($lang->flag)<img src="{{ asset('flags/' . $lang->flag) }}" alt="" width="16" height="16" loading="lazy" decoding="async" class="w-4 h-4 rounded-sm">@endif
                                     {{ $lang->name }}
                                 </button>
                             </form>
@@ -152,13 +158,13 @@
             <a href="{{ $lpSalesHref }}" @if($lpSalesExternal) target="_blank" rel="noopener noreferrer" @endif class="px-3 py-3 rounded-lg text-slate-800 font-medium hover:bg-slate-50">{{ __('landing.talk_to_sales') }}</a>
 
             @if(isset($languages) && $languages->count() > 1)
-                <p class="px-3 pt-4 pb-1 text-xs font-bold uppercase tracking-wide text-slate-400">{{ __('landing.language') }}</p>
+                <p class="px-3 pt-4 pb-1 text-xs font-bold uppercase tracking-wide text-slate-500">{{ __('landing.language') }}</p>
                 <div class="grid grid-cols-2 gap-1.5">
                     @foreach($languages as $lang)
                         <form method="POST" action="{{ route('central.locale', $lang->locale) }}">
                             @csrf
                             <button type="submit" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-700 border border-slate-200 hover:bg-slate-50 {{ ($currentLocale ?? app()->getLocale()) === $lang->locale ? 'font-semibold text-indigo-600 border-indigo-200' : '' }}">
-                                @if($lang->flag)<img src="{{ asset('flags/' . $lang->flag) }}" alt="" class="w-4 h-4 rounded-sm">@endif
+                                @if($lang->flag)<img src="{{ asset('flags/' . $lang->flag) }}" alt="" width="16" height="16" loading="lazy" decoding="async" class="w-4 h-4 rounded-sm">@endif
                                 {{ $lang->name }}
                             </button>
                         </form>
@@ -197,8 +203,8 @@
                     {{ $hero->description ?: __('landing_prime.hero_lead') }}
                 </p>
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <a href="{{ $hero->primary_button_url ?: $lpRegisterUrl }}" class="lp-btn lp-btn--lg bg-white text-slate-950 hover:bg-slate-100">
-                        {{ $hero->primary_button_text ?: __('landing_prime.hero_cta') }}
+                    <a href="{{ $lpHeroPrimaryUrl }}" class="lp-btn lp-btn--lg bg-white text-slate-950 hover:bg-slate-100" data-ev-primary data-ev-loc="hero">
+                        {{ $lpHeroPrimaryText }}
                         <i class="bi bi-arrow-right"></i>
                     </a>
                     <a href="{{ $hero->secondary_button_url ?: $lpSalesHref }}" @if($lpSalesExternal && ! $hero->secondary_button_url) target="_blank" rel="noopener noreferrer" @endif class="lp-btn lp-btn--ghost lp-btn--lg">
@@ -206,12 +212,12 @@
                     </a>
                 </div>
                 @if($lpTrialPlan)
-                    <p class="mt-4 text-xs font-medium text-slate-400 flex items-center gap-1.5">
+                    <p class="mt-4 text-xs font-medium text-slate-500 flex items-center gap-1.5">
                         <i class="bi bi-check-circle-fill text-emerald-400"></i>
                         {{ __('landing_prime.hero_trust', ['days' => $lpTrialDays]) }}
                     </p>
                 @endif
-                <div class="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-slate-400">
+                <div class="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-slate-500">
                     @foreach(['hero_chip_sales', 'hero_chip_stock', 'hero_chip_reports', 'hero_chip_branches'] as $chip)
                         <span class="flex items-center gap-1.5"><i class="bi bi-check-circle-fill text-emerald-400"></i>{{ __('landing_prime.' . $chip) }}</span>
                     @endforeach
@@ -222,7 +228,7 @@
                 @if($hero->hero_image)
                     <div class="lp-window">
                         <div class="lp-window__bar"><span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__title">{{ __('landing_prime.hero_mock_title') }}</span></div>
-                        <img src="{{ asset($hero->hero_image) }}" alt="{{ strip_tags($hero->title ?: $appName) }}" class="w-full h-auto block" decoding="async">
+                        <img src="{{ asset($hero->hero_image) }}" alt="{{ strip_tags($hero->title ?: $appName) }}" class="w-full h-auto block" width="1120" height="720" decoding="async" fetchpriority="high">
                     </div>
                 @else
                     {{-- Escena de producto: patrones reales del ERP, valores neutros, sin cifras. --}}
@@ -357,7 +363,7 @@
                         <article class="lp-card lp-card--hover rounded-2xl border border-slate-200 bg-white p-6">
                             <div class="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center mb-4">
                                 @if($feature->image)
-                                    <img src="{{ asset($feature->image) }}" alt="" class="w-6 h-6 object-contain">
+                                    <img src="{{ asset($feature->image) }}" alt="{{ $feature->title }}" class="w-6 h-6 object-contain" loading="lazy" decoding="async">
                                 @else
                                     <i class="{{ $feature->icon ?: 'bi bi-grid' }} text-lg"></i>
                                 @endif
@@ -481,7 +487,7 @@
             <div class="lp-window lp-reveal order-2 lg:order-1">
                 <div class="lp-window__bar"><span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__dot"></span><span class="lp-window__title">{{ __('landing_prime.reports_window') }}</span></div>
                 <div class="p-6 bg-white">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{{ __('landing_prime.reports_chart_caption') }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">{{ __('landing_prime.reports_chart_caption') }}</p>
                     <div class="lp-bars" aria-hidden="true">
                         <span style="height:38%"></span><span style="height:62%"></span><span style="height:48%"></span>
                         <span style="height:75%"></span><span style="height:58%"></span><span style="height:85%"></span>
@@ -598,7 +604,7 @@
         </div>
 
         <div id="contact-sales">
-            <p class="text-xs font-bold uppercase tracking-wide text-slate-400 mb-3">{{ __('landing.contact_us') }}</p>
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3">{{ __('landing.contact_us') }}</p>
             <div class="space-y-2 text-sm text-slate-600">
                 @if($lpSalesEmail)<a href="mailto:{{ $lpSalesEmail }}" class="flex items-center gap-2 hover:text-slate-900"><i class="bi bi-envelope"></i>{{ $lpSalesEmail }}</a>@endif
                 @if($lpSalesWhatsappHref)<a href="{{ $lpSalesWhatsappHref }}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 hover:text-slate-900"><i class="bi bi-whatsapp"></i>{{ $lpSalesWhatsappRaw }}</a>
@@ -608,7 +614,7 @@
         </div>
 
         <div>
-            <p class="text-xs font-bold uppercase tracking-wide text-slate-400 mb-3">{{ __('landing_prime.footer_product') }}</p>
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3">{{ __('landing_prime.footer_product') }}</p>
             <nav class="flex flex-col gap-2 text-sm text-slate-600">
                 <a href="#product" class="hover:text-slate-900">{{ __('landing_prime.nav_product') }}</a>
                 <a href="#pricing" class="hover:text-slate-900">{{ __('landing_prime.nav_pricing') }}</a>
@@ -618,7 +624,7 @@
         </div>
 
         <div>
-            <p class="text-xs font-bold uppercase tracking-wide text-slate-400 mb-3">{{ __('landing.company') }}</p>
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500 mb-3">{{ __('landing.company') }}</p>
             <nav class="flex flex-col gap-2 text-sm text-slate-600">
                 <a href="{{ route('central.welcome') }}" class="hover:text-slate-900">{{ __('landing.home') }}</a>
                 <a href="{{ $lpRegisterUrl }}" class="hover:text-slate-900">{{ __('landing.sign_up') }}</a>
@@ -631,7 +637,7 @@
             </nav>
         </div>
     </div>
-    <div class="max-w-6xl mx-auto mt-10 pt-6 border-t border-slate-100 text-xs text-slate-400">
+    <div class="max-w-6xl mx-auto mt-10 pt-6 border-t border-slate-100 text-xs text-slate-500">
         {{ optional($footer)->copyright_text ?: '© ' . date('Y') . ' ' . $appName . '. ' . __('landing.all_rights') }}
     </div>
 </footer>
@@ -642,23 +648,25 @@
     </a>
 @endif
 
-{{-- Cookie consent --}}
-<div id="lpCookie" class="lp-cookie fixed z-[50] left-4 right-4 sm:left-auto sm:right-6 bottom-6 sm:max-w-sm bg-white border border-slate-200 rounded-2xl shadow-2xl p-5" data-hidden="true">
-    <div class="flex items-center gap-2 mb-2"><i class="bi bi-shield-lock text-indigo-600"></i><p class="font-bold text-slate-950 text-sm">{{ __('landing.cookie_banner_title') }}</p></div>
-    <p class="text-xs text-slate-600 leading-relaxed">{{ __('landing.cookie_banner_text') }} <a href="{{ route('central.privacy-policy') }}#cookies" class="text-indigo-600">{{ __('landing.privacy_policy') }}</a></p>
+{{-- Cookie consent — state + analytics gating owned by prodex-consent.js --}}
+<div id="lpCookie" class="lp-cookie fixed z-[50] left-4 right-4 sm:left-auto sm:right-6 bottom-6 sm:max-w-sm bg-white border border-slate-200 rounded-2xl shadow-2xl p-5" data-hidden="true"
+     role="dialog" aria-modal="false" aria-labelledby="lpCookieTitle" aria-describedby="lpCookieDesc">
+    <div class="flex items-center gap-2 mb-2"><i class="bi bi-shield-lock text-indigo-600" aria-hidden="true"></i><p id="lpCookieTitle" class="font-bold text-slate-950 text-sm">{{ __('landing.cookie_banner_title') }}</p></div>
+    <p id="lpCookieDesc" class="text-xs text-slate-600 leading-relaxed">{{ __('landing.cookie_banner_text') }} <a href="{{ route('central.privacy-policy') }}#cookies" class="text-indigo-600 underline">{{ __('landing.privacy_policy') }}</a></p>
     <div class="mt-3 flex flex-wrap gap-2">
-        <button id="lpCookieAccept" class="lp-btn lp-btn--primary text-xs px-3 py-2">{{ __('landing.cookie_accept_all') }}</button>
-        <button id="lpCookieReject" class="lp-btn lp-btn--ghost text-xs px-3 py-2">{{ __('landing.cookie_reject_all') }}</button>
-        <button id="lpCookieCustomize" class="lp-btn lp-btn--ghost text-xs px-3 py-2">{{ __('landing.cookie_customize') }}</button>
+        <button type="button" id="lpCookieAccept" class="lp-btn lp-btn--primary text-xs px-3 py-2">{{ __('landing.cookie_accept_all') }}</button>
+        <button type="button" id="lpCookieReject" class="lp-btn lp-btn--ghost text-xs px-3 py-2">{{ __('landing.cookie_reject_all') }}</button>
+        <button type="button" id="lpCookieCustomize" class="lp-btn lp-btn--ghost text-xs px-3 py-2" aria-expanded="false" aria-controls="lpCookiePanel">{{ __('landing.cookie_customize') }}</button>
     </div>
     <div id="lpCookiePanel" hidden class="mt-3 space-y-2 border-t border-slate-100 pt-3">
-        <label class="flex items-center justify-between text-xs text-slate-600"><span>{{ __('landing.cookie_necessary') }}</span><input type="checkbox" checked disabled></label>
+        <label class="flex items-center justify-between text-xs text-slate-600"><span>{{ __('landing.cookie_necessary') }}</span><input type="checkbox" checked disabled aria-label="{{ __('landing.cookie_necessary') }}"></label>
         <label class="flex items-center justify-between text-xs text-slate-600"><span>{{ __('landing.cookie_analytics') }}</span><input type="checkbox" id="lpCookieAnalytics"></label>
         <label class="flex items-center justify-between text-xs text-slate-600"><span>{{ __('landing.cookie_marketing') }}</span><input type="checkbox" id="lpCookieMarketing"></label>
-        <button id="lpCookieSave" class="lp-btn lp-btn--ghost text-xs px-3 py-2 w-full">{{ __('landing.cookie_save_preferences') }}</button>
+        <button type="button" id="lpCookieSave" class="lp-btn lp-btn--ghost text-xs px-3 py-2 w-full">{{ __('landing.cookie_save_preferences') }}</button>
     </div>
 </div>
 
 <script src="{{ asset('assets_super/js/landing-prime.js') }}" defer></script>
+@include('central.partials.analytics')
 </body>
 </html>

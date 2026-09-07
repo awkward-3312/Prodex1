@@ -70,7 +70,7 @@ class Handler extends ExceptionHandler
             }
 
             if ($request->getHost() === parse_url($centralUrl, PHP_URL_HOST)) {
-                return response('Página no encontrada', 404);
+                return response()->view('errors.404', [], 404);
             }
 
             return redirect($centralUrl);

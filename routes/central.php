@@ -98,7 +98,9 @@ Route::get('/pricing/recommend', [\App\Http\Controllers\Central\PricingCalculato
 // ------------------------------------------------------------------\\
 // Tenant registration (central)
 Route::get('/register', [\App\Http\Controllers\Central\TenantRegistrationController::class, 'showRegistrationForm'])->name('central.register');
-Route::post('/register', [\App\Http\Controllers\Central\TenantRegistrationController::class, 'register'])->name('central.register.submit');
+Route::post('/register', [\App\Http\Controllers\Central\TenantRegistrationController::class, 'register'])
+    ->middleware('throttle:central-register')
+    ->name('central.register.submit');
 
 // Workspace provisioning UX (central)
 Route::get('/workspace/{tenant}/preparing', [\App\Http\Controllers\Central\TenantRegistrationController::class, 'preparing'])
@@ -114,6 +116,7 @@ Route::get('/workspace/{tenant}/under-review', [\App\Http\Controllers\Central\Te
 Route::get('/checkout/{token}', [\App\Http\Controllers\Central\CheckoutController::class, 'show'])
     ->name('central.checkout');
 Route::post('/checkout/{token}', [\App\Http\Controllers\Central\CheckoutController::class, 'process'])
+    ->middleware('throttle:central-checkout')
     ->name('central.checkout.process');
 Route::get('/checkout/{token}/offline-submitted', [\App\Http\Controllers\Central\CheckoutController::class, 'offlineSubmitted'])
     ->name('central.checkout.offline.submitted');
@@ -138,14 +141,20 @@ Route::middleware(['web', 'auth.central'])->prefix('update')->name('platform.upd
 // ------------------------------------------------------------------\\
 // Central (super admin) login — no auth required
 Route::get('/super/login', [\App\Http\Controllers\Central\CentralLoginController::class, 'showLoginForm'])->name('central.login');
-Route::post('/super/login', [\App\Http\Controllers\Central\CentralLoginController::class, 'login'])->name('central.login.submit');
+Route::post('/super/login', [\App\Http\Controllers\Central\CentralLoginController::class, 'login'])
+    ->middleware('throttle:central-auth')
+    ->name('central.login.submit');
 Route::post('/super/logout', [\App\Http\Controllers\Central\CentralLoginController::class, 'logout'])->name('central.logout');
 
 // Super admin password reset
 Route::get('/super/forgot-password', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'showForgotForm'])->name('central.password.request');
-Route::post('/super/forgot-password', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'sendResetLink'])->name('central.password.email');
+Route::post('/super/forgot-password', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'sendResetLink'])
+    ->middleware('throttle:central-auth')
+    ->name('central.password.email');
 Route::get('/super/reset-password/{token}', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'showResetForm'])->name('central.password.reset');
-Route::post('/super/reset-password', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'resetPassword'])->name('central.password.update');
+Route::post('/super/reset-password', [\App\Http\Controllers\Central\CentralForgotPasswordController::class, 'resetPassword'])
+    ->middleware('throttle:central-auth')
+    ->name('central.password.update');
 
 // ------------------------------------------------------------------\\
 // Payment gateway webhooks (no auth, no CSRF — verified by signature)

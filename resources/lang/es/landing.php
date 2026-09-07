@@ -143,9 +143,32 @@ return [
 
     // ── Privacy Policy ─────────────────────────────────
     'privacy_policy'             => 'Política de privacidad',
+    'privacy_meta_description'   => 'Cómo PRODEX recopila, usa, comparte y protege los datos de tu empresa: cuentas, pagos, cookies, analítica, proveedores, retención y tus derechos.',
+    'terms_meta_description'     => 'Términos y condiciones del servicio PRODEX: cuentas, suscripciones, pagos, cancelación, uso permitido, disponibilidad, propiedad intelectual y responsabilidad.',
+
+    // Supplementary always-on privacy sections (not CMS-editable).
+    'privacy_payments_title'     => 'Pagos',
+    'privacy_payments_text'      => "Los pagos de suscripción se procesan a través de proveedores de pago externos. PRODEX no almacena los datos completos de tu tarjeta en sus servidores; el proveedor de pago los gestiona bajo sus propias condiciones. Conservamos los datos de facturación necesarios para emitir comprobantes y cumplir obligaciones contables y fiscales.",
+    'privacy_retention_title'    => 'Retención de datos',
+    'privacy_retention_text'     => "Conservamos los datos de tu cuenta y de tu espacio de trabajo mientras la suscripción esté activa. Tras la cancelación mantenemos la información durante un periodo limitado para permitir la reactivación y cumplir obligaciones legales, y después la eliminamos o anonimizamos. Puedes solicitar la eliminación anticipada escribiéndonos.",
+    'privacy_changes_title'      => 'Cambios en esta política',
+    'privacy_changes_text'       => "Podemos actualizar esta política para reflejar cambios en el servicio o en la normativa aplicable. Publicaremos la versión vigente en esta página con su fecha de última actualización; los cambios sustanciales se comunicarán por los medios de contacto de tu cuenta.",
 
     // ── Terms & Conditions ─────────────────────────────
     'terms_and_conditions'       => 'Términos y Condiciones',
+    // Supplementary always-on sections (no editables por CMS).
+    'terms_trial_title'          => 'Prueba gratuita',
+    'terms_trial_text'           => "Algunos planes ofrecen un periodo de prueba sin costo. Al finalizar la prueba, la suscripción continúa según el plan elegido salvo que la canceles antes. Nos reservamos el derecho de modificar o retirar las condiciones de prueba para nuevos registros.",
+    'terms_cancellation_title'   => 'Cancelación',
+    'terms_cancellation_text'    => "Puedes cancelar tu suscripción en cualquier momento desde tu cuenta o solicitándolo a soporte. La cancelación detiene las renovaciones futuras; los importes ya facturados del periodo en curso no son reembolsables salvo que la ley aplicable indique lo contrario.",
+    'terms_availability_title'   => 'Disponibilidad del servicio',
+    'terms_availability_text'    => "Trabajamos para mantener PRODEX disponible de forma continua, pero el servicio se ofrece \"tal cual\" y puede interrumpirse por mantenimiento, incidencias o causas fuera de nuestro control. No garantizamos una disponibilidad ininterrumpida ni libre de errores.",
+    'terms_customer_data_title'  => 'Datos del cliente',
+    'terms_customer_data_text'   => "Los datos que cargas en tu espacio de trabajo son tuyos. Los tratamos únicamente para prestarte el servicio y según la Política de privacidad. Cada empresa opera sobre una base de datos aislada. Puedes exportar tu información mientras la cuenta esté activa.",
+    'terms_termination_title'    => 'Terminación',
+    'terms_termination_text'     => "Podemos suspender o cerrar una cuenta que incumpla estos términos, represente un riesgo de seguridad o mantenga pagos vencidos, procurando avisar cuando sea razonable. Tras la terminación se aplica el periodo de retención descrito en la Política de privacidad.",
+    'terms_contact_title'        => 'Contacto',
+    'terms_contact_text'         => "Para consultas sobre estos términos, escríbenos a través de los canales de contacto publicados en el sitio.",
     'terms_last_updated'         => 'Última actualización',
     'terms_acceptance_title'     => 'Aceptación de los términos',
     'terms_license_title'        => 'Uso del servicio',

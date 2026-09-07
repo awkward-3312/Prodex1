@@ -30,6 +30,22 @@ class TenantRegistrationController extends Controller
 
     public function register(Request $request)
     {
+        // Silent anti-spam: a filled honeypot or an implausibly fast submit is a
+        // bot. Respond exactly like a normal validation bounce so scripts get no
+        // signal, and never create anything.
+        $trap = trim((string) $request->input('company_website', ''));
+        $loadedAt = (int) $request->input('form_loaded_at', 0);
+        $tooFast = $loadedAt > 0 && (now()->timestamp - $loadedAt) < 2;
+        if ($trap !== '' || $tooFast) {
+            \Illuminate\Support\Facades\Log::channel(config('logging.default'))->info('central.register.honeypot', [
+                'ip' => $request->ip(),
+                'reason' => $trap !== '' ? 'trap' : 'speed',
+            ]);
+
+            return back()->withInput($request->except(['admin_password', 'admin_password_confirmation', 'company_website']))
+                ->withErrors(['subdomain' => __('landing.subdomain_reserved')]);
+        }
+
         // The select box only offers public (active + not private) plans, and the
         // empty option means "use the default starter plan". That empty default is
         // only valid when a public starter actually exists — otherwise the user

@@ -162,15 +162,21 @@ class LandingPrimeContractTest extends TestCase
     public function test_blade_preserves_existing_seo_head(): void
     {
         $b = $this->read('resources/views/central/landing-prime.blade.php');
+        $seoHead = $this->read('resources/views/central/partials/seo-head.blade.php');
 
-        // Mismo head de SEO que landing-three: title/description/keywords/OG/favicon del CMS.
-        $this->assertStringContainsString('$seo->meta_title ?? $appName', $b);
-        $this->assertStringContainsString('name="description" content="{{ $seo->meta_description', $b);
-        $this->assertStringContainsString('property="og:title"', $b);
-        $this->assertStringContainsString('property="og:description"', $b);
-        // seo-head (canonical + geo + JSON-LD Organization/WebSite/SoftwareApplication)
-        // se incluye vía el partial landing-font, igual que el resto de plantillas.
+        // El <title> sigue en la vista (usa el meta_title del CMS con fallback).
+        $this->assertStringContainsString('($seo->meta_title ?? null) ?: $appName', $b);
+        // description / OG / Twitter / canonical / favicons / JSON-LD ahora tienen
+        // UNA sola fuente: central.partials.seo-head, incluido vía landing-font.
         $this->assertStringContainsString("@include('central.partials.landing-font')", $b);
+        $this->assertStringContainsString("central.partials.seo-head", $this->read('resources/views/central/partials/landing-font.blade.php'));
+        $this->assertStringContainsString('name="description"', $seoHead);
+        $this->assertStringContainsString('property="og:title"', $seoHead);
+        $this->assertStringContainsString('property="og:description"', $seoHead);
+        $this->assertStringContainsString('$seo->meta_description', $seoHead);
+        $this->assertStringContainsString('$seo->meta_title', $seoHead);
+        // Ya NO se duplica el bloque OG inline en la vista.
+        $this->assertStringNotContainsString('name="description" content="{{ $seo->meta_description', $b);
 
         // Enriquecimiento acotado: FAQPage SOLO si las FAQ del CMS se renderizan.
         $this->assertMatchesRegularExpression('/@if\(\$lpFaqs->isNotEmpty\(\)\)\s*<script type="application\/ld\+json">\s*\{!!\s*json_encode\(\[\s*\'@context\'/s', $b);
@@ -742,7 +748,15 @@ class LandingPrimeContractTest extends TestCase
         $this->assertStringContainsString("{{ \$hero->subtitle ?: __('landing_prime.hero_eyebrow') }}", $hero, 'eyebrow');
         $this->assertStringContainsString("{!! \$hero->title ?: e(__('landing_prime.hero_title')) !!}", $hero, 'título');
         $this->assertStringContainsString("{{ \$hero->description ?: __('landing_prime.hero_lead') }}", $hero, 'lead');
-        $this->assertStringContainsString("{{ \$hero->primary_button_text ?: __('landing_prime.hero_cta') }}", $hero, 'CTA principal');
+        // El texto del CTA principal se resuelve en \$lpHeroPrimaryText y se
+        // renderiza tal cual; la prioridad CMS + fallback al deck se comprueba
+        // sobre el bloque @php superior.
+        $this->assertStringContainsString('{{ $lpHeroPrimaryText }}', $hero, 'CTA principal render');
+        $this->assertStringContainsString(
+            "optional(\$hero)->primary_button_text ?: __('landing_prime.hero_cta')",
+            $b,
+            'CTA principal (texto CMS + deck)'
+        );
         $this->assertStringContainsString("{{ \$hero->secondary_button_text ?: __('landing_prime.hero_cta_secondary') }}", $hero, 'CTA secundario');
 
         // Ya no hay texto de CTA fijo ignorando el CMS (esto es lo que se revierte).

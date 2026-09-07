@@ -11,11 +11,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ __('landing.terms_and_conditions') }} — {{ $appName }}</title>
     @php
-        $faviconUrl = ($seo && $seo->favicon) ? asset($seo->favicon) : $generalSettings->getFaviconUrl();
+        $seoTitle = __('landing.terms_and_conditions') . ' — ' . $appName;
+        $seoDescription = __('landing.terms_meta_description');
+        $seoCanonicalUrl = rtrim(config('seo.base_url', 'https://prodexhub.cloud'), '/') . '/terms-conditions';
+        $seoType = 'article';
     @endphp
-    @if($faviconUrl)
-        <link rel="icon" href="{{ $faviconUrl }}">
-    @endif
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="{{ asset('assets_super/css/inter.css') }}" rel="stylesheet">
@@ -32,7 +32,7 @@
             <a class="navbar-brand" href="{{ route('central.welcome') }}">
                 <span class="brand-mark">
                     @if($logoUrl)
-                        <img src="{{ $logoUrl }}" alt="{{ $appName }}">
+                        <img src="{{ $logoUrl }}" alt="" width="112" height="28">
                     @else
                         <span class="brand-icon">{{ strtoupper(substr($appName, 0, 1)) }}</span>
                     @endif
@@ -65,10 +65,16 @@
                 ['id' => 'use-license',   'title' => __('landing.terms_license_title'),    'content' => $terms->use_license],
                 ['id' => 'accounts',      'title' => __('landing.terms_accounts_title'),   'content' => $terms->user_accounts],
                 ['id' => 'payments',      'title' => __('landing.terms_payments_title'),   'content' => $terms->payments],
+                ['id' => 'trial',         'title' => __('landing.terms_trial_title'),      'content' => __('landing.terms_trial_text')],
+                ['id' => 'cancellation',  'title' => __('landing.terms_cancellation_title'), 'content' => __('landing.terms_cancellation_text')],
                 ['id' => 'prohibited',    'title' => __('landing.terms_prohibited_title'), 'content' => $terms->prohibited],
+                ['id' => 'availability',  'title' => __('landing.terms_availability_title'), 'content' => __('landing.terms_availability_text')],
                 ['id' => 'ip',            'title' => __('landing.terms_ip_title'),         'content' => $terms->intellectual_property],
+                ['id' => 'customer-data', 'title' => __('landing.terms_customer_data_title'), 'content' => __('landing.terms_customer_data_text')],
                 ['id' => 'liability',     'title' => __('landing.terms_liability_title'),  'content' => $terms->liability],
+                ['id' => 'termination',   'title' => __('landing.terms_termination_title'), 'content' => __('landing.terms_termination_text')],
                 ['id' => 'governing-law', 'title' => __('landing.terms_law_title'),        'content' => $terms->governing_law],
+                ['id' => 'contact',       'title' => __('landing.terms_contact_title'),    'content' => __('landing.terms_contact_text')],
             ];
             $activeSections = array_filter($sections, fn($s) => !empty($s['content']));
         @endphp
@@ -105,5 +111,6 @@
     </footer>
 
     <script src="{{ asset('assets_super/js/privacy-policy.js') }}"></script>
+    @include('central.partials.analytics')
 </body>
 </html>

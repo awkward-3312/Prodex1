@@ -2,7 +2,9 @@ User-agent: *
 Allow: /
 
 Disallow: /super/
+Disallow: /super
 Disallow: /setup/
+Disallow: /update/
 Disallow: /login
 Disallow: /register
 Disallow: /checkout/
@@ -12,5 +14,7 @@ Disallow: /webhook/
 Disallow: /password/
 Disallow: /portal/
 Disallow: /api/
+Disallow: /locale/
+Disallow: /pricing/recommend
 
 Sitemap: https://prodexhub.cloud/sitemap.xml

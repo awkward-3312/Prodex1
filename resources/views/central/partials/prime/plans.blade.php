@@ -111,7 +111,8 @@
                         </div>
                     @endif
 
-                    <a class="lp-btn lp-btn--ghost w-full lp-plan__cta" href="{{ $p['register_url'] }}">
+                    @php $isRecommended = $featuredId !== null && $featuredId === $p['id']; @endphp
+                    <a class="lp-btn {{ $isRecommended ? 'lp-btn--primary' : 'lp-btn--ghost' }} w-full lp-plan__cta" href="{{ $p['register_url'] }}" data-ev-register data-ev-loc="pricing">
                         {{ $isPaid ? __('landing_prime.plans_cta_paid') : __('landing_prime.plans_cta') }}
                     </a>
                 </article>

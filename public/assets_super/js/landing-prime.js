@@ -329,30 +329,37 @@
         }
     }
 
-    /* ── Cookie consent (localStorage, sin red) ──────────────────── */
-    var cookie = document.getElementById("lpCookie");
-    if (cookie) {
-        var KEY = "cookie_consent";
-        function saveConsent(obj) {
-            try { localStorage.setItem(KEY, JSON.stringify(Object.assign({ timestamp: Date.now() }, obj))); } catch (e) {}
-            cookie.setAttribute("data-hidden", "true");
+    /* ── Cookie consent ───────────────────────────────────────────
+       Ownership moved to public/assets_super/js/prodex-consent.js
+       (window.ProdexConsent): it persists the decision, gates Google
+       Analytics behind the "analytics" category and wires the #lpCookie
+       banner + the footer "Preferencias de cookies" link. Kept a thin
+       back-compat shim so any old caller of window.lpReopenCookies() still
+       re-opens the preferences dialog. ── */
+    window.lpReopenCookies = function () {
+        if (window.ProdexConsent && typeof window.ProdexConsent.openPreferences === "function") {
+            window.ProdexConsent.openPreferences();
         }
-        var stored = null;
-        try { stored = localStorage.getItem(KEY); } catch (e) {}
-        if (!stored) setTimeout(function () { cookie.setAttribute("data-hidden", "false"); }, 700);
-        var by = function (id) { return document.getElementById(id); };
-        if (by("lpCookieAccept")) by("lpCookieAccept").addEventListener("click", function () { saveConsent({ necessary: true, analytics: true, marketing: true }); });
-        if (by("lpCookieReject")) by("lpCookieReject").addEventListener("click", function () { saveConsent({ necessary: true, analytics: false, marketing: false }); });
-        if (by("lpCookieCustomize")) by("lpCookieCustomize").addEventListener("click", function () { var p = by("lpCookiePanel"); if (p) p.hidden = !p.hidden; });
-        if (by("lpCookieSave")) by("lpCookieSave").addEventListener("click", function () {
-            var a = by("lpCookieAnalytics"), m = by("lpCookieMarketing");
-            saveConsent({ necessary: true, analytics: a ? a.checked : false, marketing: m ? m.checked : false });
-        });
-        window.lpReopenCookies = function () {
-            try { localStorage.removeItem(KEY); } catch (e) {}
-            cookie.setAttribute("data-hidden", "false");
-        };
-        var prefs = by("lpCookiePrefs");
-        if (prefs) prefs.addEventListener("click", function (e) { e.preventDefault(); window.lpReopenCookies(); });
-    }
+    };
+
+    /* ── Analytics events (no-op until analytics consent is granted) ── */
+    var track = function (name, params) {
+        if (window.ProdexAnalytics && typeof window.ProdexAnalytics.track === "function") {
+            window.ProdexAnalytics.track(name, params || {});
+        }
+    };
+    document.addEventListener("click", function (e) {
+        var a = e.target.closest("a, button");
+        if (!a) return;
+        var href = (a.getAttribute("href") || "");
+        if (/\/register(\b|\/|$)/.test(href) || a.hasAttribute("data-ev-register")) {
+            track("registration_started", { location: a.getAttribute("data-ev-loc") || "cta" });
+        } else if (/#pricing/.test(href)) {
+            track("pricing_cta_click", {});
+        } else if (/(wa\.me|#contact-sales|mailto:)/.test(href) || a.hasAttribute("data-ev-sales")) {
+            track("sales_contact_click", {});
+        } else if (a.classList.contains("lp-btn--primary") || a.hasAttribute("data-ev-primary")) {
+            track("primary_cta_click", {});
+        }
+    }, true);
 })();

@@ -11,11 +11,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ __('landing.privacy_policy') }} — {{ $appName }}</title>
     @php
-        $faviconUrl = ($seo && $seo->favicon) ? asset($seo->favicon) : $generalSettings->getFaviconUrl();
+        $seoTitle = __('landing.privacy_policy') . ' — ' . $appName;
+        $seoDescription = __('landing.privacy_meta_description');
+        $seoCanonicalUrl = rtrim(config('seo.base_url', 'https://prodexhub.cloud'), '/') . '/privacy-policy';
+        $seoType = 'article';
     @endphp
-    @if($faviconUrl)
-        <link rel="icon" href="{{ $faviconUrl }}">
-    @endif
+    @include('central.partials.seo-head')
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="{{ asset('assets_super/css/inter.css') }}" rel="stylesheet">
@@ -31,7 +32,7 @@
             <a class="navbar-brand" href="{{ route('central.welcome') }}">
                 <span class="brand-mark">
                     @if($logoUrl)
-                        <img src="{{ $logoUrl }}" alt="{{ $appName }}">
+                        <img src="{{ $logoUrl }}" alt="" width="112" height="28">
                     @else
                         <span class="brand-icon">{{ strtoupper(substr($appName, 0, 1)) }}</span>
                     @endif
@@ -63,10 +64,13 @@
                 ['id' => 'introduction',  'title' => __('landing.privacy_intro_title'),        'content' => $privacy->introduction],
                 ['id' => 'data-collect',  'title' => __('landing.privacy_collect_title'),      'content' => $privacy->data_collection],
                 ['id' => 'data-use',      'title' => __('landing.privacy_use_title'),          'content' => $privacy->data_usage],
+                ['id' => 'payments',      'title' => __('landing.privacy_payments_title'),     'content' => __('landing.privacy_payments_text')],
                 ['id' => 'cookies',       'title' => __('landing.privacy_cookies_title'),      'content' => $privacy->cookies_usage],
                 ['id' => 'third-party',   'title' => __('landing.privacy_third_party_title'),  'content' => $privacy->third_party],
                 ['id' => 'protection',    'title' => __('landing.privacy_protection_title'),   'content' => $privacy->data_protection],
+                ['id' => 'retention',     'title' => __('landing.privacy_retention_title'),    'content' => __('landing.privacy_retention_text')],
                 ['id' => 'rights',        'title' => __('landing.privacy_rights_title'),       'content' => $privacy->user_rights],
+                ['id' => 'changes',       'title' => __('landing.privacy_changes_title'),      'content' => __('landing.privacy_changes_text')],
                 ['id' => 'contact',       'title' => __('landing.privacy_contact_title'),      'content' => $privacy->contact_info],
             ];
             $activeSections = array_filter($sections, fn($s) => !empty($s['content']));
@@ -122,5 +126,6 @@
     </footer>
 
     <script src="{{ asset('assets_super/js/privacy-policy.js') }}"></script>
+    @include('central.partials.analytics')
 </body>
 </html>

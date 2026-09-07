@@ -102,6 +102,15 @@
             <form method="POST" action="{{ route('central.register.submit') }}" id="register-form" autocomplete="on">
                 @csrf
 
+                {{-- Silent honeypot. Real users never see or fill these; bots do.
+                     Server drops the submission when "company_website" is filled
+                     or the form is posted implausibly fast. --}}
+                <div aria-hidden="true" style="position:absolute!important;left:-9999px!important;width:1px;height:1px;overflow:hidden">
+                    <label for="company_website">Company website</label>
+                    <input type="text" id="company_website" name="company_website" tabindex="-1" autocomplete="off">
+                </div>
+                <input type="hidden" name="form_loaded_at" value="{{ now()->timestamp }}">
+
                 {{-- Subdomain --}}
                 <div class="form-group">
                     <label for="subdomain">{{ __('landing.subdomain') }}</label>
