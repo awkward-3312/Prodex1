@@ -452,6 +452,115 @@ class ValuedKardexReportServiceTest extends TestCase
         $this->assertSame(4.0, $r['summary']['out_qty']);
     }
 
+    public function test_location_selector_scopes_sales_to_that_exact_location(): void
+    {
+        $a1 = $this->location('A1', $this->b1, null);
+        $a2 = $this->location('A2', $this->b1, null);
+        $p = $this->product('VentaLoc', 1.00);
+        $this->locStock($a1, $p, 100);
+        $this->locStock($a2, $p, 100);
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b1, 'inventory_location_id' => $a1], '2026-01-10',
+            [['product_id' => $p, 'qty' => 5]]);
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b1, 'inventory_location_id' => $a2], '2026-01-11',
+            [['product_id' => $p, 'qty' => 20]]);
+        // Devolución de venta en A2 — NO debe contaminar A1.
+        $this->saleReturn(['warehouse_id' => null, 'branch_id' => $this->b1, 'inventory_location_id' => $a2], '2026-01-15',
+            [['product_id' => $p, 'qty' => 3]]);
+
+        $r1 = $this->svc->build(['user' => $this->owner, 'product_id' => $p, 'inventory_location_id' => $a1, 'from' => null, 'to' => null]);
+        $r2 = $this->svc->build(['user' => $this->owner, 'product_id' => $p, 'inventory_location_id' => $a2, 'from' => null, 'to' => null]);
+
+        $this->assertSame(5.0, $r1['summary']['out_qty']);
+        $this->assertSame(0.0, $r1['summary']['in_qty']);          // la devolución de A2 no entra
+        $this->assertSame(100.0, $r1['reconciliation']['stock_on_hand']);
+        $this->assertSame(0.0, $r1['reconciliation']['difference']);
+
+        $this->assertSame(20.0, $r2['summary']['out_qty']);
+        $this->assertSame(3.0, $r2['summary']['in_qty']);          // sólo la devolución de A2
+        $this->assertSame(100.0, $r2['reconciliation']['stock_on_hand']);
+    }
+
+    public function test_location_with_warehouse_reconciles_against_its_own_stock_not_product_warehouse(): void
+    {
+        $l1 = $this->location('L1', $this->b1, $this->wh1);
+        $p = $this->product('StockLoc', 1.00);
+        $this->onHand($p, $this->wh1, 300);   // product_warehouse del almacén asociado
+        $this->locStock($l1, $p, 100);        // stock real de la ubicación pedida
+        $this->purchase(['warehouse_id' => null, 'inventory_location_id' => $l1, 'statut' => 'received'],
+            '2026-01-06', [['product_id' => $p, 'cost' => 2.0, 'qty' => 40]]);
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b1, 'inventory_location_id' => $l1], '2026-01-10',
+            [['product_id' => $p, 'qty' => 60]]);
+
+        $r = $this->svc->build(['user' => $this->owner, 'product_id' => $p, 'inventory_location_id' => $l1, 'from' => null, 'to' => null]);
+
+        $this->assertSame(100.0, $r['reconciliation']['stock_on_hand']); // 100, NO 300, NO 400
+        $this->assertSame(0.0, $r['reconciliation']['difference']);
+        $this->assertSame(100.0, $r['summary']['closing_qty']);
+        $this->assertSame(120.0, $r['summary']['opening_qty']);          // 100 − 40 + 60
+        $this->assertTrue($r['reconciliation']['reconciled']);
+    }
+
+    public function test_location_without_warehouse_reconciles_via_direct_read_selector(): void
+    {
+        $l2 = $this->location('L2', $this->b1, null);
+        $p = $this->product('StockLoc2', 1.00);
+        $this->locStock($l2, $p, 50);
+        $this->purchase(['warehouse_id' => null, 'inventory_location_id' => $l2, 'statut' => 'received'],
+            '2026-01-04', [['product_id' => $p, 'cost' => 2.0, 'qty' => 12]]);
+
+        $r = $this->svc->build(['user' => $this->owner, 'product_id' => $p, 'inventory_location_id' => $l2, 'from' => null, 'to' => null]);
+
+        $this->assertSame(50.0, $r['reconciliation']['stock_on_hand']);
+        $this->assertSame(0.0, $r['reconciliation']['difference']);
+        $this->assertSame(50.0, $r['summary']['closing_qty']);
+        $this->assertSame(38.0, $r['summary']['opening_qty']);          // 50 − 12
+        $this->assertTrue($r['reconciliation']['reconciled']);
+    }
+
+    public function test_branch_and_location_of_different_branch_is_rejected(): void
+    {
+        $locB2 = $this->location('EnB2', $this->b2, null);
+
+        $r = $this->svc->build(['user' => $this->owner, 'product_id' => $this->prod, 'branch_id' => $this->b1, 'inventory_location_id' => $locB2, 'from' => null, 'to' => null]);
+
+        $this->assertArrayHasKey('error', $r);
+        $this->assertSame([], $r['rows']);
+    }
+
+    public function test_fully_future_date_range_is_rejected(): void
+    {
+        $r = $this->svc->build([
+            'user' => $this->owner, 'product_id' => $this->prod, 'branch_id' => $this->b1,
+            'from' => now()->addYears(1)->toDateString(), 'to' => now()->addYears(1)->addMonths(2)->toDateString(),
+        ]);
+
+        $this->assertArrayHasKey('error', $r);
+        $this->assertStringContainsString('futuro', $r['error']);
+    }
+
+    public function test_future_to_with_past_from_still_clamps_with_notice(): void
+    {
+        $r = $this->build(['from' => now()->subDays(10)->toDateString(), 'to' => now()->addYears(3)->toDateString()]);
+
+        $this->assertArrayNotHasKey('error', $r);
+        $this->assertSame(now()->toDateString(), $r['window']['to']);
+        $this->assertTrue($r['window']['to_clamped']);
+    }
+
+    public function test_non_owner_scope_is_not_widened_by_is_all_warehouses(): void
+    {
+        $staff = $this->nonOwner([$this->b1], 1); // explicit branch b1, is_all_warehouses = 1
+        $p = $this->product('ScopeChk', 1.00);
+        $this->onHand($p, $this->wh1, 40);
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b1], '2026-01-10', [['product_id' => $p, 'qty' => 6]]);
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b2], '2026-01-10', [['product_id' => $p, 'qty' => 50]]);
+
+        $r = $this->svc->build(['user' => $staff, 'product_id' => $p, 'branch_id' => 0, 'from' => null, 'to' => null]);
+
+        // Sólo la venta moderna de su sucursal b1.
+        $this->assertSame(6.0, $r['summary']['out_qty']);
+    }
+
     public function test_invalid_and_reversed_dates_return_an_error(): void
     {
         $bad = $this->svc->build(['user' => $this->owner, 'product_id' => $this->prod, 'branch_id' => $this->b1, 'from' => '2026-13-40', 'to' => '2026-01-31']);

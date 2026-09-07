@@ -347,6 +347,104 @@ class InventoryTurnoverReportServiceTest extends TestCase
         $this->assertSame(0.0, $b1['stock_final']);
     }
 
+    public function test_location_selector_scopes_sales_to_that_exact_location(): void
+    {
+        $a1 = $this->location('A1', $this->b1, null);
+        $a2 = $this->location('A2', $this->b1, null);
+        $p = $this->product('VentaLoc', 1.00);
+        $this->locStock($a1, $p, 100);
+        $this->locStock($a2, $p, 100);
+        // Ventas modernas: 5 en A1, 20 en A2 (misma sucursal b1).
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b1, 'inventory_location_id' => $a1], '2026-01-10',
+            [['product_id' => $p, 'qty' => 5]]);
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b1, 'inventory_location_id' => $a2], '2026-01-11',
+            [['product_id' => $p, 'qty' => 20]]);
+        // Devolución de venta en A2 — NO debe contaminar A1.
+        $this->saleReturn(['warehouse_id' => null, 'branch_id' => $this->b1, 'inventory_location_id' => $a2], '2026-01-15',
+            [['product_id' => $p, 'qty' => 3]]);
+
+        $r1 = $this->rowFor($this->exec(['branch_id' => null, 'inventory_location_id' => $a1]), $p);
+        $r2 = $this->rowFor($this->exec(['branch_id' => null, 'inventory_location_id' => $a2]), $p);
+        $rBranch = $this->rowFor($this->exec(['branch_id' => $this->b1]), $p);
+
+        $this->assertSame(5.0, $r1['units_sold']);
+        $this->assertSame(17.0, $r2['units_sold']);          // 20 − 3 devolución
+        $this->assertSame(22.0, $rBranch['units_sold']);     // 5 + 20 − 3, toda la sucursal
+        $this->assertSame(100.0, $r1['stock_now']);
+        $this->assertSame(100.0, $r2['stock_now']);
+    }
+
+    public function test_location_with_warehouse_reads_its_own_stock_not_product_warehouse(): void
+    {
+        $l1 = $this->location('L1', $this->b1, $this->wh1);
+        $p = $this->product('StockLoc', 1.00);
+        $this->onHand($p, $this->wh1, 300);   // product_warehouse del almacén asociado
+        $this->locStock($l1, $p, 100);        // stock real de la ubicación pedida
+
+        $row = $this->rowFor($this->exec(['branch_id' => null, 'inventory_location_id' => $l1]), $p);
+
+        $this->assertSame(100.0, $row['stock_now']);    // 100, NO 300, NO 400
+        $this->assertSame(100.0, $row['stock_final']);
+    }
+
+    public function test_location_without_warehouse_reads_its_stock_via_selector(): void
+    {
+        $l2 = $this->location('L2', $this->b1, null);
+        $p = $this->product('StockLoc2', 1.00);
+        $this->locStock($l2, $p, 50);
+
+        $row = $this->rowFor($this->exec(['branch_id' => null, 'inventory_location_id' => $l2]), $p);
+
+        $this->assertSame(50.0, $row['stock_now']);
+        $this->assertSame(50.0, $row['stock_final']);
+    }
+
+    public function test_non_owner_is_not_unscoped_by_is_all_warehouses(): void
+    {
+        $staff = $this->nonOwner([$this->b1], 1); // explicit branch A, is_all_warehouses = 1
+        $p = $this->product('ScopeChk', 1.00);
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b1], '2026-01-10', [['product_id' => $p, 'qty' => 7]]);
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b2], '2026-01-10', [['product_id' => $p, 'qty' => 50]]);
+        $this->onHand($p, $this->wh1, 100);
+
+        $row = $this->rowFor($this->exec(['user' => $staff, 'branch_id' => null]), $p);
+
+        $this->assertSame(7.0, $row['units_sold']);   // sólo su sucursal A
+        $this->assertNotSame(57.0, $row['units_sold']); // NO ve la venta moderna de B
+    }
+
+    public function test_non_owner_without_explicit_branch_matches_branch_scope_service(): void
+    {
+        $staff = $this->nonOwner([], 1); // sin user_branches, is_all_warehouses = 1
+        $p = $this->product('ScopeChk2', 1.00);
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b1], '2026-01-10', [['product_id' => $p, 'qty' => 3]]);
+        $this->sale(['warehouse_id' => null, 'branch_id' => $this->b2], '2026-01-10', [['product_id' => $p, 'qty' => 4]]);
+
+        $row = $this->rowFor($this->exec(['user' => $staff, 'branch_id' => null]), $p);
+
+        // BranchScopeService fallback con is_all_warehouses = 1 → todas las sucursales.
+        $this->assertSame(7.0, $row['units_sold']);
+    }
+
+    public function test_branch_and_location_of_different_branch_is_rejected(): void
+    {
+        $locB2 = $this->location('EnB2', $this->b2, null);
+        $this->product('X', 1.0);
+
+        $r = $this->exec(['branch_id' => $this->b1, 'inventory_location_id' => $locB2]);
+
+        $this->assertArrayHasKey('error', $r);
+        $this->assertSame([], $r['rows']);
+    }
+
+    public function test_fully_future_date_range_is_rejected(): void
+    {
+        $this->product('X', 1.0);
+        $r = $this->exec(['from' => now()->addYears(1)->toDateString(), 'to' => now()->addYears(1)->addMonths(2)->toDateString()]);
+        $this->assertArrayHasKey('error', $r);
+        $this->assertStringContainsString('futuro', $r['error']);
+    }
+
     public function test_meta_documents_formula_thresholds_and_scope(): void
     {
         $this->product('X', 1.0);

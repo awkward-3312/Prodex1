@@ -43,6 +43,11 @@ use Illuminate\Support\Facades\Schema;
  * el usuario puede ver TODAS las InventoryLocation de sus sucursales permitidas.
  * El filtro "Ubicación" del reporte es una CONVENIENCIA de análisis, acotada
  * SIEMPRE al alcance de sucursal permitido (no puede ampliarlo).
+ *
+ * `unscoped` (query sin filtrar) SÓLO para Owner (`role_id === 1`) sin selector —
+ * igual que `SalesReportingScopeService`. Un NO-Owner con `is_all_warehouses = 1`
+ * pero `user_branches` explícitas NUNCA hace bypass total; sus sucursales las
+ * resuelve `BranchScopeService` (que ya prioriza `user_branches`).
  */
 class InventoryReportScope
 {
@@ -57,8 +62,16 @@ class InventoryReportScope
 
     private bool $denied = false;
 
-    /** true = usuario con visión total del tenant y sin selector → sin filtrar. */
+    /** true = Owner sin selector → sin filtrar (tenant completo, incl. inactivo). */
     private bool $unscoped = false;
+
+    /** true = hay un selector EXPLÍCITO de InventoryLocation (sólo esa ubicación). */
+    private bool $locationScoped = false;
+
+    private ?int $selectedLocationId = null;
+
+    /** Mensaje de validación (filtro contradictorio) → el controlador responde 422. */
+    private ?string $error = null;
 
     private array $branchNameById;
 
@@ -76,7 +89,6 @@ class InventoryReportScope
         $allowedBranches = $branchScope->allowedBranchIds($user);
         $allowedWarehouses = $warehouseScope->allowedWarehouseIds($user);
         $isOwner = (int) $user->role_id === 1;
-        $seesWholeTenant = $isOwner || (int) $user->is_all_warehouses === 1;
         $hasSelector = (bool) $branchId || (bool) $locationId || (bool) $warehouseId;
         $locTable = Schema::hasTable('inventory_locations');
 
@@ -85,27 +97,37 @@ class InventoryReportScope
             ? DB::table('inventory_locations')->whereNull('deleted_at')->pluck('id')->map('intval')->all()
             : [];
 
-        // --- SIN selector + visión total del tenant → SIN filtrar ---------------
-        // Mismo criterio que SalesReportingScopeService::apply: no ocultar
-        // movimientos/stock por `warehouse_id`/`branch_id` NULL cuando el usuario
-        // puede ver todo. Incluye sucursales inactivas y almacenes sin sucursal.
-        if (! $hasSelector && $seesWholeTenant) {
+        // --- Owner SIN selector → SIN filtrar (mismo criterio que
+        //     SalesReportingScopeService::apply para role_id === 1). Incluye
+        //     sucursales inactivas y almacenes sin sucursal. Un NO-Owner NUNCA
+        //     entra aquí por `is_all_warehouses`.
+        if (! $hasSelector && $isOwner) {
             $this->unscoped = true;
             $this->branchIds = $this->allBranchIds();
             $this->legacyWarehouseIds = $allWarehouseIds;
             $this->locationIds = $allLocationIds;
         } elseif ($locationId) {
-            // Selector MODERNO: una InventoryLocation concreta. Sólo movimientos y
-            // stock con ESA `inventory_location_id` — los registros legacy
-            // (`warehouse_id`) no se pueden atribuir a una ubicación concreta y
-            // quedan fuera de la vista por ubicación (usa el filtro Sucursal /
-            // el almacén legacy para verlos).
+            // Selector MODERNO: una InventoryLocation concreta. TODOS los
+            // movimientos y el stock se acotan a ESA `inventory_location_id`
+            // (ventas/dev. de venta incluidas, aunque tengan `branch_id`). Los
+            // registros legacy sin `inventory_location_id` no se pueden atribuir
+            // a una ubicación concreta → fuera de la vista por ubicación.
             $loc = $locTable ? DB::table('inventory_locations')->whereNull('deleted_at')->find($locationId) : null;
-            if (! $loc || (! $isOwner && ! in_array((int) $loc->branch_id, $allowedBranches, true))) {
+            if (! $loc) {
                 $this->denied = true;
-                $this->branchIds = $loc ? [(int) $loc->branch_id] : [];
+                $this->branchIds = [];
+            } elseif ($branchId && (int) $loc->branch_id !== $branchId) {
+                // Filtro contradictorio: la ubicación no pertenece a la sucursal.
+                $this->error = 'La ubicación seleccionada no pertenece a la sucursal indicada.';
+                $this->denied = true;
+                $this->branchIds = [(int) $loc->branch_id];
+            } elseif (! $isOwner && ! in_array((int) $loc->branch_id, $allowedBranches, true)) {
+                $this->denied = true;
+                $this->branchIds = [(int) $loc->branch_id];
             } else {
                 $this->branchIds = [(int) $loc->branch_id];
+                $this->locationScoped = true;
+                $this->selectedLocationId = $locationId;
             }
             $this->legacyWarehouseIds = [];
             $this->locationIds = [$locationId];
@@ -172,6 +194,23 @@ class InventoryReportScope
         return $this->unscoped;
     }
 
+    /** true = el usuario pidió explícitamente UNA InventoryLocation. */
+    public function isLocationScoped(): bool
+    {
+        return $this->locationScoped;
+    }
+
+    public function selectedLocationId(): ?int
+    {
+        return $this->selectedLocationId;
+    }
+
+    /** Mensaje de filtro contradictorio (sucursal ≠ sucursal de la ubicación) → 422. */
+    public function error(): ?string
+    {
+        return $this->error;
+    }
+
     /** @return int[] */
     public function branchIds(): array
     {
@@ -225,6 +264,29 @@ class InventoryReportScope
         return $out;
     }
 
+    /**
+     * Ubicaciones a leer DIRECTAMENTE de `inventory_location_stocks` para la
+     * existencia actual.
+     *
+     *  · SELECTOR EXPLÍCITO de ubicación → SÓLO esa `inventory_location_id`,
+     *    tenga o no `warehouse_id`. El usuario pidió físicamente ESA ubicación:
+     *    se lee su stock real, NO el `product_warehouse` del almacén asociado y
+     *    NO {@see InventoryReadService} (que resolvería por almacén).
+     *  · Alcance general / sucursal → las ubicaciones SIN almacén (idéntico a
+     *    {@see stockLocationIds()}); los almacenes van por `stockWarehouseIds()`
+     *    + {@see InventoryReadService}, sin doble conteo.
+     *
+     * @return int[]
+     */
+    public function stockLocationIdsForDirectRead(): array
+    {
+        if ($this->locationScoped && $this->selectedLocationId !== null) {
+            return [$this->selectedLocationId];
+        }
+
+        return $this->stockLocationIds();
+    }
+
     public function hasModernLocations(): bool
     {
         return ! empty($this->locationIds);
@@ -234,6 +296,11 @@ class InventoryReportScope
      * Fuente con `branch_id` (sales, sale_returns):
      *   (alias.branch_id IN branchIds)
      *   OR (alias.branch_id IS NULL AND alias.warehouse_id IN legacyWarehouseIds)
+     *
+     * SELECTOR EXPLÍCITO de ubicación → SÓLO `inventory_location_id = seleccionada`.
+     * Una venta moderna de OTRA ubicación de la misma sucursal NO entra, y los
+     * registros legacy (sin `inventory_location_id`) tampoco — no se pueden
+     * atribuir a una ubicación concreta.
      */
     public function applyBranchScope($query, string $alias)
     {
@@ -242,6 +309,9 @@ class InventoryReportScope
         }
         if ($this->unscoped) {
             return $query; // visión total del tenant → sin filtrar
+        }
+        if ($this->locationScoped) {
+            return $query->whereIn("{$alias}.inventory_location_id", $this->locationIds ?: [0]);
         }
         $branchIds = $this->branchIds;
         $legacy = $this->legacyWarehouseIds;

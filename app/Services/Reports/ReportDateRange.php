@@ -11,8 +11,10 @@ use Illuminate\Support\Carbon;
  *  · `from` / `to` deben ser fechas `Y-m-d` válidas → si no, `error`.
  *  · `from <= to` obligatorio → si `from > to`, `error` (no se intercambia
  *    silenciosamente: el usuario debe corregir su selección).
- *  · `to` en el futuro se acota a HOY (no se puede calcular stock futuro) y se
- *    avisa con `to_clamped`.
+ *  · `to` en el futuro (con `from` pasado/hoy) se acota a HOY (no se puede
+ *    calcular stock futuro) y se avisa con `to_clamped`.
+ *  · Rango COMPLETAMENTE en el futuro (`from` > hoy) → `error`. No se convierte
+ *    silenciosamente en "hoy → hoy".
  *  · `from` == `to` es válido (período de 1 día).
  *  · Sin `from`/`to`: por defecto los últimos 90 días hasta hoy.
  */
@@ -66,8 +68,14 @@ class ReportDateRange
             $r->toClamped = true;
         }
         if ($cFrom->gt($cTo)) {
-            // `from` también estaba en el futuro, más allá del `to` recortado.
-            $cFrom = $cTo->copy();
+            // Tras acotar `to` a hoy, `from` sigue en el futuro → todo el rango
+            // era futuro. No se puede calcular; se rechaza (no "hoy → hoy").
+            $r->error = 'La fecha "desde" no puede estar en el futuro.';
+            $r->from = $cFrom->toDateString();
+            $r->to = $cTo->toDateString();
+            $r->days = 1;
+
+            return $r;
         }
 
         $r->from = $cFrom->toDateString();

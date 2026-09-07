@@ -100,9 +100,9 @@
 
           <div class="pxvk__stats">
             <px-stat label="Saldo inicial (unid.)" :value="fmtNum(summary.opening_qty)" icon="package" />
-            <px-stat label="Entradas (unid.)" :value="fmtNum(summary.in_qty)" icon="arrow-down-to-line" />
-            <px-stat label="Salidas (unid.)" :value="fmtNum(summary.out_qty)" icon="arrow-up-from-line" />
-            <px-stat label="Saldo final (unid.)" :value="fmtNum(summary.closing_qty)" icon="package-check" />
+            <px-stat label="Entradas (unid.)" :value="fmtNum(summary.in_qty)" icon="plus" />
+            <px-stat label="Salidas (unid.)" :value="fmtNum(summary.out_qty)" icon="minus" />
+            <px-stat label="Saldo final (unid.)" :value="fmtNum(summary.closing_qty)" icon="check-circle" />
             <px-stat label="Saldo valorizado" :value="money(summary.closing_value)" icon="calculator" />
             <px-stat label="Costo prom. final" :value="money(summary.closing_avg_cost)" icon="tag" />
           </div>

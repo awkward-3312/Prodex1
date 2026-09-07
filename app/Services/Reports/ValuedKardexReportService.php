@@ -74,6 +74,11 @@ class ValuedKardexReportService
             (int) ($filters['warehouse_id'] ?? 0) ?: null,
         );
 
+        // Filtro contradictorio (sucursal ≠ sucursal de la ubicación) → 422.
+        if ($scope->error() !== null) {
+            return ['error' => $scope->error(), 'mode' => 'ledger', 'rows' => [], 'summary' => [], 'reconciliation' => [], 'quantity_quality' => [], 'valuation_quality' => []];
+        }
+
         // Ventana de fechas: sólo se valida si el usuario la envía (el libro
         // completo, sin `from`/`to`, es el caso por defecto).
         $from = $to = null;
@@ -483,26 +488,34 @@ class ValuedKardexReportService
     }
 
     /**
-     * Existencia actual real del alcance = `InventoryReadService` (warehouse-keyed,
-     * legacy XOR moderno por almacén) + el stock de las InventoryLocation del
-     * alcance SIN almacén, que el servicio warehouse-keyed no puede ver. No hay
-     * doble conteo: esas ubicaciones no mapean a ningún almacén.
+     * Existencia actual real del alcance.
+     *
+     *  · SELECTOR EXPLÍCITO de ubicación → SÓLO `inventory_location_stocks` de esa
+     *    `inventory_location_id`, tenga o no `warehouse_id`. NO se lee el
+     *    `product_warehouse` del almacén asociado ni `InventoryReadService`: el
+     *    usuario pidió físicamente ESA ubicación.
+     *  · Alcance general / sucursal → `InventoryReadService` (warehouse-keyed,
+     *    legacy XOR moderno por almacén) + el stock de las InventoryLocation del
+     *    alcance SIN almacén (fuera del alcance warehouse-keyed). Sin doble
+     *    conteo: esas ubicaciones no mapean a ningún almacén.
      */
     private function currentOnHand(int $productId, ?int $variantId, InventoryReportScope $scope): float
     {
-        $warehouseIds = $scope->stockWarehouseIds();
         $sum = 0.0;
 
-        if ($warehouseIds) {
-            $totals = $this->inventoryRead->totalsByProductVariant([$productId], $warehouseIds);
-            foreach ($totals as $key => $qty) {
-                if ($variantId ? $key === $productId.':'.$variantId : str_starts_with($key, $productId.':')) {
-                    $sum += (float) $qty;
+        if (! $scope->isLocationScoped()) {
+            $warehouseIds = $scope->stockWarehouseIds();
+            if ($warehouseIds) {
+                $totals = $this->inventoryRead->totalsByProductVariant([$productId], $warehouseIds);
+                foreach ($totals as $key => $qty) {
+                    if ($variantId ? $key === $productId.':'.$variantId : str_starts_with($key, $productId.':')) {
+                        $sum += (float) $qty;
+                    }
                 }
             }
         }
 
-        $locIds = $scope->stockLocationIds();
+        $locIds = $scope->stockLocationIdsForDirectRead();
         if ($locIds) {
             $q = DB::table('inventory_location_stocks')
                 ->where('product_id', $productId)

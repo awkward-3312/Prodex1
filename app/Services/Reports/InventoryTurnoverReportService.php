@@ -60,6 +60,10 @@ class InventoryTurnoverReportService
             (int) ($filters['warehouse_id'] ?? 0) ?: null,
         );
 
+        if ($scope->error() !== null) {
+            return ['rows' => [], 'totalRows' => 0, 'meta' => ['capped' => false, 'matched_products' => 0], 'error' => $scope->error()];
+        }
+
         $range = ReportDateRange::parse($filters['from'] ?? null, $filters['to'] ?? null);
         if (! $range->isValid()) {
             return $this->errorResult($range);
@@ -199,14 +203,18 @@ class InventoryTurnoverReportService
     private function currentStock(array $productIds, InventoryReportScope $scope): array
     {
         $out = [];
-        $whIds = $scope->stockWarehouseIds();
-        if ($whIds) {
-            foreach ($this->inventoryRead->totalsByProductVariant($productIds, $whIds) as $key => $qty) {
-                [$pid] = explode(':', $key);
-                $out[(int) $pid] = ($out[(int) $pid] ?? 0.0) + (float) $qty;
+        // Selector explícito de ubicación → sólo lectura directa de
+        // `inventory_location_stocks` de esa ubicación (ver stockLocationIdsForDirectRead).
+        if (! $scope->isLocationScoped()) {
+            $whIds = $scope->stockWarehouseIds();
+            if ($whIds) {
+                foreach ($this->inventoryRead->totalsByProductVariant($productIds, $whIds) as $key => $qty) {
+                    [$pid] = explode(':', $key);
+                    $out[(int) $pid] = ($out[(int) $pid] ?? 0.0) + (float) $qty;
+                }
             }
         }
-        $locIds = $scope->stockLocationIds();
+        $locIds = $scope->stockLocationIdsForDirectRead();
         if ($locIds) {
             foreach (DB::table('inventory_location_stocks')
                 ->whereIn('product_id', $productIds)

@@ -42,6 +42,12 @@ trait InventoryMovementReportSchema
             $t->timestamps();
             $t->softDeletes();
         });
+        Schema::create('user_branches', function ($t) {
+            $t->increments('id');
+            $t->integer('user_id');
+            $t->integer('branch_id');
+            $t->timestamps();
+        });
         Schema::create('warehouses', function ($t) {
             $t->increments('id');
             $t->integer('branch_id')->nullable();
@@ -241,9 +247,37 @@ trait InventoryMovementReportSchema
         return User::find($id);
     }
 
+    /**
+     * Usuario NO Owner. `is_all_warehouses` (por defecto 1) NUNCA debe volverlo
+     * unscoped; `user_branches` explícitas mandan.
+     *
+     * @param  int[]  $branchIds  sucursales explícitas (`user_branches`)
+     */
+    protected function nonOwner(array $branchIds = [], int $isAllWarehouses = 1): User
+    {
+        $id = DB::table('users')->insertGetId([
+            'username' => 'staff'.uniqid(), 'role_id' => 2, 'is_all_warehouses' => $isAllWarehouses,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        foreach ($branchIds as $bid) {
+            DB::table('user_branches')->insert(['user_id' => $id, 'branch_id' => $bid, 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        return User::find($id);
+    }
+
     protected function branch(string $name): int
     {
         return DB::table('branches')->insertGetId(['name' => $name, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    protected function locStock(int $locationId, int $productId, float $qty, ?int $variantId = null): void
+    {
+        DB::table('inventory_location_stocks')->insert([
+            'inventory_location_id' => $locationId, 'product_id' => $productId,
+            'product_variant_id' => $variantId, 'variant_key' => (int) $variantId,
+            'quantity' => $qty, 'created_at' => now(), 'updated_at' => now(),
+        ]);
     }
 
     protected function warehouse(string $name, ?int $branchId = null): int
