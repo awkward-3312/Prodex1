@@ -39,12 +39,11 @@ class PosAwareSarFiscalSaleArchitectureTest extends TestCase
         $this->assertStringContainsString('pertenece a otra sucursal', $service);
         $this->assertStringContainsString('(int) $drawer->inventory_location_id !== (int) $sale->inventory_location_id', $service);
 
-        // Missing-point message names the drawer and its branch.
-        $this->assertStringContainsString('todavía no está cubierta por un punto de emisión SAR', $service);
+        // Missing-series message names the drawer and its branch.
+        $this->assertStringContainsString('todavía no está cubierta por ninguna serie fiscal SAR', $service);
 
-        // Defence in depth: resolved point + authorization must belong to the branch.
-        $this->assertStringContainsString('El punto SAR resuelto no pertenece a la sucursal de la venta.', $service);
-        $this->assertStringContainsString('La autorización SAR resuelta no pertenece a la sucursal de la venta.', $service);
+        // Defence in depth: the resolved series must belong to the sale's branch.
+        $this->assertStringContainsString('La serie fiscal resuelta no pertenece a la sucursal de la venta.', $service);
     }
 
     public function test_sar_stays_mandatory_and_pos_aware_service_is_the_binding(): void
@@ -68,7 +67,17 @@ class PosAwareSarFiscalSaleArchitectureTest extends TestCase
     {
         $number = $this->read('app/Services/SarFiscalNumberService.php');
 
-        $this->assertStringContainsString('$authorization->pointOfIssue->branch_id', $number);
+        // The counter lives on the authorisation of the series; the allocation
+        // point re-checks that the series belongs to the sale's branch.
+        $this->assertStringContainsString('$series->branch_id', $number);
         $this->assertStringContainsString('Una venta no puede consumir el CAI de una sucursal distinta.', $number);
+        // The lock is scoped to ONE series' authorisation rows, nothing wider —
+        // not the fiscal profile, not the sales table.
+        $this->assertStringContainsString('forSeries($pointOfIssueId, $documentType)', $number);
+        $this->assertStringContainsString('->lockForUpdate()', $number);
+        $this->assertStringNotContainsString('SarFiscalProfile::query()->lockForUpdate()', $number);
+        $this->assertStringNotContainsString("where('sale_id', \$sale->id)->lockForUpdate()", $number);
+        // Consistent lock order (by id) so two concurrent allocations can't deadlock.
+        $this->assertMatchesRegularExpression('/forSeries\(\$pointOfIssueId, \$documentType\)\s*->whereIn\([^)]*\)\s*->orderBy\(\x27id\x27\)\s*->lockForUpdate\(\)/s', $number);
     }
 }

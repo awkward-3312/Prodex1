@@ -14,6 +14,7 @@ use App\Models\SarPointOfIssue;
 use App\Models\Setting;
 use App\Models\Warehouse;
 use App\Services\SarBranchFiscalService;
+use App\Services\SarFiscalNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -33,6 +34,11 @@ class SarFiscalSettingsController extends BaseController
         $profile = SarFiscalProfile::first();
         if ($profile) {
             $profile->invoice_settings = $this->invoiceSettings($profile->invoice_settings);
+        }
+
+        if ($profile && $profile->enabled) {
+            app(SarBranchFiscalService::class)->syncAllActiveBranches();
+            SarAuthorization::reconcileTerminalStatuses();
         }
 
         $points = SarPointOfIssue::with([
@@ -60,13 +66,6 @@ class SarFiscalSettingsController extends BaseController
                     && $point->branch_id && $coversAnyDrawer));
                 return $point;
             });
-
-        // Self-healing: keep PRODEX-managed points in sync with the current
-        // branches / drawers every time the screen is opened, so a new drawer or
-        // location is picked up even without an explicit hook.
-        if ($profile && $profile->enabled) {
-            app(SarBranchFiscalService::class)->syncAllActiveBranches();
-        }
 
         return response()->json([
             'profile' => $profile,
@@ -305,8 +304,10 @@ class SarFiscalSettingsController extends BaseController
                     ? $branchPoints->sortByDesc('is_auto_managed')->first()
                     : null;
 
-                $auth = $point ? $this->readyAuthorization($point) : null;
-                $latestAuth = $point ? $point->authorizations->first() : null;
+                $series = $this->seriesPayload($point);
+                $current = $series['current'];
+                $next = $series['next'];
+                $latestAuth = $point ? $point->authorizations->where('document_type', '01')->sortByDesc('id')->first() : null;
 
                 $availableDrawers = ($drawersByBranch->get($branch->id) ?? collect())
                     ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name, 'code' => $d->code])
@@ -318,45 +319,45 @@ class SarFiscalSettingsController extends BaseController
                 $errors = [];
                 if ($enabled) {
                     if (! $point || ! $point->hasCodes()) {
-                        $errors[] = 'Falta el código de establecimiento y de punto autorizados por el SAR.';
+                        $errors[] = 'Falta el código de establecimiento y de punto de emisión autorizados por el SAR.';
                     }
                     if (empty($coveredDrawerIds)) {
                         $errors[] = empty($availableDrawers)
                             ? 'La sucursal no tiene cajas físicas activas.'
-                            : 'Ninguna caja física está cubierta por la facturación fiscal.';
+                            : 'Ninguna caja física está asignada a la serie fiscal.';
                     }
                     if ($point && $point->hasCodes() && ! $latestAuth) {
                         $errors[] = 'Falta registrar el CAI y el rango autorizados.';
                     }
-                    if ($latestAuth && ! $auth) {
-                        $errors[] = $this->authIssue($latestAuth);
+                    if ($latestAuth && ! ($current && $current['is_ready'])) {
+                        if ($next && $next['status'] === 'prepared') {
+                            // The active CAI is spent but the next one is ready to take over.
+                        } else {
+                            $errors[] = $this->authIssue($latestAuth);
+                        }
                     }
                 }
 
-                $status = ! $enabled ? 'disabled'
-                    : (! empty($errors) ? 'pending' : 'ready');
+                $ready = empty($errors)
+                    && (($current && $current['is_ready'])
+                        || ($next && $next['status'] === 'prepared' && $next['is_ready'] ?? false));
+
+                $status = ! $enabled ? 'disabled' : ($ready ? 'ready' : 'pending');
 
                 return [
                     'branch_id' => $branch->id,
                     'branch_name' => $branch->name,
                     'branch_code' => $branch->code,
                     'sar_enabled' => $enabled,
-                    'establishment_code' => $point?->establishment_code,
-                    'point_code' => $point?->point_code,
-                    'has_codes' => (bool) ($point && $point->hasCodes()),
+                    'establishment_code' => $series['establishment_code'],
+                    'point_code' => $series['point_code'],
+                    'serie_label' => $series['serie_label'],
+                    'has_codes' => $series['has_codes'],
                     'available_drawers' => $availableDrawers,
                     'covered_drawer_ids' => $coveredDrawerIds,
-                    'authorization' => $latestAuth ? [
-                        'id' => $latestAuth->id,
-                        'cai' => $latestAuth->cai,
-                        'status' => $latestAuth->status,
-                        'range_start' => (int) $latestAuth->range_start,
-                        'range_end' => (int) $latestAuth->range_end,
-                        'next_number' => (int) $latestAuth->next_number,
-                        'remaining' => max(0, (int) $latestAuth->range_end - (int) $latestAuth->next_number + 1),
-                        'deadline' => optional($latestAuth->deadline)->toDateString(),
-                        'is_ready' => (bool) $auth,
-                    ] : null,
+                    'series' => $series,
+                    // Back-compat alias: the current authorisation, flat.
+                    'authorization' => $current,
                     'status' => $status,
                     'errors' => $errors,
                 ];
@@ -479,6 +480,7 @@ class SarFiscalSettingsController extends BaseController
             'point_of_issue_id' => ['nullable', 'integer', 'exists:sar_points_of_issue,id'],
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'document_type' => ['nullable', 'regex:/^\d{2}$/'],
+            'role' => ['nullable', Rule::in(['current', 'next'])],
             'cai' => ['required', 'string', 'max:64'],
             'range_start' => ['required', 'integer', 'min:1', 'max:99999999'],
             'range_end' => ['required', 'integer', 'gte:range_start', 'max:99999999'],
@@ -487,7 +489,10 @@ class SarFiscalSettingsController extends BaseController
             'deadline' => ['required', 'date'],
         ]);
 
-        // The tenant works per branch; PRODEX maps it to the managed point.
+        $role = $data['role'] ?? 'current';
+        unset($data['role']);
+
+        // The tenant works per branch; PRODEX maps it to the managed series.
         if (empty($data['point_of_issue_id'])) {
             if (empty($data['branch_id'])) {
                 return response()->json(['message' => 'Indica la sucursal para la que registras el CAI.'], 422);
@@ -501,6 +506,7 @@ class SarFiscalSettingsController extends BaseController
 
         $overlaps = SarAuthorization::where('point_of_issue_id', $data['point_of_issue_id'])
             ->where('document_type', $data['document_type'])
+            ->whereNotIn('status', ['disabled', 'expired'])
             ->where(function ($query) use ($data) {
                 $query->whereBetween('range_start', [$data['range_start'], $data['range_end']])
                     ->orWhereBetween('range_end', [$data['range_start'], $data['range_end']])
@@ -514,8 +520,42 @@ class SarFiscalSettingsController extends BaseController
             return response()->json(['message' => 'El rango se superpone con otra autorización registrada.'], 422);
         }
 
+        if (Carbon::parse($data['deadline'])->lt(Carbon::today())) {
+            return response()->json(['message' => 'La fecha límite ya venció.'], 422);
+        }
+
         $data['cai'] = strtoupper(trim($data['cai']));
-        $data['status'] = 'draft';
+
+        if ($role === 'next') {
+            // A prepared "next" authorisation: PRODEX switches to it automatically
+            // and atomically when the current one runs out.
+            $existingPrepared = SarAuthorization::where('point_of_issue_id', $data['point_of_issue_id'])
+                ->where('document_type', $data['document_type'])
+                ->where('status', 'prepared')
+                ->first();
+            if ($existingPrepared) {
+                return response()->json([
+                    'message' => 'Esta serie ya tiene una autorización siguiente preparada. Elimínala o edítala antes de registrar otra.',
+                ], 422);
+            }
+
+            $active = SarAuthorization::where('point_of_issue_id', $data['point_of_issue_id'])
+                ->where('document_type', $data['document_type'])
+                ->where('status', 'active')
+                ->first();
+            if ($active && (int) $data['range_start'] <= (int) $active->range_end) {
+                return response()->json([
+                    'message' => 'El rango de la autorización siguiente debe empezar después del rango actual ('
+                        .number_format((int) $active->range_end).').',
+                ], 422);
+            }
+
+            // A not-yet-used range: force the counter to its start.
+            $data['next_number'] = $data['range_start'];
+            $data['status'] = 'prepared';
+        } else {
+            $data['status'] = 'draft';
+        }
 
         return response()->json([
             'success' => true,
@@ -535,7 +575,7 @@ class SarFiscalSettingsController extends BaseController
             return response()->json(['message' => 'El siguiente correlativo está fuera del rango autorizado.'], 422);
         }
         if (! $authorization->pointOfIssue || ! $authorization->pointOfIssue->active) {
-            return response()->json(['message' => 'El punto de emisión debe estar activo.'], 422);
+            return response()->json(['message' => 'La serie fiscal debe estar activa.'], 422);
         }
 
         DB::transaction(function () use ($authorization) {
@@ -543,12 +583,34 @@ class SarFiscalSettingsController extends BaseController
                 ->where('document_type', $authorization->document_type)
                 ->where('status', 'active')
                 ->where('id', '<>', $authorization->id)
-                ->update(['status' => 'disabled']);
+                ->update(['status' => 'disabled', 'superseded_by_id' => $authorization->id]);
 
-            $authorization->update(['status' => 'active']);
+            $authorization->update(['status' => 'active', 'activated_at' => now()]);
         });
 
         return response()->json(['success' => true, 'authorization' => $authorization->fresh()]);
+    }
+
+    /**
+     * Remove a not-yet-used authorisation (draft or prepared "next"). An
+     * authorisation that has already issued a fiscal number can never be deleted.
+     */
+    public function destroyAuthorization(Request $request, SarAuthorization $authorization)
+    {
+        $this->authorizeSettings($request);
+
+        if (! in_array($authorization->status, ['draft', 'prepared'], true)) {
+            return response()->json([
+                'message' => 'Solo puedes eliminar una autorización en borrador o preparada que aún no ha facturado.',
+            ], 422);
+        }
+        if ($authorization->documents()->exists()) {
+            return response()->json(['message' => 'Esta autorización ya emitió documentos fiscales y no puede eliminarse.'], 422);
+        }
+
+        $authorization->delete();
+
+        return response()->json(['success' => true]);
     }
 
     private function invoiceSettings($settings): array
@@ -630,26 +692,94 @@ class SarFiscalSettingsController extends BaseController
     }
 
     /**
-     * The authorization that is genuinely ready to invoice for a point:
+     * The authorization that is genuinely ready to invoice for a series:
      *   status = active  AND  deadline >= today  AND  next_number in [range_start, range_end].
      * Any failing condition means "not ready" — the UI must reflect that.
      */
     private function readyAuthorization(SarPointOfIssue $point): ?SarAuthorization
     {
-        $today = Carbon::today();
-
         return $point->authorizations
             ->where('document_type', '01')
-            ->first(function (SarAuthorization $a) use ($today) {
-                if ($a->status !== 'active') {
-                    return false;
-                }
-                if ($a->deadline && Carbon::parse($a->deadline)->lt($today)) {
-                    return false;
-                }
-                $next = (int) $a->next_number;
-                return $next >= (int) $a->range_start && $next <= (int) $a->range_end;
-            });
+            ->first(fn (SarAuthorization $a) => $a->status === 'active' && $a->isUsableNow());
+    }
+
+    /** The registered "next" authorization of a series, if any (draft or prepared). */
+    private function nextAuthorization(SarPointOfIssue $point): ?SarAuthorization
+    {
+        return $point->authorizations
+            ->where('document_type', '01')
+            ->whereIn('status', ['prepared', 'draft'])
+            ->sortBy('range_start')
+            ->first();
+    }
+
+    /**
+     * The full fiscal-series card payload: the tenant reads authorisations and
+     * series, never "technical points".
+     */
+    private function seriesPayload(?SarPointOfIssue $point): array
+    {
+        if (! $point) {
+            return [
+                'has_codes' => false,
+                'serie_label' => null,
+                'establishment_code' => null,
+                'point_code' => null,
+                'document_type' => '01',
+                'current' => null,
+                'next' => null,
+                'health' => 'unconfigured',
+            ];
+        }
+
+        $current = $this->readyAuthorization($point)
+            ?? $point->authorizations->where('document_type', '01')->firstWhere('status', 'active')
+            ?? $point->authorizations->where('document_type', '01')->sortByDesc('id')->first();
+        $next = $this->nextAuthorization($point);
+
+        $shape = function (?SarAuthorization $a) {
+            if (! $a) {
+                return null;
+            }
+
+            return [
+                'id' => $a->id,
+                'cai' => $a->cai,
+                'status' => $a->status,
+                'document_type' => $a->document_type,
+                'range_start' => (int) $a->range_start,
+                'range_end' => (int) $a->range_end,
+                'next_number' => (int) $a->next_number,
+                'last_used' => max(0, (int) $a->next_number - 1) >= (int) $a->range_start
+                    ? (int) $a->next_number - 1
+                    : null,
+                'remaining' => $a->remaining(),
+                'total_range' => (int) $a->range_end - (int) $a->range_start + 1,
+                'deadline' => optional($a->deadline)->toDateString(),
+                'authorization_date' => optional($a->authorization_date)->toDateString(),
+                'is_ready' => $a->status === 'active' && $a->isUsableNow(),
+                'health' => $a->healthState(SarFiscalNumberService::LOW_RANGE_THRESHOLD),
+            ];
+        };
+
+        $currentShape = $shape($current);
+        $health = $currentShape['health'] ?? ($point->hasCodes() ? 'no_authorization' : 'unconfigured');
+        if (($health === 'exhausted' || $health === 'expired') && $next && $next->isUsableNow()) {
+            $health = 'next_ready';
+        }
+
+        return [
+            'has_codes' => $point->hasCodes(),
+            'serie_label' => $point->hasCodes()
+                ? $point->establishment_code.'-'.$point->point_code.'-01'
+                : null,
+            'establishment_code' => $point->establishment_code,
+            'point_code' => $point->point_code,
+            'document_type' => '01',
+            'current' => $currentShape,
+            'next' => $shape($next),
+            'health' => $health,
+        ];
     }
 
     /**

@@ -61,6 +61,8 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_09_07_000000_link_sar_points_to_branch_location_drawer.php',
         // SAR per-branch fiscal config: managed points + point<->cash drawers pivot.
         'database/migrations/tenant/2026_09_08_000000_sar_per_branch_fiscal_config.php',
+        // SAR fiscal series: prepared "next" authorisation + auto-transition audit.
+        'database/migrations/tenant/2026_09_09_000000_sar_fiscal_series_authorizations.php',
     ];
 
     public function checkTenant(Tenant $tenant): array

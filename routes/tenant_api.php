@@ -947,6 +947,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::put('sar-fiscal/points/{point}', 'SarFiscalSettingsController@updatePoint');
     Route::post('sar-fiscal/authorizations', 'SarFiscalSettingsController@storeAuthorization');
     Route::post('sar-fiscal/authorizations/{authorization}/activate', 'SarFiscalSettingsController@activateAuthorization');
+    Route::delete('sar-fiscal/authorizations/{authorization}', 'SarFiscalSettingsController@destroyAuthorization');
 
     // ------------------------------- Settings ------------------------\\
     // ------------------------------------------------------------------\\

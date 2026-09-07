@@ -208,6 +208,9 @@ class SarMultiBranchFiscalTest extends TestCase
             $t->date('authorization_date')->nullable();
             $t->date('deadline');
             $t->string('status')->default('draft');
+            $t->timestamp('activated_at')->nullable();
+            $t->timestamp('exhausted_at')->nullable();
+            $t->unsignedBigInteger('superseded_by_id')->nullable();
             $t->timestamps();
         });
         Schema::create('sar_fiscal_documents', function ($t) {
@@ -378,7 +381,7 @@ class SarMultiBranchFiscalTest extends TestCase
         $this->enableBranch($b); // fiscally enabled, but no point / codes yet
 
         $this->expectException(SarFiscalException::class);
-        $this->expectExceptionMessage('todavía no está cubierta por un punto de emisión SAR');
+        $this->expectExceptionMessage('todavía no está cubierta por ninguna serie fiscal SAR');
         $this->service->issueIfEnabled($this->sale($b, $l, $d), $d);
     }
 
@@ -413,6 +416,11 @@ class SarMultiBranchFiscalTest extends TestCase
         } catch (SarFiscalException $e) {
             $this->assertStringContainsString('venció', $e->getMessage());
         }
+        // The failed sale rolls back cleanly: no fiscal document, counter untouched.
+        $this->assertSame(0, DB::table('sar_fiscal_documents')->count());
+        $this->assertSame(1, (int) DB::table('sar_authorizations')->where('id', $expired)->value('next_number'));
+        // Housekeeping converges the stored status outside the sale transaction.
+        \App\Models\SarAuthorization::reconcileTerminalStatuses();
         $this->assertSame('expired', DB::table('sar_authorizations')->where('id', $expired)->value('status'));
 
         // Exhausted (next_number past range_end)
@@ -428,6 +436,7 @@ class SarMultiBranchFiscalTest extends TestCase
         } catch (SarFiscalException $e) {
             $this->assertStringContainsString('agotado', $e->getMessage());
         }
+        \App\Models\SarAuthorization::reconcileTerminalStatuses();
         $this->assertSame('exhausted', DB::table('sar_authorizations')->where('id', $exhausted)->value('status'));
     }
 

@@ -11,7 +11,7 @@
 
     <template v-else>
       <px-alert tone="info" class="pxcfg__alert">
-        Ingresa únicamente datos autorizados por el SAR. PRODEX arma la estructura técnica por sucursal; tú solo escribes el establecimiento, el punto, el CAI, el rango y la fecha límite de tu autorización oficial. Los cambios se aplican a facturas futuras; las facturas ya emitidas conservan una copia congelada de su información fiscal.
+        Registra tu autorización SAR una sola vez —CAI, establecimiento, punto de emisión, rango y fecha límite— y PRODEX numera las facturas automáticamente. El correlativo pertenece a la serie fiscal, no a la caja: todas las cajas de una serie consumen el mismo contador. Los cambios se aplican a facturas futuras; las facturas ya emitidas conservan una copia congelada de su información fiscal.
       </px-alert>
 
       <px-card title="Perfil fiscal" class="pxcfg__card">
@@ -28,7 +28,7 @@
         <px-check type="switch" :modelValue="!!profile.enabled" @change="v => profile.enabled = v" class="pxcfg__mt">
           {{ profile.enabled ? "Facturación fiscal habilitada" : "Facturación fiscal deshabilitada" }}
         </px-check>
-        <p class="pxcfg__cardnote pxcfg__mt">Al habilitarla, cada sucursal activa aparece abajo automáticamente (inicialmente sin facturar). No necesitas crear "puntos de emisión" a mano.</p>
+        <p class="pxcfg__cardnote pxcfg__mt">Al habilitarla, cada sucursal activa aparece abajo con su serie fiscal (inicialmente sin facturar). PRODEX gestiona la numeración; tú solo registras la autorización.</p>
       </px-card>
 
       <px-card title="Contenido y presentación de la factura" class="pxcfg__card">
@@ -56,34 +56,34 @@
         </template>
       </px-card>
 
-      <!-- Per-branch fiscal configuration -->
+      <!-- Fiscal series -->
       <template v-if="profile.enabled">
         <div class="pxcfg__summary">
           <div class="pxcfg__summitem">
             <span class="pxcfg__summnum pxcfg__summnum--ok">{{ readyCount }}</span>
-            <span class="pxcfg__summlabel">{{ readyCount === 1 ? 'sucursal facturando' : 'sucursales facturando' }}</span>
+            <span class="pxcfg__summlabel">{{ readyCount === 1 ? 'serie facturando' : 'series facturando' }}</span>
           </div>
           <div class="pxcfg__summitem">
-            <span class="pxcfg__summnum pxcfg__summnum--warn">{{ pendingCount }}</span>
-            <span class="pxcfg__summlabel">{{ pendingCount === 1 ? 'sucursal pendiente' : 'sucursales pendientes' }}</span>
+            <span class="pxcfg__summnum pxcfg__summnum--warn">{{ attentionCount }}</span>
+            <span class="pxcfg__summlabel">{{ attentionCount === 1 ? 'serie por revisar' : 'series por revisar' }}</span>
           </div>
           <div class="pxcfg__summitem">
             <span class="pxcfg__summnum">{{ disabledCount }}</span>
             <span class="pxcfg__summlabel">{{ disabledCount === 1 ? 'sucursal sin habilitar' : 'sucursales sin habilitar' }}</span>
           </div>
           <div class="pxcfg__summitem" v-if="totalRemaining !== null">
-            <span class="pxcfg__summnum">{{ totalRemaining }}</span>
+            <span class="pxcfg__summnum">{{ nfmt(totalRemaining) }}</span>
             <span class="pxcfg__summlabel">correlativos disponibles</span>
           </div>
         </div>
 
         <px-alert v-if="fiscalGaps.length" tone="warning" class="pxcfg__alert">
           <strong>{{ fiscalGaps.length }}</strong>
-          {{ fiscalGaps.length === 1 ? 'caja física no está lista para facturar:' : 'cajas físicas no están listas para facturar:' }}
+          {{ fiscalGaps.length === 1 ? 'caja física sin serie fiscal lista:' : 'cajas físicas sin serie fiscal lista:' }}
           <ul class="pxcfg__gaplist">
             <li v-for="gap in fiscalGaps" :key="gap.cash_drawer_id">
               <span class="pxcfg__gapwhere">{{ gap.branch_name || '—' }} · {{ gap.inventory_location_name || 'sin ubicación' }} · {{ gap.cash_drawer_name }}<span v-if="gap.cash_drawer_code" class="pxcfg__gapcode"> ({{ gap.cash_drawer_code }})</span></span>
-              <span class="pxcfg__gapreason">{{ gap.reason === 'sin_punto_sar' ? 'sin punto SAR' : 'sin CAI activo' }}</span>
+              <span class="pxcfg__gapreason">{{ gap.reason === 'sin_punto_sar' ? 'sin serie fiscal' : 'sin CAI vigente' }}</span>
             </li>
           </ul>
         </px-alert>
@@ -91,11 +91,11 @@
         <px-card v-for="card in branchCards" :key="card.branch_id" class="pxcfg__card pxcfg__branch">
           <template #header>
             <div class="pxcfg__cardhead">
-              <div>
-                <h3 class="pxcfg__cardtitle">{{ card.branch_name }}<span v-if="card.branch_code" class="pxcfg__branchcode"> · {{ card.branch_code }}</span></h3>
-                <small class="pxcfg__cardnote">{{ statusNote(card) }}</small>
+              <div class="pxcfg__serieident">
+                <span class="pxcfg__serielabel pxn-num">{{ card.serie_label || 'Serie sin definir' }}</span>
+                <small class="pxcfg__cardnote">{{ card.branch_name }}<span v-if="card.branch_code"> · {{ card.branch_code }}</span></small>
               </div>
-              <px-badge :tone="statusTone(card.status)">{{ statusLabel(card.status) }}</px-badge>
+              <px-badge :tone="healthTone(card)">{{ healthLabel(card) }}</px-badge>
             </div>
           </template>
 
@@ -109,25 +109,26 @@
           <template v-if="card.sar_enabled">
             <div class="pxcfg__branchsection">
               <div class="pxcfg__branchsectionhead">
-                <span class="pxcfg__branchsectiontitle">Datos autorizados por el SAR</span>
+                <span class="pxcfg__branchsectiontitle">Serie autorizada por el SAR</span>
+                <small class="pxcfg__cardnote">Establecimiento y punto de emisión de tu autorización oficial. El tipo de documento es 01 (factura).</small>
               </div>
               <div class="pxcfg__grid pxcfg__branchcodes">
-                <px-field label="Código de establecimiento *" hint="3 dígitos, según tu autorización.">
+                <px-field label="Código de establecimiento *" hint="3 dígitos.">
                   <template #default="{ id }"><px-input :id="id" maxlength="3" :value="draftFor(card).establishment_code" @input="v => setDraft(card, 'establishment_code', tv(v))" placeholder="000" /></template>
                 </px-field>
-                <px-field label="Código del punto de emisión *" hint="3 dígitos, según tu autorización.">
+                <px-field label="Código del punto de emisión *" hint="3 dígitos.">
                   <template #default="{ id }"><px-input :id="id" maxlength="3" :value="draftFor(card).point_code" @input="v => setDraft(card, 'point_code', tv(v))" placeholder="001" /></template>
                 </px-field>
               </div>
               <div class="pxcfg__branchactions">
-                <px-button size="sm" variant="secondary" :disabled="saving || !codesDirty(card) || !codesComplete(card)" @click="saveBranchCodes(card)">Guardar códigos</px-button>
+                <px-button size="sm" variant="secondary" :disabled="saving || !codesDirty(card) || !codesComplete(card)" @click="saveBranchCodes(card)">Guardar serie</px-button>
               </div>
             </div>
 
             <div class="pxcfg__branchsection">
               <div class="pxcfg__branchsectionhead">
-                <span class="pxcfg__branchsectiontitle">Cajas físicas cubiertas</span>
-                <small class="pxcfg__cardnote">Varias cajas pueden compartir el mismo punto y CAI. Las cajas nuevas aparecen aquí automáticamente.</small>
+                <span class="pxcfg__branchsectiontitle">Cajas cubiertas por la serie</span>
+                <small class="pxcfg__cardnote">Todas comparten el mismo CAI y el mismo contador. Ninguna caja elige rango. Las cajas nuevas aparecen aquí automáticamente.</small>
               </div>
               <div v-if="card.available_drawers.length" class="pxcfg__drawers">
                 <px-check v-for="d in card.available_drawers" :key="d.id"
@@ -144,30 +145,62 @@
 
             <div class="pxcfg__branchsection">
               <div class="pxcfg__branchsectionhead">
-                <span class="pxcfg__branchsectiontitle">CAI y rango</span>
+                <span class="pxcfg__branchsectiontitle">Autorización activa</span>
               </div>
-              <div v-if="card.authorization" class="pxcfg__cai">
+
+              <div v-if="card.series && card.series.current" class="pxcfg__cai">
                 <div class="pxcfg__caigrid">
-                  <div><span class="pxcfg__cailbl">CAI</span><span class="pxcfg__caival pxn-num">{{ card.authorization.cai }}</span></div>
-                  <div><span class="pxcfg__cailbl">Rango</span><span class="pxcfg__caival pxn-num">{{ card.authorization.range_start }} – {{ card.authorization.range_end }}</span></div>
-                  <div><span class="pxcfg__cailbl">Siguiente</span><span class="pxcfg__caival pxn-num">{{ card.authorization.next_number }}</span></div>
-                  <div><span class="pxcfg__cailbl">Disponibles</span><span class="pxcfg__caival pxn-num">{{ card.authorization.remaining }}</span></div>
-                  <div><span class="pxcfg__cailbl">Fecha límite</span><span class="pxcfg__caival">{{ card.authorization.deadline || '—' }}</span></div>
+                  <div><span class="pxcfg__cailbl">CAI</span><span class="pxcfg__caival pxn-num">{{ card.series.current.cai }}</span></div>
+                  <div><span class="pxcfg__cailbl">Rango autorizado</span><span class="pxcfg__caival pxn-num">{{ pad8(card.series.current.range_start) }} – {{ pad8(card.series.current.range_end) }}</span></div>
+                  <div><span class="pxcfg__cailbl">Último utilizado</span><span class="pxcfg__caival pxn-num">{{ card.series.current.last_used ? pad8(card.series.current.last_used) : '—' }}</span></div>
+                  <div><span class="pxcfg__cailbl">Siguiente correlativo</span><span class="pxcfg__caival pxn-num">{{ pad8(card.series.current.next_number) }}</span></div>
+                  <div><span class="pxcfg__cailbl">Disponibles</span><span class="pxcfg__caival pxn-num">{{ nfmt(card.series.current.remaining) }}</span></div>
+                  <div><span class="pxcfg__cailbl">Fecha límite</span><span class="pxcfg__caival">{{ card.series.current.deadline || '—' }}</span></div>
                   <div>
                     <span class="pxcfg__cailbl">Estado</span>
-                    <px-badge :tone="card.authorization.is_ready ? 'success' : 'danger'">
-                      {{ card.authorization.is_ready ? 'CAI listo' : caiIssue(card.authorization) }}
+                    <px-badge :tone="card.series.current.is_ready ? 'success' : healthTone(card)">{{ healthLabel(card) }}</px-badge>
+                  </div>
+                </div>
+                <div class="pxcfg__meter" role="presentation">
+                  <span class="pxcfg__meterfill" :class="'pxcfg__meterfill--' + (card.series.current.health || 'ready')"
+                    :style="{ width: consumedPct(card.series.current) + '%' }"></span>
+                </div>
+                <div class="pxcfg__branchactions">
+                  <px-button size="sm" variant="ghost" :disabled="saving" @click="openAuthorization(card, 'current')">Reemplazar CAI actual</px-button>
+                  <px-button v-if="card.series.current.status === 'draft' || card.series.current.status === 'disabled'" size="sm" variant="primary" :disabled="saving" @click="activate(card.series.current.id)">Activar</px-button>
+                </div>
+              </div>
+              <div v-else class="pxcfg__branchactions">
+                <px-button size="sm" variant="primary" :disabled="saving || !card.has_codes" @click="openAuthorization(card, 'current')">Registrar autorización</px-button>
+                <small v-if="!card.has_codes" class="pxcfg__cardnote">Guarda primero el establecimiento y el punto de emisión.</small>
+              </div>
+            </div>
+
+            <div class="pxcfg__branchsection" v-if="card.series && card.series.current">
+              <div class="pxcfg__branchsectionhead">
+                <span class="pxcfg__branchsectiontitle">Siguiente autorización</span>
+                <small class="pxcfg__cardnote">PRODEX cambia a esta autorización de forma automática y segura cuando la actual se agote —sin interrumpir las ventas.</small>
+              </div>
+
+              <div v-if="card.series.next" class="pxcfg__cai">
+                <div class="pxcfg__caigrid">
+                  <div><span class="pxcfg__cailbl">CAI</span><span class="pxcfg__caival pxn-num">{{ card.series.next.cai }}</span></div>
+                  <div><span class="pxcfg__cailbl">Rango</span><span class="pxcfg__caival pxn-num">{{ pad8(card.series.next.range_start) }} – {{ pad8(card.series.next.range_end) }}</span></div>
+                  <div><span class="pxcfg__cailbl">Fecha límite</span><span class="pxcfg__caival">{{ card.series.next.deadline || '—' }}</span></div>
+                  <div>
+                    <span class="pxcfg__cailbl">Estado</span>
+                    <px-badge :tone="card.series.next.status === 'prepared' ? 'info' : 'neutral'">
+                      {{ card.series.next.status === 'prepared' ? 'Preparada' : 'Borrador' }}
                     </px-badge>
                   </div>
                 </div>
                 <div class="pxcfg__branchactions">
-                  <px-button size="sm" variant="ghost" :disabled="saving" @click="openAuthorization(card)">Reemplazar CAI</px-button>
-                  <px-button v-if="card.authorization.status === 'draft' || card.authorization.status === 'disabled'" size="sm" variant="primary" :disabled="saving" @click="activate(card.authorization.id)">Activar</px-button>
+                  <px-button v-if="card.series.next.status === 'draft'" size="sm" variant="primary" :disabled="saving" @click="activate(card.series.next.id)">Marcar como preparada</px-button>
+                  <px-button size="sm" variant="ghost" :disabled="saving" @click="removeAuthorization(card.series.next.id)">Quitar</px-button>
                 </div>
               </div>
               <div v-else class="pxcfg__branchactions">
-                <px-button size="sm" variant="primary" :disabled="saving || !card.has_codes" @click="openAuthorization(card)">Registrar CAI</px-button>
-                <small v-if="!card.has_codes" class="pxcfg__cardnote">Guarda primero el establecimiento y el punto.</small>
+                <px-button size="sm" variant="secondary" :disabled="saving" @click="openAuthorization(card, 'next')">Preparar siguiente autorización</px-button>
               </div>
             </div>
 
@@ -180,12 +213,12 @@
         </px-card>
 
         <px-card v-if="!branchCards.length" class="pxcfg__card">
-          <p class="pxcfg__cardnote pxcfg__tc">No hay sucursales activas. Crea una sucursal para configurar su facturación SAR.</p>
+          <p class="pxcfg__cardnote pxcfg__tc">No hay sucursales activas. Crea una sucursal para configurar su serie fiscal.</p>
         </px-card>
       </template>
 
       <px-alert v-else tone="neutral" class="pxcfg__alert">
-        Habilita la facturación fiscal en el perfil de arriba para configurar cada sucursal.
+        Habilita la facturación fiscal en el perfil de arriba para configurar tus series fiscales.
       </px-alert>
 
       <px-card class="pxcfg__card">
@@ -262,8 +295,11 @@
       </template>
     </px-modal>
 
-    <px-modal v-model="authModalOpen" :title="'CAI · ' + (authForm.branch_name || '')" size="md">
-      <p class="pxcfg__cardnote pxcfg__mb">Registra el CAI exactamente como aparece en tu autorización del SAR para {{ authForm.branch_name }}. Se guarda como borrador; actívalo cuando quieras empezar a facturar con él.</p>
+    <px-modal v-model="authModalOpen" :title="authModalTitle" size="md">
+      <p class="pxcfg__cardnote pxcfg__mb">
+        <template v-if="authForm.role === 'next'">Registra la próxima autorización SAR de la serie {{ authForm.serie_label }} ({{ authForm.branch_name }}). Quedará <strong>preparada</strong> y PRODEX cambiará a ella automáticamente cuando la actual se agote.</template>
+        <template v-else>Registra el CAI exactamente como aparece en tu autorización del SAR para {{ authForm.branch_name }}. Se guarda como borrador; actívalo para empezar a facturar con él.</template>
+      </p>
       <div class="pxcfg__formgrid">
         <px-field label="CAI *"><template #default="{ id }"><px-input :id="id" :value="authForm.cai" @input="v => authForm.cai = tv(v)" placeholder="XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XX" /></template></px-field>
         <div class="pxcfg__grid pxcfg__grid--3">
@@ -272,14 +308,16 @@
           <px-field label="Rango: hasta *"><template #default="{ id }"><px-input :id="id" type="number" :value="authForm.range_end" @input="v => authForm.range_end = vnum(v)" /></template></px-field>
         </div>
         <div class="pxcfg__grid">
-          <px-field label="Siguiente correlativo *"><template #default="{ id }"><px-input :id="id" type="number" :value="authForm.next_number" @input="v => authForm.next_number = vnum(v)" /></template></px-field>
+          <px-field v-if="authForm.role !== 'next'" label="Siguiente correlativo *" hint="El próximo número a emitir con este CAI.">
+            <template #default="{ id }"><px-input :id="id" type="number" :value="authForm.next_number" @input="v => authForm.next_number = vnum(v)" /></template>
+          </px-field>
           <px-field label="Fecha límite de emisión *"><template #default="{ id }"><px-input :id="id" type="date" v-model="authForm.deadline" /></template></px-field>
         </div>
         <px-field label="Fecha de autorización"><template #default="{ id }"><px-input :id="id" type="date" v-model="authForm.authorization_date" /></template></px-field>
       </div>
       <template #footer="{ close }">
         <px-button variant="ghost" @click="close">Cancelar</px-button>
-        <px-button variant="primary" :disabled="saving" @click="saveAuthorization">Guardar como borrador</px-button>
+        <px-button variant="primary" :disabled="saving" @click="saveAuthorization">{{ authForm.role === 'next' ? 'Guardar como preparada' : 'Guardar como borrador' }}</px-button>
       </template>
     </px-modal>
   </div>
@@ -330,12 +368,16 @@ export default {
   },
   computed: {
     readyCount() { return this.branchCards.filter(c => c.status === "ready").length; },
-    pendingCount() { return this.branchCards.filter(c => c.status === "pending").length; },
+    attentionCount() { return this.branchCards.filter(c => c.status === "pending").length; },
     disabledCount() { return this.branchCards.filter(c => c.status === "disabled").length; },
     totalRemaining() {
-      const ready = this.branchCards.filter(c => c.authorization && c.authorization.is_ready);
-      if (!ready.length) return null;
-      return ready.reduce((sum, c) => sum + Number(c.authorization.remaining || 0), 0);
+      const live = this.branchCards.filter(c => c.series && c.series.current && c.series.current.is_ready);
+      if (!live.length) return null;
+      return live.reduce((sum, c) => sum + Number(c.series.current.remaining || 0), 0);
+    },
+    authModalTitle() {
+      const s = this.authForm.serie_label ? "Serie " + this.authForm.serie_label : (this.authForm.branch_name || "");
+      return (this.authForm.role === "next" ? "Siguiente autorización · " : "Autorización SAR · ") + s;
     },
     filteredProducts() { const q = this.productSearch.toLowerCase(); return this.products.filter(x => !q || String(x.name || "").toLowerCase().includes(q) || String(x.code || "").toLowerCase().includes(q)); },
     filteredClients() { const q = this.clientSearch.toLowerCase(); return this.clients.filter(x => !q || String(x.name || "").toLowerCase().includes(q) || String(x.tax_number || "").toLowerCase().includes(q)); }
@@ -349,21 +391,36 @@ export default {
     taxRateOptions(product) { return (product.fiscal_tax_category === "taxed" ? this.taxRates.filter(x => Number(x) > 0) : [0]).map(x => ({ label: x + "%", value: Number(x) })); },
     dateOnly(v) { return v ? String(v).slice(0, 10) : "-"; },
     todayStr() { return new Date().toISOString().slice(0, 10); },
-    statusLabel(status) { return ({ ready: "Listo para facturar", pending: "Configuración pendiente", disabled: "SAR deshabilitada" })[status] || status; },
-    statusTone(status) { return ({ ready: "success", pending: "warning", disabled: "neutral" })[status] || "neutral"; },
-    statusNote(card) {
-      if (card.status === "disabled") return "Actívala y completa sus datos para facturar desde esta sucursal.";
-      if (card.status === "ready") {
-        const covered = card.covered_drawer_ids.length;
-        return covered === 1 ? "1 caja cubierta · lista para facturar." : covered + " cajas cubiertas · listas para facturar.";
-      }
-      return "Faltan datos para poder facturar desde esta sucursal.";
+    nfmt(n) { const v = Number(n || 0); return v.toLocaleString("es-HN"); },
+    pad8(n) { const v = Math.max(0, parseInt(n, 10) || 0); return String(v).padStart(8, "0"); },
+    consumedPct(auth) {
+      if (!auth || !auth.total_range) return 0;
+      const used = auth.total_range - Number(auth.remaining || 0);
+      return Math.max(0, Math.min(100, Math.round((used / auth.total_range) * 100)));
     },
-    caiIssue(auth) {
-      if (auth.status !== "active") return "CAI no activado";
-      if (auth.deadline && String(auth.deadline).slice(0, 10) < this.todayStr()) return "CAI vencido";
-      if (Number(auth.remaining) <= 0) return "Rango agotado";
-      return "No listo";
+    healthLabel(card) {
+      if (!card.sar_enabled) return "SAR deshabilitada";
+      const h = card.series && card.series.health;
+      return ({
+        ready: "Lista para facturar",
+        next_ready: "Lista · usa el siguiente CAI",
+        expiring: "Por vencer",
+        running_low: "Por agotarse",
+        exhausted: "Agotada",
+        expired: "Vencida",
+        no_authorization: "Sin autorización",
+        unconfigured: "Sin configurar"
+      })[h] || (card.status === "ready" ? "Lista para facturar" : "Configuración pendiente");
+    },
+    healthTone(card) {
+      if (!card.sar_enabled) return "neutral";
+      const h = card.series && card.series.health;
+      return ({
+        ready: "success", next_ready: "success",
+        expiring: "warning", running_low: "warning",
+        exhausted: "danger", expired: "danger", no_authorization: "danger",
+        unconfigured: "neutral"
+      })[h] || (card.status === "ready" ? "success" : "warning");
     },
 
     // --- per-branch draft state (codes + drawer selection) ------------------
@@ -458,10 +515,16 @@ export default {
         this.applyCards(r.data);
       } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; }
     },
-    openAuthorization(card) {
+    openAuthorization(card, role) {
+      const nextStart = role === "next" && card.series && card.series.current
+        ? Number(card.series.current.range_end) + 1
+        : 1;
       this.authForm = {
+        role: role || "current",
         branch_id: card.branch_id, branch_name: card.branch_name,
-        document_type: "01", cai: "", range_start: 1, range_end: null, next_number: 1,
+        serie_label: card.serie_label,
+        document_type: "01", cai: "",
+        range_start: nextStart, range_end: null, next_number: nextStart,
         authorization_date: "", deadline: ""
       };
       this.authModalOpen = true;
@@ -469,25 +532,34 @@ export default {
     async saveAuthorization() {
       this.saving = true;
       try {
-        const r = await axios.post("sar-fiscal/authorizations", {
+        await axios.post("sar-fiscal/authorizations", {
+          role: this.authForm.role,
           branch_id: this.authForm.branch_id,
           document_type: this.authForm.document_type,
           cai: this.authForm.cai,
           range_start: this.authForm.range_start,
           range_end: this.authForm.range_end,
-          next_number: this.authForm.next_number,
+          next_number: this.authForm.role === "next" ? this.authForm.range_start : this.authForm.next_number,
           authorization_date: this.authForm.authorization_date || null,
           deadline: this.authForm.deadline
         });
         this.authModalOpen = false;
-        this.toast("success", "CAI guardado como borrador. Actívalo para empezar a facturar.");
-        void r; await this.load();
+        this.toast("success", this.authForm.role === "next"
+          ? "Autorización siguiente preparada. PRODEX cambiará a ella al agotarse la actual."
+          : "Autorización guardada como borrador. Actívala para empezar a facturar.");
+        await this.load();
       } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; }
     },
     async activate(authId) {
-      const result = await this.$swal({ title: "¿Activar CAI?", text: "Las futuras facturas fiscales de esta sucursal usarán este rango.", type: "warning", showCancelButton: true, confirmButtonText: "Activar", cancelButtonText: "Cancelar" });
+      const result = await this.$swal({ title: "¿Activar esta autorización?", text: "Las futuras facturas fiscales de esta serie usarán este CAI y rango.", type: "warning", showCancelButton: true, confirmButtonText: "Activar", cancelButtonText: "Cancelar" });
       if (!result.value) return;
-      try { await axios.post("sar-fiscal/authorizations/" + authId + "/activate"); this.toast("success", "CAI activado."); await this.load(); }
+      try { await axios.post("sar-fiscal/authorizations/" + authId + "/activate"); this.toast("success", "Autorización activada."); await this.load(); }
+      catch (e) { this.toast("danger", this.errorMessage(e)); }
+    },
+    async removeAuthorization(authId) {
+      const result = await this.$swal({ title: "¿Quitar esta autorización?", text: "Solo se puede quitar si aún no ha emitido documentos fiscales.", type: "warning", showCancelButton: true, confirmButtonText: "Quitar", cancelButtonText: "Cancelar" });
+      if (!result.value) return;
+      try { await axios.delete("sar-fiscal/authorizations/" + authId); this.toast("success", "Autorización eliminada."); await this.load(); }
       catch (e) { this.toast("danger", this.errorMessage(e)); }
     },
     async saveProductFiscal(product) {
@@ -546,10 +618,16 @@ export default {
 .pxcfg__summnum--warn { color: var(--pxn-warning-ink, var(--pxn-warning)); }
 .pxcfg__summlabel { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 
-/* per-branch card */
+/* fiscal-series card */
 .pxcfg__branch .pxcfg__cardhead { align-items: center; }
 .pxcfg__branchcode { color: var(--pxn-ink-3); font-weight: var(--pxn-fw-regular); }
+.pxcfg__serieident { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pxcfg__serielabel { font-size: var(--pxn-fs-md); font-weight: var(--pxn-fw-semibold); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
 .pxcfg__branchrow { padding-bottom: var(--pxn-space-3); }
+.pxcfg__meter { height: 3px; border-radius: 999px; background: var(--pxn-border); overflow: hidden; }
+.pxcfg__meterfill { display: block; height: 100%; border-radius: inherit; background: var(--pxn-success); transition: background-color 120ms cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.pxcfg__meterfill--running_low, .pxcfg__meterfill--expiring { background: var(--pxn-warning-ink, var(--pxn-warning)); }
+.pxcfg__meterfill--exhausted, .pxcfg__meterfill--expired { background: var(--pxn-danger-ink, var(--pxn-danger)); }
 .pxcfg__branchsection { padding: var(--pxn-space-4) 0; border-top: 1px solid var(--pxn-border); }
 .pxcfg__branchsectionhead { display: flex; flex-direction: column; gap: var(--pxn-space-1); margin-bottom: var(--pxn-space-3); }
 .pxcfg__branchsectiontitle { font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); }

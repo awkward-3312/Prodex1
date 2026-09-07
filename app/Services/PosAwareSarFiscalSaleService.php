@@ -17,14 +17,15 @@ use App\Models\SarPointOfIssue;
  *   Sale.branch_id
  *     -> InventoryLocation / CashDrawer of the sale
  *     -> "Facturación SAR habilitada" for that branch
- *     -> the branch's point of issue that covers this cash drawer
- *     -> active authorization
- *     -> CAI vigente
- *     -> correlativo
+ *     -> the FISCAL SERIES (sar_points_of_issue) that covers this cash drawer
+ *     -> its authorisation (active, or the prepared "next" one) + CAI
+ *     -> correlativo, allocated atomically by SarFiscalNumberService
  *
- * A sale can only ever consume its own branch's CAI / range. warehouse_id is
- * never consulted here — the legacy parent resolver handles non-POS / pre-branch
- * sales.
+ * The correlativo counter belongs to the authorisation of the series, never to
+ * the cash drawer or the branch. The branch is used only for security and
+ * ownership: a sale can only consume a series that belongs to its own branch.
+ * warehouse_id is never consulted here — the legacy parent resolver handles
+ * non-POS / pre-branch sales.
  */
 class PosAwareSarFiscalSaleService extends SarFiscalSaleService
 {
@@ -61,40 +62,39 @@ class PosAwareSarFiscalSaleService extends SarFiscalSaleService
             );
         }
 
-        $point = $this->resolvePointForDrawer((int) $sale->branch_id, (int) $sale->inventory_location_id, (int) $cashDrawerId);
+        $series = $this->resolveSeriesForDrawer((int) $sale->branch_id, (int) $sale->inventory_location_id, (int) $cashDrawerId);
 
-        if (! $point) {
+        if (! $series) {
             $drawerName = $drawer->name ?: ('caja '.$cashDrawerId);
             throw new SarFiscalException(
-                'La caja '.$drawerName.' de '.$branchName.' todavía no está cubierta por un punto de emisión SAR. '
-                .'Revisa la configuración fiscal de esa sucursal.'
+                'La caja '.$drawerName.' de '.$branchName.' todavía no está cubierta por ninguna serie fiscal SAR. '
+                .'Asígnala a una serie en Configuración → Facturación SAR.'
             );
         }
 
-        if ((int) $point->branch_id !== (int) $sale->branch_id) {
-            throw new SarFiscalException('El punto SAR resuelto no pertenece a la sucursal de la venta.');
+        if ((int) $series->branch_id !== (int) $sale->branch_id) {
+            throw new SarFiscalException('La serie fiscal resuelta no pertenece a la sucursal de la venta.');
         }
-        if (! $point->hasCodes()) {
+        if (! $series->hasCodes()) {
             throw new SarFiscalException(
-                'La configuración fiscal de '.$branchName.' está incompleta: falta el código de establecimiento o de punto.'
+                'La serie fiscal de '.$branchName.' está incompleta: falta el código de establecimiento o de punto de emisión.'
             );
         }
 
-        $authorization = $this->findActiveAuthorization($point);
+        // Friendly pre-flight; SarFiscalNumberService re-validates and, if the
+        // active CAI has just run out, switches to the prepared "next" one — all
+        // under a row lock, inside the sale-creation transaction.
+        $this->assertSeriesHasAuthorization($series);
 
-        if ((int) $authorization->pointOfIssue->branch_id !== (int) $sale->branch_id) {
-            throw new SarFiscalException('La autorización SAR resuelta no pertenece a la sucursal de la venta.');
-        }
-
-        return $this->issueWithAuthorization($sale, $authorization, $cashDrawerId);
+        return $this->issueForSeries($sale, $series, self::DOCUMENT_TYPE, $cashDrawerId);
     }
 
     /**
-     * Preferred: the active point that covers this drawer through the pivot.
-     * Falls back to the legacy single-drawer / branch+location+drawer columns
-     * for points created before per-branch management.
+     * The fiscal series that covers this cash drawer. Preferred path is the
+     * explicit series<->drawers pivot; falls back to the legacy single-drawer /
+     * branch+location+drawer columns for series created before the pivot.
      */
-    private function resolvePointForDrawer(int $branchId, int $locationId, int $cashDrawerId): ?SarPointOfIssue
+    private function resolveSeriesForDrawer(int $branchId, int $locationId, int $cashDrawerId): ?SarPointOfIssue
     {
         $covering = SarPointOfIssue::query()
             ->coveringDrawer($cashDrawerId)
@@ -102,7 +102,7 @@ class PosAwareSarFiscalSaleService extends SarFiscalSaleService
             ->get();
 
         if ($covering->count() > 1) {
-            throw new SarFiscalException('Hay más de un punto SAR activo que cubre esta caja física. Corrige la configuración fiscal.');
+            throw new SarFiscalException('Hay más de una serie fiscal activa que cubre esta caja física. Corrige la configuración fiscal.');
         }
         if ($covering->count() === 1) {
             return $covering->first();
@@ -120,7 +120,7 @@ class PosAwareSarFiscalSaleService extends SarFiscalSaleService
             ->get();
 
         if ($legacy->count() > 1) {
-            throw new SarFiscalException('Hay más de un punto SAR activo para esta sucursal y caja. Corrige la configuración fiscal.');
+            throw new SarFiscalException('Hay más de una serie fiscal activa para esta sucursal y caja. Corrige la configuración fiscal.');
         }
 
         return $legacy->first();

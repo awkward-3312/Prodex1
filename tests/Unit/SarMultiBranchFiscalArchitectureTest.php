@@ -87,14 +87,17 @@ class SarMultiBranchFiscalArchitectureTest extends TestCase
         $this->assertStringContainsString('La caja física no opera desde la ubicación de inventario seleccionada.', $c);
         $this->assertStringContainsString('Ya existe otro punto SAR activo asignado a esta caja física.', $c);
 
-        // has_active_cai == status active AND deadline >= today AND next_number in range.
+        // Readiness ("CAI listo") is the single contract SarAuthorization::isUsableNow:
+        //   status active/prepared AND deadline >= today AND next_number in range.
+        $model = $this->read('app/Models/SarAuthorization.php');
         $this->assertMatchesRegularExpression(
-            '/readyAuthorization\(SarPointOfIssue \$point\).*?'
-            .'\$a->status !== \x27active\x27.*?'
-            .'Carbon::parse\(\$a->deadline\)->lt\(\$today\).*?'
-            .'\$next >= \(int\) \$a->range_start && \$next <= \(int\) \$a->range_end/s',
-            $c
+            '/function isUsableNow.*?'
+            ."in_array\(\\\$this->status, \['active', 'prepared'\], true\).*?"
+            .'Carbon::parse\(\$this->deadline\)->lt\(\$today\).*?'
+            .'\$next >= \(int\) \$this->range_start && \$next <= \(int\) \$this->range_end/s',
+            $model
         );
+        $this->assertStringContainsString('$a->status === \'active\' && $a->isUsableNow()', $c);
         $this->assertStringContainsString("'has_active_cai'", $c);
         $this->assertStringContainsString("'fiscal_ready'", $c);
         $this->assertStringContainsString('fiscalGaps($points)', $c);
@@ -104,53 +107,57 @@ class SarMultiBranchFiscalArchitectureTest extends TestCase
 
     public function test_readiness_semantics_are_the_same_in_service_and_ui(): void
     {
-        $service = $this->read('app/Services/SarFiscalSaleService.php');
+        $model = $this->read('app/Models/SarAuthorization.php');
         $vue = $this->read('resources/src/views/app/pages/settings/sar_fiscal.vue');
 
-        // Service: findActiveAuthorization enforces the exact triple.
-        $this->assertStringContainsString("->where('status', 'active')", $service);
-        $this->assertStringContainsString("\$authorization->deadline->isBefore(today())", $service);
-        $this->assertStringContainsString("\$next < (int) \$authorization->range_start || \$next > (int) \$authorization->range_end", $service);
-        $this->assertStringContainsString("'expired'", $service);
-        $this->assertStringContainsString("'exhausted'", $service);
-
-        // The per-branch UI consumes the server-computed readiness flag rather
-        // than re-deriving it, and its issue helper mirrors the same conditions.
-        $this->assertStringContainsString('card.authorization.is_ready', $vue);
+        // The single source of truth for "usable now" is SarAuthorization.
         $this->assertMatchesRegularExpression(
-            '/caiIssue\(auth\).*?auth\.status !== "active".*?'
-            .'String\(auth\.deadline\)\.slice\(0, 10\) < this\.todayStr\(\).*?'
-            .'Number\(auth\.remaining\) <= 0/s',
-            $vue
+            '/function isUsableNow.*?'
+            ."in_array\(\\\$this->status, \['active', 'prepared'\], true\).*?"
+            .'Carbon::parse\(\$this->deadline\)->lt\(\$today\).*?'
+            .'next >= \(int\) \$this->range_start && \$next <= \(int\) \$this->range_end/s',
+            $model
         );
+        $this->assertStringContainsString("'expired'", $model);
+        $this->assertStringContainsString("'exhausted'", $model);
+
+        // The UI consumes the server-computed health / readiness, never re-derives.
+        $this->assertStringContainsString('card.series.current.is_ready', $vue);
+        $this->assertStringContainsString('card.series.health', $vue);
     }
 
-    public function test_per_branch_card_replaces_the_manual_point_modal(): void
+    public function test_screen_is_fiscal_series_centric(): void
     {
         $vue = $this->read('resources/src/views/app/pages/settings/sar_fiscal.vue');
 
-        // The tenant no longer creates points by hand: the manual modal and its
-        // dependent-select plumbing are gone.
+        // The tenant no longer creates points by hand: no manual modal, no
+        // dependent-select plumbing, no "technical point" vocabulary.
         $this->assertStringNotContainsString('Agregar punto de emisión', $vue);
         $this->assertStringNotContainsString('onPointBranchChange', $vue);
         $this->assertStringNotContainsString('pointDrawerOptions', $vue);
+        $this->assertStringNotContainsString('sar_points_of_issue', $vue);
 
-        // PRODEX manages the technical structure; the screen is per-branch cards.
+        // The card is a fiscal series with its authorisation and coverage.
         $this->assertStringContainsString('v-for="card in branchCards"', $vue);
+        $this->assertStringContainsString('serie_label', $vue);
         $this->assertStringContainsString('Facturación SAR habilitada', $vue);
-        $this->assertStringContainsString('Facturación SAR deshabilitada', $vue);
         $this->assertStringContainsString('toggleBranch(card', $vue);
-        $this->assertStringContainsString('Código de establecimiento *', $vue);
-        $this->assertStringContainsString('Código del punto de emisión *', $vue);
         $this->assertStringContainsString('saveBranchCodes(card)', $vue);
         $this->assertStringContainsString('toggleDrawer(card', $vue);
         $this->assertStringContainsString('saveBranchDrawers(card)', $vue);
-        $this->assertStringContainsString('openAuthorization(card)', $vue);
+        $this->assertStringContainsString("openAuthorization(card, 'current')", $vue);
 
-        // Summary strip so the user never needs to read sar_points_of_issue.
+        // Every field the brief lists for a series card.
+        foreach (['CAI', 'Rango autorizado', 'Último utilizado', 'Siguiente correlativo', 'Disponibles', 'Fecha límite'] as $label) {
+            $this->assertStringContainsString($label, $vue, "Falta el campo de serie: {$label}");
+        }
+
+        // "Siguiente autorización" (prepared) block.
+        $this->assertStringContainsString('Siguiente autorización', $vue);
+        $this->assertStringContainsString("openAuthorization(card, 'next')", $vue);
+        $this->assertStringContainsString("card.series.next", $vue);
+
         $this->assertStringContainsString('readyCount', $vue);
-        $this->assertStringContainsString('pendingCount', $vue);
-        $this->assertStringNotContainsString('sar_points_of_issue', $vue);
         $this->assertStringContainsString('fiscalGaps.length', $vue);
     }
 

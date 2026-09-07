@@ -97,10 +97,14 @@ class SarAutoBranchFiscalArchitectureTest extends TestCase
         $this->assertStringContainsString('->coveringDrawer($cashDrawerId)', $r);
         $this->assertStringContainsString("->where('branch_id', \$branchId)", $r);
 
-        // Cross-branch drawer / point / authorization are all rejected.
+        // Cross-branch drawer / series are rejected; the counter guard itself
+        // lives at the allocation point in SarFiscalNumberService.
         $this->assertStringContainsString('(int) $drawer->branch_id !== (int) $sale->branch_id', $r);
-        $this->assertStringContainsString('(int) $point->branch_id !== (int) $sale->branch_id', $r);
-        $this->assertStringContainsString('(int) $authorization->pointOfIssue->branch_id !== (int) $sale->branch_id', $r);
+        $this->assertStringContainsString('(int) $series->branch_id !== (int) $sale->branch_id', $r);
+
+        $number = $this->read('app/Services/SarFiscalNumberService.php');
+        $this->assertStringContainsString('$series->branch_id', $number);
+        $this->assertStringContainsString('no puede consumir el CAI de una sucursal distinta', $number);
 
         // warehouse_id is never the source of truth here.
         $this->assertStringNotContainsString("setAttribute('warehouse_id'", $r);

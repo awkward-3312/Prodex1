@@ -217,6 +217,9 @@ class SarAutoBranchFiscalTest extends TestCase
             $t->date('authorization_date')->nullable();
             $t->date('deadline');
             $t->string('status')->default('draft');
+            $t->timestamp('activated_at')->nullable();
+            $t->timestamp('exhausted_at')->nullable();
+            $t->unsignedBigInteger('superseded_by_id')->nullable();
             $t->timestamps();
         });
         Schema::create('sar_fiscal_documents', function ($t) {

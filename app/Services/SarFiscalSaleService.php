@@ -13,14 +13,16 @@ class SarFiscalSaleService
 {
     private const TAX_CATEGORIES = ['taxed', 'exempt', 'exonerated', 'zero_rate'];
 
+    protected const DOCUMENT_TYPE = '01';
+
     /**
      * Legacy / fallback entry point.
      *
      * Used for non-POS sales and for POS sales that never got a modern
-     * operational context (no branch_id / inventory_location_id). The point is
-     * resolved by the legacy warehouse_id pointer. Modern POS sales are handled
-     * by PosAwareSarFiscalSaleService which resolves the point through
-     * Branch -> InventoryLocation -> CashDrawer instead.
+     * operational context (no branch_id / inventory_location_id). The fiscal
+     * series is resolved by the legacy warehouse_id pointer. Modern POS sales are
+     * handled by PosAwareSarFiscalSaleService which resolves the series through
+     * Branch -> InventoryLocation -> CashDrawer -> series coverage instead.
      */
     public function issueIfEnabled(Sale $sale, ?int $cashDrawerId = null): ?SarFiscalDocument
     {
@@ -29,53 +31,40 @@ class SarFiscalSaleService
             return null;
         }
 
-        $point = $this->resolvePoint((int) $sale->warehouse_id, $cashDrawerId);
-        $authorization = $this->findActiveAuthorization($point);
+        $series = $this->resolvePoint((int) $sale->warehouse_id, $cashDrawerId);
+        $this->assertSeriesHasAuthorization($series);
 
-        return $this->issueWithAuthorization($sale, $authorization, $cashDrawerId);
+        return $this->issueForSeries($sale, $series, self::DOCUMENT_TYPE, $cashDrawerId);
     }
 
     /**
-     * The active, usable authorization for a point of issue. "Usable" means the
-     * exact same contract the UI shows as "CAI listo para facturar":
-     *   status = active AND deadline >= today AND next_number within the range.
+     * Friendly pre-flight only. Whether the CAI is expired / exhausted, and
+     * whether PRODEX must switch to the prepared "next" authorisation, is decided
+     * atomically under a row lock by SarFiscalNumberService — never here.
      */
-    protected function findActiveAuthorization(SarPointOfIssue $point): SarAuthorization
+    protected function assertSeriesHasAuthorization(SarPointOfIssue $series): void
     {
-        $authorization = SarAuthorization::where('point_of_issue_id', $point->id)
-            ->where('document_type', '01')
-            ->where('status', 'active')
-            ->orderBy('deadline')
-            ->first();
+        $hasLive = SarAuthorization::forSeries($series->id, self::DOCUMENT_TYPE)
+            ->whereIn('status', ['active', 'prepared'])
+            ->exists();
 
-        if (! $authorization) {
+        if (! $hasLive) {
             throw new SarFiscalException(
-                'No existe una autorización SAR activa para el punto de emisión '
-                .$point->establishment_code.'-'.$point->point_code.'. Registra y activa un CAI.'
+                'No existe una autorización SAR activa para la serie '
+                .($series->establishment_code ?: '000').'-'.($series->point_code ?: '000').'-'.self::DOCUMENT_TYPE
+                .'. Registra y activa un CAI.'
             );
         }
-
-        if ($authorization->deadline->isBefore(today())) {
-            $authorization->update(['status' => 'expired']);
-            throw new SarFiscalException('La fecha límite de emisión del CAI de este punto ya venció.');
-        }
-
-        $next = (int) $authorization->next_number;
-        if ($next < (int) $authorization->range_start || $next > (int) $authorization->range_end) {
-            $authorization->update(['status' => 'exhausted']);
-            throw new SarFiscalException('El rango autorizado por el SAR para este punto está agotado.');
-        }
-
-        return $authorization;
     }
 
     /**
      * Everything from tax classification to correlative allocation, given an
-     * already-resolved authorization. Shared by the legacy and the modern
+     * already-resolved fiscal series. Shared by the legacy and the modern
      * (branch/location/drawer) resolvers so the fiscal maths and snapshots stay
-     * identical.
+     * identical. The correlativo itself is allocated by SarFiscalNumberService,
+     * which owns the authorisation lifecycle and the row lock.
      */
-    protected function issueWithAuthorization(Sale $sale, SarAuthorization $authorization, ?int $cashDrawerId): SarFiscalDocument
+    protected function issueForSeries(Sale $sale, SarPointOfIssue $series, string $documentType, ?int $cashDrawerId): SarFiscalDocument
     {
         $sale->loadMissing(['client', 'saleDetails.product', 'warehouse', 'user', 'facture.payment_method']);
         $customer = $sale->client;
@@ -286,7 +275,8 @@ class SarFiscalSaleService
 
         return app(SarFiscalNumberService::class)->issue(
             $sale,
-            $authorization->id,
+            $series->id,
+            $documentType,
             $customerSnapshot,
             $saleSnapshot
         );
