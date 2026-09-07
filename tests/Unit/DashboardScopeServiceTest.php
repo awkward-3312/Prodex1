@@ -17,9 +17,12 @@ use Tests\TestCase;
  *   B. METRIC VISIBILITY   — canSeeTeam / canSeeFinancialManagement /
  *      personalUserId.
  *
- * Regla central: `record_view` y `is_all_warehouses` NUNCA amplían el alcance
- * ni conceden autoridad; la autoridad de un gerente proviene de ser
- * `branches.manager_employee_id`.
+ * Reglas centrales:
+ *   - `record_view` NUNCA amplía el alcance ni concede autoridad.
+ *   - `is_all_warehouses` ("Toda la empresa") amplía el ALCANCE ORGANIZACIONAL a
+ *     todas las sucursales activas para un usuario operativo sin selección
+ *     explícita de sucursales, pero NUNCA concede autoridad de equipo/financiera.
+ *   - La autoridad de un gerente proviene de ser `branches.manager_employee_id`.
  */
 class DashboardScopeServiceTest extends TestCase
 {
@@ -312,6 +315,29 @@ class DashboardScopeServiceTest extends TestCase
         $this->assertFalse($scope->canSeeFinancialManagement);
     }
 
+    public function test_explicit_user_branches_win_over_the_all_company_flag(): void
+    {
+        $b1 = $this->branch('Sucursal 1');
+        $b5 = $this->branch('Sucursal 5');
+        $b9 = $this->branch('Sucursal 9');
+        $this->warehouse('W1', $b1);
+        $w5 = $this->warehouse('W5', $b5);
+        $this->warehouse('W9', $b9);
+
+        // Selección explícita de S5 + bandera "Toda la empresa": sólo ve S5.
+        $cashier = $this->user(['role_id' => 2, 'is_all_warehouses' => 1]);
+        DB::table('user_branches')->insert([
+            ['user_id' => $cashier->id, 'branch_id' => $b5, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $scope = $this->service()->resolve($cashier, 0);
+
+        $this->assertSame([$b5], $scope->allowedBranchIds, 'la selección explícita acota, aunque tenga is_all_warehouses');
+        $this->assertSame([$w5], $scope->effectiveWarehouseIds);
+        $this->assertFalse($scope->canSeeTeam);
+        $this->assertFalse($scope->canSeeFinancialManagement);
+    }
+
     public function test_operational_user_without_resolvable_branch_gets_empty_scope(): void
     {
         $b5 = $this->branch('Sucursal 5');
@@ -329,20 +355,65 @@ class DashboardScopeServiceTest extends TestCase
         $this->assertFalse($scope->canSeeFinancialManagement);
     }
 
-    public function test_legacy_is_all_warehouses_does_not_widen_analytic_scope(): void
+    public function test_all_company_flag_widens_org_scope_over_a_home_branch_without_authority(): void
     {
         $b1 = $this->branch('Sucursal 1');
         $b5 = $this->branch('Sucursal 5');
-        $this->warehouse('W1', $b1);
+        $w1 = $this->warehouse('W1', $b1);
         $w5 = $this->warehouse('W5', $b5);
 
-        // bandera heredada activada, pero funcionalmente es operativo de la S5
+        // "Toda la empresa" + sucursal habitual S5: el alcance organizacional es
+        // TODAS las sucursales activas, no sólo su sucursal habitual.
         $cashier = $this->user(['role_id' => 2, 'is_all_warehouses' => 1, 'default_branch_id' => $b5]);
 
         $scope = $this->service()->resolve($cashier, 0);
 
-        $this->assertSame([$b5], $scope->allowedBranchIds, 'is_all_warehouses no da acceso a todas las sucursales');
-        $this->assertSame([$w5], $scope->effectiveWarehouseIds);
+        $this->assertTrue($scope->hasBranch);
+        $this->assertEqualsCanonicalizing([$b1, $b5], $scope->allowedBranchIds);
+        $this->assertEqualsCanonicalizing([$w1, $w5], $scope->effectiveWarehouseIds);
+        // Pero NUNCA autoridad: no es gerente de ninguna sucursal.
+        $this->assertSame([], $scope->managedBranchIds);
+        $this->assertFalse($scope->canSeeTeam, 'is_all_warehouses no habilita TEAM');
+        $this->assertFalse($scope->canSeeFinancialManagement, 'is_all_warehouses no habilita FINANCIAL');
+    }
+
+    public function test_all_company_flag_with_no_other_scope_covers_all_active_branches(): void
+    {
+        $b1 = $this->branch('Sucursal 1');
+        $b5 = $this->branch('Sucursal 5');
+        $bClosed = $this->branch('Sucursal cerrada', null, false);
+        $w1 = $this->warehouse('W1', $b1);
+        $w5 = $this->warehouse('W5', $b5);
+        $this->warehouse('WClosed', $bClosed);
+
+        // Sólo "Toda la empresa": sin default_branch, sin user_branches, sin employee.
+        // Antes -> alcance vacío (panel en blanco). Ahora -> todas las activas.
+        $cashier = $this->user(['role_id' => 2, 'is_all_warehouses' => 1]);
+
+        $scope = $this->service()->resolve($cashier, 0);
+
+        $this->assertTrue($scope->hasBranch);
+        $this->assertEqualsCanonicalizing([$b1, $b5], $scope->allowedBranchIds);
+        $this->assertNotContains($bClosed, $scope->allowedBranchIds, 'sólo sucursales activas');
+        $this->assertEqualsCanonicalizing([$w1, $w5], $scope->effectiveWarehouseIds);
+        $this->assertFalse($scope->canSeeTeam);
+        $this->assertFalse($scope->canSeeFinancialManagement);
+    }
+
+    public function test_all_company_flag_does_not_turn_a_non_manager_into_a_manager_on_a_selected_branch(): void
+    {
+        $b1 = $this->branch('Sucursal 1');
+        $b5 = $this->branch('Sucursal 5');
+        $this->warehouse('W1', $b1);
+        $this->warehouse('W5', $b5);
+
+        $cashier = $this->user(['role_id' => 2, 'is_all_warehouses' => 1]);
+
+        // Selecciona una sucursal concreta del alcance ampliado.
+        $scope = $this->service()->resolve($cashier, $b5);
+
+        $this->assertSame($b5, $scope->selectedBranchId);
+        $this->assertFalse($scope->canSeeTeam);
         $this->assertFalse($scope->canSeeFinancialManagement);
     }
 

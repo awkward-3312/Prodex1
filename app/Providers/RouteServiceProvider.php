@@ -47,6 +47,9 @@ class RouteServiceProvider extends ServiceProvider
             PreventAccessFromCentralDomains::class,
             InitializeTenancyByDomainOrSubdomain::class,
             'tenant.active',
+            // Align the process clock with the tenant's own timezone so POS sale
+            // creation and the Dashboard/report date filters share one reference.
+            \App\Http\Middleware\ApplyTenantTimezone::class,
             // Normalize the modern POS payload only after tenancy is initialized.
             // The middleware is a no-op for every other tenant request, but placing
             // it here guarantees CreatePOS sees the compatibility warehouse value

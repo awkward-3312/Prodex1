@@ -81,6 +81,41 @@ class DashboardAnalyticsScopeArchitectureTest extends TestCase
         );
     }
 
+    public function test_operational_dashboard_recomputes_my_sales_by_branch(): void
+    {
+        $c = $this->read('app/Http/Controllers/OperationalDashboardController.php');
+
+        // "Mis ventas" se recalcula con el MISMO alcance branch-aware que el
+        // resto de widgets (applySaleScope), no se hereda el filtro warehouse_id
+        // del padre — que deja 0 las ventas POS modernas (warehouse_id NULL).
+        $this->assertStringContainsString("\$payload['my_sales'] = \$this->recomputeMySales(\$scope, \$from, \$to);", $c);
+        $this->assertMatchesRegularExpression(
+            '/function recomputeMySales\(DashboardScope \$scope, string \$from, string \$to\).*?'
+            .'->whereBetween\(.sales\.date., \[\$from, \$to\]\).*?'
+            .'->where\(.sales\.user_id., \$scope->personalUserId\).*?'
+            .'\$this->applySaleScope\(\$mine, \$scope\)/s',
+            $c
+        );
+    }
+
+    public function test_tenant_timezone_is_applied_on_every_tenant_request(): void
+    {
+        $mw = $this->read('app/Http/Middleware/ApplyTenantTimezone.php');
+        $provider = $this->read('app/Providers/RouteServiceProvider.php');
+
+        // Usa la fuente de timezone del tenant que YA existe (settings.timezone).
+        $this->assertStringContainsString('Setting::query()->first()', $mw);
+        $this->assertStringContainsString("config(['app.timezone' => \$tz])", $mw);
+        $this->assertStringContainsString('date_default_timezone_set($tz)', $mw);
+        // Sólo timezones válidos; nunca revienta la petición.
+        $this->assertStringContainsString('timezone_identifiers_list()', $mw);
+        $this->assertStringContainsString('catch (\Throwable $e)', $mw);
+
+        // Registrado en el stack de rutas del tenant (web + api), tras iniciar
+        // tenancy — para que creación de venta y filtros del Panel compartan reloj.
+        $this->assertStringContainsString('\App\Http\Middleware\ApplyTenantTimezone::class', $provider);
+    }
+
     public function test_today_profit_is_computed_on_a_single_scope(): void
     {
         $c = $this->controller();
@@ -170,21 +205,40 @@ class DashboardAnalyticsScopeArchitectureTest extends TestCase
         $this->assertStringContainsString('$user->hasRecordView()', $salesScope);
     }
 
-    public function test_scope_service_does_not_depend_on_record_view_or_legacy_all_warehouses(): void
+    public function test_scope_service_ignores_record_view_and_uses_all_warehouses_only_for_org_scope(): void
     {
         $svc = $this->read('app/Services/DashboardScopeService.php');
 
-        // Sólo el CÓDIGO (sin comentarios) — la prosa sí explica por qué NO se
-        // usan estas señales.
+        // Sólo el CÓDIGO (sin comentarios).
         $code = preg_replace('~/\*.*?\*/|//[^\n]*~s', '', $svc);
 
         $this->assertStringContainsString('OWNER_ROLE_ID', $svc);
         $this->assertStringContainsString('manager_employee_id', $code);
+
+        // record_view NUNCA participa en el alcance analítico.
         $this->assertStringNotContainsString('hasRecordView', $code);
         $this->assertStringNotContainsString("'record_view'", $code);
         $this->assertStringNotContainsString('->record_view', $code);
-        $this->assertStringNotContainsString("'is_all_warehouses'", $code);
-        $this->assertStringNotContainsString('->is_all_warehouses', $code);
+
+        // is_all_warehouses ("Toda la empresa") SÍ amplía el ALCANCE
+        // ORGANIZACIONAL...
+        $this->assertStringContainsString('->is_all_warehouses', $code);
+        $this->assertMatchesRegularExpression(
+            '/\$isAllCompany = ! \$isOwner\s*&& \$managedBranchIds === \[\]\s*&& \$explicitBranchIds === \[\]\s*&& \(int\) \(\$user->is_all_warehouses \?\? 0\) === 1;/s',
+            $code
+        );
+
+        // ...pero NUNCA alimenta la decisión de autoridad: authority() sólo mira
+        // isOwner + managedBranchIds.
+        $this->assertMatchesRegularExpression(
+            '/private function authority\(bool \$isOwner, array \$managedBranchIds, array \$allowedBranchIds, int \$selectedBranchId\)/',
+            $code
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/function authority\([^)]*\).*?is_all_warehouses/s',
+            $code,
+            'is_all_warehouses no debe influir en authority()'
+        );
     }
 
     public function test_frontend_dashboard_is_open_and_consumes_the_scope_contract(): void

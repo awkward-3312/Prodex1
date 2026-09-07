@@ -29,6 +29,13 @@ use Illuminate\Support\Facades\Schema;
  *
  * `record_view` NO participa aquí: es una restricción de listados/reportes con
  * semántica global propia y el Panel dejó de usarla como palanca de granularidad.
+ *
+ * `is_all_warehouses` ("Toda la empresa") SÍ participa, pero SÓLO como ALCANCE
+ * ORGANIZACIONAL: cuando un usuario no-owner y no-gerente lo tiene activo y no
+ * tiene una selección explícita de sucursales (`user_branches`), su alcance son
+ * TODAS las sucursales activas. NUNCA le concede autoridad de equipo ni
+ * financiera — eso lo sigue decidiendo {@see authority()} a partir de
+ * `manager_employee_id`. Alinea el Panel con {@see \App\Services\BranchScopeService}.
  */
 class DashboardScopeService
 {
@@ -44,11 +51,27 @@ class DashboardScopeService
         $isOwner = $this->isOwner($user);
 
         $managedBranchIds = $isOwner ? [] : $this->managedBranchIds($user);
+        $explicitBranchIds = $isOwner ? [] : $this->explicitBranchIds($user);
         $operationalBranchIds = $isOwner ? [] : $this->operationalBranchIds($user);
 
-        $allowedBranchIds = $isOwner
-            ? $this->allActiveBranchIds()
-            : $this->activeUnique(array_merge($managedBranchIds, $operationalBranchIds));
+        // "Toda la empresa": un usuario operativo (no gerente) con
+        // `is_all_warehouses = 1` y SIN selección explícita de sucursales tiene
+        // alcance organizacional sobre todas las sucursales activas. La autoridad
+        // (equipo / financiera) NO cambia: la sigue gobernando authority().
+        $isAllCompany = ! $isOwner
+            && $managedBranchIds === []
+            && $explicitBranchIds === []
+            && (int) ($user->is_all_warehouses ?? 0) === 1;
+
+        if ($isOwner || $isAllCompany) {
+            $allowedBranchIds = $this->allActiveBranchIds();
+        } elseif ($explicitBranchIds !== []) {
+            // Selección explícita de sucursales: SÓLO esas (aunque tenga la
+            // bandera "Toda la empresa"), más las que gestione.
+            $allowedBranchIds = $this->activeUnique(array_merge($explicitBranchIds, $managedBranchIds));
+        } else {
+            $allowedBranchIds = $this->activeUnique(array_merge($managedBranchIds, $operationalBranchIds));
+        }
 
         // El branch_id del cliente SIEMPRE se valida contra el alcance permitido.
         // Un id fuera de alcance (o manipulado) se ignora — nunca filtra datos.
@@ -82,7 +105,7 @@ class DashboardScopeService
         return new DashboardScope(
             isOwner: $isOwner,
             managedBranchIds: array_values($managedBranchIds),
-            operationalBranchIds: array_values($operationalBranchIds),
+            operationalBranchIds: array_values($this->activeUnique(array_merge($explicitBranchIds, $operationalBranchIds))),
             allowedBranchIds: array_values($allowedBranchIds),
             selectedBranchId: $selectedBranchId,
             effectiveBranchIds: array_values($effectiveBranchIds),
@@ -130,27 +153,37 @@ class DashboardScopeService
     }
 
     /**
-     * Sucursal(es) OPERATIVA(S) reales del usuario: asignación explícita
-     * (`user_branches`), sucursal habitual, sucursal del empleado y asignación
-     * temporal vigente.
+     * Selección EXPLÍCITA de sucursales del usuario (`user_branches`). Cuando
+     * existe, acota el alcance a esas sucursales aunque el usuario tenga la
+     * bandera "Toda la empresa".
      *
-     * Deliberadamente NO consulta `is_all_warehouses` ni el pivote
-     * `user_warehouse`: un usuario operativo no gana alcance analítico sobre
-     * todas las sucursales por una bandera heredada.
+     * @return list<int>
+     */
+    private function explicitBranchIds(User $user): array
+    {
+        if (! Schema::hasTable('user_branches')) {
+            return [];
+        }
+
+        return $this->activeUnique(
+            DB::table('user_branches')
+                ->where('user_id', $user->id)
+                ->pluck('branch_id')
+                ->map(static fn ($id) => (int) $id)
+                ->all()
+        );
+    }
+
+    /**
+     * Sucursal(es) HABITUAL(ES) del usuario: sucursal por defecto, sucursal del
+     * empleado y asignación temporal vigente. Son el "hogar" operativo, no una
+     * restricción de alcance; `explicitBranchIds()` sí restringe.
      *
      * @return list<int>
      */
     private function operationalBranchIds(User $user): array
     {
         $ids = [];
-
-        if (Schema::hasTable('user_branches')) {
-            $ids = array_merge($ids, DB::table('user_branches')
-                ->where('user_id', $user->id)
-                ->pluck('branch_id')
-                ->map(static fn ($id) => (int) $id)
-                ->all());
-        }
 
         if ($user->default_branch_id) {
             $ids[] = (int) $user->default_branch_id;

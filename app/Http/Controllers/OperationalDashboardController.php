@@ -132,6 +132,15 @@ class OperationalDashboardController extends DashboardController
         $payload['report_dashboard']['original']['recent_sales'] = $recentRows;
         $payload['report_dashboard']['original']['last_sales'] = $recentRows;
 
+        // --- PERSONAL: "Mis ventas" — SIEMPRE el usuario autenticado, pero
+        //     resuelto por branch_id (fallback warehouse_id sólo si branch_id es
+        //     NULL), igual que el resto de widgets. El padre lo calcula por el
+        //     puntero heredado warehouse_id y queda en 0 para las ventas POS
+        //     modernas (branch_id fijado, warehouse_id NULL); aquí se recalcula
+        //     sobre el MISMO alcance para que "Mis ventas", "Ventas de sucursal",
+        //     la gráfica, el nº de facturas y "recientes" cuadren.
+        $payload['my_sales'] = $this->recomputeMySales($scope, $from, $to);
+
         // --- FINANCIAL_MANAGEMENT: sólo si el padre ya incluyó la clave -------
         if (array_key_exists('customers', $payload)) {
             $customerQuery = Sale::query()
@@ -202,6 +211,39 @@ class OperationalDashboardController extends DashboardController
         }
 
         return response()->json($payload);
+    }
+
+    /**
+     * PERSONAL — "Mis ventas" del usuario autenticado, resuelto por el MISMO
+     * alcance branch-aware que el resto de widgets (applySaleScope), no por el
+     * puntero heredado `warehouse_id` (que deja en 0 las ventas POS modernas con
+     * `warehouse_id` NULL). Reemplaza el `my_sales` que calcula el padre.
+     *
+     * @return array{total: float, paid: float, due: float, invoices: int}
+     */
+    protected function recomputeMySales(DashboardScope $scope, string $from, string $to): array
+    {
+        $mine = Sale::query()
+            ->whereNull('sales.deleted_at')
+            ->whereBetween('sales.date', [$from, $to])
+            ->where('sales.user_id', $scope->personalUserId);
+        $this->applySaleScope($mine, $scope);
+
+        $agg = $mine->selectRaw(
+            'COALESCE(SUM(sales.GrandTotal),0) AS total, '
+            .'COALESCE(SUM(sales.paid_amount),0) AS paid, '
+            .'COUNT(*) AS invoices'
+        )->first();
+
+        $total = (float) ($agg->total ?? 0);
+        $paid = (float) ($agg->paid ?? 0);
+
+        return [
+            'total' => $total,
+            'paid' => $paid,
+            'due' => max(0.0, $total - $paid),
+            'invoices' => (int) ($agg->invoices ?? 0),
+        ];
     }
 
     /**
