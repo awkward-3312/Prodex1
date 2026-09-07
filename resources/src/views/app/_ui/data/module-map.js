@@ -155,7 +155,7 @@ export const MODULES = [
     domain: "finanzas", place: "panel", freq: "baja", basis: "operación puntual entre cuentas; 1 ruta" },
   { key: "commissions", label: "Comisiones", dest: "/app/commissions", routes: 5, origin: ["Sidebar", "router"], parentNow: "commissions", perm: "commissions_view", plan: "commissions",
     domain: "finanzas", place: "panel", freq: "baja", basis: "programas + agentes + recibos + reportes (5 rutas) pero uso mensual; condicional por plan" },
-  { key: "sar_fiscal", label: "Cumplimiento fiscal (por país)", dest: "/app/settings/sar_fiscal", routes: 1, origin: ["Sidebar (submenú de products!)", "router (settings)"], parentNow: "products (mal ubicado)", perm: "setting_system", plan: null,
+  { key: "sar_fiscal", label: "Cumplimiento fiscal (por país)", dest: "/app/finance/sar_fiscal", routes: 1, origin: ["Finanzas → Cumplimiento fiscal", "router (/app/finance)"], parentNow: "finanzas", perm: "setting_system", plan: null,
     domain: "finanzas", place: "panel", freq: "baja", basis: "D5 (decisión B0): dominio Finanzas → «Cumplimiento fiscal». Label y contenido dependen del país; SAR es únicamente la implementación Honduras. Hoy cuelga (mal) de Productos" },
   { key: "subscription_product", label: "Producto de suscripción", dest: "/app/subscription_product", routes: 1, origin: ["Sidebar", "router"], parentNow: "subscription_product (suelto)", perm: "subscription_product", plan: null,
     domain: "finanzas", place: "mas", freq: "baja", basis: "modelo de venta recurrente que pocos tenants usan; 1 ruta; hoy suelto en nivel superior" },

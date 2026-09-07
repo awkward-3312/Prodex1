@@ -277,7 +277,7 @@ export const SHELL_RAIL = [
         {
           title: "Cumplimiento fiscal",
           items: [
-            { label: "Cumplimiento fiscal (SAR)", icon: "file-text", route: "/app/settings/sar_fiscal", anyPerm: ["setting_system"] }
+            { label: "Cumplimiento fiscal (SAR)", icon: "file-text", route: "/app/finance/sar_fiscal", anyPerm: ["setting_system"] }
           ]
         },
         {
@@ -422,6 +422,14 @@ export const SHELL_ROUTE_DOMAINS = [
   { prefix: "/app/reports", domain: "reportes" },
 
   // --- Finanzas ---
+  // Cumplimiento fiscal (SAR): ruta canónica en Finanzas. El enlace legado
+  // /app/settings/sar_fiscal redirige a /app/finance/sar_fiscal (router.js);
+  // esta regla, ANTES que la genérica /app/settings → config, garantiza que
+  // aunque se aterrice un instante en la URL vieja el dominio activo sea
+  // Finanzas y el shell NO cambie a Configuración.
+  { prefix: "/app/finance/sar_fiscal", domain: "finanzas" },
+  { prefix: "/app/settings/sar_fiscal", domain: "finanzas" },
+  { prefix: "/app/finance", domain: "finanzas" },
   { prefix: "/app/accounting-v2", domain: "finanzas" },
   { prefix: "/app/expenses", domain: "finanzas" },
   { prefix: "/app/deposits", domain: "finanzas" },
@@ -602,9 +610,12 @@ export const SHELL_FOOT = [
           ]
         },
         {
+          // El cumplimiento fiscal SAR NO vive aquí: pertenece exclusivamente al
+          // dominio Finanzas (ver SHELL_RAIL:finanzas, grupo "Cumplimiento
+          // fiscal"). ZATCA (e-invoicing KSA, condicional por plan) es la única
+          // entrada fiscal que permanece en Configuración.
           title: "Fiscal",
           items: [
-            { label: "Cumplimiento fiscal (SAR)", icon: "file-text", route: "/app/settings/sar_fiscal", anyPerm: ["setting_system"] },
             { label: "ZATCA", icon: "file-text", route: "/app/settings/zatca_settings", plan: "zatca", anyPerm: ["zatca_settings"] }
           ]
         },

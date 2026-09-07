@@ -2,7 +2,7 @@
   <div class="px-next pxcfg">
     <px-page-header
       title="Facturación SAR"
-      :breadcrumbs="[{ label: $t('Settings'), href: '#/app/settings/System_settings' }, { label: 'Facturación SAR' }]"
+      :breadcrumbs="[{ label: 'Finanzas' }, { label: 'Cumplimiento fiscal (SAR)' }]"
     />
 
     <div v-if="loading" class="pxcfg__pad">

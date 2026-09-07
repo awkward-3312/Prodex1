@@ -951,7 +951,7 @@
             class="nav-item"
             v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')"
           >
-            <router-link tag="a" class to="/app/settings/sar_fiscal">
+            <router-link tag="a" class to="/app/finance/sar_fiscal">
               <lucide-icon class="nav-icon" name="file-text" />
               <span class="item-name">Facturación SAR</span>
             </router-link>

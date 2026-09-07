@@ -943,7 +943,7 @@
             </a>
             <ul class="submenu" v-if="openMenus.includes('accounting') && !isCollapsed">
               <li class="submenu-item" v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">
-                <router-link to="/app/settings/sar_fiscal" class="submenu-link">
+                <router-link to="/app/finance/sar_fiscal" class="submenu-link">
                   <lucide-icon class="submenu-icon" name="file-text" />
                   <span>Facturación SAR</span>
                 </router-link>

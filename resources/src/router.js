@@ -2406,6 +2406,29 @@ const baseRoutes = [
                 ]
             },
 
+            // Finanzas — dominio propio para el Cumplimiento fiscal (SAR).
+            // SAR pertenece exclusivamente a Finanzas → Cumplimiento fiscal; su
+            // URL canónica NO cuelga de /app/settings. Reutiliza EXACTAMENTE el
+            // mismo componente sar_fiscal.vue — sin duplicar lógica.
+            {
+                path: "/app/finance",
+                component: () =>
+                    import(
+                        /* webpackChunkName: "finance" */ "./views/app/pages/settings"
+                    ),
+                redirect: "/app/finance/sar_fiscal",
+                children: [
+                    {
+                        name: "sar_fiscal",
+                        path: "sar_fiscal",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "sar_fiscal" */ "./views/app/pages/settings/sar_fiscal"
+                            )
+                    }
+                ]
+            },
+
             // Settings
             {
                 path: "/app/settings",
@@ -2639,14 +2662,12 @@ const baseRoutes = [
                             )
                     },
 
-                    // Honduras SAR fiscal invoicing
+                    // SAR (Cumplimiento fiscal) se movió a Finanzas:
+                    // /app/finance/sar_fiscal. Este enlace legado sólo redirige
+                    // para no romper marcadores ni URLs guardadas.
                     {
-                        name: "sar_fiscal",
                         path: "sar_fiscal",
-                        component: () =>
-                            import(
-                                /* webpackChunkName: "sar_fiscal" */ "./views/app/pages/settings/sar_fiscal"
-                            )
+                        redirect: "/app/finance/sar_fiscal"
                     },
 
                     // ZATCA E-Invoicing Phase 2 (Fatoora)
