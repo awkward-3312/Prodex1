@@ -78,6 +78,8 @@ export const SHELL_REPORTS = [
       { label: "Stock negativo", icon: "shield", route: "/app/reports/negative_stock_report", anyPerm: ["negative_stock_report"] },
       { label: "Antigüedad de stock", icon: "calendar-clock", route: "/app/reports/stock_aging_report", anyPerm: ["Stock_Aging_Report"] },
       { label: "Por vencer", icon: "calendar-clock", route: "/app/reports/expiry_report", anyPerm: ["expiry_report"] },
+      { label: "Kardex valorizado", icon: "history", route: "/app/reports/valued_kardex", anyPerm: ["valued_kardex_report"] },
+      { label: "Rotación de inventario", icon: "refresh-cw", route: "/app/reports/inventory_turnover", anyPerm: ["inventory_turnover_report"] },
       { label: "Movimiento de producto", icon: "package", route: "/app/reports/product_report", anyPerm: ["product_report"] },
       { label: "Almacenes", icon: "store", route: "/app/reports/warehouse_report", anyPerm: ["Warehouse_report"] }
     ]
@@ -105,6 +107,39 @@ export const SHELL_REPORTS = [
 
 const _repCatPerms = c => c.items.reduce((a, i) => a.concat(i.anyPerm || []), []);
 const _allReportPerms = SHELL_REPORTS.reduce((a, c) => a.concat(_repCatPerms(c)), []);
+
+// ---- Reportes inline del panel de dominio (Ventas / Inventario / Compras) ----
+// `panel.reportsInline` NO redefine metadata: es una lista de referencias por
+// `route` al catálogo canónico `SHELL_REPORTS`. Cada entrada es la ruta real de
+// un reporte ya catalogado (label / icon / anyPerm / plan salen de ahí), o un
+// objeto `{ route, label }` cuando el panel de dominio necesita un nombre
+// contextual distinto al del catálogo (p. ej. "Ventas por sucursal" apunta al
+// reporte "Almacenes"). PxShell materializa cada referencia como <router-link>
+// real y la filtra por permiso + plan igual que el resto de ítems del panel.
+const _reportByRoute = SHELL_REPORTS.reduce((acc, c) => {
+  c.items.forEach(it => { acc[it.route] = it; });
+  return acc;
+}, {});
+
+export function reportByRoute(route) {
+  return _reportByRoute[route] || null;
+}
+
+// Resuelve `panel.reportsInline` (strings de ruta u objetos `{ route, label }`)
+// a descriptores completos del catálogo. Omite silenciosamente una referencia
+// cuyo `route` no exista en SHELL_REPORTS — el test ShellReportsInline… impide
+// que eso ocurra en el código productivo.
+export function resolveInlineReports(refs) {
+  return (refs || [])
+    .map(ref => {
+      const route = typeof ref === "string" ? ref : ref.route;
+      const base = _reportByRoute[route];
+      if (!base) return null;
+      const label = (typeof ref === "object" && ref.label) || base.label;
+      return { label, icon: base.icon, route: base.route, anyPerm: base.anyPerm, plan: base.plan };
+    })
+    .filter(Boolean);
+}
 
 // ---- Riel principal ---------------------------------------------------------
 // Panel · Ventas · Inventario · Compras: siempre según permiso (como M1).
@@ -155,7 +190,16 @@ export const SHELL_RAIL = [
           ]
         }
       ],
-      reportsInline: ["Ventas por sucursal", "Top clientes", "Descuentos", "Devoluciones (ratio)"]
+      // Referencias por `route` al catálogo canónico SHELL_REPORTS (no metadata
+      // duplicada). "Ventas por sucursal" reutiliza el reporte "Almacenes"
+      // (lectura de ventas/compras/devoluciones resuelta por sucursal en
+      // OperationalBranchReportController); el resto ya existía tal cual.
+      reportsInline: [
+        { route: "/app/reports/warehouse_report", label: "Ventas por sucursal" },
+        "/app/reports/top_customers",
+        "/app/reports/discount_summary_report",
+        "/app/reports/return_ratio_report"
+      ]
     }
   },
   {
@@ -195,7 +239,13 @@ export const SHELL_RAIL = [
           ]
         }
       ],
-      reportsInline: ["Kardex valorizado", "Rotación", "Antigüedad de stock", "Stock negativo", "Por vencer"]
+      reportsInline: [
+        "/app/reports/valued_kardex",
+        "/app/reports/inventory_turnover",
+        "/app/reports/stock_aging_report",
+        "/app/reports/negative_stock_report",
+        "/app/reports/expiry_report"
+      ]
     }
   },
   {
@@ -223,7 +273,15 @@ export const SHELL_RAIL = [
           ]
         }
       ],
-      reportsInline: ["Compras por proveedor", "Top proveedores", "Pagos de compra", "Alertas de cantidad"]
+      // "Compras por proveedor" reutiliza el reporte "Proveedores"
+      // (Providers_Report: nº de compras, total comprado, pagado, pendiente y
+      // devoluciones por proveedor). El resto ya existía tal cual.
+      reportsInline: [
+        { route: "/app/reports/providers_report", label: "Compras por proveedor" },
+        "/app/reports/top_suppliers_report",
+        "/app/reports/payments_purchase",
+        "/app/reports/quantity_alerts"
+      ]
     }
   },
 

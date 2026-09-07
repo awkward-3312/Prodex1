@@ -106,7 +106,10 @@ class ShellProductionNavigationArchitectureTest extends TestCase
 
         // PxShell usa el resolver para el destino del riel.
         $shell = $this->repo('resources/src/components/px-next/PxShell.vue');
-        $this->assertStringContainsString('import { SHELL_RAIL, SHELL_FOOT, resolveShellDomain, resolveReportCategory, firstAllowedRoute }', $shell);
+        $this->assertMatchesRegularExpression(
+            '/import \{ SHELL_RAIL, SHELL_FOOT, resolveShellDomain, resolveReportCategory, firstAllowedRoute(, resolveInlineReports)? \}/',
+            $shell
+        );
         $this->assertStringContainsString(':to="railTarget(m)"', $shell);
         $this->assertMatchesRegularExpression(
             '/railTarget\(m\)\s*\{[\s\S]*?if\s*\(m\.to\)\s*return m\.to;[\s\S]*?firstAllowedRoute\(/',

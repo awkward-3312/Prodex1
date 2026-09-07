@@ -3173,6 +3173,27 @@ const baseRoutes = [
                             )
                     },
 
+                    {
+                        // Kardex valorizado px-next (libro de movimientos con saldo valorizado).
+                        name: "valued_kardex",
+                        path: "valued_kardex",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "valued_kardex_report" */
+                                "./views/app/reports/next/valued-kardex/index.vue"
+                            )
+                    },
+                    {
+                        // Rotación de inventario px-next.
+                        name: "inventory_turnover",
+                        path: "inventory_turnover",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "inventory_turnover_report" */
+                                "./views/app/reports/next/inventory-turnover/index.vue"
+                            )
+                    },
+
 
                     {
                         name: "quantity_alerts",

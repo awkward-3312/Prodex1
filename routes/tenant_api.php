@@ -319,6 +319,10 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     // Negative Stock
     Route::get('report/negative_stock', 'ReportController@negative_stock_report');
 
+    // Kardex valorizado / Rotación de inventario (legacy + arquitectura moderna)
+    Route::get('report/valued_kardex', 'ReportController@valued_kardex');
+    Route::get('report/inventory_turnover', 'ReportController@inventory_turnover');
+
     // AI Reports (feature-gated)
     Route::middleware('tenant.feature:ai_reports')->group(function () {
         Route::get('report-questions', 'ReportQuestionController@index');

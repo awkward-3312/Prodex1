@@ -127,6 +127,22 @@ class ProductPolicy
         return $user->hasRole($permission->roles);
     }
 
+    public function valued_kardex_report(User $user)
+    {
+        $permission = Permission::where('name', 'valued_kardex_report')->first();
+
+        // Permiso aún no sembrado en este tenant (provisioning race, migración
+        // sin desplegar): denegar (403), nunca un 500 por leer ->roles de null.
+        return $permission ? $user->hasRole($permission->roles) : false;
+    }
+
+    public function inventory_turnover_report(User $user)
+    {
+        $permission = Permission::where('name', 'inventory_turnover_report')->first();
+
+        return $permission ? $user->hasRole($permission->roles) : false;
+    }
+
     public function product_report(User $user)
     {
         $permission = Permission::where('name', 'product_report')->first();

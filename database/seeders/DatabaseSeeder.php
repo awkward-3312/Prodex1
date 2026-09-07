@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             UserRoleSeeder::class,
             PermissionRoleSeeder::class,
             OperationalAssignmentPermissionsSeeder::class,
+            ReportInsightPermissionsSeeder::class,
             Warehouse::class,
             StoreSettingSeeder::class,
             PosSettingsSeeder::class,

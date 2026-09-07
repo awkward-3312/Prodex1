@@ -35,7 +35,6 @@
         <ul class="pxn-shell__modules">
           <li v-for="m in visibleRail" :key="m.key">
             <router-link
-              v-if="!m.pending"
               :to="railTarget(m)"
               class="pxn-shell__module pxn-ring"
               :class="{ 'is-active': m.key === activeDomain }"
@@ -46,16 +45,6 @@
               <lucide-icon :name="m.icon" :size="17" />
               <span class="pxn-shell__module-label">{{ m.label }}</span>
             </router-link>
-            <span
-              v-else
-              class="pxn-shell__module is-pending"
-              :title="m.label + ' — pendiente'"
-              :aria-label="m.label + ' (pendiente)'"
-              aria-disabled="true"
-            >
-              <lucide-icon :name="m.icon" :size="17" />
-              <span class="pxn-shell__module-label">{{ m.label }}</span>
-            </span>
           </li>
         </ul>
 
@@ -124,12 +113,20 @@
           </ul>
         </div>
 
-        <div v-if="activePanel.reportsInline && activePanel.reportsInline.length" class="pxn-shell__panel-group">
+        <div v-if="inlineReports.length" class="pxn-shell__panel-group">
           <div class="pxn-shell__panel-grouptitle">Reportes del módulo</div>
-          <ul class="pxn-shell__panel-list pxn-shell__panel-list--reports">
-            <li v-for="(r, i) in activePanel.reportsInline" :key="'r' + i" class="pxn-shell__panel-static">
-              <lucide-icon name="bar-chart-3" :size="13" /><span>{{ r }}</span>
-              <span class="pxn-shell__panel-cond">pendiente</span>
+          <ul class="pxn-shell__panel-list">
+            <li v-for="(r, i) in inlineReports" :key="'r' + i">
+              <router-link
+                :to="r.route"
+                class="pxn-shell__panel-link"
+                :class="{ 'is-active': isActiveItem(r) }"
+                :aria-current="isActiveItem(r) ? 'page' : null"
+                @click.native="navDrawerOpen = false"
+              >
+                <lucide-icon :name="r.icon" :size="14" />
+                <span>{{ r.label }}</span>
+              </router-link>
             </li>
           </ul>
         </div>
@@ -356,7 +353,7 @@
 <script>
 import { mapGetters, mapActions } from "vuex";
 import TopNav from "@/containers/layouts/largeSidebar/TopNav.vue";
-import { SHELL_RAIL, SHELL_FOOT, resolveShellDomain, resolveReportCategory, firstAllowedRoute } from "@/views/app/_ui/data/shell-nav";
+import { SHELL_RAIL, SHELL_FOOT, resolveShellDomain, resolveReportCategory, firstAllowedRoute, resolveInlineReports } from "@/views/app/_ui/data/shell-nav";
 
 export default {
   name: "PxShell",
@@ -567,6 +564,19 @@ export default {
     // Config (Owner) y Finanzas completas caen aquí; Reportes/Ventas normales no.
     panelDense() {
       return this.visiblePanelGroups.reduce((n, g) => n + g.items.length, 0) > 14;
+    },
+
+    // "Reportes del módulo" — navegación REAL. Cada `panel.reportsInline` es una
+    // referencia por `route` al catálogo canónico SHELL_REPORTS (fuente única de
+    // label / icon / anyPerm / plan). Se filtra con el MISMO gate que el resto
+    // del panel: sin permiso (o sin plan) el acceso directo no se muestra —
+    // nunca un ítem estático ni un badge de estado.
+    inlineReports() {
+      return resolveInlineReports(this.activePanel && this.activePanel.reportsInline)
+        .filter(it => {
+          if (it.plan && !this.planFeature(it.plan)) return false;
+          return this.hasAnyPerm(it.anyPerm);
+        });
     }
   },
   methods: {
@@ -1116,7 +1126,6 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
   width: 3px; border-radius: 0 3px 3px 0;
   background: var(--pxn-primary);
 }
-.pxn-shell__module.is-pending { color: var(--pxn-ink-disabled); cursor: not-allowed; }
 
 /* panel contextual */
 .pxn-shell__panel { width: 232px; background: var(--pxn-surface); border-right: 1px solid var(--pxn-border); padding: var(--pxn-space-5); overflow-y: auto; }
@@ -1146,14 +1155,6 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 .pxn-shell__panel-link > span:first-of-type { flex: 1; }
 .pxn-shell__panel-link.is-active { background: var(--pxn-primary-soft); color: var(--pxn-primary-ink); font-weight: var(--pxn-fw-medium); }
 .pxn-shell__panel-ext { color: var(--pxn-ink-3); display: inline-flex; }
-.pxn-shell__panel-static {
-  display: flex; align-items: center; gap: var(--pxn-space-3);
-  padding: var(--pxn-space-3);
-  font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3);
-}
-.pxn-shell__panel-static > span:first-of-type { flex: 1; }
-.pxn-shell__panel-cond { font-size: 9px; color: var(--pxn-ink-3); background: var(--pxn-surface-3); padding: 1px 4px; border-radius: 3px; white-space: nowrap; }
-.pxn-shell__panel-list--reports li { color: var(--pxn-ink-3); }
 
 /* grupos colapsables (sólo panel denso: Configuración, Finanzas completa) */
 .pxn-shell__panel-group.is-collapsible { margin-bottom: var(--pxn-space-2); }

@@ -8,6 +8,7 @@ use App\Models\Adjustment;
 use App\Models\AdjustmentDetail;
 use App\Models\Attendance;
 use App\Models\Brand;
+use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Client;
 use App\Models\Company;
@@ -9708,5 +9709,141 @@ public function draftInvoices(Request $request)
         ]);
     }
 
+    // ==================================================================
+    // Kardex valorizado / Rotación de inventario
+    // ------------------------------------------------------------------
+    // Alcance: mismo patrón que el resto de reportes de inventario —
+    // is_all_warehouses + UserWarehouse. Filtro opcional `branch_id` que se
+    // resuelve a warehouse_ids vía warehouses.branch_id (moderno) +
+    // inventory_locations.branch_id. La lógica contable vive en los servicios
+    // App\Services\Reports\* (documentada allí).
+    // ==================================================================
+
+    /** IDs de almacén visibles para el usuario, opcionalmente acotados a una sucursal. */
+    private function inventoryReportWarehouseScope(Request $request): array
+    {
+        $user = $request->user('api') ?: Auth::user();
+
+        if ($user->is_all_warehouses) {
+            $allowed = Warehouse::whereNull('deleted_at')->pluck('id')->map('intval')->all();
+        } else {
+            $allowed = UserWarehouse::where('user_id', $user->id)->pluck('warehouse_id')->map('intval')->all();
+        }
+
+        $warehouseId = (int) $request->input('warehouse_id', 0);
+        if ($warehouseId) {
+            $allowed = array_values(array_intersect($allowed, [$warehouseId]));
+        }
+
+        $branchId = (int) $request->input('branch_id', 0);
+        if ($branchId) {
+            $branchWarehouses = Warehouse::whereNull('deleted_at')
+                ->where('branch_id', $branchId)
+                ->pluck('id')->map('intval')->all();
+
+            if (Schema::hasTable('inventory_locations')) {
+                $locWarehouses = DB::table('inventory_locations')
+                    ->whereNull('deleted_at')
+                    ->where('branch_id', $branchId)
+                    ->whereNotNull('warehouse_id')
+                    ->pluck('warehouse_id')->map('intval')->all();
+                $branchWarehouses = array_values(array_unique(array_merge($branchWarehouses, $locWarehouses)));
+            }
+
+            $allowed = array_values(array_intersect($allowed, $branchWarehouses));
+        }
+
+        return array_values(array_unique($allowed));
+    }
+
+    /** Sucursales + almacenes para los selects de los reportes de inventario. */
+    private function inventoryReportFilterOptions(array $warehouseIds): array
+    {
+        $warehouses = Warehouse::whereNull('deleted_at')
+            ->whereIn('id', $warehouseIds ?: [0])
+            ->get(['id', 'name', 'branch_id']);
+
+        $branchIds = $warehouses->pluck('branch_id')->filter()->unique()->values();
+        $branches = Branch::whereNull('deleted_at')
+            ->whereIn('id', $branchIds->all() ?: [0])
+            ->get(['id', 'name']);
+
+        return [
+            'warehouses' => $warehouses,
+            'branches' => $branches,
+            'categories' => Category::whereNull('deleted_at')->orderBy('name')->get(['id', 'name']),
+        ];
+    }
+
+    public function valued_kardex(Request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'valued_kardex_report', Product::class);
+
+        $warehouseIds = $this->inventoryReportWarehouseScope($request);
+        $options = $this->inventoryReportFilterOptions($warehouseIds);
+
+        $productId = (int) $request->input('product_id', 0);
+
+        // Sin producto seleccionado: selector de productos (no el libro).
+        if (! $productId) {
+            $search = trim((string) $request->input('search', ''));
+            $products = Product::whereNull('deleted_at')
+                ->where('type', '!=', 'is_service')
+                ->when($search !== '', fn ($q) => $q->where(function ($qq) use ($search) {
+                    $qq->where('name', 'LIKE', "%{$search}%")->orWhere('code', 'LIKE', "%{$search}%");
+                }))
+                ->orderBy('name')
+                ->limit(50)
+                ->get(['id', 'code', 'name', 'is_variant']);
+
+            return response()->json([
+                'mode' => 'picker',
+                'products' => $products,
+                'warehouses' => $options['warehouses'],
+                'branches' => $options['branches'],
+            ]);
+        }
+
+        $report = app(\App\Services\Reports\ValuedKardexReportService::class)->build([
+            'product_id' => $productId,
+            'product_variant_id' => $request->input('product_variant_id'),
+            'warehouse_ids' => $warehouseIds,
+            'branch_id' => (int) $request->input('branch_id', 0),
+            'from' => $request->input('from') ?: null,
+            'to' => $request->input('to') ?: null,
+        ]);
+
+        $report['mode'] = 'ledger';
+        $report['warehouses'] = $options['warehouses'];
+        $report['branches'] = $options['branches'];
+
+        return response()->json($report);
+    }
+
+    public function inventory_turnover(Request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'inventory_turnover_report', Product::class);
+
+        $warehouseIds = $this->inventoryReportWarehouseScope($request);
+        $options = $this->inventoryReportFilterOptions($warehouseIds);
+
+        $report = app(\App\Services\Reports\InventoryTurnoverReportService::class)->build([
+            'warehouse_ids' => $warehouseIds,
+            'from' => $request->input('from') ?: null,
+            'to' => $request->input('to') ?: null,
+            'category_id' => (int) $request->input('category_id', 0),
+            'search' => (string) $request->input('search', ''),
+            'page' => (int) $request->input('page', 1),
+            'limit' => (int) $request->input('limit', 25),
+            'sort_field' => $request->input('SortField', 'turnover'),
+            'sort_dir' => $request->input('SortType', 'desc'),
+        ]);
+
+        $report['warehouses'] = $options['warehouses'];
+        $report['branches'] = $options['branches'];
+        $report['categories'] = $options['categories'];
+
+        return response()->json($report);
+    }
 
 }
