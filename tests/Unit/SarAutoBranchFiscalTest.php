@@ -3,32 +3,40 @@
 namespace Tests\Unit;
 
 use App\Exceptions\SarFiscalException;
+use App\Models\Branch;
+use App\Models\CashDrawer;
+use App\Models\SarBranchSetting;
+use App\Models\SarPointOfIssue;
 use App\Models\Sale;
 use App\Services\PosAwareSarFiscalSaleService;
-use App\Services\SarFiscalSaleService;
+use App\Services\SarBranchFiscalService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * SAR / CAI multi-branch invoicing.
+ * PRODEX manages the SAR technical structure per branch. The tenant only toggles
+ * "Facturación SAR habilitada" and types its authorised data.
  *
- *   Branch -> InventoryLocation -> CashDrawer -> SAR Point -> Authorization -> CAI -> range
- *
- * Each branch consumes only its own CAI / correlativo range. Every mismatch is
- * rejected before a fiscal document is created.
+ *   Perfil habilitado          -> cada sucursal activa aparece (deshabilitada)
+ *   Sucursal habilitada        -> 1 punto gestionado + pivote a sus cajas activas
+ *   Caja nueva                 -> se cubre sola
+ *   Deshabilitar una sucursal  -> no se puede facturar desde ella
+ *   Sucursal A nunca consume el CAI de la Sucursal B
+ *   Configuraciones existentes se conservan
  */
-class SarMultiBranchFiscalTest extends TestCase
+class SarAutoBranchFiscalTest extends TestCase
 {
-    private SarFiscalSaleService $service;
+    private SarBranchFiscalService $sync;
+
+    private PosAwareSarFiscalSaleService $sales;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->buildSchema();
-        $this->service = app(SarFiscalSaleService::class);
-
-        $this->assertInstanceOf(PosAwareSarFiscalSaleService::class, $this->service, 'Runtime binding must be the POS-aware resolver.');
+        $this->sync = app(SarBranchFiscalService::class);
+        $this->sales = app(PosAwareSarFiscalSaleService::class);
     }
 
     // ---------------------------------------------------------------- schema ---
@@ -39,6 +47,7 @@ class SarMultiBranchFiscalTest extends TestCase
             $t->increments('id');
             $t->string('name')->nullable();
             $t->string('code')->nullable();
+            $t->string('address')->nullable();
             $t->tinyInteger('is_active')->default(1);
             $t->integer('default_inventory_location_id')->nullable();
             $t->timestamps();
@@ -173,15 +182,15 @@ class SarMultiBranchFiscalTest extends TestCase
         });
         Schema::create('sar_points_of_issue', function ($t) {
             $t->increments('id');
-            $t->string('establishment_code', 3);
-            $t->string('point_code', 3);
+            $t->string('establishment_code', 3)->nullable();
+            $t->string('point_code', 3)->nullable();
             $t->string('name');
             $t->text('address');
             $t->unsignedInteger('branch_id')->nullable();
             $t->unsignedInteger('inventory_location_id')->nullable();
             $t->unsignedInteger('warehouse_id')->nullable();
             $t->unsignedInteger('cash_drawer_id')->nullable();
-            $t->boolean('active')->default(true);
+            $t->boolean('active')->default(false);
             $t->boolean('is_auto_managed')->default(false);
             $t->timestamps();
         });
@@ -241,55 +250,55 @@ class SarMultiBranchFiscalTest extends TestCase
         ]);
     }
 
-    private function branch(string $name): int
+    private function branch(string $name, bool $active = true): int
     {
-        return (int) DB::table('branches')->insertGetId(['name' => $name, 'code' => strtoupper(substr($name, 0, 3)), 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()]);
+        return (int) DB::table('branches')->insertGetId([
+            'name' => $name, 'code' => strtoupper(substr($name, 0, 3)), 'is_active' => $active ? 1 : 0,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
     }
 
     private function location(int $branchId, string $name = 'Piso de venta'): int
     {
-        return (int) DB::table('inventory_locations')->insertGetId(['branch_id' => $branchId, 'name' => $name, 'type' => 'sales_floor', 'is_sellable' => 1, 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()]);
-    }
-
-    private function drawer(int $branchId, ?int $locationId, string $name): int
-    {
-        return (int) DB::table('cash_drawers')->insertGetId(['branch_id' => $branchId, 'inventory_location_id' => $locationId, 'name' => $name, 'code' => strtoupper(str_replace(' ', '', $name)), 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()]);
-    }
-
-    private function point(array $o): int
-    {
-        $id = (int) DB::table('sar_points_of_issue')->insertGetId(array_merge([
-            'establishment_code' => '000', 'point_code' => '001', 'name' => 'Punto', 'address' => 'Dir',
-            'branch_id' => null, 'inventory_location_id' => null, 'warehouse_id' => null, 'cash_drawer_id' => null,
-            'active' => true, 'is_auto_managed' => false, 'created_at' => now(), 'updated_at' => now(),
-        ], $o));
-
-        // Mirrors the per-branch migration backfill: a branch that already has an
-        // active point is "Facturación SAR habilitada".
-        $branchId = $o['branch_id'] ?? null;
-        if ($branchId) {
-            $this->enableBranch((int) $branchId);
-        }
+        $id = (int) DB::table('inventory_locations')->insertGetId([
+            'branch_id' => $branchId, 'name' => $name, 'type' => 'sales_floor', 'is_sellable' => 1, 'is_active' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('branches')->where('id', $branchId)->whereNull('default_inventory_location_id')
+            ->update(['default_inventory_location_id' => $id]);
 
         return $id;
     }
 
-    private function enableBranch(int $branchId): void
+    private function drawer(int $branchId, ?int $locationId, string $name, bool $active = true): int
     {
-        DB::table('sar_branch_settings')->updateOrInsert(
-            ['branch_id' => $branchId],
-            ['enabled' => true, 'updated_at' => now(), 'created_at' => now()]
-        );
+        return (int) DB::table('cash_drawers')->insertGetId([
+            'branch_id' => $branchId, 'inventory_location_id' => $locationId, 'name' => $name,
+            'code' => strtoupper(str_replace(' ', '', $name)), 'is_active' => $active ? 1 : 0,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
     }
 
-    private function authorization(int $pointId, array $o = []): int
+    private function authorizationForBranch(int $branchId, array $o = []): int
     {
+        $point = SarPointOfIssue::where('branch_id', $branchId)->firstOrFail();
+
         return (int) DB::table('sar_authorizations')->insertGetId(array_merge([
-            'point_of_issue_id' => $pointId, 'document_type' => '01', 'cai' => 'CAI-'.strtoupper(bin2hex(random_bytes(4))),
+            'point_of_issue_id' => $point->id, 'document_type' => '01',
+            'cai' => 'CAI-'.strtoupper(bin2hex(random_bytes(4))),
             'range_start' => 1, 'range_end' => 100, 'next_number' => 1,
             'deadline' => now()->addYear()->toDateString(), 'status' => 'active',
             'created_at' => now(), 'updated_at' => now(),
         ], $o));
+    }
+
+    private function configureBranch(int $branchId, string $est, string $pt, array $authOverrides = []): void
+    {
+        $this->sync->setBranchEnabled($branchId, true);
+        $point = SarPointOfIssue::where('branch_id', $branchId)->firstOrFail();
+        $point->update(['establishment_code' => $est, 'point_code' => $pt]);
+        $this->sync->syncBranch(Branch::findOrFail($branchId));
+        $this->authorizationForBranch($branchId, $authOverrides);
     }
 
     private function sale(int $branchId, int $locationId, int $drawerId): Sale
@@ -321,178 +330,164 @@ class SarMultiBranchFiscalTest extends TestCase
 
     // ---------------------------------------------------------------- tests ---
 
-    public function test_1_and_2_each_branch_issues_from_its_own_cai(): void
+    public function test_1_enabling_the_profile_registers_every_active_branch_disabled(): void
     {
         $this->profile();
+        $b1 = $this->branch('Sucursal Principal');
+        $b2 = $this->branch('Sucursal Norte');
+        $inactive = $this->branch('Sucursal Cerrada', false);
 
-        $b1 = $this->branch('Sucursal 1');
-        $l1 = $this->location($b1);
-        $d1 = $this->drawer($b1, $l1, 'Caja 1');
-        $p1 = $this->point(['establishment_code' => '001', 'point_code' => '001', 'branch_id' => $b1, 'inventory_location_id' => $l1, 'cash_drawer_id' => $d1]);
-        $a1 = $this->authorization($p1, ['cai' => 'CAI-A', 'range_start' => 1000, 'range_end' => 1999, 'next_number' => 1000]);
+        $this->sync->syncAllActiveBranches();
 
-        $b2 = $this->branch('Sucursal 2');
-        $l2 = $this->location($b2);
-        $d2 = $this->drawer($b2, $l2, 'Caja 2');
-        $p2 = $this->point(['establishment_code' => '002', 'point_code' => '001', 'branch_id' => $b2, 'inventory_location_id' => $l2, 'cash_drawer_id' => $d2]);
-        $a2 = $this->authorization($p2, ['cai' => 'CAI-B', 'range_start' => 5000, 'range_end' => 5999, 'next_number' => 5000]);
+        $this->assertTrue(SarBranchSetting::where('branch_id', $b1)->exists());
+        $this->assertTrue(SarBranchSetting::where('branch_id', $b2)->exists());
+        $this->assertFalse(SarBranchSetting::where('branch_id', $inactive)->exists(), 'Inactive branches are not registered.');
 
-        $doc1 = $this->service->issueIfEnabled($this->sale($b1, $l1, $d1), $d1);
-        $doc2 = $this->service->issueIfEnabled($this->sale($b2, $l2, $d2), $d2);
-
-        $this->assertSame('CAI-A', $doc1->cai);
-        $this->assertSame('001-001-01-00001000', $doc1->fiscal_number);
-        $this->assertSame((int) $a1, (int) $doc1->authorization_id);
-
-        $this->assertSame('CAI-B', $doc2->cai);
-        $this->assertSame('002-001-01-00005000', $doc2->fiscal_number);
-        $this->assertSame((int) $a2, (int) $doc2->authorization_id);
-
-        $this->assertSame(1001, (int) DB::table('sar_authorizations')->where('id', $a1)->value('next_number'));
-        $this->assertSame(5001, (int) DB::table('sar_authorizations')->where('id', $a2)->value('next_number'));
+        $this->assertFalse((bool) SarBranchSetting::where('branch_id', $b1)->value('enabled'));
+        $this->assertFalse((bool) SarBranchSetting::where('branch_id', $b2)->value('enabled'));
+        $this->assertSame(0, SarPointOfIssue::count(), 'No point is created until a branch is enabled.');
     }
 
-    public function test_3_drawer_from_another_branch_is_rejected(): void
+    public function test_2_a_branch_created_later_appears_automatically_disabled(): void
     {
         $this->profile();
-        $b1 = $this->branch('Sucursal 1');
-        $l1 = $this->location($b1);
-        $d1 = $this->drawer($b1, $l1, 'Caja 1');
-        $this->authorization($this->point(['branch_id' => $b1, 'inventory_location_id' => $l1, 'cash_drawer_id' => $d1]));
+        $this->branch('Sucursal Principal');
+        $this->sync->syncAllActiveBranches();
 
-        $b2 = $this->branch('Sucursal 2');
-        $l2 = $this->location($b2);
-        $d2 = $this->drawer($b2, $l2, 'Caja 2');
+        $late = $this->branch('Sucursal Tardía');
+        $this->sync->syncAllActiveBranches();
 
+        $setting = SarBranchSetting::where('branch_id', $late)->first();
+        $this->assertNotNull($setting);
+        $this->assertFalse((bool) $setting->enabled);
+    }
+
+    public function test_3_a_cash_drawer_added_later_is_covered_automatically(): void
+    {
+        $this->profile();
+        $b = $this->branch('Sucursal Principal');
+        $l = $this->location($b);
+        $d1 = $this->drawer($b, $l, 'Caja 1');
+
+        $this->sync->setBranchEnabled($b, true);
+        $point = SarPointOfIssue::where('branch_id', $b)->firstOrFail();
+        $this->assertEqualsCanonicalizing([$d1], $point->cashDrawers()->pluck('cash_drawers.id')->all());
+
+        // A caja created after SAR was enabled.
+        $d2 = $this->drawer($b, $l, 'Caja 2');
+        $this->sync->syncCashDrawer(CashDrawer::findOrFail($d2));
+
+        $this->assertEqualsCanonicalizing(
+            [$d1, $d2],
+            $point->fresh()->cashDrawers()->pluck('cash_drawers.id')->all()
+        );
+    }
+
+    public function test_4_repeated_sync_never_duplicates_points_or_pivot_rows(): void
+    {
+        $this->profile();
+        $b = $this->branch('Sucursal Principal');
+        $l = $this->location($b);
+        $this->drawer($b, $l, 'Caja 1');
+        $this->drawer($b, $l, 'Caja 2');
+
+        $branch = Branch::findOrFail($b);
+        $this->sync->setBranchEnabled($b, true);
+        $this->sync->syncBranch($branch);
+        $this->sync->syncBranch($branch);
+        $this->sync->syncAllActiveBranches();
+
+        $this->assertSame(1, SarPointOfIssue::where('branch_id', $b)->count());
+        $this->assertSame(2, DB::table('sar_point_cash_drawers')->count());
+        $this->assertSame(1, SarBranchSetting::where('branch_id', $b)->count());
+    }
+
+    public function test_5_disabling_a_branch_blocks_invoicing_from_it(): void
+    {
+        $this->profile();
+        $b = $this->branch('Sucursal Principal');
+        $l = $this->location($b);
+        $d = $this->drawer($b, $l, 'Caja 1');
+        $this->configureBranch($b, '001', '001', ['cai' => 'CAI-A', 'range_start' => 1, 'range_end' => 50, 'next_number' => 1]);
+
+        // Works while enabled.
+        $doc = $this->sales->issueIfEnabled($this->sale($b, $l, $d), $d);
+        $this->assertSame('CAI-A', $doc->cai);
+
+        // Disable fiscally -> POS is refused for that branch.
+        $this->sync->setBranchEnabled($b, false);
+
+        $this->expectException(SarFiscalException::class);
+        $this->expectExceptionMessage('no está habilitada para');
+        $this->sales->issueIfEnabled($this->sale($b, $l, $d), $d);
+    }
+
+    public function test_6_branch_a_never_consumes_branch_b_cai(): void
+    {
+        $this->profile();
+
+        $a = $this->branch('Sucursal A');
+        $la = $this->location($a);
+        $da = $this->drawer($a, $la, 'Caja A');
+        $this->configureBranch($a, '001', '001', ['cai' => 'CAI-A', 'range_start' => 1000, 'range_end' => 1999, 'next_number' => 1000]);
+
+        $bb = $this->branch('Sucursal B');
+        $lb = $this->location($bb);
+        $db = $this->drawer($bb, $lb, 'Caja B');
+        $this->configureBranch($bb, '002', '001', ['cai' => 'CAI-B', 'range_start' => 5000, 'range_end' => 5999, 'next_number' => 5000]);
+
+        $docA = $this->sales->issueIfEnabled($this->sale($a, $la, $da), $da);
+        $docB = $this->sales->issueIfEnabled($this->sale($bb, $lb, $db), $db);
+
+        $this->assertSame('CAI-A', $docA->cai);
+        $this->assertSame('001-001-01-00001000', $docA->fiscal_number);
+        $this->assertSame('CAI-B', $docB->cai);
+        $this->assertSame('002-001-01-00005000', $docB->fiscal_number);
+
+        // A sale in branch A that somehow references branch B's drawer is rejected.
         $this->expectException(SarFiscalException::class);
         $this->expectExceptionMessage('pertenece a otra sucursal');
-        $this->service->issueIfEnabled($this->sale($b2, $l2, $d1), $d1); // sale in branch 2, drawer of branch 1
+        $this->sales->issueIfEnabled($this->sale($a, $la, $db), $db);
     }
 
-    public function test_4_drawer_without_a_sar_point_is_rejected(): void
+    public function test_7_existing_manual_point_is_adopted_and_keeps_working(): void
     {
         $this->profile();
-        $b = $this->branch('Sucursal Sur');
+        $b = $this->branch('Sucursal Heredada');
         $l = $this->location($b);
-        $d = $this->drawer($b, $l, 'Caja Sur');
-        $this->enableBranch($b); // fiscally enabled, but no point / codes yet
+        $d = $this->drawer($b, $l, 'Caja Heredada');
 
-        $this->expectException(SarFiscalException::class);
-        $this->expectExceptionMessage('todavía no está cubierta por un punto de emisión SAR');
-        $this->service->issueIfEnabled($this->sale($b, $l, $d), $d);
-    }
-
-    public function test_5_point_without_an_active_authorization_is_rejected(): void
-    {
-        $this->profile();
-        $b = $this->branch('S');
-        $l = $this->location($b);
-        $d = $this->drawer($b, $l, 'C');
-        $p = $this->point(['branch_id' => $b, 'inventory_location_id' => $l, 'cash_drawer_id' => $d]);
-        $this->authorization($p, ['status' => 'draft']); // never activated
-
-        $this->expectException(SarFiscalException::class);
-        $this->expectExceptionMessage('No existe una autorización SAR activa');
-        $this->service->issueIfEnabled($this->sale($b, $l, $d), $d);
-    }
-
-    public function test_6_expired_or_exhausted_cai_is_rejected(): void
-    {
-        $this->profile();
-
-        // Expired
-        $b = $this->branch('S');
-        $l = $this->location($b);
-        $d = $this->drawer($b, $l, 'C');
-        $p = $this->point(['branch_id' => $b, 'inventory_location_id' => $l, 'cash_drawer_id' => $d]);
-        $expired = $this->authorization($p, ['deadline' => now()->subDay()->toDateString()]);
-
-        try {
-            $this->service->issueIfEnabled($this->sale($b, $l, $d), $d);
-            $this->fail('Expired CAI should be rejected.');
-        } catch (SarFiscalException $e) {
-            $this->assertStringContainsString('venció', $e->getMessage());
-        }
-        $this->assertSame('expired', DB::table('sar_authorizations')->where('id', $expired)->value('status'));
-
-        // Exhausted (next_number past range_end)
-        $b2 = $this->branch('S2');
-        $l2 = $this->location($b2);
-        $d2 = $this->drawer($b2, $l2, 'C2');
-        $p2 = $this->point(['establishment_code' => '009', 'branch_id' => $b2, 'inventory_location_id' => $l2, 'cash_drawer_id' => $d2]);
-        $exhausted = $this->authorization($p2, ['range_start' => 1, 'range_end' => 10, 'next_number' => 11]);
-
-        try {
-            $this->service->issueIfEnabled($this->sale($b2, $l2, $d2), $d2);
-            $this->fail('Exhausted range should be rejected.');
-        } catch (SarFiscalException $e) {
-            $this->assertStringContainsString('agotado', $e->getMessage());
-        }
-        $this->assertSame('exhausted', DB::table('sar_authorizations')->where('id', $exhausted)->value('status'));
-    }
-
-    public function test_7_two_branches_never_share_correlativos(): void
-    {
-        $this->profile();
-
-        $b1 = $this->branch('B1');
-        $l1 = $this->location($b1);
-        $d1 = $this->drawer($b1, $l1, 'D1');
-        $a1 = $this->authorization($this->point(['establishment_code' => '001', 'branch_id' => $b1, 'inventory_location_id' => $l1, 'cash_drawer_id' => $d1]), ['cai' => 'CAI-1', 'range_start' => 1, 'range_end' => 50, 'next_number' => 1]);
-
-        $b2 = $this->branch('B2');
-        $l2 = $this->location($b2);
-        $d2 = $this->drawer($b2, $l2, 'D2');
-        $a2 = $this->authorization($this->point(['establishment_code' => '002', 'branch_id' => $b2, 'inventory_location_id' => $l2, 'cash_drawer_id' => $d2]), ['cai' => 'CAI-2', 'range_start' => 1, 'range_end' => 50, 'next_number' => 1]);
-
-        $doc1a = $this->service->issueIfEnabled($this->sale($b1, $l1, $d1), $d1);
-        $doc2a = $this->service->issueIfEnabled($this->sale($b2, $l2, $d2), $d2);
-        $doc1b = $this->service->issueIfEnabled($this->sale($b1, $l1, $d1), $d1);
-
-        $this->assertSame(1, (int) $doc1a->sequence);
-        $this->assertSame(1, (int) $doc2a->sequence);
-        $this->assertSame(2, (int) $doc1b->sequence);
-
-        // Different CAI, different authorization — no shared correlative.
-        $this->assertNotSame($doc1a->authorization_id, $doc2a->authorization_id);
-        $this->assertSame('CAI-1', $doc1a->cai);
-        $this->assertSame('CAI-2', $doc2a->cai);
-
-        // The per-authorization sequence uniqueness still holds.
-        $this->assertSame(2, DB::table('sar_fiscal_documents')->where('authorization_id', $a1)->count());
-        $this->assertSame(1, DB::table('sar_fiscal_documents')->where('authorization_id', $a2)->count());
-    }
-
-    public function test_8_legacy_point_still_works_after_the_backfill(): void
-    {
-        // Simulate a point created before the multi-branch change: warehouse_id +
-        // cash_drawer_id only. The migration backfill copies branch/location from
-        // the CashDrawer.
-        $this->profile();
-        $b = $this->branch('Legacy');
-        $l = $this->location($b);
-        DB::table('warehouses')->insert(['id' => 77, 'branch_id' => $b, 'name' => 'WH Legacy', 'created_at' => now(), 'updated_at' => now()]);
-        $d = $this->drawer($b, $l, 'Caja Legacy');
-
-        $pointId = $this->point([
-            'establishment_code' => '050', 'point_code' => '001',
-            'branch_id' => null, 'inventory_location_id' => null,
-            'warehouse_id' => 77, 'cash_drawer_id' => $d,
+        // A point created the old way: explicit codes + single cash_drawer_id.
+        $legacyId = (int) DB::table('sar_points_of_issue')->insertGetId([
+            'establishment_code' => '077', 'point_code' => '003', 'name' => 'Punto heredado', 'address' => 'Dir',
+            'branch_id' => $b, 'inventory_location_id' => $l, 'cash_drawer_id' => $d,
+            'active' => true, 'is_auto_managed' => false, 'created_at' => now(), 'updated_at' => now(),
         ]);
-        $this->authorization($pointId, ['cai' => 'CAI-LEG', 'range_start' => 1, 'range_end' => 10, 'next_number' => 1]);
-        $this->enableBranch($b); // existing tenants: branch stays enabled after the upgrade
+        DB::table('sar_point_cash_drawers')->insert([
+            'sar_point_of_issue_id' => $legacyId, 'cash_drawer_id' => $d, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('sar_branch_settings')->insert([
+            'branch_id' => $b, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('sar_authorizations')->insert([
+            'point_of_issue_id' => $legacyId, 'document_type' => '01', 'cai' => 'CAI-LEGACY',
+            'range_start' => 1, 'range_end' => 10, 'next_number' => 1,
+            'deadline' => now()->addYear()->toDateString(), 'status' => 'active',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
 
-        // Run the backfill portion of the real migration.
-        $migration = require dirname(__DIR__, 2).'/database/migrations/tenant/2026_09_07_000000_link_sar_points_to_branch_location_drawer.php';
-        $migration->up();
+        // The new sync adopts the existing point instead of creating a second one.
+        $point = $this->sync->syncBranch(Branch::findOrFail($b));
 
-        $point = DB::table('sar_points_of_issue')->where('id', $pointId)->first();
-        $this->assertSame($b, (int) $point->branch_id, 'branch_id backfilled from the cash drawer');
-        $this->assertSame($l, (int) $point->inventory_location_id, 'inventory_location_id backfilled from the cash drawer');
+        $this->assertSame($legacyId, $point->id, 'The legacy point is adopted, not duplicated.');
+        $this->assertTrue((bool) $point->is_auto_managed);
+        $this->assertSame('077', $point->establishment_code, 'Authorised codes are preserved.');
+        $this->assertSame('003', $point->point_code);
+        $this->assertSame(1, SarPointOfIssue::where('branch_id', $b)->count());
 
-        // And a modern POS sale from that drawer now issues cleanly.
-        $doc = $this->service->issueIfEnabled($this->sale($b, $l, $d), $d);
-        $this->assertSame('CAI-LEG', $doc->cai);
-        $this->assertSame('050-001-01-00000001', $doc->fiscal_number);
+        // And it still invoices with the existing CAI.
+        $doc = $this->sales->issueIfEnabled($this->sale($b, $l, $d), $d);
+        $this->assertSame('CAI-LEGACY', $doc->cai);
+        $this->assertSame('077-003-01-00000001', $doc->fiscal_number);
     }
 }

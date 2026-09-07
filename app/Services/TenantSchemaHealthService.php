@@ -59,6 +59,8 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_09_05_000000_add_quotation_id_to_sales.php',
         // SAR multi-branch: anchor points of issue to Branch -> InventoryLocation -> CashDrawer.
         'database/migrations/tenant/2026_09_07_000000_link_sar_points_to_branch_location_drawer.php',
+        // SAR per-branch fiscal config: managed points + point<->cash drawers pivot.
+        'database/migrations/tenant/2026_09_08_000000_sar_per_branch_fiscal_config.php',
     ];
 
     public function checkTenant(Tenant $tenant): array

@@ -21,8 +21,11 @@ class PosAwareSarFiscalSaleArchitectureTest extends TestCase
     {
         $service = $this->read('app/Services/PosAwareSarFiscalSaleService.php');
 
-        // The point is resolved by the full operational triple, not by warehouse.
-        $this->assertStringContainsString('SarPointOfIssue::forOperationalContext(', $service);
+        // The point is resolved through the drawer it covers (pivot), not by
+        // warehouse, and only for a branch whose fiscal invoicing is enabled.
+        $this->assertStringContainsString('->coveringDrawer($cashDrawerId)', $service);
+        $this->assertStringContainsString('SarBranchSetting::where(\'branch_id\', $sale->branch_id)', $service);
+        $this->assertStringContainsString('La facturación SAR no está habilitada para ', $service);
         $this->assertStringContainsString('(int) $sale->branch_id', $service);
         $this->assertStringContainsString('(int) $sale->inventory_location_id', $service);
         $this->assertStringContainsString('(int) $cashDrawerId', $service);
@@ -36,8 +39,8 @@ class PosAwareSarFiscalSaleArchitectureTest extends TestCase
         $this->assertStringContainsString('pertenece a otra sucursal', $service);
         $this->assertStringContainsString('(int) $drawer->inventory_location_id !== (int) $sale->inventory_location_id', $service);
 
-        // Missing-point message names branch / location / drawer.
-        $this->assertStringContainsString('No hay un punto de emisión SAR activo para ', $service);
+        // Missing-point message names the drawer and its branch.
+        $this->assertStringContainsString('todavía no está cubierta por un punto de emisión SAR', $service);
 
         // Defence in depth: resolved point + authorization must belong to the branch.
         $this->assertStringContainsString('El punto SAR resuelto no pertenece a la sucursal de la venta.', $service);

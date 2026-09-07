@@ -8,6 +8,7 @@ use App\Models\InventoryLocation;
 use App\Models\Warehouse;
 use App\Services\BranchScopeService;
 use App\Services\InventoryLocationScopeService;
+use App\Services\SarBranchFiscalService;
 use App\Services\WarehouseScopeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -104,6 +105,8 @@ class CashDrawerController extends BaseController
             ]);
         });
 
+        $this->syncSarFiscalCoverage($drawer);
+
         return response()->json([
             'success' => true,
             'cash_drawer' => $drawer->load(['branch:id,code,name', 'inventoryLocation:id,branch_id,code,name,type,is_sellable', 'warehouse:id,name']),
@@ -130,6 +133,8 @@ class CashDrawerController extends BaseController
             'is_active' => $data['is_active'] ?? false,
         ]);
 
+        $this->syncSarFiscalCoverage($drawer->fresh());
+
         return response()->json([
             'success' => true,
             'cash_drawer' => $drawer->fresh()->load(['branch:id,code,name', 'inventoryLocation:id,branch_id,code,name,type,is_sellable', 'warehouse:id,name']),
@@ -149,6 +154,20 @@ class CashDrawerController extends BaseController
         ]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * A new / re-branched drawer in a fiscally enabled branch is picked up by
+     * that branch's PRODEX-managed SAR point automatically. Never blocks the
+     * drawer save if the fiscal sync fails.
+     */
+    private function syncSarFiscalCoverage(CashDrawer $drawer): void
+    {
+        try {
+            app(SarBranchFiscalService::class)->syncCashDrawer($drawer);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     private function validated(Request $request, ?int $drawerId = null): array

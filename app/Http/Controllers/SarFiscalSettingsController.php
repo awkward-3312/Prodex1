@@ -8,10 +8,12 @@ use App\Models\Client;
 use App\Models\InventoryLocation;
 use App\Models\Product;
 use App\Models\SarAuthorization;
+use App\Models\SarBranchSetting;
 use App\Models\SarFiscalProfile;
 use App\Models\SarPointOfIssue;
 use App\Models\Setting;
 use App\Models\Warehouse;
+use App\Services\SarBranchFiscalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -38,9 +40,13 @@ class SarFiscalSettingsController extends BaseController
             'branch:id,name,code',
             'inventoryLocation:id,branch_id,name,type,is_sellable',
             'cashDrawer:id,branch_id,inventory_location_id,name,code,is_active',
+            'cashDrawers:id,branch_id,inventory_location_id,name,code',
         ])->orderBy('establishment_code')->orderBy('point_code')->get()
             ->map(function (SarPointOfIssue $point) {
                 $active = $this->readyAuthorization($point);
+                // A PRODEX-managed point covers its drawers through the pivot; a
+                // legacy point still through the cash_drawer_id column.
+                $coversAnyDrawer = $point->cash_drawer_id || $point->cashDrawers->isNotEmpty();
                 $point->setAttribute('has_active_cai', (bool) $active);
                 $point->setAttribute('active_cai', $active ? [
                     'cai' => $active->cai,
@@ -51,12 +57,20 @@ class SarFiscalSettingsController extends BaseController
                     'deadline' => optional($active->deadline)->toDateString(),
                 ] : null);
                 $point->setAttribute('fiscal_ready', (bool) ($active && $point->active
-                    && $point->branch_id && $point->inventory_location_id && $point->cash_drawer_id));
+                    && $point->branch_id && $coversAnyDrawer));
                 return $point;
             });
 
+        // Self-healing: keep PRODEX-managed points in sync with the current
+        // branches / drawers every time the screen is opened, so a new drawer or
+        // location is picked up even without an explicit hook.
+        if ($profile && $profile->enabled) {
+            app(SarBranchFiscalService::class)->syncAllActiveBranches();
+        }
+
         return response()->json([
             'profile' => $profile,
+            'branch_cards' => $this->branchCards(),
             'points' => $points,
             'branches' => Branch::whereNull('deleted_at')
                 ->orderBy('name')
@@ -144,7 +158,222 @@ class SarFiscalSettingsController extends BaseController
             ? tap($profile)->update($data)
             : SarFiscalProfile::create($data);
 
-        return response()->json(['success' => true, 'profile' => $profile->fresh()]);
+        // Enabling the fiscal profile makes every active branch appear in
+        // Facturación SAR (disabled until the admin enables + configures each).
+        if ($profile->enabled) {
+            app(SarBranchFiscalService::class)->syncAllActiveBranches();
+        }
+
+        return response()->json([
+            'success' => true,
+            'profile' => $profile->fresh(),
+            'branch_cards' => $this->branchCards(),
+        ]);
+    }
+
+    // ---------------------------------------------------------------------------
+    //  Per-branch fiscal configuration (PRODEX manages sar_points_of_issue)
+    // ---------------------------------------------------------------------------
+
+    public function toggleBranch(Request $request, int $branch)
+    {
+        $this->authorizeSettings($request);
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+
+        $branchModel = Branch::whereNull('deleted_at')->findOrFail($branch);
+        if ($data['enabled'] && ! (int) ($branchModel->is_active ?? 1)) {
+            return response()->json(['message' => 'No puedes habilitar la facturación SAR de una sucursal inactiva.'], 422);
+        }
+
+        app(SarBranchFiscalService::class)->setBranchEnabled($branch, (bool) $data['enabled']);
+
+        return response()->json(['success' => true, 'branch_cards' => $this->branchCards()]);
+    }
+
+    public function saveBranchPoint(Request $request, int $branch)
+    {
+        $this->authorizeSettings($request);
+
+        $data = $request->validate([
+            'establishment_code' => ['required', 'regex:/^\d{3}$/'],
+            'point_code' => ['required', 'regex:/^\d{3}$/'],
+        ]);
+
+        $branchModel = Branch::whereNull('deleted_at')->findOrFail($branch);
+        $point = app(SarBranchFiscalService::class)->syncBranch($branchModel);
+
+        // establishment+point codes are unique across the tenant.
+        $clash = SarPointOfIssue::where('establishment_code', $data['establishment_code'])
+            ->where('point_code', $data['point_code'])
+            ->where('id', '<>', $point->id)
+            ->exists();
+        if ($clash) {
+            return response()->json(['message' => 'Ese establecimiento y punto ya están en uso por otra sucursal.'], 422);
+        }
+
+        $point->establishment_code = $data['establishment_code'];
+        $point->point_code = $data['point_code'];
+        $point->save();
+
+        // Re-run sync so "active" flips once codes + drawers are present.
+        app(SarBranchFiscalService::class)->syncBranch($branchModel);
+
+        return response()->json(['success' => true, 'branch_cards' => $this->branchCards()]);
+    }
+
+    public function saveBranchDrawers(Request $request, int $branch)
+    {
+        $this->authorizeSettings($request);
+
+        $data = $request->validate([
+            'cash_drawer_ids' => ['present', 'array'],
+            'cash_drawer_ids.*' => ['integer'],
+        ]);
+
+        $branchModel = Branch::whereNull('deleted_at')->findOrFail($branch);
+        $point = app(SarBranchFiscalService::class)->syncBranch($branchModel);
+
+        $branchDrawerIds = CashDrawer::whereNull('deleted_at')
+            ->where('is_active', true)
+            ->where('branch_id', $branch)
+            ->pluck('id')
+            ->all();
+
+        $selected = array_values(array_intersect(
+            array_map('intval', $data['cash_drawer_ids']),
+            $branchDrawerIds
+        ));
+
+        DB::transaction(function () use ($point, $selected, $branchDrawerIds) {
+            // drop coverage for this branch's drawers that were unchecked
+            DB::table('sar_point_cash_drawers')
+                ->where('sar_point_of_issue_id', $point->id)
+                ->whereIn('cash_drawer_id', array_diff($branchDrawerIds, $selected) ?: [0])
+                ->delete();
+
+            foreach ($selected as $drawerId) {
+                $claimedElsewhere = DB::table('sar_point_cash_drawers')
+                    ->where('cash_drawer_id', $drawerId)
+                    ->where('sar_point_of_issue_id', '<>', $point->id)
+                    ->exists();
+                if ($claimedElsewhere) {
+                    continue;
+                }
+                DB::table('sar_point_cash_drawers')->updateOrInsert(
+                    ['cash_drawer_id' => $drawerId],
+                    ['sar_point_of_issue_id' => $point->id, 'updated_at' => now(), 'created_at' => now()]
+                );
+            }
+        });
+
+        app(SarBranchFiscalService::class)->syncBranch($branchModel);
+
+        return response()->json(['success' => true, 'branch_cards' => $this->branchCards()]);
+    }
+
+    /**
+     * One card per active branch. The tenant never sees "sar_points_of_issue" —
+     * only its own establishment/point codes, CAI data and status.
+     */
+    private function branchCards(): array
+    {
+        $profileEnabled = (bool) optional(SarFiscalProfile::first())->enabled;
+
+        $settings = SarBranchSetting::get()->keyBy('branch_id');
+
+        $points = SarPointOfIssue::with([
+            'authorizations' => fn ($q) => $q->orderByDesc('id'),
+            'cashDrawers:id,branch_id,inventory_location_id,name,code',
+        ])->whereNotNull('branch_id')->get()->groupBy('branch_id');
+
+        $drawersByBranch = CashDrawer::whereNull('deleted_at')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'branch_id', 'inventory_location_id', 'name', 'code'])
+            ->groupBy('branch_id');
+
+        return Branch::whereNull('deleted_at')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code'])
+            ->map(function (Branch $branch) use ($profileEnabled, $settings, $points, $drawersByBranch) {
+                $enabled = $profileEnabled && (bool) optional($settings->get($branch->id))->enabled;
+
+                /** @var SarPointOfIssue|null $point */
+                $branchPoints = $points->get($branch->id);
+                $point = $branchPoints
+                    ? $branchPoints->sortByDesc('is_auto_managed')->first()
+                    : null;
+
+                $auth = $point ? $this->readyAuthorization($point) : null;
+                $latestAuth = $point ? $point->authorizations->first() : null;
+
+                $availableDrawers = ($drawersByBranch->get($branch->id) ?? collect())
+                    ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name, 'code' => $d->code])
+                    ->values()->all();
+                $coveredDrawerIds = $point
+                    ? $point->cashDrawers->pluck('id')->map('intval')->all()
+                    : [];
+
+                $errors = [];
+                if ($enabled) {
+                    if (! $point || ! $point->hasCodes()) {
+                        $errors[] = 'Falta el código de establecimiento y de punto autorizados por el SAR.';
+                    }
+                    if (empty($coveredDrawerIds)) {
+                        $errors[] = empty($availableDrawers)
+                            ? 'La sucursal no tiene cajas físicas activas.'
+                            : 'Ninguna caja física está cubierta por la facturación fiscal.';
+                    }
+                    if ($point && $point->hasCodes() && ! $latestAuth) {
+                        $errors[] = 'Falta registrar el CAI y el rango autorizados.';
+                    }
+                    if ($latestAuth && ! $auth) {
+                        $errors[] = $this->authIssue($latestAuth);
+                    }
+                }
+
+                $status = ! $enabled ? 'disabled'
+                    : (! empty($errors) ? 'pending' : 'ready');
+
+                return [
+                    'branch_id' => $branch->id,
+                    'branch_name' => $branch->name,
+                    'branch_code' => $branch->code,
+                    'sar_enabled' => $enabled,
+                    'establishment_code' => $point?->establishment_code,
+                    'point_code' => $point?->point_code,
+                    'has_codes' => (bool) ($point && $point->hasCodes()),
+                    'available_drawers' => $availableDrawers,
+                    'covered_drawer_ids' => $coveredDrawerIds,
+                    'authorization' => $latestAuth ? [
+                        'id' => $latestAuth->id,
+                        'cai' => $latestAuth->cai,
+                        'status' => $latestAuth->status,
+                        'range_start' => (int) $latestAuth->range_start,
+                        'range_end' => (int) $latestAuth->range_end,
+                        'next_number' => (int) $latestAuth->next_number,
+                        'remaining' => max(0, (int) $latestAuth->range_end - (int) $latestAuth->next_number + 1),
+                        'deadline' => optional($latestAuth->deadline)->toDateString(),
+                        'is_ready' => (bool) $auth,
+                    ] : null,
+                    'status' => $status,
+                    'errors' => $errors,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function authIssue(SarAuthorization $a): string
+    {
+        if ($a->status !== 'active') {
+            return 'El CAI registrado todavía no está activado.';
+        }
+        if ($a->deadline && Carbon::parse($a->deadline)->lt(Carbon::today())) {
+            return 'El CAI está vencido: registra una autorización vigente.';
+        }
+        return 'El rango del CAI está agotado: registra un nuevo rango.';
     }
 
     public function updateProductFiscal(Request $request, Product $product)
@@ -247,8 +476,9 @@ class SarFiscalSettingsController extends BaseController
         $this->authorizeSettings($request);
 
         $data = $request->validate([
-            'point_of_issue_id' => ['required', 'integer', 'exists:sar_points_of_issue,id'],
-            'document_type' => ['required', 'regex:/^\d{2}$/'],
+            'point_of_issue_id' => ['nullable', 'integer', 'exists:sar_points_of_issue,id'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'document_type' => ['nullable', 'regex:/^\d{2}$/'],
             'cai' => ['required', 'string', 'max:64'],
             'range_start' => ['required', 'integer', 'min:1', 'max:99999999'],
             'range_end' => ['required', 'integer', 'gte:range_start', 'max:99999999'],
@@ -256,6 +486,18 @@ class SarFiscalSettingsController extends BaseController
             'authorization_date' => ['nullable', 'date'],
             'deadline' => ['required', 'date'],
         ]);
+
+        // The tenant works per branch; PRODEX maps it to the managed point.
+        if (empty($data['point_of_issue_id'])) {
+            if (empty($data['branch_id'])) {
+                return response()->json(['message' => 'Indica la sucursal para la que registras el CAI.'], 422);
+            }
+            $branchModel = Branch::whereNull('deleted_at')->findOrFail((int) $data['branch_id']);
+            $point = app(SarBranchFiscalService::class)->syncBranch($branchModel);
+            $data['point_of_issue_id'] = $point->id;
+        }
+        unset($data['branch_id']);
+        $data['document_type'] = $data['document_type'] ?? '01';
 
         $overlaps = SarAuthorization::where('point_of_issue_id', $data['point_of_issue_id'])
             ->where('document_type', $data['document_type'])
@@ -416,13 +658,21 @@ class SarFiscalSettingsController extends BaseController
      */
     private function fiscalGaps($points): array
     {
-        $readyByDrawer = collect($points)
-            ->filter(fn ($p) => $p->getAttribute('fiscal_ready'))
-            ->keyBy('cash_drawer_id');
-
-        $pointByDrawer = collect($points)
-            ->filter(fn ($p) => $p->active && $p->cash_drawer_id)
-            ->keyBy('cash_drawer_id');
+        $readyByDrawer = collect();
+        $pointByDrawer = collect();
+        foreach ($points as $p) {
+            $drawerIds = collect([$p->cash_drawer_id])
+                ->merge($p->relationLoaded('cashDrawers') ? $p->cashDrawers->pluck('id') : [])
+                ->filter()->unique();
+            foreach ($drawerIds as $id) {
+                if ($p->getAttribute('fiscal_ready')) {
+                    $readyByDrawer->put($id, $p);
+                }
+                if ($p->active) {
+                    $pointByDrawer->put($id, $p);
+                }
+            }
+        }
 
         return CashDrawer::whereNull('deleted_at')
             ->where('is_active', true)

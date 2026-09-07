@@ -114,52 +114,65 @@ class SarMultiBranchFiscalArchitectureTest extends TestCase
         $this->assertStringContainsString("'expired'", $service);
         $this->assertStringContainsString("'exhausted'", $service);
 
-        // UI mirrors it (status active + not past deadline + next within range).
+        // The per-branch UI consumes the server-computed readiness flag rather
+        // than re-deriving it, and its issue helper mirrors the same conditions.
+        $this->assertStringContainsString('card.authorization.is_ready', $vue);
         $this->assertMatchesRegularExpression(
-            '/authIsReady\(point, auth\).*?auth\.status !== "active".*?'
+            '/caiIssue\(auth\).*?auth\.status !== "active".*?'
             .'String\(auth\.deadline\)\.slice\(0, 10\) < this\.todayStr\(\).*?'
-            .'next >= Number\(auth\.range_start\) && next <= Number\(auth\.range_end\)/s',
+            .'Number\(auth\.remaining\) <= 0/s',
             $vue
         );
     }
 
-    public function test_point_modal_order_and_dependent_selects(): void
+    public function test_per_branch_card_replaces_the_manual_point_modal(): void
     {
         $vue = $this->read('resources/src/views/app/pages/settings/sar_fiscal.vue');
 
-        // Field order in the modal: Sucursal -> Ubicación -> Caja -> Establecimiento -> Punto -> Nombre -> Dirección -> Activo.
-        $order = ['Sucursal *', 'Ubicación de inventario *', 'Caja física *', 'Código de establecimiento *',
-            'Código del punto *', 'Nombre *', 'Dirección *', '>Activo<'];
-        $last = -1;
-        foreach ($order as $label) {
-            $pos = strpos($vue, $label);
-            $this->assertNotFalse($pos, "Falta el campo del modal: {$label}");
-            $this->assertGreaterThan($last, $pos, "El campo '{$label}' está fuera de orden en el modal.");
-            $last = $pos;
-        }
+        // The tenant no longer creates points by hand: the manual modal and its
+        // dependent-select plumbing are gone.
+        $this->assertStringNotContainsString('Agregar punto de emisión', $vue);
+        $this->assertStringNotContainsString('onPointBranchChange', $vue);
+        $this->assertStringNotContainsString('pointDrawerOptions', $vue);
 
-        // Dependent selects: branch filters locations, location filters drawers.
-        $this->assertStringContainsString('@input="onPointBranchChange"', $vue);
-        $this->assertStringContainsString('@input="onPointLocationChange"', $vue);
-        $this->assertMatchesRegularExpression(
-            '/onPointBranchChange\(value\)\s*\{\s*this\.pointForm\.branch_id = value;\s*'
-            .'this\.pointForm\.inventory_location_id = null;\s*this\.pointForm\.cash_drawer_id = null;/s',
-            $vue
-        );
-        $this->assertMatchesRegularExpression(
-            '/onPointLocationChange\(value\)\s*\{\s*this\.pointForm\.inventory_location_id = value;\s*'
-            .'this\.pointForm\.cash_drawer_id = null;/s',
-            $vue
-        );
-        $this->assertStringContainsString('pointLocationOptions()', $vue);
-        $this->assertStringContainsString('pointDrawerOptions()', $vue);
+        // PRODEX manages the technical structure; the screen is per-branch cards.
+        $this->assertStringContainsString('v-for="card in branchCards"', $vue);
+        $this->assertStringContainsString('Facturación SAR habilitada', $vue);
+        $this->assertStringContainsString('Facturación SAR deshabilitada', $vue);
+        $this->assertStringContainsString('toggleBranch(card', $vue);
+        $this->assertStringContainsString('Código de establecimiento *', $vue);
+        $this->assertStringContainsString('Código del punto de emisión *', $vue);
+        $this->assertStringContainsString('saveBranchCodes(card)', $vue);
+        $this->assertStringContainsString('toggleDrawer(card', $vue);
+        $this->assertStringContainsString('saveBranchDrawers(card)', $vue);
+        $this->assertStringContainsString('openAuthorization(card)', $vue);
 
-        // Points table columns.
-        foreach (['<th>Sucursal</th>', '<th>Establecimiento</th>', '<th>Punto</th>', '<th>Ubicación</th>',
-            '<th>Caja</th>', '<th>CAI activo</th>', '<th>Estado</th>'] as $th) {
-            $this->assertStringContainsString($th, $vue, "Falta la columna {$th}");
-        }
+        // Summary strip so the user never needs to read sar_points_of_issue.
+        $this->assertStringContainsString('readyCount', $vue);
+        $this->assertStringContainsString('pendingCount', $vue);
+        $this->assertStringNotContainsString('sar_points_of_issue', $vue);
         $this->assertStringContainsString('fiscalGaps.length', $vue);
+    }
+
+    public function test_per_branch_endpoints_and_service_are_wired(): void
+    {
+        $routes = $this->read('routes/tenant_api.php');
+        $this->assertStringContainsString("sar-fiscal/branches/{branch}/toggle', 'SarFiscalSettingsController@toggleBranch'", $routes);
+        $this->assertStringContainsString("sar-fiscal/branches/{branch}/point', 'SarFiscalSettingsController@saveBranchPoint'", $routes);
+        $this->assertStringContainsString("sar-fiscal/branches/{branch}/drawers', 'SarFiscalSettingsController@saveBranchDrawers'", $routes);
+
+        $c = $this->read('app/Http/Controllers/SarFiscalSettingsController.php');
+        $this->assertStringContainsString('function branchCards(): array', $c);
+        $this->assertStringContainsString('SarBranchFiscalService', $c);
+        $this->assertStringContainsString("'branch_cards' => \$this->branchCards()", $c);
+
+        // A new drawer is picked up automatically.
+        $drawerCtl = $this->read('app/Http/Controllers/CashDrawerController.php');
+        $this->assertStringContainsString('syncCashDrawer', $drawerCtl);
+
+        // The per-branch schema is a controlled tenant migration.
+        $health = $this->read('app/Services/TenantSchemaHealthService.php');
+        $this->assertStringContainsString('2026_09_08_000000_sar_per_branch_fiscal_config.php', $health);
     }
 
     public function test_no_data_loss_paths_are_touched(): void

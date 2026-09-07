@@ -938,6 +938,11 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     // ------------------------------- SAR Honduras fiscal invoicing ------------------------\\
     Route::get('sar-fiscal/settings', 'SarFiscalSettingsController@index');
     Route::put('sar-fiscal/profile', 'SarFiscalSettingsController@saveProfile');
+    // Per-branch fiscal configuration (PRODEX manages the technical points).
+    Route::post('sar-fiscal/branches/{branch}/toggle', 'SarFiscalSettingsController@toggleBranch');
+    Route::put('sar-fiscal/branches/{branch}/point', 'SarFiscalSettingsController@saveBranchPoint');
+    Route::put('sar-fiscal/branches/{branch}/drawers', 'SarFiscalSettingsController@saveBranchDrawers');
+    // Legacy manual point endpoints kept for backward compatibility.
     Route::post('sar-fiscal/points', 'SarFiscalSettingsController@storePoint');
     Route::put('sar-fiscal/points/{point}', 'SarFiscalSettingsController@updatePoint');
     Route::post('sar-fiscal/authorizations', 'SarFiscalSettingsController@storeAuthorization');
