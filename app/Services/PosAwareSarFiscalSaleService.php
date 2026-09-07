@@ -6,65 +6,88 @@ use App\Exceptions\SarFiscalException;
 use App\Models\CashDrawer;
 use App\Models\Sale;
 use App\Models\SarFiscalDocument;
+use App\Models\SarFiscalProfile;
 use App\Models\SarPointOfIssue;
 
 /**
- * Keeps SAR invoicing mandatory while adapting the legacy fiscal resolver to
- * the modern POS operational identity: Branch -> InventoryLocation -> CashDrawer.
+ * Modern POS fiscal resolver. The source of truth is the operational identity of
+ * the sale:
  *
- * SAR points are still stored with a legacy warehouse_id today. For a modern
- * POS sale we resolve the fiscal point by the physical cash drawer first, then
- * expose that point's real legacy warehouse only in memory while the inherited
- * SAR issuer runs. The synthetic InventoryLocation id from the POS request is
- * never persisted into sales.warehouse_id.
+ *   Branch -> InventoryLocation -> CashDrawer -> SAR Point -> Authorization -> CAI
+ *
+ * warehouse_id is NEVER consulted here. It stays on sar_points_of_issue / sales
+ * only for the legacy resolver (parent) that handles non-POS or pre-location
+ * sales.
+ *
+ * The chain below is strict on purpose: a sale can only ever consume the CAI /
+ * correlativo range of its own branch. Every mismatch aborts with a message that
+ * names the exact piece that is missing or inconsistent.
  */
 class PosAwareSarFiscalSaleService extends SarFiscalSaleService
 {
     public function issueIfEnabled(Sale $sale, ?int $cashDrawerId = null): ?SarFiscalDocument
     {
+        // Not a modern location-native POS sale -> legacy warehouse_id resolver.
         if ((int) $sale->is_pos !== 1 || ! $sale->branch_id || ! $sale->inventory_location_id || ! $cashDrawerId) {
             return parent::issueIfEnabled($sale, $cashDrawerId);
         }
 
-        $drawer = CashDrawer::whereNull('deleted_at')->find($cashDrawerId);
-        if (! $drawer || (int) $drawer->branch_id !== (int) $sale->branch_id) {
-            throw new SarFiscalException('La caja física seleccionada no pertenece a la sucursal de la venta.');
+        $profile = SarFiscalProfile::first();
+        if (! $profile || ! $profile->enabled) {
+            return null;
         }
 
-        $points = SarPointOfIssue::where('active', true)
-            ->where('cash_drawer_id', $cashDrawerId)
-            ->get();
+        $drawer = CashDrawer::whereNull('deleted_at')->find($cashDrawerId);
+        if (! $drawer) {
+            throw new SarFiscalException('La caja física seleccionada no existe o fue desactivada.');
+        }
+        if ((int) $drawer->branch_id !== (int) $sale->branch_id) {
+            throw new SarFiscalException('La caja física seleccionada pertenece a otra sucursal. No puede facturar esta venta.');
+        }
+        if ($drawer->inventory_location_id !== null
+            && (int) $drawer->inventory_location_id !== (int) $sale->inventory_location_id) {
+            throw new SarFiscalException('La caja física no opera desde la ubicación de inventario de esta venta.');
+        }
+
+        $points = SarPointOfIssue::forOperationalContext(
+            (int) $sale->branch_id,
+            (int) $sale->inventory_location_id,
+            (int) $cashDrawerId
+        )->get();
 
         if ($points->count() > 1) {
-            throw new SarFiscalException('Hay más de un punto SAR activo asignado a la misma caja física.');
+            throw new SarFiscalException(
+                'Hay más de un punto SAR activo para esta sucursal, ubicación y caja. Corrige la configuración fiscal.'
+            );
         }
 
         if ($points->isEmpty()) {
-            throw new SarFiscalException('No existe un punto SAR activo para la caja física seleccionada. Configura el punto de emisión antes de facturar.');
+            throw new SarFiscalException($this->missingPointMessage($sale, $drawer, $cashDrawerId));
         }
 
         $point = $points->first();
-        if (! $point->warehouse_id) {
-            throw new SarFiscalException('El punto SAR de esta caja no tiene una referencia fiscal válida. Actualiza el punto de emisión antes de facturar.');
+
+        // Defence in depth: the point must belong to this sale's branch.
+        if ((int) $point->branch_id !== (int) $sale->branch_id) {
+            throw new SarFiscalException('El punto SAR resuelto no pertenece a la sucursal de la venta.');
         }
 
-        $originalWarehouseId = $sale->getAttribute('warehouse_id');
-        $hadWarehouseRelation = $sale->relationLoaded('warehouse');
-        $originalWarehouseRelation = $hadWarehouseRelation ? $sale->getRelation('warehouse') : null;
+        $authorization = $this->findActiveAuthorization($point);
 
-        try {
-            // Compatibility is deliberately request-local/in-memory only. The sale
-            // remains branch/location-native in the database.
-            $sale->setAttribute('warehouse_id', (int) $point->warehouse_id);
-            $sale->unsetRelation('warehouse');
-
-            return parent::issueIfEnabled($sale, $cashDrawerId);
-        } finally {
-            $sale->setAttribute('warehouse_id', $originalWarehouseId);
-            $sale->unsetRelation('warehouse');
-            if ($hadWarehouseRelation) {
-                $sale->setRelation('warehouse', $originalWarehouseRelation);
-            }
+        if ((int) $authorization->pointOfIssue->branch_id !== (int) $sale->branch_id) {
+            throw new SarFiscalException('La autorización SAR resuelta no pertenece a la sucursal de la venta.');
         }
+
+        return $this->issueWithAuthorization($sale, $authorization, $cashDrawerId);
+    }
+
+    private function missingPointMessage(Sale $sale, CashDrawer $drawer, int $cashDrawerId): string
+    {
+        $branchName = optional($sale->branch)->name ?: ('sucursal '.$sale->branch_id);
+        $locationName = optional($sale->inventoryLocation)->name ?: ('ubicación '.$sale->inventory_location_id);
+        $drawerName = $drawer->name ?: ('caja '.$cashDrawerId);
+
+        return 'No hay un punto de emisión SAR activo para '.$branchName.' · '.$locationName.' · '.$drawerName
+            .'. Créalo en Configuración → Facturación SAR antes de facturar desde esta caja.';
     }
 }

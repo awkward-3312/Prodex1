@@ -57,6 +57,8 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_09_04_000000_add_inventory_effect_snapshot_to_sales_and_returns.php',
         // Cotización -> Venta POS traceability (Option A).
         'database/migrations/tenant/2026_09_05_000000_add_quotation_id_to_sales.php',
+        // SAR multi-branch: anchor points of issue to Branch -> InventoryLocation -> CashDrawer.
+        'database/migrations/tenant/2026_09_07_000000_link_sar_points_to_branch_location_drawer.php',
     ];
 
     public function checkTenant(Tenant $tenant): array

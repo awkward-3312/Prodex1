@@ -111,26 +111,45 @@
         </div>
       </px-card>
 
+      <px-alert v-if="fiscalGaps.length" tone="warning" class="pxcfg__alert">
+        <strong>{{ fiscalGaps.length }}</strong>
+        {{ fiscalGaps.length === 1 ? 'caja física no está lista para facturar:' : 'cajas físicas no están listas para facturar:' }}
+        <ul class="pxcfg__gaplist">
+          <li v-for="gap in fiscalGaps" :key="gap.cash_drawer_id">
+            <span class="pxcfg__gapwhere">{{ gap.branch_name || '—' }} · {{ gap.inventory_location_name || 'sin ubicación' }} · {{ gap.cash_drawer_name }}<span v-if="gap.cash_drawer_code" class="pxcfg__gapcode"> ({{ gap.cash_drawer_code }})</span></span>
+            <span class="pxcfg__gapreason">{{ gap.reason === 'sin_punto_sar' ? 'sin punto SAR' : 'sin CAI activo' }}</span>
+          </li>
+        </ul>
+      </px-alert>
+
       <px-card class="pxcfg__card">
         <template #header>
           <div class="pxcfg__cardhead">
-            <div><h3 class="pxcfg__cardtitle">Puntos de emisión</h3><small class="pxcfg__cardnote">Códigos de establecimiento y punto autorizados.</small></div>
-            <px-button variant="primary" size="sm" icon="plus" @click="openPoint()">Agregar punto</px-button>
+            <div><h3 class="pxcfg__cardtitle">Puntos de emisión</h3><small class="pxcfg__cardnote">Cada punto es la identidad fiscal de una sucursal, ubicación y caja física.</small></div>
+            <px-button variant="primary" size="sm" icon="plus" @click="openPoint()">Agregar punto de emisión</px-button>
           </div>
         </template>
         <div class="pxcfg__scrollbox">
           <table class="pxcfg__table">
-            <thead><tr><th>Código</th><th>Nombre</th><th>Almacén</th><th>Caja</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Sucursal</th><th>Establecimiento</th><th>Punto</th><th>Ubicación</th><th>Caja</th><th>CAI activo</th><th>Estado</th><th></th></tr></thead>
             <tbody>
               <tr v-for="point in points" :key="point.id">
-                <td>{{ point.establishment_code }}-{{ point.point_code }}</td>
-                <td>{{ point.name }}</td>
-                <td>{{ warehouseName(point.warehouse_id) }}</td>
-                <td>{{ drawerName(point.cash_drawer_id) }}</td>
+                <td>{{ (point.branch && point.branch.name) || branchName(point.branch_id) }}</td>
+                <td class="pxn-num">{{ point.establishment_code }}</td>
+                <td class="pxn-num">{{ point.point_code }}</td>
+                <td>{{ (point.inventory_location && point.inventory_location.name) || locationName(point.inventory_location_id) }}</td>
+                <td>{{ (point.cash_drawer && point.cash_drawer.name) || drawerName(point.cash_drawer_id) }}</td>
+                <td>
+                  <template v-if="point.has_active_cai && point.active_cai">
+                    <px-badge tone="success">CAI …{{ caiTail(point.active_cai.cai) }}</px-badge>
+                    <div class="pxcfg__caimeta">vence {{ point.active_cai.deadline }} · quedan {{ point.active_cai.remaining }}</div>
+                  </template>
+                  <px-badge v-else tone="danger">Sin CAI listo</px-badge>
+                </td>
                 <td><px-badge :tone="point.active ? 'success' : 'neutral'">{{ point.active ? "Activo" : "Inactivo" }}</px-badge></td>
                 <td class="pxcfg__tr"><px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Editar" @click="openPoint(point)" /></td>
               </tr>
-              <tr v-if="!points.length"><td colspan="6" class="pxcfg__tc pxcfg__cardnote">No hay puntos registrados.</td></tr>
+              <tr v-if="!points.length"><td colspan="8" class="pxcfg__tc pxcfg__cardnote">No hay puntos registrados.</td></tr>
             </tbody>
           </table>
         </div>
@@ -139,13 +158,13 @@
       <px-card class="pxcfg__card">
         <template #header>
           <div class="pxcfg__cardhead">
-            <div><h3 class="pxcfg__cardtitle">Autorizaciones y rangos</h3><small class="pxcfg__cardnote">El correlativo solo avanza al emitir una factura fiscal.</small></div>
+            <div><h3 class="pxcfg__cardtitle">Autorizaciones y rangos</h3><small class="pxcfg__cardnote">El correlativo solo avanza al emitir una factura fiscal. “CAI listo” significa activo, no vencido y con rango disponible.</small></div>
             <px-button variant="primary" size="sm" icon="plus" :disabled="!points.length" @click="openAuthorization">Agregar autorización</px-button>
           </div>
         </template>
         <div class="pxcfg__scrollbox">
           <table class="pxcfg__table">
-            <thead><tr><th>Punto</th><th>CAI</th><th>Rango</th><th>Siguiente</th><th>Fecha límite</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Punto</th><th>CAI</th><th>Rango</th><th>Siguiente</th><th>Fecha límite</th><th>Estado</th><th>Listo</th><th></th></tr></thead>
             <tbody>
               <template v-for="point in points">
                 <tr v-for="auth in point.authorizations" :key="auth.id">
@@ -153,12 +172,16 @@
                   <td class="pxn-num">{{ auth.cai }}</td>
                   <td class="pxn-num">{{ auth.range_start }} – {{ auth.range_end }}</td>
                   <td class="pxn-num">{{ auth.next_number }}</td>
-                  <td>{{ auth.deadline }}</td>
+                  <td>{{ dateOnly(auth.deadline) }}</td>
                   <td><px-badge :tone="auth.status === 'active' ? 'success' : 'neutral'">{{ statusLabel(auth.status) }}</px-badge></td>
+                  <td>
+                    <px-badge v-if="authIsReady(point, auth)" tone="success">Listo para facturar</px-badge>
+                    <px-badge v-else tone="danger">{{ authNotReadyReason(auth) }}</px-badge>
+                  </td>
                   <td class="pxcfg__tr"><px-button v-if="auth.status === 'draft' || auth.status === 'disabled'" size="sm" variant="primary" @click="activate(auth)">Activar</px-button></td>
                 </tr>
               </template>
-              <tr v-if="!hasAuthorizations"><td colspan="7" class="pxcfg__tc pxcfg__cardnote">No hay autorizaciones registradas.</td></tr>
+              <tr v-if="!hasAuthorizations"><td colspan="8" class="pxcfg__tc pxcfg__cardnote">No hay autorizaciones registradas.</td></tr>
             </tbody>
           </table>
         </div>
@@ -183,22 +206,34 @@
     </px-modal>
 
     <px-modal v-model="pointModalOpen" :title="pointForm.id ? 'Editar punto de emisión' : 'Agregar punto de emisión'" size="md">
+      <p class="pxcfg__cardnote pxcfg__mb">El punto de emisión ata la identidad fiscal a la caja física real: Sucursal → Ubicación de inventario → Caja física.</p>
       <div class="pxcfg__formgrid">
+        <px-field label="Sucursal *">
+          <template #default="{ id }">
+            <vs-px :input-id="id" :value="pointForm.branch_id" :reduce="o => o.value" :options="branchOptions" placeholder="Selecciona una sucursal" @input="onPointBranchChange" />
+          </template>
+        </px-field>
+        <px-field label="Ubicación de inventario *" hint="Solo ubicaciones de la sucursal seleccionada.">
+          <template #default="{ id }">
+            <vs-px :input-id="id" :value="pointForm.inventory_location_id" :reduce="o => o.value" :options="pointLocationOptions" :disabled="!pointForm.branch_id" placeholder="Selecciona la ubicación" @input="onPointLocationChange" />
+          </template>
+        </px-field>
+        <px-field label="Caja física *" hint="Solo cajas activas de esa sucursal y ubicación.">
+          <template #default="{ id }">
+            <vs-px :input-id="id" :value="pointForm.cash_drawer_id" :reduce="o => o.value" :options="pointDrawerOptions" :disabled="!pointForm.inventory_location_id" placeholder="Selecciona la caja física" @input="v => pointForm.cash_drawer_id = v" />
+          </template>
+        </px-field>
         <div class="pxcfg__grid">
           <px-field label="Código de establecimiento *"><template #default="{ id }"><px-input :id="id" maxlength="3" :value="pointForm.establishment_code" @input="v => pointForm.establishment_code = tv(v)" placeholder="000" /></template></px-field>
           <px-field label="Código del punto *"><template #default="{ id }"><px-input :id="id" maxlength="3" :value="pointForm.point_code" @input="v => pointForm.point_code = tv(v)" placeholder="001" /></template></px-field>
         </div>
-        <px-field label="Nombre *"><template #default="{ id }"><px-input :id="id" :value="pointForm.name" @input="v => pointForm.name = tv(v)" /></template></px-field>
-        <div class="pxcfg__grid">
-          <px-field label="Almacén"><template #default="{ id }"><vs-px :input-id="id" v-model="pointForm.warehouse_id" :reduce="o => o.value" :options="warehouseOptions" /></template></px-field>
-          <px-field label="Caja física"><template #default="{ id }"><vs-px :input-id="id" v-model="pointForm.cash_drawer_id" :reduce="o => o.value" :options="drawerOptions" /></template></px-field>
-        </div>
-        <px-field label="Dirección del punto *"><template #default="{ id }"><px-textarea :id="id" :rows="2" :value="pointForm.address" @input="v => pointForm.address = tv(v)" /></template></px-field>
+        <px-field label="Nombre *"><template #default="{ id }"><px-input :id="id" :value="pointForm.name" @input="v => pointForm.name = tv(v)" placeholder="Ej. Caja principal Sucursal Centro" /></template></px-field>
+        <px-field label="Dirección *"><template #default="{ id }"><px-textarea :id="id" :rows="2" :value="pointForm.address" @input="v => pointForm.address = tv(v)" /></template></px-field>
         <px-check type="switch" :modelValue="!!pointForm.active" @change="v => pointForm.active = v">Activo</px-check>
       </div>
       <template #footer="{ close }">
         <px-button variant="ghost" @click="close">Cancelar</px-button>
-        <px-button variant="primary" :disabled="saving" @click="savePoint">Guardar</px-button>
+        <px-button variant="primary" :disabled="saving || !pointFormComplete" @click="savePoint">Guardar</px-button>
       </template>
     </px-modal>
 
@@ -246,16 +281,22 @@ const invoiceDefaults = () => ({
   show_payment_summary: true, show_customer_address: true, show_item_code: true, show_total_in_words: true, show_qr: true
 });
 
+const emptyPoint = () => ({
+  id: null, branch_id: null, inventory_location_id: null, cash_drawer_id: null,
+  establishment_code: "000", point_code: "001", name: "", address: "", active: true
+});
+
 export default {
   metaInfo: { title: "Facturación SAR" },
   components: { PxPageHeader, PxButton, PxCard, PxField, PxInput, PxTextarea, PxCheck, PxBadge, PxAlert, PxModal, "vs-px": VsPx },
   data() {
     return {
-      loading: true, saving: false, points: [], warehouses: [], cashDrawers: [], products: [], clients: [],
+      loading: true, saving: false, points: [], branches: [], inventoryLocations: [], warehouses: [], cashDrawers: [],
+      fiscalGaps: [], products: [], clients: [],
       productSearch: "", clientSearch: "", taxCategories: [], taxRates: [0, 15, 18],
       clientModalOpen: false, pointModalOpen: false, authModalOpen: false,
       profile: { enabled: false, rtn: "", legal_name: "", trade_name: "", head_office_address: "", phone: "", email: "", invoice_settings: invoiceDefaults() },
-      pointForm: {}, authForm: {}, clientForm: {},
+      pointForm: emptyPoint(), authForm: {}, clientForm: {},
       taxMethodOptions: [{ label: "Exclusivo", value: "1" }, { label: "Incluido en precio", value: "2" }],
       invoiceToggles: [
         { key: "show_logo", label: "Mostrar logo" }, { key: "show_internal_reference", label: "Mostrar referencia interna" },
@@ -267,8 +308,24 @@ export default {
     };
   },
   computed: {
-    warehouseOptions() { return this.warehouses.map(x => ({ label: x.name, value: x.id })); },
-    drawerOptions() { return this.cashDrawers.filter(x => !this.pointForm.warehouse_id || x.warehouse_id === this.pointForm.warehouse_id).map(x => ({ label: x.name + " (" + x.code + ")", value: x.id })); },
+    branchOptions() { return this.branches.map(x => ({ label: x.code ? `${x.name} (${x.code})` : x.name, value: x.id })); },
+    pointLocationOptions() {
+      if (!this.pointForm.branch_id) return [];
+      return this.inventoryLocations
+        .filter(l => Number(l.branch_id) === Number(this.pointForm.branch_id))
+        .map(l => ({ label: l.name, value: l.id }));
+    },
+    pointDrawerOptions() {
+      if (!this.pointForm.branch_id || !this.pointForm.inventory_location_id) return [];
+      return this.cashDrawers
+        .filter(d => Number(d.branch_id) === Number(this.pointForm.branch_id)
+          && (d.inventory_location_id == null || Number(d.inventory_location_id) === Number(this.pointForm.inventory_location_id)))
+        .map(d => ({ label: d.code ? `${d.name} (${d.code})` : d.name, value: d.id }));
+    },
+    pointFormComplete() {
+      return !!(this.pointForm.branch_id && this.pointForm.inventory_location_id && this.pointForm.cash_drawer_id
+        && this.pointForm.establishment_code && this.pointForm.point_code && this.pointForm.name && this.pointForm.address);
+    },
     pointOptions() { return this.points.filter(x => x.active).map(x => ({ label: x.establishment_code + "-" + x.point_code + " · " + x.name, value: x.id })); },
     hasAuthorizations() { return this.points.some(x => (x.authorizations || []).length); },
     filteredProducts() { const q = this.productSearch.toLowerCase(); return this.products.filter(x => !q || String(x.name || "").toLowerCase().includes(q) || String(x.code || "").toLowerCase().includes(q)); },
@@ -281,13 +338,34 @@ export default {
     errorMessage(error) { const data = error.response && error.response.data; if (data && data.errors) { const key = Object.keys(data.errors)[0]; return data.errors[key][0]; } return (data && data.message) || "No se pudo completar la operación."; },
     normalizeProduct(p) { const category = p.fiscal_tax_category || (Number(p.TaxNet) > 0 ? "taxed" : "exempt"); return Object.assign({}, p, { fiscal_tax_category: category, TaxNet: Number(p.TaxNet || 0), tax_method: String(p.tax_method || "1") }); },
     taxRateOptions(product) { return (product.fiscal_tax_category === "taxed" ? this.taxRates.filter(x => Number(x) > 0) : [0]).map(x => ({ label: x + "%", value: Number(x) })); },
+    caiTail(cai) { return String(cai || "").slice(-6); },
+    dateOnly(v) { return v ? String(v).slice(0, 10) : "-"; },
+    todayStr() { return new Date().toISOString().slice(0, 10); },
+    authIsReady(point, auth) {
+      if (!auth || auth.status !== "active" || !point.active) return false;
+      if (auth.deadline && String(auth.deadline).slice(0, 10) < this.todayStr()) return false;
+      const next = Number(auth.next_number);
+      return next >= Number(auth.range_start) && next <= Number(auth.range_end);
+    },
+    authNotReadyReason(auth) {
+      if (auth.status !== "active") return "No activo";
+      if (auth.deadline && String(auth.deadline).slice(0, 10) < this.todayStr()) return "CAI vencido";
+      const next = Number(auth.next_number);
+      if (next < Number(auth.range_start) || next > Number(auth.range_end)) return "Rango agotado";
+      return "No listo";
+    },
     async load() {
       this.loading = true; NProgress.start();
       try {
         const r = await axios.get("sar-fiscal/settings");
         const incoming = r.data.profile || {};
         this.profile = Object.assign({}, this.profile, incoming, { invoice_settings: Object.assign(invoiceDefaults(), incoming.invoice_settings || {}) });
-        this.points = r.data.points || []; this.warehouses = r.data.warehouses || []; this.cashDrawers = r.data.cash_drawers || [];
+        this.points = r.data.points || [];
+        this.branches = r.data.branches || [];
+        this.inventoryLocations = r.data.inventory_locations || [];
+        this.warehouses = r.data.warehouses || [];
+        this.cashDrawers = r.data.cash_drawers || [];
+        this.fiscalGaps = r.data.fiscal_gaps || [];
         this.products = (r.data.products || []).map(this.normalizeProduct); this.clients = (r.data.clients || []).map(x => Object.assign({}, x));
         this.taxCategories = r.data.tax_categories || []; this.taxRates = r.data.tax_rates || [0, 15, 18];
       } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.loading = false; NProgress.done(); }
@@ -306,11 +384,48 @@ export default {
       try { await axios.put("sar-fiscal/profile", Object.assign({ action: "client_fiscal", client_id: this.clientForm.id }, this.clientForm)); this.clientModalOpen = false; this.toast("success", "Datos fiscales del cliente guardados."); await this.load(); }
       catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; }
     },
-    openPoint(point) { this.pointForm = point ? Object.assign({}, point) : { id: null, establishment_code: "000", point_code: "001", name: "", address: "", warehouse_id: null, cash_drawer_id: null, active: true }; this.pointModalOpen = true; },
-    async savePoint() { this.saving = true; try { const url = this.pointForm.id ? "sar-fiscal/points/" + this.pointForm.id : "sar-fiscal/points"; if (this.pointForm.id) await axios.put(url, this.pointForm); else await axios.post(url, this.pointForm); this.pointModalOpen = false; this.toast("success", "Punto de emisión guardado."); await this.load(); } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; } },
+    openPoint(point) {
+      this.pointForm = point
+        ? Object.assign(emptyPoint(), {
+          id: point.id, branch_id: point.branch_id || null, inventory_location_id: point.inventory_location_id || null,
+          cash_drawer_id: point.cash_drawer_id || null, establishment_code: point.establishment_code, point_code: point.point_code,
+          name: point.name, address: point.address, active: !!point.active
+        })
+        : emptyPoint();
+      this.pointModalOpen = true;
+    },
+    onPointBranchChange(value) {
+      this.pointForm.branch_id = value;
+      this.pointForm.inventory_location_id = null;
+      this.pointForm.cash_drawer_id = null;
+    },
+    onPointLocationChange(value) {
+      this.pointForm.inventory_location_id = value;
+      this.pointForm.cash_drawer_id = null;
+    },
+    async savePoint() {
+      this.saving = true;
+      try {
+        const payload = {
+          branch_id: this.pointForm.branch_id,
+          inventory_location_id: this.pointForm.inventory_location_id,
+          cash_drawer_id: this.pointForm.cash_drawer_id,
+          establishment_code: this.pointForm.establishment_code,
+          point_code: this.pointForm.point_code,
+          name: this.pointForm.name,
+          address: this.pointForm.address,
+          active: this.pointForm.active ? 1 : 0
+        };
+        if (this.pointForm.id) await axios.put("sar-fiscal/points/" + this.pointForm.id, payload);
+        else await axios.post("sar-fiscal/points", payload);
+        this.pointModalOpen = false; this.toast("success", "Punto de emisión guardado."); await this.load();
+      } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; }
+    },
     openAuthorization() { this.authForm = { point_of_issue_id: this.points.length === 1 ? this.points[0].id : null, document_type: "01", cai: "", range_start: 1, range_end: null, next_number: 1, authorization_date: "", deadline: "" }; this.authModalOpen = true; },
     async saveAuthorization() { this.saving = true; try { await axios.post("sar-fiscal/authorizations", this.authForm); this.authModalOpen = false; this.toast("success", "Autorización guardada como borrador."); await this.load(); } catch (e) { this.toast("danger", this.errorMessage(e)); } finally { this.saving = false; } },
     async activate(auth) { const result = await this.$swal({ title: "¿Activar autorización?", text: "Las futuras facturas fiscales usarán este rango.", type: "warning", showCancelButton: true, confirmButtonText: "Activar", cancelButtonText: "Cancelar" }); if (!result.value) return; try { await axios.post("sar-fiscal/authorizations/" + auth.id + "/activate"); this.toast("success", "Autorización activada."); await this.load(); } catch (e) { this.toast("danger", this.errorMessage(e)); } },
+    branchName(id) { const item = this.branches.find(x => Number(x.id) === Number(id)); return item ? item.name : "-"; },
+    locationName(id) { const item = this.inventoryLocations.find(x => Number(x.id) === Number(id)); return item ? item.name : "-"; },
     warehouseName(id) { const item = this.warehouses.find(x => x.id === id); return item ? item.name : "-"; },
     drawerName(id) { const item = this.cashDrawers.find(x => x.id === id); return item ? item.name : "-"; },
     statusLabel(status) { return ({ draft: "Borrador", active: "Activa", exhausted: "Agotada", expired: "Vencida", disabled: "Deshabilitada" })[status] || status; }
@@ -328,6 +443,7 @@ export default {
 .pxcfg__card { margin-top: var(--pxn-space-5); }
 .pxcfg__alert { margin-top: var(--pxn-space-4); }
 .pxcfg__cardnote { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxcfg__mb { margin: 0 0 var(--pxn-space-4); }
 .pxcfg__cardhead { display: flex; flex-wrap: wrap; gap: var(--pxn-space-4); align-items: flex-start; justify-content: space-between; }
 .pxcfg__cardtitle { margin: 0 0 var(--pxn-space-1); font-size: var(--pxn-fs-md); font-weight: var(--pxn-fw-semibold); }
 .pxcfg__inlinesearch { max-width: 280px; }
@@ -347,4 +463,10 @@ export default {
 .pxcfg__cellsel { min-width: 150px; }
 .pxcfg__tr { text-align: right; white-space: nowrap; }
 .pxcfg__tc { text-align: center; }
+.pxcfg__caimeta { margin-top: var(--pxn-space-1); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxcfg__gaplist { margin: var(--pxn-space-2) 0 0; padding-left: var(--pxn-space-5); display: flex; flex-direction: column; gap: var(--pxn-space-1); }
+.pxcfg__gaplist li { display: flex; flex-wrap: wrap; gap: var(--pxn-space-2); align-items: baseline; }
+.pxcfg__gapwhere { font-weight: var(--pxn-fw-medium); }
+.pxcfg__gapcode { color: var(--pxn-ink-3); font-weight: var(--pxn-fw-regular); }
+.pxcfg__gapreason { font-size: var(--pxn-fs-xs); color: var(--pxn-danger-ink, var(--pxn-danger)); text-transform: uppercase; letter-spacing: 0.03em; }
 </style>

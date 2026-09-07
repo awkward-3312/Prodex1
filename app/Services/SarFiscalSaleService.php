@@ -13,6 +13,15 @@ class SarFiscalSaleService
 {
     private const TAX_CATEGORIES = ['taxed', 'exempt', 'exonerated', 'zero_rate'];
 
+    /**
+     * Legacy / fallback entry point.
+     *
+     * Used for non-POS sales and for POS sales that never got a modern
+     * operational context (no branch_id / inventory_location_id). The point is
+     * resolved by the legacy warehouse_id pointer. Modern POS sales are handled
+     * by PosAwareSarFiscalSaleService which resolves the point through
+     * Branch -> InventoryLocation -> CashDrawer instead.
+     */
     public function issueIfEnabled(Sale $sale, ?int $cashDrawerId = null): ?SarFiscalDocument
     {
         $profile = SarFiscalProfile::first();
@@ -21,6 +30,18 @@ class SarFiscalSaleService
         }
 
         $point = $this->resolvePoint((int) $sale->warehouse_id, $cashDrawerId);
+        $authorization = $this->findActiveAuthorization($point);
+
+        return $this->issueWithAuthorization($sale, $authorization, $cashDrawerId);
+    }
+
+    /**
+     * The active, usable authorization for a point of issue. "Usable" means the
+     * exact same contract the UI shows as "CAI listo para facturar":
+     *   status = active AND deadline >= today AND next_number within the range.
+     */
+    protected function findActiveAuthorization(SarPointOfIssue $point): SarAuthorization
+    {
         $authorization = SarAuthorization::where('point_of_issue_id', $point->id)
             ->where('document_type', '01')
             ->where('status', 'active')
@@ -28,9 +49,34 @@ class SarFiscalSaleService
             ->first();
 
         if (! $authorization) {
-            throw new SarFiscalException('No existe una autorización SAR activa para el punto de emisión seleccionado.');
+            throw new SarFiscalException(
+                'No existe una autorización SAR activa para el punto de emisión '
+                .$point->establishment_code.'-'.$point->point_code.'. Registra y activa un CAI.'
+            );
         }
 
+        if ($authorization->deadline->isBefore(today())) {
+            $authorization->update(['status' => 'expired']);
+            throw new SarFiscalException('La fecha límite de emisión del CAI de este punto ya venció.');
+        }
+
+        $next = (int) $authorization->next_number;
+        if ($next < (int) $authorization->range_start || $next > (int) $authorization->range_end) {
+            $authorization->update(['status' => 'exhausted']);
+            throw new SarFiscalException('El rango autorizado por el SAR para este punto está agotado.');
+        }
+
+        return $authorization;
+    }
+
+    /**
+     * Everything from tax classification to correlative allocation, given an
+     * already-resolved authorization. Shared by the legacy and the modern
+     * (branch/location/drawer) resolvers so the fiscal maths and snapshots stay
+     * identical.
+     */
+    protected function issueWithAuthorization(Sale $sale, SarAuthorization $authorization, ?int $cashDrawerId): SarFiscalDocument
+    {
         $sale->loadMissing(['client', 'saleDetails.product', 'warehouse', 'user', 'facture.payment_method']);
         $customer = $sale->client;
 
@@ -223,6 +269,8 @@ class SarFiscalSaleService
             'time' => (string) $sale->time,
             'warehouse_id' => $sale->warehouse_id,
             'warehouse_name' => optional($sale->warehouse)->name,
+            'branch_id' => $sale->branch_id,
+            'inventory_location_id' => $sale->inventory_location_id,
             'cash_drawer_id' => $cashDrawerId,
             'seller_name' => optional($sale->user)->username ?? optional($sale->user)->name,
             'tax_rate' => (float) $sale->tax_rate,

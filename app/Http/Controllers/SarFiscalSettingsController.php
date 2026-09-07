@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\CashDrawer;
 use App\Models\Client;
+use App\Models\InventoryLocation;
 use App\Models\Product;
 use App\Models\SarAuthorization;
 use App\Models\SarFiscalProfile;
@@ -12,6 +14,7 @@ use App\Models\Setting;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class SarFiscalSettingsController extends BaseController
@@ -30,16 +33,44 @@ class SarFiscalSettingsController extends BaseController
             $profile->invoice_settings = $this->invoiceSettings($profile->invoice_settings);
         }
 
+        $points = SarPointOfIssue::with([
+            'authorizations' => fn ($query) => $query->orderByDesc('id'),
+            'branch:id,name,code',
+            'inventoryLocation:id,branch_id,name,type,is_sellable',
+            'cashDrawer:id,branch_id,inventory_location_id,name,code,is_active',
+        ])->orderBy('establishment_code')->orderBy('point_code')->get()
+            ->map(function (SarPointOfIssue $point) {
+                $active = $this->readyAuthorization($point);
+                $point->setAttribute('has_active_cai', (bool) $active);
+                $point->setAttribute('active_cai', $active ? [
+                    'cai' => $active->cai,
+                    'range_start' => (int) $active->range_start,
+                    'range_end' => (int) $active->range_end,
+                    'next_number' => (int) $active->next_number,
+                    'remaining' => max(0, (int) $active->range_end - (int) $active->next_number + 1),
+                    'deadline' => optional($active->deadline)->toDateString(),
+                ] : null);
+                $point->setAttribute('fiscal_ready', (bool) ($active && $point->active
+                    && $point->branch_id && $point->inventory_location_id && $point->cash_drawer_id));
+                return $point;
+            });
+
         return response()->json([
             'profile' => $profile,
-            'points' => SarPointOfIssue::with([
-                'authorizations' => fn ($query) => $query->orderByDesc('id'),
-            ])->orderBy('establishment_code')->orderBy('point_code')->get(),
-            'warehouses' => Warehouse::whereNull('deleted_at')->orderBy('name')->get(['id', 'name']),
+            'points' => $points,
+            'branches' => Branch::whereNull('deleted_at')
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'is_active']),
+            'inventory_locations' => InventoryLocation::query()
+                ->whereNotNull('branch_id')
+                ->orderBy('branch_id')->orderBy('name')
+                ->get(['id', 'branch_id', 'name', 'type', 'is_sellable', 'is_active']),
+            'warehouses' => Warehouse::whereNull('deleted_at')->orderBy('name')->get(['id', 'name', 'branch_id']),
             'cash_drawers' => CashDrawer::whereNull('deleted_at')
                 ->where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'warehouse_id', 'name', 'code']),
+                ->get(['id', 'branch_id', 'inventory_location_id', 'warehouse_id', 'name', 'code']),
+            'fiscal_gaps' => $this->fiscalGaps($points),
             'products' => Product::whereNull('deleted_at')
                 ->where('is_active', 1)
                 ->orderBy('name')
@@ -168,16 +199,18 @@ class SarFiscalSettingsController extends BaseController
             ],
             'name' => ['required', 'string', 'max:191'],
             'address' => ['required', 'string', 'max:1000'],
+            'branch_id' => ['required', 'integer', 'exists:branches,id'],
+            'inventory_location_id' => ['required', 'integer', 'exists:inventory_locations,id'],
+            'cash_drawer_id' => ['required', 'integer', 'exists:cash_drawers,id'],
             'warehouse_id' => ['nullable', 'integer', 'exists:warehouses,id'],
-            'cash_drawer_id' => ['nullable', 'integer', 'exists:cash_drawers,id'],
             'active' => ['required', 'boolean'],
         ]);
 
-        $this->validateDrawerWarehouse($data);
+        $data = $this->validateOperationalChain($data, null);
 
         return response()->json([
             'success' => true,
-            'point' => SarPointOfIssue::create($data),
+            'point' => SarPointOfIssue::create($data)->fresh(),
         ]);
     }
 
@@ -196,12 +229,14 @@ class SarFiscalSettingsController extends BaseController
             ],
             'name' => ['required', 'string', 'max:191'],
             'address' => ['required', 'string', 'max:1000'],
+            'branch_id' => ['required', 'integer', 'exists:branches,id'],
+            'inventory_location_id' => ['required', 'integer', 'exists:inventory_locations,id'],
+            'cash_drawer_id' => ['required', 'integer', 'exists:cash_drawers,id'],
             'warehouse_id' => ['nullable', 'integer', 'exists:warehouses,id'],
-            'cash_drawer_id' => ['nullable', 'integer', 'exists:cash_drawers,id'],
             'active' => ['required', 'boolean'],
         ]);
 
-        $this->validateDrawerWarehouse($data);
+        $data = $this->validateOperationalChain($data, $point->id);
         $point->update($data);
 
         return response()->json(['success' => true, 'point' => $point->fresh()]);
@@ -295,15 +330,118 @@ class SarFiscalSettingsController extends BaseController
         ], is_array($settings) ? $settings : []);
     }
 
-    private function validateDrawerWarehouse(array $data): void
+    /**
+     * A SAR point of issue is the fiscal identity of exactly one
+     * Branch -> InventoryLocation -> CashDrawer triple. The three must really
+     * belong to each other, and a cash drawer can back at most one active point.
+     */
+    private function validateOperationalChain(array $data, ?int $ignorePointId): array
     {
-        if (empty($data['cash_drawer_id'])) {
-            return;
+        $branch = Branch::whereNull('deleted_at')->find((int) $data['branch_id']);
+        if (! $branch || ! (int) ($branch->is_active ?? 1)) {
+            abort(422, 'La sucursal seleccionada no existe o está inactiva.');
         }
 
-        $drawer = CashDrawer::whereNull('deleted_at')->findOrFail($data['cash_drawer_id']);
-        if (! empty($data['warehouse_id']) && (int) $drawer->warehouse_id !== (int) $data['warehouse_id']) {
-            abort(422, 'La caja seleccionada no pertenece al almacén indicado.');
+        $location = InventoryLocation::whereNull('deleted_at')->find((int) $data['inventory_location_id']);
+        if (! $location) {
+            abort(422, 'La ubicación de inventario seleccionada no existe.');
         }
+        if ((int) $location->branch_id !== (int) $branch->id) {
+            abort(422, 'La ubicación de inventario no pertenece a la sucursal seleccionada.');
+        }
+
+        $drawer = CashDrawer::whereNull('deleted_at')->find((int) $data['cash_drawer_id']);
+        if (! $drawer) {
+            abort(422, 'La caja física seleccionada no existe.');
+        }
+        if ((int) $drawer->branch_id !== (int) $branch->id) {
+            abort(422, 'La caja física no pertenece a la sucursal seleccionada.');
+        }
+        if ($drawer->inventory_location_id !== null
+            && (int) $drawer->inventory_location_id !== (int) $location->id) {
+            abort(422, 'La caja física no opera desde la ubicación de inventario seleccionada.');
+        }
+
+        if (! empty($data['warehouse_id'])) {
+            $warehouse = Warehouse::whereNull('deleted_at')->find((int) $data['warehouse_id']);
+            if ($warehouse && $warehouse->branch_id !== null && (int) $warehouse->branch_id !== (int) $branch->id) {
+                abort(422, 'El almacén legado indicado no pertenece a la sucursal seleccionada.');
+            }
+        } else {
+            // Keep a legacy warehouse pointer for the fallback resolver when the
+            // branch still has one, but it is never the source of truth for POS.
+            $data['warehouse_id'] = optional(
+                Warehouse::whereNull('deleted_at')->where('branch_id', $branch->id)->first()
+            )->id;
+        }
+
+        $duplicateActive = SarPointOfIssue::where('cash_drawer_id', (int) $drawer->id)
+            ->where('active', true)
+            ->when($ignorePointId, fn ($q) => $q->where('id', '<>', $ignorePointId))
+            ->when(array_key_exists('active', $data) && ! $data['active'], fn ($q) => $q->whereRaw('1 = 0'))
+            ->exists();
+        if ($duplicateActive && ! empty($data['active'])) {
+            abort(422, 'Ya existe otro punto SAR activo asignado a esta caja física.');
+        }
+
+        return $data;
+    }
+
+    /**
+     * The authorization that is genuinely ready to invoice for a point:
+     *   status = active  AND  deadline >= today  AND  next_number in [range_start, range_end].
+     * Any failing condition means "not ready" — the UI must reflect that.
+     */
+    private function readyAuthorization(SarPointOfIssue $point): ?SarAuthorization
+    {
+        $today = Carbon::today();
+
+        return $point->authorizations
+            ->where('document_type', '01')
+            ->first(function (SarAuthorization $a) use ($today) {
+                if ($a->status !== 'active') {
+                    return false;
+                }
+                if ($a->deadline && Carbon::parse($a->deadline)->lt($today)) {
+                    return false;
+                }
+                $next = (int) $a->next_number;
+                return $next >= (int) $a->range_start && $next <= (int) $a->range_end;
+            });
+    }
+
+    /**
+     * Cash drawers that a cashier could pick at the POS but that have no fiscal
+     * identity yet: no active SAR point, or a point without a ready CAI.
+     */
+    private function fiscalGaps($points): array
+    {
+        $readyByDrawer = collect($points)
+            ->filter(fn ($p) => $p->getAttribute('fiscal_ready'))
+            ->keyBy('cash_drawer_id');
+
+        $pointByDrawer = collect($points)
+            ->filter(fn ($p) => $p->active && $p->cash_drawer_id)
+            ->keyBy('cash_drawer_id');
+
+        return CashDrawer::whereNull('deleted_at')
+            ->where('is_active', true)
+            ->with(['branch:id,name', 'inventoryLocation:id,name'])
+            ->orderBy('branch_id')->orderBy('name')
+            ->get(['id', 'branch_id', 'inventory_location_id', 'name', 'code'])
+            ->reject(fn ($drawer) => $readyByDrawer->has($drawer->id))
+            ->map(function ($drawer) use ($pointByDrawer) {
+                $point = $pointByDrawer->get($drawer->id);
+                return [
+                    'cash_drawer_id' => $drawer->id,
+                    'cash_drawer_name' => $drawer->name,
+                    'cash_drawer_code' => $drawer->code,
+                    'branch_name' => optional($drawer->branch)->name,
+                    'inventory_location_name' => optional($drawer->inventoryLocation)->name,
+                    'reason' => $point ? 'sin_cai_activo' : 'sin_punto_sar',
+                ];
+            })
+            ->values()
+            ->all();
     }
 }

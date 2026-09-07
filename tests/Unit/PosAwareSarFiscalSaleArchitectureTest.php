@@ -4,26 +4,68 @@ namespace Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Modern POS fiscal resolution is anchored to the operational identity of the
+ * sale — Branch -> InventoryLocation -> CashDrawer -> SAR Point -> Authorization
+ * -> CAI. warehouse_id is no longer the source of truth for POS invoicing; it
+ * only survives for the legacy (non-POS / pre-location) resolver.
+ */
 class PosAwareSarFiscalSaleArchitectureTest extends TestCase
 {
-    public function test_modern_pos_resolves_sar_by_physical_cash_drawer_without_persisting_warehouse(): void
+    private function read(string $rel): string
     {
-        $service = file_get_contents(base_path('app/Services/PosAwareSarFiscalSaleService.php'));
-
-        $this->assertStringContainsString("where('cash_drawer_id', \$cashDrawerId)", $service);
-        $this->assertStringContainsString('(int) $drawer->branch_id !== (int) $sale->branch_id', $service);
-        $this->assertStringContainsString("\$originalWarehouseId = \$sale->getAttribute('warehouse_id')", $service);
-        $this->assertStringContainsString("\$sale->setAttribute('warehouse_id', \$originalWarehouseId)", $service);
-        $this->assertStringContainsString('No existe un punto SAR activo para la caja física seleccionada.', $service);
+        return file_get_contents(dirname(__DIR__, 2).'/'.$rel);
     }
 
-    public function test_sar_remains_mandatory_and_pos_aware_service_is_the_runtime_binding(): void
+    public function test_modern_pos_resolves_the_point_through_branch_location_drawer(): void
     {
-        $provider = file_get_contents(base_path('app/Providers/AppServiceProvider.php'));
-        $legacy = file_get_contents(base_path('app/Services/SarFiscalSaleService.php'));
+        $service = $this->read('app/Services/PosAwareSarFiscalSaleService.php');
+
+        // The point is resolved by the full operational triple, not by warehouse.
+        $this->assertStringContainsString('SarPointOfIssue::forOperationalContext(', $service);
+        $this->assertStringContainsString('(int) $sale->branch_id', $service);
+        $this->assertStringContainsString('(int) $sale->inventory_location_id', $service);
+        $this->assertStringContainsString('(int) $cashDrawerId', $service);
+
+        // The in-memory warehouse_id swap hack is gone.
+        $this->assertStringNotContainsString("setAttribute('warehouse_id'", $service);
+        $this->assertStringNotContainsString('$originalWarehouseId', $service);
+
+        // Cross-branch / cross-location drawers are rejected with clear messages.
+        $this->assertStringContainsString('(int) $drawer->branch_id !== (int) $sale->branch_id', $service);
+        $this->assertStringContainsString('pertenece a otra sucursal', $service);
+        $this->assertStringContainsString('(int) $drawer->inventory_location_id !== (int) $sale->inventory_location_id', $service);
+
+        // Missing-point message names branch / location / drawer.
+        $this->assertStringContainsString('No hay un punto de emisión SAR activo para ', $service);
+
+        // Defence in depth: resolved point + authorization must belong to the branch.
+        $this->assertStringContainsString('El punto SAR resuelto no pertenece a la sucursal de la venta.', $service);
+        $this->assertStringContainsString('La autorización SAR resuelta no pertenece a la sucursal de la venta.', $service);
+    }
+
+    public function test_sar_stays_mandatory_and_pos_aware_service_is_the_binding(): void
+    {
+        $provider = $this->read('app/Providers/AppServiceProvider.php');
+        $legacy = $this->read('app/Services/SarFiscalSaleService.php');
+        $modern = $this->read('app/Services/PosAwareSarFiscalSaleService.php');
 
         $this->assertStringContainsString('singleton(SarFiscalSaleService::class, PosAwareSarFiscalSaleService::class)', $provider);
+
+        // Both entry points still short-circuit when fiscal invoicing is disabled.
         $this->assertStringContainsString('if (! $profile || ! $profile->enabled)', $legacy);
-        $this->assertStringContainsString('No existe una autorización SAR activa para el punto de emisión seleccionado.', $legacy);
+        $this->assertStringContainsString('if (! $profile || ! $profile->enabled)', $modern);
+
+        // The legacy warehouse resolver survives only as a fallback.
+        $this->assertStringContainsString('return parent::issueIfEnabled($sale, $cashDrawerId);', $modern);
+        $this->assertStringContainsString('->where(\'warehouse_id\', $warehouseId)', $legacy);
+    }
+
+    public function test_correlativo_allocation_has_a_hard_cross_branch_guard(): void
+    {
+        $number = $this->read('app/Services/SarFiscalNumberService.php');
+
+        $this->assertStringContainsString('$authorization->pointOfIssue->branch_id', $number);
+        $this->assertStringContainsString('Una venta no puede consumir el CAI de una sucursal distinta.', $number);
     }
 }

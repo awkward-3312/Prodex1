@@ -35,6 +35,18 @@ class SarFiscalNumberService
 
             $this->assertUsable($authorization);
 
+            // Hard guard at the correlativo allocation point: a sale can never
+            // consume the CAI / range of a point of issue that belongs to a
+            // different branch. Only enforced when both sides carry a branch
+            // (legacy warehouse-only points keep working unchanged).
+            $pointBranch = $authorization->pointOfIssue->branch_id ?? null;
+            $saleBranch = $sale->branch_id ?? null;
+            if ($pointBranch !== null && $saleBranch !== null && (int) $pointBranch !== (int) $saleBranch) {
+                throw new SarFiscalException(
+                    'El punto de emisión SAR pertenece a otra sucursal. Una venta no puede consumir el CAI de una sucursal distinta.'
+                );
+            }
+
             $sequence = (int) $authorization->next_number;
             $fiscalNumber = $this->formatNumber(
                 $authorization->pointOfIssue->establishment_code,
