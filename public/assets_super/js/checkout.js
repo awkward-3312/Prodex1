@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var currencyCode = data.currencyCode || '';
     var trans = data.trans || {};
 
+    var checkoutForm = document.getElementById('checkoutForm');
+    var originalCheckoutAction = checkoutForm ? checkoutForm.action : '';
     var offlineSection = document.getElementById('offlineSection');
     var payBtnText = document.getElementById('payBtnText');
     var secureNote = document.getElementById('secureNote');
@@ -15,6 +17,78 @@ document.addEventListener('DOMContentLoaded', function() {
     var uploadFileName = document.getElementById('uploadFileName');
     var removeFileBtn = document.getElementById('removeFile');
 
+    function ensureDLocalSection() {
+        if (!document.querySelector('.gateway-radio[value="dlocal"]')) return null;
+
+        var existing = document.getElementById('dlocalSection');
+        if (existing) return existing;
+        if (!checkoutForm) return null;
+
+        var section = document.createElement('div');
+        section.className = offlineSection && offlineSection.classList.contains('billing-card')
+            ? 'billing-card mb-4'
+            : 'checkout-card mb-4';
+        section.id = 'dlocalSection';
+        section.style.display = 'none';
+        section.innerHTML = '' +
+            '<div class="' + (section.classList.contains('billing-card') ? 'billing-card-header' : 'checkout-card-header') + '">' +
+                '<i class="bi bi-person-vcard me-2 text-muted"></i>Datos del titular para dLocal' +
+            '</div>' +
+            '<div class="' + (section.classList.contains('billing-card') ? 'billing-card-body' : 'checkout-card-body') + '">' +
+                '<p class="text-muted small mb-3">Estos datos se envían de forma segura a dLocal para validar el pago. PRODEX no almacena datos de tarjeta.</p>' +
+                '<div class="row g-3">' +
+                    '<div class="col-md-6"><label class="form-label fw-600">País</label>' +
+                        '<select name="dlocal_country" class="form-select dlocal-required" disabled>' +
+                            '<option value="HN">Honduras</option><option value="GT">Guatemala</option><option value="SV">El Salvador</option>' +
+                            '<option value="NI">Nicaragua</option><option value="CR">Costa Rica</option><option value="PA">Panamá</option>' +
+                            '<option value="MX">México</option><option value="CO">Colombia</option><option value="PE">Perú</option>' +
+                            '<option value="CL">Chile</option><option value="BR">Brasil</option><option value="AR">Argentina</option>' +
+                            '<option value="UY">Uruguay</option><option value="PY">Paraguay</option><option value="BO">Bolivia</option>' +
+                            '<option value="DO">República Dominicana</option>' +
+                        '</select></div>' +
+                    '<div class="col-md-6"><label class="form-label fw-600">Nombre completo del titular</label>' +
+                        '<input type="text" name="dlocal_name" maxlength="100" class="form-control dlocal-required" autocomplete="name" disabled></div>' +
+                    '<div class="col-md-6"><label class="form-label fw-600">Documento de identidad</label>' +
+                        '<input type="text" name="dlocal_document" maxlength="30" class="form-control dlocal-required" autocomplete="off" disabled>' +
+                        '<div class="form-text">En Honduras: DNI de 13 dígitos.</div></div>' +
+                    '<div class="col-md-6"><label class="form-label fw-600">Fecha de nacimiento</label>' +
+                        '<input type="text" name="dlocal_birth_date" placeholder="DD-MM-AAAA" maxlength="10" class="form-control dlocal-required" autocomplete="bday" disabled></div>' +
+                    '<div class="col-12"><label class="form-label fw-600">Teléfono</label>' +
+                        '<input type="tel" name="dlocal_phone" maxlength="20" class="form-control dlocal-required" autocomplete="tel" disabled></div>' +
+                '</div>' +
+            '</div>';
+
+        if (offlineSection && offlineSection.parentNode) {
+            offlineSection.parentNode.insertBefore(section, offlineSection);
+        } else {
+            var button = document.getElementById('payBtn');
+            checkoutForm.insertBefore(section, button || null);
+        }
+
+        return section;
+    }
+
+    var dlocalSection = ensureDLocalSection();
+
+    function syncDLocalVisibility() {
+        var selected = document.querySelector('.gateway-radio:checked');
+        var isDLocal = !!selected && selected.value === 'dlocal';
+        dlocalSection = document.getElementById('dlocalSection') || dlocalSection;
+
+        if (dlocalSection) dlocalSection.style.display = isDLocal ? 'block' : 'none';
+        document.querySelectorAll('.dlocal-required').forEach(function(field) {
+            field.disabled = !isDLocal;
+        });
+
+        // Tenant billing keeps the legacy BillingController untouched. Only a
+        // dLocal selection is routed to the isolated dLocal billing controller.
+        if (checkoutForm && originalCheckoutAction.indexOf('/billing/checkout/') !== -1) {
+            checkoutForm.action = isDLocal
+                ? originalCheckoutAction.replace('/billing/checkout/', '/billing/dlocal/checkout/')
+                : originalCheckoutAction;
+        }
+    }
+
     function currentAmount() {
         var cycle = document.querySelector('.cycle-radio:checked');
         return cycle ? prices[cycle.value].toFixed(2) : prices.monthly.toFixed(2);
@@ -22,9 +96,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateDisplay(cycle) {
         var amount = prices[cycle].toFixed(2);
-        document.getElementById('displayCycle').textContent = cycle.charAt(0).toUpperCase() + cycle.slice(1);
-        document.getElementById('displayAmount').textContent = currencySymbol + amount;
-        document.getElementById('displayTotal').textContent = currencySymbol + amount;
+        var cycleEl = document.getElementById('displayCycle');
+        var amountEl = document.getElementById('displayAmount');
+        var totalEl = document.getElementById('displayTotal');
+        if (cycleEl) cycleEl.textContent = cycle.charAt(0).toUpperCase() + cycle.slice(1);
+        if (amountEl) amountEl.textContent = currencySymbol + amount;
+        if (totalEl) totalEl.textContent = currencySymbol + amount;
         var offlineAmountEl = document.getElementById('offlineAmount');
         if (offlineAmountEl) offlineAmountEl.textContent = amount;
         updateOfflineVisibility();
@@ -199,10 +276,12 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.gateway-option').forEach(function(o) { o.classList.remove('selected'); });
             this.closest('.gateway-option').classList.add('selected');
             updateOfflineVisibility();
+            syncDLocalVisibility();
         });
     });
 
     updateOfflineVisibility();
+    syncDLocalVisibility();
     setupBankSelector();
 
     if (uploadArea) {
@@ -219,8 +298,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (removeFileBtn) removeFileBtn.addEventListener('click', function(e) { e.stopPropagation(); paymentProof.value = ''; uploadPlaceholder.style.display = ''; uploadPreview.style.display = 'none'; });
 
-    document.getElementById('checkoutForm').addEventListener('submit', function(e) {
+    if (checkoutForm) checkoutForm.addEventListener('submit', function(e) {
         var btn = document.getElementById('payBtn');
+        if (!btn) return;
         if (btn.dataset.submitting === '1') { e.preventDefault(); return; }
         btn.dataset.submitting = '1'; btn.disabled = true;
         var selected = document.querySelector('.gateway-radio:checked');
