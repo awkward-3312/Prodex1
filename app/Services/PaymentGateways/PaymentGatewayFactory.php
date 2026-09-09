@@ -5,6 +5,7 @@ namespace App\Services\PaymentGateways;
 class PaymentGatewayFactory
 {
     protected static array $gateways = [
+        'dlocal'      => DLocalGateway::class,
         'stripe'      => StripeGateway::class,
         'paypal'      => PaypalGateway::class,
         'paystack'    => PaystackGateway::class,
@@ -103,20 +104,19 @@ class PaymentGatewayFactory
             }
         }
 
-        // Fallback to built-in defaults
         return self::getDefaultCurrencyPresets()[$key] ?? [
             'supported_currencies' => ['USD'],
             'default_currency'     => 'USD',
         ];
     }
 
-    /**
-     * Built-in currency presets per gateway.
-     * Used when admin hasn't configured currencies in gateway settings.
-     */
     public static function getDefaultCurrencyPresets(): array
     {
         return [
+            'dlocal' => [
+                'supported_currencies' => ['USD', 'HNL', 'GTQ', 'CRC', 'PAB', 'MXN', 'COP', 'PEN', 'CLP', 'BRL', 'ARS', 'UYU', 'PYG', 'BOB', 'DOP'],
+                'default_currency'     => 'HNL',
+            ],
             'stripe' => [
                 'supported_currencies' => ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'SGD', 'HKD', 'NZD', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'BRL', 'MXN', 'INR'],
                 'default_currency'     => 'USD',
@@ -130,9 +130,6 @@ class PaymentGatewayFactory
                 'default_currency'     => 'NGN',
             ],
             'flutterwave' => [
-                // Only include currencies natively supported without DCC.
-                // USD/EUR/GBP require DCC which most accounts don't have —
-                // admins can add them via Settings > Payment Gateways if enabled.
                 'supported_currencies' => ['NGN', 'GHS', 'ZAR', 'KES', 'TZS', 'UGX', 'RWF', 'XOF', 'XAF'],
                 'default_currency'     => 'NGN',
             ],
@@ -144,8 +141,31 @@ class PaymentGatewayFactory
     }
 
     /**
-     * Return definitions for all registered gateways (regardless of availability).
+     * Local settlement currency expected by dLocal for each supported LATAM
+     * processing country. Nicaragua and El Salvador primarily use USD in the
+     * gateway flow; Panama is also configured as USD for predictable checkout.
      */
+    public static function getDLocalCountryCurrency(string $country): string
+    {
+        return match (strtoupper($country)) {
+            'HN' => 'HNL',
+            'GT' => 'GTQ',
+            'SV', 'NI', 'PA' => 'USD',
+            'CR' => 'CRC',
+            'MX' => 'MXN',
+            'CO' => 'COP',
+            'PE' => 'PEN',
+            'CL' => 'CLP',
+            'BR' => 'BRL',
+            'AR' => 'ARS',
+            'UY' => 'UYU',
+            'PY' => 'PYG',
+            'BO' => 'BOB',
+            'DO' => 'DOP',
+            default => 'USD',
+        };
+    }
+
     public static function getAllGatewayDefinitions(): array
     {
         $definitions = [];
@@ -157,9 +177,7 @@ class PaymentGatewayFactory
 
             $instance = new $class();
             $info     = $instance->getDisplayInfo();
-
             $info['fields'] = self::getFieldsForGateway($key);
-
             $definitions[$key] = $info;
         }
 
@@ -169,6 +187,25 @@ class PaymentGatewayFactory
     protected static function getFieldsForGateway(string $key): array
     {
         return match ($key) {
+            'dlocal' => [
+                'x_login' => [
+                    'label'       => 'X-Login',
+                    'placeholder' => 'Merchant X-Login',
+                    'secret'      => false,
+                    'help'        => 'From dLocal Dashboard > Settings > API credentials.',
+                ],
+                'x_trans_key' => [
+                    'label'       => 'X-Trans-Key',
+                    'placeholder' => 'Merchant transaction key',
+                    'secret'      => true,
+                ],
+                'secret_key' => [
+                    'label'       => 'Secret Key',
+                    'placeholder' => 'dLocal API secret key',
+                    'secret'      => true,
+                    'help'        => 'Used to sign API requests, callbacks and payment notifications.',
+                ],
+            ],
             'stripe' => [
                 'publishable_key' => [
                     'label'       => 'Publishable Key',
