@@ -38,6 +38,7 @@ class RouteServiceProvider extends ServiceProvider
     {
         Route::middleware('web')->namespace($this->namespace)->group(base_path('routes/central.php'));
         Route::namespace($this->namespace)->group(base_path('routes/central_bank_accounts.php'));
+        Route::namespace($this->namespace)->group(base_path('routes/dlocal.php'));
     }
 
     protected function mapTenantRoutes(): void
