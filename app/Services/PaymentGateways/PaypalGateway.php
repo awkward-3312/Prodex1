@@ -112,11 +112,13 @@ class PaypalGateway implements PaymentGatewayInterface
             throw new \RuntimeException('Failed to create PayPal order.');
         }
 
-        $order     = $response->json();
-        $approveLink = collect($order['links'])->firstWhere('rel', 'approve');
+        $order = $response->json();
+        $links = collect($order['links'] ?? []);
+        $checkoutLink = $links->firstWhere('rel', 'payer-action')
+            ?? $links->firstWhere('rel', 'approve');
 
         return [
-            'url'        => $approveLink['href'] ?? '',
+            'url'        => $checkoutLink['href'] ?? '',
             'session_id' => $order['id'],
         ];
     }
