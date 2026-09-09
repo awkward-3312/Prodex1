@@ -1,0 +1,41 @@
+name: Validate dLocal Payments
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  dlocal-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: PHP syntax check for dLocal integration
+        run: |
+          php -l app/Services/PaymentGateways/DLocalGateway.php
+          php -l app/Services/PaymentGateways/PaymentGatewayFactory.php
+          php -l app/Http/Controllers/Central/CheckoutController.php
+          php -l app/Http/Controllers/Central/DLocalReturnController.php
+          php -l app/Http/Controllers/Tenant/DLocalBillingController.php
+          php -l app/Models/Central/TenantBillingPayment.php
+          php -l app/Providers/RouteServiceProvider.php
+          php -l routes/dlocal.php
+          php -l routes/tenant_dlocal.php
+          php -l tests/Unit/DLocalPaymentGatewayContractTest.php
+
+      - name: JavaScript syntax check
+        run: node --check public/assets_super/js/checkout.js
+
+      - name: Run dLocal payment contract tests
+        run: vendor/bin/phpunit tests/Unit/DLocalPaymentGatewayContractTest.php

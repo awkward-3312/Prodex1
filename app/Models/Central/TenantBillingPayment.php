@@ -26,6 +26,7 @@ class TenantBillingPayment extends Model
     ];
 
     public const GATEWAYS = [
+        'dlocal'      => 'dLocal',
         'stripe'      => 'Stripe',
         'paypal'      => 'PayPal',
         'paystack'    => 'Paystack',

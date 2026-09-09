@@ -120,7 +120,56 @@
                         </div>
                     </div>
 
-                    {{-- Offline payment section (bank details + proof upload) --}}
+                    {{-- dLocal payer data. dLocal requires identity data in several LATAM markets. --}}
+                    <div class="checkout-card mb-4" id="dlocalSection" style="display:none;">
+                        <div class="checkout-card-header">
+                            <i class="bi bi-person-vcard me-2 text-muted"></i>Datos del titular para dLocal
+                        </div>
+                        <div class="checkout-card-body">
+                            <p class="text-muted small mb-3">Estos datos se envían de forma segura a dLocal para validar el pago. PRODEX no almacena datos de tarjeta.</p>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-600">País</label>
+                                    <select name="dlocal_country" class="form-select dlocal-required" disabled>
+                                        <option value="HN" {{ old('dlocal_country', 'HN') === 'HN' ? 'selected' : '' }}>Honduras</option>
+                                        <option value="GT" {{ old('dlocal_country') === 'GT' ? 'selected' : '' }}>Guatemala</option>
+                                        <option value="SV" {{ old('dlocal_country') === 'SV' ? 'selected' : '' }}>El Salvador</option>
+                                        <option value="NI" {{ old('dlocal_country') === 'NI' ? 'selected' : '' }}>Nicaragua</option>
+                                        <option value="CR" {{ old('dlocal_country') === 'CR' ? 'selected' : '' }}>Costa Rica</option>
+                                        <option value="PA" {{ old('dlocal_country') === 'PA' ? 'selected' : '' }}>Panamá</option>
+                                        <option value="MX" {{ old('dlocal_country') === 'MX' ? 'selected' : '' }}>México</option>
+                                        <option value="CO" {{ old('dlocal_country') === 'CO' ? 'selected' : '' }}>Colombia</option>
+                                        <option value="PE" {{ old('dlocal_country') === 'PE' ? 'selected' : '' }}>Perú</option>
+                                        <option value="CL" {{ old('dlocal_country') === 'CL' ? 'selected' : '' }}>Chile</option>
+                                        <option value="BR" {{ old('dlocal_country') === 'BR' ? 'selected' : '' }}>Brasil</option>
+                                        <option value="AR" {{ old('dlocal_country') === 'AR' ? 'selected' : '' }}>Argentina</option>
+                                        <option value="UY" {{ old('dlocal_country') === 'UY' ? 'selected' : '' }}>Uruguay</option>
+                                        <option value="PY" {{ old('dlocal_country') === 'PY' ? 'selected' : '' }}>Paraguay</option>
+                                        <option value="BO" {{ old('dlocal_country') === 'BO' ? 'selected' : '' }}>Bolivia</option>
+                                        <option value="DO" {{ old('dlocal_country') === 'DO' ? 'selected' : '' }}>República Dominicana</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-600">Nombre completo del titular</label>
+                                    <input type="text" name="dlocal_name" value="{{ old('dlocal_name') }}" maxlength="100" class="form-control dlocal-required" autocomplete="name" disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-600">Documento de identidad</label>
+                                    <input type="text" name="dlocal_document" value="{{ old('dlocal_document') }}" maxlength="30" class="form-control dlocal-required" autocomplete="off" disabled>
+                                    <div class="form-text">En Honduras: DNI de 13 dígitos.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-600">Fecha de nacimiento</label>
+                                    <input type="text" name="dlocal_birth_date" value="{{ old('dlocal_birth_date') }}" placeholder="DD-MM-AAAA" maxlength="10" class="form-control dlocal-required" autocomplete="bday" disabled>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-600">Teléfono</label>
+                                    <input type="tel" name="dlocal_phone" value="{{ old('dlocal_phone', ($registration->metadata ?? [])['owner_phone'] ?? '') }}" maxlength="20" class="form-control dlocal-required" autocomplete="tel" disabled>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="checkout-card mb-4" id="offlineSection">
                         <div class="checkout-card-header">
                             <i class="bi bi-bank me-2 text-muted"></i>{{ __('central.BankTransferDetails') }}
@@ -134,40 +183,22 @@
                             @if(!empty($bankDetails) && (($bankDetails['bank_name'] ?? '') || ($bankDetails['account_number'] ?? '')))
                             <div class="bank-details-grid mb-3">
                                 @if($bankDetails['bank_name'] ?? '')
-                                <div class="bank-detail-row">
-                                    <span class="bank-detail-label">{{ __('central.BankName') }}</span>
-                                    <span class="bank-detail-value">{{ $bankDetails['bank_name'] }}</span>
-                                </div>
+                                <div class="bank-detail-row"><span class="bank-detail-label">{{ __('central.BankName') }}</span><span class="bank-detail-value">{{ $bankDetails['bank_name'] }}</span></div>
                                 @endif
                                 @if($bankDetails['account_holder'] ?? '')
-                                <div class="bank-detail-row">
-                                    <span class="bank-detail-label">{{ __('central.AccountHolder') }}</span>
-                                    <span class="bank-detail-value">{{ $bankDetails['account_holder'] }}</span>
-                                </div>
+                                <div class="bank-detail-row"><span class="bank-detail-label">{{ __('central.AccountHolder') }}</span><span class="bank-detail-value">{{ $bankDetails['account_holder'] }}</span></div>
                                 @endif
                                 @if($bankDetails['account_number'] ?? '')
-                                <div class="bank-detail-row">
-                                    <span class="bank-detail-label">{{ __('central.AccountNumber') }}</span>
-                                    <span class="bank-detail-value">{{ $bankDetails['account_number'] }}</span>
-                                </div>
+                                <div class="bank-detail-row"><span class="bank-detail-label">{{ __('central.AccountNumber') }}</span><span class="bank-detail-value">{{ $bankDetails['account_number'] }}</span></div>
                                 @endif
                                 @if($bankDetails['iban'] ?? '')
-                                <div class="bank-detail-row">
-                                    <span class="bank-detail-label">{{ __('central.IBAN') }}</span>
-                                    <span class="bank-detail-value">{{ $bankDetails['iban'] }}</span>
-                                </div>
+                                <div class="bank-detail-row"><span class="bank-detail-label">{{ __('central.IBAN') }}</span><span class="bank-detail-value">{{ $bankDetails['iban'] }}</span></div>
                                 @endif
                                 @if($bankDetails['swift'] ?? '')
-                                <div class="bank-detail-row">
-                                    <span class="bank-detail-label">{{ __('central.SwiftBic') }}</span>
-                                    <span class="bank-detail-value">{{ $bankDetails['swift'] }}</span>
-                                </div>
+                                <div class="bank-detail-row"><span class="bank-detail-label">{{ __('central.SwiftBic') }}</span><span class="bank-detail-value">{{ $bankDetails['swift'] }}</span></div>
                                 @endif
                                 @if($bankDetails['branch'] ?? '')
-                                <div class="bank-detail-row">
-                                    <span class="bank-detail-label">{{ __('central.Branch') }}</span>
-                                    <span class="bank-detail-value">{{ $bankDetails['branch'] }}</span>
-                                </div>
+                                <div class="bank-detail-row"><span class="bank-detail-label">{{ __('central.Branch') }}</span><span class="bank-detail-value">{{ $bankDetails['branch'] }}</span></div>
                                 @endif
                             </div>
                             @if($bankDetails['instructions'] ?? '')
@@ -178,17 +209,13 @@
                             @endif
                             @else
                             <div class="alert alert-warning d-flex align-items-center gap-2 mb-3 bank-not-configured">
-                                <i class="bi bi-exclamation-triangle-fill"></i>
-                                {{ __('central.BankDetailsNotConfigured') }}
+                                <i class="bi bi-exclamation-triangle-fill"></i>{{ __('central.BankDetailsNotConfigured') }}
                             </div>
                             @endif
 
                             <hr class="checkout-separator">
-
                             <div class="mb-2">
-                                <label class="form-label fw-600 upload-label">
-                                    <i class="bi bi-upload me-1"></i> {{ __('central.UploadProofOfPayment') }} <span class="text-danger">*</span>
-                                </label>
+                                <label class="form-label fw-600 upload-label"><i class="bi bi-upload me-1"></i> {{ __('central.UploadProofOfPayment') }} <span class="text-danger">*</span></label>
                                 <div class="offline-upload-area" id="uploadArea">
                                     <input type="file" name="payment_proof" id="paymentProof" accept=".jpg,.jpeg,.png,.webp,.pdf" class="d-none">
                                     <div id="uploadPlaceholder">
@@ -199,9 +226,7 @@
                                     <div id="uploadPreview">
                                         <i class="bi bi-file-earmark-check upload-icon-preview"></i>
                                         <p class="mb-0 fw-600 upload-file-name" id="uploadFileName"></p>
-                                        <button type="button" class="btn btn-sm btn-outline-danger mt-1" id="removeFile">
-                                            <i class="bi bi-x-lg"></i> {{ __('central.Remove') }}
-                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger mt-1" id="removeFile"><i class="bi bi-x-lg"></i> {{ __('central.Remove') }}</button>
                                     </div>
                                 </div>
                             </div>
@@ -213,10 +238,7 @@
                         <i class="bi bi-lock-fill me-2"></i>
                         <span id="payBtnText">{{ __('central.PayAndCreateWorkspace', ['symbol' => $currencySymbol, 'amount' => number_format($amount, 2), 'code' => $currencyCode]) }}</span>
                     </button>
-                    <p class="text-center text-muted mt-3 checkout-secure-note" id="secureNote">
-                        <i class="bi bi-shield-check"></i>
-                        {{ __('central.SecurePaymentNotice') }}
-                    </p>
+                    <p class="text-center text-muted mt-3 checkout-secure-note" id="secureNote"><i class="bi bi-shield-check"></i> {{ __('central.SecurePaymentNotice') }}</p>
                     @endif
                 </form>
             </div>
@@ -228,18 +250,34 @@
     <script>
     window.CheckoutData = {
         currencySymbol: @json($currencySymbol),
-        currencyCode:   @json($currencyCode),
-        prices:         { monthly: {{ $amount }}, yearly: {{ $amount }} },
+        currencyCode: @json($currencyCode),
+        prices: { monthly: {{ $amount }}, yearly: {{ $amount }} },
         trans: {
-            pay:                @json($defaultBtnText),
+            pay: @json($defaultBtnText),
             submitPaymentProof: @json(__('central.SubmitProofAndCreateWorkspace')),
-            securePayment:      @json(__('central.SecurePaymentNotice')),
-            proofReviewed:      @json(__('central.OfflineProofNotice')),
-            fileTooLarge:       @json(__('central.FileTooLarge')),
-            submitting:         @json(__('central.Submitting')),
-            redirecting:        @json(__('central.RedirectingToPayment')),
+            securePayment: @json(__('central.SecurePaymentNotice')),
+            proofReviewed: @json(__('central.OfflineProofNotice')),
+            fileTooLarge: @json(__('central.FileTooLarge')),
+            submitting: @json(__('central.Submitting')),
+            redirecting: @json(__('central.RedirectingToPayment')),
         },
     };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var section = document.getElementById('dlocalSection');
+        function syncDLocalFields() {
+            var selected = document.querySelector('.gateway-radio:checked');
+            var active = !!selected && selected.value === 'dlocal';
+            if (section) section.style.display = active ? 'block' : 'none';
+            document.querySelectorAll('.dlocal-required').forEach(function (field) {
+                field.disabled = !active;
+            });
+        }
+        document.querySelectorAll('.gateway-radio').forEach(function (radio) {
+            radio.addEventListener('change', syncDLocalFields);
+        });
+        syncDLocalFields();
+    });
     </script>
     <script src="{{ asset('assets_super/js/checkout.js') }}"></script>
 </body>

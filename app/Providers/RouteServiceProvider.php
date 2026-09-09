@@ -38,6 +38,7 @@ class RouteServiceProvider extends ServiceProvider
     {
         Route::middleware('web')->namespace($this->namespace)->group(base_path('routes/central.php'));
         Route::namespace($this->namespace)->group(base_path('routes/central_bank_accounts.php'));
+        Route::namespace($this->namespace)->group(base_path('routes/dlocal.php'));
     }
 
     protected function mapTenantRoutes(): void
@@ -62,6 +63,8 @@ class RouteServiceProvider extends ServiceProvider
             ->group(base_path('routes/tenant_transfer_logistics_web.php'));
         Route::middleware(array_merge(['web'], $tenancy))->namespace($this->namespace)
             ->group(base_path('routes/tenant_web.php'));
+        Route::middleware(array_merge(['web'], $tenancy))->namespace($this->namespace)
+            ->group(base_path('routes/tenant_dlocal.php'));
 
         foreach ([
             'tenant_api.php',
