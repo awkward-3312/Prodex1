@@ -93,13 +93,17 @@ class PaypalGateway implements PaymentGatewayInterface
                     'description' => $description,
                     'custom_id'   => json_encode($metadata),
                 ]],
-                'application_context' => [
-                    'brand_name'          => config('app.name'),
-                    'return_url'          => $successUrl,
-                    'cancel_url'          => $cancelUrl,
-                    'user_action'         => 'PAY_NOW',
-                    'shipping_preference' => 'NO_SHIPPING',
-                    'landing_page'        => 'BILLING',
+                'payment_source' => [
+                    'paypal' => [
+                        'experience_context' => [
+                            'brand_name'          => config('app.name'),
+                            'return_url'          => $successUrl,
+                            'cancel_url'          => $cancelUrl,
+                            'user_action'         => 'PAY_NOW',
+                            'shipping_preference' => 'NO_SHIPPING',
+                            'landing_page'        => 'GUEST_CHECKOUT',
+                        ],
+                    ],
                 ],
             ]);
 
