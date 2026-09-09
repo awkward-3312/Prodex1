@@ -138,7 +138,7 @@ class DLocalGateway implements PaymentGatewayInterface
             'payer'               => array_filter([
                 'name'           => (string) $payer['name'],
                 'email'          => (string) $payer['email'],
-                'document'       => preg_replace('/\D+/', '', (string) $payer['document']),
+                'document'       => preg_replace('/[^A-Za-z0-9]/', '', (string) $payer['document']),
                 'birth_date'     => (string) $payer['birth_date'],
                 'phone'          => ! empty($payer['phone']) ? (string) $payer['phone'] : null,
                 'user_reference' => (string) $payer['user_reference'],
@@ -180,7 +180,7 @@ class DLocalGateway implements PaymentGatewayInterface
             $result['gateway_payment_id'] = (string) ($data['id'] ?? $sessionId);
             $result['transaction_id'] = (string) ($data['id'] ?? $sessionId);
         } catch (\Throwable $e) {
-            Log::error('dLocal verifyPaymentStatus failed: ' . $e->getMessage());
+            Log::error("dLocal verifyPaymentStatus failed: {$e->getMessage()}");
         }
 
         return $result;
@@ -203,7 +203,10 @@ class DLocalGateway implements PaymentGatewayInterface
 
         $headerData = json_decode($signature, true);
         if (! is_array($headerData)) {
-            return $result;
+            $headerData = [
+                'date' => (string) request()->header('X-Date', ''),
+                'signature' => (string) (request()->header('Signature') ?: request()->header('Authorization', '')),
+            ];
         }
 
         $date = (string) ($headerData['date'] ?? '');
@@ -288,13 +291,13 @@ class DLocalGateway implements PaymentGatewayInterface
         $client = Http::timeout(30)
             ->acceptJson()
             ->withHeaders([
-                'X-Date'          => $date,
-                'X-Login'         => $this->resolvedCredentials['x_login'],
-                'X-Trans-Key'     => $this->resolvedCredentials['x_trans_key'],
-                'X-Version'       => '2.1',
-                'User-Agent'      => 'PRODEX/1.0',
-                'Authorization'   => 'V2-HMAC-SHA256, Signature: ' . $signature,
-                'Content-Type'    => 'application/json',
+                'X-Date'        => $date,
+                'X-Login'       => $this->resolvedCredentials['x_login'],
+                'X-Trans-Key'   => $this->resolvedCredentials['x_trans_key'],
+                'X-Version'     => '2.1',
+                'User-Agent'    => 'PRODEX/1.0',
+                'Authorization' => 'V2-HMAC-SHA256, Signature: ' . $signature,
+                'Content-Type'  => 'application/json',
             ]);
 
         $url = $this->baseUrl() . $path;
@@ -343,10 +346,10 @@ class DLocalGateway implements PaymentGatewayInterface
     protected function normalizeStatus(string $status): string
     {
         return match (strtoupper(trim($status))) {
-            'PAID', 'APPROVED', 'COMPLETED' => 'paid',
+            'PAID', 'APPROVED' => 'paid',
+            'COMPLETED', 'PENDING' => 'pending',
             'REJECTED', 'FAILED', 'CANCELLED', 'CANCELED', 'ERROR' => 'failed',
             'REFUNDED' => 'refunded',
-            'PENDING' => 'pending',
             default => 'unknown',
         };
     }
