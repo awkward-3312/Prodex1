@@ -114,18 +114,24 @@ class DLocalGateway implements PaymentGatewayInterface
                 : 'registration-' . (string) ($metadata['registration_id'] ?? uniqid());
         }
 
-        $orderId = ! empty($metadata['payment_id'])
-            ? 'payment-' . (int) $metadata['payment_id']
-            : 'registration-' . (int) ($metadata['registration_id'] ?? 0);
+        $paymentId = ! empty($metadata['payment_id']) ? (int) $metadata['payment_id'] : null;
+        $registrationId = ! empty($metadata['registration_id']) ? (int) $metadata['registration_id'] : null;
+
+        $orderId = $paymentId
+            ? 'payment-' . $paymentId
+            : 'registration-' . (int) ($registrationId ?? 0);
 
         if ($orderId === 'registration-0') {
             throw new \InvalidArgumentException('dLocal requires an internal payment or registration identifier.');
         }
 
-        $returnState = Crypt::encryptString(json_encode([
-            'success_url' => $successUrl,
-            'cancel_url'  => $cancelUrl,
-        ], JSON_UNESCAPED_SLASHES));
+        // Keep callback_url below dLocal's 500-character limit. The encrypted
+        // state contains only an internal ID; the return controller reconstructs
+        // the trusted PRODEX destination server-side.
+        $returnState = Crypt::encryptString(json_encode(
+            $paymentId ? ['payment_id' => $paymentId] : ['registration_id' => $registrationId],
+            JSON_UNESCAPED_SLASHES
+        ));
 
         $centralBase = rtrim((string) config('app.url'), '/');
 
@@ -145,24 +151,27 @@ class DLocalGateway implements PaymentGatewayInterface
                 'ip'             => ! empty($payer['ip']) ? (string) $payer['ip'] : null,
                 'device_id'      => ! empty($payer['device_id']) ? (string) $payer['device_id'] : null,
             ], static fn ($value) => $value !== null && $value !== ''),
+            'device'           => ['type' => 'WEB'],
             'order_id'         => $orderId,
             'description'      => trim($productName . ' - ' . $description),
             'notification_url' => $centralBase . '/webhook/dlocal',
             'callback_url'     => $centralBase . '/payments/dlocal/return?state=' . rawurlencode($returnState),
         ];
 
-        $response = $this->request('POST', '/payments', $body);
+        // dLocal requires /secure_payments when a card is collected in a
+        // REDIRECT flow. PRODEX never receives the card number or CVV.
+        $response = $this->request('POST', '/secure_payments', $body);
 
-        $paymentId = (string) ($response['id'] ?? '');
+        $dlocalPaymentId = (string) ($response['id'] ?? '');
         $redirectUrl = (string) ($response['redirect_url'] ?? '');
 
-        if ($paymentId === '' || $redirectUrl === '') {
+        if ($dlocalPaymentId === '' || $redirectUrl === '') {
             throw new \RuntimeException('dLocal did not return a payment ID and redirect URL.');
         }
 
         return [
             'url'        => $redirectUrl,
-            'session_id' => $paymentId,
+            'session_id' => $dlocalPaymentId,
         ];
     }
 
