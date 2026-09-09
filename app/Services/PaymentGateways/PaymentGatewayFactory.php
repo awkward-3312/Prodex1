@@ -114,7 +114,7 @@ class PaymentGatewayFactory
     {
         return [
             'dlocal' => [
-                'supported_currencies' => ['USD', 'HNL', 'GTQ', 'CRC', 'PAB', 'MXN', 'COP', 'PEN', 'CLP', 'BRL', 'ARS', 'UYU', 'PYG', 'BOB', 'DOP'],
+                'supported_currencies' => ['USD', 'HNL', 'GTQ', 'NIO', 'CRC', 'PAB', 'MXN', 'COP', 'PEN', 'CLP', 'BRL', 'ARS', 'UYU', 'PYG', 'BOB', 'DOP'],
                 'default_currency'     => 'HNL',
             ],
             'stripe' => [
@@ -141,16 +141,18 @@ class PaymentGatewayFactory
     }
 
     /**
-     * Local settlement currency expected by dLocal for each supported LATAM
-     * processing country. Nicaragua and El Salvador primarily use USD in the
-     * gateway flow; Panama is also configured as USD for predictable checkout.
+     * Local transaction currency expected by dLocal for each configured LATAM
+     * processing country. The checkout conversion is deliberately country-aware
+     * so a currency supported elsewhere cannot accidentally be sent to the
+     * wrong dLocal market.
      */
     public static function getDLocalCountryCurrency(string $country): string
     {
         return match (strtoupper($country)) {
             'HN' => 'HNL',
             'GT' => 'GTQ',
-            'SV', 'NI', 'PA' => 'USD',
+            'SV', 'PA' => 'USD',
+            'NI' => 'NIO',
             'CR' => 'CRC',
             'MX' => 'MXN',
             'CO' => 'COP',
