@@ -51,17 +51,26 @@ class CheckoutController extends Controller
             ->firstOrFail();
 
         $rules = [
-            'gateway' => ['required', 'string', 'in:stripe,paypal,paystack,flutterwave,mollie,offline'],
+            'gateway' => ['required', 'string', 'in:dlocal,stripe,paypal,paystack,flutterwave,mollie,offline'],
         ];
 
         $gatewayKey = $request->input('gateway');
 
-        // Offline payments require a proof of payment upload
         if ($gatewayKey === 'offline') {
             $rules['payment_proof'] = ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'];
         }
 
-        $request->validate($rules);
+        if ($gatewayKey === 'dlocal') {
+            $rules += [
+                'dlocal_country'    => ['required', 'string', 'size:2', 'in:HN,GT,SV,NI,CR,PA,MX,CO,PE,CL,BR,AR,UY,PY,BO,DO'],
+                'dlocal_name'       => ['required', 'string', 'min:2', 'max:100'],
+                'dlocal_document'   => ['required', 'string', 'min:5', 'max:30', 'regex:/^[A-Za-z0-9 .-]+$/'],
+                'dlocal_birth_date' => ['required', 'date_format:d-m-Y'],
+                'dlocal_phone'      => ['nullable', 'string', 'max:20'],
+            ];
+        }
+
+        $validated = $request->validate($rules);
 
         $gateway = PaymentGatewayFactory::resolve($gatewayKey);
 
@@ -71,7 +80,6 @@ class CheckoutController extends Controller
 
         $plan = Plan::findOrFail($registration->plan_id);
 
-        // ── Offline payment: save proof and mark as pending verification ──
         if ($gatewayKey === 'offline') {
             try {
                 $proofPath = null;
@@ -102,10 +110,15 @@ class CheckoutController extends Controller
             }
         }
 
-        // ── Online payment gateways ──
-
-        // Resolve currency conversion
         $currencyConfig = PaymentGatewayFactory::getGatewayCurrencyConfig($gatewayKey);
+        if ($gatewayKey === 'dlocal') {
+            $targetCurrency = PaymentGatewayFactory::getDLocalCountryCurrency($validated['dlocal_country']);
+            $currencyConfig = [
+                'supported_currencies' => [$targetCurrency],
+                'default_currency'     => $targetCurrency,
+            ];
+        }
+
         $conversion = CurrencyConversionService::resolve(
             (float) $registration->amount,
             $registration->currency,
@@ -117,24 +130,41 @@ class CheckoutController extends Controller
         $cancelUrl  = route('central.checkout', ['token' => $registration->token]) . '?cancelled=1';
 
         try {
-            // Send gateway_amount + gateway_currency to the payment provider
+            $metadata = [
+                'registration_id'    => $registration->id,
+                'registration_token' => $registration->token,
+            ];
+
+            if ($gatewayKey === 'dlocal') {
+                $metadata['dlocal_country'] = strtoupper($validated['dlocal_country']);
+                $metadata['dlocal_payer'] = [
+                    'name'           => $validated['dlocal_name'],
+                    'email'          => $registration->admin_email,
+                    'document'       => $validated['dlocal_document'],
+                    'birth_date'     => $validated['dlocal_birth_date'],
+                    'phone'          => $validated['dlocal_phone'] ?? (($registration->metadata ?? [])['owner_phone'] ?? null),
+                    'user_reference' => 'registration-' . $registration->id,
+                    'ip'             => $request->ip(),
+                ];
+            }
+
             $result = $gateway->createCheckoutUrl(
                 amount: $conversion['gateway_amount'],
                 currency: $conversion['gateway_currency'],
                 productName: $plan->name . ' Plan',
                 description: ucfirst($registration->billing_cycle) . ' subscription',
-                metadata: [
-                    'registration_id'    => $registration->id,
-                    'registration_token' => $registration->token,
-                ],
+                metadata: $metadata,
                 successUrl: $successUrl,
                 cancelUrl: $cancelUrl,
             );
 
-            // If a DCC fallback occurred (e.g. USD → NGN), use the actual
-            // currency/amount that was sent to the gateway, not the original.
             $actualCurrency = $result['fallback_currency'] ?? $conversion['gateway_currency'];
             $actualAmount   = $result['fallback_amount']   ?? $conversion['gateway_amount'];
+
+            $registrationMeta = $registration->metadata ?? [];
+            if ($gatewayKey === 'dlocal') {
+                $registrationMeta['dlocal_country'] = strtoupper($validated['dlocal_country']);
+            }
 
             $registration->update([
                 'gateway'            => $gatewayKey,
@@ -144,6 +174,7 @@ class CheckoutController extends Controller
                 'exchange_rate'      => $conversion['exchange_rate'],
                 'conversion_applied' => $conversion['conversion_applied'] || ($actualCurrency !== $conversion['gateway_currency']),
                 'status'             => PendingRegistration::STATUS_PROCESSING,
+                'metadata'           => $registrationMeta,
             ]);
 
             return redirect()->away($result['url']);
@@ -156,9 +187,6 @@ class CheckoutController extends Controller
         }
     }
 
-    /**
-     * Confirmation page after offline payment proof is submitted.
-     */
     public function offlineSubmitted(string $token)
     {
         $registration = PendingRegistration::where('token', $token)
@@ -174,5 +202,4 @@ class CheckoutController extends Controller
             'appName'        => $settings->app_name ?? config('app.name'),
         ]);
     }
-
 }
