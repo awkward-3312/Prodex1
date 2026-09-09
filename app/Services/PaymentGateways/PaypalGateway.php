@@ -99,6 +99,7 @@ class PaypalGateway implements PaymentGatewayInterface
                     'cancel_url'          => $cancelUrl,
                     'user_action'         => 'PAY_NOW',
                     'shipping_preference' => 'NO_SHIPPING',
+                    'landing_page'        => 'BILLING',
                 ],
             ]);
 
