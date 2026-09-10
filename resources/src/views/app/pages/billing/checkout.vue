@@ -58,7 +58,7 @@
                 </div>
                 <p class="mb-0 mt-2 text-muted tiny-text">
                   El precio comercial de PRODEX se mantiene en {{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}.
-                  La activación se hará luego por webhooks.
+                  Paddle sincronizará la suscripción automáticamente cuando confirme el checkout.
                 </p>
               </div>
 
@@ -313,7 +313,7 @@ export default {
         return this.$t('Proof_review_note') || 'Your proof will be reviewed by our team. Your plan activates after approval.';
       }
       if (this.isPaddlePayment) {
-        return 'Paddle Sandbox abre un checkout de prueba. Esta compra no activa la suscripción hasta implementar webhooks.';
+        return 'Paddle procesa el pago de forma segura y PRODEX sincroniza el estado de la suscripción automáticamente.';
       }
       return this.$t('Payment_secure') || 'Your payment is secured and encrypted. You will be redirected to complete payment.';
     },
@@ -379,7 +379,7 @@ export default {
         return this.$t('Pay_via_bank') || 'Pay via bank transfer and upload proof of payment';
       }
       if (gw.key === 'paddle') {
-        return 'Sandbox checkout para tarjeta internacional. No activa la suscripción todavía.';
+        return 'Checkout internacional seguro. La suscripción se sincroniza automáticamente con PRODEX.';
       }
       return (this.$t('Pay_with') || 'Pay securely with') + ' ' + gw.label;
     },
@@ -412,7 +412,9 @@ export default {
         throw new Error('Paddle.js no está disponible.');
       }
       if (!this.paddleInitialized) {
-        Paddle.Environment.set(this.paddle.environment || 'sandbox');
+        if ((this.paddle.environment || 'sandbox') === 'sandbox') {
+          Paddle.Environment.set('sandbox');
+        }
         Paddle.Initialize({ token: this.paddle.client_side_token });
         this.paddleInitialized = true;
       }
@@ -520,16 +522,33 @@ export default {
       if (this.isPaddlePayment) {
         this.processing = true;
         try {
+          // Create an authenticated, server-side checkout attempt first. Paddle
+          // receives only its signed opaque reference in custom_data, so webhook
+          // fulfillment can never trust a tenant/plan ID supplied by the browser.
+          const { data } = await axios.post("/api/billing/paddle/prepare", {
+            plan_id: this.plan.id,
+            billing_cycle: this.selectedCycle,
+          });
+
+          if (!data.success || !data.price_id || !data.custom_data?.prodex_ref) {
+            throw new Error(data.message || 'No se pudo preparar el checkout de Paddle.');
+          }
+
           const Paddle = await this.initializePaddle();
           const checkout = {
-            items: [{ priceId: this.selectedPaddlePriceId, quantity: 1 }],
+            items: [{ priceId: data.price_id, quantity: 1 }],
+            customData: data.custom_data,
           };
           if (this.customerEmail) {
             checkout.customer = { email: this.customerEmail };
           }
           Paddle.Checkout.open(checkout);
         } catch (e) {
-          this.makeToast("danger", e.message || "No se pudo abrir Paddle Checkout.", this.$t("Error") || "Error");
+          this.makeToast(
+            "danger",
+            e.response?.data?.message || e.message || "No se pudo abrir Paddle Checkout.",
+            this.$t("Error") || "Error"
+          );
         } finally {
           this.processing = false;
         }

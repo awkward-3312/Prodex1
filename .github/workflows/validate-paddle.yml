@@ -1,0 +1,45 @@
+name: Validate Paddle Billing
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  paddle-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: PHP syntax check for Paddle integration
+        run: |
+          php -l app/Http/Controllers/Central/PaddleWebhookController.php
+          php -l app/Http/Controllers/Tenant/PaddleBillingController.php
+          php -l app/Http/Middleware/SerializePaddleWebhook.php
+          php -l app/Models/Central/PaddleCheckoutAttempt.php
+          php -l app/Models/Central/PaddleSubscription.php
+          php -l app/Models/Central/PaddleWebhookEvent.php
+          php -l app/Models/Central/TenantBillingPayment.php
+          php -l app/Providers/RouteServiceProvider.php
+          php -l app/Services/Billing/SubscriptionLifecycleService.php
+          php -l app/Services/Paddle/PaddleCheckoutReference.php
+          php -l app/Services/Paddle/PaddlePriceGuard.php
+          php -l app/Services/Paddle/PaddleWebhookVerifier.php
+          php -l config/services.php
+          php -l database/migrations/2026_09_10_083500_create_paddle_billing_tables.php
+          php -l routes/paddle.php
+          php -l routes/tenant_paddle.php
+          php -l tests/Unit/PaddleBillingContractTest.php
+
+      - name: Run Paddle billing contract tests
+        run: vendor/bin/phpunit tests/Unit/PaddleBillingContractTest.php

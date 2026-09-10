@@ -2,8 +2,10 @@
 
 namespace App\Models\Central;
 
+use App\Services\Paddle\PaddlePriceGuard;
 use App\Tenant;
 use Illuminate\Database\Eloquent\Model;
+use RuntimeException;
 
 class TenantBillingPayment extends Model
 {
@@ -29,6 +31,7 @@ class TenantBillingPayment extends Model
         'dlocal'      => 'dLocal',
         'stripe'      => 'Stripe',
         'paypal'      => 'PayPal',
+        'paddle'      => 'Paddle',
         'paystack'    => 'Paystack',
         'flutterwave' => 'Flutterwave',
         'mollie'      => 'Mollie',
@@ -74,6 +77,25 @@ class TenantBillingPayment extends Model
         static::creating(function (self $payment) {
             if (empty($payment->invoice_number)) {
                 $payment->invoice_number = static::generateInvoiceNumber();
+            }
+
+            if ($payment->gateway === 'paddle') {
+                $subscription = TenantSubscription::find($payment->tenant_subscription_id);
+                if (! $subscription) {
+                    throw new RuntimeException('Paddle payment references an unknown PRODEX subscription.');
+                }
+
+                $metadata = is_array($payment->metadata) ? $payment->metadata : [];
+                $actualPriceId = trim((string) ($metadata['paddle_price_id'] ?? ''));
+                $mapping = PaddleSubscription::where('tenant_subscription_id', $subscription->id)->first();
+
+                if ($mapping && trim((string) $mapping->paddle_price_id) !== '') {
+                    if ($actualPriceId === '' || ! hash_equals((string) $mapping->paddle_price_id, $actualPriceId)) {
+                        throw new RuntimeException('Paddle transaction price does not match its PRODEX subscription mapping.');
+                    }
+                } else {
+                    app(PaddlePriceGuard::class)->assertMatchesSubscription($subscription, $actualPriceId);
+                }
             }
         });
     }

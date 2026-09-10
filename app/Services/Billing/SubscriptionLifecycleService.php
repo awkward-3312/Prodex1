@@ -93,30 +93,40 @@ class SubscriptionLifecycleService
             }
         }
 
-        $provisioningDispatched = false;
-        $tenant = $payment->tenant;
-        if ($tenant) {
-            $settings = GeneralSetting::instance();
-            if ($tenant->status === Tenant::STATUS_PENDING && ! $settings->isSharedHosting()) {
-                ProvisionTenantWorkspace::dispatchAfterResponse($tenant->id);
-                Log::info("SubscriptionLifecycleService: provisioning dispatched for tenant {$tenant->id} after payment {$payment->id}.");
-                $provisioningDispatched = true;
-            }
-
-            try {
-                EmailNotificationService::paymentSuccess($tenant, [
-                    '{{amount}}' => GeneralSetting::currencySymbol() . number_format((float) $payment->amount, 2),
-                ], $subscription);
-            } catch (\Throwable $e) {
-                Log::warning("SubscriptionLifecycleService: paymentSuccess email failed for tenant {$tenant->id}: {$e->getMessage()}");
-            }
-        }
+        $provisioningDispatched = $this->runPaidSideEffects($payment, $subscription);
 
         return [
             'already_paid'            => false,
             'subscription_activated'  => $subscriptionActivated,
             'subscription_renewed'    => $subscriptionRenewed,
             'provisioning_dispatched' => $provisioningDispatched,
+        ];
+    }
+
+    /**
+     * Mark money as captured while leaving subscription dates/status to the
+     * billing provider. Paddle is the first provider that uses this path: its
+     * subscription webhooks contain the authoritative trial and billing-period
+     * timestamps, so calling renew() here would risk extending a period twice
+     * when transaction and subscription events arrive in a different order.
+     */
+    public function markProviderPaid(TenantBillingPayment $payment, array $gatewayMeta = []): array
+    {
+        if ($payment->isPaid()) {
+            return [
+                'already_paid' => true,
+                'provisioning_dispatched' => false,
+            ];
+        }
+
+        $payment->markPaid(
+            $gatewayMeta['gateway_payment_id'] ?? null,
+            $gatewayMeta['transaction_id'] ?? null
+        );
+
+        return [
+            'already_paid' => false,
+            'provisioning_dispatched' => $this->runPaidSideEffects($payment, $payment->subscription),
         ];
     }
 
@@ -154,5 +164,32 @@ class SubscriptionLifecycleService
         }
 
         $payment->markRefunded($refundTransactionId);
+    }
+
+    private function runPaidSideEffects(TenantBillingPayment $payment, ?TenantSubscription $subscription): bool
+    {
+        $provisioningDispatched = false;
+        $tenant = $payment->tenant;
+
+        if (! $tenant) {
+            return false;
+        }
+
+        $settings = GeneralSetting::instance();
+        if ($tenant->status === Tenant::STATUS_PENDING && ! $settings->isSharedHosting()) {
+            ProvisionTenantWorkspace::dispatchAfterResponse($tenant->id);
+            Log::info("SubscriptionLifecycleService: provisioning dispatched for tenant {$tenant->id} after payment {$payment->id}.");
+            $provisioningDispatched = true;
+        }
+
+        try {
+            EmailNotificationService::paymentSuccess($tenant, [
+                '{{amount}}' => GeneralSetting::currencySymbol() . number_format((float) $payment->amount, 2),
+            ], $subscription);
+        } catch (\Throwable $e) {
+            Log::warning("SubscriptionLifecycleService: paymentSuccess email failed for tenant {$tenant->id}: {$e->getMessage()}");
+        }
+
+        return $provisioningDispatched;
     }
 }

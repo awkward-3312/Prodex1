@@ -39,6 +39,7 @@ class RouteServiceProvider extends ServiceProvider
         Route::middleware('web')->namespace($this->namespace)->group(base_path('routes/central.php'));
         Route::namespace($this->namespace)->group(base_path('routes/central_bank_accounts.php'));
         Route::namespace($this->namespace)->group(base_path('routes/dlocal.php'));
+        Route::namespace($this->namespace)->group(base_path('routes/paddle.php'));
     }
 
     protected function mapTenantRoutes(): void
@@ -68,6 +69,7 @@ class RouteServiceProvider extends ServiceProvider
 
         foreach ([
             'tenant_api.php',
+            'tenant_paddle.php',
             'tenant_organization.php',
             'tenant_pos_context.php',
             'tenant_pos_location.php',
