@@ -212,6 +212,7 @@ class AppServiceProvider extends ServiceProvider
                     : null,
                 'services.paddle.api_key' => $credential('api_key', config('services.paddle.api_key')),
                 'services.paddle.webhook_secret' => $credential('webhook_secret', config('services.paddle.webhook_secret')),
+                'services.paddle.sandbox_tenant' => $credential('sandbox_tenant', config('services.paddle.sandbox_tenant')),
                 'services.paddle.starter_monthly_price_id' => $isActive
                     ? $credential('starter_monthly_price_id', config('services.paddle.starter_monthly_price_id'))
                     : null,
