@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Central;
 
 use App\Http\Controllers\Controller;
+use App\Models\Central\GeneralSetting;
+use App\Models\Central\PaddleCheckoutAttempt;
 use App\Models\Central\PaddleSubscription;
 use App\Models\Central\PaddleWebhookEvent;
+use App\Models\Central\Plan;
 use App\Models\Central\TenantBillingPayment;
 use App\Models\Central\TenantSubscription;
 use App\Services\Billing\SubscriptionLifecycleService;
@@ -33,6 +36,8 @@ class PaddleWebhookController extends Controller
             return response('Paddle webhook is not configured.', 503);
         }
 
+        // Paddle signs the exact raw body. Never verify a decoded/re-encoded JSON
+        // representation because whitespace/key-order changes invalidate the HMAC.
         $rawBody = $request->getContent();
         $signature = (string) $request->header('Paddle-Signature', '');
         $tolerance = max(5, (int) config('services.paddle.webhook_tolerance', 300));
@@ -51,6 +56,7 @@ class PaddleWebhookController extends Controller
         $eventId = trim((string) ($payload['event_id'] ?? ''));
         $eventType = trim((string) ($payload['event_type'] ?? ''));
         $data = $payload['data'] ?? null;
+
         if ($eventId === '' || $eventType === '' || ! is_array($data)) {
             return response('Invalid event.', 400);
         }
@@ -111,7 +117,7 @@ class PaddleWebhookController extends Controller
                 'exception' => $e,
             ]);
 
-            // A non-2xx response makes Paddle retry the event.
+            // Paddle retries destinations that return a non-2xx response.
             return response('Webhook processing failed.', 500);
         }
 
@@ -153,37 +159,16 @@ class PaddleWebhookController extends Controller
             throw new RuntimeException('Paddle subscription event has no valid subscription ID.');
         }
 
-        $mapping = PaddleSubscription::where('paddle_subscription_id', $paddleSubscriptionId)->first();
-        $claims = $this->claimsFromData($data, $references);
-
-        if ($mapping) {
-            $subscription = $mapping->subscription;
-            if (! $subscription) {
-                throw new RuntimeException('Mapped PRODEX subscription no longer exists.');
-            }
-
-            if ($claims && ! $this->claimsMatchSubscription($claims, $subscription)) {
-                throw new RuntimeException('Paddle custom_data does not match the existing PRODEX subscription mapping.');
-            }
-        } else {
-            $subscription = $this->subscriptionFromClaims($claims);
-            if (! $subscription) {
-                throw new RuntimeException('Paddle subscription cannot be linked to an authenticated PRODEX checkout.');
-            }
-
-            $existingForLocal = PaddleSubscription::where('tenant_subscription_id', $subscription->id)->first();
-            if ($existingForLocal && $existingForLocal->paddle_subscription_id !== $paddleSubscriptionId) {
-                throw new RuntimeException('PRODEX subscription is already linked to another Paddle subscription.');
-            }
-
-            $mapping = $existingForLocal ?: PaddleSubscription::create([
-                'tenant_id' => $subscription->tenant_id,
-                'tenant_subscription_id' => $subscription->id,
-                'paddle_subscription_id' => $paddleSubscriptionId,
-                'status' => (string) ($data['status'] ?? 'unknown'),
-            ]);
+        $subscription = $this->resolveSubscription($paddleSubscriptionId, $data, $references);
+        if (! $subscription) {
+            throw new RuntimeException('Paddle subscription cannot be linked to an authenticated PRODEX checkout.');
         }
 
+        $mapping = PaddleSubscription::where('paddle_subscription_id', $paddleSubscriptionId)->firstOrFail();
+
+        // Paddle can deliver events out of order. Only subscription lifecycle
+        // events use this timestamp guard; transaction IDs are independently
+        // idempotent and must still be recorded.
         if ($mapping->last_event_at && $occurredAt && $occurredAt->lt($mapping->last_event_at)) {
             Log::info("Ignoring stale Paddle subscription event for {$paddleSubscriptionId}.");
             return;
@@ -207,7 +192,15 @@ class PaddleWebhookController extends Controller
             'last_event_at' => $occurredAt ?: now(),
         ]);
 
-        $this->applySubscriptionStatus($subscription, $data, $status, $periodStartsAt, $periodEndsAt, $nextBilledAt, $occurredAt);
+        $this->applySubscriptionStatus(
+            $subscription,
+            $data,
+            $status,
+            $periodStartsAt,
+            $periodEndsAt,
+            $nextBilledAt,
+            $occurredAt
+        );
     }
 
     private function applySubscriptionStatus(
@@ -219,7 +212,10 @@ class PaddleWebhookController extends Controller
         ?Carbon $nextBilledAt,
         ?Carbon $occurredAt
     ): void {
-        $startedAt = $this->parseDate($data['started_at'] ?? null) ?: $periodStartsAt ?: $subscription->starts_at ?: now();
+        $startedAt = $this->parseDate($data['started_at'] ?? null)
+            ?: $periodStartsAt
+            ?: $subscription->starts_at
+            ?: now();
 
         if ($status === 'trialing') {
             $trialEndsAt = $nextBilledAt ?: $periodEndsAt;
@@ -281,15 +277,22 @@ class PaddleWebhookController extends Controller
             throw new RuntimeException('Paddle transaction.completed has no valid transaction ID.');
         }
 
-        $subscription = $this->resolveTransactionSubscription($data, $references);
+        $paddleSubscriptionId = trim((string) ($data['subscription_id'] ?? ''));
+        if ($paddleSubscriptionId === '') {
+            // PRODEX currently sends only recurring Paddle prices, so a completed
+            // transaction without a subscription is not one of our SaaS checkouts.
+            throw new RuntimeException("Paddle transaction {$transactionId} has no subscription ID.");
+        }
+
+        $subscription = $this->resolveSubscription($paddleSubscriptionId, $data, $references);
         if (! $subscription) {
             throw new RuntimeException("Paddle transaction {$transactionId} cannot be linked to PRODEX.");
         }
 
         $gatewayAmount = $this->transactionTotal($data);
         if ($gatewayAmount <= 0) {
-            // Expected for a zero-cost trial checkout. Access is provisioned from
-            // subscription.created/trialing; no fake "paid" invoice is recorded.
+            // A free-trial checkout can complete with zero due today. Access is
+            // granted by subscription.trialing; no paid invoice is fabricated.
             Log::info("Paddle transaction {$transactionId} completed with zero total; payment record skipped.");
             return;
         }
@@ -300,14 +303,15 @@ class PaddleWebhookController extends Controller
             'transaction_id' => $transactionId,
         ]);
 
-        // transaction.completed is sufficient evidence that money was captured.
-        // If subscription lifecycle webhooks arrive later/out of order, grant
-        // access now and let the subscription event overwrite dates with Paddle's
-        // exact billing period when it arrives.
+        // transaction.completed proves money was captured. If the corresponding
+        // subscription event is delayed, keep access available now; the next
+        // subscription webhook replaces these fallback dates with Paddle's exact
+        // billing period and does not double-extend it.
         if (! $subscription->isActive()) {
             $period = is_array($data['billing_period'] ?? null) ? $data['billing_period'] : [];
             $startsAt = $this->parseDate($period['starts_at'] ?? null) ?: now();
-            $endsAt = $this->parseDate($period['ends_at'] ?? null) ?: $this->fallbackPeriodEnd($subscription, $startsAt);
+            $endsAt = $this->parseDate($period['ends_at'] ?? null)
+                ?: $this->fallbackPeriodEnd($subscription, $startsAt);
 
             $subscription->update([
                 'status' => TenantSubscription::STATUS_ACTIVE,
@@ -327,18 +331,24 @@ class PaddleWebhookController extends Controller
         SubscriptionLifecycleService $lifecycle
     ): void {
         $transactionId = trim((string) ($data['id'] ?? ''));
-        if ($transactionId === '') {
+        $paddleSubscriptionId = trim((string) ($data['subscription_id'] ?? ''));
+
+        if ($transactionId === '' || $paddleSubscriptionId === '') {
             return;
         }
 
-        $subscription = $this->resolveTransactionSubscription($data, $references);
+        $subscription = $this->resolveSubscription($paddleSubscriptionId, $data, $references);
         if (! $subscription) {
             Log::warning("Paddle failed transaction {$transactionId} could not be linked to PRODEX.");
             return;
         }
 
-        $gatewayAmount = $this->transactionTotal($data);
-        $payment = $this->findOrCreateTransactionPayment($eventId, $data, $subscription, $gatewayAmount);
+        $payment = $this->findOrCreateTransactionPayment(
+            $eventId,
+            $data,
+            $subscription,
+            $this->transactionTotal($data)
+        );
         $lifecycle->markFailed($payment);
     }
 
@@ -348,7 +358,10 @@ class PaddleWebhookController extends Controller
         $status = strtolower((string) ($data['status'] ?? ''));
         $transactionId = trim((string) ($data['transaction_id'] ?? ''));
 
-        if (! in_array($action, ['refund', 'chargeback'], true) || $status !== 'approved' || $transactionId === '') {
+        if (! in_array($action, ['refund', 'chargeback'], true)
+            || $status !== 'approved'
+            || $transactionId === ''
+        ) {
             return;
         }
 
@@ -365,8 +378,18 @@ class PaddleWebhookController extends Controller
         }
 
         $adjustmentId = trim((string) ($data['id'] ?? '')) ?: null;
-        if (($data['type'] ?? null) === 'full') {
+        $type = strtolower((string) ($data['type'] ?? ''));
+
+        if ($type === 'full' || $action === 'chargeback') {
             $lifecycle->markRefunded($payment, $adjustmentId);
+
+            // A chargeback is stronger than an ordinary refund: suspend access
+            // immediately while Paddle's subscription lifecycle catches up.
+            if ($action === 'chargeback' && $payment->subscription) {
+                $payment->subscription->update([
+                    'status' => TenantSubscription::STATUS_SUSPENDED,
+                ]);
+            }
             return;
         }
 
@@ -378,46 +401,127 @@ class PaddleWebhookController extends Controller
 
         $payment->update([
             'metadata' => $metadata,
-            'notes' => trim(($payment->notes ? $payment->notes."\n" : '').'Partial Paddle refund/chargeback: '.($adjustmentId ?: 'unknown')),
+            'notes' => trim(
+                ($payment->notes ? $payment->notes."\n" : '')
+                .'Partial Paddle refund: '.($adjustmentId ?: 'unknown')
+            ),
         ]);
     }
 
-    private function resolveTransactionSubscription(array $data, PaddleCheckoutReference $references): ?TenantSubscription
-    {
-        $paddleSubscriptionId = trim((string) ($data['subscription_id'] ?? ''));
-        if ($paddleSubscriptionId !== '') {
-            $mapping = PaddleSubscription::where('paddle_subscription_id', $paddleSubscriptionId)->first();
-            if ($mapping?->subscription) {
-                return $mapping->subscription;
+    /**
+     * Resolve (or, for the first verified event, create) the local subscription
+     * that belongs to a Paddle subscription. The browser never supplies tenant
+     * IDs directly: custom_data contains only a signed random checkout reference.
+     */
+    private function resolveSubscription(
+        string $paddleSubscriptionId,
+        array $data,
+        PaddleCheckoutReference $references
+    ): ?TenantSubscription {
+        $mapping = PaddleSubscription::where('paddle_subscription_id', $paddleSubscriptionId)->first();
+        $attempt = $this->attemptFromData($data, $references);
+
+        if ($mapping?->subscription) {
+            if ($attempt) {
+                $this->assertAttemptMatchesSubscription($attempt, $mapping->subscription, $paddleSubscriptionId);
             }
+            return $mapping->subscription;
         }
 
-        $claims = $this->claimsFromData($data, $references);
-        $subscription = $this->subscriptionFromClaims($claims);
-        if (! $subscription) {
+        if (! $attempt) {
             return null;
         }
 
-        if ($paddleSubscriptionId !== '') {
-            $existingForLocal = PaddleSubscription::where('tenant_subscription_id', $subscription->id)->first();
-            if ($existingForLocal && $existingForLocal->paddle_subscription_id !== $paddleSubscriptionId) {
-                throw new RuntimeException('PRODEX subscription is already linked to another Paddle subscription.');
-            }
-
-            if (! $existingForLocal) {
-                PaddleSubscription::create([
-                    'tenant_id' => $subscription->tenant_id,
-                    'tenant_subscription_id' => $subscription->id,
-                    'paddle_subscription_id' => $paddleSubscriptionId,
-                    'paddle_customer_id' => $data['customer_id'] ?? null,
-                    'paddle_price_id' => $this->extractPriceId($data),
-                    'status' => 'unknown',
-                    'custom_data' => is_array($data['custom_data'] ?? null) ? $data['custom_data'] : null,
-                ]);
-            }
+        if ($attempt->paddle_subscription_id
+            && $attempt->paddle_subscription_id !== $paddleSubscriptionId
+        ) {
+            throw new RuntimeException('Paddle checkout reference is already claimed by another subscription.');
         }
 
+        $subscription = $attempt->subscription;
+        if ($subscription) {
+            $this->assertAttemptMatchesSubscription($attempt, $subscription, $paddleSubscriptionId);
+        } else {
+            $plan = Plan::find($attempt->plan_id);
+            if (! $plan || ! $plan->is_active) {
+                throw new RuntimeException('The Paddle checkout references an unavailable PRODEX plan.');
+            }
+
+            $subscription = TenantSubscription::create([
+                'tenant_id' => $attempt->tenant_id,
+                'plan_id' => $plan->id,
+                'billing_cycle' => $attempt->billing_cycle,
+                'amount' => $plan->getPriceForCycle($attempt->billing_cycle),
+                'currency' => GeneralSetting::currencyCode(),
+                'status' => TenantSubscription::STATUS_PENDING,
+                'starts_at' => now(),
+            ]);
+        }
+
+        $existingForLocal = PaddleSubscription::where('tenant_subscription_id', $subscription->id)->first();
+        if ($existingForLocal && $existingForLocal->paddle_subscription_id !== $paddleSubscriptionId) {
+            throw new RuntimeException('PRODEX subscription is already linked to another Paddle subscription.');
+        }
+
+        if (! $existingForLocal) {
+            PaddleSubscription::create([
+                'tenant_id' => $subscription->tenant_id,
+                'tenant_subscription_id' => $subscription->id,
+                'paddle_subscription_id' => $paddleSubscriptionId,
+                'paddle_customer_id' => $data['customer_id'] ?? null,
+                'paddle_price_id' => $this->extractPriceId($data),
+                'status' => (string) ($data['status'] ?? 'unknown'),
+                'custom_data' => is_array($data['custom_data'] ?? null) ? $data['custom_data'] : null,
+            ]);
+        }
+
+        $attempt->update([
+            'tenant_subscription_id' => $subscription->id,
+            'paddle_subscription_id' => $paddleSubscriptionId,
+            'status' => 'claimed',
+            'claimed_at' => $attempt->claimed_at ?: now(),
+        ]);
+
         return $subscription;
+    }
+
+    private function attemptFromData(array $data, PaddleCheckoutReference $references): ?PaddleCheckoutAttempt
+    {
+        $customData = is_array($data['custom_data'] ?? null) ? $data['custom_data'] : [];
+        $reference = $references->parse($customData['prodex_ref'] ?? null);
+
+        if (! $reference) {
+            return null;
+        }
+
+        // The enclosing central transaction makes this lock effective and avoids
+        // two first-delivery webhooks claiming the same checkout at once.
+        return PaddleCheckoutAttempt::where('reference', $reference)->lockForUpdate()->first();
+    }
+
+    private function assertAttemptMatchesSubscription(
+        PaddleCheckoutAttempt $attempt,
+        TenantSubscription $subscription,
+        string $paddleSubscriptionId
+    ): void {
+        if ((string) $subscription->tenant_id !== (string) $attempt->tenant_id
+            || (int) $subscription->plan_id !== (int) $attempt->plan_id
+            || (string) $subscription->billing_cycle !== (string) $attempt->billing_cycle
+        ) {
+            throw new RuntimeException('Paddle checkout reference does not match the mapped PRODEX subscription.');
+        }
+
+        if ($attempt->tenant_subscription_id
+            && (int) $attempt->tenant_subscription_id !== (int) $subscription->id
+        ) {
+            throw new RuntimeException('Paddle checkout reference is linked to a different PRODEX subscription.');
+        }
+
+        if ($attempt->paddle_subscription_id
+            && $attempt->paddle_subscription_id !== $paddleSubscriptionId
+        ) {
+            throw new RuntimeException('Paddle checkout reference is linked to a different Paddle subscription.');
+        }
     }
 
     private function findOrCreateTransactionPayment(
@@ -458,34 +562,6 @@ class PaddleWebhookController extends Controller
         );
     }
 
-    private function claimsFromData(array $data, PaddleCheckoutReference $references): ?array
-    {
-        $customData = is_array($data['custom_data'] ?? null) ? $data['custom_data'] : [];
-
-        return $references->parse($customData['prodex_ref'] ?? null);
-    }
-
-    private function subscriptionFromClaims(?array $claims): ?TenantSubscription
-    {
-        if (! $claims) {
-            return null;
-        }
-
-        $subscription = TenantSubscription::find($claims['subscription_id']);
-
-        return $subscription && $this->claimsMatchSubscription($claims, $subscription)
-            ? $subscription
-            : null;
-    }
-
-    private function claimsMatchSubscription(array $claims, TenantSubscription $subscription): bool
-    {
-        return (string) $subscription->tenant_id === (string) $claims['tenant_id']
-            && (int) $subscription->id === (int) $claims['subscription_id']
-            && (int) $subscription->plan_id === (int) $claims['plan_id']
-            && (string) $subscription->billing_cycle === (string) $claims['billing_cycle'];
-    }
-
     private function extractPriceId(array $data): ?string
     {
         foreach ((array) ($data['items'] ?? []) as $item) {
@@ -519,6 +595,8 @@ class PaddleWebhookController extends Controller
             return 0.0;
         }
 
+        // PRODEX currently configures Paddle in USD. Keep the zero-decimal list
+        // correct so this helper remains safe if the catalog expands later.
         $currency = strtoupper((string) ($data['currency_code'] ?? 'USD'));
         $zeroDecimal = in_array($currency, ['JPY', 'KRW', 'VND'], true);
 
