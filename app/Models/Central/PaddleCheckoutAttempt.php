@@ -16,6 +16,7 @@ class PaddleCheckoutAttempt extends Model
         'reference',
         'tenant_id',
         'plan_id',
+        'tenant_subscription_id',
         'billing_cycle',
         'status',
         'paddle_subscription_id',
@@ -31,5 +32,10 @@ class PaddleCheckoutAttempt extends Model
     public function plan()
     {
         return $this->belongsTo(Plan::class, 'plan_id');
+    }
+
+    public function subscription()
+    {
+        return $this->belongsTo(TenantSubscription::class, 'tenant_subscription_id');
     }
 }
