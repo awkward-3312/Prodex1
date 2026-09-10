@@ -10,6 +10,24 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::connection('central')->create('paddle_checkout_attempts', function (Blueprint $table) {
+            $table->id();
+            $table->uuid('reference')->unique();
+            $table->string('tenant_id', 64)->index();
+            $table->unsignedBigInteger('plan_id')->index();
+            $table->string('billing_cycle', 16);
+            $table->string('status', 24)->default('initiated')->index();
+            $table->string('paddle_subscription_id', 64)->nullable()->index();
+            $table->timestamp('expires_at')->nullable()->index();
+            $table->timestamp('claimed_at')->nullable();
+            $table->timestamps();
+
+            $table->foreign('plan_id')
+                ->references('id')
+                ->on('plans')
+                ->cascadeOnDelete();
+        });
+
         Schema::connection('central')->create('paddle_subscriptions', function (Blueprint $table) {
             $table->id();
             $table->string('tenant_id', 64)->index();
@@ -49,5 +67,6 @@ return new class extends Migration
     {
         Schema::connection('central')->dropIfExists('paddle_webhook_events');
         Schema::connection('central')->dropIfExists('paddle_subscriptions');
+        Schema::connection('central')->dropIfExists('paddle_checkout_attempts');
     }
 };
