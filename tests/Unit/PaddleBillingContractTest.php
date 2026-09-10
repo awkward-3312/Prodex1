@@ -64,15 +64,19 @@ class PaddleBillingContractTest extends TestCase
         ));
     }
 
-    public function test_paddle_webhook_is_isolated_and_does_not_use_session_or_csrf_routes(): void
+    public function test_paddle_webhook_is_isolated_serialized_and_does_not_use_session_or_csrf_routes(): void
     {
         $routes = $this->source('routes/paddle.php');
         $provider = $this->source('app/Providers/RouteServiceProvider.php');
+        $middleware = $this->source('app/Http/Middleware/SerializePaddleWebhook.php');
 
         $this->assertStringContainsString("'/webhook/paddle'", $routes);
+        $this->assertStringContainsString('SerializePaddleWebhook::class', $routes);
         $this->assertStringContainsString("routes/paddle.php", $provider);
         $this->assertStringContainsString("'tenant_paddle.php'", $provider);
         $this->assertStringNotContainsString("middleware('web')", $routes);
+        $this->assertStringContainsString("Cache::lock('paddle:webhook:'", $middleware);
+        $this->assertStringContainsString('->block(10', $middleware);
     }
 
     public function test_tenant_checkout_gets_server_signed_custom_data_before_opening_paddle(): void
@@ -86,6 +90,21 @@ class PaddleBillingContractTest extends TestCase
         $this->assertStringContainsString("prefix('billing/paddle')", $tenantRoutes);
         $this->assertStringContainsString("'/prepare'", $tenantRoutes);
         $this->assertStringContainsString("middleware(['auth:api'])", $tenantRoutes);
+    }
+
+    public function test_paddle_price_is_enforced_server_side_for_subscription_and_transaction_records(): void
+    {
+        $guard = $this->source('app/Services/Paddle/PaddlePriceGuard.php');
+        $mapping = $this->source('app/Models/Central/PaddleSubscription.php');
+        $payment = $this->source('app/Models/Central/TenantBillingPayment.php');
+
+        $this->assertStringContainsString('assertMatchesSubscription', $guard);
+        $this->assertStringContainsString('hash_equals($expected, $actual)', $guard);
+        $this->assertStringContainsString('services.paddle.starter_monthly_price_id', $guard);
+        $this->assertStringContainsString('services.paddle.starter_yearly_price_id', $guard);
+        $this->assertStringContainsString('PaddlePriceGuard::class', $mapping);
+        $this->assertStringContainsString('PaddlePriceGuard::class', $payment);
+        $this->assertStringContainsString("\$payment->gateway === 'paddle'", $payment);
     }
 
     public function test_webhook_has_idempotency_mapping_and_provider_owned_periods(): void
