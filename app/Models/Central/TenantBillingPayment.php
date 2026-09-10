@@ -86,10 +86,16 @@ class TenantBillingPayment extends Model
                 }
 
                 $metadata = is_array($payment->metadata) ? $payment->metadata : [];
-                app(PaddlePriceGuard::class)->assertMatchesSubscription(
-                    $subscription,
-                    $metadata['paddle_price_id'] ?? null
-                );
+                $actualPriceId = trim((string) ($metadata['paddle_price_id'] ?? ''));
+                $mapping = PaddleSubscription::where('tenant_subscription_id', $subscription->id)->first();
+
+                if ($mapping && trim((string) $mapping->paddle_price_id) !== '') {
+                    if ($actualPriceId === '' || ! hash_equals((string) $mapping->paddle_price_id, $actualPriceId)) {
+                        throw new RuntimeException('Paddle transaction price does not match its PRODEX subscription mapping.');
+                    }
+                } else {
+                    app(PaddlePriceGuard::class)->assertMatchesSubscription($subscription, $actualPriceId);
+                }
             }
         });
     }
