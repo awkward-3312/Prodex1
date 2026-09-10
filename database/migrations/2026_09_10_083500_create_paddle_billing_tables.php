@@ -15,6 +15,7 @@ return new class extends Migration
             $table->uuid('reference')->unique();
             $table->string('tenant_id', 64)->index();
             $table->unsignedBigInteger('plan_id')->index();
+            $table->unsignedBigInteger('tenant_subscription_id')->nullable()->index();
             $table->string('billing_cycle', 16);
             $table->string('status', 24)->default('initiated')->index();
             $table->string('paddle_subscription_id', 64)->nullable()->index();
@@ -26,6 +27,10 @@ return new class extends Migration
                 ->references('id')
                 ->on('plans')
                 ->cascadeOnDelete();
+            $table->foreign('tenant_subscription_id')
+                ->references('id')
+                ->on('tenant_subscriptions')
+                ->nullOnDelete();
         });
 
         Schema::connection('central')->create('paddle_subscriptions', function (Blueprint $table) {
