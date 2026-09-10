@@ -126,8 +126,6 @@ class PaymentGatewayFactory
                 'default_currency'     => 'USD',
             ],
             'paddle' => [
-                // Current PRODEX Paddle catalog uses fixed USD price IDs.
-                // Expand this list only when catalog prices are created in more currencies.
                 'supported_currencies' => ['USD'],
                 'default_currency'     => 'USD',
             ],
@@ -279,6 +277,12 @@ class PaymentGatewayFactory
                     'placeholder' => 'Paddle notification destination secret',
                     'secret'      => true,
                     'help'        => 'Optional until Paddle fulfillment/webhooks are enabled.',
+                ],
+                'sandbox_tenant' => [
+                    'label'       => 'Sandbox Tenant ID',
+                    'placeholder' => 'Tenant UUID used for Paddle Sandbox testing',
+                    'secret'      => false,
+                    'help'        => 'In Sandbox, Paddle is shown only to this tenant. Ignored in Live mode.',
                 ],
                 'starter_monthly_price_id' => [
                     'label'       => 'Emprendedor - Monthly Price ID',
