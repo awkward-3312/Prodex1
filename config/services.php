@@ -40,4 +40,12 @@ return [
         'redirect_url' => env('FLUTTERWAVE_REDIRECT_URL'),
     ],
 
+    'paddle' => [
+        'environment' => env('PADDLE_ENVIRONMENT', 'sandbox'),
+        'client_side_token' => env('PADDLE_CLIENT_SIDE_TOKEN'),
+        'sandbox_tenant' => env('PADDLE_SANDBOX_TENANT'),
+        'starter_monthly_price_id' => env('PADDLE_STARTER_MONTHLY_PRICE_ID'),
+        'starter_yearly_price_id' => env('PADDLE_STARTER_YEARLY_PRICE_ID'),
+    ],
+
 ];

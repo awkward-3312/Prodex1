@@ -45,6 +45,22 @@
                 <span class="fw-bold summary-total-label">{{ $t('Total') || 'Total' }}</span>
                 <span class="fw-bold text-primary summary-total-amount">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span>
               </div>
+              <div v-if="paddleReady" class="paddle-preview-box mt-3">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div class="small fw-bold">Paddle Sandbox</div>
+                    <div class="text-muted tiny-text">Precio internacional estimado</div>
+                  </div>
+                  <div class="text-right">
+                    <span v-if="paddlePreviewLoading" class="spinner-border spinner-border-sm"></span>
+                    <span v-else class="fw-bold">{{ paddlePreviewDisplay || paddleFallbackPrice }}</span>
+                  </div>
+                </div>
+                <p class="mb-0 mt-2 text-muted tiny-text">
+                  El precio comercial de PRODEX se mantiene en {{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}.
+                  La activación se hará luego por webhooks.
+                </p>
+              </div>
 
               <div v-if="isUpgrade !== null" class="upgrade-note mt-3">
                 <lucide-icon name="info" class="mr-1" />
@@ -120,7 +136,7 @@
                       <div>
                         <div class="fw-bold small">{{ gw.label }}</div>
                         <div class="text-muted gateway-description">
-                          {{ gw.key === 'offline' ? ($t('Pay_via_bank') || 'Pay via bank transfer and upload proof of payment') : ($t('Pay_with') || 'Pay securely with') + ' ' + gw.label }}
+                          {{ gatewayDescription(gw) }}
                         </div>
                       </div>
                     </div>
@@ -220,7 +236,7 @@
           </button>
           <p class="text-center text-muted small mt-3">
             <lucide-icon name="lock" class="mr-1" />
-            {{ isOfflinePayment ? ($t('Proof_review_note') || 'Your proof will be reviewed by our team. Your plan activates after approval.') : ($t('Payment_secure') || 'Your payment is secured and encrypted. You will be redirected to complete payment.') }}
+            {{ paymentSecurityText }}
           </p>
         </div>
       </div>
@@ -248,6 +264,11 @@ export default {
       currencyCode: "USD",
       currencySymbol: "$",
       bankDetails: {},
+      customerEmail: "",
+      paddle: null,
+      paddleInitialized: false,
+      paddlePreviewLoading: false,
+      paddlePreviewDisplay: "",
     };
   },
   computed: {
@@ -261,6 +282,20 @@ export default {
     isOfflinePayment() {
       return this.selectedGateway === 'offline';
     },
+    isPaddlePayment() {
+      return this.selectedGateway === 'paddle';
+    },
+    paddleReady() {
+      return !!(this.paddle && this.paddle.client_side_token && this.selectedPaddlePriceId);
+    },
+    selectedPaddlePriceId() {
+      if (!this.paddle || !this.paddle.prices) return "";
+      return this.selectedCycle === "yearly" ? this.paddle.prices.yearly : this.paddle.prices.monthly;
+    },
+    paddleFallbackPrice() {
+      if (this.selectedCycle === "yearly") return "USD 114.99";
+      return "USD 11.49";
+    },
     hasBankDetails() {
       return !!(this.bankDetails.bank_name || this.bankDetails.account_number);
     },
@@ -268,7 +303,28 @@ export default {
       if (this.isOfflinePayment) {
         return this.$t('Submit_Payment_Proof') || 'Submit Payment Proof';
       }
+      if (this.isPaddlePayment) {
+        return 'Abrir Paddle Checkout';
+      }
       return (this.$t('Pay') || 'Pay') + ' ' + this.currencySymbol + this.displayAmount + ' ' + this.currencyCode;
+    },
+    paymentSecurityText() {
+      if (this.isOfflinePayment) {
+        return this.$t('Proof_review_note') || 'Your proof will be reviewed by our team. Your plan activates after approval.';
+      }
+      if (this.isPaddlePayment) {
+        return 'Paddle Sandbox abre un checkout de prueba. Esta compra no activa la suscripción hasta implementar webhooks.';
+      }
+      return this.$t('Payment_secure') || 'Your payment is secured and encrypted. You will be redirected to complete payment.';
+    },
+  },
+  watch: {
+    selectedCycle() {
+      this.paddlePreviewDisplay = "";
+      if (this.paddleReady) this.refreshPaddlePreview();
+    },
+    selectedGateway(value) {
+      if (value === 'paddle' && this.paddleReady) this.refreshPaddlePreview();
     },
   },
   created() {
@@ -301,6 +357,8 @@ export default {
         this.currencyCode = data.currency_code || "USD";
         this.currencySymbol = data.currency_symbol || "$";
         this.bankDetails = data.bank_details || {};
+        this.customerEmail = data.customer_email || "";
+        this.paddle = data.paddle || null;
         if (this.gateways.length > 0) {
           this.selectedGateway = this.gateways[0].key;
         }
@@ -315,6 +373,86 @@ export default {
         variant: variant,
         solid: true,
       });
+    },
+    gatewayDescription(gw) {
+      if (gw.key === 'offline') {
+        return this.$t('Pay_via_bank') || 'Pay via bank transfer and upload proof of payment';
+      }
+      if (gw.key === 'paddle') {
+        return 'Sandbox checkout para tarjeta internacional. No activa la suscripción todavía.';
+      }
+      return (this.$t('Pay_with') || 'Pay securely with') + ' ' + gw.label;
+    },
+    loadPaddleJs() {
+      if (window.Paddle) return Promise.resolve(window.Paddle);
+
+      return new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-prodex-paddle-js="1"]');
+        if (existing) {
+          existing.addEventListener('load', () => resolve(window.Paddle));
+          existing.addEventListener('error', reject);
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
+        script.async = true;
+        script.dataset.prodexPaddleJs = '1';
+        script.onload = () => resolve(window.Paddle);
+        script.onerror = () => reject(new Error('No se pudo cargar Paddle.js.'));
+        document.head.appendChild(script);
+      });
+    },
+    async initializePaddle() {
+      if (!this.paddleReady) {
+        throw new Error('Paddle Sandbox no está configurado para este plan.');
+      }
+      const Paddle = await this.loadPaddleJs();
+      if (!Paddle) {
+        throw new Error('Paddle.js no está disponible.');
+      }
+      if (!this.paddleInitialized) {
+        Paddle.Environment.set(this.paddle.environment || 'sandbox');
+        Paddle.Initialize({ token: this.paddle.client_side_token });
+        this.paddleInitialized = true;
+      }
+      return Paddle;
+    },
+    extractPaddlePreviewAmount(preview) {
+      const candidates = [
+        preview?.data?.details?.formatted_totals?.total,
+        preview?.data?.details?.line_items?.[0]?.formatted_totals?.total,
+        preview?.data?.details?.lineItems?.[0]?.formattedTotals?.total,
+        preview?.data?.details?.totals?.total,
+        preview?.data?.details?.line_items?.[0]?.totals?.total,
+        preview?.data?.details?.lineItems?.[0]?.totals?.total,
+        preview?.details?.formatted_totals?.total,
+        preview?.details?.line_items?.[0]?.formatted_totals?.total,
+        preview?.details?.totals?.total,
+        preview?.details?.line_items?.[0]?.totals?.total,
+      ];
+
+      for (const value of candidates) {
+        if (typeof value === 'string' && value.trim()) return value;
+        if (value && typeof value.formatted === 'string') return value.formatted;
+      }
+
+      return "";
+    },
+    async refreshPaddlePreview() {
+      if (!this.paddleReady || !this.isPaddlePayment) return;
+      this.paddlePreviewLoading = true;
+      try {
+        const Paddle = await this.initializePaddle();
+        const preview = await Paddle.PricePreview({
+          items: [{ priceId: this.selectedPaddlePriceId, quantity: 1 }],
+        });
+        this.paddlePreviewDisplay = this.extractPaddlePreviewAmount(preview) || this.paddleFallbackPrice;
+      } catch (e) {
+        this.paddlePreviewDisplay = this.paddleFallbackPrice;
+      } finally {
+        this.paddlePreviewLoading = false;
+      }
     },
     onProofSelected(e) {
       const file = e.target.files[0];
@@ -373,6 +511,25 @@ export default {
           }
         } catch (e) {
           this.makeToast("danger", e.response?.data?.message || "Submission failed. Please try again.", this.$t("Error") || "Error");
+        } finally {
+          this.processing = false;
+        }
+        return;
+      }
+
+      if (this.isPaddlePayment) {
+        this.processing = true;
+        try {
+          const Paddle = await this.initializePaddle();
+          const checkout = {
+            items: [{ priceId: this.selectedPaddlePriceId, quantity: 1 }],
+          };
+          if (this.customerEmail) {
+            checkout.customer = { email: this.customerEmail };
+          }
+          Paddle.Checkout.open(checkout);
+        } catch (e) {
+          this.makeToast("danger", e.message || "No se pudo abrir Paddle Checkout.", this.$t("Error") || "Error");
         } finally {
           this.processing = false;
         }
@@ -483,5 +640,11 @@ export default {
 }
 .tiny-text {
   font-size: 0.75rem;
+}
+.paddle-preview-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
 }
 </style>
