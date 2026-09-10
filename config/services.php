@@ -43,6 +43,8 @@ return [
     'paddle' => [
         'environment' => env('PADDLE_ENVIRONMENT', 'sandbox'),
         'client_side_token' => env('PADDLE_CLIENT_SIDE_TOKEN'),
+        'api_key' => env('PADDLE_API_KEY'),
+        'webhook_secret' => env('PADDLE_WEBHOOK_SECRET'),
         'sandbox_tenant' => env('PADDLE_SANDBOX_TENANT'),
         'starter_monthly_price_id' => env('PADDLE_STARTER_MONTHLY_PRICE_ID'),
         'starter_yearly_price_id' => env('PADDLE_STARTER_YEARLY_PRICE_ID'),
