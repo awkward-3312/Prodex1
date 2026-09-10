@@ -209,6 +209,16 @@ class BillingApiController extends Controller
         $settings       = GeneralSetting::instance();
         $systemCurrency = $settings->currency_code ?? 'HNL';
         $currencySymbol = $settings->currency_symbol ?? 'L';
+        $paddleConfig   = $this->paddleCheckoutConfig($plan);
+
+        if ($paddleConfig) {
+            $gateways['paddle'] = [
+                'key'   => 'paddle',
+                'label' => 'Paddle Sandbox',
+                'icon'  => 'bi-credit-card',
+                'color' => '#2563eb',
+            ];
+        }
 
         return response()->json([
             'plan' => [
@@ -226,11 +236,64 @@ class BillingApiController extends Controller
             'currency_code'      => $systemCurrency,
             'currency_symbol'    => $currencySymbol,
             'bank_details'       => $settings->getBankDetails(),
+            'customer_email'     => auth()->user()->email ?? null,
+            'paddle'             => $paddleConfig,
             'pending_upgrade'    => $hasPendingUpgrade ? [
                 'plan_id'   => $pendingSub->plan_id,
                 'plan_name' => $pendingSub->plan?->name,
             ] : null,
         ]);
+    }
+
+    private function paddleCheckoutConfig(Plan $plan): ?array
+    {
+        $environment = strtolower((string) config('services.paddle.environment', 'sandbox'));
+
+        if ((int) $plan->id !== 1 || $plan->slug !== 'starter') {
+            return null;
+        }
+
+        if ($environment === 'sandbox' && ! $this->currentTenantMatchesPaddleSandboxTenant()) {
+            return null;
+        }
+
+        if ($environment !== 'sandbox') {
+            return null;
+        }
+
+        $token = config('services.paddle.client_side_token');
+        $monthlyPriceId = config('services.paddle.starter_monthly_price_id');
+        $yearlyPriceId = config('services.paddle.starter_yearly_price_id');
+
+        if (! $token || ! $monthlyPriceId || ! $yearlyPriceId) {
+            return null;
+        }
+
+        return [
+            'environment' => $environment,
+            'client_side_token' => $token,
+            'prices' => [
+                'monthly' => $monthlyPriceId,
+                'yearly'  => $yearlyPriceId,
+            ],
+        ];
+    }
+
+    private function currentTenantMatchesPaddleSandboxTenant(): bool
+    {
+        $configuredTenant = trim((string) config('services.paddle.sandbox_tenant', ''));
+
+        if ($configuredTenant === '') {
+            return false;
+        }
+
+        $tenant = tenant();
+
+        if (! $tenant) {
+            return false;
+        }
+
+        return (string) $tenant->getTenantKey() === $configuredTenant;
     }
 
     public function offlinePayment(Request $request): JsonResponse
