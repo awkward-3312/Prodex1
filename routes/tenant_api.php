@@ -50,6 +50,9 @@ Route::group([
 
 Route::post('getAccessToken', 'AuthController@getAccessToken');
 
+Route::post('mobile/auth/login', [\App\Http\Controllers\Mobile\MobileAuthController::class, 'login'])
+    ->middleware('throttle:mobile-login');
+
 Route::get('/get-logo-setting', function () {
     $setting = \App\Models\Setting::first();
 
@@ -76,6 +79,9 @@ Route::post('/webhooks/incoming/{source}', [\App\Http\Controllers\Webhooks\Incom
 Route::post('/shopify/webhook/{storeId}', [\App\Http\Controllers\ShopifyWebhookController::class, 'handle']);
 
 Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', 'tenant.subscribed', 'tenant.activity'])->group(function () {
+
+    Route::get('mobile/auth/bootstrap', [\App\Http\Controllers\Mobile\MobileAuthController::class, 'bootstrap']);
+    Route::post('mobile/auth/logout', [\App\Http\Controllers\Mobile\MobileAuthController::class, 'logout']);
 
     // ------------------------------- WhatsApp --------------------------------\\
     Route::get('/whatsapp/settings', [\App\Http\Controllers\WhatsAppSettingsController::class, 'show']);
@@ -491,6 +497,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     // ------------------------------------------------------------------\\
 
     Route::middleware('tenant.feature:pos')->group(function () {
+        Route::get('mobile/products/resolve', \App\Http\Controllers\Mobile\MobileProductResolveController::class);
         Route::post('pos/create_pos', 'PosController@CreatePOS');
         Route::post('store-credit-vouchers/validate', 'StoreCreditVoucherController@validateForPos');
         Route::get('pos/get_products_pos', 'PosController@GetProductsByParametre');

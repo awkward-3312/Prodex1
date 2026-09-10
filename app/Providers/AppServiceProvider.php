@@ -259,5 +259,23 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\RateLimiter::for('central-checkout', function ($request) {
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(12)->by('ip:'.$request->ip());
         });
+
+        \Illuminate\Support\Facades\RateLimiter::for('mobile-tenant-resolve', function ($request) {
+            $workspace = strtolower(trim((string) $request->input('workspace')));
+
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(20)->by('workspace:'.sha1($request->ip().'|'.$workspace)),
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(80)->by('ip:'.$request->ip()),
+            ];
+        });
+
+        \Illuminate\Support\Facades\RateLimiter::for('mobile-login', function ($request) {
+            $email = strtolower(trim((string) $request->input('email')));
+
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by('login:'.sha1($request->ip().'|'.$email)),
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(25)->by('ip:'.$request->ip()),
+            ];
+        });
     }
 }

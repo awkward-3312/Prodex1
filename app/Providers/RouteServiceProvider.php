@@ -36,6 +36,9 @@ class RouteServiceProvider extends ServiceProvider
 
     protected function mapCentralRoutes(): void
     {
+        Route::prefix('api')->middleware('api')->namespace($this->namespace)
+            ->group(base_path('routes/central_api.php'));
+
         Route::middleware('web')->namespace($this->namespace)->group(base_path('routes/central.php'));
         Route::namespace($this->namespace)->group(base_path('routes/central_bank_accounts.php'));
         Route::namespace($this->namespace)->group(base_path('routes/dlocal.php'));
