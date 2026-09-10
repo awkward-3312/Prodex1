@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
-use App\Models\Central\GeneralSetting;
+use App\Models\Central\PaddleCheckoutAttempt;
 use App\Models\Central\PaddleSubscription;
 use App\Models\Central\Plan;
-use App\Models\Central\TenantSubscription;
 use App\Services\Paddle\PaddleCheckoutReference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PaddleBillingController extends Controller
 {
@@ -66,59 +65,39 @@ class PaddleBillingController extends Controller
             return response()->json(['success' => false, 'message' => 'Paddle no tiene todas sus credenciales o precios configurados.'], 422);
         }
 
-        $activePaddle = PaddleSubscription::where('tenant_id', (string) $tenant->getTenantKey())
+        $activePaddle = PaddleSubscription::with('subscription')
+            ->where('tenant_id', (string) $tenant->getTenantKey())
             ->whereIn('status', ['trialing', 'active', 'past_due', 'paused'])
             ->latest()
             ->first();
 
-        if ($activePaddle && (int) $activePaddle->subscription?->plan_id === (int) $plan->id) {
+        if ($activePaddle && (int) ($activePaddle->subscription?->plan_id ?? 0) === (int) $plan->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Este tenant ya tiene una suscripción de Paddle para el plan seleccionado.',
             ], 409);
         }
 
-        $subscription = DB::connection('central')->transaction(function () use ($tenant, $plan, $cycle) {
-            $pending = TenantSubscription::where('tenant_id', (string) $tenant->getTenantKey())
-                ->where('status', TenantSubscription::STATUS_PENDING)
-                ->latest()
-                ->first();
+        PaddleCheckoutAttempt::where('tenant_id', (string) $tenant->getTenantKey())
+            ->where('status', 'initiated')
+            ->where('expires_at', '<=', now())
+            ->update(['status' => 'expired']);
 
-            $attributes = [
-                'plan_id' => $plan->id,
-                'billing_cycle' => $cycle,
-                'amount' => $plan->getPriceForCycle($cycle),
-                'currency' => GeneralSetting::currencyCode(),
-                'starts_at' => $pending?->starts_at ?? now(),
-                'trial_ends_at' => null,
-                'ends_at' => null,
-                'cancelled_at' => null,
-            ];
-
-            if ($pending) {
-                $pending->update($attributes);
-                return $pending->fresh();
-            }
-
-            return TenantSubscription::create(array_merge($attributes, [
-                'tenant_id' => (string) $tenant->getTenantKey(),
-                'status' => TenantSubscription::STATUS_PENDING,
-            ]));
-        });
-
-        $reference = $references->issue(
-            (string) $tenant->getTenantKey(),
-            (int) $subscription->id,
-            (int) $plan->id,
-            $cycle
-        );
+        $attempt = PaddleCheckoutAttempt::create([
+            'reference' => Str::uuid()->toString(),
+            'tenant_id' => (string) $tenant->getTenantKey(),
+            'plan_id' => (int) $plan->id,
+            'billing_cycle' => $cycle,
+            'status' => 'initiated',
+            'expires_at' => now()->addDay(),
+        ]);
 
         return response()->json([
             'success' => true,
             'environment' => $environment,
             'price_id' => $priceId,
             'custom_data' => [
-                'prodex_ref' => $reference,
+                'prodex_ref' => $references->issue($attempt->reference),
             ],
         ]);
     }
