@@ -98,8 +98,8 @@ class PaddleBillingContractTest extends TestCase
         $this->assertStringContainsString('$request->getContent()', $controller);
         $this->assertStringContainsString('PaddleWebhookEvent::firstOrCreate', $controller);
         $this->assertStringContainsString('lockForUpdate()', $controller);
-        $this->assertStringContainsString("$eventType === 'transaction.completed'", $controller);
-        $this->assertStringContainsString("str_starts_with($eventType, 'subscription.')", $controller);
+        $this->assertStringContainsString("\$eventType === 'transaction.completed'", $controller);
+        $this->assertStringContainsString("str_starts_with(\$eventType, 'subscription.')", $controller);
         $this->assertStringContainsString('markProviderPaid', $controller);
         $this->assertStringContainsString('public function markProviderPaid', $lifecycle);
         $this->assertStringContainsString("create('paddle_checkout_attempts'", $migration);
