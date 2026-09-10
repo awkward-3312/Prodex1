@@ -29,6 +29,7 @@ class TenantBillingPayment extends Model
         'dlocal'      => 'dLocal',
         'stripe'      => 'Stripe',
         'paypal'      => 'PayPal',
+        'paddle'      => 'Paddle',
         'paystack'    => 'Paystack',
         'flutterwave' => 'Flutterwave',
         'mollie'      => 'Mollie',
