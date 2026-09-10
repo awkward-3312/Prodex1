@@ -125,6 +125,12 @@ class PaymentGatewayFactory
                 'supported_currencies' => ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'SGD', 'HKD', 'NZD', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'BRL', 'MXN'],
                 'default_currency'     => 'USD',
             ],
+            'paddle' => [
+                // Current PRODEX Paddle catalog uses fixed USD price IDs.
+                // Expand this list only when catalog prices are created in more currencies.
+                'supported_currencies' => ['USD'],
+                'default_currency'     => 'USD',
+            ],
             'paystack' => [
                 'supported_currencies' => ['NGN', 'GHS', 'ZAR', 'KES'],
                 'default_currency'     => 'NGN',
@@ -183,6 +189,19 @@ class PaymentGatewayFactory
             $definitions[$key] = $info;
         }
 
+        // Paddle currently uses Paddle.js for tenant checkout instead of the
+        // server-side PaymentGatewayInterface flow. It is still managed from the
+        // same Super Admin screen so activation, environment and credentials have
+        // one authoritative source without exposing server secrets to tenants.
+        $definitions['paddle'] = [
+            'key'         => 'paddle',
+            'label'       => 'Paddle',
+            'description' => 'SaaS subscriptions and international checkout through Paddle.',
+            'icon'        => 'bi-credit-card-2-front',
+            'color'       => '#2563eb',
+            'fields'      => self::getFieldsForGateway('paddle'),
+        ];
+
         return $definitions;
     }
 
@@ -240,6 +259,38 @@ class PaymentGatewayFactory
                     'label'       => 'Webhook ID',
                     'placeholder' => 'e.g. 5GP028...',
                     'secret'      => false,
+                ],
+            ],
+            'paddle' => [
+                'client_side_token' => [
+                    'label'       => 'Client-side Token',
+                    'placeholder' => 'test_... or live_...',
+                    'secret'      => false,
+                    'help'        => 'Paddle Dashboard > Developer Tools > Authentication > Client-side tokens. Safe for Paddle.js checkout.',
+                ],
+                'api_key' => [
+                    'label'       => 'API Key',
+                    'placeholder' => 'Paddle backend API key',
+                    'secret'      => true,
+                    'help'        => 'Private server-side key. Never expose this value in browser code.',
+                ],
+                'webhook_secret' => [
+                    'label'       => 'Webhook Secret',
+                    'placeholder' => 'Paddle notification destination secret',
+                    'secret'      => true,
+                    'help'        => 'Optional until Paddle fulfillment/webhooks are enabled.',
+                ],
+                'starter_monthly_price_id' => [
+                    'label'       => 'Emprendedor - Monthly Price ID',
+                    'placeholder' => 'pri_...',
+                    'secret'      => false,
+                    'help'        => 'Sandbox/live Paddle Price ID for the monthly Emprendedor plan.',
+                ],
+                'starter_yearly_price_id' => [
+                    'label'       => 'Emprendedor - Yearly Price ID',
+                    'placeholder' => 'pri_...',
+                    'secret'      => false,
+                    'help'        => 'Sandbox/live Paddle Price ID for the yearly Emprendedor plan.',
                 ],
             ],
             'paystack' => [
