@@ -2,8 +2,10 @@
 
 namespace App\Models\Central;
 
+use App\Services\Paddle\PaddlePriceGuard;
 use App\Tenant;
 use Illuminate\Database\Eloquent\Model;
+use RuntimeException;
 
 class TenantBillingPayment extends Model
 {
@@ -75,6 +77,19 @@ class TenantBillingPayment extends Model
         static::creating(function (self $payment) {
             if (empty($payment->invoice_number)) {
                 $payment->invoice_number = static::generateInvoiceNumber();
+            }
+
+            if ($payment->gateway === 'paddle') {
+                $subscription = TenantSubscription::find($payment->tenant_subscription_id);
+                if (! $subscription) {
+                    throw new RuntimeException('Paddle payment references an unknown PRODEX subscription.');
+                }
+
+                $metadata = is_array($payment->metadata) ? $payment->metadata : [];
+                app(PaddlePriceGuard::class)->assertMatchesSubscription(
+                    $subscription,
+                    $metadata['paddle_price_id'] ?? null
+                );
             }
         });
     }
