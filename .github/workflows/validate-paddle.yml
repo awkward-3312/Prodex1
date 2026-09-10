@@ -25,6 +25,7 @@ jobs:
         run: |
           php -l app/Http/Controllers/Central/PaddleWebhookController.php
           php -l app/Http/Controllers/Tenant/PaddleBillingController.php
+          php -l app/Http/Middleware/SerializePaddleWebhook.php
           php -l app/Models/Central/PaddleCheckoutAttempt.php
           php -l app/Models/Central/PaddleSubscription.php
           php -l app/Models/Central/PaddleWebhookEvent.php
@@ -32,6 +33,7 @@ jobs:
           php -l app/Providers/RouteServiceProvider.php
           php -l app/Services/Billing/SubscriptionLifecycleService.php
           php -l app/Services/Paddle/PaddleCheckoutReference.php
+          php -l app/Services/Paddle/PaddlePriceGuard.php
           php -l app/Services/Paddle/PaddleWebhookVerifier.php
           php -l config/services.php
           php -l database/migrations/2026_09_10_083500_create_paddle_billing_tables.php
