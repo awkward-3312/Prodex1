@@ -126,6 +126,17 @@ class PaddleBillingContractTest extends TestCase
         $this->assertStringContainsString("create('paddle_webhook_events'", $migration);
     }
 
+    public function test_failed_webhooks_cannot_downgrade_settled_payments(): void
+    {
+        $lifecycle = $this->source('app/Services/Billing/SubscriptionLifecycleService.php');
+
+        $this->assertStringContainsString(
+            '$payment->status !== TenantBillingPayment::STATUS_PENDING',
+            $lifecycle
+        );
+        $this->assertStringContainsString('refusing invalid payment transition', $lifecycle);
+    }
+
     public function test_paddle_payments_are_labeled_without_joining_legacy_gateway_factory(): void
     {
         $payment = $this->source('app/Models/Central/TenantBillingPayment.php');
