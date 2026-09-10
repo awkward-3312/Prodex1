@@ -19,8 +19,11 @@ use App\Services\TransferLogisticsService;
 use App\Tenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
@@ -54,6 +57,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Schema::defaultStringLength(191);
+
+        // Paddle was originally configured only through .env. Once the Super Admin
+        // has a Paddle row, that row becomes authoritative for activation,
+        // environment and credentials while .env remains a safe migration fallback.
+        $this->configurePaddleGatewaySettings();
 
         // Behind the production Nginx proxy TLS terminates upstream. TrustProxies
         // already restores the real scheme/host from the forwarded headers; this
@@ -144,6 +152,78 @@ class AppServiceProvider extends ServiceProvider
                 $view->with('app_settings', null);
             }
         });
+    }
+
+    /**
+     * Load Paddle platform-billing settings from the central Super Admin table.
+     *
+     * The existing Paddle checkout reads config('services.paddle.*'), so hydrating
+     * that config here lets the Super Admin control Paddle without duplicating the
+     * checkout implementation or exposing the private API key to the browser.
+     *
+     * If no Paddle row exists yet, the previous .env configuration keeps working.
+     * Once a row exists and is disabled, Paddle checkout credentials are nulled so
+     * the gateway disappears from tenant checkout immediately on the next request.
+     */
+    protected function configurePaddleGatewaySettings(): void
+    {
+        if (! file_exists(base_path('storage/app/public/installed'))) {
+            return;
+        }
+
+        try {
+            $row = DB::connection('central')
+                ->table('payment_gateway_settings')
+                ->where('gateway', 'paddle')
+                ->first();
+
+            if (! $row) {
+                return;
+            }
+
+            $rawCredentials = json_decode($row->credentials ?? '{}', true);
+            $rawCredentials = is_array($rawCredentials) ? $rawCredentials : [];
+
+            $credential = function (string $key, $fallback = null) use ($rawCredentials) {
+                $value = trim((string) ($rawCredentials[$key] ?? ''));
+
+                if ($value === '') {
+                    return $fallback;
+                }
+
+                if (str_starts_with($value, 'eyJ')) {
+                    try {
+                        return trim(Crypt::decryptString($value));
+                    } catch (\Throwable $e) {
+                        Log::warning("Failed to decrypt Paddle credential [{$key}]: {$e->getMessage()}");
+                        return $fallback;
+                    }
+                }
+
+                return $value;
+            };
+
+            $isActive = (bool) $row->is_active;
+
+            config([
+                'services.paddle.environment' => (bool) $row->test_mode ? 'sandbox' : 'live',
+                'services.paddle.client_side_token' => $isActive
+                    ? $credential('client_side_token', config('services.paddle.client_side_token'))
+                    : null,
+                'services.paddle.api_key' => $credential('api_key', config('services.paddle.api_key')),
+                'services.paddle.webhook_secret' => $credential('webhook_secret', config('services.paddle.webhook_secret')),
+                'services.paddle.starter_monthly_price_id' => $isActive
+                    ? $credential('starter_monthly_price_id', config('services.paddle.starter_monthly_price_id'))
+                    : null,
+                'services.paddle.starter_yearly_price_id' => $isActive
+                    ? $credential('starter_yearly_price_id', config('services.paddle.starter_yearly_price_id'))
+                    : null,
+            ]);
+        } catch (\Throwable $e) {
+            // Fail open during install/maintenance or a temporary central DB outage.
+            // Existing .env values remain available and the rest of PRODEX boots.
+            Log::warning('Could not load Paddle Super Admin settings: '.$e->getMessage());
+        }
     }
 
     /**
