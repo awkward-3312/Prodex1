@@ -131,12 +131,21 @@ class SubscriptionLifecycleService
     }
 
     /**
-     * Mark a payment failed and notify the tenant. Subscription state is
-     * intentionally left untouched — the admin decides whether to cancel.
+     * Mark a pending payment failed and notify the tenant. Settled payment
+     * records are immutable: a late, duplicated, contradictory, or simulated
+     * failure event must never downgrade paid/refunded/superseded money.
+     * Subscription state is intentionally left to provider lifecycle events.
      */
     public function markFailed(TenantBillingPayment $payment): void
     {
         if ($payment->status === TenantBillingPayment::STATUS_FAILED) {
+            return;
+        }
+
+        if ($payment->status !== TenantBillingPayment::STATUS_PENDING) {
+            Log::warning(
+                "SubscriptionLifecycleService: refusing invalid payment transition {$payment->status} -> failed for payment {$payment->id}."
+            );
             return;
         }
 
