@@ -253,6 +253,11 @@ class PosLocationStockBridge
 
     private function isCreatePosAction(Request $request): bool
     {
+        $path = trim($request->path(), '/');
+        if ($path === 'api/pos/create_pos' || $path === 'pos/create_pos') {
+            return true;
+        }
+
         $route = $request->route();
         if (! $route) return false;
 
