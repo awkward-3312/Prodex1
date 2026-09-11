@@ -498,6 +498,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
 
     Route::middleware('tenant.feature:pos')->group(function () {
         Route::get('mobile/products/resolve', \App\Http\Controllers\Mobile\MobileProductResolveController::class);
+        Route::get('mobile/pos/catalog', \App\Http\Controllers\Mobile\MobilePosCatalogController::class);
         Route::post('pos/create_pos', 'PosController@CreatePOS');
         Route::post('store-credit-vouchers/validate', 'StoreCreditVoucherController@validateForPos');
         Route::get('pos/get_products_pos', 'PosController@GetProductsByParametre');

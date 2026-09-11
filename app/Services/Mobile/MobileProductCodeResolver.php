@@ -3,13 +3,13 @@
 namespace App\Services\Mobile;
 
 use App\Exceptions\Mobile\MobileProductResolveException;
-use App\Models\InventoryLocationStock;
-use App\Models\PosSetting;
 use App\Models\Product;
 use App\Models\ProductVariant;
 
 class MobileProductCodeResolver
 {
+    public function __construct(private MobilePosProductReadService $reader) {}
+
     public function resolve(string $value, int $locationId, ?string $scannerType = null): array
     {
         $value = trim($value);
@@ -93,7 +93,7 @@ class MobileProductCodeResolver
             ->with(['product.unitSale'])
             ->whereNull('product_variants.deleted_at')
             ->where("product_variants.$field", $value)
-            ->whereHas('product', fn ($query) => $this->sellableProductScope($query))
+            ->whereHas('product', fn ($query) => $this->reader->sellableProductScope($query))
             ->limit(2)
             ->get();
 
@@ -120,7 +120,7 @@ class MobileProductCodeResolver
         $rows = Product::query()
             ->with('unitSale')
             ->where($field, $value)
-            ->where(fn ($query) => $this->sellableProductScope($query))
+            ->where(fn ($query) => $this->reader->sellableProductScope($query))
             ->limit(2)
             ->get();
 
@@ -140,14 +140,6 @@ class MobileProductCodeResolver
         ];
     }
 
-    private function sellableProductScope($query)
-    {
-        return $query
-            ->whereNull('deleted_at')
-            ->where('is_active', 1)
-            ->where('not_selling', 0);
-    }
-
     private function response(array $resolved, int $locationId, array $match, float $scanQuantity): array
     {
         /** @var \App\Models\Product $product */
@@ -155,60 +147,9 @@ class MobileProductCodeResolver
         /** @var \App\Models\ProductVariant|null $variant */
         $variant = $resolved['variant'];
 
-        $stock = InventoryLocationStock::query()
-            ->where('inventory_location_id', $locationId)
-            ->where('product_id', (int) $product->id)
-            ->where('variant_key', $variant ? (int) $variant->id : 0)
-            ->first();
-
-        $isService = $product->type === 'is_service';
-        $manageStock = $isService ? false : (bool) ($stock->manage_stock ?? true);
-        $quantity = $isService ? 0.0 : round((float) ($stock->quantity ?? 0), 3);
-        $reserved = $isService ? 0.0 : round((float) ($stock->reserved_quantity ?? 0), 3);
-        $available = $isService ? 0.0 : round(max(0, $quantity - $reserved), 3);
-        $allowOverselling = (bool) optional(PosSetting::whereNull('deleted_at')->first())->allow_overselling;
-        $outOfStock = $manageStock && $available <= 0;
-        $lowStock = $manageStock
-            && (float) ($product->stock_alert ?? 0) > 0
-            && $available <= (float) $product->stock_alert;
-        $canSell = ! $manageStock || $available > 0 || $allowOverselling;
-
         return [
             'match' => $match,
-            'product' => [
-                'id' => (int) $product->id,
-                'variant_id' => $variant ? (int) $variant->id : null,
-                'product_id' => (int) $product->id,
-                'product_variant_id' => $variant ? (int) $variant->id : null,
-                'name' => (string) $product->name,
-                'product_name' => (string) $product->name,
-                'variant_name' => $variant ? (string) $variant->name : null,
-                'code' => (string) ($variant?->code ?? $product->code),
-                'gtin' => $variant ? ($variant->gtin ?: null) : ($product->gtin ?: null),
-                'barcode_symbology' => (string) $product->Type_barcode,
-                'type' => (string) $product->type,
-                'unit' => $product->unitSale ? (string) $product->unitSale->ShortName : null,
-                'unit_id' => $product->unitSale ? (int) $product->unitSale->id : null,
-            ],
-            'pricing' => [
-                'price' => number_format((float) ($variant?->price ?? $product->price ?? 0), 2, '.', ''),
-                'source' => 'base_pos_catalog',
-            ],
-            'inventory' => [
-                'location_id' => $locationId,
-                'inventory_location_id' => $locationId,
-                'quantity' => $quantity,
-                'reserved_quantity' => $reserved,
-                'available_quantity' => $available,
-                'manage_stock' => $manageStock,
-                'out_of_stock' => $outOfStock,
-                'low_stock' => $lowStock,
-                'overselling_allowed' => $allowOverselling,
-            ],
-            'sellability' => [
-                'can_sell' => $canSell,
-                'reason' => $canSell ? null : 'out_of_stock',
-            ],
+            ...$this->reader->item($product, $variant, $locationId),
             'scan_quantity' => $scanQuantity,
         ];
     }
