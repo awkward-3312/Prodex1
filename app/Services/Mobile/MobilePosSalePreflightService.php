@@ -28,13 +28,15 @@ class MobilePosSalePreflightService
         $client = $this->client((int) $payload['client_id']);
         $lines = [];
         $errors = [];
-        $subtotal = 0.0;
+        $totalIncludingTax = 0.0;
+        $netTotal = 0.0;
         $taxTotal = 0.0;
 
         foreach (array_values($payload['lines']) as $index => $line) {
             $lineResult = $this->line($line, $index, $context['inventory_location_id']);
             $lines[] = $lineResult['line'];
-            $subtotal = round($subtotal + (float) $lineResult['line']['subtotal'], 2);
+            $totalIncludingTax = round($totalIncludingTax + (float) $lineResult['line']['subtotal'], 2);
+            $netTotal = round($netTotal + (float) $lineResult['line']['net_subtotal'], 2);
             $taxTotal = round($taxTotal + (float) $lineResult['line']['tax']['amount'], 2);
 
             foreach ($lineResult['errors'] as $error) {
@@ -42,7 +44,7 @@ class MobilePosSalePreflightService
             }
         }
 
-        $grandTotal = round($subtotal, 2);
+        $grandTotal = round($totalIncludingTax, 2);
         $paymentResult = $this->paymentPreflight((array) ($payload['payment_intent'] ?? []), $grandTotal);
         $errors = array_merge($errors, $paymentResult['errors']);
 
@@ -57,7 +59,11 @@ class MobilePosSalePreflightService
             ],
             'lines' => $lines,
             'totals' => [
-                'subtotal' => $this->money($subtotal),
+                'merchandise_total' => $this->money($totalIncludingTax),
+                'net_total' => $this->money($netTotal),
+                'subtotal' => $this->money($totalIncludingTax),
+                'subtotal_excluding_tax' => $this->money($netTotal),
+                'subtotal_including_tax' => $this->money($totalIncludingTax),
                 'discount' => '0.00',
                 'tax' => $this->money($taxTotal),
                 'shipping' => '0.00',
@@ -139,18 +145,14 @@ class MobilePosSalePreflightService
         $basePrice = (float) ($variant?->price ?? $product->price ?? 0);
         $taxPercent = max(0.0, (float) ($product->TaxNet ?? 0));
         $taxMethod = (string) ($product->tax_method ?? '1');
-        $unitTax = $taxPercent > 0 ? $basePrice * $taxPercent / 100 : 0.0;
-
-        if ($taxMethod === '1') {
-            $unitNet = $basePrice;
-            $unitTotal = round($basePrice + $unitTax, 6);
-        } else {
-            $unitTotal = $basePrice;
-            $unitNet = round($basePrice - $unitTax, 6);
-        }
+        $tax = $this->taxBreakdown($basePrice, $taxPercent, $taxMethod);
+        $unitTax = $tax['tax'];
+        $unitNet = $tax['net'];
+        $unitTotal = $tax['total'];
 
         $lineTax = round($quantity * $unitTax, 2);
-        $lineTotal = round($quantity * $unitTotal, 2);
+        $lineNet = round($quantity * $unitNet, 2);
+        $lineTotal = round($lineNet + $lineTax, 2);
         $inventory = $this->inventory($product, $variant, $locationId, $quantity);
         $requirements = $this->requirements($product, $variant, $locationId, $quantity);
         $errors = [];
@@ -188,6 +190,8 @@ class MobilePosSalePreflightService
                 'unit_price' => $this->money($basePrice),
                 'net_unit_price' => $this->money($unitNet),
                 'subtotal' => $this->money($lineTotal),
+                'net_subtotal' => $this->money($lineNet),
+                'total' => $this->money($lineTotal),
                 'tax' => [
                     'rate' => $this->money($taxPercent),
                     'amount' => $this->money($lineTax),
@@ -214,6 +218,8 @@ class MobilePosSalePreflightService
                 'unit_price' => '0.00',
                 'net_unit_price' => '0.00',
                 'subtotal' => '0.00',
+                'net_subtotal' => '0.00',
+                'total' => '0.00',
                 'tax' => [
                     'rate' => '0.00',
                     'amount' => '0.00',
@@ -415,6 +421,35 @@ class MobilePosSalePreflightService
             'code' => $code,
             'message' => $code,
             'details' => array_merge(['line' => $index], $details),
+        ];
+    }
+
+    private function taxBreakdown(float $unitPrice, float $taxPercent, string $taxMethod): array
+    {
+        if ($taxPercent <= 0) {
+            return [
+                'net' => round($unitPrice, 6),
+                'tax' => 0.0,
+                'total' => round($unitPrice, 6),
+            ];
+        }
+
+        if ($taxMethod === '1') {
+            $tax = round($unitPrice * $taxPercent / 100, 6);
+
+            return [
+                'net' => round($unitPrice, 6),
+                'tax' => $tax,
+                'total' => round($unitPrice + $tax, 6),
+            ];
+        }
+
+        $net = round($unitPrice / (1 + ($taxPercent / 100)), 6);
+
+        return [
+            'net' => $net,
+            'tax' => round($unitPrice - $net, 6),
+            'total' => round($unitPrice, 6),
         ];
     }
 

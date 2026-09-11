@@ -117,7 +117,7 @@ class MobilePosSaleSubmissionService
             'used_points' => 0,
             'discount_from_points' => 0,
             'promotion_code' => null,
-            'promotion_subtotal' => $preflight['totals']['subtotal'],
+            'promotion_subtotal' => $preflight['totals']['subtotal_including_tax'] ?? $preflight['totals']['subtotal'],
             'promotion_item_count' => collect($details)->sum(fn ($line) => (float) $line['quantity']),
             'promotion_product_ids' => collect($details)->pluck('product_id')->values()->all(),
             'promotion_product_subtotals' => collect($details)->map(fn ($line) => [

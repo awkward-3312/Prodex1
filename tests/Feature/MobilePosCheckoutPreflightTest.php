@@ -474,6 +474,98 @@ class MobilePosCheckoutPreflightTest extends TestCase
         ])->assertStatus(422)->assertJsonPath('error.code', 'invalid_account');
     }
 
+    public function test_mobile_fiscal_totals_tax_method_one_exclusive_match_submit_payload(): void
+    {
+        $setup = $this->readySetup();
+        $product = $this->product(['price' => 100, 'TaxNet' => 15, 'tax_method' => '1']);
+        $this->stock($setup['location']->id, $product->id, null, 5, 0);
+
+        $preflight = $this->actingAs($setup['user'], 'api')->postJson('/api/mobile/pos/sale-preflight-test', [
+            'client_id' => $setup['client']->id,
+            'lines' => [['product_id' => $product->id, 'quantity' => '1']],
+            'payment_intent' => [['payment_method_id' => $setup['cashId'], 'amount' => '115.00']],
+        ])->assertOk();
+
+        $preflight
+            ->assertJsonPath('data.lines.0.unit_price', '100.00')
+            ->assertJsonPath('data.lines.0.net_unit_price', '100.00')
+            ->assertJsonPath('data.lines.0.net_subtotal', '100.00')
+            ->assertJsonPath('data.lines.0.tax.amount', '15.00')
+            ->assertJsonPath('data.lines.0.subtotal', '115.00')
+            ->assertJsonPath('data.totals.net_total', '100.00')
+            ->assertJsonPath('data.totals.subtotal_excluding_tax', '100.00')
+            ->assertJsonPath('data.totals.subtotal_including_tax', '115.00')
+            ->assertJsonPath('data.totals.tax', '15.00')
+            ->assertJsonPath('data.totals.grand_total', '115.00');
+
+        $sale = $this->submitFiscalTestSale($setup, $product, '1', '115.00', '123e4567-e89b-42d3-a456-426614174020');
+
+        $this->assertSame($preflight->json('data.totals.grand_total'), $sale->json('data.sale.grand_total'));
+        $this->assertSame('115.000', number_format((float) DB::table('sales')->value('GrandTotal'), 3, '.', ''));
+        $this->assertSame('15.000', number_format((float) DB::table('sales')->value('TaxNet'), 3, '.', ''));
+        $this->assertSame('115.000', number_format((float) DB::table('sale_details')->value('total'), 3, '.', ''));
+    }
+
+    public function test_mobile_fiscal_totals_tax_method_two_inclusive_match_sar_decomposition(): void
+    {
+        $setup = $this->readySetup();
+        $product = $this->product(['price' => 115, 'TaxNet' => 15, 'tax_method' => '2']);
+        $this->stock($setup['location']->id, $product->id, null, 5, 0);
+
+        $preflight = $this->actingAs($setup['user'], 'api')->postJson('/api/mobile/pos/sale-preflight-test', [
+            'client_id' => $setup['client']->id,
+            'lines' => [['product_id' => $product->id, 'quantity' => '1']],
+            'payment_intent' => [['payment_method_id' => $setup['cashId'], 'amount' => '115.00']],
+        ])->assertOk();
+
+        $preflight
+            ->assertJsonPath('data.lines.0.unit_price', '115.00')
+            ->assertJsonPath('data.lines.0.net_unit_price', '100.00')
+            ->assertJsonPath('data.lines.0.net_subtotal', '100.00')
+            ->assertJsonPath('data.lines.0.tax.amount', '15.00')
+            ->assertJsonPath('data.lines.0.subtotal', '115.00')
+            ->assertJsonPath('data.totals.net_total', '100.00')
+            ->assertJsonPath('data.totals.subtotal_excluding_tax', '100.00')
+            ->assertJsonPath('data.totals.subtotal_including_tax', '115.00')
+            ->assertJsonPath('data.totals.tax', '15.00')
+            ->assertJsonPath('data.totals.grand_total', '115.00');
+
+        $sale = $this->submitFiscalTestSale($setup, $product, '1', '115.00', '123e4567-e89b-42d3-a456-426614174021');
+
+        $this->assertSame($preflight->json('data.totals.grand_total'), $sale->json('data.sale.grand_total'));
+        $this->assertSame('115.000', number_format((float) DB::table('sales')->value('GrandTotal'), 3, '.', ''));
+        $this->assertSame('15.000', number_format((float) DB::table('sales')->value('TaxNet'), 3, '.', ''));
+        $this->assertSame('115.000', number_format((float) DB::table('sale_details')->value('total'), 3, '.', ''));
+    }
+
+    public function test_mobile_fiscal_totals_decimal_quantity_do_not_double_tax(): void
+    {
+        $setup = $this->readySetup();
+        $product = $this->product(['price' => 115, 'TaxNet' => 15, 'tax_method' => '2']);
+        $this->stock($setup['location']->id, $product->id, null, 5, 0);
+
+        $preflight = $this->actingAs($setup['user'], 'api')->postJson('/api/mobile/pos/sale-preflight-test', [
+            'client_id' => $setup['client']->id,
+            'lines' => [['product_id' => $product->id, 'quantity' => '0.735']],
+            'payment_intent' => [['payment_method_id' => $setup['cashId'], 'amount' => '84.53']],
+        ])->assertOk();
+
+        $preflight
+            ->assertJsonPath('data.lines.0.quantity', '0.735')
+            ->assertJsonPath('data.lines.0.net_subtotal', '73.50')
+            ->assertJsonPath('data.lines.0.tax.amount', '11.03')
+            ->assertJsonPath('data.lines.0.subtotal', '84.53')
+            ->assertJsonPath('data.totals.net_total', '73.50')
+            ->assertJsonPath('data.totals.tax', '11.03')
+            ->assertJsonPath('data.totals.grand_total', '84.53');
+
+        $sale = $this->submitFiscalTestSale($setup, $product, '0.735', '84.53', '123e4567-e89b-42d3-a456-426614174022');
+
+        $this->assertSame($preflight->json('data.totals.grand_total'), $sale->json('data.sale.grand_total'));
+        $this->assertSame('84.530', number_format((float) DB::table('sales')->value('GrandTotal'), 3, '.', ''));
+        $this->assertSame('11.030', number_format((float) DB::table('sales')->value('TaxNet'), 3, '.', ''));
+    }
+
     public function test_decimal_quantity_is_supported_to_three_places_but_not_more(): void
     {
         $setup = $this->readySetup();
@@ -495,6 +587,16 @@ class MobilePosCheckoutPreflightTest extends TestCase
         ])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'invalid_quantity');
+    }
+
+    private function submitFiscalTestSale(array $setup, Product $product, string $quantity, string $amount, string $uuid)
+    {
+        return $this->actingAs($setup['user'], 'api')->postJson('/api/mobile/sales-test', [
+            'sale_uuid' => $uuid,
+            'client_id' => $setup['client']->id,
+            'lines' => [['product_id' => $product->id, 'quantity' => $quantity]],
+            'payments' => [['payment_method_id' => $setup['cashId'], 'amount' => $amount]],
+        ])->assertOk();
     }
 
     private function readySetup(bool $withAccount = true): array
