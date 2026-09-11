@@ -499,6 +499,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::middleware('tenant.feature:pos')->group(function () {
         Route::get('mobile/products/resolve', \App\Http\Controllers\Mobile\MobileProductResolveController::class);
         Route::get('mobile/pos/catalog', \App\Http\Controllers\Mobile\MobilePosCatalogController::class);
+        Route::get('mobile/inventory', \App\Http\Controllers\Mobile\MobileInventoryController::class);
         Route::get('mobile/pos/checkout-context', \App\Http\Controllers\Mobile\MobilePosCheckoutContextController::class);
         Route::get('mobile/pos/clients', \App\Http\Controllers\Mobile\MobilePosClientsController::class);
         Route::post('mobile/pos/sale-preflight', \App\Http\Controllers\Mobile\MobilePosSalePreflightController::class);
