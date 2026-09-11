@@ -318,6 +318,7 @@ class WebhookController extends Controller
                 'status'       => TenantSubscription::STATUS_CANCELLED,
                 'ends_at'      => now(),
                 'cancelled_at' => now(),
+                'cancellation_requested_at' => null,
             ]);
         }
 

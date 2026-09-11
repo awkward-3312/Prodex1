@@ -48,6 +48,7 @@ class TenantSubscription extends Model
         'trial_ends_at',
         'ends_at',
         'cancelled_at',
+        'cancellation_requested_at',
     ];
 
     protected $casts = [
@@ -56,6 +57,7 @@ class TenantSubscription extends Model
         'trial_ends_at' => 'datetime',
         'ends_at'       => 'datetime',
         'cancelled_at'  => 'datetime',
+        'cancellation_requested_at' => 'datetime',
     ];
 
     public function tenant()
@@ -126,6 +128,7 @@ class TenantSubscription extends Model
             'starts_at'    => $startsAt,
             'ends_at'      => $endsAt,
             'cancelled_at' => null,
+            'cancellation_requested_at' => null,
         ]);
 
         // This subscription replaces whatever the tenant was on before (free
@@ -155,18 +158,62 @@ class TenantSubscription extends Model
             'status'       => self::STATUS_ACTIVE,
             'ends_at'      => $newEndsAt,
             'cancelled_at' => null,
+            'cancellation_requested_at' => null,
         ]);
     }
 
     /**
-     * Cancel subscription — remains active until ends_at.
+     * Cancel subscription immediately — for confirmed cancellations only:
+     * Paddle's subscription.canceled webhook (cancellation already took
+     * effect at Paddle), an admin's emergency override, or a gateway with no
+     * period-end scheduling support. Status flips right away, so access is
+     * cut right away — never call this for a customer's "cancel at period
+     * end" request; use markCancellationRequested() for that instead.
      */
     public function cancel(): void
     {
         $this->update([
             'status'       => self::STATUS_CANCELLED,
             'cancelled_at' => now(),
+            'cancellation_requested_at' => null,
         ]);
+    }
+
+    /**
+     * Record that the tenant asked to cancel at the end of the current
+     * billing period. Status and ends_at are deliberately left untouched —
+     * the subscription stays ACTIVE (and access stays granted) until Paddle's
+     * subscription.canceled webhook confirms the cancellation actually took
+     * effect, at which point cancel() (via the webhook handler) applies it.
+     */
+    public function markCancellationRequested(): void
+    {
+        $this->update(['cancellation_requested_at' => now()]);
+    }
+
+    /**
+     * Undo a pending cancellation request before it has taken effect
+     * (resume). Only meaningful while still ACTIVE — a subscription already
+     * flipped to CANCELLED must go through resume() instead.
+     */
+    public function clearCancellationRequest(): void
+    {
+        $this->update(['cancellation_requested_at' => null]);
+    }
+
+    /**
+     * True while a cancellation has been requested but Paddle hasn't
+     * confirmed it took effect yet — ACTIVE, TRIAL, or SUSPENDED can all
+     * carry the flag (Paddle keeps a scheduled cancel through a trial or a
+     * dunning-driven past_due/paused state). False once the subscription is
+     * actually CANCELLED/EXPIRED/FAILED — the flag no longer means anything
+     * once a terminal state has been reached. Access must NOT be cut while
+     * this is true.
+     */
+    public function isPendingCancellation(): bool
+    {
+        return $this->cancellation_requested_at !== null
+            && in_array($this->status, [self::STATUS_ACTIVE, self::STATUS_TRIAL, self::STATUS_SUSPENDED], true);
     }
 
     /**
@@ -181,6 +228,7 @@ class TenantSubscription extends Model
         $this->update([
             'status'       => self::STATUS_ACTIVE,
             'cancelled_at' => null,
+            'cancellation_requested_at' => null,
         ]);
     }
 
@@ -217,6 +265,13 @@ class TenantSubscription extends Model
                 return false;
             }
             $extra['cancelled_at'] = null;
+        }
+
+        if ($newStatus === self::STATUS_ACTIVE) {
+            // Reactivating (from any allowed source status) means nothing is
+            // pending-cancel any more — a stale flag from a state Paddle has
+            // since moved past must not survive the transition.
+            $extra['cancellation_requested_at'] = null;
         }
 
         $this->update(array_merge($extra, ['status' => $newStatus]));
