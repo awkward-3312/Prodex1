@@ -335,10 +335,24 @@ class MobilePosSalePreflightService
             }
 
             $methodInfo = $this->payments->formatMethod($method);
+            if ($methodInfo['requires_account'] && ! $account) {
+                $errors[] = [
+                    'code' => 'invalid_account',
+                    'message' => 'El metodo de pago requiere una cuenta valida.',
+                    'details' => ['payment' => $index],
+                ];
+            }
+
             if ($methodInfo['is_card'] && $this->cardProcessingMode() === PaymentSetting::CARD_MODE_STRIPE) {
                 $errors[] = [
                     'code' => 'unsupported_payment_method',
                     'message' => 'El metodo de tarjeta Stripe no esta soportado en Mobile MVP.',
+                    'details' => ['payment' => $index],
+                ];
+            } elseif (! $methodInfo['is_available']) {
+                $errors[] = [
+                    'code' => 'unsupported_payment_method',
+                    'message' => 'El metodo de pago no esta disponible para Mobile con la configuracion actual.',
                     'details' => ['payment' => $index],
                 ];
             }

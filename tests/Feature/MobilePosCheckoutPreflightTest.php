@@ -62,6 +62,9 @@ class MobilePosCheckoutPreflightTest extends TestCase
             ->assertJsonPath('data.operational_context.cash_drawer.id', $setup['drawer']->id)
             ->assertJsonPath('data.customer.default.id', $setup['client']->id)
             ->assertJsonPath('data.payment_methods.0.is_cash', true)
+            ->assertJsonPath('data.payment_methods.0.requires_account', false)
+            ->assertJsonPath('data.payment_methods.0.is_supported', true)
+            ->assertJsonPath('data.payment_methods.0.is_available', true)
             ->assertJsonPath('data.accounts.0.id', $setup['accountId'])
             ->assertJsonPath('data.tax.country', 'HN')
             ->assertJsonPath('data.currency.code', 'HNL')
@@ -88,6 +91,36 @@ class MobilePosCheckoutPreflightTest extends TestCase
             ->assertJsonPath('data.operational_context.cash_drawer', null)
             ->assertJsonPath('data.capabilities.can_create_sale', false)
             ->assertJsonPath('data.capabilities.reason', 'operational_context_incomplete');
+    }
+
+    public function test_checkout_context_keeps_account_optional_methods_available_without_accounts(): void
+    {
+        $setup = $this->readySetup(false);
+
+        $this->actingAs($setup['user'], 'api')
+            ->getJson('/api/mobile/pos/checkout-context-test')
+            ->assertOk()
+            ->assertJsonPath('data.accounts', [])
+            ->assertJsonPath('data.payment_methods.0.requires_account', false)
+            ->assertJsonPath('data.payment_methods.0.is_available', true)
+            ->assertJsonPath('data.defaults.account_id', null)
+            ->assertJsonPath('data.capabilities.can_create_sale', true)
+            ->assertJsonPath('data.capabilities.reason', null);
+    }
+
+    public function test_checkout_context_blocks_sale_when_all_methods_require_missing_accounts(): void
+    {
+        $setup = $this->readySetup(false);
+        DB::table('payment_methods')->update(['requires_account' => true]);
+
+        $this->actingAs($setup['user'], 'api')
+            ->getJson('/api/mobile/pos/checkout-context-test')
+            ->assertOk()
+            ->assertJsonPath('data.accounts', [])
+            ->assertJsonPath('data.payment_methods.0.requires_account', true)
+            ->assertJsonPath('data.payment_methods.0.is_available', false)
+            ->assertJsonPath('data.capabilities.can_create_sale', false)
+            ->assertJsonPath('data.capabilities.reason', 'payment_configuration_incomplete');
     }
 
     public function test_client_search_filters_by_name_phone_tax_and_excludes_deleted(): void
@@ -267,6 +300,69 @@ class MobilePosCheckoutPreflightTest extends TestCase
         $this->assertSame('4', (string) DB::table('inventory_location_stocks')->where('product_id', $product->id)->value('quantity'));
     }
 
+    public function test_mobile_sale_allows_optional_account_and_keeps_payment_account_null(): void
+    {
+        $setup = $this->readySetup(false);
+        $product = $this->product(['name' => 'Cafe', 'price' => 10]);
+        $this->stock($setup['location']->id, $product->id, null, 2, 0);
+
+        $this->actingAs($setup['user'], 'api')->postJson('/api/mobile/pos/sale-preflight-test', [
+            'client_id' => $setup['client']->id,
+            'lines' => [['product_id' => $product->id, 'quantity' => '1']],
+            'payment_intent' => [['payment_method_id' => $setup['cashId'], 'amount' => '10.00']],
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.can_submit', true)
+            ->assertJsonPath('data.payments.requested.0.account_id', null);
+
+        $this->actingAs($setup['user'], 'api')->postJson('/api/mobile/sales-test', [
+            'sale_uuid' => '123e4567-e89b-42d3-a456-426614174010',
+            'client_id' => $setup['client']->id,
+            'lines' => [['product_id' => $product->id, 'quantity' => '1']],
+            'payments' => [['payment_method_id' => $setup['cashId'], 'amount' => '10.00']],
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.sale.payment_status', 'paid');
+
+        $this->assertSame(1, DB::table('payment_sales')->count());
+        $this->assertNull(DB::table('payment_sales')->value('account_id'));
+        $this->assertSame(0, DB::table('accounts')->count());
+    }
+
+    public function test_required_account_rule_is_shared_by_context_preflight_and_submit(): void
+    {
+        $setup = $this->readySetup();
+        DB::table('payment_methods')->where('id', $setup['cashId'])->update(['requires_account' => true]);
+        $product = $this->product(['price' => 10]);
+        $this->stock($setup['location']->id, $product->id, null, 2, 0);
+
+        $this->actingAs($setup['user'], 'api')
+            ->getJson('/api/mobile/pos/checkout-context-test')
+            ->assertOk()
+            ->assertJsonPath('data.payment_methods.0.requires_account', true)
+            ->assertJsonPath('data.payment_methods.0.is_available', true)
+            ->assertJsonPath('data.capabilities.can_create_sale', true);
+
+        $preflight = $this->actingAs($setup['user'], 'api')->postJson('/api/mobile/pos/sale-preflight-test', [
+            'client_id' => $setup['client']->id,
+            'lines' => [['product_id' => $product->id, 'quantity' => '1']],
+            'payment_intent' => [['payment_method_id' => $setup['cashId'], 'amount' => '10.00']],
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.can_submit', false);
+
+        $this->assertContains('invalid_account', collect($preflight->json('data.errors'))->pluck('code')->all());
+
+        $this->actingAs($setup['user'], 'api')->postJson('/api/mobile/sales-test', [
+            'sale_uuid' => '123e4567-e89b-42d3-a456-426614174011',
+            'client_id' => $setup['client']->id,
+            'lines' => [['product_id' => $product->id, 'quantity' => '1']],
+            'payments' => [['payment_method_id' => $setup['cashId'], 'amount' => '10.00']],
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'invalid_account');
+    }
+
     public function test_mobile_sale_variant_weighted_and_service_stock_semantics(): void
     {
         $setup = $this->readySetup();
@@ -401,12 +497,12 @@ class MobilePosCheckoutPreflightTest extends TestCase
             ->assertJsonPath('error.code', 'invalid_quantity');
     }
 
-    private function readySetup(): array
+    private function readySetup(bool $withAccount = true): array
     {
         $client = $this->client(['name' => 'Cliente Default']);
         $cashId = $this->paymentMethod('Efectivo');
         $this->paymentMethod('Tarjeta');
-        $accountId = $this->account('Caja principal', 100);
+        $accountId = $withAccount ? $this->account('Caja principal', 100) : null;
         $this->settings($client->id, $accountId, $cashId);
 
         $branch = $this->branch();
@@ -591,7 +687,7 @@ class MobilePosCheckoutPreflightTest extends TestCase
         ]);
     }
 
-    private function settings(int $clientId, int $accountId, int $paymentMethodId): void
+    private function settings(int $clientId, ?int $accountId, int $paymentMethodId): void
     {
         DB::table('currencies')->insert([
             'id' => 1,
@@ -812,6 +908,7 @@ class MobilePosCheckoutPreflightTest extends TestCase
         Schema::create('payment_methods', function ($table) {
             $table->integer('id', true);
             $table->string('name');
+            $table->boolean('requires_account')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes();

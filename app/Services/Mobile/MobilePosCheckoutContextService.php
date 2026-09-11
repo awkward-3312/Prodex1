@@ -22,14 +22,16 @@ class MobilePosCheckoutContextService
         $context = $this->contextReader->forUser($user);
         $settings = Setting::with('Currency')->whereNull('deleted_at')->first();
         $ready = (bool) ($context['ready_for_location_pos'] ?? false);
+        $paymentMethods = $this->payments->formattedPaymentMethods();
+        $accounts = $this->payments->formattedAccounts();
 
         return [
             'operational_context' => $this->formatOperationalContext($context),
             'customer' => [
                 'default' => $this->defaultClient($settings),
             ],
-            'payment_methods' => $this->payments->formattedPaymentMethods(),
-            'accounts' => $this->payments->formattedAccounts(),
+            'payment_methods' => $paymentMethods,
+            'accounts' => $accounts,
             'tax' => $this->tax($settings),
             'currency' => $this->currency($settings),
             'pricing' => [
@@ -43,7 +45,7 @@ class MobilePosCheckoutContextService
                 'payment_method_id' => $this->payments->defaultPaymentMethodId($settings),
                 'account_id' => $this->payments->defaultAccountId($settings),
             ],
-            'capabilities' => $this->capabilities($ready),
+            'capabilities' => $this->capabilities($ready, $paymentMethods),
         ];
     }
 
@@ -148,11 +150,20 @@ class MobilePosCheckoutContextService
         ];
     }
 
-    private function capabilities(bool $ready): array
+    private function capabilities(bool $ready, array $paymentMethods): array
     {
+        $hasAvailablePaymentMethod = collect($paymentMethods)->contains(fn ($method) => (bool) ($method['is_available'] ?? false));
+        $canCreateSale = $ready && $hasAvailablePaymentMethod;
+        $reason = null;
+        if (! $ready) {
+            $reason = 'operational_context_incomplete';
+        } elseif (! $hasAvailablePaymentMethod) {
+            $reason = 'payment_configuration_incomplete';
+        }
+
         return [
-            'can_create_sale' => $ready,
-            'reason' => $ready ? null : 'operational_context_incomplete',
+            'can_create_sale' => $canCreateSale,
+            'reason' => $reason,
             'manual_price' => false,
             'line_discount' => false,
             'sale_discount' => false,

@@ -4,6 +4,7 @@ namespace App\Services\Mobile;
 
 use App\Models\Account;
 use App\Models\PaymentMethod;
+use App\Models\PaymentSetting;
 use App\Models\Setting;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -12,11 +13,18 @@ class MobilePosPaymentReadService
 {
     public function paymentMethods(): Collection
     {
+        $columns = ['id', 'name'];
+        foreach (['requires_account', 'account_required'] as $column) {
+            if (Schema::hasColumn('payment_methods', $column)) {
+                $columns[] = $column;
+            }
+        }
+
         return PaymentMethod::query()
             ->whereNull('deleted_at')
             ->when(Schema::hasColumn('payment_methods', 'is_active'), fn ($query) => $query->where('is_active', true))
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get($columns);
     }
 
     public function formattedPaymentMethods(): array
@@ -70,6 +78,9 @@ class MobilePosPaymentReadService
     public function formatMethod(PaymentMethod $method): array
     {
         $type = $this->typeFor($method);
+        $requiresAccount = $this->requiresAccount($method);
+        $isStripeCard = $type === 'card' && $this->cardProcessingMode() === PaymentSetting::CARD_MODE_STRIPE;
+        $hasAccounts = $this->hasAccounts();
 
         return [
             'id' => (int) $method->id,
@@ -77,7 +88,9 @@ class MobilePosPaymentReadService
             'type' => $type,
             'is_cash' => $type === 'cash',
             'is_card' => $type === 'card',
-            'requires_account' => true,
+            'requires_account' => $requiresAccount,
+            'is_supported' => true,
+            'is_available' => ! $isStripeCard && (! $requiresAccount || $hasAccounts),
             'supports_change' => $type === 'cash',
             'stripe_supported' => false,
         ];
@@ -101,5 +114,30 @@ class MobilePosPaymentReadService
         }
 
         return 'other';
+    }
+
+    public function requiresAccount(PaymentMethod $method): bool
+    {
+        foreach (['requires_account', 'account_required'] as $column) {
+            if (Schema::hasColumn('payment_methods', $column)) {
+                return (bool) $method->{$column};
+            }
+        }
+
+        return false;
+    }
+
+    public function hasAccounts(): bool
+    {
+        return Account::whereNull('deleted_at')->exists();
+    }
+
+    private function cardProcessingMode(): string
+    {
+        if (! Schema::hasTable('payment_settings')) {
+            return PaymentSetting::CARD_MODE_EXTERNAL_TERMINAL;
+        }
+
+        return PaymentSetting::current()->effectiveCardProcessingMode();
     }
 }
