@@ -44,20 +44,99 @@ class PosOperationalContextReadService
             ->orderBy('name')
             ->get(['id', 'branch_id', 'inventory_location_id', 'warehouse_id', 'code', 'name']);
 
+        $posEffective = $this->posEffective($effective, $branches, $locations, $drawers);
+
         return [
             'effective' => [
                 'source' => $effective['source'],
-                'branch_id' => $effective['branch_id'],
-                'inventory_location_id' => $effective['inventory_location_id'],
-                'cash_drawer_id' => $effective['cash_drawer_id'],
+                'branch_id' => $posEffective['branch_id'],
+                'inventory_location_id' => $posEffective['inventory_location_id'],
+                'cash_drawer_id' => $posEffective['cash_drawer_id'],
                 'legacy_warehouse_id' => $effective['warehouse_id'],
                 'can_override' => (bool) $effective['can_override'],
             ],
             'branches' => $branches,
             'inventory_locations' => $locations,
             'cash_drawers' => $drawers,
-            'ready_for_location_pos' => $branches->isNotEmpty() && $locations->isNotEmpty() && $drawers->isNotEmpty(),
+            'ready_for_location_pos' => $posEffective['branch_id'] !== null
+                && $posEffective['inventory_location_id'] !== null
+                && $posEffective['cash_drawer_id'] !== null,
         ];
     }
-}
 
+    private function posEffective(array $effective, $branches, $locations, $drawers): array
+    {
+        $effectiveBranchId = $effective['branch_id'] && $branches->contains('id', (int) $effective['branch_id'])
+            ? (int) $effective['branch_id']
+            : null;
+
+        $selectedLocation = null;
+        if ($effective['inventory_location_id']) {
+            $candidate = $locations->firstWhere('id', (int) $effective['inventory_location_id']);
+            if ($candidate && (! $effectiveBranchId || (int) $candidate->branch_id === $effectiveBranchId)) {
+                $selectedLocation = $candidate;
+                $effectiveBranchId = (int) $candidate->branch_id;
+            }
+        }
+
+        $branchId = $effectiveBranchId ?: $this->firstBranchWithLocation($branches, $locations);
+        if (! $branchId) {
+            return [
+                'branch_id' => null,
+                'inventory_location_id' => null,
+                'cash_drawer_id' => null,
+            ];
+        }
+
+        $branch = $branches->firstWhere('id', $branchId);
+        $branchLocations = $locations->where('branch_id', $branchId)->values();
+
+        if (! $selectedLocation) {
+            $selectedLocation = $branchLocations->firstWhere('is_default_sales', true);
+        }
+
+        if (! $selectedLocation && $branch?->default_inventory_location_id) {
+            $selectedLocation = $branchLocations->firstWhere('id', (int) $branch->default_inventory_location_id);
+        }
+
+        $selectedLocation = $selectedLocation ?: $branchLocations->first();
+
+        if (! $selectedLocation) {
+            return [
+                'branch_id' => $branchId,
+                'inventory_location_id' => null,
+                'cash_drawer_id' => null,
+            ];
+        }
+
+        $drawer = null;
+        if ($effective['cash_drawer_id']) {
+            $drawer = $drawers
+                ->where('branch_id', $branchId)
+                ->where('inventory_location_id', (int) $selectedLocation->id)
+                ->firstWhere('id', (int) $effective['cash_drawer_id']);
+        }
+
+        $drawer = $drawer ?: $drawers
+            ->where('branch_id', $branchId)
+            ->where('inventory_location_id', (int) $selectedLocation->id)
+            ->first();
+
+        return [
+            'branch_id' => $branchId,
+            'inventory_location_id' => (int) $selectedLocation->id,
+            'cash_drawer_id' => $drawer ? (int) $drawer->id : null,
+        ];
+    }
+
+    private function firstBranchWithLocation($branches, $locations): ?int
+    {
+        foreach ($branches as $branch) {
+            if ($locations->contains('branch_id', (int) $branch->id)) {
+                return (int) $branch->id;
+            }
+        }
+
+        return null;
+    }
+}
