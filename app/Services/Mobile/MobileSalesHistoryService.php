@@ -25,7 +25,8 @@ class MobileSalesHistoryService
         ?string $dateFrom = null,
         ?string $dateTo = null,
         ?int $page = null,
-        ?int $perPage = null
+        ?int $perPage = null,
+        ?int $clientId = null
     ): array {
         $page = max(1, (int) ($page ?: 1));
         $perPage = min(50, max(1, (int) ($perPage ?: 30)));
@@ -47,7 +48,8 @@ class MobileSalesHistoryService
             })
             ->when($paymentStatus !== null, fn ($q) => $q->where('sales.payment_statut', $paymentStatus))
             ->when($dateFrom !== null, fn ($q) => $q->where('sales.date', '>=', $dateFrom))
-            ->when($dateTo !== null, fn ($q) => $q->where('sales.date', '<=', $dateTo));
+            ->when($dateTo !== null, fn ($q) => $q->where('sales.date', '<=', $dateTo))
+            ->when($clientId !== null, fn ($q) => $q->where('sales.client_id', $clientId));
 
         $total = (clone $sales)->count();
 
