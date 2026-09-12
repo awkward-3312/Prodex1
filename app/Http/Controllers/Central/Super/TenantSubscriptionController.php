@@ -7,17 +7,19 @@ use App\Models\Central\Plan;
 use App\Models\Central\TenantBillingPayment;
 use App\Models\Central\SubscriptionReminder;
 use App\Exceptions\PaddleApiException;
+use App\Exceptions\SubscriptionNotResumableException;
 use App\Models\Central\TenantSubscription;
 use App\Services\Billing\SubscriptionCancellationService;
+use App\Support\LocksBillingSubscription;
 use App\Tenant;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 class TenantSubscriptionController extends Controller
 {
+    use LocksBillingSubscription;
+
     public function __construct(private SubscriptionCancellationService $cancellation)
     {
     }
@@ -235,17 +237,23 @@ class TenantSubscriptionController extends Controller
                     if (! empty($extra)) {
                         $subscription->update($extra);
                     }
-                } elseif ($newStatus === TenantSubscription::STATUS_ACTIVE && $subscription->isPendingCancellation()) {
-                    // A cancellation is still scheduled at Paddle — tell Paddle
-                    // to remove it before applying the admin's reactivation
-                    // locally. transitionTo() alone would only clear the local
-                    // flag and leave Paddle's schedule in place.
+                } elseif ($newStatus === TenantSubscription::STATUS_ACTIVE) {
+                    // Whether this is a still-scheduled cancellation (remove
+                    // it at Paddle) or an already-confirmed one (Paddle has
+                    // no "un-cancel" — refused below), reactivating to ACTIVE
+                    // must always go through the shared service first.
+                    // transitionTo() alone would just flip status locally
+                    // with no Paddle counterpart at all.
                     try {
                         $this->cancellation->resumeScheduledCancellation($subscription);
                     } catch (PaddleApiException $e) {
                         return back()
                             ->withInput()
                             ->with('error', 'No se pudo comunicar la reanudación a Paddle. Intenta de nuevo en unos minutos.');
+                    } catch (SubscriptionNotResumableException $e) {
+                        return back()
+                            ->withInput()
+                            ->with('error', 'Esta suscripción ya fue cancelada en Paddle y no puede reanudarse. El tenant debe suscribirse de nuevo.');
                     }
 
                     if (! $subscription->transitionTo($newStatus, $extra)) {
@@ -281,20 +289,8 @@ class TenantSubscriptionController extends Controller
         });
     }
 
-    /**
-     * Serialize concurrent admin/customer requests for the same subscription
-     * — same lock namespace as BillingApiController's withSubscriptionLock()
-     * so an admin action and a customer action (or a webhook) can never
-     * interleave writes to the same row.
-     */
-    private function withSubscriptionLock(TenantSubscription $subscription, \Closure $action): RedirectResponse
+    private function onSubscriptionLockTimeout(): RedirectResponse
     {
-        $lock = Cache::lock('billing:cancel:'.$subscription->id, 40);
-
-        try {
-            return $lock->block(5, $action);
-        } catch (LockTimeoutException) {
-            return back()->with('error', 'Ya hay una solicitud en curso para esta suscripción. Intenta de nuevo en unos segundos.');
-        }
+        return back()->with('error', 'Ya hay una solicitud en curso para esta suscripción. Intenta de nuevo en unos segundos.');
     }
 }

@@ -14,16 +14,25 @@ use App\Services\PaymentGateways\PaypalGateway;
 use App\Exceptions\PaddleApiException;
 use App\Exceptions\SubscriptionNotResumableException;
 use App\Services\Billing\SubscriptionCancellationService;
-use Illuminate\Contracts\Cache\LockTimeoutException;
+use App\Support\LocksBillingSubscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class BillingApiController extends Controller
 {
+    use LocksBillingSubscription;
+
     public function __construct(private SubscriptionCancellationService $cancellation)
     {
+    }
+
+    private function onSubscriptionLockTimeout(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Ya hay una solicitud en curso para esta suscripción. Intenta de nuevo en unos segundos.',
+        ], 409);
     }
 
     private function authorizeBilling(): void
@@ -782,31 +791,6 @@ class BillingApiController extends Controller
                 'subscription' => $this->subscriptionPayload($subscription),
             ]);
         });
-    }
-
-    /**
-     * Serialize concurrent requests for the same subscription (double click,
-     * two tabs) so only one ever calls Paddle. A DB transaction would hold a
-     * row lock for as long as the outbound Paddle call takes, which is worse
-     * than the race it prevents — a short-lived cache lock (same pattern as
-     * the webhook path) avoids that.
-     */
-    private function withSubscriptionLock(TenantSubscription $subscription, \Closure $action): JsonResponse
-    {
-        // TTL is not renewed while the closure runs, so it must comfortably
-        // outlast PaddleSubscriptionApi's own 15s HTTP timeout plus overhead
-        // — otherwise the lock could expire mid-request and let a second
-        // concurrent request through.
-        $lock = Cache::lock('billing:cancel:'.$subscription->id, 40);
-
-        try {
-            return $lock->block(5, $action);
-        } catch (LockTimeoutException) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ya hay una solicitud en curso para esta suscripción. Intenta de nuevo en unos segundos.',
-            ], 409);
-        }
     }
 
     /**

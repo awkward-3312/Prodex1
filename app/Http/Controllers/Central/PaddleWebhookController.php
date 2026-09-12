@@ -15,6 +15,7 @@ use App\Models\Central\TenantSubscription;
 use App\Services\Billing\SubscriptionLifecycleService;
 use App\Services\Paddle\PaddleCheckoutReference;
 use App\Services\Paddle\PaddleWebhookVerifier;
+use App\Support\LocksBillingSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,8 @@ use Throwable;
 
 class PaddleWebhookController extends Controller
 {
+    use LocksBillingSubscription;
+
     public function handle(
         Request $request,
         PaddleWebhookVerifier $verifier,
@@ -164,45 +167,62 @@ class PaddleWebhookController extends Controller
             throw new RuntimeException('Paddle subscription cannot be linked to an authenticated PRODEX checkout.');
         }
 
-        $mapping = PaddleSubscription::where('paddle_subscription_id', $paddleSubscriptionId)->firstOrFail();
+        // Same lock namespace as BillingApiController/TenantSubscriptionController
+        // ('billing:cancel:{subscription id}') — a customer's cancel/resume
+        // click makes a live Paddle API call before writing locally, and this
+        // webhook must not read-modify-write the same row while that's in
+        // flight, or one write silently clobbers the other.
+        $this->withSubscriptionLock($subscription, function () use ($subscription, $paddleSubscriptionId, $occurredAt, $data): void {
+                $mapping = PaddleSubscription::where('paddle_subscription_id', $paddleSubscriptionId)->firstOrFail();
 
-        // Paddle can deliver events out of order. Only subscription lifecycle
-        // events use this timestamp guard; transaction IDs are independently
-        // idempotent and must still be recorded.
-        if ($mapping->last_event_at && $occurredAt && $occurredAt->lt($mapping->last_event_at)) {
-            Log::info("Ignoring stale Paddle subscription event for {$paddleSubscriptionId}.");
-            return;
-        }
+                // Paddle can deliver events out of order. Only subscription
+                // lifecycle events use this timestamp guard; transaction IDs
+                // are independently idempotent and must still be recorded.
+                if ($mapping->last_event_at && $occurredAt && $occurredAt->lt($mapping->last_event_at)) {
+                    Log::info("Ignoring stale Paddle subscription event for {$mapping->paddle_subscription_id}.");
+                    return;
+                }
 
-        $period = is_array($data['current_billing_period'] ?? null) ? $data['current_billing_period'] : [];
-        $periodStartsAt = $this->parseDate($period['starts_at'] ?? null);
-        $periodEndsAt = $this->parseDate($period['ends_at'] ?? null);
-        $nextBilledAt = $this->parseDate($data['next_billed_at'] ?? null);
-        $status = strtolower((string) ($data['status'] ?? ''));
-        $scheduledChange = is_array($data['scheduled_change'] ?? null) ? $data['scheduled_change'] : null;
+                $period = is_array($data['current_billing_period'] ?? null) ? $data['current_billing_period'] : [];
+                $periodStartsAt = $this->parseDate($period['starts_at'] ?? null);
+                $periodEndsAt = $this->parseDate($period['ends_at'] ?? null);
+                $nextBilledAt = $this->parseDate($data['next_billed_at'] ?? null);
+                $status = strtolower((string) ($data['status'] ?? ''));
+                $scheduledChange = is_array($data['scheduled_change'] ?? null) ? $data['scheduled_change'] : null;
 
-        $mapping->update([
-            'paddle_customer_id' => $data['customer_id'] ?? $mapping->paddle_customer_id,
-            'paddle_price_id' => $this->extractPriceId($data) ?: $mapping->paddle_price_id,
-            'status' => $status !== '' ? $status : $mapping->status,
-            'next_billed_at' => $nextBilledAt,
-            'current_period_starts_at' => $periodStartsAt,
-            'current_period_ends_at' => $periodEndsAt,
-            'scheduled_change' => $scheduledChange,
-            'custom_data' => is_array($data['custom_data'] ?? null) ? $data['custom_data'] : $mapping->custom_data,
-            'last_event_at' => $occurredAt ?: now(),
-        ]);
+                $mapping->update([
+                    'paddle_customer_id' => $data['customer_id'] ?? $mapping->paddle_customer_id,
+                    'paddle_price_id' => $this->extractPriceId($data) ?: $mapping->paddle_price_id,
+                    'status' => $status !== '' ? $status : $mapping->status,
+                    'next_billed_at' => $nextBilledAt,
+                    'current_period_starts_at' => $periodStartsAt,
+                    'current_period_ends_at' => $periodEndsAt,
+                    'scheduled_change' => $scheduledChange,
+                    'custom_data' => is_array($data['custom_data'] ?? null) ? $data['custom_data'] : $mapping->custom_data,
+                    'last_event_at' => $occurredAt ?: now(),
+                ]);
 
-        $this->applySubscriptionStatus(
-            $subscription,
-            $data,
-            $status,
-            $periodStartsAt,
-            $periodEndsAt,
-            $nextBilledAt,
-            $occurredAt,
-            $scheduledChange
-        );
+                $this->applySubscriptionStatus(
+                    $subscription,
+                    $data,
+                    $status,
+                    $periodStartsAt,
+                    $periodEndsAt,
+                    $nextBilledAt,
+                    $occurredAt,
+                    $scheduledChange
+                );
+        });
+    }
+
+    /**
+     * Paddle retries destinations that return a non-2xx response — asking
+     * it to redeliver later is exactly right here rather than racing the
+     * in-flight customer/admin request holding the lock.
+     */
+    private function onSubscriptionLockTimeout(): never
+    {
+        throw new RuntimeException('Could not acquire subscription lock; a concurrent billing action is in progress.');
     }
 
     private function applySubscriptionStatus(
