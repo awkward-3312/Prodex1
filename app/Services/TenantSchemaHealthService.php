@@ -65,6 +65,8 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_09_09_000000_sar_fiscal_series_authorizations.php',
         // Kardex valorizado + Rotación de inventario: report permissions.
         'database/migrations/tenant/2026_09_07_100000_seed_valued_kardex_and_turnover_report_permissions.php',
+        // Mobile cash-register open/cash-in/cash-out idempotency + audit ledger.
+        'database/migrations/tenant/2026_09_12_000000_create_cash_register_operations_table.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -111,6 +113,10 @@ class TenantSchemaHealthService
             'warehouse_name_snapshot', 'tenant_id_snapshot', 'opened_date_snapshot', 'opened_time_snapshot',
             'closed_date_snapshot', 'closed_time_snapshot', 'session_duration_seconds', 'closing_status', 'cash_drawer_id',
             'cash_drawer_name_snapshot', 'cash_drawer_code_snapshot',
+        ]);
+        $this->requireTable($schema, $missing, 'cash_register_operations');
+        $this->requireColumns($schema, $missing, 'cash_register_operations', [
+            'operation_uuid', 'cash_register_id', 'user_id', 'operation_type', 'amount', 'notes', 'payload_fingerprint', 'source',
         ]);
         $this->requireTable($schema, $missing, 'cash_drawers');
         $this->requireColumns($schema, $missing, 'cash_drawers', ['branch_id', 'inventory_location_id']);
