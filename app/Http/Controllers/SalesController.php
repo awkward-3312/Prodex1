@@ -3072,6 +3072,16 @@ class SalesController extends BaseController
      */
     public function Sale_PDF_Inline(Request $request, $id)
     {
+        return response($this->renderSaleInvoiceHtml($id));
+    }
+
+    /**
+     * Build the exact same invoice HTML as the web A4/print-dialog flow (`sale_print_html`),
+     * from the canonical `pdf.sale_pdf` template. Shared by the web controller action above
+     * and by the Mobile receipt endpoint, so there is a single invoice renderer, not two.
+     */
+    public function renderSaleInvoiceHtml($id): string
+    {
         $details = [];
         $helpers = new helpers;
         $sale_data = Sale::with('details.product.unitSale')
@@ -3220,8 +3230,8 @@ class SalesController extends BaseController
             // If anything goes wrong, fall back to the original HTML.
         }
 
-        // Return raw HTML so the POS popup can inject it and call window.print().
-        return response($Html);
+        // Callers decide how to wrap this (raw HTTP response, JSON envelope, etc).
+        return $Html;
     }
 
     // ----------------Show Form Create Sale ---------------\\

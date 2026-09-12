@@ -505,6 +505,7 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
         Route::post('mobile/pos/sale-preflight', \App\Http\Controllers\Mobile\MobilePosSalePreflightController::class);
         Route::post('mobile/sales', \App\Http\Controllers\Mobile\MobilePosSaleSubmitController::class);
         Route::get('mobile/sales', \App\Http\Controllers\Mobile\MobileSalesHistoryController::class);
+        Route::get('mobile/sales/{id}/receipt', \App\Http\Controllers\Mobile\MobileSaleReceiptController::class);
         Route::post('pos/create_pos', 'PosController@CreatePOS');
         Route::post('store-credit-vouchers/validate', 'StoreCreditVoucherController@validateForPos');
         Route::get('pos/get_products_pos', 'PosController@GetProductsByParametre');
