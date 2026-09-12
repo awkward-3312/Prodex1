@@ -52,7 +52,8 @@ class SubscriptionCancellationService
             return;
         }
 
-        $this->paddleApi->cancel($mapping->paddle_subscription_id, 'next_billing_period');
+        $response = $this->paddleApi->cancel($mapping->paddle_subscription_id, 'next_billing_period');
+        $this->syncMappingFromPaddleResponse($mapping, $response);
         $subscription->markCancellationRequested();
     }
 
@@ -68,7 +69,8 @@ class SubscriptionCancellationService
 
         if ($mapping) {
             try {
-                $this->paddleApi->cancel($mapping->paddle_subscription_id, 'immediately');
+                $response = $this->paddleApi->cancel($mapping->paddle_subscription_id, 'immediately');
+                $this->syncMappingFromPaddleResponse($mapping, $response);
             } catch (PaddleApiException $e) {
                 Log::warning('Immediate cancel: Paddle API call failed, proceeding with local-only cancellation.', [
                     'tenant_subscription_id' => $subscription->id,
@@ -98,7 +100,8 @@ class SubscriptionCancellationService
             $mapping = $this->paddleMapping($subscription);
 
             if ($mapping) {
-                $this->paddleApi->removeScheduledCancellation($mapping->paddle_subscription_id);
+                $response = $this->paddleApi->removeScheduledCancellation($mapping->paddle_subscription_id);
+                $this->syncMappingFromPaddleResponse($mapping, $response);
             } else {
                 // No Paddle mapping to undo anything against — this only
                 // happens if the mapping row was lost after the schedule was
@@ -115,12 +118,15 @@ class SubscriptionCancellationService
             return;
         }
 
-        // Already actually cancelled (not just scheduled). Paddle has no
-        // "un-cancel" operation for a terminated subscription — a
-        // Paddle-mapped subscription in this state must never be reactivated
-        // locally with no counterpart at Paddle; the tenant has to subscribe
-        // again instead.
-        if ($this->paddleMapping($subscription)) {
+        // Already actually cancelled (not just scheduled) AND Paddle-mapped.
+        // Paddle has no "un-cancel" operation for a terminated subscription —
+        // a Paddle-mapped subscription in this state must never be
+        // reactivated locally with no counterpart at Paddle; the tenant has
+        // to subscribe again instead. The explicit status check (rather than
+        // just "not pending") matters: a merely SUSPENDED subscription that
+        // was never scheduled to cancel must fall through to the legacy
+        // resume() below, not be refused here.
+        if ($subscription->status === TenantSubscription::STATUS_CANCELLED && $this->paddleMapping($subscription)) {
             throw new SubscriptionNotResumableException(
                 'This subscription was already cancelled at Paddle and cannot be resumed.'
             );
@@ -132,5 +138,28 @@ class SubscriptionCancellationService
     private function paddleMapping(TenantSubscription $subscription): ?PaddleSubscription
     {
         return PaddleSubscription::forSubscription($subscription);
+    }
+
+    /**
+     * Cache Paddle's response onto the local mapping row immediately,
+     * instead of leaving it stale until the next webhook delivery — the
+     * mapping is read directly (e.g. by other admin views) between now and
+     * whenever that webhook arrives.
+     */
+    private function syncMappingFromPaddleResponse(PaddleSubscription $mapping, array $response): void
+    {
+        $updates = [];
+
+        if (array_key_exists('status', $response) && is_string($response['status']) && $response['status'] !== '') {
+            $updates['status'] = $response['status'];
+        }
+
+        if (array_key_exists('scheduled_change', $response)) {
+            $updates['scheduled_change'] = is_array($response['scheduled_change']) ? $response['scheduled_change'] : null;
+        }
+
+        if ($updates !== []) {
+            $mapping->update($updates);
+        }
     }
 }

@@ -83,6 +83,21 @@ class SubscriptionCancellationServiceTest extends TestCase
         $this->assertNotNull($fresh->cancellation_requested_at);
     }
 
+    public function test_schedule_cancellation_caches_paddles_response_onto_the_mapping_row(): void
+    {
+        $subscription = $this->makeSubscription();
+        $mapping = $this->mapToPaddle($subscription);
+        Http::fake(['*' => Http::response([
+            'data' => ['status' => 'active', 'scheduled_change' => ['action' => 'cancel', 'effective_at' => '2026-10-01T00:00:00Z']],
+        ], 200)]);
+
+        $this->service->scheduleCancellationAtPeriodEnd($subscription);
+
+        $freshMapping = $mapping->fresh();
+        $this->assertSame('active', $freshMapping->status);
+        $this->assertSame('cancel', $freshMapping->scheduled_change['action']);
+    }
+
     public function test_schedule_cancellation_without_paddle_mapping_falls_back_to_immediate_local_cancel(): void
     {
         $subscription = $this->makeSubscription();
@@ -174,6 +189,21 @@ class SubscriptionCancellationServiceTest extends TestCase
         $fresh = $subscription->fresh();
         $this->assertSame(TenantSubscription::STATUS_ACTIVE, $fresh->status);
         $this->assertNull($fresh->cancelled_at);
+    }
+
+    public function test_resume_on_a_suspended_subscription_that_was_never_scheduled_to_cancel_does_not_throw(): void
+    {
+        $subscription = $this->makeSubscription(['status' => TenantSubscription::STATUS_SUSPENDED]);
+        $this->mapToPaddle($subscription);
+        Http::fake();
+
+        // Not pending (no cancellation_requested_at) and not actually
+        // CANCELLED either — must not be treated as "already cancelled at
+        // Paddle, cannot resume".
+        $this->service->resumeScheduledCancellation($subscription);
+
+        Http::assertNothingSent();
+        $this->assertSame(TenantSubscription::STATUS_SUSPENDED, $subscription->fresh()->status);
     }
 
     public function test_resume_refuses_to_reactivate_a_paddle_mapped_subscription_already_cancelled_at_paddle(): void

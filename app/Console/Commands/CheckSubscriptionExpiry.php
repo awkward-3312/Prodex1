@@ -164,7 +164,25 @@ class CheckSubscriptionExpiry extends Command
                 continue;
             }
 
-            $sub->update(['status' => TenantSubscription::STATUS_EXPIRED]);
+            // A cancellation was scheduled at Paddle for period end but its
+            // subscription.canceled webhook never confirmed it before this
+            // cron runs — treat it the same as an already-confirmed
+            // cancellation reaching expiry (below), not a plain expiry, and
+            // clear the now-meaningless flag on this terminal row.
+            $wasPendingCancellation = $sub->cancellation_requested_at !== null;
+            $sub->update([
+                'status' => TenantSubscription::STATUS_EXPIRED,
+                'cancellation_requested_at' => null,
+            ]);
+
+            if ($wasPendingCancellation) {
+                $this->deliverEmail(
+                    $sub, $tenant, SubscriptionReminder::TYPE_PLAN_ENDED, 0, $sub->ends_at,
+                    fn () => EmailNotificationService::planEnded($tenant),
+                    'Plan-ended notice (was pending cancellation)'
+                );
+                continue;
+            }
 
             $this->deliverEmail(
                 $sub, $tenant, SubscriptionReminder::TYPE_EXPIRED, 0, $sub->ends_at,
@@ -187,7 +205,10 @@ class CheckSubscriptionExpiry extends Command
                 continue;
             }
 
-            $sub->update(['status' => TenantSubscription::STATUS_EXPIRED]);
+            $sub->update([
+                'status' => TenantSubscription::STATUS_EXPIRED,
+                'cancellation_requested_at' => null,
+            ]);
 
             $this->deliverEmail(
                 $sub, $tenant, SubscriptionReminder::TYPE_PLAN_ENDED, 0, $sub->ends_at,

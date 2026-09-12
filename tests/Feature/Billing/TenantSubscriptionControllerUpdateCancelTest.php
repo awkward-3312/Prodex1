@@ -115,6 +115,30 @@ class TenantSubscriptionControllerUpdateCancelTest extends TestCase
         $this->assertNull($fresh->cancellation_requested_at);
     }
 
+    public function test_generic_update_with_unchanged_active_status_still_resumes_a_pending_cancellation(): void
+    {
+        $subscription = $this->makeSubscription();
+        $subscription->markCancellationRequested();
+        PaddleSubscription::create([
+            'tenant_id' => 'tenant-1',
+            'tenant_subscription_id' => $subscription->id,
+            'paddle_subscription_id' => 'sub_123',
+            'paddle_price_id' => 'pri_test_monthly',
+            'status' => 'active',
+        ]);
+        Http::fake(['*' => Http::response(['data' => ['status' => 'active', 'scheduled_change' => null]], 200)]);
+
+        $request = Request::create('/x', 'POST', [
+            'plan_id' => 1,
+            'status' => 'active',
+        ]);
+
+        app(TenantSubscriptionController::class)->update($request, $subscription);
+
+        Http::assertSent(fn ($r) => $r->method() === 'PATCH');
+        $this->assertNull($subscription->fresh()->cancellation_requested_at);
+    }
+
     public function test_generic_update_to_non_cancelled_status_does_not_call_paddle(): void
     {
         $subscription = $this->makeSubscription();
