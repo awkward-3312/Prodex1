@@ -107,4 +107,36 @@ class MobileReportsSummaryService
             ])->all(),
         ];
     }
+
+    /**
+     * Real per-day sales totals for [$from, $to], same scoping as summary(). A day
+     * with no completed sales simply totals 0.00 - never fabricated, never omitted.
+     */
+    public function dailyTotals(User $user, string $from, string $to): array
+    {
+        $decimals = helpers::price_decimals();
+
+        $query = Sale::query()
+            ->whereNull('sales.deleted_at')
+            ->where('sales.statut', 'completed')
+            ->whereBetween('sales.date', [$from, $to]);
+        $this->scope->applyRecordVisibility($query, $user, 'sales');
+        $this->scope->apply($query, $user, 'sales');
+        $rows = $query
+            ->groupBy('sales.date')
+            ->selectRaw('sales.date as date, COALESCE(SUM(sales.GrandTotal),0) as total')
+            ->get()
+            ->keyBy(fn ($row) => (string) $row->date);
+
+        $totals = [];
+        $cursor = new \DateTimeImmutable($from);
+        $end = new \DateTimeImmutable($to);
+        while ($cursor <= $end) {
+            $date = $cursor->format('Y-m-d');
+            $totals[] = ['date' => $date, 'total' => number_format((float) ($rows[$date]->total ?? 0), $decimals, '.', '')];
+            $cursor = $cursor->modify('+1 day');
+        }
+
+        return $totals;
+    }
 }
