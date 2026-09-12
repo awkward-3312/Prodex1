@@ -108,6 +108,35 @@ class BillingApiControllerCancelResumeTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_cancel_on_non_paddle_subscription_still_shows_grace_period_message(): void
+    {
+        // cancel() flips status to CANCELLED synchronously but leaves ends_at
+        // untouched, so the tenant keeps access until ends_at. The response
+        // message must reflect that grace period instead of implying access
+        // was lost immediately.
+        $subscription = $this->makeSubscription(['ends_at' => now()->addDays(10)]);
+        Http::fake();
+
+        $response = app(BillingApiController::class)->cancelSubscription();
+        $payload = $response->getData(true);
+
+        $this->assertTrue($payload['success']);
+        $this->assertSame(TenantSubscription::STATUS_CANCELLED, $payload['subscription']['status']);
+        $this->assertStringContainsString('Permanecerá activa hasta', $payload['message']);
+    }
+
+    public function test_cancel_shows_plain_cancelled_message_when_no_future_grace_period_remains(): void
+    {
+        $subscription = $this->makeSubscription(['ends_at' => now()->subDay()]);
+        Http::fake();
+
+        $response = app(BillingApiController::class)->cancelSubscription();
+        $payload = $response->getData(true);
+
+        $this->assertTrue($payload['success']);
+        $this->assertSame('La suscripción fue cancelada.', $payload['message']);
+    }
+
     public function test_cancel_returns_502_and_does_not_mutate_when_paddle_call_fails(): void
     {
         $subscription = $this->makeSubscription();

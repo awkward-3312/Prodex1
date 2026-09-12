@@ -693,7 +693,7 @@ class BillingApiController extends Controller
             ]);
             $endDate = $subscription->ends_at?->locale('es')->translatedFormat('d M Y');
 
-            $message = $subscription->status === TenantSubscription::STATUS_ACTIVE
+            $message = $subscription->ends_at?->isFuture()
                 ? 'La cancelación fue programada. Permanecerá activa hasta ' . ($endDate ?: 'la fecha de finalización') . '.'
                 : 'La suscripción fue cancelada.';
 
