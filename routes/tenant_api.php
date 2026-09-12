@@ -512,6 +512,8 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
         Route::get('mobile/sales/{id}/receipt', \App\Http\Controllers\Mobile\MobileSaleReceiptController::class);
         Route::get('mobile/cash-register/current', [\App\Http\Controllers\Mobile\MobileCashRegisterController::class, 'current']);
         Route::get('mobile/cash-register/history', [\App\Http\Controllers\Mobile\MobileCashRegisterHistoryController::class, 'history']);
+        Route::post('mobile/cash-register/open', \App\Http\Controllers\Mobile\MobileCashRegisterOpenController::class);
+        Route::post('mobile/cash-register/movements', \App\Http\Controllers\Mobile\MobileCashRegisterMovementController::class);
         Route::get('mobile/dashboard/summary', \App\Http\Controllers\Mobile\MobileDashboardSummaryController::class);
         Route::post('pos/create_pos', 'PosController@CreatePOS');
         Route::post('store-credit-vouchers/validate', 'StoreCreditVoucherController@validateForPos');

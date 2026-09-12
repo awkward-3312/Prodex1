@@ -302,5 +302,30 @@ trait MobileCashRegisterTestSchema
             $table->timestamps();
             $table->softDeletes();
         });
+
+        Schema::create('cash_register_operations', function ($table) {
+            $table->integer('id', true);
+            $table->char('operation_uuid', 36)->unique();
+            $table->integer('cash_register_id')->nullable();
+            $table->integer('user_id');
+            $table->string('operation_type', 20);
+            $table->decimal('amount', 15, 2);
+            $table->string('notes', 255)->nullable();
+            $table->string('payload_fingerprint', 64);
+            $table->string('source', 20)->default('mobile');
+            $table->timestamps();
+        });
+
+    }
+
+    private function assignOperationalContext(User $user, int $branchId, int $locationId, ?int $cashDrawerId = null): void
+    {
+        $user->forceFill([
+            'default_branch_id' => $branchId,
+            'default_inventory_location_id' => $locationId,
+            'default_cash_drawer_id' => $cashDrawerId,
+        ])->save();
+
+        DB::table('user_branches')->insert(['user_id' => $user->id, 'branch_id' => $branchId]);
     }
 }
