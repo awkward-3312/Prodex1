@@ -83,6 +83,10 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::get('mobile/auth/bootstrap', [\App\Http\Controllers\Mobile\MobileAuthController::class, 'bootstrap']);
     Route::post('mobile/auth/logout', [\App\Http\Controllers\Mobile\MobileAuthController::class, 'logout']);
 
+    Route::get('mobile/clients', \App\Http\Controllers\Mobile\MobileClientsController::class);
+    Route::get('mobile/clients/{id}', \App\Http\Controllers\Mobile\MobileClientDetailController::class);
+    Route::get('mobile/reports/summary', \App\Http\Controllers\Mobile\MobileReportsSummaryController::class);
+
     // ------------------------------- WhatsApp --------------------------------\\
     Route::get('/whatsapp/settings', [\App\Http\Controllers\WhatsAppSettingsController::class, 'show']);
     Route::post('/whatsapp/settings', [\App\Http\Controllers\WhatsAppSettingsController::class, 'update']);
