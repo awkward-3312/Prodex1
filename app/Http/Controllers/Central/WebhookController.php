@@ -10,7 +10,6 @@ use App\Models\Central\Plan;
 use App\Models\Central\TenantBillingPayment;
 use App\Models\Central\TenantSubscription;
 use App\Services\Billing\SubscriptionLifecycleService;
-use App\Services\EmailNotificationService;
 use App\Services\PaymentGateways\PaymentGatewayFactory;
 use App\Tenant;
 use Illuminate\Http\Request;
@@ -273,21 +272,26 @@ class WebhookController extends Controller
             return;
         }
 
-        $payment->markFailed();
-
         $subscription = $payment->subscription;
+        $wasPending = $payment->status === TenantBillingPayment::STATUS_PENDING;
+
+        // Centralized so no gateway (Stripe, PayPal, Paystack, Flutterwave,
+        // Mollie, dLocal, manual/admin) can downgrade an already
+        // paid/refunded/superseded payment to failed — a late or
+        // out-of-order failure webhook must never cut access for money
+        // that already settled. Also sends the tenant notification.
+        app(SubscriptionLifecycleService::class)->markFailed($payment);
+
+        if (! $wasPending) {
+            Log::info("Webhook: Ignored failure event for payment {$payment->id} (status was {$payment->status}, not pending).");
+            return;
+        }
+
         if ($subscription) {
             $subscription->update(['status' => TenantSubscription::STATUS_FAILED]);
         }
 
         Log::info("Webhook: Payment {$payment->id} marked as failed for tenant {$payment->tenant_id}.");
-
-        $tenant = $payment->tenant;
-        if ($tenant) {
-            EmailNotificationService::paymentFailed($tenant, [
-                '{{amount}}' => GeneralSetting::currencySymbol() . number_format((float) $payment->amount, 2),
-            ], $subscription);
-        }
     }
 
     // ── Payment refund ───────────────────────────────────────────────
