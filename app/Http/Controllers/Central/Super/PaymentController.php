@@ -111,6 +111,8 @@ class PaymentController extends Controller
 
     public function markRefunded(TenantBillingPayment $payment, SubscriptionLifecycleService $lifecycle): RedirectResponse
     {
+        if ($payment->isRefunded()) return back()->with('info', 'El pago ya está marcado como reembolsado.');
+        if (! $payment->isPaid()) return back()->with('error', 'Solo los pagos pagados pueden marcarse como reembolsados. El estado actual de este pago es ' . $payment->status . '.');
         $lifecycle->markRefunded($payment);
         return back()->with('success', 'Pago marcado como reembolsado.');
     }

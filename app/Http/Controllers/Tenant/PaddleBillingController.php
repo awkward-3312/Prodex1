@@ -9,8 +9,10 @@ use App\Models\Central\PaddleCheckoutAttempt;
 use App\Models\Central\PaddleSubscription;
 use App\Models\Central\Plan;
 use App\Services\Paddle\PaddleCheckoutReference;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class PaddleBillingController extends Controller
@@ -78,19 +80,56 @@ class PaddleBillingController extends Controller
             ], 409);
         }
 
-        PaddleCheckoutAttempt::where('tenant_id', (string) $tenant->getTenantKey())
-            ->where('status', 'initiated')
-            ->where('expires_at', '<=', now())
-            ->update(['status' => 'expired']);
+        $tenantKey = (string) $tenant->getTenantKey();
 
-        $attempt = PaddleCheckoutAttempt::create([
-            'reference' => Str::uuid()->toString(),
-            'tenant_id' => (string) $tenant->getTenantKey(),
-            'plan_id' => (int) $plan->id,
-            'billing_cycle' => $cycle,
-            'status' => 'initiated',
-            'expires_at' => now()->addDay(),
-        ]);
+        // Serializes double-clicks, page refreshes, and parallel requests
+        // for the same tenant+plan+cycle so they can never each create their
+        // own valid 'initiated' attempt — reusing whichever one already
+        // exists and is still claimable instead. Scoped narrower than
+        // 'billing:cancel:{subscription id}' (no subscription exists yet at
+        // this point) and holds no external I/O, so a short wait/hold budget
+        // is enough.
+        $lockKey = "paddle:prepare:{$tenantKey}:{$plan->id}:{$cycle}";
+        $lock = Cache::lock($lockKey, 10);
+
+        try {
+            $attempt = $lock->block(5, function () use ($tenantKey, $plan, $cycle) {
+                PaddleCheckoutAttempt::where('tenant_id', $tenantKey)
+                    ->where('status', 'initiated')
+                    ->where('expires_at', '<=', now())
+                    ->update(['status' => 'expired']);
+
+                // Reuse a still-claimable attempt for this exact
+                // tenant+plan+cycle rather than minting a second valid one —
+                // claimed/expired/rejected rows never match (status must be
+                // 'initiated' and expires_at must still be in the future).
+                $existing = PaddleCheckoutAttempt::where('tenant_id', $tenantKey)
+                    ->where('plan_id', (int) $plan->id)
+                    ->where('billing_cycle', $cycle)
+                    ->where('status', 'initiated')
+                    ->where('expires_at', '>', now())
+                    ->latest()
+                    ->first();
+
+                if ($existing) {
+                    return $existing;
+                }
+
+                return PaddleCheckoutAttempt::create([
+                    'reference' => Str::uuid()->toString(),
+                    'tenant_id' => $tenantKey,
+                    'plan_id' => (int) $plan->id,
+                    'billing_cycle' => $cycle,
+                    'status' => 'initiated',
+                    'expires_at' => now()->addDay(),
+                ]);
+            });
+        } catch (LockTimeoutException) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ya hay una solicitud de checkout en curso. Intenta de nuevo en unos segundos.',
+            ], 409);
+        }
 
         return response()->json([
             'success' => true,

@@ -316,9 +316,18 @@ class WebhookController extends Controller
             return;
         }
 
-        // Record the refund ID for audit purposes
+        $wasPaid = $payment->isPaid();
+
+        // Record the refund ID for audit purposes. Centralized so no gateway
+        // can refund money that was never actually collected for this row
+        // (pending/failed/superseded -> refunded).
         $refundId = $result['gateway_payment_id'] ?? null;
-        $payment->markRefunded($refundId);
+        app(SubscriptionLifecycleService::class)->markRefunded($payment, $refundId);
+
+        if (! $wasPaid) {
+            Log::warning("Webhook: Ignored a refund event for payment {$payment->id} (status was {$payment->status}, not paid).");
+            return;
+        }
 
         // Immediately revoke access — customer received their money back
         $subscription = $payment->subscription;
