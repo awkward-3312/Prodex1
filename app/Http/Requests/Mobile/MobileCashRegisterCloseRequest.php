@@ -9,8 +9,8 @@ class MobileCashRegisterCloseRequest extends MobileCashRegisterMovementRequest
         $rules = [
             'operation_uuid' => ['required', 'uuid'],
             'register_id' => ['required', 'integer', 'min:1'],
-            'counted_denominations' => ['nullable', 'array', 'max:30'],
-            'counted_denominations.*' => ['integer', 'min:0', 'max:1000000'],
+            'counted_denominations' => ['required', 'array', 'max:30'],
+            'counted_denominations.*' => ['integer', 'min:0', 'max:'.\App\Services\CashDenominationReconciler::MAX_QUANTITY],
             'transfers_verified' => ['nullable', 'boolean'],
             'tenant_id' => ['prohibited'],
             'user_id' => ['prohibited'],

@@ -17,6 +17,8 @@ class MobileCashRegisterCloseController extends Controller
         $this->authorizeForUser($user, 'Sales_pos', Sale::class);
         try {
             return response()->json($service->close($user, $request->validated()));
+        } catch (\Illuminate\Validation\ValidationException $error) {
+            return response()->json(['error' => ['code' => 'validation_error', 'details' => $error->errors()]], 422);
         } catch (MobilePosPreflightException $error) {
             return response()->json(['error' => ['code' => $error->errorCode(), 'message' => $error->getMessage(), 'details' => $error->details()]], $error->statusCode());
         }
