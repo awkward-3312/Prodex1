@@ -11,12 +11,30 @@ use App\Services\EmailNotificationService;
 use App\Services\CurrencyConversionService;
 use App\Services\PaymentGateways\PaymentGatewayFactory;
 use App\Services\PaymentGateways\PaypalGateway;
+use App\Exceptions\PaddleApiException;
+use App\Exceptions\SubscriptionNotResumableException;
+use App\Services\Billing\SubscriptionCancellationService;
+use App\Support\LocksBillingSubscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class BillingApiController extends Controller
 {
+    use LocksBillingSubscription;
+
+    public function __construct(private SubscriptionCancellationService $cancellation)
+    {
+    }
+
+    private function onSubscriptionLockTimeout(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Ya hay una solicitud en curso para esta suscripción. Intenta de nuevo en unos segundos.',
+        ], 409);
+    }
+
     private function authorizeBilling(): void
     {
         $user = auth()->user();
@@ -50,6 +68,7 @@ class BillingApiController extends Controller
             ->whereIn('status', [
                 TenantSubscription::STATUS_ACTIVE,
                 TenantSubscription::STATUS_TRIAL,
+                TenantSubscription::STATUS_SUSPENDED,
                 TenantSubscription::STATUS_CANCELLED,
             ])
             ->latest()
@@ -92,22 +111,7 @@ class BillingApiController extends Controller
         }
 
         return response()->json([
-            'subscription' => [
-                'id'             => $subscription->id,
-                'status'         => $subscription->status,
-                'billing_cycle'  => $subscription->billing_cycle,
-                'amount'         => (float) $subscription->amount,
-                'currency'       => $subscription->currency,
-                'starts_at'      => ($subscription->starts_at ?? $subscription->created_at)?->toIso8601String(),
-                'ends_at'        => $subscription->ends_at?->toIso8601String(),
-                'trial_ends_at'  => $subscription->trial_ends_at?->toIso8601String(),
-                'cancelled_at'   => $subscription->cancelled_at?->toIso8601String(),
-                'days_remaining' => $subscription->daysRemaining(),
-                'is_active'      => $subscription->isActive(),
-                'is_on_trial'    => $subscription->isOnTrial(),
-                'is_cancelled'   => $subscription->isCancelled(),
-                'can_resume'     => $subscription->canResume(),
-            ],
+            'subscription' => $this->subscriptionPayload($subscription),
             'plan' => $plan ? [
                 'id'           => $plan->id,
                 'name'         => $plan->name,
@@ -643,50 +647,178 @@ class BillingApiController extends Controller
             return response()->json(['success' => false, 'message' => 'No se encontró una suscripción activa.'], 422);
         }
 
-        $subscription->cancel();
-        Log::info("Billing: Subscription {$subscription->id} cancelled for tenant {$tenant->id}.");
-        $endDate = $subscription->ends_at?->locale('es')->translatedFormat('d M Y');
+        return $this->withSubscriptionLock($subscription, function () use ($subscription, $tenant) {
+            $subscription->refresh();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'La suscripción fue cancelada. Permanecerá activa hasta ' . ($endDate ?: 'la fecha de finalización') . '.',
-            'subscription' => [
-                'id'           => $subscription->id,
-                'status'       => $subscription->status,
-                'ends_at'      => $subscription->ends_at?->toIso8601String(),
-                'cancelled_at' => $subscription->cancelled_at?->toIso8601String(),
-                'can_resume'   => $subscription->canResume(),
-            ],
-        ]);
+            if ($subscription->isPendingCancellation()) {
+                $endDate = $subscription->ends_at?->locale('es')->translatedFormat('d M Y');
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'La cancelación ya estaba programada. Permanecerá activa hasta ' . ($endDate ?: 'la fecha de finalización') . '.',
+                    'subscription' => $this->subscriptionPayload($subscription),
+                ]);
+            }
+
+            // A concurrent webhook (e.g. Paddle confirming the cancellation,
+            // or a refund) may have already moved this subscription past
+            // ACTIVE between the initial query and acquiring the lock. Never
+            // ask Paddle to schedule a cancellation on a subscription that
+            // isn't active any more.
+            if ($subscription->status !== TenantSubscription::STATUS_ACTIVE) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Esta suscripción ya no está activa; no queda nada por cancelar.',
+                    'subscription' => $this->subscriptionPayload($subscription),
+                ]);
+            }
+
+            try {
+                $this->cancellation->scheduleCancellationAtPeriodEnd($subscription);
+            } catch (PaddleApiException $e) {
+                Log::error("Billing: Paddle cancel API call failed for subscription {$subscription->id}.", [
+                    'tenant_id' => $tenant->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo comunicar la cancelación a Paddle. Intenta de nuevo en unos minutos.',
+                ], 502);
+            }
+
+            $subscription->refresh();
+            Log::info("Billing: Subscription {$subscription->id} cancellation processed for tenant {$tenant->id}.", [
+                'status' => $subscription->status,
+            ]);
+            $endDate = $subscription->ends_at?->locale('es')->translatedFormat('d M Y');
+
+            $message = $subscription->ends_at?->isFuture()
+                ? 'La cancelación fue programada. Permanecerá activa hasta ' . ($endDate ?: 'la fecha de finalización') . '.'
+                : 'La suscripción fue cancelada.';
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'subscription' => $this->subscriptionPayload($subscription),
+            ]);
+        });
     }
 
     public function resumeSubscription(): JsonResponse
     {
         $this->authorizeBilling();
         $tenant = tenant();
-        $subscription = TenantSubscription::where('tenant_id', $tenant->id)
-            ->where('status', TenantSubscription::STATUS_CANCELLED)
-            ->latest()->first();
 
-        if (! $subscription || ! $subscription->canResume()) {
+        // A tenant can have more than one row in a resumable-looking state
+        // (e.g. an older CANCELLED-but-still-in-grace row alongside a newer
+        // SUSPENDED row carrying a stale flag) — check every candidate
+        // instead of gambling on latest()->first(), mirroring
+        // EnsureActiveSubscription's own reasoning for the same problem.
+        $subscription = TenantSubscription::where('tenant_id', $tenant->id)
+            ->where(function ($query) {
+                // Narrow at the SQL level to rows that can plausibly satisfy
+                // isPendingCancellation()/canResume() — a CANCELLED row only
+                // ever resumes while its grace period (ends_at) hasn't
+                // lapsed — so this doesn't load a tenant's entire
+                // cancellation history on every resume attempt.
+                $query->where(function ($q) {
+                    $q->where('status', TenantSubscription::STATUS_CANCELLED)
+                        ->where('ends_at', '>', now());
+                })->orWhereNotNull('cancellation_requested_at');
+            })
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->first(fn (TenantSubscription $s) => $s->isPendingCancellation() || $s->canResume());
+
+        if (! $subscription) {
             return response()->json([
                 'success' => false,
                 'message' => 'No se encontró una suscripción que pueda reanudarse. Es posible que el período de facturación ya haya vencido.',
             ], 422);
         }
 
-        $subscription->resume();
-        Log::info("Billing: Subscription {$subscription->id} resumed for tenant {$tenant->id}.");
+        return $this->withSubscriptionLock($subscription, function () use ($subscription, $tenant) {
+            $subscription->refresh();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'La suscripción se reanudó correctamente.',
-            'subscription' => [
-                'id'      => $subscription->id,
-                'status'  => $subscription->status,
-                'ends_at' => $subscription->ends_at?->toIso8601String(),
-            ],
-        ]);
+            if (! $subscription->isPendingCancellation() && ! $subscription->canResume()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró una suscripción que pueda reanudarse. Es posible que el período de facturación ya haya vencido.',
+                ], 422);
+            }
+
+            try {
+                $this->cancellation->resumeScheduledCancellation($subscription);
+            } catch (PaddleApiException $e) {
+                Log::error("Billing: Paddle resume API call failed for subscription {$subscription->id}.", [
+                    'tenant_id' => $tenant->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo comunicar la reanudación a Paddle. Intenta de nuevo en unos minutos.',
+                ], 502);
+            } catch (SubscriptionNotResumableException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta suscripción ya fue cancelada en Paddle y no puede reanudarse. Debes suscribirte de nuevo.',
+                ], 422);
+            }
+
+            $subscription->refresh();
+            Log::info("Billing: Subscription {$subscription->id} resumed for tenant {$tenant->id}.", [
+                'status' => $subscription->status,
+            ]);
+
+            // Removing a Paddle-side scheduled cancel does not fix an
+            // unrelated payment problem — a subscription can still come out
+            // of this SUSPENDED (past_due/paused at Paddle). Never claim
+            // access was restored when it wasn't.
+            if ($subscription->status === TenantSubscription::STATUS_SUSPENDED) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Se eliminó la cancelación programada, pero tu suscripción sigue suspendida por un problema de pago. Resuelve el pago para recuperar el acceso.',
+                    'subscription' => $this->subscriptionPayload($subscription),
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'La suscripción se reanudó correctamente.',
+                'subscription' => $this->subscriptionPayload($subscription),
+            ]);
+        });
+    }
+
+    /**
+     * Canonical subscription representation returned by currentPlan(),
+     * cancelSubscription(), and resumeSubscription() alike, so a client never
+     * sees a different shape (or a different can_resume/is_pending_cancellation
+     * computation) depending on which endpoint it called.
+     */
+    private function subscriptionPayload(TenantSubscription $subscription): array
+    {
+        return [
+            'id'                         => $subscription->id,
+            'status'                     => $subscription->status,
+            'billing_cycle'              => $subscription->billing_cycle,
+            'amount'                     => (float) $subscription->amount,
+            'currency'                   => $subscription->currency,
+            'starts_at'                  => ($subscription->starts_at ?? $subscription->created_at)?->toIso8601String(),
+            'ends_at'                    => $subscription->ends_at?->toIso8601String(),
+            'trial_ends_at'              => $subscription->trial_ends_at?->toIso8601String(),
+            'cancelled_at'               => $subscription->cancelled_at?->toIso8601String(),
+            'cancellation_requested_at'  => $subscription->cancellation_requested_at?->toIso8601String(),
+            'days_remaining'             => $subscription->daysRemaining(),
+            'is_active'                  => $subscription->isActive(),
+            'is_on_trial'                => $subscription->isOnTrial(),
+            'is_cancelled'               => $subscription->isCancelled(),
+            'is_pending_cancellation'    => $subscription->isPendingCancellation(),
+            'can_resume'                 => $subscription->isPendingCancellation() || $subscription->canResume(),
+        ];
     }
 
     public function cancelPendingUpgrade(): JsonResponse

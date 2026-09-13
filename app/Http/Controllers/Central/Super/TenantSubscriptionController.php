@@ -6,7 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Central\Plan;
 use App\Models\Central\TenantBillingPayment;
 use App\Models\Central\SubscriptionReminder;
+use App\Exceptions\PaddleApiException;
+use App\Exceptions\SubscriptionNotResumableException;
 use App\Models\Central\TenantSubscription;
+use App\Services\Billing\SubscriptionCancellationService;
+use App\Support\LocksBillingSubscription;
 use App\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,6 +18,12 @@ use Illuminate\View\View;
 
 class TenantSubscriptionController extends Controller
 {
+    use LocksBillingSubscription;
+
+    public function __construct(private SubscriptionCancellationService $cancellation)
+    {
+    }
+
     public function index(Request $request): View
     {
         $query = TenantSubscription::with([
@@ -157,9 +167,20 @@ class TenantSubscriptionController extends Controller
             return back()->with('error', "No se puede cancelar la suscripción desde el estado \"{$subscription->status}\".");
         }
 
-        $subscription->cancel();
+        return $this->withSubscriptionLock($subscription, function () use ($subscription) {
+            $subscription->refresh();
 
-        return back()->with('success', 'Suscripción cancelada.');
+            if (! $subscription->canTransitionTo(TenantSubscription::STATUS_CANCELLED)) {
+                return back()->with('error', "No se puede cancelar la suscripción desde el estado \"{$subscription->status}\".");
+            }
+
+            // Admin action = immediate revocation by design (super-admin
+            // override), best-effort against Paddle so an unreachable API
+            // never blocks it.
+            $this->cancellation->cancelImmediately($subscription);
+
+            return back()->with('success', 'Suscripción cancelada.');
+        });
     }
 
     public function edit(TenantSubscription $subscription): View
@@ -195,26 +216,81 @@ class TenantSubscriptionController extends Controller
                 ->with('error', __('super.tenants.activate_requires_provision_error'));
         }
 
-        // Validate status transition via the state machine.
-        if ($newStatus !== $subscription->status) {
-            if (! $subscription->canTransitionTo($newStatus)) {
-                return back()
-                    ->withInput()
-                    ->with('error', "No se puede cambiar la suscripción del estado \"{$subscription->status}\" a \"{$newStatus}\".");
+        return $this->withSubscriptionLock($subscription, function () use ($subscription, $newStatus, $validated) {
+            $subscription->refresh();
+
+            // Validate status transition via the state machine.
+            if ($newStatus !== $subscription->status) {
+                if (! $subscription->canTransitionTo($newStatus)) {
+                    return back()
+                        ->withInput()
+                        ->with('error', "No se puede cambiar la suscripción del estado \"{$subscription->status}\" a \"{$newStatus}\".");
+                }
+
+                $extra = collect($validated)->except('status')->toArray();
+
+                if ($newStatus === TenantSubscription::STATUS_CANCELLED) {
+                    // Never flip straight to CANCELLED via transitionTo() here —
+                    // route through the shared service so Paddle is notified
+                    // too, exactly like the dedicated Cancel action.
+                    $this->cancellation->cancelImmediately($subscription);
+                    if (! empty($extra)) {
+                        $subscription->update($extra);
+                    }
+                } elseif ($newStatus === TenantSubscription::STATUS_ACTIVE) {
+                    // Whether this is a still-scheduled cancellation (remove
+                    // it at Paddle) or an already-confirmed one (Paddle has
+                    // no "un-cancel" — refused below), reactivating to ACTIVE
+                    // must always go through the shared service first.
+                    // transitionTo() alone would just flip status locally
+                    // with no Paddle counterpart at all.
+                    try {
+                        $this->cancellation->resumeScheduledCancellation($subscription);
+                    } catch (PaddleApiException $e) {
+                        return back()
+                            ->withInput()
+                            ->with('error', 'No se pudo comunicar la reanudación a Paddle. Intenta de nuevo en unos minutos.');
+                    } catch (SubscriptionNotResumableException $e) {
+                        return back()
+                            ->withInput()
+                            ->with('error', 'Esta suscripción ya fue cancelada en Paddle y no puede reanudarse. El tenant debe suscribirse de nuevo.');
+                    }
+
+                    if (! $subscription->transitionTo($newStatus, $extra)) {
+                        return back()
+                            ->withInput()
+                            ->with('error', "No se pudo cambiar la suscripción al estado \"{$newStatus}\". Verifica que cumpla las condiciones requeridas.");
+                    }
+                } elseif (! $subscription->transitionTo($newStatus, $extra)) {
+                    return back()
+                        ->withInput()
+                        ->with('error', "No se pudo cambiar la suscripción al estado \"{$newStatus}\". Verifica que cumpla las condiciones requeridas.");
+                }
+            } else {
+                // Status unchanged in the form, but if it's ACTIVE with a
+                // cancellation still scheduled at Paddle, saving the form
+                // must still be able to resume it — otherwise an admin who
+                // doesn't touch the status dropdown can never remove
+                // Paddle's schedule through this endpoint.
+                if ($newStatus === TenantSubscription::STATUS_ACTIVE && $subscription->isPendingCancellation()) {
+                    try {
+                        $this->cancellation->resumeScheduledCancellation($subscription);
+                    } catch (PaddleApiException $e) {
+                        return back()
+                            ->withInput()
+                            ->with('error', 'No se pudo comunicar la reanudación a Paddle. Intenta de nuevo en unos minutos.');
+                    }
+                }
+
+                $subscription->update(collect($validated)->except('status')->toArray());
             }
 
-            $extra = collect($validated)->except('status')->toArray();
+            return redirect()->route('super.subscriptions.index')->with('success', 'Suscripción actualizada.');
+        });
+    }
 
-            if (! $subscription->transitionTo($newStatus, $extra)) {
-                return back()
-                    ->withInput()
-                    ->with('error', "No se pudo cambiar la suscripción al estado \"{$newStatus}\". Verifica que cumpla las condiciones requeridas.");
-            }
-        } else {
-            // Status unchanged — just update the other fields.
-            $subscription->update(collect($validated)->except('status')->toArray());
-        }
-
-        return redirect()->route('super.subscriptions.index')->with('success', 'Suscripción actualizada.');
+    private function onSubscriptionLockTimeout(): RedirectResponse
+    {
+        return back()->with('error', 'Ya hay una solicitud en curso para esta suscripción. Intenta de nuevo en unos segundos.');
     }
 }

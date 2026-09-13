@@ -60,6 +60,16 @@ class PaddleSubscription extends Model
         });
     }
 
+    /**
+     * The Paddle mapping for a PRODEX subscription, if it is Paddle-billed.
+     * Single lookup point — several call sites (webhook resolution, the
+     * price-guard hook, and cancellation scheduling) all need exactly this.
+     */
+    public static function forSubscription(TenantSubscription $subscription): ?self
+    {
+        return static::where('tenant_subscription_id', $subscription->id)->first();
+    }
+
     public function tenant()
     {
         return $this->belongsTo(Tenant::class, 'tenant_id', 'id');

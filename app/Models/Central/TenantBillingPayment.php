@@ -87,7 +87,7 @@ class TenantBillingPayment extends Model
 
                 $metadata = is_array($payment->metadata) ? $payment->metadata : [];
                 $actualPriceId = trim((string) ($metadata['paddle_price_id'] ?? ''));
-                $mapping = PaddleSubscription::where('tenant_subscription_id', $subscription->id)->first();
+                $mapping = PaddleSubscription::forSubscription($subscription);
 
                 if ($mapping && trim((string) $mapping->paddle_price_id) !== '') {
                     if ($actualPriceId === '' || ! hash_equals((string) $mapping->paddle_price_id, $actualPriceId)) {

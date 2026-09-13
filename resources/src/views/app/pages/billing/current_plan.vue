@@ -127,6 +127,13 @@
                   {{ formatDate(subscription.ends_at) }}.
                 </div>
 
+                <!-- Pending cancellation notice (still active, scheduled to end at period end) -->
+                <div v-if="subscription.is_pending_cancellation" class="pending-cancellation-notice mt-3">
+                  <lucide-icon name="alert-triangle" class="mr-1" />
+                  {{ $t('Subscription_pending_cancellation_notice') || 'Your subscription is scheduled to cancel on' }}
+                  {{ formatDate(subscription.ends_at) }}.
+                </div>
+
                 <div class="mt-3 d-flex gap-2 flex-wrap">
                   <router-link v-if="subscription.status !== 'pending' && !pendingUpgrade" to="/app/billing/change-plan" class="btn btn-primary btn-sm">
                     <lucide-icon name="arrow-up" class="mr-1" /> {{ $t('Change_Plan') || 'Change Plan' }}
@@ -141,13 +148,13 @@
                     <lucide-icon name="file" class="mr-1" /> {{ $t('Invoices') || 'Invoices' }}
                   </router-link>
 
-                  <!-- Cancel button (shown when active) -->
-                  <button v-if="subscription.status === 'active'" @click="showCancelModal = true"
+                  <!-- Cancel button (shown when active and not already scheduled to cancel) -->
+                  <button v-if="subscription.status === 'active' && !subscription.is_pending_cancellation" @click="showCancelModal = true"
                     class="btn btn-outline-danger btn-sm">
                     <lucide-icon name="x" class="mr-1" /> {{ $t('Cancel_Subscription') || 'Cancel Subscription' }}
                   </button>
 
-                  <!-- Resume button (shown when cancelled but still within period) -->
+                  <!-- Resume button (shown when cancelled, or scheduled to cancel, but still within period) -->
                   <button v-if="subscription.can_resume" @click="resumeSubscription"
                     :disabled="resumeLoading"
                     class="btn btn-success btn-sm">
