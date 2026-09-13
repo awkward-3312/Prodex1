@@ -218,11 +218,22 @@ class SubscriptionLifecycleService
     }
 
     /**
-     * Mark a payment refunded. Subscription state is left to admin discretion.
+     * Mark a payment refunded. Subscription state is left to admin
+     * discretion. Only money that actually settled can be given back: the
+     * only valid source is PAID (idempotent no-op if already REFUNDED).
+     * PENDING/FAILED/SUPERSEDED never collected real money for this row, so
+     * "refunding" them would fabricate a refund that never happened.
      */
     public function markRefunded(TenantBillingPayment $payment, ?string $refundTransactionId = null): void
     {
         if ($payment->isRefunded()) {
+            return;
+        }
+
+        if (! $payment->isPaid()) {
+            Log::warning(
+                "SubscriptionLifecycleService: refusing invalid payment transition {$payment->status} -> refunded for payment {$payment->id}."
+            );
             return;
         }
 

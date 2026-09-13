@@ -517,11 +517,17 @@ class PaddleWebhookController extends Controller
             }
 
             if ($type === 'full' || $action === 'chargeback') {
+                // markRefunded() only accepts PAID -> REFUNDED (idempotent if
+                // already refunded, refused otherwise). Suspending access is
+                // only warranted when the refund actually applied to real,
+                // settled money — not for a chargeback event that references
+                // a payment that was never paid in the first place.
+                $wasPaid = $payment->isPaid();
                 $lifecycle->markRefunded($payment, $adjustmentId);
 
                 // A chargeback is stronger than an ordinary refund: suspend access
                 // immediately while Paddle's subscription lifecycle catches up.
-                if ($action === 'chargeback' && $subscription) {
+                if ($action === 'chargeback' && $subscription && $wasPaid) {
                     $subscription->update([
                         'status' => TenantSubscription::STATUS_SUSPENDED,
                     ]);
