@@ -197,14 +197,23 @@ class SubscriptionLifecycleService
         $payment->markFailed();
 
         $tenant = $payment->tenant;
+        $subscription = $payment->subscription;
         if ($tenant) {
-            try {
-                EmailNotificationService::paymentFailed($tenant, [
-                    '{{amount}}' => GeneralSetting::currencySymbol() . number_format((float) $payment->amount, 2),
-                ], $payment->subscription);
-            } catch (\Throwable $e) {
-                Log::warning("SubscriptionLifecycleService: paymentFailed email failed for tenant {$tenant->id}: {$e->getMessage()}");
-            }
+            // afterCommit() runs immediately when no transaction is open (the
+            // common case for every other caller) and defers to just after
+            // commit when one is (e.g. a Paddle webhook handler holding a
+            // lockForUpdate() row lock while dispatched inside its own
+            // transaction) — the outbound mail call must never run while
+            // that lock is still held.
+            DB::connection('central')->afterCommit(function () use ($tenant, $payment, $subscription): void {
+                try {
+                    EmailNotificationService::paymentFailed($tenant, [
+                        '{{amount}}' => GeneralSetting::currencySymbol() . number_format((float) $payment->amount, 2),
+                    ], $subscription);
+                } catch (\Throwable $e) {
+                    Log::warning("SubscriptionLifecycleService: paymentFailed email failed for tenant {$tenant->id}: {$e->getMessage()}");
+                }
+            });
         }
     }
 
@@ -236,13 +245,17 @@ class SubscriptionLifecycleService
             $provisioningDispatched = true;
         }
 
-        try {
-            EmailNotificationService::paymentSuccess($tenant, [
-                '{{amount}}' => GeneralSetting::currencySymbol() . number_format((float) $payment->amount, 2),
-            ], $subscription);
-        } catch (\Throwable $e) {
-            Log::warning("SubscriptionLifecycleService: paymentSuccess email failed for tenant {$tenant->id}: {$e->getMessage()}");
-        }
+        // See markFailed()'s comment: deferred to just after commit so the
+        // outbound mail call never runs while a caller-held row lock is open.
+        DB::connection('central')->afterCommit(function () use ($tenant, $payment, $subscription): void {
+            try {
+                EmailNotificationService::paymentSuccess($tenant, [
+                    '{{amount}}' => GeneralSetting::currencySymbol() . number_format((float) $payment->amount, 2),
+                ], $subscription);
+            } catch (\Throwable $e) {
+                Log::warning("SubscriptionLifecycleService: paymentSuccess email failed for tenant {$tenant->id}: {$e->getMessage()}");
+            }
+        });
 
         return $provisioningDispatched;
     }

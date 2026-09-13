@@ -17,6 +17,7 @@ use App\Services\Billing\SubscriptionLifecycleService;
 use App\Services\Paddle\PaddleCheckoutReference;
 use App\Services\Paddle\PaddleWebhookVerifier;
 use App\Support\LocksBillingSubscription;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -191,6 +192,16 @@ class PaddleWebhookController extends Controller
         // webhook must not read-modify-write the same row while that's in
         // flight, or one write silently clobbers the other.
         $this->withSubscriptionLock($subscription, function () use ($subscription, $paddleSubscriptionId, $occurredAt, $data): void {
+                // A concurrent writer (a customer's cancel/resume click, or
+                // another webhook for this subscription) may have committed
+                // and released the lock between resolveSubscription() above
+                // and this closure acquiring it. Every read and write below
+                // must see that committed state, not the copy resolved
+                // before the lock — otherwise this update can silently
+                // overwrite e.g. a just-set cancellation_requested_at with
+                // stale data.
+                $this->lockedRefresh($subscription);
+
                 $mapping = PaddleSubscription::where('paddle_subscription_id', $paddleSubscriptionId)->firstOrFail();
 
                 // Paddle can deliver events out of order. Only subscription
@@ -241,6 +252,27 @@ class PaddleWebhookController extends Controller
     private function onSubscriptionLockTimeout(): never
     {
         throw new RuntimeException('Could not acquire subscription lock; a concurrent billing action is in progress.');
+    }
+
+    /**
+     * A plain refresh() is not enough here: handle() wraps event dispatch in
+     * one DB transaction, and under MySQL's default REPEATABLE READ
+     * isolation that transaction's consistent-read snapshot is fixed by
+     * whichever SELECT ran first — which happens before the subscription
+     * lock is even requested. A concurrent writer committing in between
+     * would be invisible to a plain re-SELECT. lockForUpdate() forces InnoDB
+     * to read the row's current version regardless of that snapshot, which
+     * is exactly what's needed the moment this lock is held: nobody else
+     * can be mid-write against this row (they'd be blocked on the same
+     * Cache lock), so this always returns the true up-to-date state.
+     */
+    private function lockedRefresh(Model $model): void
+    {
+        $fresh = $model->newQueryWithoutScopes()->lockForUpdate()->find($model->getKey());
+
+        if ($fresh) {
+            $model->setRawAttributes($fresh->getAttributes(), true);
+        }
     }
 
     private function applySubscriptionStatus(
@@ -357,44 +389,59 @@ class PaddleWebhookController extends Controller
             return;
         }
 
-        $payment = $this->findOrCreateTransactionPayment($eventId, $data, $subscription, $gatewayAmount);
-        $outcome = $lifecycle->markProviderPaid($payment, [
-            'gateway_payment_id' => $transactionId,
-            'transaction_id' => $transactionId,
-        ]);
+        // Same lock namespace as syncSubscription()/BillingApiController/
+        // TenantSubscriptionController: this must not read-modify-write the
+        // payment or the subscription while a customer's cancel/resume click
+        // or another webhook for the same subscription is mid-flight.
+        $this->withSubscriptionLock($subscription, function () use (
+            $eventId,
+            $data,
+            $subscription,
+            $gatewayAmount,
+            $transactionId,
+            $lifecycle
+        ): void {
+            $this->lockedRefresh($subscription);
 
-        if ($outcome['refused']) {
-            // The payment row was already refunded/superseded: this
-            // transaction.completed is a late/replayed signal for money that
-            // was already given back or superseded by a newer payment. It
-            // must not reactivate access either.
-            Log::warning("Paddle transaction {$transactionId} completed event ignored: payment {$payment->id} is already {$payment->status}.");
-            return;
-        }
-
-        // transaction.completed proves money was captured. If the corresponding
-        // subscription event is delayed, keep access available now; the next
-        // subscription webhook replaces these fallback dates with Paddle's exact
-        // billing period and does not double-extend it.
-        if (! $subscription->isActive()) {
-            $period = is_array($data['billing_period'] ?? null) ? $data['billing_period'] : [];
-            $startsAt = $this->parseDate($period['starts_at'] ?? null) ?: now();
-            $endsAt = $this->parseDate($period['ends_at'] ?? null)
-                ?: $this->fallbackPeriodEnd($subscription, $startsAt);
-
-            $subscription->update([
-                'status' => TenantSubscription::STATUS_ACTIVE,
-                'starts_at' => $startsAt,
-                'trial_ends_at' => null,
-                'ends_at' => $endsAt,
-                'cancelled_at' => null,
-                // A captured charge proves the subscription actually renewed
-                // instead of cancelling — any pending-cancellation flag is
-                // now stale.
-                'cancellation_requested_at' => null,
+            $payment = $this->findOrCreateTransactionPayment($eventId, $data, $subscription, $gatewayAmount);
+            $outcome = $lifecycle->markProviderPaid($payment, [
+                'gateway_payment_id' => $transactionId,
+                'transaction_id' => $transactionId,
             ]);
-            $this->expireOtherLiveSubscriptions($subscription);
-        }
+
+            if ($outcome['refused']) {
+                // The payment row was already refunded/superseded: this
+                // transaction.completed is a late/replayed signal for money
+                // that was already given back or superseded by a newer
+                // payment. It must not reactivate access either.
+                Log::warning("Paddle transaction {$transactionId} completed event ignored: payment {$payment->id} is already {$payment->status}.");
+                return;
+            }
+
+            // transaction.completed proves money was captured. If the corresponding
+            // subscription event is delayed, keep access available now; the next
+            // subscription webhook replaces these fallback dates with Paddle's exact
+            // billing period and does not double-extend it.
+            if (! $subscription->isActive()) {
+                $period = is_array($data['billing_period'] ?? null) ? $data['billing_period'] : [];
+                $startsAt = $this->parseDate($period['starts_at'] ?? null) ?: now();
+                $endsAt = $this->parseDate($period['ends_at'] ?? null)
+                    ?: $this->fallbackPeriodEnd($subscription, $startsAt);
+
+                $subscription->update([
+                    'status' => TenantSubscription::STATUS_ACTIVE,
+                    'starts_at' => $startsAt,
+                    'trial_ends_at' => null,
+                    'ends_at' => $endsAt,
+                    'cancelled_at' => null,
+                    // A captured charge proves the subscription actually renewed
+                    // instead of cancelling — any pending-cancellation flag is
+                    // now stale.
+                    'cancellation_requested_at' => null,
+                ]);
+                $this->expireOtherLiveSubscriptions($subscription);
+            }
+        });
     }
 
     private function handleFailedTransaction(
@@ -416,13 +463,22 @@ class PaddleWebhookController extends Controller
             return;
         }
 
-        $payment = $this->findOrCreateTransactionPayment(
-            $eventId,
-            $data,
-            $subscription,
-            $this->transactionTotal($data)
-        );
-        $lifecycle->markFailed($payment);
+        // Same lock as handleCompletedTransaction()/syncSubscription(): a
+        // payment_failed and a transaction.completed for the same
+        // subscription (e.g. Paddle redelivering both sides of a dunning
+        // retry) must not interleave their read-then-write of the payment
+        // row, and this must not race a customer's in-flight cancel/resume.
+        $this->withSubscriptionLock($subscription, function () use ($eventId, $data, $subscription, $lifecycle): void {
+            $this->lockedRefresh($subscription);
+
+            $payment = $this->findOrCreateTransactionPayment(
+                $eventId,
+                $data,
+                $subscription,
+                $this->transactionTotal($data)
+            );
+            $lifecycle->markFailed($payment);
+        });
     }
 
     private function handleAdjustment(array $data, SubscriptionLifecycleService $lifecycle): void
@@ -452,33 +508,51 @@ class PaddleWebhookController extends Controller
 
         $adjustmentId = trim((string) ($data['id'] ?? '')) ?: null;
         $type = strtolower((string) ($data['type'] ?? ''));
+        $subscription = $payment->subscription;
 
-        if ($type === 'full' || $action === 'chargeback') {
-            $lifecycle->markRefunded($payment, $adjustmentId);
-
-            // A chargeback is stronger than an ordinary refund: suspend access
-            // immediately while Paddle's subscription lifecycle catches up.
-            if ($action === 'chargeback' && $payment->subscription) {
-                $payment->subscription->update([
-                    'status' => TenantSubscription::STATUS_SUSPENDED,
-                ]);
+        $apply = function () use ($payment, $subscription, $lifecycle, $type, $action, $adjustmentId): void {
+            $this->lockedRefresh($payment);
+            if ($subscription) {
+                $this->lockedRefresh($subscription);
             }
-            return;
+
+            if ($type === 'full' || $action === 'chargeback') {
+                $lifecycle->markRefunded($payment, $adjustmentId);
+
+                // A chargeback is stronger than an ordinary refund: suspend access
+                // immediately while Paddle's subscription lifecycle catches up.
+                if ($action === 'chargeback' && $subscription) {
+                    $subscription->update([
+                        'status' => TenantSubscription::STATUS_SUSPENDED,
+                    ]);
+                }
+                return;
+            }
+
+            $metadata = $payment->metadata ?? [];
+            $metadata['paddle_adjustments'] = array_values(array_unique(array_filter(array_merge(
+                (array) ($metadata['paddle_adjustments'] ?? []),
+                [$adjustmentId]
+            ))));
+
+            $payment->update([
+                'metadata' => $metadata,
+                'notes' => trim(
+                    ($payment->notes ? $payment->notes."\n" : '')
+                    .'Partial Paddle refund: '.($adjustmentId ?: 'unknown')
+                ),
+            ]);
+        };
+
+        // Same lock as the other transaction handlers: a refund/chargeback
+        // must not race a transaction.completed for the same subscription,
+        // nor a customer's in-flight cancel/resume. A payment with no linked
+        // subscription (orphaned/edge case) has nothing to serialize against.
+        if ($subscription) {
+            $this->withSubscriptionLock($subscription, $apply);
+        } else {
+            $apply();
         }
-
-        $metadata = $payment->metadata ?? [];
-        $metadata['paddle_adjustments'] = array_values(array_unique(array_filter(array_merge(
-            (array) ($metadata['paddle_adjustments'] ?? []),
-            [$adjustmentId]
-        ))));
-
-        $payment->update([
-            'metadata' => $metadata,
-            'notes' => trim(
-                ($payment->notes ? $payment->notes."\n" : '')
-                .'Partial Paddle refund: '.($adjustmentId ?: 'unknown')
-            ),
-        ]);
     }
 
     /**
