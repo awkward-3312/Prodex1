@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Central;
 
+use App\Exceptions\UnclaimableCheckoutAttemptException;
 use App\Http\Controllers\Controller;
 use App\Models\Central\GeneralSetting;
 use App\Models\Central\PaddleCheckoutAttempt;
@@ -83,7 +84,7 @@ class PaddleWebhookController extends Controller
                 return response('Event payload mismatch.', 400);
             }
 
-            if ($event->status === 'processed') {
+            if (in_array($event->status, ['processed', 'ignored'], true)) {
                 return response('OK', 200);
             }
 
@@ -110,6 +111,23 @@ class PaddleWebhookController extends Controller
                 'processed_at' => now(),
                 'error' => null,
             ]);
+        } catch (UnclaimableCheckoutAttemptException $e) {
+            // Not a processing failure: this event can never succeed, so
+            // asking Paddle to retry would only repeat the same outcome
+            // forever. Acknowledge it (200) rather than a 500, but keep the
+            // event distinct from a clean 'processed' row — a customer may
+            // have been billed by Paddle with no PRODEX subscription to show
+            // for it, and that must stay visible to whoever reconciles
+            // paddle_webhook_events, not blend into normal success counts.
+            $event->update([
+                'status' => 'ignored',
+                'processed_at' => now(),
+                'error' => mb_substr($e->getMessage(), 0, 2000),
+            ]);
+
+            Log::error("Paddle webhook {$eventId} ({$eventType}) references an unclaimable checkout attempt: {$e->getMessage()}");
+
+            return response('OK', 200);
         } catch (Throwable $e) {
             $event->update([
                 'status' => 'failed',
@@ -340,10 +358,19 @@ class PaddleWebhookController extends Controller
         }
 
         $payment = $this->findOrCreateTransactionPayment($eventId, $data, $subscription, $gatewayAmount);
-        $lifecycle->markProviderPaid($payment, [
+        $outcome = $lifecycle->markProviderPaid($payment, [
             'gateway_payment_id' => $transactionId,
             'transaction_id' => $transactionId,
         ]);
+
+        if ($outcome['refused']) {
+            // The payment row was already refunded/superseded: this
+            // transaction.completed is a late/replayed signal for money that
+            // was already given back or superseded by a newer payment. It
+            // must not reactivate access either.
+            Log::warning("Paddle transaction {$transactionId} completed event ignored: payment {$payment->id} is already {$payment->status}.");
+            return;
+        }
 
         // transaction.completed proves money was captured. If the corresponding
         // subscription event is delayed, keep access available now; the next
@@ -488,9 +515,39 @@ class PaddleWebhookController extends Controller
         if ($subscription) {
             $this->assertAttemptMatchesSubscription($attempt, $subscription, $paddleSubscriptionId);
         } else {
+            // Not yet claimed by anyone. A late webhook must not be able to
+            // create/claim a subscription through an attempt whose TTL has
+            // lapsed (checked directly on expires_at, since the sweep in
+            // PaddleBillingController::prepare() only marks *same-tenant*
+            // rows 'expired' the next time that tenant starts a new
+            // checkout — it is not a live guarantee). The status !==
+            // 'initiated' check is belt-and-suspenders for any other way a
+            // not-yet-claimed row could end up in a non-initiated state.
+            if ($attempt->status !== 'initiated'
+                || ($attempt->expires_at && $attempt->expires_at->isPast())
+            ) {
+                Log::warning('Ignoring Paddle webhook for an expired/unclaimed checkout attempt.', [
+                    'checkout_attempt_id' => $attempt->id,
+                    'paddle_subscription_id' => $paddleSubscriptionId,
+                    'attempt_status' => $attempt->status,
+                    'attempt_expires_at' => $attempt->expires_at,
+                ]);
+
+                throw new UnclaimableCheckoutAttemptException(
+                    "Paddle checkout attempt {$attempt->id} is expired/unclaimed; cannot link subscription {$paddleSubscriptionId}."
+                );
+            }
+
             $plan = Plan::find($attempt->plan_id);
             if (! $plan || ! $plan->is_active) {
-                throw new RuntimeException('The Paddle checkout references an unavailable PRODEX plan.');
+                // Equally unrecoverable by retrying: Paddle redelivering the
+                // same event will not make a deleted/deactivated plan valid
+                // again. Acknowledge rather than trigger a retry storm; a
+                // reinstated plan (if that ever happens) needs a fresh
+                // checkout attempt anyway, since this one is now consumed.
+                throw new UnclaimableCheckoutAttemptException(
+                    "Paddle checkout attempt {$attempt->id} references PRODEX plan {$attempt->plan_id}, which is missing or inactive."
+                );
             }
 
             $subscription = TenantSubscription::create([

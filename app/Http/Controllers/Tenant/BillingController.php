@@ -347,11 +347,10 @@ class BillingController extends Controller
                     if ($gw) {
                         $capture = $gw->captureOrder($orderId);
                         if ($capture['success']) {
-                            $payment->markPaid($capture['order_id'], $capture['capture_id']);
-                            $sub = $payment->subscription;
-                            if ($sub && $sub->status !== TenantSubscription::STATUS_ACTIVE) {
-                                $sub->activate();
-                            }
+                            app(SubscriptionLifecycleService::class)->markPaid($payment, [
+                                'gateway_payment_id' => $capture['order_id'],
+                                'transaction_id' => $capture['capture_id'],
+                            ]);
                         }
                     }
                 } catch (\Throwable $e) {
@@ -423,11 +422,10 @@ class BillingController extends Controller
                     if ($gateway) {
                         $capture = $gateway->captureOrder($orderId);
                         if ($capture['success']) {
-                            $payment->markPaid($capture['order_id'], $capture['capture_id']);
-                            $subscription = $payment->subscription;
-                            if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-                                $subscription->activate();
-                            }
+                            app(SubscriptionLifecycleService::class)->markPaid($payment, [
+                                'gateway_payment_id' => $capture['order_id'],
+                                'transaction_id' => $capture['capture_id'],
+                            ]);
                         }
                     }
                 } catch (\Throwable $e) {
@@ -555,11 +553,13 @@ class BillingController extends Controller
             return response()->json(['confirmed' => false, 'message' => 'Capture not completed yet.']);
         }
 
-        $payment->markPaid($capture['order_id'], $capture['capture_id']);
+        $outcome = app(SubscriptionLifecycleService::class)->markPaid($payment, [
+            'gateway_payment_id' => $capture['order_id'],
+            'transaction_id' => $capture['capture_id'],
+        ]);
 
-        $subscription = $payment->fresh()->subscription;
-        if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-            $subscription->activate();
+        if ($outcome['refused']) {
+            return response()->json(['confirmed' => false, 'message' => 'This payment cannot be confirmed.'], 409);
         }
 
         Log::info('PayPal confirmPayment: payment confirmed', ['payment_id' => $payment->id]);
@@ -585,11 +585,13 @@ class BillingController extends Controller
             return response()->json(['confirmed' => false, 'message' => 'Payment not confirmed yet.']);
         }
 
-        $payment->markPaid($payment->gateway_payment_id, $verification['transaction_id']);
+        $outcome = app(SubscriptionLifecycleService::class)->markPaid($payment, [
+            'gateway_payment_id' => $payment->gateway_payment_id,
+            'transaction_id' => $verification['transaction_id'],
+        ]);
 
-        $subscription = $payment->fresh()->subscription;
-        if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-            $subscription->activate();
+        if ($outcome['refused']) {
+            return response()->json(['confirmed' => false, 'message' => 'This payment cannot be confirmed.'], 409);
         }
 
         Log::info('Paystack confirmPayment: payment confirmed', ['payment_id' => $payment->id]);
@@ -618,12 +620,10 @@ class BillingController extends Controller
             $verification = $gateway->verifyTransaction($reference);
 
             if ($verification['success']) {
-                $payment->markPaid($reference, $verification['transaction_id']);
-
-                $subscription = $payment->subscription;
-                if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-                    $subscription->activate();
-                }
+                app(SubscriptionLifecycleService::class)->markPaid($payment, [
+                    'gateway_payment_id' => $reference,
+                    'transaction_id' => $verification['transaction_id'],
+                ]);
             }
         } catch (\Throwable $e) {
             Log::error('Paystack verification on return failed', [
@@ -660,12 +660,10 @@ class BillingController extends Controller
             $verification = $gateway->verifyTransaction($reference);
 
             if ($verification['success']) {
-                $payment->markPaid($reference, $verification['transaction_id']);
-
-                $subscription = $payment->subscription;
-                if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-                    $subscription->activate();
-                }
+                app(SubscriptionLifecycleService::class)->markPaid($payment, [
+                    'gateway_payment_id' => $reference,
+                    'transaction_id' => $verification['transaction_id'],
+                ]);
             }
         } catch (\Throwable $e) {
             Log::error('Flutterwave verification on return failed', [
@@ -695,15 +693,10 @@ class BillingController extends Controller
             $verification = $gateway->verifyPaymentStatus($sessionId);
 
             if ($verification['status'] === 'paid') {
-                $payment->markPaid(
-                    $verification['gateway_payment_id'] ?? $sessionId,
-                    $verification['transaction_id'] ?? ''
-                );
-
-                $subscription = $payment->subscription;
-                if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-                    $subscription->activate();
-                }
+                app(SubscriptionLifecycleService::class)->markPaid($payment, [
+                    'gateway_payment_id' => $verification['gateway_payment_id'] ?? $sessionId,
+                    'transaction_id' => $verification['transaction_id'] ?? '',
+                ]);
             }
         } catch (\Throwable $e) {
             Log::error('Stripe verification on return failed', [
@@ -735,15 +728,10 @@ class BillingController extends Controller
             $verification = $gateway->verifyPaymentStatus($paymentRef);
 
             if ($verification['status'] === 'paid') {
-                $payment->markPaid(
-                    $verification['gateway_payment_id'] ?? $paymentRef,
-                    $verification['transaction_id'] ?? ''
-                );
-
-                $subscription = $payment->subscription;
-                if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-                    $subscription->activate();
-                }
+                app(SubscriptionLifecycleService::class)->markPaid($payment, [
+                    'gateway_payment_id' => $verification['gateway_payment_id'] ?? $paymentRef,
+                    'transaction_id' => $verification['transaction_id'] ?? '',
+                ]);
             }
         } catch (\Throwable $e) {
             Log::error('Mollie verification on return failed', [
@@ -769,14 +757,13 @@ class BillingController extends Controller
             return response()->json(['confirmed' => false, 'message' => 'Payment not confirmed yet.']);
         }
 
-        $payment->markPaid(
-            $verification['gateway_payment_id'] ?? $payment->gateway_payment_id,
-            $verification['transaction_id'] ?? ''
-        );
+        $outcome = app(SubscriptionLifecycleService::class)->markPaid($payment, [
+            'gateway_payment_id' => $verification['gateway_payment_id'] ?? $payment->gateway_payment_id,
+            'transaction_id' => $verification['transaction_id'] ?? '',
+        ]);
 
-        $subscription = $payment->fresh()->subscription;
-        if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-            $subscription->activate();
+        if ($outcome['refused']) {
+            return response()->json(['confirmed' => false, 'message' => 'This payment cannot be confirmed.'], 409);
         }
 
         Log::info('Mollie confirmPayment: payment confirmed', ['payment_id' => $payment->id]);
@@ -799,11 +786,13 @@ class BillingController extends Controller
             return response()->json(['confirmed' => false, 'message' => 'Payment not confirmed yet.']);
         }
 
-        $payment->markPaid($payment->gateway_payment_id, $verification['transaction_id']);
+        $outcome = app(SubscriptionLifecycleService::class)->markPaid($payment, [
+            'gateway_payment_id' => $payment->gateway_payment_id,
+            'transaction_id' => $verification['transaction_id'],
+        ]);
 
-        $subscription = $payment->fresh()->subscription;
-        if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-            $subscription->activate();
+        if ($outcome['refused']) {
+            return response()->json(['confirmed' => false, 'message' => 'This payment cannot be confirmed.'], 409);
         }
 
         Log::info('Flutterwave confirmPayment: payment confirmed', ['payment_id' => $payment->id]);
