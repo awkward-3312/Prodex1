@@ -44,6 +44,9 @@ class TenantSchemaHealthServiceTest extends TestCase
 
     private function createModernTenantSchema(bool $withStoreCreditTransactions): void
     {
+        Schema::connection('tenant')->create('mobile_customer_operations', function (Blueprint $table) {
+            $table->id(); $table->uuid('operation_uuid')->unique(); $table->unsignedBigInteger('user_id'); $table->unsignedBigInteger('client_id'); $table->char('payload_fingerprint', 64); $table->timestamps();
+        });
         Schema::connection('tenant')->create('cash_registers', function (Blueprint $table) {
             $table->increments('id');
             $table->decimal('difference', 15, 2)->nullable();

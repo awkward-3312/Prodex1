@@ -67,6 +67,7 @@ class TenantSchemaHealthService
         'database/migrations/tenant/2026_09_07_100000_seed_valued_kardex_and_turnover_report_permissions.php',
         // Mobile cash-register open/cash-in/cash-out idempotency + audit ledger.
         'database/migrations/tenant/2026_09_12_000000_create_cash_register_operations_table.php',
+        'database/migrations/tenant/2026_09_14_000000_create_mobile_customer_operations_table.php',
     ];
 
     public function checkTenant(Tenant $tenant): array
@@ -103,6 +104,8 @@ class TenantSchemaHealthService
         $schema = Schema::connection('tenant');
         $missing = [];
 
+        $this->requireTable($schema, $missing, 'mobile_customer_operations');
+        $this->requireColumns($schema, $missing, 'mobile_customer_operations', ['operation_uuid', 'user_id', 'client_id', 'payload_fingerprint']);
         $this->requireTable($schema, $missing, 'cash_registers');
         $this->requireColumns($schema, $missing, 'cash_registers', [
             'counted_denominations', 'sales_by_payment_method', 'expected_cash', 'counted_cash', 'cash_difference',

@@ -84,6 +84,10 @@ Route::middleware(['auth:api', 'Is_Active', 'request.safety', 'token.timeout', '
     Route::post('mobile/auth/logout', [\App\Http\Controllers\Mobile\MobileAuthController::class, 'logout']);
 
     Route::get('mobile/clients', \App\Http\Controllers\Mobile\MobileClientsController::class);
+    Route::get('mobile/clients/form', [\App\Http\Controllers\Mobile\MobileClientWriteController::class, 'configuration']);
+    Route::get('mobile/clients/{id}/edit', [\App\Http\Controllers\Mobile\MobileClientWriteController::class, 'edit']);
+    Route::post('mobile/clients', [\App\Http\Controllers\Mobile\MobileClientWriteController::class, 'store']);
+    Route::put('mobile/clients/{id}', [\App\Http\Controllers\Mobile\MobileClientWriteController::class, 'update']);
     Route::get('mobile/clients/{id}', \App\Http\Controllers\Mobile\MobileClientDetailController::class);
     Route::get('mobile/reports/summary', \App\Http\Controllers\Mobile\MobileReportsSummaryController::class);
 
