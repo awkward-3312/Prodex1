@@ -633,6 +633,7 @@
                 <a href="{{ url('/erp-honduras') }}" class="hover:text-slate-900">ERP para empresas</a>
                 <a href="{{ route('central.privacy-policy') }}" class="hover:text-slate-900">{{ __('landing.privacy_policy') }}</a>
                 <a href="{{ route('central.terms-conditions') }}" class="hover:text-slate-900">{{ __('landing.terms_and_conditions') }}</a>
+                <a href="{{ route('central.refund-policy') }}" class="hover:text-slate-900">{{ __('landing.refund_policy') }}</a>
                 <a href="#" id="lpCookiePrefs" class="hover:text-slate-900">{{ __('landing.cookie_preferences_link') }}</a>
             </nav>
         </div>

@@ -689,6 +689,7 @@
                     @endif
                     <li><a href="{{ route('central.privacy-policy') }}" class="hover:text-slate-900 transition">{{ __('landing.privacy_policy') }}</a></li>
                     <li><a href="{{ route('central.terms-conditions') }}" class="hover:text-slate-900 transition">{{ __('landing.terms_and_conditions') }}</a></li>
+                    <li><a href="{{ route('central.refund-policy') }}" class="hover:text-slate-900 transition">{{ __('landing.refund_policy') }}</a></li>
                     <li><a href="#" id="cookiePreferencesLink" class="hover:text-slate-900 transition">{{ __('landing.cookie_preferences_link') }}</a></li>
                 </ul>
             </div>

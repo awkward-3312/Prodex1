@@ -90,6 +90,9 @@ Route::get('/privacy-policy', [\App\Http\Controllers\Central\LandingPageControll
 // Terms & conditions (public)
 Route::get('/terms-conditions', [\App\Http\Controllers\Central\LandingPageController::class, 'termsConditions'])->name('central.terms-conditions');
 
+// Refund & cancellation policy (public)
+Route::get('/refund-policy', [\App\Http\Controllers\Central\LandingPageController::class, 'refundPolicy'])->name('central.refund-policy');
+
 // Calculadora de precios (landing-prime) — solo lectura de Plan::public().
 Route::get('/pricing/recommend', [\App\Http\Controllers\Central\PricingCalculatorController::class, 'recommend'])
     ->middleware('throttle:60,1')
@@ -450,6 +453,9 @@ Route::middleware(['web', 'auth.central'])->prefix('super')->name('super.')->gro
 
         Route::get('/terms-conditions', [\App\Http\Controllers\Central\Super\LandingCmsController::class, 'termsConditions'])->name('terms-conditions');
         Route::put('/terms-conditions', [\App\Http\Controllers\Central\Super\LandingCmsController::class, 'termsConditionsUpdate'])->name('terms-conditions.update');
+
+        Route::get('/refund-policy', [\App\Http\Controllers\Central\Super\LandingCmsController::class, 'refundPolicy'])->name('refund-policy');
+        Route::put('/refund-policy', [\App\Http\Controllers\Central\Super\LandingCmsController::class, 'refundPolicyUpdate'])->name('refund-policy.update');
 
         Route::get('/how-it-works', [\App\Http\Controllers\Central\Super\LandingCmsController::class, 'howItWorks'])->name('how-it-works');
         Route::post('/how-it-works/section', [\App\Http\Controllers\Central\Super\LandingCmsController::class, 'howItWorksSectionUpdate'])->name('how-it-works.section.update');

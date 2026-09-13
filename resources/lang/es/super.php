@@ -31,6 +31,7 @@ return [
         'seo_settings'      => 'Configuración SEO',
         'privacy_policy'    => 'Política de privacidad',
         'terms'             => 'Términos y Condiciones',
+        'refund_policy'     => 'Reembolsos y Cancelaciones',
         'translations'      => 'Traducciones',
         'settings'          => 'Configuración',
         'payment_gateways'  => 'Pasarelas de pago',
@@ -828,6 +829,30 @@ return [
         'tip_1'                    => 'Mantén tu política de privacidad actualizada con cualquier cambio en el manejo de datos.',
         'tip_2'                    => 'Sé transparente sobre qué datos recopilas y por qué.',
         'tip_3'                    => 'Actualiza la fecha de "Última actualización" cada vez que hagas cambios.',
+    ],
+
+    // ── CMS Refund & Cancellation Policy ─────────────────
+    'refund' => [
+        'title'                          => 'Política de Reembolsos y Cancelaciones',
+        'subtitle'                       => 'Gestiona el contenido de tu página de reembolsos y cancelaciones.',
+        'updated'                        => 'Política de reembolsos actualizada correctamente.',
+        'settings'                       => 'Configuración',
+        'last_updated'                   => 'Fecha de última actualización',
+        'last_updated_hint'              => 'Se muestra en la página pública de reembolsos y cancelaciones.',
+        'show_page'                      => 'Mostrar página de reembolsos y cancelaciones',
+        'show_page_hint'                 => 'Cuando se desactiva, la página devolverá un error 404. Paddle requiere que esta página esté disponible.',
+        'section_overview'               => 'Alcance de la política',
+        'section_subscriptions_trials'   => 'Suscripciones y prueba gratuita',
+        'section_cancellations'          => 'Cancelaciones',
+        'section_billing_errors'         => 'Errores de facturación',
+        'section_eligibility'            => 'Elegibilidad de reembolso',
+        'section_chargebacks'            => 'Contracargos y disputas',
+        'section_how_to_request'         => 'Cómo solicitar un reembolso',
+        'section_payment_processor'      => 'Paddle como comerciante registrado',
+        'tips_title'                     => 'Consejos',
+        'tip_1'                          => 'Sé específico sobre qué cargos son reembolsables y cuáles no.',
+        'tip_2'                          => 'Nunca declares que todos los pagos son no reembolsables bajo ninguna circunstancia — respeta los derechos legales aplicables.',
+        'tip_3'                          => 'Mantén esta política alineada con el comportamiento real de cancelación y facturación del sistema.',
     ],
 
     // ── CMS Features ─────────────────────────────────────

@@ -172,4 +172,18 @@ class LandingPageController extends Controller
 
         return view('central.terms-conditions', compact('terms', 'footer', 'seo'));
     }
+
+    public function refundPolicy(): View
+    {
+        $cms    = app(LandingCmsService::class);
+        $refund = $cms->getSection('refund_policy');
+        $footer = $cms->getSection('footer');
+        $seo    = $cms->getSection('seo');
+
+        if (! $refund || ! $refund->is_active) {
+            abort(404);
+        }
+
+        return view('central.refund-policy', compact('refund', 'footer', 'seo'));
+    }
 }

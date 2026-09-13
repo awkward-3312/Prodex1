@@ -33,6 +33,7 @@ return [
         'seo_settings'      => 'SEO Settings',
         'privacy_policy'    => 'Privacy Policy',
         'terms'             => 'Terms & Conditions',
+        'refund_policy'     => 'Refund & Cancellation',
         'translations'      => 'Translations',
         'settings'          => 'Settings',
         'payment_gateways'  => 'Payment Gateways',
@@ -902,6 +903,30 @@ return [
         'tip_1'                    => 'Keep your privacy policy up to date with any changes in data handling.',
         'tip_2'                    => 'Be transparent about what data you collect and why.',
         'tip_3'                    => 'Update the "Last updated" date whenever you make changes.',
+    ],
+
+    // ── CMS Refund & Cancellation Policy ─────────────────
+    'refund' => [
+        'title'                          => 'Refund & Cancellation Policy',
+        'subtitle'                       => 'Manage the content of your refund and cancellation policy page.',
+        'updated'                        => 'Refund policy updated successfully.',
+        'settings'                       => 'Settings',
+        'last_updated'                   => 'Last updated date',
+        'last_updated_hint'              => 'Shown on the public refund & cancellation policy page.',
+        'show_page'                      => 'Show refund & cancellation policy page',
+        'show_page_hint'                 => 'When disabled, the page will return a 404. Paddle requires this page to be available.',
+        'section_overview'               => 'Policy scope',
+        'section_subscriptions_trials'   => 'Subscriptions & free trial',
+        'section_cancellations'          => 'Cancellations',
+        'section_billing_errors'         => 'Billing errors',
+        'section_eligibility'            => 'Refund eligibility',
+        'section_chargebacks'            => 'Chargebacks & disputes',
+        'section_how_to_request'         => 'How to request a refund',
+        'section_payment_processor'      => 'Paddle as Merchant of Record',
+        'tips_title'                     => 'Tips',
+        'tip_1'                          => 'Be specific about which charges are refundable and which are not.',
+        'tip_2'                          => 'Never state that all payments are non-refundable under any circumstance — respect applicable legal rights.',
+        'tip_3'                          => 'Keep this policy aligned with the system\'s actual cancellation and billing behavior.',
     ],
 
     // ── CMS Features ─────────────────────────────────────

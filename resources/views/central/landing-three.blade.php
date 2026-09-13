@@ -2098,6 +2098,14 @@
                             </a>
                         </li>
 
+                        <li>
+                            <a
+                                href="{{ route('central.refund-policy') }}"
+                                class="hover:text-slate-950 transition">
+                                Reembolsos
+                            </a>
+                        </li>
+
                     </ul>
 
 

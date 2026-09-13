@@ -13,6 +13,7 @@ use App\Models\Central\LandingHero;
 use App\Models\Central\LandingHowItWorksStep;
 use App\Models\Central\LandingPricing;
 use App\Models\Central\LandingPrivacyPolicy;
+use App\Models\Central\LandingRefundPolicy;
 use App\Models\Central\LandingSeo;
 use App\Models\Central\LandingStat;
 use App\Models\Central\LandingTermsConditions;
@@ -38,6 +39,7 @@ class CmsTranslationController extends Controller
         'seo'              => ['model' => LandingSeo::class,              'label' => 'SEO',              'mode' => 'single'],
         'privacy_policy'   => ['model' => LandingPrivacyPolicy::class,    'label' => 'Privacy Policy',   'mode' => 'single'],
         'terms_conditions' => ['model' => LandingTermsConditions::class,  'label' => 'Terms & Conditions', 'mode' => 'single'],
+        'refund_policy'    => ['model' => LandingRefundPolicy::class,     'label' => 'Refund Policy',      'mode' => 'single'],
     ];
 
     /**
