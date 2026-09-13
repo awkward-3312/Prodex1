@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Schema;
  *   - 2026_03_08_100004_add_subscription_billing_fields
  *   - 2026_03_15_000001_add_cancelled_at_to_tenant_subscriptions
  *   - 2026_09_11_000000_add_cancellation_requested_at_to_tenant_subscriptions
- *   - 2026_09_10_083500_create_paddle_billing_tables (paddle_subscriptions only)
+ *   - 2026_09_10_083500_create_paddle_billing_tables (paddle_subscriptions, paddle_checkout_attempts)
  */
 trait BillingTestSchema
 {
@@ -68,6 +68,22 @@ trait BillingTestSchema
             });
         }
 
+        if (! Schema::connection('central')->hasTable('paddle_checkout_attempts')) {
+            Schema::connection('central')->create('paddle_checkout_attempts', function ($table) {
+                $table->id();
+                $table->uuid('reference')->unique();
+                $table->string('tenant_id', 64)->index();
+                $table->unsignedBigInteger('plan_id')->index();
+                $table->unsignedBigInteger('tenant_subscription_id')->nullable()->index();
+                $table->string('billing_cycle', 16);
+                $table->string('status', 24)->default('initiated')->index();
+                $table->string('paddle_subscription_id', 64)->nullable()->index();
+                $table->timestamp('expires_at')->nullable()->index();
+                $table->timestamp('claimed_at')->nullable();
+                $table->timestamps();
+            });
+        }
+
         if (! Schema::connection('central')->hasTable('paddle_subscriptions')) {
             Schema::connection('central')->create('paddle_subscriptions', function ($table) {
                 $table->id();
@@ -83,6 +99,20 @@ trait BillingTestSchema
                 $table->json('scheduled_change')->nullable();
                 $table->json('custom_data')->nullable();
                 $table->timestamp('last_event_at')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (! Schema::connection('central')->hasTable('paddle_webhook_events')) {
+            Schema::connection('central')->create('paddle_webhook_events', function ($table) {
+                $table->id();
+                $table->string('event_id', 64)->unique();
+                $table->string('event_type', 100)->index();
+                $table->timestamp('occurred_at')->nullable()->index();
+                $table->char('payload_hash', 64);
+                $table->string('status', 24)->default('processing')->index();
+                $table->timestamp('processed_at')->nullable();
+                $table->text('error')->nullable();
                 $table->timestamps();
             });
         }
