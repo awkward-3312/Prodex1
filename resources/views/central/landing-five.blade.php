@@ -556,6 +556,7 @@
                             @endif
                             <li><a href="{{ route('central.privacy-policy') }}">{{ __('landing.privacy_policy') }}</a></li>
                             <li><a href="{{ route('central.terms-conditions') }}">{{ __('landing.terms_and_conditions') }}</a></li>
+                            <li><a href="{{ route('central.refund-policy') }}">{{ __('landing.refund_policy') }}</a></li>
                             <li><a href="#" id="cookiePreferencesLink">{{ __('landing.cookie_preferences_link') }}</a></li>
                         </ul>
                     </nav>

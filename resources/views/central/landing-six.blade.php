@@ -436,6 +436,7 @@
                     @if($footer && ($footer->show_admin_login ?? false))<li><a href="{{ route('central.login') }}" class="hover:text-white">{{ __('landing.admin_login') }}</a></li>@endif
                     <li><a href="{{ route('central.privacy-policy') }}" class="hover:text-white">{{ __('landing.privacy_policy') }}</a></li>
                     <li><a href="{{ route('central.terms-conditions') }}" class="hover:text-white">{{ __('landing.terms_and_conditions') }}</a></li>
+                    <li><a href="{{ route('central.refund-policy') }}" class="hover:text-white">{{ __('landing.refund_policy') }}</a></li>
                     <li><a href="#" id="cookiePreferencesLink" class="hover:text-white">{{ __('landing.cookie_preferences_link') }}</a></li>
                 </ul>
             </div>

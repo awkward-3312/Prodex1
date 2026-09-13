@@ -12,6 +12,7 @@ use App\Models\Central\LandingHowItWorksSection;
 use App\Models\Central\LandingHowItWorksStep;
 use App\Models\Central\LandingPricing;
 use App\Models\Central\LandingPrivacyPolicy;
+use App\Models\Central\LandingRefundPolicy;
 use App\Models\Central\LandingSeo;
 use App\Models\Central\LandingStat;
 use App\Models\Central\LandingTermsConditions;
@@ -31,6 +32,7 @@ class LandingCmsService
         'seo'            => LandingSeo::class,
         'privacy_policy' => LandingPrivacyPolicy::class,
         'terms_conditions' => LandingTermsConditions::class,
+        'refund_policy' => LandingRefundPolicy::class,
     ];
 
     /**

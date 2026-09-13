@@ -38,20 +38,23 @@ class PublicSiteHardeningArchitectureTest extends TestCase
             "#Route::get\('/terms-conditions',.*->name\('central\.terms-conditions'\)#s",
             $routes
         );
-        // Neither is behind auth / a guarded group.
+        $this->assertMatchesRegularExpression(
+            "#Route::get\('/refund-policy',.*->name\('central\.refund-policy'\)#s",
+            $routes
+        );
+        // None of them is behind auth / a guarded group.
         $this->assertStringNotContainsString("privacy-policy', ['middleware' => 'auth", $routes);
+        $this->assertStringNotContainsString("refund-policy', ['middleware' => 'auth", $routes);
     }
 
     public function test_privacy_and_terms_views_emit_canonical_and_seo_head(): void
     {
-        foreach (['privacy-policy', 'terms-conditions'] as $view) {
+        foreach (['privacy-policy', 'terms-conditions', 'refund-policy'] as $view) {
             $src = $this->read("resources/views/central/{$view}.blade.php");
             $this->assertStringContainsString('$seoCanonicalUrl', $src, $view);
             $this->assertStringContainsString("central.partials.analytics", $src, $view);
+            $this->assertStringContainsString("@include('central.partials.seo-head')", $src, $view);
         }
-        // seo-head is included directly by privacy, and via landing-font by terms.
-        $this->assertStringContainsString("@include('central.partials.seo-head')", $this->read('resources/views/central/privacy-policy.blade.php'));
-        $this->assertStringContainsString("central.partials.seo-head", $this->read('resources/views/central/partials/landing-font.blade.php'));
     }
 
     public function test_privacy_policy_covers_payments_retention_and_changes(): void
@@ -283,6 +286,7 @@ class PublicSiteHardeningArchitectureTest extends TestCase
             'https://prodexhub.cloud/software-recursos-humanos-honduras/',
             'https://prodexhub.cloud/privacy-policy',
             'https://prodexhub.cloud/terms-conditions',
+            'https://prodexhub.cloud/refund-policy',
         ];
         $forbidden = ['/super', '/register', '/login', '/checkout', '/workspace', '/app', '/api', '/setup', '/update', '/portal'];
 

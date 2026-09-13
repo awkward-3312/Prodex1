@@ -273,6 +273,12 @@
                     </a>
                 </div>
                 <div class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('super.cms.refund-policy*') ? 'active' : '' }}" href="{{ route('super.cms.refund-policy') }}" data-title="{{ __('super.sidebar.refund_policy') }}">
+                        <i class="bi bi-cash-coin"></i>
+                        <span>{{ __('super.sidebar.refund_policy') }}</span>
+                    </a>
+                </div>
+                <div class="nav-item">
                     <a class="nav-link {{ request()->routeIs('super.cms.translations*') ? 'active' : '' }}" href="{{ route('super.cms.translations') }}" data-title="{{ __('super.sidebar.translations') }}">
                         <i class="bi bi-translate"></i>
                         <span>{{ __('super.sidebar.translations') }}</span>

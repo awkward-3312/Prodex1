@@ -15,6 +15,7 @@ use App\Models\Central\LandingHowItWorksSection;
 use App\Models\Central\LandingHowItWorksStep;
 use App\Models\Central\LandingPricing;
 use App\Models\Central\LandingPrivacyPolicy;
+use App\Models\Central\LandingRefundPolicy;
 use App\Models\Central\LandingSeo;
 use App\Models\Central\LandingStat;
 use App\Models\Central\LandingTermsConditions;
@@ -615,15 +616,22 @@ class LandingCmsController extends Controller
 
     public function privacyPolicy(): View
     {
+        // Fields default to '' here (not a lang-file lookup): the real
+        // comprehensive content is backfilled by the
+        // 2026_09_14_000001_seed_landing_legal_pages_content migration,
+        // which always runs before the app serves traffic. This fallback
+        // only matters for the narrow edge case of that migration not
+        // having run yet — it must never resolve to a literal missing
+        // translation key string.
         $privacy = LandingPrivacyPolicy::firstOrCreate([], [
-            'introduction'    => __('landing.privacy_intro_text'),
-            'data_collection' => __('landing.privacy_collect_text'),
-            'data_usage'      => __('landing.privacy_use_text'),
-            'cookies_usage'   => __('landing.privacy_cookies_text'),
-            'third_party'     => __('landing.privacy_third_party_text'),
-            'data_protection' => __('landing.privacy_protection_text'),
-            'user_rights'     => __('landing.privacy_rights_text'),
-            'contact_info'    => __('landing.privacy_contact_text'),
+            'introduction'    => '',
+            'data_collection' => '',
+            'data_usage'      => '',
+            'cookies_usage'   => '',
+            'third_party'     => '',
+            'data_protection' => '',
+            'user_rights'     => '',
+            'contact_info'    => '',
             'last_updated'    => now()->toDateString(),
             'is_active'       => true,
         ]);
@@ -657,15 +665,18 @@ class LandingCmsController extends Controller
 
     public function termsConditions(): View
     {
+        // See the comment in privacyPolicy() above: '' fallbacks, not
+        // lang-file lookups — the seeding migration is the real source of
+        // content for these fields.
         $terms = LandingTermsConditions::firstOrCreate([], [
-            'acceptance'            => __('landing.terms_acceptance_text'),
-            'use_license'           => __('landing.terms_license_text'),
-            'user_accounts'         => __('landing.terms_accounts_text'),
-            'payments'              => __('landing.terms_payments_text'),
-            'prohibited'            => __('landing.terms_prohibited_text'),
-            'intellectual_property' => __('landing.terms_ip_text'),
-            'liability'             => __('landing.terms_liability_text'),
-            'governing_law'         => __('landing.terms_law_text'),
+            'acceptance'            => '',
+            'use_license'           => '',
+            'user_accounts'         => '',
+            'payments'              => '',
+            'prohibited'            => '',
+            'intellectual_property' => '',
+            'liability'             => '',
+            'governing_law'         => '',
             'last_updated'          => now()->toDateString(),
             'is_active'             => true,
         ]);
@@ -693,6 +704,51 @@ class LandingCmsController extends Controller
         $this->clearLandingCache();
 
         return redirect()->route('super.cms.terms-conditions')->with('success', __('super.terms.updated'));
+    }
+
+    // ── Refund & Cancellation Policy ────────────────────────────────────────
+
+    public function refundPolicy(): View
+    {
+        // See the comment in privacyPolicy() above: '' fallbacks, not
+        // lang-file lookups — the seeding migration is the real source of
+        // content for these fields.
+        $refund = LandingRefundPolicy::firstOrCreate([], [
+            'overview'              => '',
+            'subscriptions_trials'  => '',
+            'cancellations'         => '',
+            'billing_errors'        => '',
+            'refund_eligibility'    => '',
+            'chargebacks'           => '',
+            'how_to_request'        => '',
+            'payment_processor'     => '',
+            'last_updated'          => now()->toDateString(),
+            'is_active'             => true,
+        ]);
+
+        return view('central.super.cms.refund-policy', compact('refund'));
+    }
+
+    public function refundPolicyUpdate(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'overview'             => ['nullable', 'string'],
+            'subscriptions_trials' => ['nullable', 'string'],
+            'cancellations'        => ['nullable', 'string'],
+            'billing_errors'       => ['nullable', 'string'],
+            'refund_eligibility'   => ['nullable', 'string'],
+            'chargebacks'          => ['nullable', 'string'],
+            'how_to_request'       => ['nullable', 'string'],
+            'payment_processor'    => ['nullable', 'string'],
+            'last_updated'         => ['nullable', 'date'],
+        ]);
+
+        $validated['is_active'] = $request->boolean('is_active');
+
+        LandingRefundPolicy::firstOrCreate([])->update($validated);
+        $this->clearLandingCache();
+
+        return redirect()->route('super.cms.refund-policy')->with('success', __('super.refund.updated'));
     }
 
     // ── How It Works ──────────────────────────────────────────────────────

@@ -9,11 +9,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('landing.privacy_policy') }} — {{ $appName }}</title>
+    <title>{{ __('landing.refund_policy') }} — {{ $appName }}</title>
     @php
-        $seoTitle = __('landing.privacy_policy') . ' — ' . $appName;
-        $seoDescription = __('landing.privacy_meta_description');
-        $seoCanonicalUrl = rtrim(config('seo.base_url', 'https://prodexhub.cloud'), '/') . '/privacy-policy';
+        $seoTitle = __('landing.refund_policy') . ' — ' . $appName;
+        $seoDescription = __('landing.refund_meta_description');
+        $seoCanonicalUrl = rtrim(config('seo.base_url', 'https://prodexhub.cloud'), '/') . '/refund-policy';
         $seoType = 'article';
     @endphp
     @include('central.partials.seo-head')
@@ -24,6 +24,7 @@
     <link href="{{ asset('assets_super/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/bootstrap-icons.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/landing.css') }}" rel="stylesheet">
+    @include('central.partials.landing-font')
 </head>
 <body class="privacy-policy-body">
 
@@ -50,10 +51,10 @@
             <div class="container">
                 <div class="privacy-hero-inner">
                     <p class="privacy-hero-eyebrow">{{ $appName }}</p>
-                    <h1>{{ __('landing.privacy_policy') }}</h1>
+                    <h1>{{ __('landing.refund_policy') }}</h1>
                     <p class="privacy-updated">
                         <i class="bi bi-calendar3" aria-hidden="true"></i>
-                        <span>{{ __('landing.privacy_last_updated') }} · {{ $privacy->last_updated ? $privacy->last_updated->format('F j, Y') : now()->format('F j, Y') }}</span>
+                        <span>{{ __('landing.refund_last_updated') }} · {{ $refund->last_updated ? $refund->last_updated->format('F j, Y') : now()->format('F j, Y') }}</span>
                     </p>
                 </div>
             </div>
@@ -61,24 +62,14 @@
 
         @php
             $sections = [
-                ['id' => 'introduction',    'title' => __('landing.privacy_intro_title'),            'content' => $privacy->introduction],
-                ['id' => 'roles',           'title' => __('landing.privacy_roles_title'),            'content' => __('landing.privacy_roles_text')],
-                ['id' => 'data-collect',    'title' => __('landing.privacy_collect_title'),          'content' => $privacy->data_collection],
-                ['id' => 'technical',       'title' => __('landing.privacy_technical_title'),        'content' => __('landing.privacy_technical_text')],
-                ['id' => 'customer-content', 'title' => __('landing.privacy_customer_content_title'), 'content' => __('landing.privacy_customer_content_text')],
-                ['id' => 'data-use',        'title' => __('landing.privacy_use_title'),              'content' => $privacy->data_usage],
-                ['id' => 'legal-basis',     'title' => __('landing.privacy_legal_basis_title'),      'content' => __('landing.privacy_legal_basis_text')],
-                ['id' => 'payments',        'title' => __('landing.privacy_payments_title'),         'content' => __('landing.privacy_payments_text')],
-                ['id' => 'third-party',     'title' => __('landing.privacy_third_party_title'),      'content' => $privacy->third_party],
-                ['id' => 'international',   'title' => __('landing.privacy_international_title'),    'content' => __('landing.privacy_international_text')],
-                ['id' => 'protection',      'title' => __('landing.privacy_protection_title'),       'content' => $privacy->data_protection],
-                ['id' => 'retention',       'title' => __('landing.privacy_retention_title'),        'content' => __('landing.privacy_retention_text')],
-                ['id' => 'rights',          'title' => __('landing.privacy_rights_title'),           'content' => $privacy->user_rights],
-                ['id' => 'minors',          'title' => __('landing.privacy_minors_title'),           'content' => __('landing.privacy_minors_text')],
-                ['id' => 'cookies',         'title' => __('landing.privacy_cookies_title'),          'content' => $privacy->cookies_usage],
-                ['id' => 'external-links',  'title' => __('landing.privacy_external_links_title'),   'content' => __('landing.privacy_external_links_text')],
-                ['id' => 'changes',         'title' => __('landing.privacy_changes_title'),          'content' => __('landing.privacy_changes_text')],
-                ['id' => 'contact',         'title' => __('landing.privacy_contact_title'),          'content' => $privacy->contact_info],
+                ['id' => 'overview',             'title' => __('landing.refund_overview_title'),             'content' => $refund->overview],
+                ['id' => 'subscriptions-trials', 'title' => __('landing.refund_subscriptions_trials_title'), 'content' => $refund->subscriptions_trials],
+                ['id' => 'cancellations',        'title' => __('landing.refund_cancellations_title'),        'content' => $refund->cancellations],
+                ['id' => 'billing-errors',       'title' => __('landing.refund_billing_errors_title'),       'content' => $refund->billing_errors],
+                ['id' => 'eligibility',          'title' => __('landing.refund_eligibility_title'),          'content' => $refund->refund_eligibility],
+                ['id' => 'chargebacks',          'title' => __('landing.refund_chargebacks_title'),          'content' => $refund->chargebacks],
+                ['id' => 'how-to-request',       'title' => __('landing.refund_how_to_request_title'),       'content' => $refund->how_to_request],
+                ['id' => 'payment-processor',    'title' => __('landing.refund_payment_processor_title'),    'content' => $refund->payment_processor],
             ];
             $activeSections = array_filter($sections, fn($s) => !empty($s['content']));
         @endphp
@@ -100,7 +91,7 @@
                             <h2>{{ $section['title'] }}</h2>
                             <div class="privacy-section__body">{!! nl2br(e($section['content'])) !!}</div>
 
-                            @if($section['id'] === 'contact' && $footer)
+                            @if($section['id'] === 'how-to-request' && $footer)
                                 <div class="privacy-contact-info">
                                     @if($footer->contact_email)
                                         <a href="mailto:{{ $footer->contact_email }}">
@@ -111,9 +102,6 @@
                                         <a href="tel:{{ $footer->contact_phone }}">
                                             <i class="bi bi-telephone"></i> {{ $footer->contact_phone }}
                                         </a>
-                                    @endif
-                                    @if($footer->address)
-                                        <span><i class="bi bi-geo-alt"></i> {{ $footer->address }}</span>
                                     @endif
                                 </div>
                             @endif
