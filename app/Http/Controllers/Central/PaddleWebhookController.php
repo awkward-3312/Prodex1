@@ -358,10 +358,19 @@ class PaddleWebhookController extends Controller
         }
 
         $payment = $this->findOrCreateTransactionPayment($eventId, $data, $subscription, $gatewayAmount);
-        $lifecycle->markProviderPaid($payment, [
+        $outcome = $lifecycle->markProviderPaid($payment, [
             'gateway_payment_id' => $transactionId,
             'transaction_id' => $transactionId,
         ]);
+
+        if ($outcome['refused']) {
+            // The payment row was already refunded/superseded: this
+            // transaction.completed is a late/replayed signal for money that
+            // was already given back or superseded by a newer payment. It
+            // must not reactivate access either.
+            Log::warning("Paddle transaction {$transactionId} completed event ignored: payment {$payment->id} is already {$payment->status}.");
+            return;
+        }
 
         // transaction.completed proves money was captured. If the corresponding
         // subscription event is delayed, keep access available now; the next

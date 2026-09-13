@@ -67,6 +67,17 @@ class SubscriptionLifecycleService
         if ($payment->isPaid()) {
             return [
                 'already_paid'             => true,
+                'refused'                  => false,
+                'subscription_activated'   => false,
+                'subscription_renewed'     => false,
+                'provisioning_dispatched'  => false,
+            ];
+        }
+
+        if ($this->refusesPaidTransition($payment)) {
+            return [
+                'already_paid'             => false,
+                'refused'                  => true,
                 'subscription_activated'   => false,
                 'subscription_renewed'     => false,
                 'provisioning_dispatched'  => false,
@@ -97,6 +108,7 @@ class SubscriptionLifecycleService
 
         return [
             'already_paid'            => false,
+            'refused'                 => false,
             'subscription_activated'  => $subscriptionActivated,
             'subscription_renewed'    => $subscriptionRenewed,
             'provisioning_dispatched' => $provisioningDispatched,
@@ -115,6 +127,15 @@ class SubscriptionLifecycleService
         if ($payment->isPaid()) {
             return [
                 'already_paid' => true,
+                'refused' => false,
+                'provisioning_dispatched' => false,
+            ];
+        }
+
+        if ($this->refusesPaidTransition($payment)) {
+            return [
+                'already_paid' => false,
+                'refused' => true,
                 'provisioning_dispatched' => false,
             ];
         }
@@ -126,8 +147,32 @@ class SubscriptionLifecycleService
 
         return [
             'already_paid' => false,
+            'refused' => false,
             'provisioning_dispatched' => $this->runPaidSideEffects($payment, $payment->subscription),
         ];
+    }
+
+    /**
+     * Valid sources for a "paid" transition are PENDING (first settlement)
+     * and FAILED (the provider genuinely recovered the same attempt — e.g. a
+     * Paddle transaction.completed for a txn_id that previously had a
+     * payment_failed event, matched by findOrCreateTransactionPayment()'s
+     * gateway_payment_id lookup). REFUNDED and SUPERSEDED are terminal: a
+     * late/replayed success signal (a gateway return-URL revisited, a
+     * redelivered webhook) must never resurrect money that was already given
+     * back or that a newer payment took over from.
+     */
+    private function refusesPaidTransition(TenantBillingPayment $payment): bool
+    {
+        if (in_array($payment->status, [TenantBillingPayment::STATUS_PENDING, TenantBillingPayment::STATUS_FAILED], true)) {
+            return false;
+        }
+
+        Log::warning(
+            "SubscriptionLifecycleService: refusing invalid payment transition {$payment->status} -> paid for payment {$payment->id}."
+        );
+
+        return true;
     }
 
     /**

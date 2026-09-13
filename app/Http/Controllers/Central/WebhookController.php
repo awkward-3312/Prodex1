@@ -84,6 +84,11 @@ class WebhookController extends Controller
             return;
         }
 
+        if ($outcome['refused']) {
+            Log::warning("Webhook: Ignored a paid event for payment {$payment->id} (status is {$payment->status}, not a valid source for paid).");
+            return;
+        }
+
         Log::info("Webhook: Payment {$payment->id} marked as paid for tenant {$payment->tenant_id}.", $outcome);
     }
 

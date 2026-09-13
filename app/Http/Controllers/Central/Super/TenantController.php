@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Central\Super;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Central\WebhookController;
 use App\Jobs\ProvisionTenantWorkspace;
 use App\Mail\TenantApprovedMail;
 use App\Mail\TenantRejectedMail;
@@ -13,6 +12,7 @@ use App\Models\Central\PendingRegistration;
 use App\Models\Central\TenantBillingPayment;
 use App\Models\Central\TenantSubscription;
 use App\Models\User;
+use App\Services\Billing\SubscriptionLifecycleService;
 use App\Services\CurrencyConversionService;
 use App\Services\PaymentGateways\PaymentGatewayFactory;
 use App\Tenant;
@@ -665,23 +665,17 @@ class TenantController extends Controller
             $result = $gateway->verifyPaymentStatus($payment->gateway_payment_id);
 
             if ($result['status'] === 'paid') {
-                $payment->markPaid(
-                    $result['gateway_payment_id'] ?? null,
-                    $result['transaction_id'] ?? null
-                );
+                // markPaid() itself dispatches provisioning (via its own
+                // shared-hosting/pending-tenant check) as part of its paid
+                // side effects — no separate dispatch needed here.
+                $outcome = app(SubscriptionLifecycleService::class)->markPaid($payment, [
+                    'gateway_payment_id' => $result['gateway_payment_id'] ?? null,
+                    'transaction_id' => $result['transaction_id'] ?? null,
+                ]);
 
-                $subscription = $payment->subscription;
-                if ($subscription && $subscription->status !== TenantSubscription::STATUS_ACTIVE) {
-                    $subscription->activate();
+                if (! $outcome['refused']) {
+                    Log::info("Payment {$payment->id} verified as paid via direct gateway check for tenant {$tenant->id}.");
                 }
-
-                // Dispatch provisioning for VPS mode
-                $settings = GeneralSetting::instance();
-                if (! $settings->isSharedHosting()) {
-                    app(WebhookController::class)->dispatchProvisioning($tenant->id);
-                }
-
-                Log::info("Payment {$payment->id} verified as paid via direct gateway check for tenant {$tenant->id}.");
             }
         } catch (\Throwable $e) {
             Log::warning("Direct payment verification failed for payment {$payment->id}: {$e->getMessage()}");
