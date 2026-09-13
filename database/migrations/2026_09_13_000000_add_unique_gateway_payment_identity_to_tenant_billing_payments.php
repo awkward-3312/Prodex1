@@ -45,8 +45,16 @@ return new class extends Migration
             ->where('gateway_payment_id', '')
             ->update(['gateway_payment_id' => null]);
 
+        // A unique index only flags a collision when EVERY column in the
+        // key is non-null — a NULL gateway (or NULL gateway_payment_id)
+        // exempts that row from the constraint entirely. The duplicate scan
+        // must apply the exact same exemption, or it reports false-positive
+        // "duplicates" for rows that would never actually conflict (e.g. two
+        // legacy rows that both have gateway=NULL) and blocks a migration
+        // that would have run cleanly.
         $duplicates = DB::connection('central')->table('tenant_billing_payments')
             ->select('gateway', 'gateway_payment_id', DB::raw('COUNT(*) as c'))
+            ->whereNotNull('gateway')
             ->whereNotNull('gateway_payment_id')
             ->groupBy('gateway', 'gateway_payment_id')
             ->having('c', '>', 1)

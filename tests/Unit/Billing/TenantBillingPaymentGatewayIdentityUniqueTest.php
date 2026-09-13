@@ -115,6 +115,23 @@ class TenantBillingPaymentGatewayIdentityUniqueTest extends TestCase
         $this->makePayment(['gateway' => 'paypal', 'gateway_payment_id' => 'order_1']);
     }
 
+    /**
+     * A unique index only flags a collision when EVERY key column is
+     * non-null — two rows sharing a gateway_payment_id but both with
+     * gateway=NULL would never actually conflict under the constraint. The
+     * pre-flight duplicate scan must apply the same exemption, or it
+     * false-positives and blocks a migration that would run cleanly.
+     */
+    public function test_the_migration_does_not_false_positive_on_rows_with_a_null_gateway(): void
+    {
+        $this->makePayment(['gateway' => null, 'gateway_payment_id' => 'shared_ref']);
+        $this->makePayment(['gateway' => null, 'gateway_payment_id' => 'shared_ref']);
+
+        $this->applyMigration();
+
+        $this->assertDatabaseCount('tenant_billing_payments', 2, 'central');
+    }
+
     public function test_the_migration_refuses_to_run_over_pre_existing_real_duplicates(): void
     {
         // Two independent payment rows already sharing a real

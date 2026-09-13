@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Billing;
 
+use App\Http\Controllers\Central\PaddleWebhookController;
 use App\Http\Controllers\Central\WebhookController;
 use App\Models\Central\TenantBillingPayment;
 use App\Models\Central\TenantSubscription;
@@ -145,5 +146,59 @@ class SubscriptionLifecycleRefundGuardTest extends TestCase
 
         $this->assertSame(TenantBillingPayment::STATUS_REFUNDED, $payment->fresh()->status);
         $this->assertSame(TenantSubscription::STATUS_CANCELLED, $subscription->fresh()->status);
+    }
+
+    /**
+     * A Paddle chargeback event redelivered (or arriving) after the same
+     * payment was already refunded ordinarily must still suspend the
+     * subscription — the money was genuinely collected and given back at
+     * some point, so this is not the "payment never collected anything"
+     * case the guard exists to refuse.
+     */
+    public function test_paddle_chargeback_on_an_already_refunded_payment_still_suspends_the_subscription(): void
+    {
+        $payment = $this->makePayment(TenantBillingPayment::STATUS_REFUNDED, TenantSubscription::STATUS_ACTIVE);
+        $payment->update(['gateway' => 'paddle', 'gateway_payment_id' => 'txn_cb_1', 'transaction_id' => 'txn_cb_1']);
+        $subscription = $payment->subscription;
+
+        $controller = new PaddleWebhookController();
+        $method = (new ReflectionClass($controller))->getMethod('handleAdjustment');
+        $method->setAccessible(true);
+        $method->invoke($controller, [
+            'action' => 'chargeback',
+            'status' => 'approved',
+            'transaction_id' => 'txn_cb_1',
+            'id' => 'adj_cb_1',
+            'type' => 'full',
+        ], $this->lifecycle);
+
+        $this->assertSame(TenantBillingPayment::STATUS_REFUNDED, $payment->fresh()->status);
+        $this->assertSame(TenantSubscription::STATUS_SUSPENDED, $subscription->fresh()->status);
+    }
+
+    /**
+     * A chargeback referencing a payment that never actually collected
+     * money (pending/failed/superseded) must not suspend the subscription —
+     * there is nothing real to charge back.
+     */
+    public function test_paddle_chargeback_on_a_never_paid_payment_does_not_suspend_the_subscription(): void
+    {
+        $payment = $this->makePayment(TenantBillingPayment::STATUS_PENDING, TenantSubscription::STATUS_ACTIVE);
+        $payment->update(['gateway' => 'paddle', 'gateway_payment_id' => 'txn_cb_2', 'transaction_id' => 'txn_cb_2']);
+        $subscription = $payment->subscription;
+
+        $controller = new PaddleWebhookController();
+        $method = (new ReflectionClass($controller))->getMethod('handleAdjustment');
+        $method->setAccessible(true);
+        $method->invoke($controller, [
+            'action' => 'chargeback',
+            'status' => 'approved',
+            'transaction_id' => 'txn_cb_2',
+            'id' => 'adj_cb_2',
+            'type' => 'full',
+        ], $this->lifecycle);
+
+        $this->assertSame(TenantBillingPayment::STATUS_PENDING, $payment->fresh()->status);
+        $this->assertSame(TenantSubscription::STATUS_ACTIVE, $subscription->fresh()->status);
     }
 }
