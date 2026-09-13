@@ -24,6 +24,22 @@ class MobilePosSaleSubmissionService
             return $this->mobileResponse($existing, true, [], now()->toIso8601String());
         }
 
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($user, $payload) {
+            try {
+                app(MobileCashRegisterSessionResolver::class)->requireOpen($user, true);
+            } catch (MobilePosPreflightException $error) {
+                // A duplicate may have committed while this request waited for the
+                // register lock and a close followed it. Recover that committed sale.
+                $existing = Sale::with('sarFiscalDocument')->where('sale_uuid', $payload['sale_uuid'])->lockForUpdate()->first();
+                if ($existing) return $this->mobileResponse($existing, true, [], now()->toIso8601String());
+                throw $error;
+            }
+            return $this->submitNew($user, $payload);
+        });
+    }
+
+    private function submitNew(User $user, array $payload): array
+    {
         $preflight = $this->preflight->preflight($user, [
             'client_id' => $payload['client_id'],
             'lines' => $payload['lines'],

@@ -599,6 +599,46 @@ class MobilePosCheckoutPreflightTest extends TestCase
         ])->assertOk();
     }
 
+    public static function registerMismatches(): array
+    {
+        return [['none'], ['user_id'], ['branch_id'], ['inventory_location_id'], ['cash_drawer_id'], ['closed']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('registerMismatches')]
+    public function test_preflight_and_submit_require_exact_open_register_without_mutations(string $mismatch): void
+    {
+        $setup = $this->readySetup();
+        $product = $this->product(['price' => 100, 'TaxNet' => 0]);
+        $this->stock($setup['location']->id, $product->id, null, 5, 0);
+        if ($mismatch === 'none') DB::table('cash_registers')->delete();
+        elseif ($mismatch === 'closed') DB::table('cash_registers')->update(['status' => 'closed']);
+        else DB::table('cash_registers')->update([$mismatch => 999]);
+        $before = $this->mutationSnapshot($setup['accountId'], $setup['client']->id, $setup['location']->id, $product->id);
+        $payment = [['payment_method_id' => $setup['cashId'], 'amount' => '100.00']];
+        $payload = ['client_id' => $setup['client']->id, 'lines' => [['product_id' => $product->id, 'quantity' => '1']], 'payment_intent' => $payment];
+        $this->actingAs($setup['user'], 'api')->postJson('/api/mobile/pos/sale-preflight-test', $payload)
+            ->assertStatus(409)->assertJsonPath('error.code', 'cash_register_not_open');
+        unset($payload['payment_intent']);
+        $payload['payments'] = $payment;
+        $payload['sale_uuid'] = \Illuminate\Support\Str::uuid()->toString();
+        $this->postJson('/api/mobile/sales-test', $payload)->assertStatus(409)->assertJsonPath('error.code', 'cash_register_not_open');
+        $this->assertSame($before, $this->mutationSnapshot($setup['accountId'], $setup['client']->id, $setup['location']->id, $product->id));
+    }
+
+    public function test_committed_sale_retry_succeeds_after_register_closes(): void
+    {
+        $setup = $this->readySetup();
+        $product = $this->product(['price' => 100, 'TaxNet' => 0]);
+        $this->stock($setup['location']->id, $product->id, null, 5, 0);
+        $uuid = \Illuminate\Support\Str::uuid()->toString();
+        $first = $this->submitFiscalTestSale($setup, $product, '1', '100.00', $uuid);
+        DB::table('cash_registers')->update(['status' => 'closed']);
+        $before = $this->mutationSnapshot($setup['accountId'], $setup['client']->id, $setup['location']->id, $product->id);
+        $retry = $this->submitFiscalTestSale($setup, $product, '1', '100.00', $uuid);
+        $retry->assertJsonPath('data.idempotent', true)->assertJsonPath('data.sale.id', $first->json('data.sale.id'));
+        $this->assertSame($before, $this->mutationSnapshot($setup['accountId'], $setup['client']->id, $setup['location']->id, $product->id));
+    }
+
     private function readySetup(bool $withAccount = true): array
     {
         $client = $this->client(['name' => 'Cliente Default']);
@@ -615,6 +655,8 @@ class MobilePosCheckoutPreflightTest extends TestCase
             'default_inventory_location_id' => $location->id,
             'default_cash_drawer_id' => $drawer->id,
         ]);
+
+        DB::table('cash_registers')->insert(['user_id' => $user->id, 'branch_id' => $branch->id, 'inventory_location_id' => $location->id, 'cash_drawer_id' => $drawer->id, 'status' => 'open']);
 
         return compact('client', 'cashId', 'accountId', 'branch', 'location', 'drawer', 'user');
     }
@@ -823,6 +865,14 @@ class MobilePosCheckoutPreflightTest extends TestCase
 
     private function createSchema(): void
     {
+        Schema::create('cash_registers', function ($table) {
+            $table->id();
+            $table->integer('user_id');
+            $table->integer('branch_id')->nullable();
+            $table->integer('inventory_location_id')->nullable();
+            $table->integer('cash_drawer_id')->nullable();
+            $table->string('status');
+        });
         foreach ([
             'product_serials',
             'product_batches',

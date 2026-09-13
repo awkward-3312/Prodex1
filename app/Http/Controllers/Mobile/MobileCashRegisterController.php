@@ -20,10 +20,10 @@ class MobileCashRegisterController extends PosCashRegisterController
         $user = $request->user('api');
         abort_unless($user, 401);
 
-        $response = $this->getCurrentRegister($request, $user->id);
-        $payload = $response->getData(true);
-        $register = $payload['register'] ?? null;
-        $summary = $payload['closing_summary'] ?? null;
+        $this->authorizeForUser($user, 'Sales_pos', \App\Models\Sale::class);
+        $model = app(\App\Services\Mobile\MobileCashRegisterSessionResolver::class)->current($user);
+        $register = $model?->load('branch', 'inventoryLocation', 'warehouse', 'cashDrawer')->toArray();
+        $summary = $model ? $this->buildClosingSummary($model) : null;
 
         if (! $register || ! $summary) {
             return response()->json(['data' => ['status' => 'closed', 'register' => null, 'summary' => null]]);
@@ -41,6 +41,7 @@ class MobileCashRegisterController extends PosCashRegisterController
                 'cash_drawer' => $this->entity($register['cash_drawer'] ?? null),
             ],
             'summary' => [
+                'denominations' => $summary['denominations'],
                 'transaction_count' => (int) $summary['transaction_count'],
                 'total_sales' => $this->money($summary['total_sales']),
                 'cash_sales' => $this->money($summary['cash_sales']),

@@ -66,6 +66,7 @@ class MobileCashRegisterCurrentEndpointTest extends TestCase
         $user = $this->user(['role_id' => 2, 'firstname' => 'Cajero', 'lastname' => 'Uno'], ['Pos_view']);
         $branch = $this->branch(['name' => 'Sucursal Centro']);
         $location = $this->location($branch->id, ['name' => 'Piso de venta']);
+        $this->assignOperationalContext($user, $branch->id, $location->id);
         $cash = $this->paymentMethod('Efectivo');
         $card = $this->paymentMethod('Tarjeta');
 
@@ -112,6 +113,7 @@ class MobileCashRegisterCurrentEndpointTest extends TestCase
         $user = $this->user(['role_id' => 2], ['Pos_view']);
         $branch = $this->branch();
         $location = $this->location($branch->id);
+        $this->assignOperationalContext($user, $branch->id, $location->id);
         $cash = $this->paymentMethod('Efectivo');
         $this->cashRegister(['user_id' => $user->id, 'branch_id' => $branch->id, 'inventory_location_id' => $location->id, 'opening_balance' => 100]);
 
