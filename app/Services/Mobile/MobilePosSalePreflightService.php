@@ -25,6 +25,7 @@ class MobilePosSalePreflightService
     public function preflight(User $user, array $payload): array
     {
         $context = $this->resolvedContext($user);
+        app(MobileCashRegisterSessionResolver::class)->requireOpen($user, false, $context);
         $client = $this->client((int) $payload['client_id']);
         $lines = [];
         $errors = [];

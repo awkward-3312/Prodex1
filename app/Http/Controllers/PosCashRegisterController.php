@@ -128,22 +128,15 @@ class PosCashRegisterController extends CashRegisterController
         ]);
     }
 
-    public function closeRegister(Request $request, UserOperationalAssignmentService $assignmentService)
+    public function applyClosing(CashRegister $register, array $data, $closedByUser): void
     {
-        $response = parent::closeRegister($request, $assignmentService);
-
-        if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300 && $request->filled('register_id')) {
-            $register = CashRegister::with('branch', 'inventoryLocation')->find($request->integer('register_id'));
-            if ($register) {
-                $register->branch_id_snapshot = $register->branch_id;
-                $register->branch_name_snapshot = optional($register->branch)->name;
-                $register->inventory_location_id_snapshot = $register->inventory_location_id;
-                $register->inventory_location_name_snapshot = optional($register->inventoryLocation)->name;
-                $register->save();
-            }
-        }
-
-        return $response;
+        parent::applyClosing($register, $data, $closedByUser);
+        $register->loadMissing('branch', 'inventoryLocation');
+        $register->branch_id_snapshot = $register->branch_id;
+        $register->branch_name_snapshot = optional($register->branch)->name;
+        $register->inventory_location_id_snapshot = $register->inventory_location_id;
+        $register->inventory_location_name_snapshot = optional($register->inventoryLocation)->name;
+        $register->save();
     }
 
     protected function buildClosingSummary(CashRegister $register, ?Carbon $to = null): array

@@ -145,14 +145,32 @@ class CashRegisterController extends BaseController
             'notes' => 'nullable|string',
         ]);
 
-        $register = CashRegister::findOrFail($data['register_id']);
-        if (! Auth::user()->hasPermissionName('cash_register_override_assignment') && (int) $register->user_id !== (int) Auth::id()) {
-            abort(403);
-        }
-        if ($register->status !== 'open') {
-            return response()->json(['success' => false, 'message' => 'Register already closed'], 409);
-        }
+        return DB::transaction(function () use ($request, $data) {
+            $register = CashRegister::whereKey($data['register_id'])->lockForUpdate()->firstOrFail();
+            $user = $request->user('api');
+            if (! $user->hasPermissionName('cash_register_override_assignment') && (int) $register->user_id !== (int) $user->id) {
+                abort(403);
+            }
+            if ($register->status !== 'open') {
+                return response()->json(['success' => false, 'message' => 'Register already closed'], 409);
+            }
+            $this->applyClosing($register, $data, $user);
+            return response()->json([
+                'success' => true,
+                'register' => $register,
+                'summary' => [
+                    'expected_cash' => $register->expected_cash,
+                    'counted_cash' => $register->counted_cash,
+                    'difference' => $register->difference,
+                    'card_difference' => $register->card_difference,
+                ],
+            ]);
+        });
+    }
 
+    /** Shared closing engine. Caller holds the register lock inside a transaction. */
+    public function applyClosing(CashRegister $register, array $data, $closedByUser): void
+    {
         $now = Carbon::now();
         $summary = $this->buildClosingSummary($register, $now);
         $totalSales = (float) $summary['total_sales'];
@@ -163,7 +181,7 @@ class CashRegisterController extends BaseController
             ? (float) $data['card_terminal_total']
             : null;
         $cardDifference = $cardTerminalTotal === null ? null : $cardTerminalTotal - (float) $summary['card_system_total'];
-        $identity = $this->buildSessionIdentitySnapshot($register, $now, Auth::user());
+        $identity = $this->buildSessionIdentitySnapshot($register, $now, $closedByUser);
         $closingStatus = $this->closingAuditStatus($difference);
 
         $register->closing_balance = $data['closing_balance'] ?? $counted;
@@ -227,16 +245,6 @@ class CashRegisterController extends BaseController
         }
         $register->save();
 
-        return response()->json([
-            'success' => true,
-            'register' => $register,
-            'summary' => [
-                'expected_cash' => $expectedCash,
-                'counted_cash' => $counted,
-                'difference' => $difference,
-                'card_difference' => $cardDifference,
-            ],
-        ]);
     }
 
     protected function buildClosingSummary(CashRegister $register, ?Carbon $to = null): array
