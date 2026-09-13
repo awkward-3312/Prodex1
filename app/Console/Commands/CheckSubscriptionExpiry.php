@@ -8,12 +8,17 @@ use App\Models\Central\SubscriptionReminder;
 use App\Models\Central\TenantSubscription;
 use App\Services\CentralSmsSender;
 use App\Services\EmailNotificationService;
+use App\Support\LocksBillingSubscription;
 use App\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CheckSubscriptionExpiry extends Command
 {
+    use LocksBillingSubscription;
+
     protected $signature = 'subscriptions:check-expiry';
 
     protected $description = 'Send subscription expiry / trial reminders and process expired subscriptions';
@@ -149,37 +154,60 @@ class CheckSubscriptionExpiry extends Command
         }
     }
 
+    /**
+     * Finalize every ACTIVE/CANCELLED/SUSPENDED subscription whose ends_at
+     * has passed (by calendar date, matching the previous whereDate
+     * semantics) to EXPIRED.
+     *
+     * SUSPENDED is included because EnsureActiveSubscription never grants
+     * access to it in the first place — it's already access-less, so
+     * "terminal state" here is only about not leaving it stuck forever with
+     * a stale cancellation_requested_at once its own ends_at has lapsed.
+     * EXPIRED is the existing terminal state already used for the other two
+     * branches; nothing new is introduced.
+     *
+     * Cron vs. cancel/resume/Paddle-webhook concurrency: this only scans for
+     * candidate IDs up front. Every decision and write happens inside
+     * finalizeExpiredSubscription(), under the SAME 'billing:cancel:{id}'
+     * lock used by cancel/resume/sync/transaction handlers, re-reading with
+     * lockForUpdate() so a stale pre-lock snapshot can never decide or
+     * overwrite a concurrent writer's committed state. A subscription that
+     * no longer qualifies by the time the lock is acquired (paid, resumed,
+     * cancellation confirmed, etc. in the meantime) is safely skipped — this
+     * also makes repeated cron runs idempotent, since a row already EXPIRED
+     * is filtered out by the initial scan on the next run.
+     */
     protected function checkExpired(): void
     {
-        // Expire active subscriptions that have passed their end date
-        $subscriptions = TenantSubscription::where('status', TenantSubscription::STATUS_ACTIVE)
+        $candidateIds = TenantSubscription::whereIn('status', [
+                TenantSubscription::STATUS_ACTIVE,
+                TenantSubscription::STATUS_CANCELLED,
+                TenantSubscription::STATUS_SUSPENDED,
+            ])
             ->whereNotNull('ends_at')
             ->whereDate('ends_at', '<', now())
-            ->with('tenant', 'plan')
-            ->get();
+            ->pluck('id');
 
-        foreach ($subscriptions as $sub) {
-            $tenant = $sub->tenant;
-            if (! $tenant) {
+        foreach ($candidateIds as $id) {
+            $outcome = $this->finalizeExpiredSubscription((int) $id);
+            if ($outcome === null) {
                 continue;
             }
 
-            // A cancellation was scheduled at Paddle for period end but its
-            // subscription.canceled webhook never confirmed it before this
-            // cron runs — treat it the same as an already-confirmed
-            // cancellation reaching expiry (below), not a plain expiry, and
-            // clear the now-meaningless flag on this terminal row.
-            $wasPendingCancellation = $sub->cancellation_requested_at !== null;
-            $sub->update([
-                'status' => TenantSubscription::STATUS_EXPIRED,
-                'cancellation_requested_at' => null,
-            ]);
+            [$sub, $tenant, $wasPendingCancellation, $originalStatus] = $outcome;
 
-            if ($wasPendingCancellation) {
+            // A confirmed cancellation reaching its end, or a still-live
+            // (ACTIVE/SUSPENDED) subscription whose cancellation was
+            // scheduled but never confirmed before this cron ran, are both
+            // "the plan ended because the tenant asked it to" — not a plain
+            // unexpected expiry.
+            if ($originalStatus === TenantSubscription::STATUS_CANCELLED || $wasPendingCancellation) {
                 $this->deliverEmail(
                     $sub, $tenant, SubscriptionReminder::TYPE_PLAN_ENDED, 0, $sub->ends_at,
                     fn () => EmailNotificationService::planEnded($tenant),
-                    'Plan-ended notice (was pending cancellation)'
+                    $originalStatus === TenantSubscription::STATUS_CANCELLED
+                        ? 'Plan-ended notice (was cancelled)'
+                        : "Plan-ended notice (was pending cancellation, {$originalStatus})"
                 );
                 continue;
             }
@@ -187,35 +215,76 @@ class CheckSubscriptionExpiry extends Command
             $this->deliverEmail(
                 $sub, $tenant, SubscriptionReminder::TYPE_EXPIRED, 0, $sub->ends_at,
                 fn () => EmailNotificationService::subscriptionExpired($tenant),
-                'Expired notice'
+                $originalStatus === TenantSubscription::STATUS_SUSPENDED
+                    ? 'Expired notice (was suspended)'
+                    : 'Expired notice'
             );
         }
+    }
 
-        // Expire cancelled subscriptions that have reached their end date
-        // (user cancelled but kept access until expiry — now revoke access)
-        $cancelledExpired = TenantSubscription::where('status', TenantSubscription::STATUS_CANCELLED)
-            ->whereNotNull('ends_at')
-            ->whereDate('ends_at', '<', now())
-            ->with('tenant', 'plan')
-            ->get();
-
-        foreach ($cancelledExpired as $sub) {
-            $tenant = $sub->tenant;
-            if (! $tenant) {
-                continue;
-            }
-
-            $sub->update([
-                'status' => TenantSubscription::STATUS_EXPIRED,
-                'cancellation_requested_at' => null,
-            ]);
-
-            $this->deliverEmail(
-                $sub, $tenant, SubscriptionReminder::TYPE_PLAN_ENDED, 0, $sub->ends_at,
-                fn () => EmailNotificationService::planEnded($tenant),
-                'Plan-ended notice (was cancelled)'
-            );
+    /**
+     * @return array{0: TenantSubscription, 1: Tenant, 2: bool, 3: string}|null
+     */
+    private function finalizeExpiredSubscription(int $id): ?array
+    {
+        $lockTarget = TenantSubscription::find($id);
+        if (! $lockTarget) {
+            return null;
         }
+
+        return $this->withSubscriptionLock($lockTarget, function () use ($id): ?array {
+            return DB::connection('central')->transaction(function () use ($id): ?array {
+                // A locking read here — inside a transaction whose first
+                // statement this is — always returns InnoDB's current
+                // committed row regardless of REPEATABLE READ, and no other
+                // writer can be mid-write against it (they'd be blocked on
+                // the same Cache lock).
+                $sub = TenantSubscription::whereKey($id)->lockForUpdate()->first();
+                if (! $sub) {
+                    return null;
+                }
+
+                if (! in_array($sub->status, [
+                    TenantSubscription::STATUS_ACTIVE,
+                    TenantSubscription::STATUS_CANCELLED,
+                    TenantSubscription::STATUS_SUSPENDED,
+                ], true)) {
+                    return null;
+                }
+
+                if (! $sub->ends_at || ! $sub->ends_at->copy()->startOfDay()->lt(now()->startOfDay())) {
+                    return null;
+                }
+
+                $tenant = $sub->tenant;
+                if (! $tenant) {
+                    return null;
+                }
+
+                $wasPendingCancellation = $sub->cancellation_requested_at !== null;
+                $originalStatus = $sub->status;
+
+                $sub->update([
+                    'status' => TenantSubscription::STATUS_EXPIRED,
+                    'cancellation_requested_at' => null,
+                ]);
+
+                return [$sub, $tenant, $wasPendingCancellation, $originalStatus];
+            });
+        });
+    }
+
+    /**
+     * Lock contention here means a customer/admin action or a Paddle webhook
+     * is mid-flight against this exact subscription right now — leave it
+     * alone and pick it up on the next scheduled run rather than blocking
+     * the rest of the batch or forcing a decision on stale data.
+     */
+    private function onSubscriptionLockTimeout(): mixed
+    {
+        Log::warning('CheckSubscriptionExpiry: could not acquire subscription lock; a concurrent billing action is in progress. Will retry next run.');
+
+        return null;
     }
 
     /**
