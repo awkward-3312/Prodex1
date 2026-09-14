@@ -1,228 +1,382 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Candidates')" :folder="$t('Recruit')" />
+  <div class="px-next pxcand">
+    <!--
+      Migracion px-next — Candidatos (Recruit Candidates). Ruta real sin
+      cambios (/app/recruit/candidates). Presentación únicamente, auditada
+      a fondo contra RecruitController@candidates_* (incluido el helper
+      privado storeUpload), RecruitCandidatePolicy y el modelo antes de
+      tocar nada. Vista de RIESGO MAYOR por manejar archivos — nada del
+      contrato de subida/edición/borrado se modificó.
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <b-row class="mb-3">
-        <b-col md="4">
-          <b-form-group :label="$t('Source')">
-            <b-form-select v-model="source_filter" @change="Get_Candidates(1)">
-              <b-form-select-option value="">{{ $t('All') }}</b-form-select-option>
-              <b-form-select-option v-for="s in sources" :key="s" :value="s">{{ format_label(s) }}</b-form-select-option>
-            </b-form-select>
-          </b-form-group>
-        </b-col>
-      </b-row>
+      Hallazgos clave, verificados en el controller y preservados EXACTOS:
 
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="candidates"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
-        :select-options="{ enabled: true, clearSelectionText: '' }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="selected-row-actions">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{ $t('Del') }}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button @click="New_Candidate()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
-            <lucide-icon name="plus" /> {{ $t('Add') }}
-          </b-button>
-        </div>
+      - Upload real: storeUpload() guarda en filesystem local, NO en un
+        disk de Laravel — `public_path('images/recruit/{resumes|photos}')`,
+        con nombre aleatorio (Str::random(20) + extensión original del
+        cliente). Devuelve una ruta relativa ("images/recruit/resumes/
+        xxxx.pdf") que se guarda en `resume_path` / `photo`.
+      - El backend NO valida tipo/tamaño de resume ni photo (no hay reglas
+        'resume'/'photo' en $request->validate()) — solo el atributo HTML
+        `accept` del input es una sugerencia del navegador, nunca una
+        garantía. No se agregó validación nueva: sería un cambio funcional
+        no autorizado.
+      - Edición SIN elegir archivo nuevo: el objeto `candidate` en el
+        cliente incluye `resume_path`/`photo` (vienen en la fila que
+        devuelve el índice). `build_form_data()` los reenvía como texto
+        (mismo valor, sin cambio) salvo `photo`, que el backend excluye
+        vía `$request->except(['resume','photo'])` porque el campo de
+        archivo TAMBIÉN se llama `photo` (colisión de nombre intencional
+        en el legacy) — así que el string viejo de `photo` nunca llega a
+        $data, y `resume_path` sí llega pero con el mismo valor que ya
+        tenía (no-op). Ningún archivo se pierde nunca al editar sin tocar
+        los inputs de archivo — verificado en vivo y en BD.
+      - Reemplazar un archivo: solo si `$request->hasFile('resume'|'photo')`
+        es true se sobrescribe `resume_path`/`photo` con la ruta nueva. El
+        archivo físico VIEJO nunca se borra del filesystem (ni aquí ni en
+        destroy) — es basura acumulada conocida del legacy, no se
+        "arregla" en esta migración visual.
+      - Update usa POST + `_method=PUT` (Laravel method spoofing) porque
+        FormData con archivos + verbo PUT nativo es el patrón legacy — se
+        preserva exacto, no se cambia a PUT real con FormData.
+      - Delete es soft-delete puro (`deleted_at`) — NUNCA borra los
+        archivos físicos ni valida relaciones con `applications` antes de
+        borrar (la referencia queda huérfana pero válida, mismo patrón
+        que otras entidades del módulo).
+      - La tabla del LEGACY no muestra ni CV ni foto en ningún lado — ni
+        thumbnail, ni link de descarga, ni nombre de archivo. No se
+        inventa ninguna de esas capacidades aquí: el file input siempre
+        se ve "vacío" (ningún archivo seleccionado) incluso editando un
+        candidato que ya tiene resume_path/photo, exactamente igual que el
+        legacy (los `<b-form-file>` nunca reflejan un valor existente).
+      - `email` tiene constraint UNIQUE real en BD, validado server-side
+        (`unique:recruit_candidates,email` en store, con exclusión del
+        propio id en update) — sin cambios.
+      - Campos del modelo NO expuestos en el formulario legacy (date_of_
+        birth, gender, address, state, zip_code, education) — no se
+        agregan aquí tampoco.
+    -->
+    <px-page-header :title="$t('Candidates')" :breadcrumbs="[{ label: $t('Recruit') }, { label: $t('Candidates') }]">
+      <template #actions>
+        <px-button
+          v-if="selectedIds.length"
+          variant="danger"
+          icon="trash-2"
+          @click="confirmBulkOpen = true"
+        >{{ $t('Del') }} ({{ selectedIds.length }})</px-button>
+        <px-button variant="primary" icon="plus" @click="New_Candidate">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'full_name'">
-            {{ props.row.first_name }} {{ props.row.last_name }}
-          </span>
-          <span v-else-if="props.column.field == 'source'">
-            <span class="badge badge-outline-info">{{ format_label(props.row.source) }}</span>
-          </span>
-          <span v-else-if="props.column.field == 'actions'">
-            <a @click="Edit_Candidate(props.row)" class="cursor-pointer" title="Edit" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a title="Delete" v-b-tooltip.hover class="cursor-pointer" @click="Remove_Candidate(props.row.id)">
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+    <px-toolbar :search="search" :search-placeholder="$t('Search_this_table')" @update:search="onSearchInput">
+      <template #filters>
+        <px-select
+          v-model="source_filter"
+          :options="sourceFilterOptions"
+          placeholder="Todos"
+          @input="onSourceFilter"
+        />
+      </template>
+    </px-toolbar>
 
-    <validation-observer ref="Create_Candidate">
-      <b-modal hide-footer size="lg" id="New_Candidate" :title="editmode ? $t('Edit') : $t('Add')">
-        <b-form @submit.prevent="Submit_Candidate">
-          <b-row>
-            <b-col md="6">
-              <validation-provider name="first_name" :rules="{ required: true }" v-slot="validationContext">
-                <b-form-group :label="$t('First_Name') + ' *'">
-                  <b-form-input :state="getValidationState(validationContext)" v-model="candidate.first_name"></b-form-input>
-                  <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-            <b-col md="6">
-              <validation-provider name="last_name" :rules="{ required: true }" v-slot="validationContext">
-                <b-form-group :label="$t('Last_Name') + ' *'">
-                  <b-form-input :state="getValidationState(validationContext)" v-model="candidate.last_name"></b-form-input>
-                  <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+    <div v-if="isLoading" class="pxcand__pad">
+      <px-skeleton variant="table" :rows="8" :columns="6" />
+    </div>
 
-            <b-col md="6">
-              <validation-provider name="email" :rules="{ required: true, email: true }" v-slot="validationContext">
-                <b-form-group :label="$t('Email') + ' *'">
-                  <b-form-input :state="getValidationState(validationContext)" v-model="candidate.email"></b-form-input>
-                  <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-            <b-col md="6">
-              <b-form-group :label="$t('Phone')">
-                <b-form-input v-model="candidate.phone"></b-form-input>
-              </b-form-group>
-            </b-col>
+    <template v-else>
+      <div class="pxcand__tablewrap" :class="{ 'is-busy': refreshing }">
+        <px-table
+          v-if="candidates.length"
+          :columns="columns"
+          :rows="candidates"
+          row-key="id"
+          selectable
+          :selected="selectedIds"
+          @update:selected="selectedIds = $event"
+          :sort-key="sort.field"
+          :sort-dir="sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-full_name="{ row }">{{ row.first_name }} {{ row.last_name }}</template>
+          <template #cell-source="{ value }"><px-tag :label="formatLabel(value)" :hue="value" /></template>
+          <template #cell-applications_count="{ value }">{{ value || 0 }}</template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
 
-            <b-col md="4">
-              <b-form-group :label="$t('Source')">
-                <b-form-select v-model="candidate.source">
-                  <b-form-select-option v-for="s in sources" :key="s" :value="s">{{ format_label(s) }}</b-form-select-option>
-                </b-form-select>
-              </b-form-group>
-            </b-col>
-            <b-col md="4">
-              <b-form-group :label="$t('Current_Position')">
-                <b-form-input v-model="candidate.current_position"></b-form-input>
-              </b-form-group>
-            </b-col>
-            <b-col md="4">
-              <b-form-group :label="$t('Experience_Years')">
-                <b-form-input type="number" min="0" v-model="candidate.experience_years"></b-form-input>
-              </b-form-group>
-            </b-col>
+        <px-empty-state v-else icon="user" :title="$t('Candidates')" description="Sin candidatos que coincidan con la búsqueda." />
+      </div>
 
-            <b-col md="6">
-              <b-form-group :label="$t('Current_Company')">
-                <b-form-input v-model="candidate.current_company"></b-form-input>
-              </b-form-group>
-            </b-col>
-            <b-col md="3">
-              <b-form-group :label="$t('Current_Salary')">
-                <b-form-input type="number" v-model="candidate.current_salary"></b-form-input>
-              </b-form-group>
-            </b-col>
-            <b-col md="3">
-              <b-form-group :label="$t('Expected_Salary')">
-                <b-form-input type="number" v-model="candidate.expected_salary"></b-form-input>
-              </b-form-group>
-            </b-col>
+      <px-pagination
+        v-if="candidates.length"
+        :page="page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        :per-page-options="['10', '25', '50', '100']"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
-            <b-col md="6">
-              <b-form-group :label="$t('City')">
-                <b-form-input v-model="candidate.city"></b-form-input>
-              </b-form-group>
-            </b-col>
-            <b-col md="6">
-              <b-form-group :label="$t('Country')">
-                <b-form-input v-model="candidate.country"></b-form-input>
-              </b-form-group>
-            </b-col>
+    <!-- Crear / editar -->
+    <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="lg">
+      <validation-observer ref="Create_Candidate">
+        <form @submit.prevent="Submit_Candidate">
+          <div class="pxcand__grid">
+            <v-field name="first_name" :label="$t('First_Name')" required :rules="{ required: true }" v-slot="{ invalid, id }">
+              <px-input :id="id" v-model="candidate.first_name" :invalid="invalid" />
+            </v-field>
+            <v-field name="last_name" :label="$t('Last_Name')" required :rules="{ required: true }" v-slot="{ invalid, id }">
+              <px-input :id="id" v-model="candidate.last_name" :invalid="invalid" />
+            </v-field>
+          </div>
 
-            <b-col md="6">
-              <b-form-group :label="$t('LinkedIn_URL')">
-                <b-form-input v-model="candidate.linkedin_url"></b-form-input>
-              </b-form-group>
-            </b-col>
-            <b-col md="6">
-              <b-form-group :label="$t('Portfolio_URL')">
-                <b-form-input v-model="candidate.portfolio_url"></b-form-input>
-              </b-form-group>
-            </b-col>
+          <div class="pxcand__grid pxcand__field">
+            <v-field name="email" :label="$t('Email')" required :rules="{ required: true, email: true }" v-slot="{ invalid, id }">
+              <px-input :id="id" type="email" v-model="candidate.email" :invalid="invalid" />
+            </v-field>
+            <px-field :label="$t('Phone')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="candidate.phone" />
+              </template>
+            </px-field>
+          </div>
 
-            <b-col md="6">
-              <b-form-group :label="$t('Resume')">
-                <b-form-file accept=".pdf,.doc,.docx" @change="onResumeChange" :placeholder="$t('Choose_a_file')"></b-form-file>
-              </b-form-group>
-            </b-col>
-            <b-col md="6">
-              <b-form-group :label="$t('Photo')">
-                <b-form-file accept="image/*" @change="onPhotoChange" :placeholder="$t('Choose_a_file')"></b-form-file>
-              </b-form-group>
-            </b-col>
+          <div class="pxcand__grid pxcand__grid--3 pxcand__field">
+            <px-field :label="$t('Source')">
+              <template #default="{ id }">
+                <px-select :id="id" v-model="candidate.source" :options="sourceOptions" />
+              </template>
+            </px-field>
+            <px-field :label="$t('Current_Position')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="candidate.current_position" />
+              </template>
+            </px-field>
+            <px-field :label="$t('Experience_Years')">
+              <template #default="{ id }">
+                <px-input :id="id" type="number" numeric v-model="candidate.experience_years" />
+              </template>
+            </px-field>
+          </div>
 
-            <b-col md="12">
-              <b-form-group :label="$t('Skills')">
-                <b-form-textarea v-model="candidate.skills" rows="2"></b-form-textarea>
-              </b-form-group>
-            </b-col>
-            <b-col md="12">
-              <b-form-group :label="$t('Notes')">
-                <b-form-textarea v-model="candidate.notes" rows="2"></b-form-textarea>
-              </b-form-group>
-            </b-col>
+          <div class="pxcand__grid pxcand__field">
+            <px-field :label="$t('Current_Company')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="candidate.current_company" />
+              </template>
+            </px-field>
+            <div class="pxcand__grid pxcand__grid--2">
+              <px-field :label="$t('Current_Salary')">
+                <template #default="{ id }">
+                  <px-input :id="id" type="number" numeric v-model="candidate.current_salary" />
+                </template>
+              </px-field>
+              <px-field :label="$t('Expected_Salary')">
+                <template #default="{ id }">
+                  <px-input :id="id" type="number" numeric v-model="candidate.expected_salary" />
+                </template>
+              </px-field>
+            </div>
+          </div>
 
-            <b-col md="12" class="mt-3">
-              <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
-              </b-button>
-              <div v-once class="typo__p" v-if="SubmitProcessing">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
-            </b-col>
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
+          <div class="pxcand__grid pxcand__field">
+            <px-field :label="$t('City')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="candidate.city" />
+              </template>
+            </px-field>
+            <px-field :label="$t('Country')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="candidate.country" />
+              </template>
+            </px-field>
+          </div>
+
+          <div class="pxcand__grid pxcand__field">
+            <px-field :label="$t('LinkedIn_URL')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="candidate.linkedin_url" />
+              </template>
+            </px-field>
+            <px-field :label="$t('Portfolio_URL')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="candidate.portfolio_url" />
+              </template>
+            </px-field>
+          </div>
+
+          <div class="pxcand__grid pxcand__field">
+            <px-field :label="$t('Resume')">
+              <template #default>
+                <div
+                  class="pxcand__file"
+                  :class="{ 'is-over': resumeDragOver }"
+                  @dragover.prevent="resumeDragOver = true"
+                  @dragleave.prevent="resumeDragOver = false"
+                  @drop.prevent="onResumeDrop"
+                >
+                  <input
+                    ref="resumeInput"
+                    type="file"
+                    class="pxcand__file-input"
+                    accept=".pdf,.doc,.docx"
+                    @change="onResumeChange"
+                  />
+                  <button type="button" class="pxcand__file-btn" @click="$refs.resumeInput.click()">
+                    <lucide-icon name="file-up" :size="15" />
+                    {{ $t('Choose_a_file') }}
+                  </button>
+                  <span class="pxcand__file-name">{{ resumeFile ? resumeFile.name : 'Ningún archivo seleccionado' }}</span>
+                </div>
+              </template>
+            </px-field>
+            <px-field :label="$t('Photo')">
+              <template #default>
+                <div
+                  class="pxcand__file"
+                  :class="{ 'is-over': photoDragOver }"
+                  @dragover.prevent="photoDragOver = true"
+                  @dragleave.prevent="photoDragOver = false"
+                  @drop.prevent="onPhotoDrop"
+                >
+                  <input
+                    ref="photoInput"
+                    type="file"
+                    class="pxcand__file-input"
+                    accept="image/*"
+                    @change="onPhotoChange"
+                  />
+                  <button type="button" class="pxcand__file-btn" @click="$refs.photoInput.click()">
+                    <lucide-icon name="image" :size="15" />
+                    {{ $t('Choose_a_file') }}
+                  </button>
+                  <span class="pxcand__file-name">{{ photoFile ? photoFile.name : 'Ningún archivo seleccionado' }}</span>
+                </div>
+              </template>
+            </px-field>
+          </div>
+
+          <px-field :label="$t('Skills')" class="pxcand__field">
+            <template #default="{ id }">
+              <px-textarea :id="id" v-model="candidate.skills" :rows="2" />
+            </template>
+          </px-field>
+          <px-field :label="$t('Notes')" class="pxcand__field">
+            <template #default="{ id }">
+              <px-textarea :id="id" v-model="candidate.notes" :rows="2" />
+            </template>
+          </px-field>
+        </form>
+      </validation-observer>
+
+      <template #footer="{ close }">
+        <span class="pxcand__grow" />
+        <px-button variant="secondary" :disabled="SubmitProcessing" @click="close">Cancelar</px-button>
+        <px-button variant="primary" icon="check" :loading="SubmitProcessing" @click="Submit_Candidate">
+          {{ $t('submit') }}
+        </px-button>
+      </template>
+    </px-modal>
+
+    <!-- Confirmar eliminar (una fila) -->
+    <px-modal v-model="confirmOpen" :title="$t('Delete_Title')" size="sm">
+      <p class="pxcand__confirm">{{ $t('Delete_Text') }}</p>
+      <template #footer="{ close }">
+        <span class="pxcand__grow" />
+        <px-button variant="secondary" :disabled="deleting" @click="close">{{ $t('Delete_cancelButtonText') }}</px-button>
+        <px-button variant="danger" icon="trash-2" :loading="deleting" @click="doDelete">{{ $t('Delete_confirmButtonText') }}</px-button>
+      </template>
+    </px-modal>
+
+    <!-- Confirmar eliminar (selección múltiple) -->
+    <px-modal v-model="confirmBulkOpen" :title="$t('Delete_Title')" size="sm">
+      <p class="pxcand__confirm">{{ $t('Delete_Text') }}</p>
+      <template #footer="{ close }">
+        <span class="pxcand__grow" />
+        <px-button variant="secondary" :disabled="deletingBulk" @click="close">{{ $t('Delete_cancelButtonText') }}</px-button>
+        <px-button variant="danger" icon="trash-2" :loading="deletingBulk" @click="doDeleteBulk">{{ $t('Delete_confirmButtonText') }}</px-button>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxSelect from "@/components/px-next/PxSelect.vue";
+import PxTag from "@/components/px-next/PxTag.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxSkeleton from "@/components/PxSkeleton.vue";
+import VField from "@/views/app/products/next/edit/VField.vue";
+
+const SOURCES = ["website", "referral", "linkedin", "job_board", "agency", "walk_in", "other"];
 
 export default {
+  name: "RecruitCandidatesNext",
   metaInfo: { title: "Candidates" },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
+    PxField, PxInput, PxTextarea, PxSelect, PxTag, PxEmptyState, PxModal,
+    PxSkeleton, "v-field": VField
+  },
   data() {
     return {
       isLoading: true,
+      refreshing: false,
       SubmitProcessing: false,
-      serverParams: { columnFilters: {}, sort: { field: "id", type: "desc" }, page: 1, perPage: 10 },
-      selectedIds: [],
-      totalRows: "",
-      search: "",
-      limit: "10",
-      source_filter: "",
-      sources: ["website", "referral", "linkedin", "job_board", "agency", "walk_in", "other"],
-      editmode: false,
       candidates: [],
+      totalRows: "",
+      page: 1,
+      limit: "10",
+      search: "",
+      _searchTimer: null,
+      sort: { field: "id", type: "desc" },
+      source_filter: "",
+      selectedIds: [],
+      editmode: false,
+      modalOpen: false,
+      candidate: this.empty_candidate(),
       resumeFile: null,
       photoFile: null,
-      candidate: this.empty_candidate()
+      resumeDragOver: false,
+      photoDragOver: false,
+      confirmOpen: false,
+      pendingDelete: null,
+      deleting: false,
+      confirmBulkOpen: false,
+      deletingBulk: false
     };
   },
-
   computed: {
     columns() {
       return [
-        { label: this.$t("Name"), field: "full_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Email"), field: "email", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Phone"), field: "phone", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Source"), field: "source", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Applications"), field: "applications_count", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { key: "full_name", label: this.$t("Name"), strong: true },
+        { key: "email", label: this.$t("Email"), sortable: true },
+        { key: "phone", label: this.$t("Phone"), sortable: true },
+        { key: "source", label: this.$t("Source"), sortable: true },
+        { key: "applications_count", label: this.$t("Applications") }
       ];
-    }
+    },
+    rowActions() {
+      return [
+        { key: "edit", label: "Editar", icon: "pencil" },
+        { key: "delete", label: "Eliminar", icon: "trash-2", tone: "danger" }
+      ];
+    },
+    sourceOptions() { return SOURCES.map(s => ({ value: s, label: this.formatLabel(s) })); },
+    sourceFilterOptions() { return [{ value: "", label: this.$t("All") }, ...this.sourceOptions]; }
   },
-
   methods: {
     empty_candidate() {
       return {
@@ -232,46 +386,39 @@ export default {
         skills: "", notes: ""
       };
     },
-    format_label(v) {
-      return v ? v.replace(/_/g, " ") : "-";
+    formatLabel(v) { return v ? v.replace(/_/g, " ") : "-"; },
+
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.Edit_Candidate(row);
+      else if (k === "delete") { this.pendingDelete = row; this.confirmOpen = true; }
     },
-    onResumeChange(e) {
-      this.resumeFile = e.target.files[0];
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.page = 1; this.Get_Candidates(1); }, 350);
     },
-    onPhotoChange(e) {
-      this.photoFile = e.target.files[0];
+    onSourceFilter() { this.page = 1; this.Get_Candidates(1); },
+    onSort({ key, dir }) {
+      this.sort = { field: key, type: dir };
+      this.Get_Candidates(this.page);
     },
-    updateParams(newProps) {
-      this.serverParams = Object.assign({}, this.serverParams, newProps);
+    onPage(p) { if (p !== this.page) { this.page = p; this.Get_Candidates(p); } },
+    onLimit(v) { this.limit = String(v); this.page = 1; this.Get_Candidates(1); },
+
+    onResumeChange(e) { this.resumeFile = e.target.files[0]; },
+    onPhotoChange(e) { this.photoFile = e.target.files[0]; },
+    onResumeDrop(e) {
+      this.resumeDragOver = false;
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) this.resumeFile = f;
     },
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Candidates(currentPage);
-      }
+    onPhotoDrop(e) {
+      this.photoDragOver = false;
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) this.photoFile = f;
     },
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Candidates(1);
-      }
-    },
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach(row => this.selectedIds.push(row.id));
-    },
-    onSortChange(params) {
-      this.updateParams({ sort: { type: params[0].type, field: params[0].field } });
-      this.Get_Candidates(this.serverParams.page);
-    },
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Candidates(this.serverParams.page);
-    },
-    getValidationState({ dirty, validated, valid = null }) {
-      return dirty || validated ? valid : null;
-    },
+
     makeToast(variant, msg, title) {
       this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
     },
@@ -302,25 +449,25 @@ export default {
     New_Candidate() {
       this.reset_Form();
       this.editmode = false;
-      this.$bvModal.show("New_Candidate");
+      this.modalOpen = true;
     },
 
     Edit_Candidate(candidate) {
       this.reset_Form();
       this.candidate = { ...this.empty_candidate(), ...candidate };
       this.editmode = true;
-      this.$bvModal.show("New_Candidate");
+      this.modalOpen = true;
     },
 
     Get_Candidates(page) {
-      this.serverParams.page = page;
+      if (page === 1 || !page) this.refreshing = !this.isLoading;
       NProgress.start();
       NProgress.set(0.1);
       axios
         .get(
           "recruit/candidates?page=" + page +
-          "&SortField=" + this.serverParams.sort.field +
-          "&SortType=" + this.serverParams.sort.type +
+          "&SortField=" + this.sort.field +
+          "&SortType=" + this.sort.type +
           "&search=" + this.search +
           "&source=" + this.source_filter +
           "&limit=" + this.limit
@@ -330,10 +477,11 @@ export default {
           this.candidates = response.data.candidates;
           NProgress.done();
           this.isLoading = false;
+          this.refreshing = false;
         })
         .catch(() => {
           NProgress.done();
-          setTimeout(() => { this.isLoading = false; }, 500);
+          setTimeout(() => { this.isLoading = false; this.refreshing = false; }, 500);
         });
     },
 
@@ -375,38 +523,40 @@ export default {
       this.photoFile = null;
     },
 
-    Remove_Candidate(id) {
-      this.$swal({
-        title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
-        showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          axios.delete("recruit/candidates/" + id).then(() => {
-            this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
-            Fire.$emit("Event_Candidate");
-          }).catch(() => {
-            this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
-          });
-        }
-      });
+    doDelete() {
+      const row = this.pendingDelete;
+      if (!row) return;
+      this.deleting = true;
+      axios
+        .delete("recruit/candidates/" + row.id)
+        .then(() => {
+          this.deleting = false;
+          this.confirmOpen = false;
+          this.pendingDelete = null;
+          this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+          Fire.$emit("Event_Candidate");
+        })
+        .catch(() => {
+          this.deleting = false;
+          this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
+        });
     },
 
-    delete_by_selected() {
-      this.$swal({
-        title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
-        showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          axios.post("recruit/candidates/delete/by_selection", { selectedIds: this.selectedIds }).then(() => {
-            this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
-            Fire.$emit("Event_Candidate");
-          }).catch(() => {
-            this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
-          });
-        }
-      });
+    doDeleteBulk() {
+      this.deletingBulk = true;
+      axios
+        .post("recruit/candidates/delete/by_selection", { selectedIds: this.selectedIds })
+        .then(() => {
+          this.deletingBulk = false;
+          this.confirmBulkOpen = false;
+          this.selectedIds = [];
+          this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+          Fire.$emit("Event_Candidate");
+        })
+        .catch(() => {
+          this.deletingBulk = false;
+          this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
+        });
     }
   },
 
@@ -414,10 +564,82 @@ export default {
     this.Get_Candidates(1);
     Fire.$on("Event_Candidate", () => {
       setTimeout(() => {
-        this.Get_Candidates(this.serverParams.page);
-        this.$bvModal.hide("New_Candidate");
+        this.Get_Candidates(this.page);
+        this.modalOpen = false;
       }, 500);
     });
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcand { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcand { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcand__pad { padding: var(--pxn-space-6) 0; }
+
+.pxcand__tablewrap { margin-top: var(--pxn-space-5); transition: opacity var(--pxn-dur-1) var(--pxn-ease); }
+.pxcand__tablewrap.is-busy { opacity: 0.55; pointer-events: none; }
+
+.pxcand__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--pxn-space-5); }
+.pxcand__grid--3 { grid-template-columns: repeat(3, 1fr); }
+.pxcand__grid--2 { grid-template-columns: repeat(2, 1fr); gap: var(--pxn-space-5); }
+@media (max-width: 720px) { .pxcand__grid, .pxcand__grid--3, .pxcand__grid--2 { grid-template-columns: 1fr; } }
+
+.pxcand__field { margin-top: var(--pxn-space-5); }
+.pxcand__confirm { margin: 0; font-size: var(--pxn-fs-body); color: var(--pxn-ink-2); line-height: var(--pxn-lh-snug); }
+.pxcand__grow { flex: 1; }
+
+// Reskin local del <input type="file"> nativo — sin componente global
+// PxFileInput todavía. Mismo contrato funcional que el legacy
+// (@change, accept, un solo archivo), solo presentación px-next.
+.pxcand__file {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--pxn-space-4);
+  min-height: var(--pxn-control-h-md);
+  padding: var(--pxn-space-2);
+  border: 1px dashed var(--pxn-border-control);
+  border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface);
+  transition: border-color var(--pxn-dur-1) var(--pxn-ease), background var(--pxn-dur-1) var(--pxn-ease);
+}
+.pxcand__file.is-over { border-color: var(--pxn-primary); background: var(--pxn-primary-softer); }
+.pxcand__file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  z-index: 1;
+}
+.pxcand__file-btn {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pxn-space-3);
+  height: calc(var(--pxn-control-h-md) - 8px);
+  padding: 0 var(--pxn-space-5);
+  border: 1px solid var(--pxn-border-control);
+  border-radius: var(--pxn-radius-sm);
+  background: var(--pxn-surface-2);
+  color: var(--pxn-ink-2);
+  font: inherit;
+  font-size: var(--pxn-fs-sm);
+  font-weight: var(--pxn-fw-medium);
+  cursor: pointer;
+  flex: none;
+  pointer-events: none;
+}
+.pxcand__file-name {
+  font-size: var(--pxn-fs-sm);
+  color: var(--pxn-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>
