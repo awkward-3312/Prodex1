@@ -107,6 +107,12 @@ return [
     'create_workspace_btn'     => 'Crear espacio de trabajo',
     'already_have_workspace'   => '¿Ya tienes un espacio de trabajo?',
     'sign_in'                  => 'Iniciar sesión',
+    'subdomain_taken'          => 'Este subdominio ya está en uso. Por favor, elige otro.',
+    'subdomain_pending'        => 'Este subdominio ya está reservado por otro registro en proceso.',
+    'email_taken'              => 'Este correo ya está en uso por otra empresa registrada.',
+    'email_pending'            => 'Este correo ya está asociado a un registro en proceso.',
+    'signup_no_plans'          => 'No hay planes disponibles en este momento. Por favor, contacta a soporte.',
+    'signup_failed'            => 'No se pudo completar el registro. Por favor, inténtalo de nuevo.',
     'back_to_homepage'         => 'Volver al inicio',
 
     // ── Login page ──────────────────────────────────────
@@ -116,6 +122,7 @@ return [
     'remember_me'     => 'Recordarme',
     'forgot_password'  => '¿Olvidaste tu contraseña?',
     'sign_in_btn'     => 'Iniciar sesión',
+    'login_invalid_credentials' => 'El correo electrónico o la contraseña son incorrectos.',
 
     // ── Login hero panel ────────────────────────────────
     'login_hero_title'    => 'Gestiona toda tu plataforma desde un solo lugar',
@@ -123,6 +130,8 @@ return [
     'stat_secure'         => 'Seguro',
     'stat_access'         => 'Acceso',
     'stat_analytics'      => 'Análisis',
+    'login_email_placeholder'    => 'admin@tuempresa.com',
+    'toggle_password_visibility'  => 'Mostrar u ocultar contraseña',
 
     // ── Forgot password page ────────────────────────────
     'forgot_title'       => '¿Olvidaste tu contraseña?',

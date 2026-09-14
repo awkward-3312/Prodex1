@@ -61,10 +61,10 @@ class TenantRegistrationController extends Controller
                         $fail(__('landing.subdomain_reserved'));
                     }
                     if (Domain::where('domain', $value)->exists()) {
-                        $fail('This subdomain is already taken.');
+                        $fail(__('landing.subdomain_taken'));
                     }
                     if (PendingRegistration::where('subdomain', $value)->valid()->whereIn('status', ['pending', 'processing', 'paid', 'provisioning'])->exists()) {
-                        $fail('This subdomain is already reserved.');
+                        $fail(__('landing.subdomain_pending'));
                     }
                 },
             ],
@@ -73,10 +73,10 @@ class TenantRegistrationController extends Controller
                 'required', 'email',
                 function ($attribute, $value, $fail) {
                     if (Tenant::where('data->admin_email', $value)->exists()) {
-                        $fail('This email is already used by another tenant.');
+                        $fail(__('landing.email_taken'));
                     }
                     if (PendingRegistration::where('admin_email', $value)->valid()->whereIn('status', ['pending', 'processing', 'paid', 'provisioning'])->exists()) {
-                        $fail('This email is already associated with a pending registration.');
+                        $fail(__('landing.email_pending'));
                     }
                 },
             ],
@@ -100,7 +100,7 @@ class TenantRegistrationController extends Controller
             : Plan::public()->where('slug', 'starter')->first();
 
         if (! $plan) {
-            return back()->withErrors(['plan_id' => 'No plans available. Please contact support.']);
+            return back()->withErrors(['plan_id' => __('landing.signup_no_plans')]);
         }
 
         $billingCycle = $validated['billing_cycle'] ?? 'monthly';
@@ -158,7 +158,7 @@ class TenantRegistrationController extends Controller
                 $tenant->delete();
             }
 
-            return back()->withInput()->withErrors(['subdomain' => 'Signup failed. Please try again.']);
+            return back()->withInput()->withErrors(['subdomain' => __('landing.signup_failed')]);
         }
 
         // ── Shared Hosting: send emails and show under-review page ──

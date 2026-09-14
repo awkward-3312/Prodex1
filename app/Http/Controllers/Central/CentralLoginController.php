@@ -30,7 +30,7 @@ class CentralLoginController extends Controller
 
         if (! $user || ! Hash::check($request->input('password'), $user->password)) {
             return back()->withErrors([
-                'email' => 'These credentials do not match our records.',
+                'email' => __('landing.login_invalid_credentials'),
             ])->withInput($request->only('email', 'remember'));
         }
 
