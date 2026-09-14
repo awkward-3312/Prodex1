@@ -1,206 +1,303 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Office_Shift')" :folder="$t('hrm')" />
+  <div class="px-next pxos">
+    <!--
+      Migracion px-next — Turnos de oficina (Office Shift). Ruta real sin
+      cambios (/app/hrm/office_shift). Presentación únicamente, auditada a
+      fondo contra OfficeShiftController (index/create/store/edit/update/
+      destroy/delete_by_selection), Office_ShiftPolicy y el modelo
+      OfficeShift antes de tocar nada.
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+      Hallazgos clave, verificados y preservados EXACTOS:
 
-    <b-card class="wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="office_shifts"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
-        :select-options="{ enabled: true, clearSelectionText: '' }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="selected-row-actions">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{ $t('Del') }}</button>
+      - Estructura del turno: `name`, `company_id` + 14 columnas string
+        nullable (`{day}_in`/`{day}_out` para monday..sunday). Sin
+        `is_active` — solo `deleted_at` (soft-delete manual, sin trait
+        SoftDeletes, igual patrón que el resto de HRM).
+      - El clock-picker (`@pencilpix/vue2-clock-picker`) entrega "HH:mm"
+        24h (ej. "17:00"). `store()`/`update()` hacen
+        `new DateTime($valor)->format('H:iA')` — 'H' es hora 24h, 'A' es
+        el indicador AM/PM; para cualquier hora >=13 esto produce un
+        string inválido tipo "17:00PM" (debería ser 'h:iA' minúscula
+        para 12h). Reproducido en vivo, es EXACTAMENTE el bug ya
+        documentado en Asistencia — NO se corrige aquí.
+      - `index()` neutraliza el problema para la propia lista: hace
+        `substr($valor, 0, -2)` sobre el string guardado, cortando
+        siempre los últimos 2 caracteres (sean "AM"/"PM" válidos o no)
+        y devolviendo "HH:mm" 24h al frontend — por eso el editor
+        siempre muestra la hora correcta al reabrir, aunque la DB tenga
+        "17:00PM". El bug es cosmético para esta vista, pero
+        `AttendancesController::dateTimeForAttendance` sí lo sufre (ver
+        auditoría de Asistencia) porque consume el campo crudo.
+      - `update()` además detecta con `strlen($valor) == 5` si el valor
+        que llega ya es "HH:mm" plano o si ya trae sufijo de 7
+        caracteres, y ajusta con `substr(...,0,-2)` antes de reparsear
+        — defensivo, no se toca.
+      - Eliminar (`destroy()`/`delete_by_selection()`): SOLO soft-delete
+        (`deleted_at = now()`), la fila sigue en la tabla. NO hay
+        `is_active`. Los empleados que ya tenían `office_shift_id`
+        apuntando a ese turno NO se actualizan — conservan la FK intacta
+        (`Employee::office_shift()` es un `hasOne` sin filtro de
+        `deleted_at`), así que un turno "eliminado" sigue siendo
+        resuelto y aplicado en cálculos de asistencia. Bug ya
+        documentado en Asistencia — NO se corrige aquí.
+      - Permiso plano único `office_shift` (`Office_ShiftPolicy`) para
+        view/create/update/delete — sin permiso separado, no se inventó
+        ninguno.
+      - Sin cascada de selects: la única FK es `company_id` (select
+        simple, sin dependientes).
+      - Paginación real (vue-good-table `pagination-options.enabled:
+        true`, igual que el resto de vistas HRM) — se conserva
+        PxPagination.
+      - El editor semanal (horario base + selección rápida + chips de
+        día + fila por día con switch + 2 clock-pickers) NO tiene
+        equivalente en PX Next. Se conserva TODA su lógica JS intacta
+        (mismos nombres de props/métodos/eventos) — solo reskin local
+        de clases y tokens, sin nuevo componente global.
+    -->
+    <px-page-header :title="$t('Office_Shift')" :breadcrumbs="[{ label: $t('hrm') }, { label: $t('Office_Shift') }]">
+      <template #actions>
+        <div class="pxos__actions">
+          <px-button
+            v-if="selectedIds.length"
+            variant="danger"
+            icon="trash-2"
+            @click="confirmBulkOpen = true"
+          >{{ $t('Del') }} ({{ selectedIds.length }})</px-button>
+          <px-button variant="primary" icon="plus" @click="New_Office_Shift">{{ $t('Add') }}</px-button>
         </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button @click="New_Office_Shift()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
-            <lucide-icon name="plus" /> {{ $t('Add') }}
-          </b-button>
-        </div>
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a @click="Edit_Office_Shift(props.row)" class="cursor-pointer" title="Editar" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a title="Eliminar" class="cursor-pointer" v-b-tooltip.hover @click="Remove_Office_Shift(props.row.id)">
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+      </template>
+    </px-page-header>
 
-    <validation-observer ref="Create_Office_Shift">
-      <b-modal hide-footer size="xl" id="New_Office_Shift" modal-class="office-shift-modal" :title="editmode ? 'Editar turno de oficina' : 'Añadir turno de oficina'">
-        <b-form @submit.prevent="Submit_Office_Shift">
-          <div class="shift-section">
-            <div class="shift-section-heading">
+    <px-toolbar :search="search" :search-placeholder="$t('Search_this_table')" @update:search="onSearchInput" />
+
+    <div v-if="isLoading" class="pxos__pad">
+      <px-skeleton variant="table" :rows="8" :columns="3" />
+    </div>
+
+    <template v-else>
+      <div class="pxos__tablewrap" :class="{ 'is-busy': refreshing }">
+        <px-table
+          v-if="office_shifts.length"
+          :columns="columns"
+          :rows="office_shifts"
+          row-key="id"
+          selectable
+          :selected="selectedIds"
+          @update:selected="selectedIds = $event"
+          :sort-key="serverParams.sort.field"
+          :sort-dir="serverParams.sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
+
+        <px-empty-state v-else icon="clock" :title="$t('Office_Shift')" description="Sin turnos que coincidan con la búsqueda." />
+      </div>
+
+      <px-pagination
+        v-if="office_shifts.length"
+        :page="serverParams.page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        :per-page-options="['10', '20', '30', '40', '50']"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
+
+    <!-- Crear / editar turno -->
+    <px-modal v-model="modalOpen" :title="editmode ? 'Editar turno de oficina' : 'Añadir turno de oficina'" size="xl">
+      <validation-observer ref="Create_Office_Shift">
+        <form @submit.prevent="Submit_Office_Shift">
+          <div class="pxos__section">
+            <div class="pxos__section-head">
               <div>
                 <h6>Información del turno</h6>
                 <p>Define un nombre y la compañía a la que pertenece este horario.</p>
               </div>
             </div>
-            <b-row>
-              <b-col md="6">
-                <validation-provider name="Nombre" :rules="{ required: true }" v-slot="validationContext">
-                  <b-form-group label="Nombre del turno *">
-                    <b-form-input placeholder="Ej. Horario administrativo" :state="getValidationState(validationContext)" aria-describedby="Name-feedback" v-model="office_shift.name" />
-                    <b-form-invalid-feedback id="Name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
-              </b-col>
-              <b-col md="6">
-                <validation-provider name="Compañía" :rules="{ required: true }">
-                  <b-form-group slot-scope="{ valid, errors }" label="Compañía *">
-                    <v-select
-                      :class="{ 'is-invalid': !!errors.length }"
-                      :state="errors[0] ? false : (valid ? true : null)"
-                      v-model="office_shift.company_id"
-                      class="required"
-                      required
-                      @input="Selected_Company"
-                      placeholder="Selecciona una compañía"
-                      :reduce="label => label.value"
-                      :options="companies.map(company => ({ label: company.name, value: company.id }))"
-                    />
-                    <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
-              </b-col>
-            </b-row>
+            <div class="pxos__grid2">
+              <v-field name="Nombre" label="Nombre del turno" required :rules="{ required: true }" v-slot="{ invalid, id }">
+                <px-input :id="id" v-model="office_shift.name" placeholder="Ej. Horario administrativo" :invalid="invalid" />
+              </v-field>
+
+              <v-field name="Compañía" label="Compañía" required :rules="{ required: true }" v-slot="{ invalid, id }">
+                <vs-px
+                  :input-id="id"
+                  :invalid="invalid"
+                  v-model="office_shift.company_id"
+                  @input="Selected_Company"
+                  :reduce="o => o.value"
+                  placeholder="Selecciona una compañía"
+                  :options="companies.map(c => ({ label: c.name, value: c.id }))"
+                />
+              </v-field>
+            </div>
           </div>
 
-          <div class="shift-section shift-template-section">
-            <div class="shift-section-heading shift-section-heading--split">
+          <div class="pxos__section pxos__section--template">
+            <div class="pxos__section-head pxos__section-head--split">
               <div>
                 <h6>Horario base</h6>
                 <p>Escribe el horario una sola vez y aplícalo a los días que correspondan.</p>
               </div>
-              <span class="shift-helper-badge">Ahorra tiempo</span>
+              <span class="pxos__helper-badge">Ahorra tiempo</span>
             </div>
 
-            <div class="base-schedule-grid">
-              <div class="base-time-field">
+            <div class="pxos__base-grid">
+              <div class="pxos__time-field">
                 <label>Hora de entrada</label>
-                <vue-clock-picker v-model="baseSchedule.in" placeholder="Entrada" />
+                <div class="pxos__clock"><vue-clock-picker v-model="baseSchedule.in" placeholder="Entrada" /></div>
               </div>
-              <div class="base-time-field">
+              <div class="pxos__time-field">
                 <label>Hora de salida</label>
-                <vue-clock-picker v-model="baseSchedule.out" placeholder="Salida" />
+                <div class="pxos__clock"><vue-clock-picker v-model="baseSchedule.out" placeholder="Salida" /></div>
               </div>
-              <div class="quick-presets">
+              <div class="pxos__presets">
                 <label>Selección rápida</label>
-                <div class="preset-buttons">
-                  <button type="button" class="preset-btn" @click="selectPreset('weekdays')">Lun–Vie</button>
-                  <button type="button" class="preset-btn" @click="selectPreset('sixdays')">Lun–Sáb</button>
-                  <button type="button" class="preset-btn" @click="selectPreset('all')">Toda la semana</button>
-                  <button type="button" class="preset-btn preset-btn--muted" @click="clearSelectedDays">Limpiar</button>
+                <div class="pxos__preset-buttons">
+                  <button type="button" class="pxos__preset-btn" @click="selectPreset('weekdays')">Lun–Vie</button>
+                  <button type="button" class="pxos__preset-btn" @click="selectPreset('sixdays')">Lun–Sáb</button>
+                  <button type="button" class="pxos__preset-btn" @click="selectPreset('all')">Toda la semana</button>
+                  <button type="button" class="pxos__preset-btn pxos__preset-btn--muted" @click="clearSelectedDays">Limpiar</button>
                 </div>
               </div>
             </div>
 
-            <div class="day-selector">
+            <div class="pxos__day-selector">
               <button
                 v-for="day in days"
                 :key="'selector-' + day.key"
                 type="button"
-                class="day-chip"
-                :class="{ active: selectedDays.includes(day.key) }"
+                class="pxos__day-chip"
+                :class="{ 'is-active': selectedDays.includes(day.key) }"
                 @click="toggleSelectedDay(day.key)"
               >
-                <span class="day-chip-check"><lucide-icon v-if="selectedDays.includes(day.key)" name="check" /></span>
+                <span class="pxos__day-chip-check"><lucide-icon v-if="selectedDays.includes(day.key)" name="check" :size="12" /></span>
                 {{ day.short }}
               </button>
             </div>
 
-            <div class="schedule-actions">
-              <b-button type="button" variant="primary" :disabled="!selectedDays.length || !baseSchedule.in || !baseSchedule.out" @click="applyBaseSchedule">
-                <lucide-icon name="copy" class="mr-1" />
+            <div class="pxos__schedule-actions">
+              <px-button type="button" variant="primary" icon="copy" :disabled="!selectedDays.length || !baseSchedule.in || !baseSchedule.out" @click="applyBaseSchedule">
                 Aplicar horario a {{ selectedDays.length }} {{ selectedDays.length === 1 ? 'día' : 'días' }}
-              </b-button>
-              <b-button type="button" variant="outline-secondary" :disabled="!selectedDays.length" @click="markSelectedDaysOff">
-                <lucide-icon name="calendar" class="mr-1" /> Marcar como días libres
-              </b-button>
+              </px-button>
+              <px-button type="button" variant="secondary" icon="calendar" :disabled="!selectedDays.length" @click="markSelectedDaysOff">
+                Marcar como días libres
+              </px-button>
             </div>
-            <p class="schedule-note">Aplicar un horario solo modifica los días seleccionados. Puedes ajustar cualquier día individualmente abajo.</p>
+            <p class="pxos__schedule-note">Aplicar un horario solo modifica los días seleccionados. Puedes ajustar cualquier día individualmente abajo.</p>
           </div>
 
-          <div class="shift-section">
-            <div class="shift-section-heading">
+          <div class="pxos__section">
+            <div class="pxos__section-head">
               <div>
                 <h6>Semana laboral</h6>
                 <p>Confirma los días laborables y ajusta excepciones si algún día tiene un horario diferente.</p>
               </div>
             </div>
 
-            <div class="week-schedule">
-              <div v-for="day in days" :key="day.key" class="week-day-row" :class="{ 'is-off': !isDayWorking(day.key) }">
-                <div class="week-day-name">
+            <div class="pxos__week">
+              <div v-for="day in days" :key="day.key" class="pxos__week-row" :class="{ 'is-off': !isDayWorking(day.key) }">
+                <div class="pxos__week-name">
                   <strong>{{ day.label }}</strong>
-                  <span :class="['day-status', isDayWorking(day.key) ? 'working' : 'off']">{{ isDayWorking(day.key) ? 'Laborable' : 'Día libre' }}</span>
+                  <span :class="['pxos__day-status', isDayWorking(day.key) ? 'is-working' : 'is-off']">{{ isDayWorking(day.key) ? 'Laborable' : 'Día libre' }}</span>
                 </div>
-                <div class="week-day-toggle">
+                <div class="pxos__week-toggle">
                   <b-form-checkbox switch :checked="isDayWorking(day.key)" @change="setDayWorking(day.key, $event)">Trabaja</b-form-checkbox>
                 </div>
-                <div class="week-time-field">
+                <div class="pxos__week-time">
                   <label>Entrada</label>
-                  <vue-clock-picker v-model="office_shift[day.key + '_in']" :disabled="!isDayWorking(day.key)" placeholder="Entrada" />
+                  <div class="pxos__clock"><vue-clock-picker v-model="office_shift[day.key + '_in']" :disabled="!isDayWorking(day.key)" placeholder="Entrada" /></div>
                 </div>
-                <div class="week-time-field">
+                <div class="pxos__week-time">
                   <label>Salida</label>
-                  <vue-clock-picker v-model="office_shift[day.key + '_out']" :disabled="!isDayWorking(day.key)" placeholder="Salida" />
+                  <div class="pxos__clock"><vue-clock-picker v-model="office_shift[day.key + '_out']" :disabled="!isDayWorking(day.key)" placeholder="Salida" /></div>
                 </div>
               </div>
             </div>
           </div>
+        </form>
+      </validation-observer>
 
-          <div class="shift-form-footer">
-            <div class="footer-hint">Los días marcados como libres se guardarán sin hora de entrada ni salida.</div>
-            <div class="footer-actions">
-              <b-button type="button" variant="outline-secondary" @click="$bvModal.hide('New_Office_Shift')" :disabled="SubmitProcessing">Cancelar</b-button>
-              <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <span v-if="SubmitProcessing" class="button-spinner"></span>
-                <lucide-icon v-else class="mr-1" name="check" />
-                {{ SubmitProcessing ? 'Guardando...' : 'Guardar turno' }}
-              </b-button>
-            </div>
-          </div>
-        </b-form>
-      </b-modal>
-    </validation-observer>
+      <template #footer="{ close }">
+        <span class="pxos__hint">Los días marcados como libres se guardarán sin hora de entrada ni salida.</span>
+        <px-button variant="secondary" :disabled="SubmitProcessing" @click="close">Cancelar</px-button>
+        <px-button variant="primary" icon="check" :loading="SubmitProcessing" @click="Submit_Office_Shift">
+          {{ SubmitProcessing ? 'Guardando...' : 'Guardar turno' }}
+        </px-button>
+      </template>
+    </px-modal>
+
+    <!-- Confirmar eliminar (una fila) -->
+    <px-modal v-model="confirmOpen" :title="$t('Delete_Title')" size="sm">
+      <p class="pxos__confirm">{{ $t('Delete_Text') }}</p>
+      <template #footer="{ close }">
+        <span class="pxos__grow" />
+        <px-button variant="secondary" :disabled="deleting" @click="close">{{ $t('Delete_cancelButtonText') }}</px-button>
+        <px-button variant="danger" icon="trash-2" :loading="deleting" @click="doDelete">{{ $t('Delete_confirmButtonText') }}</px-button>
+      </template>
+    </px-modal>
+
+    <!-- Confirmar eliminar (selección múltiple) -->
+    <px-modal v-model="confirmBulkOpen" :title="$t('Delete_Title')" size="sm">
+      <p class="pxos__confirm">{{ $t('Delete_Text') }}</p>
+      <template #footer="{ close }">
+        <span class="pxos__grow" />
+        <px-button variant="secondary" :disabled="deletingBulk" @click="close">{{ $t('Delete_cancelButtonText') }}</px-button>
+        <px-button variant="danger" icon="trash-2" :loading="deletingBulk" @click="doDeleteBulk">{{ $t('Delete_confirmButtonText') }}</px-button>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import VueClockPicker from '@pencilpix/vue2-clock-picker';
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxSkeleton from "@/components/PxSkeleton.vue";
+import VField from "@/views/app/products/next/edit/VField.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: "Turnos de oficina" },
+  components: {
+    VueClockPicker,
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
+    PxInput, PxEmptyState, PxModal, PxSkeleton, "v-field": VField, "vs-px": VsPx
+  },
 
   data() {
     return {
       isLoading: true,
+      refreshing: false,
       SubmitProcessing: false,
       serverParams: { columnFilters: {}, sort: { field: "id", type: "desc" }, page: 1, perPage: 10 },
       selectedIds: [],
       totalRows: "",
       search: "",
+      _searchTimer: null,
       limit: "10",
       office_shifts: [],
       companies: [],
       editmode: false,
+      modalOpen: false,
+      confirmOpen: false,
+      pendingDelete: null,
+      deleting: false,
+      confirmBulkOpen: false,
+      deletingBulk: false,
       days: [
         { key: 'monday', label: 'Lunes', short: 'Lun' },
         { key: 'tuesday', label: 'Martes', short: 'Mar' },
@@ -225,14 +322,17 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("Name"), field: "name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Company"), field: "company_name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { key: "name", label: this.$t("Name"), sortable: true, strong: true },
+        { key: "company_name", label: this.$t("Company"), sortable: true }
+      ];
+    },
+    rowActions() {
+      return [
+        { key: "edit", label: "Editar", icon: "pencil" },
+        { key: "delete", label: "Eliminar", icon: "trash-2", tone: "danger" }
       ];
     }
   },
-
-  components: { VueClockPicker },
 
   methods: {
     emptyOfficeShift() {
@@ -245,12 +345,19 @@ export default {
       };
     },
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
-    onPageChange({ currentPage }) { if (this.serverParams.page !== currentPage) { this.updateParams({ page: currentPage }); this.Get_Office_Shift(currentPage); } },
-    onPerPageChange({ currentPerPage }) { if (this.limit !== currentPerPage) { this.limit = currentPerPage; this.updateParams({ page: 1, perPage: currentPerPage }); this.Get_Office_Shift(1); } },
-    selectionChanged({ selectedRows }) { this.selectedIds = selectedRows.map(row => row.id); },
-    onSortChange(params) { this.updateParams({ sort: { type: params[0].type, field: params[0].field } }); this.Get_Office_Shift(this.serverParams.page); },
-    onSearch(value) { this.search = value.searchTerm; this.Get_Office_Shift(this.serverParams.page); },
-    getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
+    onPage(p) { if (this.serverParams.page !== p) { this.updateParams({ page: p }); this.Get_Office_Shift(p); } },
+    onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.updateParams({ page: 1, perPage: v }); this.Get_Office_Shift(1); } },
+    onSort({ key, dir }) { this.updateParams({ sort: { type: dir, field: key } }); this.Get_Office_Shift(this.serverParams.page); },
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.updateParams({ page: 1 }); this.Get_Office_Shift(1); }, 350);
+    },
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.Edit_Office_Shift(row);
+      else if (k === "delete") { this.pendingDelete = row; this.confirmOpen = true; }
+    },
 
     toggleSelectedDay(dayKey) {
       const index = this.selectedDays.indexOf(dayKey);
@@ -310,14 +417,14 @@ export default {
       });
     },
     makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }); },
-    New_Office_Shift() { this.reset_Form(); this.Get_Data_Create(); this.editmode = false; this.$bvModal.show("New_Office_Shift"); },
+    New_Office_Shift() { this.reset_Form(); this.Get_Data_Create(); this.editmode = false; this.modalOpen = true; },
     Edit_Office_Shift(office_shift) {
       this.reset_Form();
       this.editmode = true;
       this.Get_Data_Edit(office_shift.id);
       this.office_shift = Object.assign(this.emptyOfficeShift(), office_shift);
       this.syncBaseScheduleFromShift();
-      this.$bvModal.show("New_Office_Shift");
+      this.modalOpen = true;
     },
     syncBaseScheduleFromShift() {
       const firstWorkingDay = this.days.find(day => this.office_shift[day.key + '_in'] && this.office_shift[day.key + '_out']);
@@ -329,6 +436,7 @@ export default {
     Selected_Company(value) { if (value === null) this.office_shift.company_id = ""; },
 
     Get_Office_Shift(page) {
+      if (page && page !== 1) this.refreshing = true;
       NProgress.start();
       NProgress.set(0.1);
       axios.get("office_shift?page=" + page + "&SortField=" + this.serverParams.sort.field + "&SortType=" + this.serverParams.sort.type + "&search=" + this.search + "&limit=" + this.limit)
@@ -337,8 +445,9 @@ export default {
           this.totalRows = response.data.totalRows;
           NProgress.done();
           this.isLoading = false;
+          this.refreshing = false;
         })
-        .catch(() => { NProgress.done(); setTimeout(() => { this.isLoading = false; }, 500); });
+        .catch(() => { NProgress.done(); setTimeout(() => { this.isLoading = false; this.refreshing = false; }, 500); });
     },
     officeShiftPayload() {
       const payload = { name: this.office_shift.name, company_id: this.office_shift.company_id };
@@ -373,38 +482,48 @@ export default {
       this.baseSchedule = { in: "", out: "" };
       this.selectedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     },
-    Remove_Office_Shift(id) {
-      this.$swal({
-        title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning", showCancelButton: true,
-        confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33", cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          axios.delete("office_shift/" + id)
-            .then(() => { this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success"); Fire.$emit("Delete_Office_Shift"); })
-            .catch(() => { this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning"); });
-        }
-      });
+
+    doDelete() {
+      const row = this.pendingDelete;
+      if (!row) return;
+      this.deleting = true;
+      axios.delete("office_shift/" + row.id)
+        .then(() => {
+          this.deleting = false;
+          this.confirmOpen = false;
+          this.pendingDelete = null;
+          this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+          Fire.$emit("Delete_Office_Shift");
+        })
+        .catch(() => {
+          this.deleting = false;
+          this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
+        });
     },
-    delete_by_selected() {
-      this.$swal({
-        title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning", showCancelButton: true,
-        confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33", cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          NProgress.start();
-          NProgress.set(0.1);
-          axios.post("office_shift/delete/by_selection", { selectedIds: this.selectedIds })
-            .then(() => { this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success"); Fire.$emit("Delete_Office_Shift"); })
-            .catch(() => { setTimeout(() => NProgress.done(), 500); this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning"); });
-        }
-      });
+    doDeleteBulk() {
+      this.deletingBulk = true;
+      NProgress.start();
+      NProgress.set(0.1);
+      axios.post("office_shift/delete/by_selection", { selectedIds: this.selectedIds })
+        .then(() => {
+          this.deletingBulk = false;
+          this.confirmBulkOpen = false;
+          this.selectedIds = [];
+          this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+          Fire.$emit("Delete_Office_Shift");
+        })
+        .catch(() => {
+          this.deletingBulk = false;
+          setTimeout(() => NProgress.done(), 500);
+          this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
+        });
     }
   },
 
   created() {
     this.Get_Office_Shift(1);
     Fire.$on("Event_Office_Shift", () => {
-      setTimeout(() => { this.Get_Office_Shift(this.serverParams.page); this.$bvModal.hide("New_Office_Shift"); }, 500);
+      setTimeout(() => { this.Get_Office_Shift(this.serverParams.page); this.modalOpen = false; }, 500);
     });
     Fire.$on("Delete_Office_Shift", () => {
       setTimeout(() => { this.Get_Office_Shift(this.serverParams.page); }, 500);
@@ -413,52 +532,82 @@ export default {
 };
 </script>
 
-<style scoped>
-.shift-section { border: 1px solid #e4eaf1; border-radius: 12px; padding: 20px; margin-bottom: 18px; background: #fff; }
-.shift-template-section { background: #fbfdff; }
-.shift-section-heading { display: flex; align-items: flex-start; margin-bottom: 18px; }
-.shift-section-heading--split { justify-content: space-between; gap: 16px; }
-.shift-section-heading h6 { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: #18212f; }
-.shift-section-heading p { margin: 0; color: #667085; font-size: 13px; }
-.shift-helper-badge { background: rgba(56,191,211,.12); color: #17879a; border-radius: 999px; padding: 5px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; }
-.base-schedule-grid { display: grid; grid-template-columns: minmax(160px,1fr) minmax(160px,1fr) minmax(280px,1.5fr); gap: 14px; align-items: end; }
-.base-time-field label, .quick-presets > label, .week-time-field label { display: block; margin-bottom: 6px; color: #475467; font-size: 12px; font-weight: 600; }
-.preset-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
-.preset-btn { border: 1px solid #d6dee8; background: #fff; color: #344054; border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s ease; }
-.preset-btn:hover { border-color: var(--primary-color,#38bfd3); color: var(--primary-color,#17879a); }
-.preset-btn--muted { color: #667085; }
-.day-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-.day-chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #d7e0ea; background: #fff; color: #475467; border-radius: 999px; padding: 7px 12px 7px 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
-.day-chip.active { border-color: var(--primary-color,#38bfd3); background: rgba(56,191,211,.10); color: #167b8c; }
-.day-chip-check { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; justify-content: center; }
-.day-chip.active .day-chip-check { background: var(--primary-color,#38bfd3); border-color: var(--primary-color,#38bfd3); color: #fff; }
-.day-chip-check svg { width: 12px; height: 12px; }
-.schedule-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-.schedule-note { margin: 10px 0 0; color: #7a8597; font-size: 12px; }
-.week-schedule { display: flex; flex-direction: column; gap: 8px; }
-.week-day-row { display: grid; grid-template-columns: minmax(145px,1fr) 110px minmax(150px,1fr) minmax(150px,1fr); gap: 14px; align-items: center; padding: 12px 14px; border: 1px solid #e5ebf2; border-radius: 10px; background: #fff; }
-.week-day-row.is-off { background: #f8fafc; }
-.week-day-name { display: flex; align-items: center; gap: 9px; }
-.week-day-name strong { color: #253044; font-size: 13px; }
-.day-status { display: inline-flex; border-radius: 999px; padding: 3px 8px; font-size: 10px; font-weight: 700; }
-.day-status.working { background: #e7f8ef; color: #18794e; }
-.day-status.off { background: #eef2f6; color: #667085; }
-.week-day-toggle { font-size: 12px; }
-.week-time-field label { margin-bottom: 4px; }
-.shift-form-footer { position: sticky; bottom: -16px; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 0 -16px -16px; padding: 14px 20px; border-top: 1px solid #e3e8ef; background: rgba(255,255,255,.97); backdrop-filter: blur(8px); }
-.footer-hint { color: #667085; font-size: 12px; }
-.footer-actions { display: flex; gap: 9px; flex-shrink: 0; }
-.button-spinner { width: 14px; height: 14px; display: inline-block; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; margin-right: 6px; vertical-align: -2px; animation: shift-spin .7s linear infinite; }
-@keyframes shift-spin { to { transform: rotate(360deg); } }
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxos { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxos { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxos__pad { padding: var(--pxn-space-6) 0; }
+
+.pxos__actions { display: flex; flex-wrap: wrap; gap: var(--pxn-space-3); justify-content: flex-end; max-width: 100%; min-width: 0; }
+.pxos ::v-deep .pxn-pagehead__actions { min-width: 0; flex: 1 1 auto; }
+@media (max-width: 720px) { .pxos__actions { justify-content: flex-start; } }
+
+.pxos__tablewrap { margin-top: var(--pxn-space-5); transition: opacity var(--pxn-dur-1) var(--pxn-ease); }
+.pxos__tablewrap.is-busy { opacity: 0.55; pointer-events: none; }
+
+.pxos__grow { flex: 1; }
+.pxos__hint { flex: 1; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pxos__confirm { margin: 0; font-size: var(--pxn-fs-body); color: var(--pxn-ink-2); line-height: var(--pxn-lh-snug); }
+
+// ---- Editor semanal (reskin local, sin componente global) ----
+.pxos__section { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-lg); padding: var(--pxn-space-6); margin-bottom: var(--pxn-space-5); background: var(--pxn-surface); }
+.pxos__section--template { background: var(--pxn-surface-2); }
+.pxos__section-head { display: flex; align-items: flex-start; margin-bottom: var(--pxn-space-5); }
+.pxos__section-head--split { justify-content: space-between; gap: var(--pxn-space-5); }
+.pxos__section-head h6 { margin: 0 0 var(--pxn-space-2); font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
+.pxos__section-head p { margin: 0; color: var(--pxn-ink-2); font-size: var(--pxn-fs-sm); }
+.pxos__helper-badge { background: var(--pxn-primary-softer); color: var(--pxn-primary-ink); border-radius: var(--pxn-radius-pill); padding: 5px 10px; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-bold); white-space: nowrap; }
+
+.pxos__grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--pxn-space-5); }
+@media (max-width: 640px) { .pxos__grid2 { grid-template-columns: 1fr; } }
+
+.pxos__base-grid { display: grid; grid-template-columns: minmax(160px,1fr) minmax(160px,1fr) minmax(280px,1.5fr); gap: var(--pxn-space-4); align-items: end; }
+.pxos__time-field label, .pxos__presets > label, .pxos__week-time label { display: block; margin-bottom: var(--pxn-space-2); color: var(--pxn-ink-2); font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); }
+.pxos__preset-buttons { display: flex; flex-wrap: wrap; gap: var(--pxn-space-2); }
+.pxos__preset-btn { border: 1px solid var(--pxn-border-control); background: var(--pxn-surface); color: var(--pxn-ink-2); border-radius: var(--pxn-radius-sm); padding: var(--pxn-space-3) var(--pxn-space-4); font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); cursor: pointer; transition: border-color var(--pxn-dur-1) var(--pxn-ease), color var(--pxn-dur-1) var(--pxn-ease); }
+.pxos__preset-btn:hover { border-color: var(--pxn-primary); color: var(--pxn-primary-ink); }
+.pxos__preset-btn--muted { color: var(--pxn-ink-3); }
 @media (max-width: 991px) {
-  .base-schedule-grid { grid-template-columns: 1fr 1fr; }
-  .quick-presets { grid-column: 1 / -1; }
-  .week-day-row { grid-template-columns: 1fr 110px; }
+  .pxos__base-grid { grid-template-columns: 1fr 1fr; }
+  .pxos__presets { grid-column: 1 / -1; }
 }
-@media (max-width: 575px) {
-  .shift-section { padding: 14px; }
-  .base-schedule-grid, .week-day-row { grid-template-columns: 1fr; }
-  .shift-form-footer { position: static; margin: 0; padding: 14px 0 0; flex-direction: column; align-items: stretch; }
-  .footer-actions { justify-content: flex-end; }
+@media (max-width: 575px) { .pxos__base-grid { grid-template-columns: 1fr; } }
+
+.pxos__day-selector { display: flex; flex-wrap: wrap; gap: var(--pxn-space-3); margin-top: var(--pxn-space-5); }
+.pxos__day-chip { display: inline-flex; align-items: center; gap: var(--pxn-space-2); border: 1px solid var(--pxn-border-control); background: var(--pxn-surface); color: var(--pxn-ink-2); border-radius: var(--pxn-radius-pill); padding: 7px 12px 7px 8px; font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); cursor: pointer; transition: border-color var(--pxn-dur-1) var(--pxn-ease), background var(--pxn-dur-1) var(--pxn-ease), color var(--pxn-dur-1) var(--pxn-ease); }
+.pxos__day-chip.is-active { border-color: var(--pxn-primary); background: var(--pxn-primary-softer); color: var(--pxn-primary-ink); }
+.pxos__day-chip-check { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--pxn-border-control); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.pxos__day-chip.is-active .pxos__day-chip-check { background: var(--pxn-primary); border-color: var(--pxn-primary); color: var(--pxn-primary-contrast); }
+
+.pxos__schedule-actions { display: flex; flex-wrap: wrap; gap: var(--pxn-space-3); margin-top: var(--pxn-space-5); }
+.pxos__schedule-note { margin: var(--pxn-space-4) 0 0; color: var(--pxn-ink-3); font-size: var(--pxn-fs-xs); }
+
+.pxos__week { display: flex; flex-direction: column; gap: var(--pxn-space-3); }
+.pxos__week-row { display: grid; grid-template-columns: minmax(145px,1fr) 110px minmax(150px,1fr) minmax(150px,1fr); gap: var(--pxn-space-4); align-items: center; padding: var(--pxn-space-4); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
+.pxos__week-row.is-off { background: var(--pxn-surface-2); }
+.pxos__week-name { display: flex; align-items: center; gap: var(--pxn-space-3); }
+.pxos__week-name strong { color: var(--pxn-ink); font-size: var(--pxn-fs-sm); }
+.pxos__day-status { display: inline-flex; border-radius: var(--pxn-radius-pill); padding: 3px 8px; font-size: 10px; font-weight: var(--pxn-fw-bold); }
+.pxos__day-status.is-working { background: var(--pxn-success-soft, #e7f8ef); color: var(--pxn-success-ink, #18794e); }
+.pxos__day-status.is-off { background: var(--pxn-surface-3); color: var(--pxn-ink-3); }
+.pxos__week-toggle { font-size: var(--pxn-fs-xs); }
+@media (max-width: 991px) { .pxos__week-row { grid-template-columns: 1fr 110px; } }
+@media (max-width: 575px) { .pxos__week-row { grid-template-columns: 1fr; } }
+
+// Reskin local del clock-picker legacy — el widget en sí (carátula de
+// reloj, popup) no se toca, solo el input disparador visible en el form.
+.pxos__clock ::v-deep .vue-clock-picker input,
+.pxos__clock ::v-deep input.form-control {
+  width: 100%;
+  height: var(--pxn-control-h-md);
+  padding: 0 var(--pxn-space-5);
+  border: 1px solid var(--pxn-border-control);
+  border-radius: var(--pxn-radius-md);
+  background: var(--pxn-surface);
+  color: var(--pxn-ink);
+  font: inherit;
+  font-size: var(--pxn-fs-body);
 }
+.pxos__clock ::v-deep input.form-control:disabled { background: var(--pxn-surface-3); color: var(--pxn-ink-disabled); }
 </style>
