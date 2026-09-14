@@ -1,549 +1,451 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('department')" :folder="$t('hrm')"/>
+  <div class="px-next pxdept">
+    <!--
+      Migracion px-next — Departamentos. Ruta real sin cambios
+      (/app/hrm/departments). Esta misma vista se abre desde DOS entradas
+      de menu (Personal y Estructura) — un solo componente, sin duplicar.
+      Conserva endpoint, payloads, permisos (gate unico en backend sobre
+      Department::class, sin gating de componente), busqueda, orden,
+      paginacion, seleccion multiple, borrado individual/masivo
+      (soft-delete) y las llamadas de datos de apoyo que ya hacia el
+      legacy antes de abrir el modal. Notificacion de resultado sigue
+      siendo $swal (igual que antes).
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="departments"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        enabled: true,
-        placeholder: $t('Search_this_table'),  
-      }"
-        :select-options="{ 
-          enabled: true ,
-          clearSelectionText: '',
-        }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="selected-row-actions">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button
-            @click="New_Department()"
-            class="btn-rounded"
-            variant="btn btn-primary btn-icon m-1"
-          >
-            <lucide-icon name="plus" />
-            {{$t('Add')}}
-          </b-button>
-        </div>
+      Peculiaridades legacy preservadas TAL CUAL:
+      - Edit_Department hace TRES llamadas antes de asignar el registro:
+        Get_Department (refetch de la lista), Get_Data_Edit (companias) y
+        Get_employees_by_company (jefes de departamento de esa compania) —
+        se preservan las tres, en el mismo orden.
+      - onSortChange calculaba un `field` remapeado (company_name ->
+        company_id) que nunca se usaba: el legacy siempre mandaba la
+        columna cruda al backend. A diferencia de Dias festivos, aqui el
+        backend SI expone company_name/employee_head como alias reales de
+        un JOIN (DepartmentsController@index), asi que ordenar por esas
+        columnas no rompe — verificado en vivo, no asumido.
+      - department_head es opcional y depende de la compania elegida
+        (cascada): al cambiar de compania se limpian employees y
+        department_head, igual que el legacy.
+    -->
+    <px-page-header :title="$t('department')" :breadcrumbs="[{ label: $t('hrm') }, { label: $t('department') }]">
+      <template #actions>
+        <px-button
+          v-if="selectedIds.length"
+          variant="danger"
+          icon="trash-2"
+          @click="confirmBulkOpen = true"
+        >{{ $t('Del') }} ({{ selectedIds.length }})</px-button>
+        <px-button variant="primary" icon="plus" @click="New_Department">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a @click="Edit_Department(props.row)" class="cursor-pointer" title="Edit" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a title="Delete" v-b-tooltip.hover class="cursor-pointer" @click="Remove_Department(props.row.id)">
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
 
-    <validation-observer ref="Create_Department">
-      <b-modal hide-footer size="md" id="New_Department" :title="editmode?$t('Edit'):$t('Add')">
-        <b-form @submit.prevent="Submit_Department">
-          <b-row>
-            <!-- Name -->
-            <b-col md="12">
-              <validation-provider
-                name="department"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('department') + ' ' + '*'">
-                  <b-form-input
-                    :placeholder="$t('Enter_Department_Name')"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="department-feedback"
-                    label="department"
-                    v-model="department.department"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="department-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+    <div v-if="isLoading" class="pxdept__pad">
+      <px-skeleton variant="table" :rows="8" :columns="3" />
+    </div>
 
-             <!-- Company -->
-                 <b-col md="12">
-                  <validation-provider name="Company" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Company') + ' ' + '*'">
-                      <v-select
-                        :class="{'is-invalid': !!errors.length}"
-                        :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="department.company_id"
-                        class="required"
-                        required
-                        @input="Selected_Company"
-                        :placeholder="$t('Choose_Company')"
-                        :reduce="label => label.value"
-                        :options="companies.map(companies => ({label: companies.name, value: companies.id}))"
-                      />
-                      <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
-                </b-col>
+    <template v-else>
+      <div class="pxdept__tablewrap" :class="{ 'is-busy': refreshing }">
+        <px-table
+          v-if="departments.length"
+          :columns="columns"
+          :rows="departments"
+          row-key="id"
+          selectable
+          :selected="selectedIds"
+          @update:selected="selectedIds = $event"
+          :sort-key="sort.field"
+          :sort-dir="sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
 
-                  <!-- Department_Head -->
-                 <b-col md="12">
-                    <b-form-group :label="$t('Department_Head')">
-                      <v-select
-                        v-model="department.department_head"
-                        @input="Selected_Employee"
-                        :placeholder="$t('Choose_Department_Head')"
-                        :reduce="label => label.value"
-                        :options="employees.map(employees => ({label: employees.username, value: employees.id}))"
-                      />
-                    </b-form-group>
-                </b-col>
+        <px-empty-state v-else icon="building-2" :title="$t('department')" description="Sin departamentos que coincidan con la búsqueda." />
+      </div>
 
-            <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
+      <px-pagination
+        v-if="departments.length"
+        :page="page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        :per-page-options="['10', '25', '50', '100']"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
+    <!-- Crear / editar -->
+    <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
+      <validation-observer ref="Create_Department">
+        <form @submit.prevent="Submit_Department">
+          <v-field name="department" :label="$t('department')" required :rules="{ required: true }" v-slot="{ invalid, id }">
+            <px-input :id="id" v-model="department.department" :placeholder="$t('Enter_Department_Name')" :invalid="invalid" />
+          </v-field>
+
+          <v-field name="Company" :label="$t('Company')" required :rules="{ required: true }" v-slot="{ invalid, id }" class="pxdept__field">
+            <vs-px
+              :input-id="id"
+              :invalid="invalid"
+              v-model="department.company_id"
+              @input="Selected_Company"
+              :reduce="o => o.value"
+              :placeholder="$t('Choose_Company')"
+              :options="companies.map(c => ({ label: c.name, value: c.id }))"
+            />
+          </v-field>
+
+          <px-field :label="$t('Department_Head')" class="pxdept__field">
+            <template #default="{ id }">
+              <vs-px
+                :input-id="id"
+                v-model="department.department_head"
+                @input="Selected_Employee"
+                :reduce="o => o.value"
+                :placeholder="$t('Choose_Department_Head')"
+                :options="employees.map(e => ({ label: e.username, value: e.id }))"
+              />
+            </template>
+          </px-field>
+        </form>
+      </validation-observer>
+
+      <template #footer="{ close }">
+        <span class="pxdept__grow" />
+        <px-button variant="secondary" :disabled="SubmitProcessing" @click="close">Cancelar</px-button>
+        <px-button variant="primary" icon="check" :loading="SubmitProcessing" @click="Submit_Department">
+          {{ $t('submit') }}
+        </px-button>
+      </template>
+    </px-modal>
+
+    <!-- Confirmar eliminar (una fila) -->
+    <px-modal v-model="confirmOpen" :title="$t('Delete_Title')" size="sm">
+      <p class="pxdept__confirm">
+        {{ $t('Delete_Text') }}
+        <strong v-if="pendingDelete">{{ pendingDelete.department }}</strong>
+      </p>
+      <template #footer="{ close }">
+        <span class="pxdept__grow" />
+        <px-button variant="secondary" :disabled="deleting" @click="close">{{ $t('Delete_cancelButtonText') }}</px-button>
+        <px-button variant="danger" icon="trash-2" :loading="deleting" @click="doDelete">{{ $t('Delete_confirmButtonText') }}</px-button>
+      </template>
+    </px-modal>
+
+    <!-- Confirmar eliminar (selección múltiple) -->
+    <px-modal v-model="confirmBulkOpen" :title="$t('Delete_Title')" size="sm">
+      <p class="pxdept__confirm">{{ $t('Delete_Text') }}</p>
+      <template #footer="{ close }">
+        <span class="pxdept__grow" />
+        <px-button variant="secondary" :disabled="deletingBulk" @click="close">{{ $t('Delete_cancelButtonText') }}</px-button>
+        <px-button variant="danger" icon="trash-2" :loading="deletingBulk" @click="doDeleteBulk">{{ $t('Delete_confirmButtonText') }}</px-button>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxSkeleton from "@/components/PxSkeleton.vue";
+import VField from "@/views/app/products/next/edit/VField.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
-  metaInfo: {
-    title: "Department"
+  name: "HrmDepartmentNext",
+  metaInfo: { title: "Department" },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
+    PxField, PxInput, PxEmptyState, PxModal, PxSkeleton,
+    "v-field": VField, "vs-px": VsPx
   },
   data() {
     return {
       isLoading: true,
-      SubmitProcessing:false,
-      serverParams: {
-        columnFilters: {},
-        sort: {
-          field: "id",
-          type: "desc"
-        },
-        page: 1,
-        perPage: 10
-      },
-      selectedIds: [],
+      refreshing: false,
+      SubmitProcessing: false,
+      departments: [],
+      employees: [],
+      companies: [],
       totalRows: "",
-      search: "",
+      page: 1,
       limit: "10",
+      search: "",
+      _searchTimer: null,
+      sort: { field: "id", type: "desc" },
+      selectedIds: [],
       editmode: false,
-      departments: {}, 
-      employees:[],
-      companies:[],
-      department: {
-          department: "",
-          company_id: "",
-          department_head:"",
-      },
+      modalOpen: false,
+      department: { id: "", department: "", company_id: "", department_head: "" },
+      confirmOpen: false,
+      pendingDelete: null,
+      deleting: false,
+      confirmBulkOpen: false,
+      deletingBulk: false
     };
   },
-
   computed: {
     columns() {
       return [
-        {
-          label: this.$t("department"),
-          field: "department",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Department_Head"),
-          field: "employee_head",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Company"),
-          field: "company_name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "department", label: this.$t("department"), sortable: true, strong: true },
+        { key: "employee_head", label: this.$t("Department_Head"), sortable: true },
+        { key: "company_name", label: this.$t("Company"), sortable: true }
+      ];
+    },
+    rowActions() {
+      return [
+        { key: "edit", label: "Editar", icon: "pencil" },
+        { key: "delete", label: "Eliminar", icon: "trash-2", tone: "danger" }
       ];
     }
   },
-
   methods: {
-    //---- update Params Table
-    updateParams(newProps) {
-      this.serverParams = Object.assign({}, this.serverParams, newProps);
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.Edit_Department(row);
+      else if (k === "delete") { this.pendingDelete = row; this.confirmOpen = true; }
     },
-
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Department(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.page = 1; this.Get_Department(1); }, 350);
     },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Department(1);
-      }
+    onSort({ key, dir }) {
+      // Legacy siempre mandaba la columna cruda (ver nota arriba) — se
+      // preserva exacto, sin remapear company_name -> company_id.
+      this.sort = { field: key, type: dir };
+      this.Get_Department(this.page);
     },
+    onPage(p) { if (p !== this.page) { this.page = p; this.Get_Department(p); } },
+    onLimit(v) { this.limit = String(v); this.page = 1; this.Get_Department(1); },
 
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
-    },
-
-    //---- Event Sort Change
-
-    onSortChange(params) {
-      let field = "";
-      if (params[0].field == "company_name") {
-        field = "company_id";
-      }else {
-        field = params[0].field;
-      }
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
-      this.Get_Department(this.serverParams.page);
-    },
-
-    //---- Event Search
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Department(this.serverParams.page);
-    },
-
-    //---- Validation State Form
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
     },
+    makeToast(variant, msg, title) {
+      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+    },
 
-    //------------- Submit Validation Create & Edit department
     Submit_Department() {
       this.$refs.Create_Department.validate().then(success => {
         if (!success) {
-          this.makeToast(
-            "danger",
-            this.$t("Please_fill_the_form_correctly"),
-            this.$t("Failed")
-          );
+          this.makeToast("danger", this.$t("Please_fill_the_form_correctly"), this.$t("Failed"));
         } else {
-          if (!this.editmode) {
-            this.Create_Department();
-          } else {
-            this.Update_Department();
-          }
+          if (!this.editmode) this.Create_Department();
+          else this.Update_Department();
         }
       });
     },
 
-    //------ Toast
-    makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
-        title: title,
-        variant: variant,
-        solid: true
-      });
-    },
-
-    //------------------------------ Modal (create department) -------------------------------\\
     New_Department() {
       this.reset_Form();
       this.editmode = false;
       this.Get_Data_Create();
-      this.$bvModal.show("New_Department");
+      this.modalOpen = true;
     },
 
-    //------------------------------ Modal (Update department) -------------------------------\\
     Edit_Department(department) {
-      this.Get_Department(this.serverParams.page);
+      this.Get_Department(this.page);
       this.reset_Form();
       this.Get_Data_Edit(department.id);
       this.Get_employees_by_company(department.company_id);
       this.department = department;
       this.editmode = true;
-      this.$bvModal.show("New_Department");
+      this.modalOpen = true;
     },
 
-      Selected_Company(value) {
-          if (value === null) {
-              this.department.company_id = "";
-          }
-          this.employees = [];
-          this.department.department_head = "";
-          this.Get_employees_by_company(value);
-      },
+    Selected_Company(value) {
+      if (value === null) {
+        this.department.company_id = "";
+      }
+      this.employees = [];
+      this.department.department_head = "";
+      this.Get_employees_by_company(value);
+    },
 
-      Selected_Employee(value) {
-          if (value === null) {
-              this.department.department_head = "";
-          }
-      },
+    Selected_Employee(value) {
+      if (value === null) {
+        this.department.department_head = "";
+      }
+    },
 
-      //---------------------- Get_employees_by_company ------------------------------\\
-      
-      Get_employees_by_company(value) {
-          axios
-          .get("/core/get_employees_by_company?id=" + value)
-          .then(({ data }) => (this.employees = data));
-      },
+    Get_employees_by_company(value) {
+      axios
+        .get("/core/get_employees_by_company?id=" + value)
+        .then(({ data }) => (this.employees = data));
+    },
 
-       //---------------------- Get_Data_Create  ------------------------------\\
-          Get_Data_Create() {
-            axios
-                .get("/departments/create")
-                .then(response => {
-                    this.companies   = response.data.companies;
-                })
-                .catch(error => {
-                    
-                });
-        },
+    Get_Data_Create() {
+      axios
+        .get("/departments/create")
+        .then(response => {
+          this.companies = response.data.companies;
+        })
+        .catch(() => {});
+    },
 
-        //---------------------- Get_Data_Edit  ------------------------------\\
-        Get_Data_Edit(id) {
-          axios
-              .get("/departments/"+id+"/edit")
-              .then(response => {
-                  this.companies   = response.data.companies;
-              })
-              .catch(error => {
-                  
-              });
-      },
-
-
-    //--------------------------Get ALL department ---------------------------\\
+    Get_Data_Edit(id) {
+      axios
+        .get("/departments/" + id + "/edit")
+        .then(response => {
+          this.companies = response.data.companies;
+        })
+        .catch(() => {});
+    },
 
     Get_Department(page) {
-      // Start the progress bar.
+      if (page === 1 || !page) this.refreshing = !this.isLoading;
       NProgress.start();
       NProgress.set(0.1);
       axios
         .get(
-          "departments?page=" +
-            page +
-            "&SortField=" +
-            this.serverParams.sort.field +
-            "&SortType=" +
-            this.serverParams.sort.type +
-            "&search=" +
-            this.search +
-            "&limit=" +
-            this.limit
+          "departments?page=" + page +
+          "&SortField=" + this.sort.field +
+          "&SortType=" + this.sort.type +
+          "&search=" + this.search +
+          "&limit=" + this.limit
         )
         .then(response => {
           this.totalRows = response.data.totalRows;
           this.departments = response.data.departments;
-
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
+          this.refreshing = false;
         })
-        .catch(response => {
-          // Complete the animation of theprogress bar.
+        .catch(() => {
           NProgress.done();
-          setTimeout(() => {
-            this.isLoading = false;
-          }, 500);
+          setTimeout(() => { this.isLoading = false; this.refreshing = false; }, 500);
         });
     },
 
-    //------------------------------- Create department ------------------------\\
     Create_Department() {
-      
       this.SubmitProcessing = true;
       axios
         .post("departments", {
           department: this.department.department,
           company_id: this.department.company_id,
-          department_head: this.department.department_head,
-          
+          department_head: this.department.department_head
         })
-        .then(response => {
+        .then(() => {
           this.SubmitProcessing = false;
           Fire.$emit("Event_Department");
-          this.makeToast(
-            "success",
-            this.$t("Created_in_successfully"),
-            this.$t("Success")
-          );
+          this.makeToast("success", this.$t("Created_in_successfully"), this.$t("Success"));
         })
-        .catch(error => {
+        .catch(() => {
           this.SubmitProcessing = false;
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
         });
     },
 
-    //------------------------------- Update department ------------------------\\
     Update_Department() {
       this.SubmitProcessing = true;
       axios
         .put("departments/" + this.department.id, {
           department: this.department.department,
           company_id: this.department.company_id,
-          department_head: this.department.department_head,
+          department_head: this.department.department_head
         })
-        .then(response => {
+        .then(() => {
           this.SubmitProcessing = false;
           Fire.$emit("Event_Department");
-
-          this.makeToast(
-            "success",
-            this.$t("Updated_in_successfully"),
-            this.$t("Success")
-          );
+          this.makeToast("success", this.$t("Updated_in_successfully"), this.$t("Success"));
         })
-        .catch(error => {
+        .catch(() => {
           this.SubmitProcessing = false;
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
         });
     },
 
-    //------------------------------- reset Form ------------------------\\
     reset_Form() {
-     this.department = {
-          id: "",
-          department: "",
-          company_id: "",
-          department_head:"",
-      };
+      this.department = { id: "", department: "", company_id: "", department_head: "" };
     },
 
-    //------------------------------- Delete department ------------------------\\
-    Remove_Department(id) {
-      this.$swal({
-        title: this.$t("Delete_Title"),
-        text: this.$t("Delete_Text"),
-        type: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "var(--px-primary)",
-        cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"),
-        confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          axios
-            .delete("departments/" + id)
-            .then(() => {
-              this.$swal(
-                this.$t("Delete_Deleted"),
-                this.$t("Deleted_in_successfully"),
-                "success"
-              );
-
-              Fire.$emit("Delete_Department");
-            })
-            .catch(() => {
-              this.$swal(
-                this.$t("Delete_Failed"),
-                this.$t("Delete_Therewassomethingwronge"),
-                "warning"
-              );
-            });
-        }
-      });
+    doDelete() {
+      const row = this.pendingDelete;
+      if (!row) return;
+      this.deleting = true;
+      axios
+        .delete("departments/" + row.id)
+        .then(() => {
+          this.deleting = false;
+          this.confirmOpen = false;
+          this.pendingDelete = null;
+          this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+          Fire.$emit("Delete_Department");
+        })
+        .catch(() => {
+          this.deleting = false;
+          this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
+        });
     },
 
-    //---- Delete department by selection
-
-    delete_by_selected() {
-      this.$swal({
-        title: this.$t("Delete_Title"),
-        text: this.$t("Delete_Text"),
-        type: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "var(--px-primary)",
-        cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"),
-        confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          // Start the progress bar.
-          NProgress.start();
-          NProgress.set(0.1);
-          axios
-            .post("departments/delete/by_selection", {
-              selectedIds: this.selectedIds
-            })
-            .then(() => {
-              this.$swal(
-                this.$t("Delete_Deleted"),
-                this.$t("Deleted_in_successfully"),
-                "success"
-              );
-
-              Fire.$emit("Delete_Department");
-            })
-            .catch(() => {
-              // Complete the animation of theprogress bar.
-              setTimeout(() => NProgress.done(), 500);
-              this.$swal(
-                this.$t("Delete_Failed"),
-                this.$t("Delete_Therewassomethingwronge"),
-                "warning"
-              );
-            });
-        }
-      });
+    doDeleteBulk() {
+      this.deletingBulk = true;
+      NProgress.start();
+      NProgress.set(0.1);
+      axios
+        .post("departments/delete/by_selection", { selectedIds: this.selectedIds })
+        .then(() => {
+          this.deletingBulk = false;
+          this.confirmBulkOpen = false;
+          this.selectedIds = [];
+          this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+          Fire.$emit("Delete_Department");
+        })
+        .catch(() => {
+          this.deletingBulk = false;
+          setTimeout(() => NProgress.done(), 500);
+          this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
+        });
     }
   },
 
-  //----------------------------- Created function-------------------\\
-
-  created: function() {
+  created: function () {
     this.Get_Department(1);
 
     Fire.$on("Event_Department", () => {
       setTimeout(() => {
-        this.Get_Department(this.serverParams.page);
-        this.$bvModal.hide("New_Department");
+        this.Get_Department(this.page);
+        this.modalOpen = false;
       }, 500);
     });
 
     Fire.$on("Delete_Department", () => {
       setTimeout(() => {
-        this.Get_Department(this.serverParams.page);
+        this.Get_Department(this.page);
       }, 500);
     });
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxdept { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxdept { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxdept__pad { padding: var(--pxn-space-6) 0; }
+
+.pxdept__tablewrap { margin-top: var(--pxn-space-5); transition: opacity var(--pxn-dur-1) var(--pxn-ease); }
+.pxdept__tablewrap.is-busy { opacity: 0.55; pointer-events: none; }
+
+.pxdept__field { margin-top: var(--pxn-space-5); }
+.pxdept__confirm { margin: 0; font-size: var(--pxn-fs-body); color: var(--pxn-ink-2); line-height: var(--pxn-lh-snug); }
+.pxdept__grow { flex: 1; }
+</style>
