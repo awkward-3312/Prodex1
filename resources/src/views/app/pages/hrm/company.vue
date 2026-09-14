@@ -1,368 +1,302 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Company')" :folder="$t('hrm')"/>
+  <div class="px-next pxcompany">
+    <!--
+      Migracion px-next — Empresa. Ruta real sin cambios (/app/hrm/company).
+      Estructuralmente parecida a Departamentos pero NO idéntica — se
+      verificó cada endpoint/comportamiento por separado antes de migrar:
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="companies"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{
-        enabled: true,
-        placeholder: $t('Search_this_table'),  
-      }"
-        :select-options="{ 
-          enabled: true ,
-          clearSelectionText: '',
-        }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{
-        enabled: true,
-        mode: 'records',
-        nextLabel: 'next',
-        prevLabel: 'prev',
-      }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="selected-row-actions">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button
-            @click="New_Company()"
-            class="btn-rounded"
-            variant="btn btn-primary btn-icon m-1"
-          >
-            <lucide-icon name="plus" />
-            {{$t('Add')}}
-          </b-button>
-        </div>
+      - CompanyController@index NO hace JOIN con alias (name/phone/
+        country/email son columnas propias de companies), así que no
+        aplica el hallazgo de sort de Departamentos ni el bug de sort de
+        Días festivos: aquí simplemente no hay alias que pueda romper.
+      - No hay selects en cascada (no depende de otra entidad, ES la
+        entidad compañía), así que no existen las llamadas
+        Get_Data_Create/Get_Data_Edit/Get_employees_by_company que sí
+        tiene Departamentos.
+      - Remove_Company usa $swal directamente como confirmación (no un
+        modal bootstrap intermedio) — igual que categories.vue, distinto
+        del patrón modal-then-swal de otras vistas. Se preserva con
+        PxModal(sm) para la confirmación y $swal para el resultado, igual
+        que en las migraciones anteriores.
+      - this.company = company es asignación directa (sin spread), igual
+        que Departamentos y Tipos de permiso.
+      - Fire events Event_Company / Delete_Company preservados exactos.
+    -->
+    <px-page-header :title="$t('Company')" :breadcrumbs="[{ label: $t('hrm') }, { label: $t('Company') }]">
+      <template #actions>
+        <px-button
+          v-if="selectedIds.length"
+          variant="danger"
+          icon="trash-2"
+          @click="confirmBulkOpen = true"
+        >{{ $t('Del') }} ({{ selectedIds.length }})</px-button>
+        <px-button variant="primary" icon="plus" @click="New_Company">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'actions'">
-            <a @click="Edit_Company(props.row)" class="cursor-pointer" title="Edit" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a title="Delete" v-b-tooltip.hover class="cursor-pointer" @click="Remove_Company(props.row.id)">
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+    <px-toolbar
+      :search="search"
+      :search-placeholder="$t('Search_this_table')"
+      @update:search="onSearchInput"
+    />
 
-    <validation-observer ref="Create_Company">
-      <b-modal hide-footer size="lg" id="New_Company" :title="editmode?$t('Edit'):$t('Add')">
-        <b-form @submit.prevent="Submit_Company">
-          <b-row>
-            <!-- Name -->
-            <b-col md="6">
-              <validation-provider
-                name="Name"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Name') + ' ' + '*'">
-                  <b-form-input
-                    :placeholder="$t('Enter_Company_Name')"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Name-feedback"
-                    label="Name"
-                    v-model="company.name"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+    <div v-if="isLoading" class="pxcompany__pad">
+      <px-skeleton variant="table" :rows="8" :columns="4" />
+    </div>
 
-            <!-- Email -->
-            <b-col md="6">
-              <b-form-group :label="$t('Email')">
-                <b-form-input
-                  :placeholder="$t('Enter_email_address')"
-                  label="Email"
-                  v-model="company.email"
-                ></b-form-input>
-              </b-form-group>
-            </b-col>
+    <template v-else>
+      <div class="pxcompany__tablewrap" :class="{ 'is-busy': refreshing }">
+        <px-table
+          v-if="companies.length"
+          :columns="columns"
+          :rows="companies"
+          row-key="id"
+          selectable
+          :selected="selectedIds"
+          @update:selected="selectedIds = $event"
+          :sort-key="sort.field"
+          :sort-dir="sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
 
-            <!-- Phone -->
-            <b-col md="6">
-                <b-form-group :label="$t('Phone')">
-                  <b-form-input
-                    :placeholder="$t('Enter_Company_Phone')"
-                    label="Phone"
-                    v-model="company.phone"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
+        <px-empty-state v-else icon="building" :title="$t('Company')" description="Sin empresas que coincidan con la búsqueda." />
+      </div>
 
-            <!-- Country -->
-            <b-col md="6">
-                <b-form-group :label="$t('Country')">
-                  <b-form-input
-                    :placeholder="$t('Enter_Company_Country')"
-                    label="Country"
-                    v-model="company.country"
-                  ></b-form-input>
-                </b-form-group>
-            </b-col>
+      <px-pagination
+        v-if="companies.length"
+        :page="page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        :per-page-options="['10', '25', '50', '100']"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
-            <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
-                  <div v-once class="typo__p" v-if="SubmitProcessing">
-                    <div class="spinner sm spinner-primary mt-3"></div>
-                  </div>
-            </b-col>
+    <!-- Crear / editar -->
+    <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
+      <validation-observer ref="Create_Company">
+        <form @submit.prevent="Submit_Company">
+          <v-field name="Name" :label="$t('Name')" required :rules="{ required: true }" v-slot="{ invalid, id }">
+            <px-input :id="id" v-model="company.name" :placeholder="$t('Enter_Company_Name')" :invalid="invalid" />
+          </v-field>
 
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
+          <px-field :label="$t('Email')" class="pxcompany__field">
+            <template #default="{ id }">
+              <px-input :id="id" v-model="company.email" :placeholder="$t('Enter_email_address')" />
+            </template>
+          </px-field>
+
+          <px-field :label="$t('Phone')" class="pxcompany__field">
+            <template #default="{ id }">
+              <px-input :id="id" v-model="company.phone" :placeholder="$t('Enter_Company_Phone')" />
+            </template>
+          </px-field>
+
+          <px-field :label="$t('Country')" class="pxcompany__field">
+            <template #default="{ id }">
+              <px-input :id="id" v-model="company.country" :placeholder="$t('Enter_Company_Country')" />
+            </template>
+          </px-field>
+        </form>
+      </validation-observer>
+
+      <template #footer="{ close }">
+        <span class="pxcompany__grow" />
+        <px-button variant="secondary" :disabled="SubmitProcessing" @click="close">Cancelar</px-button>
+        <px-button variant="primary" icon="check" :loading="SubmitProcessing" @click="Submit_Company">
+          {{ $t('submit') }}
+        </px-button>
+      </template>
+    </px-modal>
+
+    <!-- Confirmar eliminar (una fila) -->
+    <px-modal v-model="confirmOpen" :title="$t('Delete_Title')" size="sm">
+      <p class="pxcompany__confirm">
+        {{ $t('Delete_Text') }}
+        <strong v-if="pendingDelete">{{ pendingDelete.name }}</strong>
+      </p>
+      <template #footer="{ close }">
+        <span class="pxcompany__grow" />
+        <px-button variant="secondary" :disabled="deleting" @click="close">{{ $t('Delete_cancelButtonText') }}</px-button>
+        <px-button variant="danger" icon="trash-2" :loading="deleting" @click="doDelete">{{ $t('Delete_confirmButtonText') }}</px-button>
+      </template>
+    </px-modal>
+
+    <!-- Confirmar eliminar (selección múltiple) -->
+    <px-modal v-model="confirmBulkOpen" :title="$t('Delete_Title')" size="sm">
+      <p class="pxcompany__confirm">{{ $t('Delete_Text') }}</p>
+      <template #footer="{ close }">
+        <span class="pxcompany__grow" />
+        <px-button variant="secondary" :disabled="deletingBulk" @click="close">{{ $t('Delete_cancelButtonText') }}</px-button>
+        <px-button variant="danger" icon="trash-2" :loading="deletingBulk" @click="doDeleteBulk">{{ $t('Delete_confirmButtonText') }}</px-button>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxSkeleton from "@/components/PxSkeleton.vue";
+import VField from "@/views/app/products/next/edit/VField.vue";
 
 export default {
-  metaInfo: {
-    title: "Company"
+  name: "HrmCompanyNext",
+  metaInfo: { title: "Company" },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
+    PxField, PxInput, PxEmptyState, PxModal, PxSkeleton,
+    "v-field": VField
   },
   data() {
     return {
       isLoading: true,
-      SubmitProcessing:false,
-      serverParams: {
-        columnFilters: {},
-        sort: {
-          field: "id",
-          type: "desc"
-        },
-        page: 1,
-        perPage: 10
-      },
-      selectedIds: [],
-      totalRows: "",
-      search: "",
-      limit: "10",
+      refreshing: false,
+      SubmitProcessing: false,
       companies: [],
+      totalRows: "",
+      page: 1,
+      limit: "10",
+      search: "",
+      _searchTimer: null,
+      sort: { field: "id", type: "desc" },
+      selectedIds: [],
       editmode: false,
-      company: {
-          name: "",
-          email:"",
-          country:"",
-          phone:"",
-      }, 
+      modalOpen: false,
+      company: { id: "", name: "", email: "", country: "", phone: "" },
+      confirmOpen: false,
+      pendingDelete: null,
+      deleting: false,
+      confirmBulkOpen: false,
+      deletingBulk: false
     };
   },
-
   computed: {
     columns() {
       return [
-        {
-          label: this.$t("Name"),
-          field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Phone"),
-          field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Country"),
-          field: "country",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Email"),
-          field: "email",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Action"),
-          field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        }
+        { key: "name", label: this.$t("Name"), sortable: true, strong: true },
+        { key: "phone", label: this.$t("Phone"), sortable: true },
+        { key: "country", label: this.$t("Country"), sortable: true },
+        { key: "email", label: this.$t("Email"), sortable: true }
+      ];
+    },
+    rowActions() {
+      return [
+        { key: "edit", label: "Editar", icon: "pencil" },
+        { key: "delete", label: "Eliminar", icon: "trash-2", tone: "danger" }
       ];
     }
   },
-
   methods: {
-    //---- update Params Table
-    updateParams(newProps) {
-      this.serverParams = Object.assign({}, this.serverParams, newProps);
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.Edit_Company(row);
+      else if (k === "delete") { this.pendingDelete = row; this.confirmOpen = true; }
     },
-
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Company(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.page = 1; this.Get_Company(1); }, 350);
     },
-
-    //---- Event Per Page Change
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Company(1);
-      }
+    onSort({ key, dir }) {
+      this.sort = { field: key, type: dir };
+      this.Get_Company(this.page);
     },
+    onPage(p) { if (p !== this.page) { this.page = p; this.Get_Company(p); } },
+    onLimit(v) { this.limit = String(v); this.page = 1; this.Get_Company(1); },
 
-    //---- Event Select Rows
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach((row, index) => {
-        this.selectedIds.push(row.id);
-      });
-    },
-
-    //---- Event Sort Change
-
-    onSortChange(params) {
-      this.updateParams({
-        sort: {
-          type: params[0].type,
-          field: params[0].field
-        }
-      });
-      this.Get_Company(this.serverParams.page);
-    },
-
-    //---- Event Search
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Company(this.serverParams.page);
-    },
-
-    //---- Validation State Form
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
     },
+    makeToast(variant, msg, title) {
+      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+    },
 
-    //------------- Submit Validation Create & Edit Company
     Submit_Company() {
       this.$refs.Create_Company.validate().then(success => {
         if (!success) {
-          this.makeToast(
-            "danger",
-            this.$t("Please_fill_the_form_correctly"),
-            this.$t("Failed")
-          );
+          this.makeToast("danger", this.$t("Please_fill_the_form_correctly"), this.$t("Failed"));
         } else {
-          if (!this.editmode) {
-            this.Create_Company();
-          } else {
-            this.Update_Company();
-          }
+          if (!this.editmode) this.Create_Company();
+          else this.Update_Company();
         }
       });
     },
 
-    //------ Toast
-    makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
-        title: title,
-        variant: variant,
-        solid: true
-      });
-    },
-
-    //------------------------------ Modal (create company) -------------------------------\\
     New_Company() {
       this.reset_Form();
       this.editmode = false;
-      this.$bvModal.show("New_Company");
+      this.modalOpen = true;
     },
 
-    //------------------------------ Modal (Update company) -------------------------------\\
     Edit_Company(company) {
-      this.Get_Company(this.serverParams.page);
+      this.Get_Company(this.page);
       this.reset_Form();
       this.company = company;
       this.editmode = true;
-      this.$bvModal.show("New_Company");
+      this.modalOpen = true;
     },
 
-    //--------------------------Get ALL company ---------------------------\\
-
     Get_Company(page) {
-      // Start the progress bar.
+      if (page === 1 || !page) this.refreshing = !this.isLoading;
       NProgress.start();
       NProgress.set(0.1);
       axios
         .get(
-          "company?page=" +
-            page +
-            "&SortField=" +
-            this.serverParams.sort.field +
-            "&SortType=" +
-            this.serverParams.sort.type +
-            "&search=" +
-            this.search +
-            "&limit=" +
-            this.limit
+          "company?page=" + page +
+          "&SortField=" + this.sort.field +
+          "&SortType=" + this.sort.type +
+          "&search=" + this.search +
+          "&limit=" + this.limit
         )
         .then(response => {
           this.companies = response.data.companies;
           this.totalRows = response.data.totalRows;
-
-          // Complete the animation of theprogress bar.
           NProgress.done();
           this.isLoading = false;
+          this.refreshing = false;
         })
-        .catch(response => {
-          // Complete the animation of theprogress bar.
+        .catch(() => {
           NProgress.done();
-          setTimeout(() => {
-            this.isLoading = false;
-          }, 500);
+          setTimeout(() => { this.isLoading = false; this.refreshing = false; }, 500);
         });
     },
 
-    //------------------------------- Create company ------------------------\\
     Create_Company() {
-      
       this.SubmitProcessing = true;
       axios
         .post("company", {
           name: this.company.name,
           email: this.company.email,
           country: this.company.country,
-          phone: this.company.phone,
-          
+          phone: this.company.phone
         })
-        .then(response => {
+        .then(() => {
           this.SubmitProcessing = false;
           Fire.$emit("Event_Company");
-          this.makeToast(
-            "success",
-            this.$t("Created_in_successfully"),
-            this.$t("Success")
-          );
+          this.makeToast("success", this.$t("Created_in_successfully"), this.$t("Success"));
         })
-        .catch(error => {
+        .catch(() => {
           this.SubmitProcessing = false;
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
         });
     },
 
-    //------------------------------- Update company ------------------------\\
     Update_Company() {
       this.SubmitProcessing = true;
       axios
@@ -370,131 +304,93 @@ export default {
           name: this.company.name,
           email: this.company.email,
           country: this.company.country,
-          phone: this.company.phone,
+          phone: this.company.phone
         })
-        .then(response => {
+        .then(() => {
           this.SubmitProcessing = false;
           Fire.$emit("Event_Company");
-
-          this.makeToast(
-            "success",
-            this.$t("Updated_in_successfully"),
-            this.$t("Success")
-          );
+          this.makeToast("success", this.$t("Updated_in_successfully"), this.$t("Success"));
         })
-        .catch(error => {
+        .catch(() => {
           this.SubmitProcessing = false;
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
         });
     },
 
-    //------------------------------- reset Form ------------------------\\
     reset_Form() {
-      this.company = {
-          id: "",
-          name: "",
-          email:"",
-          country:"",
-          phone:"",
-      };
+      this.company = { id: "", name: "", email: "", country: "", phone: "" };
     },
 
-    //------------------------------- Delete company ------------------------\\
-    Remove_Company(id) {
-      this.$swal({
-        title: this.$t("Delete_Title"),
-        text: this.$t("Delete_Text"),
-        type: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "var(--px-primary)",
-        cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"),
-        confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          axios
-            .delete("company/" + id)
-            .then(() => {
-              this.$swal(
-                this.$t("Delete_Deleted"),
-                this.$t("Deleted_in_successfully"),
-                "success"
-              );
-
-              Fire.$emit("Delete_Company");
-            })
-            .catch(() => {
-              this.$swal(
-                this.$t("Delete_Failed"),
-                this.$t("Delete_Therewassomethingwronge"),
-                "warning"
-              );
-            });
-        }
-      });
+    doDelete() {
+      const row = this.pendingDelete;
+      if (!row) return;
+      this.deleting = true;
+      axios
+        .delete("company/" + row.id)
+        .then(() => {
+          this.deleting = false;
+          this.confirmOpen = false;
+          this.pendingDelete = null;
+          this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+          Fire.$emit("Delete_Company");
+        })
+        .catch(() => {
+          this.deleting = false;
+          this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
+        });
     },
 
-    //---- Delete company by selection
-
-    delete_by_selected() {
-      this.$swal({
-        title: this.$t("Delete_Title"),
-        text: this.$t("Delete_Text"),
-        type: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "var(--px-primary)",
-        cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"),
-        confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          // Start the progress bar.
-          NProgress.start();
-          NProgress.set(0.1);
-          axios
-            .post("company/delete/by_selection", {
-              selectedIds: this.selectedIds
-            })
-            .then(() => {
-              this.$swal(
-                this.$t("Delete_Deleted"),
-                this.$t("Deleted_in_successfully"),
-                "success"
-              );
-
-              Fire.$emit("Delete_Company");
-            })
-            .catch(() => {
-              // Complete the animation of theprogress bar.
-              setTimeout(() => NProgress.done(), 500);
-              this.$swal(
-                this.$t("Delete_Failed"),
-                this.$t("Delete_Therewassomethingwronge"),
-                "warning"
-              );
-            });
-        }
-      });
+    doDeleteBulk() {
+      this.deletingBulk = true;
+      NProgress.start();
+      NProgress.set(0.1);
+      axios
+        .post("company/delete/by_selection", { selectedIds: this.selectedIds })
+        .then(() => {
+          this.deletingBulk = false;
+          this.confirmBulkOpen = false;
+          this.selectedIds = [];
+          this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+          Fire.$emit("Delete_Company");
+        })
+        .catch(() => {
+          this.deletingBulk = false;
+          setTimeout(() => NProgress.done(), 500);
+          this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
+        });
     }
   },
 
-  //----------------------------- Created function-------------------\\
-
-  created: function() {
+  created: function () {
     this.Get_Company(1);
 
     Fire.$on("Event_Company", () => {
       setTimeout(() => {
-        this.Get_Company(this.serverParams.page);
-        this.$bvModal.hide("New_Company");
+        this.Get_Company(this.page);
+        this.modalOpen = false;
       }, 500);
     });
 
     Fire.$on("Delete_Company", () => {
       setTimeout(() => {
-        this.Get_Company(this.serverParams.page);
+        this.Get_Company(this.page);
       }, 500);
     });
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxcompany { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxcompany { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxcompany__pad { padding: var(--pxn-space-6) 0; }
+
+.pxcompany__tablewrap { margin-top: var(--pxn-space-5); transition: opacity var(--pxn-dur-1) var(--pxn-ease); }
+.pxcompany__tablewrap.is-busy { opacity: 0.55; pointer-events: none; }
+
+.pxcompany__field { margin-top: var(--pxn-space-5); }
+.pxcompany__confirm { margin: 0; font-size: var(--pxn-fs-body); color: var(--pxn-ink-2); line-height: var(--pxn-lh-snug); }
+.pxcompany__grow { flex: 1; }
+</style>
