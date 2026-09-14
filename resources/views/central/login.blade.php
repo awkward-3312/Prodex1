@@ -3,12 +3,14 @@
     $isRtl = in_array(app()->getLocale(), ['ar', 'he', 'fa', 'ur']);
     $generalSettings = \App\Models\Central\GeneralSetting::instance();
     $appName = $generalSettings->app_name ?: 'Stocky';
+    $logoUrl = $generalSettings->getLogoUrl();
 @endphp
 <html lang="{{ app()->getLocale() }}" @if($isRtl) dir="rtl" @endif>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="{{ __('landing.admin_login') }} — {{ $appName }}">
     <title>{{ __('landing.admin_login') }} — {{ $appName }}</title>
     @php $faviconUrl = $generalSettings->getFaviconUrl(); @endphp
@@ -19,7 +21,7 @@
 <body>
 
     {{-- Left decorative panel --}}
-    <div class="login-hero">
+    <div class="login-hero login-hero--illustrated">
         <div class="hero-shapes">
             <div class="shape shape-1"></div>
             <div class="shape shape-2"></div>
@@ -27,26 +29,18 @@
             <div class="shape shape-4"></div>
         </div>
         <div class="hero-content">
-            <div class="hero-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
+            <div class="hero-text">
+                <div class="hero-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <h2>{{ __('landing.login_hero_title') }}</h2>
+                <p>{{ __('landing.login_hero_desc') }}</p>
             </div>
-            <h2>{{ __('landing.login_hero_title') }}</h2>
-            <p>{{ __('landing.login_hero_desc') }}</p>
-            <div class="hero-stats">
-                <div class="stat">
-                    <div class="stat-value">100%</div>
-                    <div class="stat-label">{{ __('landing.stat_secure') }}</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">24/7</div>
-                    <div class="stat-label">{{ __('landing.stat_access') }}</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">Real-time</div>
-                    <div class="stat-label">{{ __('landing.stat_analytics') }}</div>
-                </div>
+
+            <div class="hero-illustration">
+                <img src="{{ asset('assets_super/images/superadmin-login-woman.png') }}" alt="" width="1000" height="914" loading="eager" fetchpriority="high">
             </div>
         </div>
     </div>
@@ -56,10 +50,14 @@
         <div class="login-form-wrapper">
 
             <a class="brand-logo" href="{{ route('central.welcome') }}">
-                <div class="logo-icon">
-                    <img src="{{ $generalSettings->getLogoUrl() ?: asset('images/logo-default.png') }}" alt="{{ $appName }}">
-                </div>
-                <span>{{ $appName }}</span>
+                <span class="brand-mark">
+                    @if($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="{{ $appName }}">
+                    @else
+                        <span class="brand-icon">{{ strtoupper(substr($appName, 0, 1)) }}</span>
+                    @endif
+                </span>
+                <span class="brand-text">{{ $appName }}</span>
             </a>
 
             <div class="form-heading">
@@ -103,7 +101,7 @@
                             required
                             autofocus
                             autocomplete="email"
-                            placeholder="Enter Your Email"
+                            placeholder="{{ __('landing.login_email_placeholder') }}"
                         >
                         <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="2" y="4" width="20" height="16" rx="2"/>
@@ -122,13 +120,12 @@
                             class="{{ $errors->has('password') ? 'is-invalid' : '' }}"
                             required
                             autocomplete="current-password"
-                            placeholder="Enter your password"
                         >
                         <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
-                        <button type="button" class="toggle-password" id="togglePasswordBtn" aria-label="Toggle password visibility">
+                        <button type="button" class="toggle-password" id="togglePasswordBtn" aria-label="{{ __('landing.toggle_password_visibility') }}">
                             <svg id="eye-open" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                 <circle cx="12" cy="12" r="3"/>
@@ -161,8 +158,6 @@
                 </button>
             </form>
 
-            <div class="divider"><span>{{ __('landing.or') }}</span></div>
-
             <a class="back-home" href="{{ route('central.welcome') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="19" y1="12" x2="5" y2="12"/>
@@ -172,7 +167,7 @@
             </a>
 
             <div class="login-footer">
-                &copy; {{ date('Y') }} {{ $appName }}. All rights reserved.
+                &copy; {{ date('Y') }} {{ $appName }}. {{ __('landing.all_rights') }}
             </div>
         </div>
     </div>

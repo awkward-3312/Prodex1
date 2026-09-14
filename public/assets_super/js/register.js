@@ -1,3 +1,15 @@
+// Live subdomain preview (cosmetic only — the real value is still read from
+// the #subdomain input by the existing validation and submit).
+(function () {
+    var subInput = document.getElementById('subdomain');
+    var liveName = document.getElementById('subdomain-live-name');
+    if (!subInput || !liveName) return;
+
+    subInput.addEventListener('input', function () {
+        liveName.textContent = subInput.value.trim() || 'tuempresa';
+    });
+})();
+
 // Password toggle via event delegation
 document.querySelectorAll('.toggle-password[data-target]').forEach(function(btn) {
     btn.addEventListener('click', function() {

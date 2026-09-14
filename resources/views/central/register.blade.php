@@ -3,6 +3,7 @@
     $isRtl = in_array(app()->getLocale(), ['ar', 'he', 'fa', 'ur']);
     $generalSettings = \App\Models\Central\GeneralSetting::instance();
     $appName = $generalSettings->app_name ?: 'Stocky';
+    $logoUrl = $generalSettings->getLogoUrl();
 @endphp
 <html lang="{{ app()->getLocale() }}" @if($isRtl) dir="rtl" @endif>
 <head>
@@ -27,33 +28,20 @@
             <div class="shape shape-4"></div>
         </div>
         <div class="hero-content">
-            <div class="hero-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                    <line x1="12" y1="22.08" x2="12" y2="12"/>
-                </svg>
-            </div>
-            <h2>{{ __('landing.launch_title') }}</h2>
-            <p>{{ __('landing.launch_desc') }}</p>
-
-            <div class="hero-features">
-                @foreach([
-                    'feat_subdomain',
-                    'feat_pos',
-                    'feat_warehouse',
-                    'feat_ready',
-                ] as $featKey)
-                <div class="feat">
-                    <div class="feat-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                            <polyline points="22 4 12 14.01 9 11.01"/>
-                        </svg>
-                    </div>
-                    <span class="feat-text">{{ __('landing.' . $featKey) }}</span>
+            <div class="hero-text">
+                <div class="hero-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                    </svg>
                 </div>
-                @endforeach
+                <h2>{{ __('landing.launch_title') }}</h2>
+                <p>{{ __('landing.launch_desc') }}</p>
+            </div>
+
+            <div class="hero-illustration">
+                <img src="{{ asset('assets_super/images/register-tenant-business.png') }}" alt="" width="720" height="900" loading="eager" fetchpriority="high">
             </div>
         </div>
     </div>
@@ -63,23 +51,19 @@
         <div class="reg-form-wrapper">
 
             <a class="brand-logo" href="{{ route('central.welcome') }}">
-                <div class="logo-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                    </svg>
-                </div>
-                <span>{{ $appName }}</span>
+                <span class="brand-mark">
+                    @if($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="{{ $appName }}">
+                    @else
+                        <span class="brand-icon">{{ strtoupper(substr($appName, 0, 1)) }}</span>
+                    @endif
+                </span>
+                <span class="brand-text">{{ $appName }}</span>
             </a>
 
             <div class="form-heading">
                 <h1>{{ __('landing.create_workspace') }}</h1>
                 <p>{{ __('landing.reg_subtitle') }}</p>
-            </div>
-
-            <div class="steps-bar">
-                <div class="step-dot active"></div>
-                <div class="step-dot active"></div>
-                <div class="step-dot active"></div>
             </div>
 
             @if ($errors->any())
@@ -112,7 +96,10 @@
                 <input type="hidden" name="form_loaded_at" value="{{ now()->timestamp }}">
 
                 {{-- Subdomain --}}
-                <div class="form-group">
+                @php
+                    $regDomainHost = preg_replace('/^www\./i', '', parse_url(config('app.url'), PHP_URL_HOST) ?? 'localhost');
+                @endphp
+                <div class="form-group subdomain-group">
                     <label for="subdomain">{{ __('landing.subdomain') }}</label>
                     <div class="input-wrapper">
                         <div class="subdomain-preview {{ $errors->has('subdomain') ? 'is-invalid' : '' }}">
@@ -127,58 +114,62 @@
                                 type="text"
                                 value="{{ old('subdomain') }}"
                                 required
-                                placeholder="your-company"
+                                placeholder="tuempresa"
                                 pattern="[a-z0-9][a-z0-9\-]*[a-z0-9]|[a-z0-9]"
                                 autocomplete="off"
                             >
-                            <span class="subdomain-suffix">.{{ preg_replace('/^www\./i', '', parse_url(config('app.url'), PHP_URL_HOST) ?? 'localhost') }}</span>
+                            <span class="subdomain-suffix">.{{ $regDomainHost }}</span>
                         </div>
                     </div>
-                    <p class="field-hint">{{ __('landing.subdomain_hint_reg') }}</p>
+                    <p class="field-hint subdomain-live">
+                        {{ __('landing.subdomain_hint_reg') }}
+                        <span class="subdomain-live-url"><strong id="subdomain-live-name">{{ old('subdomain') ?: 'tuempresa' }}</strong>.{{ $regDomainHost }}</span>
+                    </p>
                     @error('subdomain') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Company name --}}
-                <div class="form-group">
-                    <label for="company_name">{{ __('landing.company_name') }}</label>
-                    <div class="input-wrapper">
-                        <input
-                            id="company_name"
-                            name="company_name"
-                            type="text"
-                            class="{{ $errors->has('company_name') ? 'is-invalid' : '' }}"
-                            value="{{ old('company_name') }}"
-                            required
-                            placeholder="Acme Inc."
-                        >
-                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                            <polyline points="9 22 9 12 15 12 15 22"/>
-                        </svg>
+                {{-- Company name + Admin email --}}
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="company_name">{{ __('landing.company_name') }}</label>
+                        <div class="input-wrapper">
+                            <input
+                                id="company_name"
+                                name="company_name"
+                                type="text"
+                                class="{{ $errors->has('company_name') ? 'is-invalid' : '' }}"
+                                value="{{ old('company_name') }}"
+                                required
+                                placeholder="Acme Inc."
+                            >
+                            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                <polyline points="9 22 9 12 15 12 15 22"/>
+                            </svg>
+                        </div>
+                        @error('company_name') <p class="field-error">{{ $message }}</p> @enderror
                     </div>
-                    @error('company_name') <p class="field-error">{{ $message }}</p> @enderror
-                </div>
 
-                {{-- Admin email --}}
-                <div class="form-group">
-                    <label for="admin_email">{{ __('landing.admin_email') }}</label>
-                    <div class="input-wrapper">
-                        <input
-                            id="admin_email"
-                            name="admin_email"
-                            type="email"
-                            class="{{ $errors->has('admin_email') ? 'is-invalid' : '' }}"
-                            value="{{ old('admin_email') }}"
-                            required
-                            autocomplete="email"
-                            placeholder="you@company.com"
-                        >
-                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="4" width="20" height="16" rx="2"/>
-                            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                        </svg>
+                    <div class="form-group">
+                        <label for="admin_email">{{ __('landing.admin_email') }}</label>
+                        <div class="input-wrapper">
+                            <input
+                                id="admin_email"
+                                name="admin_email"
+                                type="email"
+                                class="{{ $errors->has('admin_email') ? 'is-invalid' : '' }}"
+                                value="{{ old('admin_email') }}"
+                                required
+                                autocomplete="email"
+                                placeholder="tu@empresa.com"
+                            >
+                            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                            </svg>
+                        </div>
+                        @error('admin_email') <p class="field-error">{{ $message }}</p> @enderror
                     </div>
-                    @error('admin_email') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
 
                 {{-- Owner phone (optional) --}}
@@ -221,7 +212,7 @@
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                             </svg>
-                            <button type="button" class="toggle-password" data-target="admin_password" aria-label="Toggle password">
+                            <button type="button" class="toggle-password" data-target="admin_password" aria-label="{{ __('landing.toggle_password_visibility') }}">
                                 <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                     <circle cx="12" cy="12" r="3"/>
@@ -345,7 +336,7 @@
             </a>
 
             <div class="reg-footer">
-                &copy; {{ date('Y') }} {{ $appName }}. All rights reserved.
+                &copy; {{ date('Y') }} {{ $appName }}. {{ __('landing.all_rights') }}
             </div>
         </div>
     </div>

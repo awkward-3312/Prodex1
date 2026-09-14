@@ -107,6 +107,12 @@ return [
     'create_workspace_btn'     => 'Create workspace',
     'already_have_workspace'   => 'Already have a workspace?',
     'sign_in'                  => 'Sign in',
+    'subdomain_taken'          => 'This subdomain is already taken.',
+    'subdomain_pending'        => 'This subdomain is already reserved.',
+    'email_taken'              => 'This email is already used by another tenant.',
+    'email_pending'            => 'This email is already associated with a pending registration.',
+    'signup_no_plans'          => 'No plans available. Please contact support.',
+    'signup_failed'            => 'Signup failed. Please try again.',
     'back_to_homepage'         => 'Back to homepage',
 
     // ── Login page ──────────────────────────────────────
@@ -116,6 +122,7 @@ return [
     'remember_me'     => 'Remember me',
     'forgot_password'  => 'Forgot password?',
     'sign_in_btn'     => 'Sign in',
+    'login_invalid_credentials' => 'These credentials do not match our records.',
 
     // ── Login hero panel ────────────────────────────────
     'login_hero_title'    => 'Manage your entire platform from one place',
@@ -123,6 +130,8 @@ return [
     'stat_secure'         => 'Secure',
     'stat_access'         => 'Access',
     'stat_analytics'      => 'Analytics',
+    'login_email_placeholder'    => 'admin@yourcompany.com',
+    'toggle_password_visibility'  => 'Show or hide password',
 
     // ── Forgot password page ────────────────────────────
     'forgot_title'       => 'Forgot your password?',
