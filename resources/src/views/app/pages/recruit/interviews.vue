@@ -1,196 +1,288 @@
 <template>
-  <div class="main-content">
-    <breadcumb :page="$t('Interviews')" :folder="$t('Recruit')" />
+  <div class="px-next pxintv">
+    <!--
+      Migracion px-next — Entrevistas (Recruit Interviews). Ruta real sin
+      cambios (/app/recruit/interviews). Presentación únicamente, auditada
+      contra RecruitController@interviews_* y RecruitInterviewPolicy antes
+      de tocar nada.
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-    <b-card class="wrapper" v-if="!isLoading">
-      <b-row class="mb-3">
-        <b-col md="4">
-          <b-form-group :label="$t('Status')">
-            <b-form-select v-model="status_filter" @change="Get_Interviews(1)">
-              <b-form-select-option value="">{{ $t('All') }}</b-form-select-option>
-              <b-form-select-option v-for="s in statuses" :key="s" :value="s">{{ format_label(s) }}</b-form-select-option>
-            </b-form-select>
-          </b-form-group>
-        </b-col>
-      </b-row>
+      Hallazgo clave, preservado EXACTO sin simplificar (instrucción
+      explícita): `Edit_Interview` reformatea `scheduled_at` para el input
+      nativo `datetime-local`, que exige el formato "YYYY-MM-DDTHH:mm"
+      exacto. El backend serializa `scheduled_at` (cast `datetime` en el
+      modelo) como ISO8601 con "T" y sufijo de zona
+      ("2026-09-14T10:00:00.000000Z"). El legacy hace:
+        scheduled_at.replace(" ", "T").substring(0, 16)
+      El `.replace(" ", "T")` es defensivo/no-op sobre el formato ISO real
+      (no hay espacio que reemplazar), pero el `.substring(0, 16)` es lo
+      que realmente importa: recorta a "YYYY-MM-DDTHH:mm", exactamente lo
+      que el input nativo necesita. Se preserva la lógica completa tal
+      cual, incluida la parte aparentemente redundante — no se "limpia".
+      Al guardar, el string que produce el input datetime-local se manda
+      tal cual en el payload (`scheduled_at`), sin transformación
+      adicional — igual que el legacy. No se tocó zona horaria: el
+      comportamiento (incluida cualquier conversión UTC/local que ya
+      exista en el backend) se conserva sin modificar.
 
-      <vue-good-table
-        mode="remote"
-        :columns="columns"
-        :totalRows="totalRows"
-        :rows="interviews"
-        @on-page-change="onPageChange"
-        @on-per-page-change="onPerPageChange"
-        @on-sort-change="onSortChange"
-        @on-search="onSearch"
-        :search-options="{ enabled: true, placeholder: $t('Search_this_table') }"
-        :select-options="{ enabled: true, clearSelectionText: '' }"
-        @on-selected-rows-change="selectionChanged"
-        :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
-        styleClass="table-hover tableOne vgt-table"
-      >
-        <div slot="selected-row-actions">
-          <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{ $t('Del') }}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
-          <b-button @click="New_Interview()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
-            <lucide-icon name="plus" /> {{ $t('Add') }}
-          </b-button>
-        </div>
+      Otros hallazgos:
+      - `interviews_store` AUTO-AVANZA el `stage` de la postulación
+        asociada a "interview" si estaba en applied/screening/shortlisted
+        — efecto secundario 100% backend, invisible en el formulario,
+        no se replica nada en cliente.
+      - RecruitInterview usa SoftDeletes real — "Eliminar" es soft-delete
+        genuino, igual que Vacantes/Postulaciones.
+      - application_id es un select poblado desde `applications_all`
+        (candidato + vacante concatenados como label) — sin paginar,
+        igual que legacy.
+      - Selección múltiple + bulk delete reales.
+      - Un solo evento Fire ("Event_Interview") cubre todo el CRUD.
+    -->
+    <px-page-header :title="$t('Interviews')" :breadcrumbs="[{ label: $t('Recruit') }, { label: $t('Interviews') }]">
+      <template #actions>
+        <px-button
+          v-if="selectedIds.length"
+          variant="danger"
+          icon="trash-2"
+          @click="confirmBulkOpen = true"
+        >{{ $t('Del') }} ({{ selectedIds.length }})</px-button>
+        <px-button variant="primary" icon="plus" @click="New_Interview">{{ $t('Add') }}</px-button>
+      </template>
+    </px-page-header>
 
-        <template slot="table-row" slot-scope="props">
-          <span v-if="props.column.field == 'candidate'">
-            {{ candidate_name(props.row) }}
-          </span>
-          <span v-else-if="props.column.field == 'job'">
-            {{ props.row.application && props.row.application.job ? props.row.application.job.title : '-' }}
-          </span>
-          <span v-else-if="props.column.field == 'type'">
-            <span class="badge badge-outline-info">{{ format_label(props.row.type) }}</span>
-          </span>
-          <span v-else-if="props.column.field == 'status'">
-            <span class="badge" :class="status_class(props.row.status)">{{ format_label(props.row.status) }}</span>
-          </span>
-          <span v-else-if="props.column.field == 'actions'">
-            <a @click="Edit_Interview(props.row)" class="cursor-pointer" title="Edit" v-b-tooltip.hover>
-              <lucide-icon class="text-25 text-success" name="pencil" />
-            </a>
-            <a title="Delete" v-b-tooltip.hover class="cursor-pointer" @click="Remove_Interview(props.row.id)">
-              <lucide-icon class="text-25 text-danger" name="x" />
-            </a>
-          </span>
-        </template>
-      </vue-good-table>
-    </b-card>
+    <px-toolbar :search="search" :search-placeholder="$t('Search_this_table')" @update:search="onSearchInput">
+      <template #filters>
+        <px-select
+          v-model="status_filter"
+          :options="statusFilterOptions"
+          placeholder="Todos"
+          @input="onStatusFilter"
+        />
+      </template>
+    </px-toolbar>
 
-    <validation-observer ref="Create_Interview">
-      <b-modal hide-footer size="md" id="New_Interview" :title="editmode ? $t('Edit') : $t('Add')">
-        <b-form @submit.prevent="Submit_Interview">
-          <b-row>
-            <b-col md="12">
-              <validation-provider name="application" :rules="{ required: true }">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Application') + ' *'">
-                  <v-select
-                    :class="{ 'is-invalid': !!errors.length }"
-                    v-model="interview.application_id"
-                    :reduce="label => label.value"
-                    :placeholder="$t('Choose_Application')"
-                    :options="applications.map(a => ({ label: application_label(a), value: a.id }))"
-                  />
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+    <div v-if="isLoading" class="pxintv__pad">
+      <px-skeleton variant="table" :rows="8" :columns="6" />
+    </div>
 
-            <b-col md="6">
-              <b-form-group :label="$t('Type') + ' *'">
-                <b-form-select v-model="interview.type">
-                  <b-form-select-option v-for="t in types" :key="t" :value="t">{{ format_label(t) }}</b-form-select-option>
-                </b-form-select>
-              </b-form-group>
-            </b-col>
-            <b-col md="6">
-              <validation-provider name="scheduled_at" :rules="{ required: true }" v-slot="validationContext">
-                <b-form-group :label="$t('Scheduled_At') + ' *'">
-                  <b-form-input type="datetime-local" :state="getValidationState(validationContext)" v-model="interview.scheduled_at"></b-form-input>
-                  <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
+    <template v-else>
+      <div class="pxintv__tablewrap" :class="{ 'is-busy': refreshing }">
+        <px-table
+          v-if="interviews.length"
+          :columns="columns"
+          :rows="interviews"
+          row-key="id"
+          selectable
+          :selected="selectedIds"
+          @update:selected="selectedIds = $event"
+          :sort-key="sort.field"
+          :sort-dir="sort.type"
+          has-row-actions
+          @sort="onSort"
+        >
+          <template #cell-candidate="{ row }">{{ candidateName(row) }}</template>
+          <template #cell-job="{ row }">{{ row.application && row.application.job ? row.application.job.title : '-' }}</template>
+          <template #cell-type="{ value }"><px-tag :label="formatLabel(value)" :hue="value" /></template>
+          <template #cell-status="{ value }">
+            <px-badge :tone="statusTone(value)">{{ formatLabel(value) }}</px-badge>
+          </template>
+          <template #row-actions="{ row }">
+            <px-kebab :items="rowActions" @select="onRowAction(row, $event)" />
+          </template>
+        </px-table>
 
-            <b-col md="6">
-              <b-form-group :label="$t('Duration_Minutes')">
-                <b-form-input type="number" min="0" v-model="interview.duration_minutes"></b-form-input>
-              </b-form-group>
-            </b-col>
-            <b-col md="6">
-              <b-form-group :label="$t('Status')">
-                <b-form-select v-model="interview.status">
-                  <b-form-select-option v-for="s in statuses" :key="s" :value="s">{{ format_label(s) }}</b-form-select-option>
-                </b-form-select>
-              </b-form-group>
-            </b-col>
+        <px-empty-state v-else icon="calendar-check" :title="$t('Interviews')" description="Sin entrevistas que coincidan con la búsqueda." />
+      </div>
 
-            <b-col md="6">
-              <b-form-group :label="$t('Location')">
-                <b-form-input v-model="interview.location"></b-form-input>
-              </b-form-group>
-            </b-col>
-            <b-col md="6">
-              <b-form-group :label="$t('Meeting_Link')">
-                <b-form-input v-model="interview.meeting_link"></b-form-input>
-              </b-form-group>
-            </b-col>
+      <px-pagination
+        v-if="interviews.length"
+        :page="page"
+        :per-page="Number(limit)"
+        :total="Number(totalRows) || 0"
+        :per-page-options="['10', '25', '50', '100']"
+        @update:page="onPage"
+        @update:perPage="onLimit"
+      />
+    </template>
 
-            <b-col md="12">
-              <b-form-group :label="$t('Rating')">
-                <b-form-input type="number" min="0" max="5" v-model="interview.rating"></b-form-input>
-              </b-form-group>
-            </b-col>
-            <b-col md="12">
-              <b-form-group :label="$t('Feedback')">
-                <b-form-textarea v-model="interview.feedback" rows="2"></b-form-textarea>
-              </b-form-group>
-            </b-col>
-            <b-col md="12">
-              <b-form-group :label="$t('Notes')">
-                <b-form-textarea v-model="interview.notes" rows="2"></b-form-textarea>
-              </b-form-group>
-            </b-col>
+    <!-- Crear / editar -->
+    <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
+      <validation-observer ref="Create_Interview">
+        <form @submit.prevent="Submit_Interview">
+          <v-field name="application" :label="$t('Application')" required :rules="{ required: true }" v-slot="{ invalid, id }">
+            <vs-px
+              :input-id="id"
+              :invalid="invalid"
+              v-model="interview.application_id"
+              :reduce="o => o.value"
+              :placeholder="$t('Choose_Application')"
+              :options="applications.map(a => ({ label: applicationLabel(a), value: a.id }))"
+            />
+          </v-field>
 
-            <b-col md="12" class="mt-3">
-              <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
-              </b-button>
-              <div v-once class="typo__p" v-if="SubmitProcessing">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
-            </b-col>
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
+          <div class="pxintv__grid pxintv__field">
+            <px-field :label="$t('Type') + ' *'">
+              <template #default="{ id }">
+                <px-select :id="id" v-model="interview.type" :options="typeOptions" />
+              </template>
+            </px-field>
+            <v-field name="scheduled_at" :label="$t('Scheduled_At')" required :rules="{ required: true }" v-slot="{ invalid, id }">
+              <px-input :id="id" type="datetime-local" v-model="interview.scheduled_at" :invalid="invalid" />
+            </v-field>
+          </div>
+
+          <div class="pxintv__grid pxintv__field">
+            <px-field :label="$t('Duration_Minutes')">
+              <template #default="{ id }">
+                <px-input :id="id" type="number" numeric v-model="interview.duration_minutes" />
+              </template>
+            </px-field>
+            <px-field :label="$t('Status')">
+              <template #default="{ id }">
+                <px-select :id="id" v-model="interview.status" :options="statusOptions" />
+              </template>
+            </px-field>
+          </div>
+
+          <div class="pxintv__grid pxintv__field">
+            <px-field :label="$t('Location')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="interview.location" />
+              </template>
+            </px-field>
+            <px-field :label="$t('Meeting_Link')">
+              <template #default="{ id }">
+                <px-input :id="id" v-model="interview.meeting_link" />
+              </template>
+            </px-field>
+          </div>
+
+          <px-field :label="$t('Rating')" class="pxintv__field">
+            <template #default="{ id }">
+              <px-input :id="id" type="number" numeric v-model="interview.rating" />
+            </template>
+          </px-field>
+
+          <px-field :label="$t('Feedback')" class="pxintv__field">
+            <template #default="{ id }">
+              <px-textarea :id="id" v-model="interview.feedback" :rows="2" />
+            </template>
+          </px-field>
+
+          <px-field :label="$t('Notes')" class="pxintv__field">
+            <template #default="{ id }">
+              <px-textarea :id="id" v-model="interview.notes" :rows="2" />
+            </template>
+          </px-field>
+        </form>
+      </validation-observer>
+
+      <template #footer="{ close }">
+        <span class="pxintv__grow" />
+        <px-button variant="secondary" :disabled="SubmitProcessing" @click="close">Cancelar</px-button>
+        <px-button variant="primary" icon="check" :loading="SubmitProcessing" @click="Submit_Interview">
+          {{ $t('submit') }}
+        </px-button>
+      </template>
+    </px-modal>
+
+    <!-- Confirmar eliminar (una fila) -->
+    <px-modal v-model="confirmOpen" :title="$t('Delete_Title')" size="sm">
+      <p class="pxintv__confirm">{{ $t('Delete_Text') }}</p>
+      <template #footer="{ close }">
+        <span class="pxintv__grow" />
+        <px-button variant="secondary" :disabled="deleting" @click="close">{{ $t('Delete_cancelButtonText') }}</px-button>
+        <px-button variant="danger" icon="trash-2" :loading="deleting" @click="doDelete">{{ $t('Delete_confirmButtonText') }}</px-button>
+      </template>
+    </px-modal>
+
+    <!-- Confirmar eliminar (selección múltiple) -->
+    <px-modal v-model="confirmBulkOpen" :title="$t('Delete_Title')" size="sm">
+      <p class="pxintv__confirm">{{ $t('Delete_Text') }}</p>
+      <template #footer="{ close }">
+        <span class="pxintv__grow" />
+        <px-button variant="secondary" :disabled="deletingBulk" @click="close">{{ $t('Delete_cancelButtonText') }}</px-button>
+        <px-button variant="danger" icon="trash-2" :loading="deletingBulk" @click="doDeleteBulk">{{ $t('Delete_confirmButtonText') }}</px-button>
+      </template>
+    </px-modal>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
+import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
+import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxTable from "@/components/px-next/PxTable.vue";
+import PxPagination from "@/components/px-next/PxPagination.vue";
+import PxButton from "@/components/px-next/PxButton.vue";
+import PxKebab from "@/components/px-next/PxKebab.vue";
+import PxField from "@/components/px-next/PxField.vue";
+import PxInput from "@/components/px-next/PxInput.vue";
+import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import PxSelect from "@/components/px-next/PxSelect.vue";
+import PxTag from "@/components/px-next/PxTag.vue";
+import PxBadge from "@/components/px-next/PxBadge.vue";
+import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import PxModal from "@/components/px-next/PxModal.vue";
+import PxSkeleton from "@/components/PxSkeleton.vue";
+import VField from "@/views/app/products/next/edit/VField.vue";
+import VsPx from "@/views/app/products/next/edit/VsPx.vue";
+
+const TYPES = ["phone", "video", "in_person", "technical", "panel", "group"];
+const STATUSES = ["scheduled", "completed", "cancelled", "no_show", "rescheduled"];
 
 export default {
+  name: "RecruitInterviewsNext",
   metaInfo: { title: "Interviews" },
+  components: {
+    PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
+    PxField, PxInput, PxTextarea, PxSelect, PxTag, PxBadge, PxEmptyState,
+    PxModal, PxSkeleton, "v-field": VField, "vs-px": VsPx
+  },
   data() {
     return {
       isLoading: true,
+      refreshing: false,
       SubmitProcessing: false,
-      serverParams: { columnFilters: {}, sort: { field: "id", type: "desc" }, page: 1, perPage: 10 },
-      selectedIds: [],
-      totalRows: "",
-      search: "",
-      limit: "10",
-      status_filter: "",
-      types: ["phone", "video", "in_person", "technical", "panel", "group"],
-      statuses: ["scheduled", "completed", "cancelled", "no_show", "rescheduled"],
-      editmode: false,
       interviews: [],
       applications: [],
-      interview: this.empty_interview()
+      totalRows: "",
+      page: 1,
+      limit: "10",
+      search: "",
+      _searchTimer: null,
+      sort: { field: "id", type: "desc" },
+      status_filter: "",
+      selectedIds: [],
+      editmode: false,
+      modalOpen: false,
+      interview: this.empty_interview(),
+      confirmOpen: false,
+      pendingDelete: null,
+      deleting: false,
+      confirmBulkOpen: false,
+      deletingBulk: false
     };
   },
-
   computed: {
     columns() {
       return [
-        { label: this.$t("Candidate"), field: "candidate", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Job"), field: "job", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Type"), field: "type", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Scheduled_At"), field: "scheduled_at", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Status"), field: "status", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { key: "candidate", label: this.$t("Candidate") },
+        { key: "job", label: this.$t("Job") },
+        { key: "type", label: this.$t("Type"), sortable: true },
+        { key: "scheduled_at", label: this.$t("Scheduled_At"), sortable: true },
+        { key: "status", label: this.$t("Status"), sortable: true }
       ];
-    }
+    },
+    rowActions() {
+      return [
+        { key: "edit", label: "Editar", icon: "pencil" },
+        { key: "delete", label: "Eliminar", icon: "trash-2", tone: "danger" }
+      ];
+    },
+    typeOptions() { return TYPES.map(t => ({ value: t, label: this.formatLabel(t) })); },
+    statusOptions() { return STATUSES.map(s => ({ value: s, label: this.formatLabel(s) })); },
+    statusFilterOptions() { return [{ value: "", label: this.$t("All") }, ...this.statusOptions]; }
   },
-
   methods: {
     empty_interview() {
       return {
@@ -198,53 +290,39 @@ export default {
         location: "", meeting_link: "", status: "scheduled", rating: "", feedback: "", notes: ""
       };
     },
-    format_label(v) {
-      return v ? v.replace(/_/g, " ") : "-";
+    formatLabel(v) { return v ? v.replace(/_/g, " ") : "-"; },
+    statusTone(s) {
+      const map = { scheduled: "info", completed: "success", cancelled: "danger", no_show: "neutral", rescheduled: "warning" };
+      return map[s] || "neutral";
     },
-    status_class(s) {
-      const map = { scheduled: "badge-outline-primary", completed: "badge-outline-success", cancelled: "badge-outline-danger", no_show: "badge-outline-secondary", rescheduled: "badge-outline-warning" };
-      return map[s] || "badge-outline-secondary";
-    },
-    candidate_name(row) {
+    candidateName(row) {
       const c = row.application && row.application.candidate;
       return c ? c.first_name + " " + c.last_name : "-";
     },
-    application_label(a) {
+    applicationLabel(a) {
       const c = a.candidate ? a.candidate.first_name + " " + a.candidate.last_name : "?";
       const j = a.job ? a.job.title : "?";
       return c + " - " + j;
     },
-    updateParams(newProps) {
-      this.serverParams = Object.assign({}, this.serverParams, newProps);
+
+    onRowAction(row, item) {
+      const k = item && item.key;
+      if (k === "edit") this.Edit_Interview(row);
+      else if (k === "delete") { this.pendingDelete = row; this.confirmOpen = true; }
     },
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Interviews(currentPage);
-      }
+    onSearchInput(v) {
+      this.search = v;
+      if (this._searchTimer) clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => { this.page = 1; this.Get_Interviews(1); }, 350);
     },
-    onPerPageChange({ currentPerPage }) {
-      if (this.limit !== currentPerPage) {
-        this.limit = currentPerPage;
-        this.updateParams({ page: 1, perPage: currentPerPage });
-        this.Get_Interviews(1);
-      }
+    onStatusFilter() { this.page = 1; this.Get_Interviews(1); },
+    onSort({ key, dir }) {
+      this.sort = { field: key, type: dir };
+      this.Get_Interviews(this.page);
     },
-    selectionChanged({ selectedRows }) {
-      this.selectedIds = [];
-      selectedRows.forEach(row => this.selectedIds.push(row.id));
-    },
-    onSortChange(params) {
-      this.updateParams({ sort: { type: params[0].type, field: params[0].field } });
-      this.Get_Interviews(this.serverParams.page);
-    },
-    onSearch(value) {
-      this.search = value.searchTerm;
-      this.Get_Interviews(this.serverParams.page);
-    },
-    getValidationState({ dirty, validated, valid = null }) {
-      return dirty || validated ? valid : null;
-    },
+    onPage(p) { if (p !== this.page) { this.page = p; this.Get_Interviews(p); } },
+    onLimit(v) { this.limit = String(v); this.page = 1; this.Get_Interviews(1); },
+
     makeToast(variant, msg, title) {
       this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
     },
@@ -264,7 +342,7 @@ export default {
       this.reset_Form();
       this.editmode = false;
       this.Get_FormData();
-      this.$bvModal.show("New_Interview");
+      this.modalOpen = true;
     },
 
     Edit_Interview(interview) {
@@ -276,7 +354,7 @@ export default {
         this.interview.scheduled_at = this.interview.scheduled_at.replace(" ", "T").substring(0, 16);
       }
       this.editmode = true;
-      this.$bvModal.show("New_Interview");
+      this.modalOpen = true;
     },
 
     Get_FormData() {
@@ -284,14 +362,14 @@ export default {
     },
 
     Get_Interviews(page) {
-      this.serverParams.page = page;
+      if (page === 1 || !page) this.refreshing = !this.isLoading;
       NProgress.start();
       NProgress.set(0.1);
       axios
         .get(
           "recruit/interviews?page=" + page +
-          "&SortField=" + this.serverParams.sort.field +
-          "&SortType=" + this.serverParams.sort.type +
+          "&SortField=" + this.sort.field +
+          "&SortType=" + this.sort.type +
           "&search=" + this.search +
           "&status=" + this.status_filter +
           "&limit=" + this.limit
@@ -301,10 +379,11 @@ export default {
           this.interviews = response.data.interviews;
           NProgress.done();
           this.isLoading = false;
+          this.refreshing = false;
         })
         .catch(() => {
           NProgress.done();
-          setTimeout(() => { this.isLoading = false; }, 500);
+          setTimeout(() => { this.isLoading = false; this.refreshing = false; }, 500);
         });
     },
 
@@ -342,38 +421,40 @@ export default {
       this.interview = this.empty_interview();
     },
 
-    Remove_Interview(id) {
-      this.$swal({
-        title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
-        showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          axios.delete("recruit/interviews/" + id).then(() => {
-            this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
-            Fire.$emit("Event_Interview");
-          }).catch(() => {
-            this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
-          });
-        }
-      });
+    doDelete() {
+      const row = this.pendingDelete;
+      if (!row) return;
+      this.deleting = true;
+      axios
+        .delete("recruit/interviews/" + row.id)
+        .then(() => {
+          this.deleting = false;
+          this.confirmOpen = false;
+          this.pendingDelete = null;
+          this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+          Fire.$emit("Event_Interview");
+        })
+        .catch(() => {
+          this.deleting = false;
+          this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
+        });
     },
 
-    delete_by_selected() {
-      this.$swal({
-        title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
-        showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          axios.post("recruit/interviews/delete/by_selection", { selectedIds: this.selectedIds }).then(() => {
-            this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
-            Fire.$emit("Event_Interview");
-          }).catch(() => {
-            this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
-          });
-        }
-      });
+    doDeleteBulk() {
+      this.deletingBulk = true;
+      axios
+        .post("recruit/interviews/delete/by_selection", { selectedIds: this.selectedIds })
+        .then(() => {
+          this.deletingBulk = false;
+          this.confirmBulkOpen = false;
+          this.selectedIds = [];
+          this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
+          Fire.$emit("Event_Interview");
+        })
+        .catch(() => {
+          this.deletingBulk = false;
+          this.$swal(this.$t("Delete_Failed"), this.$t("Delete_Therewassomethingwronge"), "warning");
+        });
     }
   },
 
@@ -381,10 +462,28 @@ export default {
     this.Get_Interviews(1);
     Fire.$on("Event_Interview", () => {
       setTimeout(() => {
-        this.Get_Interviews(this.serverParams.page);
-        this.$bvModal.hide("New_Interview");
+        this.Get_Interviews(this.page);
+        this.modalOpen = false;
       }, 500);
     });
   }
 };
 </script>
+
+<style lang="scss" src="@/assets/styles/sass/px-next/production.scss"></style>
+
+<style lang="scss" scoped>
+.pxintv { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
+@media (max-width: 620px) { .pxintv { padding: var(--pxn-space-6) var(--pxn-space-5); } }
+.pxintv__pad { padding: var(--pxn-space-6) 0; }
+
+.pxintv__tablewrap { margin-top: var(--pxn-space-5); transition: opacity var(--pxn-dur-1) var(--pxn-ease); }
+.pxintv__tablewrap.is-busy { opacity: 0.55; pointer-events: none; }
+
+.pxintv__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--pxn-space-5); }
+@media (max-width: 620px) { .pxintv__grid { grid-template-columns: 1fr; } }
+
+.pxintv__field { margin-top: var(--pxn-space-5); }
+.pxintv__confirm { margin: 0; font-size: var(--pxn-fs-body); color: var(--pxn-ink-2); line-height: var(--pxn-lh-snug); }
+.pxintv__grow { flex: 1; }
+</style>
