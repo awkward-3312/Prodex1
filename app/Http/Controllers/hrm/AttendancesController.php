@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Company;
 use App\Models\Employee;
+use App\Models\OfficeShift;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -162,8 +163,16 @@ class AttendancesController extends Controller
 
         $day = strtolower(Carbon::parse($date)->format('l'));
         $shift = $employee->office_shift;
-        $shiftInValue = $shift ? $shift->{$day.'_in'} : null;
-        $shiftOutValue = $shift ? $shift->{$day.'_out'} : null;
+        // A soft-deleted shift must behave exactly like "no shift assigned" for
+        // this operational calculation: Employee::office_shift() is a plain
+        // hasOne with no deleted_at scope (other screens may still want to
+        // read a historical shift by name), so the exclusion happens only
+        // here, at the one place that actually applies shift hours to a
+        // calculation - it does not change what shift the employee is shown
+        // to have elsewhere.
+        $shiftActive = $shift && $shift->deleted_at === null;
+        $shiftInValue = $shiftActive ? $shift->{$day.'_in'} : null;
+        $shiftOutValue = $shiftActive ? $shift->{$day.'_out'} : null;
 
         $data = [
             'employee_id' => $employee->id,
@@ -219,6 +228,21 @@ class AttendancesController extends Controller
     private function dateTimeForAttendance(string $date, $time): Carbon
     {
         $value = trim((string) $time);
+
+        // Shift columns can still hold legacy strings written by the old
+        // format('H:iA') bug (e.g. "17:00PM", where the digits were always
+        // the true 24h time and the AM/PM suffix was decorative). Normalize
+        // first so those values never reach the fragile format-guessing
+        // below, which cannot parse an hour outside 1-12 and used to fall
+        // through to a Carbon::parse() that throws on strings like "17:00PM".
+        $normalized = OfficeShift::normalizeTime($value);
+        if ($normalized !== null) {
+            try {
+                return Carbon::createFromFormat('Y-m-d H:i', $date.' '.$normalized);
+            } catch (\Throwable $e) {
+            }
+        }
+
         foreach (['H:i:s', 'H:i', 'h:i A', 'h:i:s A'] as $format) {
             try {
                 return Carbon::createFromFormat('Y-m-d '.$format, $date.' '.$value);
