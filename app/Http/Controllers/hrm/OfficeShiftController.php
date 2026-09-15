@@ -21,15 +21,34 @@ class OfficeShiftController extends Controller
         $pageStart = \Request::get('page', 1);
         // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
-        $order = $request->SortField;
-        $dir = strtolower((string) $request->input('SortType')) === 'asc' ? 'asc' : 'desc';
         $data = [];
-        $office_shifts = OfficeShift::with('company:id,name')->where('deleted_at', '=', null)
+
+        // Whitelist: the only SortField values this endpoint ever honors,
+        // each mapped to a table-qualified, known-safe column. Both
+        // office_shifts and companies have a "name" column, so leaving this
+        // unqualified after a join would be ambiguous SQL - qualifying every
+        // entry (joined or not) keeps that safe regardless of which one is
+        // requested. Anything unrecognized falls back to "id".
+        $sortColumns = [
+            'id' => 'office_shifts.id',
+            'name' => 'office_shifts.name',
+            'company_name' => 'companies.name',
+        ];
+        $sortField = $sortColumns[$request->SortField] ?? $sortColumns['id'];
+        $dir = strtolower((string) $request->input('SortType')) === 'asc' ? 'asc' : 'desc';
+        $needsCompanyJoin = $sortField === 'companies.name';
+
+        $office_shifts = OfficeShift::with('company:id,name')
+            ->when($needsCompanyJoin, function ($query) {
+                $query->leftJoin('companies', 'companies.id', '=', 'office_shifts.company_id')
+                    ->select('office_shifts.*');
+            })
+            ->where('office_shifts.deleted_at', null)
 
         // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
-                    return $query->where('name', 'LIKE', "%{$request->search}%");
+                    return $query->where('office_shifts.name', 'LIKE', "%{$request->search}%");
                 });
             });
         $totalRows = $office_shifts->count();
@@ -38,7 +57,7 @@ class OfficeShiftController extends Controller
         }
         $office_shifts = $office_shifts->offset($offSet)
             ->limit($perPage)
-            ->orderBy($order, $dir)
+            ->orderBy($sortField, $dir)
             ->get();
 
         foreach ($office_shifts as $office_shift) {

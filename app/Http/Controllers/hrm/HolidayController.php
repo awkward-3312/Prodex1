@@ -21,15 +21,40 @@ class HolidayController extends Controller
         $pageStart = \Request::get('page', 1);
         // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
-        $order = $request->SortField;
-        $dir = strtolower((string) $request->input('SortType')) === 'asc' ? 'asc' : 'desc';
 
-        $holidays = Holiday::with('company')->where('deleted_at', '=', null)
+        // Whitelist: the only SortField values this endpoint ever honors,
+        // each mapped to a table-qualified, known-safe column. The frontend
+        // never sends anything outside this set today (holidays.vue columns
+        // + the "id" default on initial load) - an unrecognized value (or a
+        // stale/malicious one) falls back to "id" instead of reaching
+        // orderBy() raw, which is what let an arbitrary SortField produce
+        // invalid SQL before this fix.
+        $sortColumns = [
+            'id' => 'holidays.id',
+            'title' => 'holidays.title',
+            'start_date' => 'holidays.start_date',
+            'end_date' => 'holidays.end_date',
+            'company_name' => 'companies.name',
+        ];
+        $sortField = $sortColumns[$request->SortField] ?? $sortColumns['id'];
+        $dir = strtolower((string) $request->input('SortType')) === 'asc' ? 'asc' : 'desc';
+        $needsCompanyJoin = $sortField === 'companies.name';
+
+        $holidays = Holiday::with('company')
+            // Only join when actually sorting by the related column - every
+            // other sort keeps the exact query shape this endpoint already
+            // had. select('holidays.*') keeps hydration correct despite the
+            // join (companies also has id/name/deleted_at columns).
+            ->when($needsCompanyJoin, function ($query) {
+                $query->leftJoin('companies', 'companies.id', '=', 'holidays.company_id')
+                    ->select('holidays.*');
+            })
+            ->where('holidays.deleted_at', null)
 
         // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
-                    return $query->where('title', 'LIKE', "%{$request->search}%");
+                    return $query->where('holidays.title', 'LIKE', "%{$request->search}%");
                 });
             });
         $totalRows = $holidays->count();
@@ -38,7 +63,7 @@ class HolidayController extends Controller
         }
         $holidays = $holidays->offset($offSet)
             ->limit($perPage)
-            ->orderBy($order, $dir)
+            ->orderBy($sortField, $dir)
             ->get();
 
         $data = [];

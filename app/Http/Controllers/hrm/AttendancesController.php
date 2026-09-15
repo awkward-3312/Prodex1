@@ -22,16 +22,42 @@ class AttendancesController extends Controller
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
         $offSet = ($pageStart * $perPage) - $perPage;
-        $order = $request->SortField ?: 'id';
+
+        // Whitelist: the only SortField values this endpoint ever honors,
+        // each mapped to a table-qualified, known-safe column. employee_username
+        // and company_name are relation aliases with no matching physical
+        // column on `attendances` - sorting by either used to be passed
+        // straight into orderBy() and produced "Unknown column" SQL errors.
+        // An unrecognized value falls back to "id" (also the value the
+        // frontend sends on initial load, before any column is clicked).
+        $sortColumns = [
+            'id' => 'attendances.id',
+            'date' => 'attendances.date',
+            'clock_in' => 'attendances.clock_in',
+            'clock_out' => 'attendances.clock_out',
+            'total_work' => 'attendances.total_work',
+            'employee_username' => 'employees.username',
+            'company_name' => 'companies.name',
+        ];
+        $sortField = $sortColumns[$request->SortField] ?? $sortColumns['id'];
         $dir = strtolower((string) $request->input('SortType')) === 'asc' ? 'asc' : 'desc';
 
         $query = Attendance::with('employee', 'company')
-            ->where('deleted_at', null)
-            ->when(! $viewRecords, fn ($q) => $q->where('user_id', Auth::id()))
+            // Only join the one relation actually being sorted by - every
+            // other sort (including the common "id"/"date" cases) keeps the
+            // exact query shape this endpoint already had.
+            ->when($sortField === 'employees.username', function ($q) {
+                $q->leftJoin('employees', 'employees.id', '=', 'attendances.employee_id')->select('attendances.*');
+            })
+            ->when($sortField === 'companies.name', function ($q) {
+                $q->leftJoin('companies', 'companies.id', '=', 'attendances.company_id')->select('attendances.*');
+            })
+            ->where('attendances.deleted_at', null)
+            ->when(! $viewRecords, fn ($q) => $q->where('attendances.user_id', Auth::id()))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->search;
                 $q->where(function ($sub) use ($search) {
-                    $sub->where('date', 'LIKE', "%{$search}%")
+                    $sub->where('attendances.date', 'LIKE', "%{$search}%")
                         ->orWhereHas('employee', fn ($employee) => $employee->where('username', 'LIKE', "%{$search}%"))
                         ->orWhereHas('company', fn ($company) => $company->where('name', 'LIKE', "%{$search}%"));
                 });
@@ -43,7 +69,7 @@ class AttendancesController extends Controller
             $offSet = 0;
         }
 
-        $rows = $query->offset($offSet)->limit($perPage)->orderBy($order, $dir)->get();
+        $rows = $query->offset($offSet)->limit($perPage)->orderBy($sortField, $dir)->get();
         $data = $rows->map(function ($attendance) {
             return [
                 'id' => $attendance->id,
