@@ -232,6 +232,26 @@ class DemoTenantSeeder
         $inquiryEmails = array_column($this->propertyInquiries(), 'email');
         $plan['Property Inquiries'] = $this->row(10, DB::table('property_inquiries')->whereIn('email', $inquiryEmails)->whereNull('deleted_at')->count());
 
+        // Phase F: store-facing data follows the online_orders feature. Orders
+        // themselves are intentionally never seeded: Checkout is the live
+        // stock/payment-aware workflow and a raw row would be unsafe.
+        $onlineEnabled = app(TenantLimitsService::class)->hasFeature('online_orders');
+        foreach ([
+            'Store Collections' => ['collections', 'slug', $this->storeCollectionSlugs(), 5],
+            'Store Banners' => ['store_banners', 'title', $this->storeBannerTitles(), 3],
+            'Subscribers' => ['subscribers', 'email', $this->storeSubscriberEmails(), 10],
+            'Invite Codes' => ['invite_codes', 'code', $this->storeInviteCodes(), 10],
+        ] as $label => [$table, $column, $values, $target]) {
+            $plan[$label] = $onlineEnabled
+                ? $this->row($target, DB::table($table)->whereIn($column, $values)->count())
+                : ['target' => $target, 'existing' => 0, 'to_create' => 0, 'skipped' => $target];
+        }
+        $plan['Online Orders'] = ['target' => 10, 'existing' => 0, 'to_create' => 0, 'skipped' => 10];
+        $plan['Pending Customers'] = ['target' => 10, 'existing' => 0, 'to_create' => 0, 'skipped' => 10];
+        $plan['Product Subscriptions'] = $this->row(10, $this->existingProductSubscriptionCount());
+        $plan['WhatsApp Templates'] = $this->row(10, DB::table('whatsapp_templates')->where('key', 'like', 'demo2_wa_'.strtolower($this->personaCode()).'_%')->whereNull('deleted_at')->count());
+        $plan['WhatsApp Logs'] = $this->row(10, DB::table('whatsapp_logs')->where('provider_message_id', 'like', 'DEMO2-WA-'.strtoupper($this->personaCode()).'-%')->count());
+
         return $plan;
     }
 
@@ -2799,4 +2819,24 @@ class DemoTenantSeeder
         }
         return ['created' => $created, 'existing' => $existing, 'skipped' => $skipped, 'failed' => 0];
     }
+
+    // Phase F. Store entities are gated by online_orders. These helpers use
+    // stable real columns; no uploads, checkout, payment, queue or API call.
+    private function storeCollectionSlugs(): array { return array_map(fn ($n) => 'demo2-'.strtolower($this->personaCode()).'-'.$n, ['recommended','new','accessories','offers','featured']); }
+    private function storeBannerTitles(): array { return array_map(fn ($n) => 'DEMO2 '.strtoupper($this->personaCode()).' '.$n, ['Recomendados','Novedades','Ofertas']); }
+    private function storeSubscriberEmails(): array { return array_map(fn ($i) => sprintf('store-subscriber.demo2.%s.%02d@example.test', strtolower($this->personaCode()), $i), range(1, 10)); }
+    private function storeInviteCodes(): array { return array_map(fn ($i) => sprintf('DEMO2-%s-INV-%02d', $this->personaCode(), $i), range(1, 10)); }
+    private function onlineStoreEnabled(): bool { return app(TenantLimitsService::class)->hasFeature('online_orders'); }
+    private function phaseFResult(int $target, callable $fn): array { if (! $this->onlineStoreEnabled()) return ['created'=>0,'existing'=>0,'skipped'=>$target,'failed'=>0]; return $fn(); }
+
+    public function seedStoreCollections(): array { return $this->phaseFResult(5, function () { $c=$e=0; $products=DB::table('products')->whereIn('code',array_slice($this->productCodes(),0,5))->whereNull('deleted_at')->pluck('id')->all(); foreach ($this->storeCollectionSlugs() as $i=>$slug) { $row=DB::table('collections')->where('slug',$slug)->first(); if ($row) $e++; else { DB::table('collections')->insert(['title'=>['Recomendados DEMO','Novedades DEMO','Accesorios DEMO','Ofertas DEMO','Destacados DEMO'][$i],'slug'=>$slug,'description'=>'Colección DEMO para tienda '.$this->personaLabel().'.','limit'=>8,'sort_order'=>$i+1,'created_at'=>now(),'updated_at'=>now()]); $row=DB::table('collections')->where('slug',$slug)->first(); $c++; } foreach (array_slice($products,0,3) as $n=>$pid) if (!DB::table('collection_product')->where('collection_id',$row->id)->where('product_id',$pid)->exists()) DB::table('collection_product')->insert(['collection_id'=>$row->id,'product_id'=>$pid,'sort_order'=>$n+1,'pinned'=>$n===0,'created_at'=>now(),'updated_at'=>now()]); } return ['created'=>$c,'existing'=>$e,'skipped'=>0,'failed'=>0]; }); }
+    public function seedStoreBanners(): array { return $this->phaseFResult(3, function () { $c=$e=0; foreach ($this->storeBannerTitles() as $i=>$title) { if (DB::table('store_banners')->where('title',$title)->exists()) {$e++; continue;} DB::table('store_banners')->insert(['title'=>$title,'position'=>'home_hero','link'=>null,'image'=>null,'active'=>true,'created_at'=>now(),'updated_at'=>now()]); $c++; } return ['created'=>$c,'existing'=>$e,'skipped'=>0,'failed'=>0]; }); }
+    public function seedStoreSubscribers(): array { return $this->phaseFResult(10, function () { $c=$e=0; foreach ($this->storeSubscriberEmails() as $email) { if (DB::table('subscribers')->where('email',$email)->exists()) {$e++; continue;} DB::table('subscribers')->insert(['email'=>$email,'created_at'=>now(),'updated_at'=>now()]); $c++; } return ['created'=>$c,'existing'=>$e,'skipped'=>0,'failed'=>0]; }); }
+    public function seedStoreInviteCodes(): array { return $this->phaseFResult(10, function () { $c=$e=0; foreach ($this->storeInviteCodes() as $code) { if (DB::table('invite_codes')->where('code',$code)->exists()) {$e++; continue;} DB::table('invite_codes')->insert(['code'=>$code,'created_by'=>null,'max_uses'=>25,'times_used'=>0,'expires_at'=>now()->addYear(),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()]); $c++; } return ['created'=>$c,'existing'=>$e,'skipped'=>0,'failed'=>0]; }); }
+
+    private function subscriptionPairs(): array { return array_map(fn ($i) => [$this->data['clients'][$i], $this->productCodes()[$i]], range(0, 9)); }
+    private function existingProductSubscriptionCount(): int { $n=0; foreach ($this->subscriptionPairs() as [$client,$code]) { $cid=DB::table('clients')->where('name',$client)->whereNull('deleted_at')->value('id'); $pid=DB::table('products')->where('code',$code)->whereNull('deleted_at')->value('id'); if ($cid && $pid && DB::table('subscriptions')->where('client_id',$cid)->where('product_id',$pid)->whereNull('deleted_at')->exists()) $n++; } return $n; }
+    public function seedProductSubscriptions(): array { $user=$this->demoActingUser(); $warehouse=DB::table('warehouses')->whereNull('deleted_at')->value('id'); if (!$user || !$warehouse) return ['created'=>0,'existing'=>0,'skipped'=>10,'failed'=>0]; $c=$e=0; foreach ($this->subscriptionPairs() as $i=>[$client,$code]) { $cl=DB::table('clients')->where('name',$client)->whereNull('deleted_at')->first(); $p=DB::table('products')->where('code',$code)->whereNull('deleted_at')->first(); if (!$cl || !$p) continue; if(DB::table('subscriptions')->where('client_id',$cl->id)->where('product_id',$p->id)->whereNull('deleted_at')->exists()) {$e++;continue;} $price=(float)$p->price; DB::table('subscriptions')->insert(['date'=>now()->toDateString(),'user_id'=>$user->id,'client_id'=>$cl->id,'product_id'=>$p->id,'warehouse_id'=>$warehouse,'cycle_type'=>'monthly','total_cycles'=>12,'billing_cycle'=>'monthly','remaining_cycles'=>12,'price_per_cycle'=>$price,'price_per_unit'=>$price,'quantity'=>1,'next_billing_date'=>now()->addMonths(6+$i)->toDateString(),'status'=>'active','created_at'=>now(),'updated_at'=>now()]);$c++; } return ['created'=>$c,'existing'=>$e,'skipped'=>0,'failed'=>0]; }
+    public function seedWhatsappTemplates(): array { $c=$e=0; foreach (['pedido_confirmado','pedido_enviado','pedido_entregado','recordatorio_pago','cotizacion_disponible','bienvenida','seguimiento_compra','promocion','recordatorio_reserva','gracias_compra'] as $i=>$name) {$key='demo2_wa_'.strtolower($this->personaCode()).'_'.($i+1); if(DB::table('whatsapp_templates')->where('key',$key)->whereNull('deleted_at')->exists()){$e++;continue;} DB::table('whatsapp_templates')->insert(['name'=>'DEMO2 '.str_replace('_',' ',$name),'key'=>$key,'body'=>'Mensaje DEMO para {{customer_name}}.','language'=>'es','category'=>'utility','is_active'=>true,'created_at'=>now(),'updated_at'=>now()]);$c++;} return ['created'=>$c,'existing'=>$e,'skipped'=>0,'failed'=>0]; }
+    public function seedWhatsappLogs(): array { $c=$e=0; foreach (range(1,10) as $i) {$id=sprintf('DEMO2-WA-%s-%02d',$this->personaCode(),$i);if(DB::table('whatsapp_logs')->where('provider_message_id',$id)->exists()){$e++;continue;} DB::table('whatsapp_logs')->insert(['recipient'=>$this->fakePhone(1200+$i),'template_key'=>'demo2_wa_'.strtolower($this->personaCode()).'_'.(($i-1)%10+1),'message_type'=>'text','body'=>'Registro histórico DEMO; no enviado.','status'=>['sent','delivered','read','failed','pending'][$i%5],'provider_message_id'=>$id,'error'=>$i%5===3?'Fallo DEMO histórico':null,'meta'=>json_encode(['demo'=>true]),'sent_at'=>now()->subDays($i),'created_at'=>now(),'updated_at'=>now()]);$c++;} return ['created'=>$c,'existing'=>$e,'skipped'=>0,'failed'=>0]; }
 }
