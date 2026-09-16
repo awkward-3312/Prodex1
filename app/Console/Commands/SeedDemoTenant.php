@@ -174,6 +174,13 @@ class SeedDemoTenant extends Command
                 'Property Categories' => 'seedPropertyCategories',
                 'Properties' => 'seedProperties',
                 'Property Inquiries' => 'seedPropertyInquiries',
+                'Store Collections' => 'seedStoreCollections',
+                'Store Banners' => 'seedStoreBanners',
+                'Subscribers' => 'seedStoreSubscribers',
+                'Invite Codes' => 'seedStoreInviteCodes',
+                'Product Subscriptions' => 'seedProductSubscriptions',
+                'WhatsApp Templates' => 'seedWhatsappTemplates',
+                'WhatsApp Logs' => 'seedWhatsappLogs',
             ];
             $selfContained = [
                 'Compras' => 'seedPurchases',
@@ -230,6 +237,8 @@ class SeedDemoTenant extends Command
             $this->line('');
             $this->comment('Reservas: OMITIDAS en Fase C. El módulo de Bookings existe y es funcional (BookingController, tabla bookings), pero sus rutas están protegidas por tenant.feature:bookings y el plan activo de este tenant ("Emprendedor") no incluye esa característica — TenantLimitsService->hasFeature(\'bookings\') es false. Sembrar reservas de todas formas representaría a demo01 con una capacidad de plan que no tiene. Ningún producto DEMO es is_service, tampoco.');
             $results['Reservas'] = ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0];
+            $results['Online Orders'] = ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0];
+            $results['Pending Customers'] = ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0];
 
             $this->line('');
             $this->info('=== DEMO DATA SUMMARY ===');
