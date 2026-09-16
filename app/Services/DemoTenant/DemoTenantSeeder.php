@@ -15,7 +15,10 @@ use App\Http\Controllers\QuotationsController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\TransferWorkflowController;
 use App\Models\User;
+use App\Models\RecruitApplication;
+use App\Models\RecruitInterview;
 use App\Services\UserOperationalAssignmentService;
+use App\Services\TenantLimitsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -192,6 +195,43 @@ class DemoTenantSeeder
         $payrollExisting = DB::table('payrolls')->where('Ref', 'like', '%')->where('receiver_account_number', 'DEMO2-PAYROLL')->whereNull('deleted_at')->count();
         $plan['Nómina'] = $this->row(10, $payrollExisting);
 
+        // Phase E. The identifiers below are deliberately based on real,
+        // unique columns: job/property slug, candidate/inquiry email and
+        // asset tag. Categories do not have a code/slug, so their fixed name
+        // is the documented identity. Applications use their database-unique
+        // job_id+candidate_id pair; interviews use a stable DEMO token in
+        // their nullable notes field because that table has no reference key.
+        $recruitCategoryNames = array_column($this->recruitJobCategories(), 'name');
+        $plan['Recruit Job Categories'] = $this->row(
+            count($recruitCategoryNames),
+            DB::table('recruit_job_categories')->whereIn('name', $recruitCategoryNames)->whereNull('deleted_at')->count()
+        );
+        $jobSlugs = array_column($this->recruitJobs(), 'slug');
+        $plan['Recruit Jobs'] = $this->row(10, DB::table('recruit_jobs')->whereIn('slug', $jobSlugs)->whereNull('deleted_at')->count());
+        $candidateEmails = array_column($this->recruitCandidates(), 'email');
+        $plan['Candidates'] = $this->row(10, DB::table('recruit_candidates')->whereIn('email', $candidateEmails)->whereNull('deleted_at')->count());
+        $plan['Applications'] = $this->row(10, $this->existingRecruitApplicationCount());
+        $plan['Interviews'] = $this->row(10, DB::table('recruit_interviews')->where('notes', 'like', '%[DEMO2-INT-'.strtoupper($this->personaCode()).'-%')->whereNull('deleted_at')->count());
+
+        $assetsEnabled = app(TenantLimitsService::class)->hasFeature('assets');
+        if ($assetsEnabled) {
+            $assetCategoryNames = array_column($this->assetCategories(), 'name');
+            $plan['Asset Categories'] = $this->row(count($assetCategoryNames), DB::table('asset_categories')->whereIn('name', $assetCategoryNames)->whereNull('deleted_at')->count());
+            $assetTags = array_column($this->assets(), 'tag');
+            $plan['Assets'] = $this->row(10, DB::table('assets')->whereIn('tag', $assetTags)->whereNull('deleted_at')->count());
+        } else {
+            $plan['Asset Categories'] = ['target' => 5, 'existing' => 0, 'to_create' => 0, 'skipped' => 5];
+            $plan['Assets'] = ['target' => 10, 'existing' => 0, 'to_create' => 0, 'skipped' => 10];
+        }
+
+        $propertyCategories = $this->propertyCategories();
+        $propertyCategorySlugs = array_column($propertyCategories, 'slug');
+        $plan['Property Categories'] = $this->row(count($propertyCategories), DB::table('property_categories')->whereIn('slug', $propertyCategorySlugs)->whereNull('deleted_at')->count());
+        $propertySlugs = array_column($this->properties(), 'slug');
+        $plan['Properties'] = $this->row(10, DB::table('properties')->whereIn('slug', $propertySlugs)->whereNull('deleted_at')->count());
+        $inquiryEmails = array_column($this->propertyInquiries(), 'email');
+        $plan['Property Inquiries'] = $this->row(10, DB::table('property_inquiries')->whereIn('email', $inquiryEmails)->whereNull('deleted_at')->count());
+
         return $plan;
     }
 
@@ -335,6 +375,7 @@ class DemoTenantSeeder
             'target' => $target,
             'existing' => $existing,
             'to_create' => max(0, $target - $existing),
+            'skipped' => 0,
         ];
     }
 
@@ -598,6 +639,16 @@ class DemoTenantSeeder
             'Permisos' => DB::table('leaves')->count(),
             'Días festivos' => DB::table('holidays')->count(),
             'Nóminas' => DB::table('payrolls')->count(),
+            'Categorías vacante' => DB::table('recruit_job_categories')->count(),
+            'Vacantes' => DB::table('recruit_jobs')->count(),
+            'Candidatos' => DB::table('recruit_candidates')->count(),
+            'Postulaciones' => DB::table('recruit_applications')->count(),
+            'Entrevistas' => DB::table('recruit_interviews')->count(),
+            'Categorías activos' => DB::table('asset_categories')->count(),
+            'Activos' => DB::table('assets')->count(),
+            'Categorías propiedades' => DB::table('property_categories')->count(),
+            'Propiedades' => DB::table('properties')->count(),
+            'Consultas propiedades' => DB::table('property_inquiries')->count(),
         ];
     }
 
@@ -2331,5 +2382,421 @@ class DemoTenantSeeder
         }
 
         return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => $failed];
+    }
+
+    // ------------------------------------------------------------------
+    // Phase E — recruitment, assets and real estate.
+    // ------------------------------------------------------------------
+
+    /** D/R is deliberately part of every globally-unique Phase-E identity. */
+    private function personaCode(): string
+    {
+        return $this->persona === DemoPersonas::DISTRIBUTION ? 'D' : 'R';
+    }
+
+    private function recruitJobCategories(): array
+    {
+        return collect(['Administración', 'Ventas', 'Finanzas', 'Tecnología', 'Operaciones', 'Logística', 'Servicio al Cliente', 'Marketing', 'Recursos Humanos', 'Compras'])
+            ->map(fn ($name) => ['name' => $name, 'description' => "Categoría DEMO para {$name}.", 'is_active' => true])
+            ->all();
+    }
+
+    private function recruitJobs(): array
+    {
+        $business = $this->persona === DemoPersonas::DISTRIBUTION ? 'distribución' : 'retail y servicios';
+        $jobs = [
+            ['Analista Administrativo', 'Administración', 'Administración y Finanzas', 'full_time', 'mid', 'open', 1],
+            ['Ejecutivo de Ventas', 'Ventas', 'Ventas', 'full_time', 'mid', 'open', 2],
+            ['Analista Financiero', 'Finanzas', 'Administración y Finanzas', 'full_time', 'mid', 'on_hold', 1],
+            ['Soporte de Sistemas', 'Tecnología', 'Administración y Finanzas', 'contract', 'entry', 'open', 1],
+            ['Supervisor de Operaciones', 'Operaciones', 'Almacén e Inventario', 'full_time', 'senior', 'open', 1],
+            ['Coordinador de Logística', 'Logística', 'Logística', 'full_time', 'senior', 'open', 1],
+            ['Especialista de Servicio al Cliente', 'Servicio al Cliente', 'Ventas', 'part_time', 'entry', 'closed', 2],
+            ['Asistente de Marketing', 'Marketing', 'Ventas', 'internship', 'entry', 'draft', 1],
+            ['Analista de Recursos Humanos', 'Recursos Humanos', 'Recursos Humanos', 'full_time', 'mid', 'open', 1],
+            ['Comprador Junior', 'Compras', 'Administración y Finanzas', 'full_time', 'entry', 'closed', 1],
+        ];
+
+        return collect($jobs)->map(function ($job, $i) use ($business) {
+            [$title, $category, $department, $type, $level, $status, $vacancies] = $job;
+            $n = $i + 1;
+            return [
+                'title' => $title.' — '.$business,
+                'slug' => sprintf('job-demo2-%s-%02d', strtolower($this->personaCode()), $n),
+                'category' => $category,
+                'department' => $department,
+                'job_type' => $type,
+                'location' => $n % 3 === 0 ? 'Modalidad híbrida, Honduras' : ($business === 'distribución' ? 'Centro logístico DEMO' : 'Sucursal DEMO'),
+                'description' => "Vacante DEMO de {$title} para la operación de {$business}.",
+                'requirements' => 'Experiencia relacionada, comunicación profesional y manejo responsable de herramientas digitales.',
+                'benefits' => 'Capacitación, ambiente colaborativo y oportunidades de desarrollo.',
+                'salary_min' => 11000 + ($n * 1200), 'salary_max' => 14500 + ($n * 1450),
+                'currency' => 'HNL', 'vacancies' => $vacancies, 'status' => $status,
+                'experience_level' => $level, 'deadline' => now()->addDays(14 + $n)->toDateString(),
+            ];
+        })->all();
+    }
+
+    private function recruitCandidates(): array
+    {
+        $people = [
+            ['Andrea', 'Castillo', 'female', 'Asistente administrativa', 3, 'Administración de empresas', 'website'],
+            ['Diego', 'Mejía', 'male', 'Asesor comercial', 4, 'Ventas consultivas y CRM', 'referral'],
+            ['Sofía', 'Reyes', 'female', 'Auxiliar contable', 2, 'Contabilidad financiera', 'job_board'],
+            ['Mateo', 'Lara', 'male', 'Técnico de soporte', 5, 'Redes, soporte y SQL', 'linkedin'],
+            ['Valentina', 'Suazo', 'female', 'Coordinadora operativa', 6, 'Indicadores y mejora continua', 'agency'],
+            ['Javier', 'Mendoza', 'male', 'Analista de rutas', 4, 'Logística, inventario y Excel', 'website'],
+            ['Natalia', 'Paz', 'female', 'Representante de servicio', 3, 'Atención al cliente y casos', 'walk_in'],
+            ['Emilio', 'Duarte', 'male', 'Asistente creativo', 1, 'Contenido, campañas y diseño', 'linkedin'],
+            ['Camila', 'Orellana', 'female', 'Generalista de RRHH', 5, 'Selección, inducción y nómina', 'referral'],
+            ['Tomás', 'Aguilar', 'male', 'Auxiliar de compras', 2, 'Cotizaciones y negociación', 'job_board'],
+        ];
+
+        return collect($people)->map(function ($person, $i) {
+            [$first, $last, $gender, $position, $years, $skills, $source] = $person;
+            $n = $i + 1;
+            return [
+                'first_name' => $first, 'last_name' => $last,
+                'email' => sprintf('candidate.demo2.%s.%02d@example.test', strtolower($this->personaCode()), $n),
+                'phone' => $this->fakePhone(800 + $n), 'gender' => $gender,
+                'city' => $n % 2 ? 'San Pedro Sula' : 'Tegucigalpa', 'country' => 'Honduras',
+                'current_company' => 'Empresa ficticia DEMO', 'current_position' => $position,
+                'current_salary' => 10000 + ($n * 1150), 'expected_salary' => 12500 + ($n * 1300),
+                'experience_years' => $years, 'skills' => $skills,
+                'education' => 'Formación profesional ficticia relacionada con el puesto.',
+                // No resume/photo: both are nullable and the controller treats uploads as optional.
+                'linkedin_url' => null, 'portfolio_url' => null,
+                'notes' => sprintf('[DEMO2-CAND-%s-%02d] Candidato ficticio para QA visual.', $this->personaCode(), $n),
+                'source' => $source,
+            ];
+        })->all();
+    }
+
+    private function recruitApplications(): array
+    {
+        // The first five start as applied. Creating their interviews below
+        // uses the controller's documented transition to `interview`.
+        return collect(['applied', 'applied', 'applied', 'applied', 'applied', 'applied', 'screening', 'shortlisted', 'offered', 'hired'])
+            ->map(fn ($stage, $i) => [
+                'job_index' => $i, 'candidate_index' => $i, 'stage' => $stage,
+                'applied_date' => now()->subDays(42 - ($i * 4))->toDateString(),
+                'rating' => 3 + ($i % 3),
+                'cover_letter' => 'Postulación DEMO preparada para validar el flujo de selección.',
+                'notes' => sprintf('[DEMO2-APP-%s-%02d]', $this->personaCode(), $i + 1),
+            ])->all();
+    }
+
+    private function recruitInterviews(): array
+    {
+        $specs = [
+            [0, 'phone', -3, 'completed'], [0, 'video', 5, 'scheduled'],
+            [1, 'in_person', -7, 'completed'], [1, 'panel', 8, 'scheduled'],
+            [2, 'technical', -1, 'completed'], [2, 'video', 12, 'scheduled'],
+            [3, 'phone', 2, 'scheduled'], [3, 'technical', 16, 'rescheduled'],
+            [4, 'group', -5, 'no_show'], [4, 'in_person', 20, 'scheduled'],
+        ];
+
+        return collect($specs)->map(function ($spec, $i) {
+            [$applicationIndex, $type, $offset, $status] = $spec;
+            return [
+                'application_index' => $applicationIndex, 'type' => $type,
+                'scheduled_at' => now()->startOfHour()->addDays($offset)->addHours(9 + ($i % 4)),
+                'duration_minutes' => $i % 3 === 0 ? 45 : 60,
+                'location' => in_array($type, ['video', 'phone'], true) ? null : 'Sala DEMO de entrevistas',
+                'meeting_link' => $type === 'video' ? 'https://meeting.invalid/demo2-'.$this->personaCode().'-'.($i + 1) : null,
+                'status' => $status,
+                'rating' => $status === 'completed' ? 3 + ($i % 3) : null,
+                'feedback' => $status === 'completed' ? 'Entrevista DEMO completada; continuar evaluación interna.' : null,
+                'notes' => sprintf('[DEMO2-INT-%s-%02d] Entrevista DEMO.', $this->personaCode(), $i + 1),
+            ];
+        })->all();
+    }
+
+    private function assetCategories(): array
+    {
+        return [
+            ['name' => 'Computadoras DEMO', 'description' => 'Equipos de cómputo para la operación DEMO.'],
+            ['name' => 'Mobiliario DEMO', 'description' => 'Mobiliario administrativo DEMO.'],
+            ['name' => 'Equipos POS DEMO', 'description' => 'Equipos de punto de venta DEMO.'],
+            ['name' => 'Impresoras DEMO', 'description' => 'Impresión y digitalización DEMO.'],
+            ['name' => 'Equipos de red DEMO', 'description' => 'Conectividad de la operación DEMO.'],
+        ];
+    }
+
+    private function assets(): array
+    {
+        $items = [
+            ['Laptop Administración', 0, 'in_use'], ['Laptop Ventas', 0, 'in_use'],
+            ['Escritorio Operativo', 1, 'in_use'], ['Silla Ergonómica Gerencia', 1, 'in_use'],
+            ['Terminal POS Principal', 2, 'in_use'], ['Lector de Código POS', 2, 'maintenance'],
+            ['Impresora Multifuncional', 3, 'in_use'], ['Impresora Térmica POS', 3, 'maintenance'],
+            ['Router Empresarial', 4, 'in_use'], ['Switch de Red 24 Puertos', 4, 'retired'],
+        ];
+        return collect($items)->map(function ($item, $i) {
+            [$name, $categoryIndex, $status] = $item; $n = $i + 1;
+            return [
+                'tag' => sprintf('AST-DEMO2-%s-%02d', $this->personaCode(), $n), 'name' => $name,
+                'category_index' => $categoryIndex, 'serial_number' => sprintf('SN-DEMO2-%s-%04d', $this->personaCode(), $n),
+                'description' => 'Activo ficticio DEMO para pruebas de inventario de activos.',
+                'purchase_date' => now()->subMonths(4 + $n)->toDateString(), 'purchase_cost' => 2500 + ($n * 1750),
+                'status' => $status, 'employee_index' => $i % 10,
+                'last_verification' => now()->subDays(10 + $n)->toDateString(),
+                // Keep validation safely in the future: the scheduled notifier must not email from demo data.
+                'next_validation' => now()->addMonths(6 + ($n % 3))->toDateString(),
+            ];
+        })->all();
+    }
+
+    private function propertyCategories(): array
+    {
+        // These are the six system-default slugs introduced by the migration;
+        // reuse them rather than create duplicate categories for demo data.
+        return [
+            ['name' => 'Apartment', 'slug' => 'apartment', 'description' => 'Apartamentos para listados DEMO.'],
+            ['name' => 'House', 'slug' => 'house', 'description' => 'Casas para listados DEMO.'],
+            ['name' => 'Villa', 'slug' => 'villa', 'description' => 'Villas para listados DEMO.'],
+            ['name' => 'Office', 'slug' => 'office', 'description' => 'Oficinas para listados DEMO.'],
+            ['name' => 'Commercial Property', 'slug' => 'commercial-property', 'description' => 'Locales comerciales DEMO.'],
+            ['name' => 'Land', 'slug' => 'land', 'description' => 'Terrenos para listados DEMO.'],
+        ];
+    }
+
+    private function properties(): array
+    {
+        $business = $this->persona === DemoPersonas::DISTRIBUTION ? 'Distribución' : 'Retail';
+        $items = [
+            ['Apartamento Vista Norte', 0, 'rent', 'available', 18500, 82, 2, 2, 1, 'Sector Norte, San Pedro Sula'],
+            ['Casa Familiar Residencial Demo', 1, 'sale', 'available', 3650000, 190, 3, 2, 2, 'Residencial Demo, Tegucigalpa'],
+            ['Villa Jardines del Valle', 2, 'sale', 'sold', 5800000, 310, 4, 3, 2, 'Zona Valle DEMO'],
+            ['Oficina Torre Centro', 3, 'rent', 'available', 32000, 110, null, 2, 2, 'Zona Comercial Centro'],
+            ['Local Comercial Plaza Demo', 4, 'rent', 'rented', 42500, 145, null, 1, 3, 'Boulevard Comercial DEMO'],
+            ['Terreno Proyecto Norte', 5, 'sale', 'available', 1950000, 750, null, null, null, 'Sector Norte DEMO'],
+            ['Apartamento Ejecutivo Central', 0, 'sale', 'available', 2950000, 98, 2, 2, 1, 'Centro DEMO, San Pedro Sula'],
+            ['Casa Esquina Parque Demo', 1, 'rent', 'available', 28500, 165, 3, 2, 2, 'Residencial Parque DEMO'],
+            ['Oficina Flexible Empresarial', 3, 'sale', 'available', 4100000, 180, null, 3, 4, 'Distrito Empresarial DEMO'],
+            ['Bodega Comercial Demo', 4, 'sale', 'available', 6700000, 520, null, 2, 8, 'Zona Logística DEMO'],
+        ];
+        return collect($items)->map(function ($item, $i) use ($business) {
+            [$title, $categoryIndex, $purpose, $status, $price, $area, $beds, $baths, $garage, $address] = $item;
+            $n = $i + 1;
+            return [
+                'title' => $title.' — '.$business, 'slug' => sprintf('prop-demo2-%s-%02d', strtolower($this->personaCode()), $n),
+                'category_index' => $categoryIndex, 'description' => "Propiedad ficticia DEMO de {$business}, creada para filtros, tarjetas y dashboards.",
+                'purpose' => $purpose, 'status' => $status, 'featured' => $n <= 4,
+                'price' => $price, 'area' => $area, 'area_unit' => 'm²', 'bedrooms' => $beds, 'bathrooms' => $baths, 'garage' => $garage,
+                'address' => $address, 'city' => $n % 2 ? 'San Pedro Sula' : 'Tegucigalpa', 'region' => 'Honduras',
+                'amenities' => $beds ? ['Seguridad', 'Área social', 'Estacionamiento'] : ['Acceso principal', 'Estacionamiento'],
+                'agent_name' => 'Asesor DEMO '.$business, 'agent_phone' => $this->fakePhone(950 + $n),
+                'agent_email' => sprintf('agent.demo2.%s.%02d@example.test', strtolower($this->personaCode()), $n),
+                'agent_whatsapp' => $this->fakePhone(970 + $n),
+                'seo_title' => $title, 'seo_description' => 'Listado inmobiliario ficticio para QA.', 'seo_keywords' => 'demo, propiedad, inmobiliaria',
+            ];
+        })->all();
+    }
+
+    private function propertyInquiries(): array
+    {
+        $names = ['Mariana Flores', 'Ricardo Núñez', 'Paola Sierra', 'Héctor Varela', 'Lucía Ríos', 'Daniel Ponce', 'Elena Cruz', 'Marco Salinas', 'Irene Castro', 'Óscar Molina'];
+        return collect($names)->map(fn ($name, $i) => [
+            'property_index' => $i, 'name' => $name, 'phone' => $this->fakePhone(1000 + $i),
+            'email' => sprintf('inquiry.demo2.%s.%02d@example.test', strtolower($this->personaCode()), $i + 1),
+            'message' => 'Hola, me interesa conocer disponibilidad, condiciones y coordinar una visita a esta propiedad DEMO.',
+            'status' => ['new', 'read', 'responded', 'closed'][$i % 4],
+        ])->all();
+    }
+
+    private function existingRecruitApplicationCount(): int
+    {
+        $jobs = $this->recruitJobIds();
+        $candidates = $this->recruitCandidateIds();
+        $existing = 0;
+        foreach ($this->recruitApplications() as $application) {
+            $job = $this->recruitJobs()[$application['job_index']];
+            $candidate = $this->recruitCandidates()[$application['candidate_index']];
+            if (isset($jobs[$job['slug']], $candidates[$candidate['email']]) && DB::table('recruit_applications')->where('job_id', $jobs[$job['slug']])->where('candidate_id', $candidates[$candidate['email']])->whereNull('deleted_at')->exists()) $existing++;
+        }
+        return $existing;
+    }
+
+    private function recruitJobIds(): array
+    {
+        return DB::table('recruit_jobs')->whereIn('slug', array_column($this->recruitJobs(), 'slug'))->whereNull('deleted_at')->pluck('id', 'slug')->all();
+    }
+
+    private function recruitCandidateIds(): array
+    {
+        return DB::table('recruit_candidates')->whereIn('email', array_column($this->recruitCandidates(), 'email'))->whereNull('deleted_at')->pluck('id', 'email')->all();
+    }
+
+    public function seedRecruitJobCategories(): array
+    {
+        $created = $existing = 0;
+        foreach ($this->recruitJobCategories() as $category) {
+            if (DB::table('recruit_job_categories')->where('name', $category['name'])->whereNull('deleted_at')->exists()) {
+                $existing++;
+                continue;
+            }
+            DB::table('recruit_job_categories')->insert($category + ['created_at' => now(), 'updated_at' => now()]);
+            $created++;
+        }
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => 0];
+    }
+
+    public function seedRecruitJobs(): array
+    {
+        $created = $existing = 0;
+        $categories = DB::table('recruit_job_categories')->whereIn('name', array_column($this->recruitJobCategories(), 'name'))->whereNull('deleted_at')->pluck('id', 'name');
+        $companyId = $this->hrCompanyId ?? $this->demoHrCompanyId();
+        $departments = $companyId ? DB::table('departments')->where('company_id', $companyId)->whereNull('deleted_at')->pluck('id', 'department') : collect();
+        foreach ($this->recruitJobs() as $job) {
+            if (DB::table('recruit_jobs')->where('slug', $job['slug'])->whereNull('deleted_at')->exists()) {
+                $existing++;
+                continue;
+            }
+            $category = $job['category']; $department = $job['department'];
+            unset($job['category'], $job['department']);
+            DB::table('recruit_jobs')->insert($job + [
+                'category_id' => $categories[$category] ?? null,
+                'department_id' => $departments[$department] ?? null,
+                'created_by' => null, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $created++;
+        }
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => 0];
+    }
+
+    public function seedRecruitCandidates(): array
+    {
+        $created = $existing = 0;
+        foreach ($this->recruitCandidates() as $candidate) {
+            if (DB::table('recruit_candidates')->where('email', $candidate['email'])->whereNull('deleted_at')->exists()) {
+                $existing++;
+                continue;
+            }
+            DB::table('recruit_candidates')->insert($candidate + ['resume_path' => null, 'photo' => null, 'created_at' => now(), 'updated_at' => now()]);
+            $created++;
+        }
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => 0];
+    }
+
+    public function seedRecruitApplications(): array
+    {
+        $created = $existing = $skipped = 0;
+        $jobs = $this->recruitJobIds();
+        $candidates = $this->recruitCandidateIds();
+        foreach ($this->recruitApplications() as $application) {
+            $jobId = $jobs[$this->recruitJobs()[$application['job_index']]['slug']] ?? null;
+            $candidateId = $candidates[$this->recruitCandidates()[$application['candidate_index']]['email']] ?? null;
+            if (! $jobId || ! $candidateId) { $skipped++; continue; }
+            if (DB::table('recruit_applications')->where('job_id', $jobId)->where('candidate_id', $candidateId)->whereNull('deleted_at')->exists()) {
+                $existing++;
+                continue;
+            }
+            unset($application['job_index'], $application['candidate_index']);
+            DB::table('recruit_applications')->insert($application + [
+                'job_id' => $jobId, 'candidate_id' => $candidateId, 'reviewed_by' => null, 'reviewed_at' => null,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $created++;
+        }
+        return ['created' => $created, 'existing' => $existing, 'skipped' => $skipped, 'failed' => 0];
+    }
+
+    public function seedRecruitInterviews(): array
+    {
+        $created = $existing = $skipped = 0;
+        $jobs = $this->recruitJobIds();
+        $candidates = $this->recruitCandidateIds();
+        $applications = $this->recruitApplications();
+        foreach ($this->recruitInterviews() as $interview) {
+            $appSpec = $applications[$interview['application_index']] ?? null;
+            $applicationId = $appSpec ? DB::table('recruit_applications')->where('job_id', $jobs[$this->recruitJobs()[$appSpec['job_index']]['slug']] ?? null)->where('candidate_id', $candidates[$this->recruitCandidates()[$appSpec['candidate_index']]['email']] ?? null)->whereNull('deleted_at')->value('id') : null;
+            if (! $applicationId) { $skipped++; continue; }
+            if (DB::table('recruit_interviews')->where('notes', $interview['notes'])->whereNull('deleted_at')->exists()) {
+                $existing++;
+                continue;
+            }
+            unset($interview['application_index']);
+            // RecruitController::interviews_store has no service/event layer.
+            // This is its exact persisted flow, including the guarded stage
+            // transition, while avoiding HTTP/auth work inside a CLI seeder.
+            $interview['application_id'] = $applicationId;
+            RecruitInterview::create($interview);
+            $application = RecruitApplication::find($applicationId);
+            if ($application && in_array($application->stage, ['applied', 'screening', 'shortlisted'], true)) {
+                $application->update(['stage' => 'interview']);
+            }
+            $created++;
+        }
+        return ['created' => $created, 'existing' => $existing, 'skipped' => $skipped, 'failed' => 0];
+    }
+
+    public function seedAssetCategories(): array
+    {
+        if (! app(TenantLimitsService::class)->hasFeature('assets')) return ['created' => 0, 'existing' => 0, 'skipped' => 5, 'failed' => 0];
+        $created = $existing = 0;
+        foreach ($this->assetCategories() as $category) {
+            if (DB::table('asset_categories')->where('name', $category['name'])->whereNull('deleted_at')->exists()) { $existing++; continue; }
+            DB::table('asset_categories')->insert($category + ['created_at' => now(), 'updated_at' => now()]); $created++;
+        }
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => 0];
+    }
+
+    public function seedAssets(): array
+    {
+        if (! app(TenantLimitsService::class)->hasFeature('assets')) return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0];
+        $created = $existing = 0;
+        $categories = DB::table('asset_categories')->whereIn('name', array_column($this->assetCategories(), 'name'))->whereNull('deleted_at')->pluck('id', 'name')->all();
+        $employees = DB::table('employees')->where(function ($q) { foreach ($this->hrEmployees() as $employee) $q->orWhere(fn ($w) => $w->where('firstname', $employee['firstname'])->where('lastname', $employee['lastname'])); })->whereNull('deleted_at')->get(['id', 'firstname', 'lastname'])->mapWithKeys(fn ($employee) => [$employee->firstname.' '.$employee->lastname => $employee->id])->all();
+        $warehouses = $this->allWarehouseIds();
+        foreach ($this->assets() as $asset) {
+            if (DB::table('assets')->where('tag', $asset['tag'])->whereNull('deleted_at')->exists()) { $existing++; continue; }
+            $categoryId = $categories[$this->assetCategories()[$asset['category_index']]['name']] ?? null;
+            $employee = $this->hrEmployees()[$asset['employee_index']];
+            $employeeId = $employees[$employee['firstname'].' '.$employee['lastname']] ?? null;
+            unset($asset['category_index'], $asset['employee_index']);
+            DB::table('assets')->insert($asset + ['asset_category_id' => $categoryId, 'warehouse_id' => $warehouses[0] ?? null, 'assigned_to_id' => $employeeId, 'created_at' => now(), 'updated_at' => now()]);
+            $created++;
+        }
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => 0];
+    }
+
+    public function seedPropertyCategories(): array
+    {
+        $created = $existing = 0;
+        foreach ($this->propertyCategories() as $category) {
+            if (DB::table('property_categories')->where('slug', $category['slug'])->whereNull('deleted_at')->exists()) { $existing++; continue; }
+            DB::table('property_categories')->insert($category + ['image' => null, 'created_at' => now(), 'updated_at' => now()]); $created++;
+        }
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => 0];
+    }
+
+    public function seedProperties(): array
+    {
+        $created = $existing = 0;
+        $categories = DB::table('property_categories')->whereIn('slug', array_column($this->propertyCategories(), 'slug'))->whereNull('deleted_at')->pluck('id', 'slug')->all();
+        foreach ($this->properties() as $property) {
+            if (DB::table('properties')->where('slug', $property['slug'])->whereNull('deleted_at')->exists()) { $existing++; continue; }
+            $categoryId = $categories[$this->propertyCategories()[$property['category_index']]['slug']] ?? null; unset($property['category_index']);
+            $property['amenities'] = json_encode($property['amenities']);
+            DB::table('properties')->insert($property + ['property_category_id' => $categoryId, 'featured_image' => null, 'gallery' => json_encode([]), 'views' => 0, 'created_by' => null, 'created_at' => now(), 'updated_at' => now()]);
+            $created++;
+        }
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => 0];
+    }
+
+    public function seedPropertyInquiries(): array
+    {
+        $created = $existing = $skipped = 0;
+        $properties = DB::table('properties')->whereIn('slug', array_column($this->properties(), 'slug'))->whereNull('deleted_at')->pluck('id', 'slug')->all();
+        foreach ($this->propertyInquiries() as $inquiry) {
+            if (DB::table('property_inquiries')->where('email', $inquiry['email'])->whereNull('deleted_at')->exists()) { $existing++; continue; }
+            $propertyId = $properties[$this->properties()[$inquiry['property_index']]['slug']] ?? null; unset($inquiry['property_index']);
+            if (! $propertyId) { $skipped++; continue; }
+            // Deliberately not the public storefront controller: it sends a
+            // best-effort email notification, which demo seeding must never do.
+            DB::table('property_inquiries')->insert($inquiry + ['property_id' => $propertyId, 'created_at' => now(), 'updated_at' => now()]); $created++;
+        }
+        return ['created' => $created, 'existing' => $existing, 'skipped' => $skipped, 'failed' => 0];
     }
 }

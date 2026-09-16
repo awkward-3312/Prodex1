@@ -84,6 +84,18 @@ class SeedDemoTenant extends Command
             $plan = $this->limitsSummary();
             $this->line("Plan:      {$plan}");
 
+            $limits = app(TenantLimitsService::class);
+            $this->line('');
+            $this->info('=== Feature gates (Fase E) ===');
+            $this->table(
+                ['Módulo', 'Feature / ruta', 'Estado', 'Seeder', 'UI'],
+                [
+                    ['Reclutamiento', 'recruitment', $limits->hasFeature('recruitment') ? 'habilitada' : 'no disponible', 'soportado', $limits->hasFeature('recruitment') ? 'habilitada por feature' : 'bloqueada por feature'],
+                    ['Activos', 'assets', $limits->hasFeature('assets') ? 'habilitada' : 'no disponible', 'soportado; se omite si no está disponible', $limits->hasFeature('assets') ? 'habilitada por feature' : 'bloqueada por feature'],
+                    ['Bienes Raíces', 'sin tenant.feature', 'sin feature gate', 'soportado', 'sin bloqueo de plan (requiere auth/permisos)'],
+                ]
+            );
+
             $persona = DemoPersonas::forDomain($domain, $tenant->id);
             $seeder = new DemoTenantSeeder($persona);
             $this->line('Perfil:    '.$seeder->personaLabel().(in_array($domain, ['prueba02', 'pruebapago'], true) ? '' : ' (dominio no reconocido — perfil asignado de forma determinística para pruebas locales)'));
@@ -98,8 +110,8 @@ class SeedDemoTenant extends Command
             $this->line('');
             $this->info('=== Plan (lo que este run crearía) ===');
             $this->table(
-                ['Entidad', 'Objetivo demo', 'Ya existen (demo)', 'A crear'],
-                collect($planRows)->map(fn ($r, $label) => [$label, $r['target'], $r['existing'], $r['to_create']])->values()->all()
+                ['Entidad', 'Objetivo demo', 'Ya existen (demo)', 'A crear', 'Omitido'],
+                collect($planRows)->map(fn ($r, $label) => [$label, $r['target'], $r['existing'], $r['to_create'], $r['skipped'] ?? 0])->values()->all()
             );
 
             $this->line('');
@@ -154,6 +166,14 @@ class SeedDemoTenant extends Command
                 'Empresa (HR)' => 'seedHrCompany',
                 'Departamentos' => 'seedHrDepartments',
                 'Tipos de permiso' => 'seedLeaveTypes',
+                'Recruit Job Categories' => 'seedRecruitJobCategories',
+                'Recruit Jobs' => 'seedRecruitJobs',
+                'Candidates' => 'seedRecruitCandidates',
+                'Applications' => 'seedRecruitApplications',
+                'Asset Categories' => 'seedAssetCategories',
+                'Property Categories' => 'seedPropertyCategories',
+                'Properties' => 'seedProperties',
+                'Property Inquiries' => 'seedPropertyInquiries',
             ];
             $selfContained = [
                 'Compras' => 'seedPurchases',
@@ -168,6 +188,8 @@ class SeedDemoTenant extends Command
                 'Solicitudes de permiso' => 'seedLeaves',
                 'Días festivos' => 'seedHolidays',
                 'Nómina' => 'seedPayrolls',
+                'Interviews' => 'seedRecruitInterviews',
+                'Assets' => 'seedAssets',
             ];
 
             foreach ($transactional as $label => $method) {
