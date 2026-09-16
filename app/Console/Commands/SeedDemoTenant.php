@@ -151,6 +151,9 @@ class SeedDemoTenant extends Command
                 'Proveedores' => 'seedProviders',
                 'Stock inicial (product_warehouse)' => 'seedInitialStock',
                 'Clientes' => 'seedClients',
+                'Empresa (HR)' => 'seedHrCompany',
+                'Departamentos' => 'seedHrDepartments',
+                'Tipos de permiso' => 'seedLeaveTypes',
             ];
             $selfContained = [
                 'Compras' => 'seedPurchases',
@@ -158,6 +161,13 @@ class SeedDemoTenant extends Command
                 'Ventas' => 'seedSales',
                 'Cotizaciones' => 'seedQuotations',
                 'Promociones' => 'seedPromotions',
+                'Cargos' => 'seedHrDesignations',
+                'Turnos' => 'seedHrOfficeShifts',
+                'Empleados' => 'seedHrEmployees',
+                'Asistencias' => 'seedAttendances',
+                'Solicitudes de permiso' => 'seedLeaves',
+                'Días festivos' => 'seedHolidays',
+                'Nómina' => 'seedPayrolls',
             ];
 
             foreach ($transactional as $label => $method) {

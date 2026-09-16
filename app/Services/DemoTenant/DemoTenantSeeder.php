@@ -2,6 +2,12 @@
 
 namespace App\Services\DemoTenant;
 
+use App\Http\Controllers\hrm\AttendancesController;
+use App\Http\Controllers\hrm\DesignationsController;
+use App\Http\Controllers\hrm\EmployeesController;
+use App\Http\Controllers\hrm\HolidayController;
+use App\Http\Controllers\hrm\LeaveController;
+use App\Http\Controllers\hrm\OfficeShiftController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\PromotionsController;
 use App\Http\Controllers\PurchasesController;
@@ -49,6 +55,18 @@ class DemoTenantSeeder
     private array $unitIds = [];
 
     private array $clientIds = [];
+
+    /** Phase D — filled as HR modules run. */
+    private ?int $hrCompanyId = null;
+
+    private array $hrDepartmentIds = [];
+
+    private array $hrDesignationIds = [];
+
+    private array $hrOfficeShiftIds = [];
+
+    /** @var array<string,array{id:int,shift:string,basic_salary:float,hourly_rate:float,department:string}> keyed by "firstname lastname" */
+    private array $hrEmployeeMeta = [];
 
     public function __construct(string $persona)
     {
@@ -133,7 +151,128 @@ class DemoTenantSeeder
         // table still surfaces the module instead of silently omitting it.
         $plan['Reservas'] = ['target' => 10, 'existing' => 0, 'to_create' => 0];
 
+        $companyExisting = DB::table('companies')->where('name', $this->data['company_name'])->whereNull('deleted_at')->exists() ? 1 : 0;
+        $plan['Empresa (HR)'] = $this->row(1, $companyExisting);
+
+        $companyId = DB::table('companies')->where('name', $this->data['company_name'])->whereNull('deleted_at')->value('id');
+        $deptExisting = $companyId ? DB::table('departments')->where('company_id', $companyId)->whereIn('department', array_keys($this->hrDepartments()))->whereNull('deleted_at')->count() : 0;
+        $plan['Departamentos'] = $this->row(count($this->hrDepartments()), $deptExisting);
+
+        $desigNames = collect($this->hrDepartments())->flatten(1)->values()->all();
+        $desigExisting = $companyId ? DB::table('designations')->where('company_id', $companyId)->whereIn('designation', $desigNames)->whereNull('deleted_at')->count() : 0;
+        $plan['Cargos'] = $this->row(count($desigNames), $desigExisting);
+
+        $shiftExisting = $companyId ? DB::table('office_shifts')->where('company_id', $companyId)->whereIn('name', array_column($this->hrOfficeShifts(), 'name'))->whereNull('deleted_at')->count() : 0;
+        $plan['Turnos'] = $this->row(count($this->hrOfficeShifts()), $shiftExisting);
+
+        $empExisting = DB::table('employees')->where(function ($q) {
+            foreach ($this->hrEmployees() as $e) {
+                $q->orWhere(fn ($q2) => $q2->where('firstname', $e['firstname'])->where('lastname', $e['lastname']));
+            }
+        })->whereNull('deleted_at')->count();
+        $plan['Empleados'] = $this->row(count($this->hrEmployees()), $empExisting);
+
+        $attTarget = $this->attendancePlanCount();
+        $attMarkerCount = DB::table('attendances')->whereIn('employee_id', DB::table('employees')->where(function ($q) {
+            foreach ($this->hrEmployees() as $e) {
+                $q->orWhere(fn ($q2) => $q2->where('firstname', $e['firstname'])->where('lastname', $e['lastname']));
+            }
+        })->pluck('id'))->whereNull('deleted_at')->count();
+        $plan['Asistencias'] = $this->row($attTarget, $attMarkerCount);
+
+        $ltExisting = DB::table('leave_types')->whereIn('title', $this->hrLeaveTypes())->whereNull('deleted_at')->count();
+        $plan['Tipos de permiso'] = $this->row(count($this->hrLeaveTypes()), $ltExisting);
+
+        $leaveExisting = DB::table('leaves')->where('reason', 'like', '%[DEMO2-LEAVE-%')->whereNull('deleted_at')->count();
+        $plan['Solicitudes de permiso'] = $this->row(10, $leaveExisting);
+
+        $holidayExisting = $companyId ? DB::table('holidays')->where('company_id', $companyId)->where('title', 'like', 'DEMO2 %')->whereNull('deleted_at')->count() : 0;
+        $plan['Días festivos'] = $this->row(10, $holidayExisting);
+
+        $payrollExisting = DB::table('payrolls')->where('Ref', 'like', '%')->where('receiver_account_number', 'DEMO2-PAYROLL')->whereNull('deleted_at')->count();
+        $plan['Nómina'] = $this->row(10, $payrollExisting);
+
         return $plan;
+    }
+
+    /** Fixed 5-department structure, each with 1-2 designations. Shared across both personas — a generic, realistic org chart, not persona-varied. */
+    private function hrDepartments(): array
+    {
+        return [
+            'Ventas' => ['Ejecutivo de Ventas', 'Supervisor de Ventas'],
+            'Almacén e Inventario' => ['Auxiliar de Bodega', 'Jefe de Bodega'],
+            'Administración y Finanzas' => ['Analista Contable', 'Gerente Administrativo'],
+            'Recursos Humanos' => ['Coordinador de RRHH'],
+            'Logística' => ['Coordinador de Logística'],
+        ];
+    }
+
+    /** 4 shifts, canonical "H:i" strings only (or null = day off) — see OfficeShift::normalizeTime(). */
+    private function hrOfficeShifts(): array
+    {
+        $admin = ['08:00', '17:00'];
+        $morning = ['06:00', '14:00'];
+        $afternoon = ['14:00', '22:00'];
+        $weekend = ['09:00', '18:00'];
+
+        return [
+            [
+                'name' => 'Turno Administrativo',
+                'schedule' => [
+                    'monday' => $admin, 'tuesday' => $admin, 'wednesday' => $admin, 'thursday' => $admin, 'friday' => $admin,
+                    'saturday' => null, 'sunday' => null,
+                ],
+            ],
+            [
+                'name' => 'Turno Mañana',
+                'schedule' => [
+                    'monday' => $morning, 'tuesday' => $morning, 'wednesday' => $morning, 'thursday' => $morning, 'friday' => $morning, 'saturday' => $morning,
+                    'sunday' => null,
+                ],
+            ],
+            [
+                'name' => 'Turno Tarde',
+                'schedule' => [
+                    'monday' => $afternoon, 'tuesday' => $afternoon, 'wednesday' => $afternoon, 'thursday' => $afternoon, 'friday' => $afternoon, 'saturday' => $afternoon,
+                    'sunday' => null,
+                ],
+            ],
+            [
+                'name' => 'Turno Fin de Semana',
+                'schedule' => [
+                    'monday' => null, 'tuesday' => null, 'wednesday' => null, 'thursday' => null,
+                    'friday' => $weekend, 'saturday' => $weekend, 'sunday' => $weekend,
+                ],
+            ],
+        ];
+    }
+
+    /** 10 fixed DEMO employees — name, gender, department, designation, shift, salary (HNL), joining offset (days ago). Fictitious throughout, no real DNI/RTN/bank data. */
+    private function hrEmployees(): array
+    {
+        return [
+            ['firstname' => 'Carlos', 'lastname' => 'Martínez', 'gender' => 'Male', 'department' => 'Ventas', 'designation' => 'Ejecutivo de Ventas', 'shift' => 'Turno Administrativo', 'basic_salary' => 12000, 'joined_days_ago' => 420],
+            ['firstname' => 'Ana', 'lastname' => 'Rodríguez', 'gender' => 'Female', 'department' => 'Ventas', 'designation' => 'Supervisor de Ventas', 'shift' => 'Turno Administrativo', 'basic_salary' => 18000, 'joined_days_ago' => 730],
+            ['firstname' => 'Luis', 'lastname' => 'Fernández', 'gender' => 'Male', 'department' => 'Almacén e Inventario', 'designation' => 'Auxiliar de Bodega', 'shift' => 'Turno Mañana', 'basic_salary' => 9500, 'joined_days_ago' => 210],
+            ['firstname' => 'María', 'lastname' => 'Gómez', 'gender' => 'Female', 'department' => 'Almacén e Inventario', 'designation' => 'Jefe de Bodega', 'shift' => 'Turno Mañana', 'basic_salary' => 16000, 'joined_days_ago' => 540],
+            ['firstname' => 'José', 'lastname' => 'Pineda', 'gender' => 'Male', 'department' => 'Administración y Finanzas', 'designation' => 'Analista Contable', 'shift' => 'Turno Administrativo', 'basic_salary' => 15000, 'joined_days_ago' => 365],
+            ['firstname' => 'Gabriela', 'lastname' => 'Cáceres', 'gender' => 'Female', 'department' => 'Administración y Finanzas', 'designation' => 'Gerente Administrativo', 'shift' => 'Turno Administrativo', 'basic_salary' => 25000, 'joined_days_ago' => 900],
+            ['firstname' => 'Roberto', 'lastname' => 'Zelaya', 'gender' => 'Male', 'department' => 'Recursos Humanos', 'designation' => 'Coordinador de RRHH', 'shift' => 'Turno Administrativo', 'basic_salary' => 14000, 'joined_days_ago' => 300],
+            ['firstname' => 'Daniela', 'lastname' => 'Reyes', 'gender' => 'Female', 'department' => 'Logística', 'designation' => 'Coordinador de Logística', 'shift' => 'Turno Tarde', 'basic_salary' => 13500, 'joined_days_ago' => 180],
+            ['firstname' => 'Miguel', 'lastname' => 'Oseguera', 'gender' => 'Male', 'department' => 'Ventas', 'designation' => 'Ejecutivo de Ventas', 'shift' => 'Turno Tarde', 'basic_salary' => 11000, 'joined_days_ago' => 95],
+            ['firstname' => 'Fátima', 'lastname' => 'Bardales', 'gender' => 'Female', 'department' => 'Almacén e Inventario', 'designation' => 'Auxiliar de Bodega', 'shift' => 'Turno Fin de Semana', 'basic_salary' => 9000, 'joined_days_ago' => 60],
+        ];
+    }
+
+    private function hrLeaveTypes(): array
+    {
+        return ['Vacaciones', 'Enfermedad', 'Permiso Personal', 'Duelo', 'Maternidad', 'Paternidad', 'Permiso Sin Goce de Sueldo', 'Cita Médica', 'Estudio', 'Otro'];
+    }
+
+    /** How many attendance rows the fixed schedule below actually produces (needed by plan() for the dry-run target). */
+    private function attendancePlanCount(): int
+    {
+        return count($this->attendancePlanRows());
     }
 
     /** Deterministic 36-char sale_uuid prefix, matched against the sales.sale_uuid unique column. */
@@ -449,6 +588,16 @@ class DemoTenantSeeder
             'Ventas' => DB::table('sales')->count(),
             'Cotizaciones' => DB::table('quotations')->count(),
             'Promociones' => DB::table('promotions')->count(),
+            'Empresas' => DB::table('companies')->count(),
+            'Departamentos' => DB::table('departments')->count(),
+            'Cargos' => DB::table('designations')->count(),
+            'Turnos' => DB::table('office_shifts')->count(),
+            'Empleados' => DB::table('employees')->count(),
+            'Asistencias' => DB::table('attendances')->count(),
+            'Tipos de permiso' => DB::table('leave_types')->count(),
+            'Permisos' => DB::table('leaves')->count(),
+            'Días festivos' => DB::table('holidays')->count(),
+            'Nóminas' => DB::table('payrolls')->count(),
         ];
     }
 
@@ -1414,5 +1563,773 @@ class DemoTenantSeeder
      */
     private function seedReservasDecision(): void
     {
+    }
+
+    // ------------------------------------------------------------------
+    // Phase D — HR: company/departments/designations/office shifts,
+    // employees, attendance, leave types/leaves, holidays, payroll.
+    // ------------------------------------------------------------------
+
+    /** Re-resolves the demo HR company id by name — never assumes seedHrCompany() ran earlier in this same process. */
+    private function demoHrCompanyId(): ?int
+    {
+        return DB::table('companies')->where('name', $this->data['company_name'])->whereNull('deleted_at')->value('id');
+    }
+
+    /**
+     * 1 company, raw insert. Audited: CompanyController::store() has zero
+     * side effects beyond the row. Reuses the persona's own `company_name`
+     * (already used for the tenant's business identity in Fase A/B/C plan
+     * output) so the HR org chart reads as the same business, not an
+     * unrelated shell company. Idempotent by exact name match.
+     */
+    public function seedHrCompany(): array
+    {
+        $existing = DB::table('companies')->where('name', $this->data['company_name'])->whereNull('deleted_at')->first();
+        if ($existing) {
+            $this->hrCompanyId = $existing->id;
+
+            return ['created' => 0, 'existing' => 1, 'skipped' => 0, 'failed' => 0];
+        }
+
+        $this->hrCompanyId = DB::table('companies')->insertGetId([
+            'name' => $this->data['company_name'],
+            'email' => 'rrhh@'.strtolower(preg_replace('/[^a-z0-9]+/i', '', $this->data['company_name'])).'.demo2.prodex.test',
+            'phone' => $this->fakePhone(500),
+            'country' => 'Honduras',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return ['created' => 1, 'existing' => 0, 'skipped' => 0, 'failed' => 0];
+    }
+
+    /**
+     * 5 departments, raw insert. Audited: DepartmentsController::store() has
+     * zero side effects beyond the row (no uniqueness check either — the
+     * seeder's own name+company_id pre-check is what keeps this idempotent).
+     */
+    public function seedHrDepartments(): array
+    {
+        $companyId = $this->hrCompanyId ?? $this->demoHrCompanyId();
+        if (! $companyId) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => count($this->hrDepartments()), 'failed' => 0];
+        }
+        $this->hrCompanyId = $companyId;
+
+        $created = 0;
+        $existing = 0;
+        foreach (array_keys($this->hrDepartments()) as $name) {
+            $row = DB::table('departments')->where('company_id', $companyId)->where('department', $name)->whereNull('deleted_at')->first();
+            if ($row) {
+                $this->hrDepartmentIds[$name] = $row->id;
+                $existing++;
+
+                continue;
+            }
+            $id = DB::table('departments')->insertGetId([
+                'department' => $name,
+                'company_id' => $companyId,
+                'department_head' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $this->hrDepartmentIds[$name] = $id;
+            $created++;
+        }
+
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => 0];
+    }
+
+    private function reresolveHrDepartmentIds(int $companyId): void
+    {
+        foreach (array_keys($this->hrDepartments()) as $name) {
+            if (! isset($this->hrDepartmentIds[$name])) {
+                $id = DB::table('departments')->where('company_id', $companyId)->where('department', $name)->whereNull('deleted_at')->value('id');
+                if ($id) {
+                    $this->hrDepartmentIds[$name] = $id;
+                }
+            }
+        }
+    }
+
+    /**
+     * 8 designations via the REAL DesignationsController::store() — audited:
+     * it enforces a case-insensitive uniqueness check scoped to
+     * company_id+department_id that is app-layer only (no DB unique
+     * constraint backs it), so calling the controller is what actually keeps
+     * this safe on a second run rather than merely convenient. Pre-checked
+     * before calling to keep the granular created/existing counters honest
+     * (the controller itself would just abort_if with a 422, which we'd
+     * otherwise have to interpret as "existing" after the fact).
+     */
+    public function seedHrDesignations(): array
+    {
+        $companyId = $this->hrCompanyId ?? $this->demoHrCompanyId();
+        if (! $companyId) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 8, 'failed' => 0];
+        }
+        $this->reresolveHrDepartmentIds($companyId);
+
+        $user = $this->demoActingUser();
+        if (! $user) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 8, 'failed' => 0];
+        }
+
+        $created = 0;
+        $existing = 0;
+        $failed = 0;
+        $errors = [];
+
+        foreach ($this->hrDepartments() as $deptName => $designations) {
+            $departmentId = $this->hrDepartmentIds[$deptName] ?? null;
+            if (! $departmentId) {
+                $failed += count($designations);
+                $errors[] = "Cargos de '{$deptName}': departamento no existe.";
+
+                continue;
+            }
+
+            foreach ($designations as $designationName) {
+                $row = DB::table('designations')->where('company_id', $companyId)->where('department_id', $departmentId)
+                    ->whereRaw('LOWER(designation) = ?', [mb_strtolower($designationName)])->whereNull('deleted_at')->first();
+                if ($row) {
+                    $this->hrDesignationIds[$designationName] = $row->id;
+                    $existing++;
+
+                    continue;
+                }
+
+                $payload = [
+                    'designation' => $designationName,
+                    'company_id' => $companyId,
+                    'department' => $departmentId,
+                ];
+
+                try {
+                    $request = $this->makeControllerRequest($payload, $user);
+                    app(DesignationsController::class)->store($request);
+                    $id = DB::table('designations')->where('company_id', $companyId)->where('department_id', $departmentId)
+                        ->whereRaw('LOWER(designation) = ?', [mb_strtolower($designationName)])->whereNull('deleted_at')->value('id');
+                    $this->hrDesignationIds[$designationName] = $id;
+                    $created++;
+                } catch (\Throwable $e) {
+                    $failed++;
+                    $errors[] = "Cargo '{$designationName}': ".$e->getMessage();
+                }
+            }
+        }
+
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => $failed, 'errors' => $errors];
+    }
+
+    private function reresolveHrDesignationIds(int $companyId): void
+    {
+        foreach ($this->hrDepartments() as $deptName => $designations) {
+            $departmentId = $this->hrDepartmentIds[$deptName] ?? null;
+            if (! $departmentId) {
+                continue;
+            }
+            foreach ($designations as $designationName) {
+                if (! isset($this->hrDesignationIds[$designationName])) {
+                    $id = DB::table('designations')->where('company_id', $companyId)->where('department_id', $departmentId)
+                        ->whereRaw('LOWER(designation) = ?', [mb_strtolower($designationName)])->whereNull('deleted_at')->value('id');
+                    if ($id) {
+                        $this->hrDesignationIds[$designationName] = $id;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 4 office shifts via the REAL OfficeShiftController::store() — audited:
+     * it runs every day-column through OfficeShift::normalizeTime() (the
+     * fix from commit 4b1d525), which is exactly why the controller is used
+     * here instead of a raw insert — a raw insert would have to replicate
+     * normalizeTime() itself to guarantee canonical "H:i" storage and avoid
+     * ever writing a legacy-shaped value like "18:00PM". `null` for a given
+     * day means "day off" (nullable columns, confirmed against the
+     * migration) — normalizeTime(null) safely returns null.
+     */
+    public function seedHrOfficeShifts(): array
+    {
+        $companyId = $this->hrCompanyId ?? $this->demoHrCompanyId();
+        if (! $companyId) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => count($this->hrOfficeShifts()), 'failed' => 0];
+        }
+
+        $user = $this->demoActingUser();
+        if (! $user) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => count($this->hrOfficeShifts()), 'failed' => 0];
+        }
+
+        $created = 0;
+        $existing = 0;
+        $failed = 0;
+        $errors = [];
+
+        foreach ($this->hrOfficeShifts() as $shift) {
+            $row = DB::table('office_shifts')->where('company_id', $companyId)->where('name', $shift['name'])->whereNull('deleted_at')->first();
+            if ($row) {
+                $this->hrOfficeShiftIds[$shift['name']] = $row->id;
+                $existing++;
+
+                continue;
+            }
+
+            $payload = ['company_id' => $companyId, 'name' => $shift['name']];
+            foreach ($shift['schedule'] as $day => $times) {
+                $payload[$day.'_in'] = $times[0] ?? null;
+                $payload[$day.'_out'] = $times[1] ?? null;
+            }
+
+            try {
+                $request = $this->makeControllerRequest($payload, $user);
+                app(OfficeShiftController::class)->store($request);
+                $id = DB::table('office_shifts')->where('company_id', $companyId)->where('name', $shift['name'])->whereNull('deleted_at')->value('id');
+                $this->hrOfficeShiftIds[$shift['name']] = $id;
+                $created++;
+            } catch (\Throwable $e) {
+                $failed++;
+                $errors[] = "Turno '{$shift['name']}': ".$e->getMessage();
+            }
+        }
+
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => $failed, 'errors' => $errors];
+    }
+
+    private function reresolveHrOfficeShiftIds(int $companyId): void
+    {
+        foreach ($this->hrOfficeShifts() as $shift) {
+            if (! isset($this->hrOfficeShiftIds[$shift['name']])) {
+                $id = DB::table('office_shifts')->where('company_id', $companyId)->where('name', $shift['name'])->whereNull('deleted_at')->value('id');
+                if ($id) {
+                    $this->hrOfficeShiftIds[$shift['name']] = $id;
+                }
+            }
+        }
+    }
+
+    /**
+     * 10 employees via the REAL EmployeesController — audited: `store()`
+     * does not accept `basic_salary`/`hourly_rate`/`total_leave` at all (not
+     * in its $data array), so a second real call to `update()` is required
+     * to set them; `update()`'s remaining_leave logic takes the clean
+     * first-time-set path (`employee->total_leave == 0` -> `remaining_leave
+     * = total_leave`) for a freshly created employee, which is exactly what
+     * we want — never write `remaining_leave` directly. Confirmed: neither
+     * method creates a `User` row (no observer, no auth account) — a
+     * DEMO employee is HR-only, never a login.
+     */
+    public function seedHrEmployees(): array
+    {
+        $companyId = $this->hrCompanyId ?? $this->demoHrCompanyId();
+        if (! $companyId) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => count($this->hrEmployees()), 'failed' => 0];
+        }
+        $this->reresolveHrDepartmentIds($companyId);
+        $this->reresolveHrDesignationIds($companyId);
+        $this->reresolveHrOfficeShiftIds($companyId);
+
+        $user = $this->demoActingUser();
+        if (! $user) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => count($this->hrEmployees()), 'failed' => 0];
+        }
+
+        $created = 0;
+        $existing = 0;
+        $failed = 0;
+        $errors = [];
+
+        foreach ($this->hrEmployees() as $i => $e) {
+            $fullName = $e['firstname'].' '.$e['lastname'];
+            $row = DB::table('employees')->where('firstname', $e['firstname'])->where('lastname', $e['lastname'])->whereNull('deleted_at')->first();
+            $departmentId = $this->hrDepartmentIds[$e['department']] ?? null;
+            $designationId = $this->hrDesignationIds[$e['designation']] ?? null;
+            $shiftId = $this->hrOfficeShiftIds[$e['shift']] ?? null;
+
+            if ($row) {
+                $this->hrEmployeeMeta[$fullName] = [
+                    'id' => $row->id, 'shift' => $e['shift'], 'basic_salary' => (float) $row->basic_salary,
+                    'hourly_rate' => (float) $row->hourly_rate, 'department' => $e['department'],
+                ];
+                $existing++;
+
+                continue;
+            }
+
+            if (! $departmentId || ! $designationId || ! $shiftId) {
+                $failed++;
+                $errors[] = "Empleado {$fullName}: departamento/cargo/turno no resuelto.";
+
+                continue;
+            }
+
+            $hourlyRate = round($e['basic_salary'] / (30 * 8), 2);
+            $storePayload = [
+                'firstname' => $e['firstname'],
+                'lastname' => $e['lastname'],
+                'gender' => $e['gender'],
+                'company_id' => $companyId,
+                'department_id' => $departmentId,
+                'designation_id' => $designationId,
+                'office_shift_id' => $shiftId,
+                'country' => 'Honduras',
+                'email' => $this->fakeEmail($fullName),
+                'phone' => $this->fakePhone(600 + $i),
+                'birth_date' => now()->subYears(22 + ($i % 15))->format('Y-m-d'),
+                'joining_date' => now()->subDays($e['joined_days_ago'])->format('Y-m-d'),
+            ];
+
+            try {
+                $request = $this->makeControllerRequest($storePayload, $user);
+                $response = app(EmployeesController::class)->store($request);
+                $employeeId = (int) (json_decode($response->getContent(), true)['employee_id'] ?? 0);
+                if (! $employeeId) {
+                    $failed++;
+                    $errors[] = "Empleado {$fullName}: store() no devolvió employee_id.";
+
+                    continue;
+                }
+
+                $totalLeave = 12 + (($i * 2) % 9); // 12..20 varied days
+                $updatePayload = $storePayload + [
+                    'total_leave' => $totalLeave,
+                    'basic_salary' => $e['basic_salary'],
+                    'hourly_rate' => $hourlyRate,
+                ];
+                $updateRequest = $this->makeControllerRequest($updatePayload, $user);
+                app(EmployeesController::class)->update($updateRequest, $employeeId);
+
+                $this->hrEmployeeMeta[$fullName] = [
+                    'id' => $employeeId, 'shift' => $e['shift'], 'basic_salary' => $e['basic_salary'],
+                    'hourly_rate' => $hourlyRate, 'department' => $e['department'],
+                ];
+                $created++;
+            } catch (\Throwable $ex) {
+                $failed++;
+                $errors[] = "Empleado {$fullName}: ".$ex->getMessage();
+            }
+        }
+
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => $failed, 'errors' => $errors];
+    }
+
+    /** Re-resolves demo employee ids/meta by name — never assumes seedHrEmployees() ran earlier in this same process. */
+    private function reresolveHrEmployeeMeta(): void
+    {
+        foreach ($this->hrEmployees() as $e) {
+            $fullName = $e['firstname'].' '.$e['lastname'];
+            if (isset($this->hrEmployeeMeta[$fullName])) {
+                continue;
+            }
+            $row = DB::table('employees')->where('firstname', $e['firstname'])->where('lastname', $e['lastname'])->whereNull('deleted_at')->first();
+            if ($row) {
+                $this->hrEmployeeMeta[$fullName] = [
+                    'id' => $row->id, 'shift' => $e['shift'], 'basic_salary' => (float) $row->basic_salary,
+                    'hourly_rate' => (float) $row->hourly_rate, 'department' => $e['department'],
+                ];
+            }
+        }
+    }
+
+    /**
+     * Deterministic attendance schedule: 3 dates per employee (offsets 3/10/17
+     * days ago, nudged forward to the nearest day their shift is actually
+     * working), cycling through 5 scenarios (puntual/tardanza/salida
+     * temprana/jornada completa/overtime). Pure function of the fixed
+     * hrEmployees()/hrOfficeShifts() data — no DB access — so plan() can call
+     * it for the dry-run target count without any writes, and seedAttendances()
+     * reuses the exact same rows for the real run.
+     */
+    private function attendancePlanRows(): array
+    {
+        $scenarios = ['puntual', 'tardanza', 'salida_temprana', 'jornada_completa', 'overtime'];
+        $shiftsByName = collect($this->hrOfficeShifts())->keyBy('name');
+        $rows = [];
+        $i = 0;
+
+        foreach ($this->hrEmployees() as $empIndex => $e) {
+            $schedule = $shiftsByName[$e['shift']]['schedule'];
+            foreach ([3, 10, 17] as $offsetIndex => $baseOffset) {
+                $date = now()->subDays($baseOffset);
+                for ($nudge = 0; $nudge < 7; $nudge++) {
+                    $weekday = strtolower($date->format('l'));
+                    if (($schedule[$weekday] ?? null) !== null) {
+                        break;
+                    }
+                    $date = $date->copy()->subDay();
+                }
+                $weekday = strtolower($date->format('l'));
+                $times = $schedule[$weekday] ?? null;
+                if (! $times) {
+                    continue; // shift has no working day at all in the search window — skip, never invent hours
+                }
+
+                $scenario = $scenarios[$i % count($scenarios)];
+                $i++;
+
+                [$shiftIn, $shiftOut] = $times;
+                [$clockIn, $clockOut] = $this->applyAttendanceScenario($shiftIn, $shiftOut, $scenario);
+
+                $rows[] = [
+                    'employee' => $e['firstname'].' '.$e['lastname'],
+                    'date' => $date->format('Y-m-d'),
+                    'clock_in' => $clockIn,
+                    'clock_out' => $clockOut,
+                    'scenario' => $scenario,
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    private function applyAttendanceScenario(string $shiftIn, string $shiftOut, string $scenario): array
+    {
+        $in = \Carbon\Carbon::createFromFormat('H:i', $shiftIn);
+        $out = \Carbon\Carbon::createFromFormat('H:i', $shiftOut);
+
+        return match ($scenario) {
+            'tardanza' => [$in->copy()->addMinutes(20)->format('H:i'), $out->format('H:i')],
+            'salida_temprana' => [$in->format('H:i'), $out->copy()->subMinutes(30)->format('H:i')],
+            'overtime' => [$in->format('H:i'), $out->copy()->addMinutes(60)->format('H:i')],
+            default => [$in->format('H:i'), $out->format('H:i')], // puntual / jornada_completa
+        };
+    }
+
+    /**
+     * ~30 attendance rows via the REAL AttendancesController::store() —
+     * audited: it computes late_time/depart_early/overtime/total_work/status
+     * itself from the employee's OfficeShift, we only ever submit raw
+     * clock_in/clock_out "H:i" strings and let buildAttendanceData() do the
+     * math. Idempotency: employee_id+date, checked before each call (no
+     * unique DB constraint backs this pair, so the check is the only thing
+     * preventing a duplicate on a second run).
+     */
+    public function seedAttendances(): array
+    {
+        $companyId = $this->hrCompanyId ?? $this->demoHrCompanyId();
+        if (! $companyId) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => $this->attendancePlanCount(), 'failed' => 0];
+        }
+        $this->reresolveHrEmployeeMeta();
+
+        $user = $this->demoActingUser();
+        if (! $user) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => $this->attendancePlanCount(), 'failed' => 0];
+        }
+
+        $created = 0;
+        $existing = 0;
+        $failed = 0;
+        $errors = [];
+
+        foreach ($this->attendancePlanRows() as $row) {
+            $meta = $this->hrEmployeeMeta[$row['employee']] ?? null;
+            if (! $meta) {
+                $failed++;
+                $errors[] = "Asistencia {$row['employee']} {$row['date']}: empleado no resuelto — ejecuta seedHrEmployees() primero.";
+
+                continue;
+            }
+
+            $alreadyExists = DB::table('attendances')->where('employee_id', $meta['id'])->where('date', $row['date'])->whereNull('deleted_at')->exists();
+            if ($alreadyExists) {
+                $existing++;
+
+                continue;
+            }
+
+            $payload = [
+                'company_id' => $companyId,
+                'employee_id' => $meta['id'],
+                'date' => $row['date'],
+                'clock_in' => $row['clock_in'],
+                'clock_out' => $row['clock_out'],
+            ];
+
+            try {
+                $request = $this->makeControllerRequest($payload, $user);
+                app(AttendancesController::class)->store($request);
+                $created++;
+            } catch (\Throwable $e) {
+                $failed++;
+                $errors[] = "Asistencia {$row['employee']} {$row['date']}: ".$e->getMessage();
+            }
+        }
+
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => $failed, 'errors' => $errors];
+    }
+
+    /**
+     * 10 leave types, raw insert. Audited: LeaveType has only `title` +
+     * soft-delete, no controller-side side effects beyond the row. Idempotent
+     * by exact title match.
+     */
+    public function seedLeaveTypes(): array
+    {
+        $created = 0;
+        $existing = 0;
+        foreach ($this->hrLeaveTypes() as $title) {
+            $row = DB::table('leave_types')->where('title', $title)->whereNull('deleted_at')->first();
+            if ($row) {
+                $existing++;
+
+                continue;
+            }
+            DB::table('leave_types')->insert(['title' => $title, 'created_at' => now(), 'updated_at' => now()]);
+            $created++;
+        }
+
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => 0];
+    }
+
+    /**
+     * 10 leaves via the REAL LeaveController::store() — audited: this is the
+     * ONLY path that correctly decrements `Employee.remaining_leave` (only
+     * when status=='approved'; pending/rejected never touch it). A raw
+     * insert would silently skip that arithmetic entirely. Known unfixed bug
+     * (LeaveController.php:111, `$day->d + 1` instead of `->days`) is NOT
+     * worked around — it's simply never triggered: every demo leave's
+     * start_date/end_date fall inside the SAME calendar month, where `->d`
+     * and `->days` agree. Small day-counts (1-4) per leave keep every demo
+     * employee's `remaining_leave` (12-20 at creation) comfortably positive.
+     * An approved demo leave is NEVER deleted by this seeder (destroy() does
+     * not restore remaining_leave — confirmed unfixed bug — deleting one
+     * would permanently desync the balance).
+     * Idempotency marker: `[DEMO2-LEAVE-NN]` in `reason`, checked before
+     * calling store(). store() doesn't throw on insufficient balance — it
+     * returns a 200 JSON with `isvalid:false` instead — so the response body
+     * is inspected, not just exceptions.
+     */
+    public function seedLeaves(): array
+    {
+        $companyId = $this->hrCompanyId ?? $this->demoHrCompanyId();
+        if (! $companyId) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0];
+        }
+        $this->reresolveHrDepartmentIds($companyId);
+        $this->reresolveHrEmployeeMeta();
+
+        $user = $this->demoActingUser();
+        if (! $user) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0];
+        }
+
+        $leaveTypeIds = DB::table('leave_types')->whereIn('title', $this->hrLeaveTypes())->pluck('id', 'title');
+        if ($leaveTypeIds->isEmpty()) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0, 'errors' => ['Permisos: ningún leave_type DEMO existe todavía — ejecuta seedLeaveTypes() primero.']];
+        }
+
+        $employees = $this->hrEmployees();
+        $leaveTypeNames = $this->hrLeaveTypes();
+        // n=1..4 approved, n=5..7 pending, n=8..10 rejected.
+        $statusFor = fn (int $n) => $n <= 4 ? 'approved' : ($n <= 7 ? 'pending' : 'rejected');
+
+        $created = 0;
+        $existing = 0;
+        $failed = 0;
+        $errors = [];
+
+        for ($n = 1; $n <= 10; $n++) {
+            $marker = sprintf('[DEMO2-LEAVE-%02d]', $n);
+            if (DB::table('leaves')->where('reason', 'like', '%'.$marker)->whereNull('deleted_at')->exists()) {
+                $existing++;
+
+                continue;
+            }
+
+            $emp = $employees[($n - 1) % count($employees)];
+            $fullName = $emp['firstname'].' '.$emp['lastname'];
+            $meta = $this->hrEmployeeMeta[$fullName] ?? null;
+            $departmentId = $this->hrDepartmentIds[$emp['department']] ?? null;
+            $leaveTypeId = $leaveTypeIds[$leaveTypeNames[($n - 1) % count($leaveTypeNames)]] ?? null;
+            if (! $meta || ! $departmentId || ! $leaveTypeId) {
+                $failed++;
+                $errors[] = "Permiso {$marker}: empleado/departamento/tipo de permiso no resuelto.";
+
+                continue;
+            }
+
+            // Same-month range only (avoids the DateInterval->d bug entirely) —
+            // day 3 to day (3+len-1) of a month between 1 and 3 months ago.
+            $len = 1 + ($n % 4); // 1..4 days
+            $monthsAgo = 1 + ($n % 3);
+            $start = now()->subMonths($monthsAgo)->startOfMonth()->addDays(2);
+            $end = $start->copy()->addDays($len - 1);
+
+            $payload = [
+                'employee_id' => $meta['id'],
+                'company_id' => $companyId,
+                'department_id' => $departmentId,
+                'leave_type_id' => $leaveTypeId,
+                'start_date' => $start->format('Y-m-d'),
+                'end_date' => $end->format('Y-m-d'),
+                'reason' => 'Solicitud DEMO '.$marker,
+                'half_day' => 0,
+                'status' => $statusFor($n),
+            ];
+
+            try {
+                $request = $this->makeControllerRequest($payload, $user);
+                $response = app(LeaveController::class)->store($request);
+                $body = json_decode($response->getContent(), true);
+                if (($body['isvalid'] ?? true) === false) {
+                    $failed++;
+                    $errors[] = "Permiso {$marker}: ".($body['remaining_leave'] ?? 'rechazado por saldo insuficiente.');
+
+                    continue;
+                }
+                $created++;
+            } catch (\Throwable $e) {
+                $failed++;
+                $errors[] = "Permiso {$marker}: ".$e->getMessage();
+            }
+        }
+
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => $failed, 'errors' => $errors];
+    }
+
+    /**
+     * 10 holidays via the REAL HolidayController::store() — audited: zero
+     * side effects beyond the row. Neutral, generic business-event names
+     * (no invented official/legal holidays). Idempotent by title+company_id
+     * +start_date.
+     */
+    public function seedHolidays(): array
+    {
+        $companyId = $this->hrCompanyId ?? $this->demoHrCompanyId();
+        if (! $companyId) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0];
+        }
+
+        $user = $this->demoActingUser();
+        if (! $user) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0];
+        }
+
+        $titles = [
+            'Aniversario de la Empresa', 'Día del Empleado', 'Cierre Administrativo Trimestral',
+            'Jornada de Integración', 'Día de Descanso Compensatorio', 'Feriado Nacional',
+            'Convención Anual de Ventas', 'Mantenimiento de Instalaciones', 'Capacitación General', 'Cierre de Fin de Año',
+        ];
+
+        $created = 0;
+        $existing = 0;
+        $failed = 0;
+        $errors = [];
+
+        for ($n = 1; $n <= 10; $n++) {
+            $title = 'DEMO2 '.$titles[$n - 1];
+            // n=1..5 past (30..150 days ago), n=6..10 upcoming (15..75 days ahead).
+            $date = $n <= 5 ? now()->subDays(30 + ($n - 1) * 30) : now()->addDays(15 + ($n - 6) * 15);
+
+            $row = DB::table('holidays')->where('company_id', $companyId)->where('title', $title)->whereNull('deleted_at')->first();
+            if ($row) {
+                $existing++;
+
+                continue;
+            }
+
+            $payload = [
+                'company_id' => $companyId,
+                'title' => $title,
+                'start_date' => $date->format('Y-m-d'),
+                'end_date' => $date->format('Y-m-d'),
+                'description' => 'Evento DEMO generado por Fase D.',
+            ];
+
+            try {
+                $request = $this->makeControllerRequest($payload, $user);
+                app(HolidayController::class)->store($request);
+                $created++;
+            } catch (\Throwable $e) {
+                $failed++;
+                $errors[] = "Feriado '{$title}': ".$e->getMessage();
+            }
+        }
+
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => $failed, 'errors' => $errors];
+    }
+
+    /**
+     * 10 payrolls, raw insert — the ONE deliberate exception to "always use
+     * the real controller" in this seeder. Audited and confirmed:
+     * PayrollController::store() (app/Http/Controllers/hrm/PayrollController.php:118-124)
+     * hardcodes `payment_status => 'paid'` unconditionally — there is no
+     * request field, no branch, no separate generate-only action anywhere in
+     * the controller or routes that produces an unpaid row. Calling it would
+     * violate the explicit "must stay unpaid, zero financial side effects"
+     * requirement on every single call. Confirmed safe to bypass: Payroll
+     * has no model observer/boot hook: the only side effect anywhere in the
+     * real flow is an Account balance debit gated on `account_id` being
+     * non-null (PayrollController.php:127-134) — this seeder never sets it.
+     * `Ref` is generated with the exact same sequential `PS_N` scheme
+     * `PayrollController::getNumberOrder()` uses, so demo rows interleave
+     * correctly with any real payroll numbering.
+     * Idempotency: employee_id+date pair, checked before each insert (no
+     * unique DB constraint backs it).
+     */
+    public function seedPayrolls(): array
+    {
+        $this->reresolveHrEmployeeMeta();
+        if (empty($this->hrEmployeeMeta)) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0];
+        }
+
+        $user = $this->demoActingUser();
+        if (! $user) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0];
+        }
+
+        $periodDate = now()->subMonth()->endOfMonth()->format('Y-m-d');
+        $created = 0;
+        $existing = 0;
+        $failed = 0;
+
+        foreach ($this->hrEmployees() as $n => $e) {
+            $fullName = $e['firstname'].' '.$e['lastname'];
+            $meta = $this->hrEmployeeMeta[$fullName] ?? null;
+            if (! $meta) {
+                $failed++;
+
+                continue;
+            }
+
+            $alreadyExists = DB::table('payrolls')->where('employee_id', $meta['id'])->where('date', $periodDate)->whereNull('deleted_at')->exists();
+            if ($alreadyExists) {
+                $existing++;
+
+                continue;
+            }
+
+            $lastRef = DB::table('payrolls')->latest('id')->value('Ref');
+            if ($lastRef && str_contains($lastRef, '_')) {
+                [$prefix, $num] = explode('_', $lastRef, 2);
+                $nextRef = $prefix.'_'.((int) $num + 1);
+            } else {
+                $nextRef = 'PS_1';
+            }
+
+            DB::table('payrolls')->insert([
+                'user_id' => $user->id,
+                'Ref' => $nextRef,
+                'date' => $periodDate,
+                'employee_id' => $meta['id'],
+                'account_id' => null, // deliberately never set — this is what keeps this insert side-effect-free
+                'amount' => $meta['basic_salary'],
+                'payment_method_id' => null, // nullable column — left unset, same as account_id, to keep this row inert
+                'payment_status' => 'unpaid',
+                'receiver_account_number' => 'DEMO2-PAYROLL',
+                'payment_reference_number' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $created++;
+        }
+
+        return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => $failed];
     }
 }
