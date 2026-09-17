@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\OfficeShift;
 use Carbon\Carbon;
-use DateTime;
 use Illuminate\Http\Request;
 
 class OfficeShiftController extends Controller
@@ -48,20 +47,24 @@ class OfficeShiftController extends Controller
             $item['name'] = $office_shift->name;
             $item['company_id'] = $office_shift['company']->id;
             $item['company_name'] = $office_shift['company']->name;
-            $item['monday_in'] = $office_shift->monday_in ? substr($office_shift->monday_in, 0, -2) : null;
-            $item['monday_out'] = $office_shift->monday_out ? substr($office_shift->monday_out, 0, -2) : null;
-            $item['tuesday_in'] = $office_shift->tuesday_in ? substr($office_shift->tuesday_in, 0, -2) : null;
-            $item['tuesday_out'] = $office_shift->tuesday_out ? substr($office_shift->tuesday_out, 0, -2) : null;
-            $item['wednesday_in'] = $office_shift->wednesday_in ? substr($office_shift->wednesday_in, 0, -2) : null;
-            $item['wednesday_out'] = $office_shift->wednesday_out ? substr($office_shift->wednesday_out, 0, -2) : null;
-            $item['thursday_in'] = $office_shift->thursday_in ? substr($office_shift->thursday_in, 0, -2) : null;
-            $item['thursday_out'] = $office_shift->thursday_out ? substr($office_shift->thursday_out, 0, -2) : null;
-            $item['friday_in'] = $office_shift->friday_in ? substr($office_shift->friday_in, 0, -2) : null;
-            $item['friday_out'] = $office_shift->friday_out ? substr($office_shift->friday_out, 0, -2) : null;
-            $item['saturday_in'] = $office_shift->saturday_in ? substr($office_shift->saturday_in, 0, -2) : null;
-            $item['saturday_out'] = $office_shift->saturday_out ? substr($office_shift->saturday_out, 0, -2) : null;
-            $item['sunday_in'] = $office_shift->sunday_in ? substr($office_shift->sunday_in, 0, -2) : null;
-            $item['sunday_out'] = $office_shift->sunday_out ? substr($office_shift->sunday_out, 0, -2) : null;
+            // normalizeTime() replaces the old blind substr($v, 0, -2): that
+            // assumed every stored value had a 2-char AM/PM suffix, which is
+            // false for canonical "H:i" writes (would corrupt "09:00" into
+            // "09:"). normalizeTime() safely handles both shapes.
+            $item['monday_in'] = OfficeShift::normalizeTime($office_shift->monday_in);
+            $item['monday_out'] = OfficeShift::normalizeTime($office_shift->monday_out);
+            $item['tuesday_in'] = OfficeShift::normalizeTime($office_shift->tuesday_in);
+            $item['tuesday_out'] = OfficeShift::normalizeTime($office_shift->tuesday_out);
+            $item['wednesday_in'] = OfficeShift::normalizeTime($office_shift->wednesday_in);
+            $item['wednesday_out'] = OfficeShift::normalizeTime($office_shift->wednesday_out);
+            $item['thursday_in'] = OfficeShift::normalizeTime($office_shift->thursday_in);
+            $item['thursday_out'] = OfficeShift::normalizeTime($office_shift->thursday_out);
+            $item['friday_in'] = OfficeShift::normalizeTime($office_shift->friday_in);
+            $item['friday_out'] = OfficeShift::normalizeTime($office_shift->friday_out);
+            $item['saturday_in'] = OfficeShift::normalizeTime($office_shift->saturday_in);
+            $item['saturday_out'] = OfficeShift::normalizeTime($office_shift->saturday_out);
+            $item['sunday_in'] = OfficeShift::normalizeTime($office_shift->sunday_in);
+            $item['sunday_out'] = OfficeShift::normalizeTime($office_shift->sunday_out);
             $data[] = $item;
         }
 
@@ -94,38 +97,27 @@ class OfficeShiftController extends Controller
             'company_id' => 'required',
         ]);
 
-        $monday_in = new DateTime($request['monday_in']);
-        $monday_out = new DateTime($request['monday_out']);
-        $tuesday_in = new DateTime($request['tuesday_in']);
-        $tuesday_out = new DateTime($request['tuesday_out']);
-        $wednesday_in = new DateTime($request['wednesday_in']);
-        $wednesday_out = new DateTime($request['wednesday_out']);
-        $thursday_in = new DateTime($request['thursday_in']);
-        $thursday_out = new DateTime($request['thursday_out']);
-        $friday_in = new DateTime($request['friday_in']);
-        $friday_out = new DateTime($request['friday_out']);
-        $saturday_in = new DateTime($request['saturday_in']);
-        $saturday_out = new DateTime($request['saturday_out']);
-        $sunday_in = new DateTime($request['sunday_in']);
-        $sunday_out = new DateTime($request['sunday_out']);
-
+        // Canonical storage format going forward: 24h "H:i" (e.g. "09:00",
+        // "18:00"), unambiguous, no AM/PM. normalizeTime() also tolerates
+        // whatever legacy-shaped string might come in (defensive only - the
+        // clock-picker always sends plain "H:i").
         OfficeShift::create([
             'company_id' => $request['company_id'],
             'name' => $request['name'],
-            'monday_in' => $request['monday_in'] ? $monday_in->format('H:iA') : null,
-            'monday_out' => $request['monday_out'] ? $monday_out->format('H:iA') : null,
-            'tuesday_in' => $request['tuesday_in'] ? $tuesday_in->format('H:iA') : null,
-            'tuesday_out' => $request['tuesday_out'] ? $tuesday_out->format('H:iA') : null,
-            'wednesday_in' => $request['wednesday_in'] ? $wednesday_in->format('H:iA') : null,
-            'wednesday_out' => $request['wednesday_out'] ? $wednesday_out->format('H:iA') : null,
-            'thursday_in' => $request['thursday_in'] ? $thursday_in->format('H:iA') : null,
-            'thursday_out' => $request['thursday_out'] ? $thursday_out->format('H:iA') : null,
-            'friday_in' => $request['friday_in'] ? $friday_in->format('H:iA') : null,
-            'friday_out' => $request['friday_out'] ? $friday_out->format('H:iA') : null,
-            'saturday_in' => $request['saturday_in'] ? $saturday_in->format('H:iA') : null,
-            'saturday_out' => $request['saturday_out'] ? $saturday_out->format('H:iA') : null,
-            'sunday_in' => $request['sunday_in'] ? $sunday_in->format('H:iA') : null,
-            'sunday_out' => $request['sunday_out'] ? $sunday_out->format('H:iA') : null,
+            'monday_in' => OfficeShift::normalizeTime($request['monday_in']),
+            'monday_out' => OfficeShift::normalizeTime($request['monday_out']),
+            'tuesday_in' => OfficeShift::normalizeTime($request['tuesday_in']),
+            'tuesday_out' => OfficeShift::normalizeTime($request['tuesday_out']),
+            'wednesday_in' => OfficeShift::normalizeTime($request['wednesday_in']),
+            'wednesday_out' => OfficeShift::normalizeTime($request['wednesday_out']),
+            'thursday_in' => OfficeShift::normalizeTime($request['thursday_in']),
+            'thursday_out' => OfficeShift::normalizeTime($request['thursday_out']),
+            'friday_in' => OfficeShift::normalizeTime($request['friday_in']),
+            'friday_out' => OfficeShift::normalizeTime($request['friday_out']),
+            'saturday_in' => OfficeShift::normalizeTime($request['saturday_in']),
+            'saturday_out' => OfficeShift::normalizeTime($request['saturday_out']),
+            'sunday_in' => OfficeShift::normalizeTime($request['sunday_in']),
+            'sunday_out' => OfficeShift::normalizeTime($request['sunday_out']),
         ]);
 
         return response()->json(['success' => true]);
@@ -159,121 +151,27 @@ class OfficeShiftController extends Controller
     {
         $this->authorizeForUser($request->user('api'), 'update', OfficeShift::class);
 
-        // monday_in
-        if (strlen($request['monday_in']) == 5) {
-            $monday_in = new DateTime($request['monday_in']);
-        } else {
-            $monday_in = new DateTime(substr($request['monday_in'], 0, -2));
-        }
-
-        // monday_out
-        if (strlen($request['monday_out']) == 5) {
-            $monday_out = new DateTime($request['monday_out']);
-        } else {
-            $monday_out = new DateTime(substr($request['monday_out'], 0, -2));
-        }
-
-        // tuesday_in
-        if (strlen($request['tuesday_in']) == 5) {
-            $tuesday_in = new DateTime($request['tuesday_in']);
-        } else {
-            $tuesday_in = new DateTime(substr($request['tuesday_in'], 0, -2));
-        }
-
-        // tuesday_out
-        if (strlen($request['tuesday_out']) == 5) {
-            $tuesday_out = new DateTime($request['tuesday_out']);
-        } else {
-            $tuesday_out = new DateTime(substr($request['tuesday_out'], 0, -2));
-        }
-
-        // wednesday_in
-        if (strlen($request['wednesday_in']) == 5) {
-            $wednesday_in = new DateTime($request['wednesday_in']);
-        } else {
-            $wednesday_in = new DateTime(substr($request['wednesday_in'], 0, -2));
-        }
-
-        // wednesday_out
-        if (strlen($request['wednesday_out']) == 5) {
-            $wednesday_out = new DateTime($request['wednesday_out']);
-        } else {
-            $wednesday_out = new DateTime(substr($request['wednesday_out'], 0, -2));
-        }
-
-        // thursday_in
-        if (strlen($request['thursday_in']) == 5) {
-            $thursday_in = new DateTime($request['thursday_in']);
-        } else {
-            $thursday_in = new DateTime(substr($request['thursday_in'], 0, -2));
-        }
-
-        // thursday_out
-        if (strlen($request['thursday_out']) == 5) {
-            $thursday_out = new DateTime($request['thursday_out']);
-        } else {
-            $thursday_out = new DateTime(substr($request['thursday_out'], 0, -2));
-        }
-
-        // friday_in
-        if (strlen($request['friday_in']) == 5) {
-            $friday_in = new DateTime($request['friday_in']);
-        } else {
-            $friday_in = new DateTime(substr($request['friday_in'], 0, -2));
-        }
-
-        // friday_out
-        if (strlen($request['friday_out']) == 5) {
-            $friday_out = new DateTime($request['friday_out']);
-        } else {
-            $friday_out = new DateTime(substr($request['friday_out'], 0, -2));
-        }
-
-        // saturday_in
-        if (strlen($request['saturday_in']) == 5) {
-            $saturday_in = new DateTime($request['saturday_in']);
-        } else {
-            $saturday_in = new DateTime(substr($request['saturday_in'], 0, -2));
-        }
-
-        // saturday_out
-        if (strlen($request['saturday_out']) == 5) {
-            $saturday_out = new DateTime($request['saturday_out']);
-        } else {
-            $saturday_out = new DateTime(substr($request['saturday_out'], 0, -2));
-        }
-
-        // sunday_in
-        if (strlen($request['sunday_in']) == 5) {
-            $sunday_in = new DateTime($request['sunday_in']);
-        } else {
-            $sunday_in = new DateTime(substr($request['sunday_in'], 0, -2));
-        }
-
-        // sunday_out
-        if (strlen($request['sunday_out']) == 5) {
-            $sunday_out = new DateTime($request['sunday_out']);
-        } else {
-            $sunday_out = new DateTime(substr($request['sunday_out'], 0, -2));
-        }
-
+        // Same canonical 24h "H:i" storage as store(). normalizeTime() also
+        // tolerates a value that still carries the old AM/PM suffix (e.g. if
+        // this request round-tripped a row nobody has re-saved yet), so an
+        // update to one day never corrupts another day's already-legacy value.
         OfficeShift::whereId($id)->update([
             'company_id' => $request['company_id'],
             'name' => $request['name'],
-            'monday_in' => $request['monday_in'] ? $monday_in->format('H:iA') : null,
-            'monday_out' => $request['monday_out'] ? $monday_out->format('H:iA') : null,
-            'tuesday_in' => $request['tuesday_in'] ? $tuesday_in->format('H:iA') : null,
-            'tuesday_out' => $request['tuesday_out'] ? $tuesday_out->format('H:iA') : null,
-            'wednesday_in' => $request['wednesday_in'] ? $wednesday_in->format('H:iA') : null,
-            'wednesday_out' => $request['wednesday_out'] ? $wednesday_out->format('H:iA') : null,
-            'thursday_in' => $request['thursday_in'] ? $thursday_in->format('H:iA') : null,
-            'thursday_out' => $request['thursday_out'] ? $thursday_out->format('H:iA') : null,
-            'friday_in' => $request['friday_in'] ? $friday_in->format('H:iA') : null,
-            'friday_out' => $request['friday_out'] ? $friday_out->format('H:iA') : null,
-            'saturday_in' => $request['saturday_in'] ? $saturday_in->format('H:iA') : null,
-            'saturday_out' => $request['saturday_out'] ? $saturday_out->format('H:iA') : null,
-            'sunday_in' => $request['sunday_in'] ? $sunday_in->format('H:iA') : null,
-            'sunday_out' => $request['sunday_out'] ? $sunday_out->format('H:iA') : null,
+            'monday_in' => OfficeShift::normalizeTime($request['monday_in']),
+            'monday_out' => OfficeShift::normalizeTime($request['monday_out']),
+            'tuesday_in' => OfficeShift::normalizeTime($request['tuesday_in']),
+            'tuesday_out' => OfficeShift::normalizeTime($request['tuesday_out']),
+            'wednesday_in' => OfficeShift::normalizeTime($request['wednesday_in']),
+            'wednesday_out' => OfficeShift::normalizeTime($request['wednesday_out']),
+            'thursday_in' => OfficeShift::normalizeTime($request['thursday_in']),
+            'thursday_out' => OfficeShift::normalizeTime($request['thursday_out']),
+            'friday_in' => OfficeShift::normalizeTime($request['friday_in']),
+            'friday_out' => OfficeShift::normalizeTime($request['friday_out']),
+            'saturday_in' => OfficeShift::normalizeTime($request['saturday_in']),
+            'saturday_out' => OfficeShift::normalizeTime($request['saturday_out']),
+            'sunday_in' => OfficeShift::normalizeTime($request['sunday_in']),
+            'sunday_out' => OfficeShift::normalizeTime($request['sunday_out']),
         ]);
 
         return response()->json(['success' => true]);
