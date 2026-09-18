@@ -1,0 +1,3210 @@
+{
+  "_readme": "Generado por tests/e2e/routes/route-snapshot.js desde el código fuente. No editar a mano: npm run test:e2e:routes:update",
+  "counts": {
+    "tenantRecords": 474,
+    "tenantProduction": 398,
+    "tenantNamed": 403,
+    "tenantRedirects": 43,
+    "portalRecords": 20
+  },
+  "tenant": [
+    {
+      "path": "/",
+      "name": "app",
+      "redirect": "/app/dashboard",
+      "component": "./views/app",
+      "children": 51,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/dashboard",
+      "name": "dashboard",
+      "component": "./views/app/dashboard/next/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/dashboard/legacy",
+      "name": "dashboard_legacy",
+      "component": "./views/app/dashboard/dashboard",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/sales-3d-dashboard",
+      "name": "sales_3d_dashboard",
+      "component": "./views/app/dashboard/Sales3DDashboard",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/real-time-sales-counter",
+      "name": "real_time_sales_counter",
+      "component": "./views/app/pages/real_time_sales_counter",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/kitchen-display",
+      "name": "KitchenDisplay",
+      "component": "./views/app/pages/kitchen/KitchenDisplay.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/whatsapp",
+      "name": null,
+      "redirect": "/app/whatsapp/settings",
+      "component": "./views/app/pages/whatsapp",
+      "children": 5,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/whatsapp/settings",
+      "name": "whatsapp_settings",
+      "component": "./views/app/pages/whatsapp/Settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/whatsapp/templates",
+      "name": "whatsapp_templates",
+      "component": "./views/app/pages/whatsapp/templates/index",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/whatsapp/templates/store",
+      "name": "store_whatsapp_template",
+      "component": "./views/app/pages/whatsapp/templates/Create",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/whatsapp/templates/edit/:id",
+      "name": "edit_whatsapp_template",
+      "component": "./views/app/pages/whatsapp/templates/Edit",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/whatsapp/logs",
+      "name": "whatsapp_logs",
+      "component": "./views/app/pages/whatsapp/Logs",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products",
+      "name": null,
+      "redirect": "app/products/list",
+      "component": "./views/app/pages/products",
+      "children": 21,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/list",
+      "name": "index_products",
+      "component": "./views/app/products/next/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/list-classic",
+      "name": "index_products_classic",
+      "component": "./views/app/pages/products/index_products",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/import",
+      "name": "import_products",
+      "component": "./views/app/pages/products/Import_products.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/import-update",
+      "name": "import_products_update",
+      "component": "./views/app/pages/products/Import_products_update.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/store",
+      "name": "store_product",
+      "component": "./views/app/products/next/create/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/store-classic",
+      "name": "store_product_classic",
+      "component": "./views/app/pages/products/Add_product",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/edit/:id",
+      "name": "edit_product",
+      "component": "./views/app/products/next/edit/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/edit-classic/:id",
+      "name": "edit_product_classic",
+      "component": "./views/app/pages/products/Edit_product",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/detail/:id",
+      "name": "detail_product",
+      "component": "./views/app/products/next/detail/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/detail-classic/:id",
+      "name": "detail_product_classic",
+      "component": "./views/app/pages/products/Detail_Product",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/opening_stock_import",
+      "name": "opening_stock_import",
+      "component": "./views/app/inventory/next/opening-stock/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/opening_stock_import-classic",
+      "name": "opening_stock_import_classic",
+      "component": "./views/app/pages/products/opening_stock_import",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/barcode",
+      "name": "barcode",
+      "component": "./views/app/pages/products/barcode",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/count_stock",
+      "name": "count_stock",
+      "component": "./views/app/inventory/next/count-stock/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/count_stock-classic",
+      "name": "count_stock_classic",
+      "component": "./views/app/pages/products/count_stock",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/Categories",
+      "name": "categories",
+      "component": "./views/app/pages/products/categorie",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/SubCategories",
+      "name": "subcategories",
+      "component": "./views/app/pages/products/subcategories",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/Brands",
+      "name": "brands",
+      "component": "./views/app/pages/products/brands",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/Units",
+      "name": "units",
+      "component": "./views/app/pages/products/units",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/Batches",
+      "name": "batches",
+      "component": "./views/app/inventory/next/batches/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/products/Batches-classic",
+      "name": "batches_classic",
+      "component": "./views/app/pages/products/batches",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/serial_numbers",
+      "name": null,
+      "redirect": "/app/serial_numbers/list",
+      "component": "./views/app/pages/serial_numbers",
+      "children": 4,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/serial_numbers/list",
+      "name": "index_serial_numbers",
+      "component": "./views/app/inventory/next/serial-numbers/list.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/serial_numbers/detail/:id",
+      "name": "detail_serial_number",
+      "component": "./views/app/inventory/next/serial-numbers/detail.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/serial_numbers/list-classic",
+      "name": "index_serial_numbers_classic",
+      "component": "./views/app/pages/serial_numbers/list",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/serial_numbers/detail-classic/:id",
+      "name": "detail_serial_number_classic",
+      "component": "./views/app/pages/serial_numbers/detail",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/adjustments",
+      "name": null,
+      "redirect": "/app/adjustments/list",
+      "component": "./views/app/pages/adjustment",
+      "children": 8,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/adjustments/list",
+      "name": "index_adjustment",
+      "component": "./views/app/inventory/next/adjustments/list.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/adjustments/store",
+      "name": "store_adjustment",
+      "component": "./views/app/inventory/next/adjustments/form.vue",
+      "props": "{ mode: \"create\" }",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/adjustments/edit/:id",
+      "name": "edit_adjustment",
+      "component": "./views/app/inventory/next/adjustments/form.vue",
+      "props": "{ mode: \"edit\" }",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/adjustments/detail/:id",
+      "name": "detail_adjustment",
+      "component": "./views/app/inventory/next/adjustments/detail.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/adjustments/list-classic",
+      "name": "index_adjustment_classic",
+      "component": "./views/app/pages/adjustment/index_Adjustment",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/adjustments/store-classic",
+      "name": "store_adjustment_classic",
+      "component": "./views/app/pages/adjustment/Create_Adjustment",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/adjustments/edit-classic/:id",
+      "name": "edit_adjustment_classic",
+      "component": "./views/app/pages/adjustment/Edit_Adjustment",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/adjustments/detail-classic/:id",
+      "name": "detail_adjustment_classic",
+      "component": "./views/app/pages/adjustment/Detail_Adjustment",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/damages",
+      "name": null,
+      "redirect": "/app/damages/list",
+      "component": "./views/app/pages/damage",
+      "children": 6,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/damages/list",
+      "name": "index_damage",
+      "component": "./views/app/inventory/next/damages/list.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/damages/store",
+      "name": "store_damage",
+      "component": "./views/app/inventory/next/damages/form.vue",
+      "props": "{ mode: \"create\" }",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/damages/edit/:id",
+      "name": "edit_damage",
+      "component": "./views/app/inventory/next/damages/form.vue",
+      "props": "{ mode: \"edit\" }",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/damages/list-classic",
+      "name": "index_damage_classic",
+      "component": "./views/app/pages/damage/index_Damage",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/damages/store-classic",
+      "name": "store_damage_classic",
+      "component": "./views/app/pages/damage/Create_Damage",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/damages/edit-classic/:id",
+      "name": "edit_damage_classic",
+      "component": "./views/app/pages/damage/Edit_Damage",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers",
+      "name": null,
+      "redirect": "/app/transfers/list",
+      "component": "./views/app/pages/transfers",
+      "children": 10,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers/list",
+      "name": "index_transfer",
+      "component": "./views/app/pages/transfers/next/list.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers/store",
+      "name": "store_transfer",
+      "component": "./views/app/pages/transfers/next/form.vue",
+      "props": "{ mode: \"create\" }",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers/edit/:id",
+      "name": "edit_transfer",
+      "component": "./views/app/pages/transfers/next/form.vue",
+      "props": "{ mode: \"edit\" }",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers/detail/:id",
+      "name": "detail_transfer",
+      "component": "./views/app/pages/transfers/next/detail.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers/receptions",
+      "name": "transfer_receptions",
+      "component": "./views/app/pages/transfers/next/receive.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers/receptions/:id",
+      "name": "transfer_reception",
+      "component": "./views/app/pages/transfers/next/receive.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers/list-classic",
+      "name": "index_transfer_classic",
+      "component": "./views/app/pages/transfers/index_transfer",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers/store-classic",
+      "name": "store_transfer_classic",
+      "component": "./views/app/pages/transfers/create_transfer",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers/edit-classic/:id",
+      "name": "edit_transfer_classic",
+      "component": "./views/app/pages/transfers/edit_transfer",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfers/detail-classic/:id",
+      "name": "detail_transfer_classic",
+      "component": "./views/app/pages/transfers/detail_transfer",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/accounts",
+      "name": "accounts",
+      "component": "./views/app/pages/accounts/account_list",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/projects",
+      "name": null,
+      "redirect": "/app/projects/list",
+      "component": "./views/app/pages/projects",
+      "children": 3,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/projects/list",
+      "name": "index_project",
+      "component": "./views/app/pages/projects/index_project",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/projects/store",
+      "name": "store_project",
+      "component": "./views/app/pages/projects/store_project",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/projects/edit/:id",
+      "name": "edit_project",
+      "component": "./views/app/pages/projects/Edit_project",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/contracts",
+      "name": null,
+      "redirect": "/app/contracts/list",
+      "component": "./views/app/pages/contracts",
+      "children": 4,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/contracts/list",
+      "name": "index_contract",
+      "component": "./views/app/pages/contracts/index_contract",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/contracts/store",
+      "name": "store_contract",
+      "component": "./views/app/pages/contracts/store_contract",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/contracts/edit/:id",
+      "name": "edit_contract",
+      "component": "./views/app/pages/contracts/Edit_contract",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/contracts/view/:id",
+      "name": "view_contract",
+      "component": "./views/app/pages/contracts/View_contract",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/tasks",
+      "name": null,
+      "redirect": "/app/tasks/list",
+      "component": "./views/app/pages/tasks",
+      "children": 3,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/tasks/list",
+      "name": "index_task",
+      "component": "./views/app/pages/tasks/index_task",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/tasks/store",
+      "name": "store_task",
+      "component": "./views/app/pages/tasks/store_task",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/tasks/edit/:id",
+      "name": "edit_task",
+      "component": "./views/app/pages/tasks/Edit_task",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/bookings",
+      "name": null,
+      "redirect": "/app/bookings/list",
+      "component": "./views/app/pages/bookings",
+      "children": 4,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/bookings/list",
+      "name": "index_booking",
+      "component": "./views/app/pages/bookings/index_booking",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/bookings/store",
+      "name": "store_booking",
+      "component": "./views/app/pages/bookings/store_booking",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/bookings/edit/:id",
+      "name": "edit_booking",
+      "component": "./views/app/pages/bookings/Edit_booking",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/bookings/calendar",
+      "name": "calendar_booking",
+      "component": "./views/app/pages/bookings/BookingCalendar",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/assets",
+      "name": null,
+      "redirect": "/app/assets/list",
+      "component": "./views/app/pages/assets",
+      "children": 5,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/assets/list",
+      "name": "index_asset",
+      "component": "./views/app/pages/assets/index_asset",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/assets/store",
+      "name": "store_asset",
+      "component": "./views/app/pages/assets/store_asset",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/assets/edit/:id",
+      "name": "edit_asset",
+      "component": "./views/app/pages/assets/edit_asset",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/assets/category",
+      "name": "asset_category",
+      "component": "./views/app/pages/assets/index_asset_category",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/assets/due",
+      "name": "due_assets",
+      "component": "./views/app/pages/assets/due_assets",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/service",
+      "name": null,
+      "redirect": "/app/service/jobs",
+      "component": "./views/app/pages/service",
+      "children": 8,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/service/jobs",
+      "name": "service_jobs_index",
+      "component": "./views/app/pages/service/ServiceJobsList",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/service/jobs/create",
+      "name": "service_job_create",
+      "component": "./views/app/pages/service/ServiceJobForm",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/service/jobs/edit/:id",
+      "name": "service_job_edit",
+      "component": "./views/app/pages/service/ServiceJobForm",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/service/jobs/details/:id",
+      "name": "service_job_details",
+      "component": "./views/app/pages/service/ServiceJobDetails",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/service/checklist-categories",
+      "name": "service_checklist_categories",
+      "component": "./views/app/pages/service/ServiceChecklistCategories",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/service/checklists",
+      "name": "service_checklists",
+      "component": "./views/app/pages/service/ServiceChecklists",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/service/technicians",
+      "name": "service_technicians",
+      "component": "./views/app/pages/service/ServiceTechnicians",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/service/history",
+      "name": "customer_maintenance_history",
+      "component": "./views/app/pages/service/CustomerMaintenanceHistory",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/transfer_money",
+      "name": "transfer_money",
+      "component": "./views/app/pages/accounts/transfer_money",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/expenses",
+      "name": null,
+      "redirect": "/app/expenses/list",
+      "component": "./views/app/pages/expense",
+      "children": 4,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/expenses/list",
+      "name": "index_expense",
+      "component": "./views/app/pages/expense/index_expense",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/expenses/store",
+      "name": "store_expense",
+      "component": "./views/app/pages/expense/create_expense",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/expenses/edit/:id",
+      "name": "edit_expense",
+      "component": "./views/app/pages/expense/edit_expense",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/expenses/category",
+      "name": "expense_category",
+      "component": "./views/app/pages/expense/category_expense",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/support",
+      "name": null,
+      "redirect": "/app/support/tickets",
+      "component": "./views/app/pages/support",
+      "children": 3,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/support/tickets",
+      "name": "support_tickets_list",
+      "component": "./views/app/pages/support/TicketsList",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/support/tickets/create",
+      "name": "support_ticket_create",
+      "component": "./views/app/pages/support/CreateTicket",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/support/tickets/:id",
+      "name": "support_ticket_detail",
+      "component": "./views/app/pages/support/TicketDetail",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/deposits",
+      "name": null,
+      "redirect": "/app/deposits/list",
+      "component": "./views/app/pages/deposits",
+      "children": 4,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/deposits/list",
+      "name": "index_deposit",
+      "component": "./views/app/pages/deposits/index_deposit",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/deposits/store",
+      "name": "store_deposit",
+      "component": "./views/app/pages/deposits/create_deposit",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/deposits/edit/:id",
+      "name": "edit_deposit",
+      "component": "./views/app/pages/deposits/edit_deposit",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/deposits/category",
+      "name": "deposit_category",
+      "component": "./views/app/pages/deposits/deposit_category",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/quotations",
+      "name": null,
+      "redirect": "/app/quotations/list",
+      "component": "./views/app/pages/quotations",
+      "children": 5,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/quotations/list",
+      "name": "index_quotation",
+      "component": "./views/app/pages/quotations/index_quotation",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/quotations/store",
+      "name": "store_quotation",
+      "component": "./views/app/pages/quotations/create_quotation",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/quotations/edit/:id",
+      "name": "edit_quotation",
+      "component": "./views/app/pages/quotations/edit_quotation",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/quotations/detail/:id",
+      "name": "detail_quotation",
+      "component": "./views/app/pages/quotations/detail_quotation",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/quotations/create_sale/:id",
+      "name": "change_to_sale",
+      "component": "./views/app/pages/sales/change_to_sale.vue",
+      "beforeEnter": "redirectQuotationToPos",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/accounting-v2",
+      "name": null,
+      "redirect": "/app/accounting-v2/dashboard",
+      "component": "./views/app/pages/accounting_v2",
+      "children": 7,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/accounting-v2/dashboard",
+      "name": "accounting_v2_dashboard",
+      "component": "./views/app/pages/accounting_v2/dashboard",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/accounting-v2/chart-of-accounts",
+      "name": "accounting_v2_chart_of_accounts",
+      "component": "./views/app/pages/accounting_v2/chart_of_accounts",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/accounting-v2/journal-entries",
+      "name": "accounting_v2_journal_entries",
+      "component": "./views/app/pages/accounting_v2/journal_entries",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/accounting-v2/reports/trial-balance",
+      "name": "accounting_v2_trial_balance",
+      "component": "./views/app/pages/accounting_v2/reports/trial_balance",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/accounting-v2/reports/profit-and-loss",
+      "name": "accounting_v2_profit_loss",
+      "component": "./views/app/pages/accounting_v2/reports/profit_and_loss",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/accounting-v2/reports/balance-sheet",
+      "name": "accounting_v2_balance_sheet",
+      "component": "./views/app/pages/accounting_v2/reports/balance_sheet",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/accounting-v2/reports/tax-report",
+      "name": "accounting_v2_tax_report",
+      "component": "./views/app/pages/accounting_v2/reports/tax_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/customer-display/setup",
+      "name": "customer_display_setup",
+      "component": "./views/app/pages/customer/CustomerDisplaySetup.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchases",
+      "name": null,
+      "redirect": "/app/purchases/list",
+      "component": "./views/app/pages/purchases",
+      "children": 6,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchases/list",
+      "name": "index_purchases",
+      "component": "./views/app/pages/purchases/index_purchase",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchases/store",
+      "name": "store_purchase",
+      "component": "./views/app/pages/purchases/create_purchase",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchases/import_purchases",
+      "name": "import_purchases",
+      "component": "./views/app/pages/purchases/import_purchases",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchases/edit/:id",
+      "name": "edit_purchase",
+      "component": "./views/app/pages/purchases/edit_purchase",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchases/purchase_return/:id",
+      "name": "purchase_return",
+      "component": "./views/app/pages/purchase_return/create_purchase_return",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchases/detail/:id",
+      "name": "detail_purchase",
+      "component": "./views/app/pages/purchases/detail_purchase",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/promotions",
+      "name": "promotions",
+      "component": "./views/app/pages/promotions",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/promotions/create",
+      "name": "promotion_create",
+      "component": "./views/app/pages/promotions/form",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/promotions/edit/:id",
+      "name": "promotion_edit",
+      "component": "./views/app/pages/promotions/form",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/promotions/usages",
+      "name": "promotion_usages",
+      "component": "./views/app/pages/promotions/usages",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sales",
+      "name": null,
+      "redirect": "/app/sales/list",
+      "component": "./views/app/pages/sales",
+      "children": 7,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sales/list",
+      "name": "index_sales",
+      "component": "./views/app/pages/sales/index_sale",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sales/store",
+      "name": "store_sale",
+      "component": "./views/app/pages/sales/create_sale",
+      "beforeEnter": "redirectManualSaleToPos",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sales/import_sales",
+      "name": "import_sales",
+      "component": "./views/app/pages/sales/import_sales",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sales/edit/:id",
+      "name": "edit_sale",
+      "component": "./views/app/pages/sales/edit_sale",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sales/sale_return/:id",
+      "name": "sale_return",
+      "component": "./views/app/pages/sale_return/create_sale_return",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sales/detail/:id",
+      "name": "detail_sale",
+      "component": "./views/app/pages/sales/detail_sale",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sales/shipment",
+      "name": "shipment",
+      "component": "./views/app/pages/sales/shipments",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sale_return",
+      "name": null,
+      "redirect": "/app/sale_return/list",
+      "component": "./views/app/pages/sale_return",
+      "children": 3,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sale_return/list",
+      "name": "index_sale_return",
+      "component": "./views/app/pages/sale_return/index_sale_return",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sale_return/edit/:id/:sale_id",
+      "name": "edit_sale_return",
+      "component": "./views/app/pages/sale_return/edit_sale_return",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/sale_return/detail/:id",
+      "name": "detail_sale_return",
+      "component": "./views/app/pages/sale_return/detail_sale_return",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/commissions",
+      "name": null,
+      "redirect": "/app/commissions/programs",
+      "component": "./views/app/pages/commissions/commissions",
+      "children": 5,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/commissions/programs",
+      "name": "commission_programs",
+      "component": "./views/app/pages/commissions/index_programs",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/commissions/agents",
+      "name": "commission_agents",
+      "component": "./views/app/pages/commissions/index_agents",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/commissions/rules",
+      "name": "commission_rules",
+      "component": "./views/app/pages/commissions/index_rules",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/commissions/receipts",
+      "name": "commission_receipts",
+      "component": "./views/app/pages/commissions/index_receipts",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/commissions/report",
+      "name": "commission_report",
+      "component": "./views/app/pages/commissions/commission_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchase_return",
+      "name": null,
+      "redirect": "/app/purchase_return/list",
+      "component": "./views/app/pages/purchase_return",
+      "children": 3,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchase_return/list",
+      "name": "index_purchase_return",
+      "component": "./views/app/pages/purchase_return/index_purchase_return",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchase_return/edit/:id/:purchase_id",
+      "name": "edit_purchase_return",
+      "component": "./views/app/pages/purchase_return/edit_purchase_return",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/purchase_return/detail/:id",
+      "name": "detail_purchase_return",
+      "component": "./views/app/pages/purchase_return/detail_purchase_return",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm",
+      "name": null,
+      "redirect": "/app/hrm/employees",
+      "component": "./views/app/pages/hrm",
+      "children": 9,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/employees",
+      "name": null,
+      "redirect": "/app/hrm/employees/list",
+      "component": "./views/app/pages/hrm/employees",
+      "children": 4,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/employees/list",
+      "name": "employees_list",
+      "component": "./views/app/pages/hrm/employees/index_employee",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/employees/store",
+      "name": "store_employee",
+      "component": "./views/app/pages/hrm/employees/employee_create",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/employees/edit/:id",
+      "name": "edit_employee",
+      "component": "./views/app/pages/hrm/employees/employee_edit",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/employees/detail/:id",
+      "name": "detail_employee",
+      "component": "./views/app/pages/hrm/employees/employee_details",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/company",
+      "name": "company",
+      "component": "./views/app/pages/hrm/company",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/departments",
+      "name": "departments",
+      "component": "./views/app/pages/hrm/department",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/designations",
+      "name": "designations",
+      "component": "./views/app/pages/hrm/designation",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/office_shift",
+      "name": "office_shift",
+      "component": "./views/app/pages/hrm/office_shift",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/attendance",
+      "name": "attendance",
+      "component": "./views/app/pages/hrm/attendance",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/holidays",
+      "name": "holidays",
+      "component": "./views/app/pages/hrm/holidays",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/payrolls",
+      "name": "payrolls",
+      "component": "./views/app/pages/hrm/payrolls",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/leaves",
+      "name": null,
+      "redirect": "/app/hrm/leaves/list",
+      "component": "./views/app/pages/hrm/leaves",
+      "children": 2,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/leaves/list",
+      "name": "leave_list",
+      "component": "./views/app/pages/hrm/leaves/leave_list",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/hrm/leaves/type",
+      "name": "leave_type",
+      "component": "./views/app/pages/hrm/leaves/leave_type",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/recruit",
+      "name": null,
+      "redirect": "/app/recruit/dashboard",
+      "component": "./views/app/pages/recruit",
+      "children": 7,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/recruit/dashboard",
+      "name": "recruit_dashboard",
+      "component": "./views/app/pages/recruit/dashboard",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/recruit/jobs",
+      "name": "recruit_jobs",
+      "component": "./views/app/pages/recruit/jobs",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/recruit/categories",
+      "name": "recruit_categories",
+      "component": "./views/app/pages/recruit/categories",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/recruit/candidates",
+      "name": "recruit_candidates",
+      "component": "./views/app/pages/recruit/candidates",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/recruit/applications",
+      "name": "recruit_applications",
+      "component": "./views/app/pages/recruit/applications",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/recruit/interviews",
+      "name": "recruit_interviews",
+      "component": "./views/app/pages/recruit/interviews",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/recruit/reports",
+      "name": "recruit_reports",
+      "component": "./views/app/pages/recruit/reports",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/meeting",
+      "name": null,
+      "redirect": "/app/meeting/dashboard",
+      "component": "./views/app/pages/meeting",
+      "children": 5,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/meeting/dashboard",
+      "name": "meeting_dashboard",
+      "component": "./views/app/pages/meeting/dashboard",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/meeting/meetings",
+      "name": "meeting_meetings",
+      "component": "./views/app/pages/meeting/meetings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/meeting/details/:id",
+      "name": "meeting_details",
+      "component": "./views/app/pages/meeting/details",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/meeting/calendar",
+      "name": "meeting_calendar",
+      "component": "./views/app/pages/meeting/calendar",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/meeting/reports",
+      "name": "meeting_reports",
+      "component": "./views/app/pages/meeting/reports",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing",
+      "name": null,
+      "redirect": "/app/marketing/dashboard",
+      "component": "./views/app/pages/marketing",
+      "children": 11,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/dashboard",
+      "name": "marketing_dashboard",
+      "component": "./views/app/pages/marketing/dashboard",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/campaigns",
+      "name": "marketing_campaigns",
+      "component": "./views/app/pages/marketing/campaigns",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/campaigns/create",
+      "name": "marketing_create_campaign",
+      "component": "./views/app/pages/marketing/create_campaign",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/campaigns/edit/:id",
+      "name": "marketing_edit_campaign",
+      "component": "./views/app/pages/marketing/create_campaign",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/campaigns/details/:id",
+      "name": "marketing_campaign_details",
+      "component": "./views/app/pages/marketing/campaign_details",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/segments",
+      "name": "marketing_segments",
+      "component": "./views/app/pages/marketing/segments",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/templates/sms",
+      "name": "marketing_sms_templates",
+      "component": "./views/app/pages/marketing/templates",
+      "metaKeys": [
+        "templateType"
+      ],
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/templates/whatsapp",
+      "name": "marketing_whatsapp_templates",
+      "component": "./views/app/pages/marketing/templates",
+      "metaKeys": [
+        "templateType"
+      ],
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/templates/email",
+      "name": "marketing_email_templates",
+      "component": "./views/app/pages/marketing/templates",
+      "metaKeys": [
+        "templateType"
+      ],
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/reports",
+      "name": "marketing_reports",
+      "component": "./views/app/pages/marketing/reports",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/marketing/settings",
+      "name": "marketing_settings",
+      "component": "./views/app/pages/marketing/settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/realestate",
+      "name": null,
+      "redirect": "/app/realestate/properties",
+      "component": "./views/app/pages/realestate",
+      "children": 5,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/realestate/properties",
+      "name": "realestate_properties",
+      "component": "./views/app/pages/realestate/properties",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/realestate/properties/create",
+      "name": "realestate_create_property",
+      "component": "./views/app/pages/realestate/property_form",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/realestate/properties/edit/:id",
+      "name": "realestate_edit_property",
+      "component": "./views/app/pages/realestate/property_form",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/realestate/categories",
+      "name": "realestate_categories",
+      "component": "./views/app/pages/realestate/categories",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/realestate/inquiries",
+      "name": "realestate_inquiries",
+      "component": "./views/app/pages/realestate/inquiries",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store",
+      "name": null,
+      "redirect": "/app/Store/Settings",
+      "component": "./views/app/pages/store",
+      "children": 12,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/Settings",
+      "name": "StoreSettings",
+      "component": "./views/app/pages/store/Settings.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/Orders",
+      "name": "StoreOrders",
+      "component": "./views/app/pages/store/Orders.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/Orders/:id",
+      "name": "StoreOrderShow",
+      "component": "./views/app/pages/store/OrderShow.vue",
+      "props": "true",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/Collections",
+      "name": "StoreCollections",
+      "component": "./views/app/pages/store/CollectionsIndex.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/Collections/create",
+      "name": "StoreCollectionsCreate",
+      "component": "./views/app/pages/store/CollectionsCreate.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/Collections/:id",
+      "name": "StoreCollectionsEdit",
+      "component": "./views/app/pages/store/CollectionsEdit.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/Subscribers",
+      "name": "StoreSubscribers",
+      "component": "./views/app/pages/store/Subscribers.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/Messages",
+      "name": "StoreMessages",
+      "component": "./views/app/pages/store/Messages.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/Banners",
+      "name": "StoreBanners",
+      "component": "./views/app/pages/store/Banners.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/Banners/Edit/:id?",
+      "name": "StoreBannerEdit",
+      "component": "./views/app/pages/store/BannerForm.vue",
+      "props": "true",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/InviteCodes",
+      "name": "StoreInviteCodes",
+      "component": "./views/app/pages/store/InviteCodes.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/Store/PendingCustomers",
+      "name": "StorePendingCustomers",
+      "component": "./views/app/pages/store/PendingCustomers.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/knowledge-base",
+      "name": null,
+      "redirect": "/app/knowledge-base/list",
+      "component": "./views/app/pages/knowledge_base/index.vue",
+      "children": 8,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/knowledge-base/list",
+      "name": "KnowledgeBaseList",
+      "component": "./views/app/pages/knowledge_base/KnowledgeBaseList.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/knowledge-base/article/:id",
+      "name": "KnowledgeBaseArticleView",
+      "component": "./views/app/pages/knowledge_base/KnowledgeBaseArticleView.vue",
+      "props": "true",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/knowledge-base/groups",
+      "name": "KnowledgeBaseGroups",
+      "component": "./views/app/pages/knowledge_base/KnowledgeBaseGroups.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/knowledge-base/groups/create",
+      "name": "KnowledgeBaseGroupCreate",
+      "component": "./views/app/pages/knowledge_base/KnowledgeBaseGroupForm.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/knowledge-base/groups/:id",
+      "name": "KnowledgeBaseGroupEdit",
+      "component": "./views/app/pages/knowledge_base/KnowledgeBaseGroupForm.vue",
+      "props": "true",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/knowledge-base/articles",
+      "name": "KnowledgeBaseArticles",
+      "component": "./views/app/pages/knowledge_base/KnowledgeBaseArticles.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/knowledge-base/articles/create",
+      "name": "KnowledgeBaseArticleCreate",
+      "component": "./views/app/pages/knowledge_base/KnowledgeBaseArticleForm.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/knowledge-base/articles/:id/edit",
+      "name": "KnowledgeBaseArticleEdit",
+      "component": "./views/app/pages/knowledge_base/KnowledgeBaseArticleForm.vue",
+      "props": "true",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People",
+      "name": null,
+      "redirect": "/app/People/Customers",
+      "component": "./views/app/pages/people",
+      "children": 12,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/Customers",
+      "name": "Customers",
+      "component": "./views/app/pages/people/customers",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/Customers/create",
+      "name": "Create_Customer",
+      "component": "./views/app/pages/people/CreateCustomer.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/Customers/edit/:id",
+      "name": "Edit_Customer",
+      "component": "./views/app/pages/people/EditCustomer.vue",
+      "props": "true",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/Customers_import",
+      "name": "Import_Customers",
+      "component": "./views/app/pages/people/ImportCustomers.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/customers/:id/ledger",
+      "name": "CustomerLedger",
+      "component": "./views/app/pages/people/CustomerLedger.vue",
+      "props": "true",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/customers/:id/details",
+      "name": "CustomerDetails",
+      "component": "./views/app/pages/people/CustomerDetails.vue",
+      "props": "true",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/Customers_without_ecommerce",
+      "name": "Customers_without_ecommerce",
+      "component": "./views/app/pages/people/Customers_without_ecommerce",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/Customers_ecommerce",
+      "name": "Customers_ecommerce",
+      "component": "./views/app/pages/people/Customers_ecommerce.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/Suppliers",
+      "name": "Suppliers",
+      "component": "./views/app/pages/people/providers",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/Suppliers/create",
+      "name": "Create_Supplier",
+      "component": "./views/app/pages/people/CreateSupplier.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/Suppliers/edit/:id",
+      "name": "Edit_Supplier",
+      "component": "./views/app/pages/people/EditSupplier.vue",
+      "props": "true",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/People/Suppliers_import",
+      "name": "Import_Suppliers",
+      "component": "./views/app/pages/people/ImportSuppliers.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/User_Management",
+      "name": null,
+      "redirect": "/app/User_Management/Users",
+      "component": "./views/app/pages/user_management",
+      "children": 4,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/User_Management/Users",
+      "name": "Users",
+      "component": "./views/app/pages/people/users",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/User_Management/Users/create",
+      "name": "Create_User",
+      "component": "./views/app/pages/people/CreateUser.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/User_Management/Users/edit/:id",
+      "name": "Edit_User",
+      "component": "./views/app/pages/people/EditUser.vue",
+      "props": "true",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/User_Management/permissions",
+      "name": null,
+      "redirect": "/app/User_Management/permissions/list",
+      "component": "./views/app/pages/settings/permissions",
+      "children": 3,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/User_Management/permissions/list",
+      "name": "groupPermission",
+      "component": "./views/app/pages/settings/permissions/Permissions",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/User_Management/permissions/store",
+      "name": "store_permission",
+      "component": "./views/app/pages/settings/permissions/Create_permission",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/User_Management/permissions/edit/:id",
+      "name": "edit_permission",
+      "component": "./views/app/pages/settings/permissions/Edit_permission",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/subscription_product",
+      "name": null,
+      "redirect": "/app/subscription_product/list",
+      "component": "./views/app/pages/subscription_product",
+      "children": 3,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/subscription_product/list",
+      "name": "subscription_product",
+      "component": "./views/app/pages/subscription_product/subscription_product_list",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/subscription_product/store",
+      "name": "subscription_product_create",
+      "component": "./views/app/pages/subscription_product/subscription_product_create",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/subscription_product/detail/:id",
+      "name": "subscription_product_details",
+      "component": "./views/app/pages/subscription_product/subscription_product_details",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/finance",
+      "name": null,
+      "redirect": "/app/finance/sar_fiscal",
+      "component": "./views/app/pages/settings",
+      "children": 1,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/finance/sar_fiscal",
+      "name": "sar_fiscal",
+      "component": "./views/app/pages/settings/sar_fiscal",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings",
+      "name": null,
+      "redirect": "/app/settings/System_settings",
+      "component": "./views/app/pages/settings",
+      "children": 28,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/payment_methods",
+      "name": "payment_methods",
+      "component": "./views/app/pages/settings/payment_methods",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/sms_settings",
+      "name": "sms_settings",
+      "component": "./views/app/pages/settings/sms_settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/quickbooks_sync",
+      "name": "quickbooks_sync",
+      "component": "./views/app/pages/settings/quickbooks_sync",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/sms_templates",
+      "name": "sms_templates",
+      "component": "./views/app/pages/settings/sms_templates",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/email_templates",
+      "name": "email_templates",
+      "component": "./views/app/pages/settings/email_templates",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/appearance_settings",
+      "name": "appearance_settings",
+      "component": "./views/app/pages/settings/appearance_settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/translations_settings",
+      "name": "translations_settings",
+      "component": "./views/app/pages/settings/translations_settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/translations_view/:locale",
+      "name": "translations_view",
+      "component": "./views/app/pages/settings/translations_view",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/pos_settings",
+      "name": "pos_settings",
+      "component": "./views/app/pages/settings/pos_settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/pos_receipt",
+      "name": "pos_receipt",
+      "component": "./views/app/pages/settings/pos_receipt",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/payment_gateway",
+      "name": "payment_gateway",
+      "component": "./views/app/pages/settings/payment_gateway",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/mail_settings",
+      "name": "mail_settings",
+      "component": "./views/app/pages/settings/mail_settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/module_settings",
+      "name": "module_settings",
+      "component": "./views/app/pages/settings/module_settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/update_settings",
+      "name": "update_settings",
+      "component": "./views/app/pages/settings/update_settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/Currencies",
+      "name": "currencies",
+      "component": "./views/app/pages/settings/currencies",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/Backup",
+      "name": "Backup",
+      "component": "./views/app/pages/settings/backup",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/system_health",
+      "name": "system_health",
+      "component": "./views/app/pages/settings/system_health",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/Warehouses",
+      "name": "Warehouses",
+      "component": "./views/app/settings/next/warehouses/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/Warehouses-classic",
+      "name": "Warehouses_classic",
+      "component": "./views/app/pages/settings/warehouses",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/Cash_Drawers",
+      "name": "Cash_Drawers",
+      "component": "./views/app/pages/settings/cash_drawers",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/Warehouse_Locations",
+      "name": "Warehouse_Locations",
+      "component": "./views/app/settings/next/warehouse-locations/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/Warehouse_Locations-classic",
+      "name": "Warehouse_Locations_classic",
+      "component": "./views/app/pages/settings/warehouse_locations",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/System_settings",
+      "name": "system_settings",
+      "component": "./views/app/pages/settings/system_settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/sar_fiscal",
+      "name": null,
+      "redirect": "/app/finance/sar_fiscal",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/zatca_settings",
+      "name": "zatca_settings",
+      "component": "./views/app/pages/settings/zatca_settings",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/login_devices",
+      "name": "login_devices",
+      "component": "./views/app/pages/settings/login_devices",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/custom_fields",
+      "name": "custom_fields",
+      "component": "./views/app/pages/settings/custom_fields",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/webhooks",
+      "name": null,
+      "redirect": "/app/settings/webhooks/list",
+      "component": "./views/app/pages/settings/webhooks",
+      "children": 3,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/webhooks/list",
+      "name": "webhooks",
+      "component": "./views/app/pages/settings/webhooks/Webhooks",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/webhooks/delivery_logs",
+      "name": "webhook_delivery_logs",
+      "component": "./views/app/pages/settings/webhooks/Delivery_Logs",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/settings/webhooks/incoming_logs",
+      "name": "webhook_incoming_logs",
+      "component": "./views/app/pages/settings/webhooks/Incoming_Logs",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/woocommerce",
+      "name": "woocommerce_settings",
+      "component": "./views/app/pages/settings/WooCommerceSettings.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shopify",
+      "name": "shopify_settings",
+      "component": "./views/app/pages/settings/ShopifySettings.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports",
+      "name": null,
+      "redirect": "/app/reports/profit_and_loss",
+      "component": "./views/app/pages/reports",
+      "children": 82,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/all",
+      "name": "reports_all_hub",
+      "component": "./views/app/shell/domain_landing.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/payments_purchase",
+      "name": "payments_purchases",
+      "component": "./views/app/pages/reports/payments/payments_purchases",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/payments_sale",
+      "name": "payments_sales",
+      "component": "./views/app/pages/reports/payments/payments_sales",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/payments_purchases_returns",
+      "name": "payments_purchases_returns",
+      "component": "./views/app/pages/reports/payments/payments_purchases_returns",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/payments_sales_returns",
+      "name": "payments_sales_returns",
+      "component": "./views/app/pages/reports/payments/payments_sales_returns",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/inactive_customers",
+      "name": "inactive_customers",
+      "component": "./views/app/pages/reports/Inactive_Customers_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/zero_sales_products_report",
+      "name": "zero_sales_products_report",
+      "component": "./views/app/pages/reports/Zero_Sales_Products_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/dead_stock_report",
+      "name": "dead_stock_report",
+      "component": "./views/app/reports/next/dead-stock/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/dead_stock_report-classic",
+      "name": "dead_stock_report_classic",
+      "component": "./views/app/pages/reports/Dead_Stock_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/expiry_report",
+      "name": "expiry_report",
+      "component": "./views/app/pages/reports/Expiry_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/batch_register_report",
+      "name": "batch_register_report",
+      "component": "./views/app/reports/next/batch-register/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/batch_register_report-classic",
+      "name": "batch_register_report_classic",
+      "component": "./views/app/pages/reports/Batch_Register_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/batch_history_report/:id",
+      "name": "batch_history_report",
+      "component": "./views/app/reports/next/batch-history/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/batch_history_report-classic/:id",
+      "name": "batch_history_report_classic",
+      "component": "./views/app/pages/reports/Batch_History_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/stock_aging_report",
+      "name": "stock_aging_report",
+      "component": "./views/app/reports/next/stock-aging/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/stock_aging_report-classic",
+      "name": "stock_aging_report_classic",
+      "component": "./views/app/pages/reports/Stock_Aging_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/stock_transfer_report",
+      "name": "stock_transfer_report",
+      "component": "./views/app/reports/next/stock-transfer/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/stock_transfer_report-classic",
+      "name": "stock_transfer_report_classic",
+      "component": "./views/app/pages/reports/Stock_Transfer_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/stock_adjustment_report",
+      "name": "stock_adjustment_report",
+      "component": "./views/app/reports/next/stock-adjustment/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/stock_adjustment_report-classic",
+      "name": "stock_adjustment_report_classic",
+      "component": "./views/app/pages/reports/Stock_Adjustment_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/top_suppliers_report",
+      "name": "top_suppliers_report",
+      "component": "./views/app/pages/reports/Top_Suppliers_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/draft_invoices_report",
+      "name": "draft_invoices_report",
+      "component": "./views/app/pages/reports/Draft_Invoices_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/discount_summary_report",
+      "name": "discount_summary_report",
+      "component": "./views/app/pages/reports/Discount_Summary_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/customer_loyalty_points_report",
+      "name": "customer_loyalty_points_report",
+      "component": "./views/app/pages/reports/Customer_Loyalty_Points_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/tax_summary_report",
+      "name": "tax_summary_report",
+      "component": "./views/app/pages/reports/Tax_Summary_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/cash_flow_report",
+      "name": "cash_flow_report",
+      "component": "./views/app/pages/reports/Cash_Flow_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/report_transactions",
+      "name": "report_transactions",
+      "component": "./views/app/pages/reports/report_transactions",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/seller_report",
+      "name": "seller_report",
+      "component": "./views/app/pages/reports/seller_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/report_sales_by_category",
+      "name": "report_sales_by_category",
+      "component": "./views/app/pages/reports/report_sales_by_category",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/report_sales_by_brand",
+      "name": "report_sales_by_brand",
+      "component": "./views/app/pages/reports/report_sales_by_brand",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/ai_reports",
+      "name": "ai_reports",
+      "component": "./views/app/pages/reports/AI_Reports",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/profit_and_loss",
+      "name": "profit_and_loss",
+      "component": "./views/app/pages/reports/profit_and_loss",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/inventory_valuation_summary",
+      "name": "inventory_valuation_summary",
+      "component": "./views/app/reports/next/valuation-summary/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/inventory_valuation_summary-classic",
+      "name": "inventory_valuation_summary_classic",
+      "component": "./views/app/pages/reports/inventory_valuation_summary",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/stock_inventory_valuation",
+      "name": "stock_inventory_valuation",
+      "component": "./views/app/reports/next/valuation-detail/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/stock_inventory_valuation-classic",
+      "name": "stock_inventory_valuation_classic",
+      "component": "./views/app/pages/reports/stock_inventory_valuation",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/analytics_report",
+      "name": "analytics_report",
+      "component": "./views/app/pages/reports/Analytics_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/expenses_report",
+      "name": "expenses_report",
+      "component": "./views/app/pages/reports/expenses_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/deposits_report",
+      "name": "deposits_report",
+      "component": "./views/app/pages/reports/deposits_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/return_ratio_report",
+      "name": "return_ratio_report",
+      "component": "./views/app/pages/reports/Return_Ratio_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/negative_stock_report",
+      "name": "negative_stock_report",
+      "component": "./views/app/reports/next/negative-stock/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/negative_stock_report-classic",
+      "name": "negative_stock_report_classic",
+      "component": "./views/app/pages/reports/Negative_Stock_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/valued_kardex",
+      "name": "valued_kardex",
+      "component": "./views/app/reports/next/valued-kardex/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/inventory_turnover",
+      "name": "inventory_turnover",
+      "component": "./views/app/reports/next/inventory-turnover/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/quantity_alerts",
+      "name": "quantity_alerts",
+      "component": "./views/app/pages/reports/quantity_alerts",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/warehouse_report",
+      "name": "warehouse_report",
+      "component": "./views/app/reports/next/warehouse/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/warehouse_report-classic",
+      "name": "warehouse_report_classic",
+      "component": "./views/app/pages/reports/warehouse_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/internal_location_report",
+      "name": "internal_location_report",
+      "component": "./views/app/pages/reports/internal_location_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/sales_report",
+      "name": "sales_report",
+      "component": "./views/app/pages/reports/sales_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/product_sales_report",
+      "name": "product_sales_report",
+      "component": "./views/app/pages/reports/product_sales_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/purchase_report",
+      "name": "purchase_report",
+      "component": "./views/app/pages/reports/purchase_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/product_purchases_report",
+      "name": "product_purchases_report",
+      "component": "./views/app/pages/reports/product_purchases_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/customers_report",
+      "name": "customers_report",
+      "component": "./views/app/pages/reports/customers_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/detail_customer/:id",
+      "name": "detail_customer_report",
+      "component": "./views/app/pages/reports/detail_Customer_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/providers_report",
+      "name": "providers_report",
+      "component": "./views/app/pages/reports/providers_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/detail_supplier/:id",
+      "name": "detail_supplier_report",
+      "component": "./views/app/pages/reports/detail_Supplier_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/top_selling_products",
+      "name": "top_selling_products",
+      "component": "./views/app/pages/reports/top_selling_products",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/product_report",
+      "name": "product_report",
+      "component": "./views/app/pages/reports/product_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/detail_product/:id",
+      "name": "detail_product_report",
+      "component": "./views/app/pages/reports/detail_product_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/top_customers",
+      "name": "top_customers",
+      "component": "./views/app/pages/reports/top_customers",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/stock_report",
+      "name": "stock_report",
+      "component": "./views/app/reports/next/stock/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/stock_report-classic",
+      "name": "stock_report_classic",
+      "component": "./views/app/pages/reports/stock_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/detail_stock/:id",
+      "name": "detail_stock_report",
+      "component": "./views/app/reports/next/detail-stock/index.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/detail_stock-classic/:id",
+      "name": "detail_stock_report_classic",
+      "component": "./views/app/pages/reports/detail_stock_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/serial_available_report",
+      "name": "serial_available_report",
+      "component": "./views/app/reports/next/serials/available.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/serial_available_report-classic",
+      "name": "serial_available_report_classic",
+      "component": "./views/app/pages/reports/Serial_Available_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/serial_sold_report",
+      "name": "serial_sold_report",
+      "component": "./views/app/reports/next/serials/sold.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/serial_sold_report-classic",
+      "name": "serial_sold_report_classic",
+      "component": "./views/app/pages/reports/Serial_Sold_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/serial_movement_report",
+      "name": "serial_movement_report",
+      "component": "./views/app/reports/next/serials/movements.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/serial_movement_report-classic",
+      "name": "serial_movement_report_classic",
+      "component": "./views/app/pages/reports/Serial_Movement_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/serial_inventory_report",
+      "name": "serial_inventory_report",
+      "component": "./views/app/reports/next/serials/inventory.vue",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/serial_inventory_report-classic",
+      "name": "serial_inventory_report_classic",
+      "component": "./views/app/pages/reports/Serial_Inventory_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/users_report",
+      "name": "users_report",
+      "component": "./views/app/pages/reports/users_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/detail_user/:id",
+      "name": "detail_user_report",
+      "component": "./views/app/pages/reports/detail_user_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/login_activity_report",
+      "name": "login_activity_report",
+      "component": "./views/app/pages/reports/login_activity_report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/report_error_logs",
+      "name": "report_error_logs",
+      "component": "./views/app/pages/reports/report_error_logs",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/cash-registers",
+      "name": "cash_register_report",
+      "component": "./views/app/pages/reports/Cash_Register_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/warranty_guarantee_report",
+      "name": "warranty_guarantee_report",
+      "component": "./views/app/pages/reports/Warranty_Guarantee_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/attendance_report",
+      "name": "attendance_report",
+      "component": "./views/app/pages/reports/Attendance_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/service_jobs_report",
+      "name": "service_jobs_report",
+      "component": "./views/app/pages/reports/Service_Jobs_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/checklist_completion_report",
+      "name": "checklist_completion_report",
+      "component": "./views/app/pages/reports/Checklist_Completion_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/reports/customer_maintenance_history_report",
+      "name": "customer_maintenance_history_report",
+      "component": "./views/app/pages/reports/Customer_Maintenance_History_Report",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/profile",
+      "name": "profile",
+      "component": "./views/app/pages/profile",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/billing",
+      "name": null,
+      "redirect": "/app/billing/current-plan",
+      "component": "./views/app/pages/billing",
+      "children": 7,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/billing/current-plan",
+      "name": "billing_current_plan",
+      "component": "./views/app/pages/billing/current_plan",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/billing/change-plan",
+      "name": "billing_change_plan",
+      "component": "./views/app/pages/billing/change_plan",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/billing/checkout/:id",
+      "name": "billing_checkout",
+      "component": "./views/app/pages/billing/checkout",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/billing/success",
+      "name": "billing_success",
+      "component": "./views/app/pages/billing/payment_success",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/billing/failed",
+      "name": "billing_failed",
+      "component": "./views/app/pages/billing/payment_failed",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/billing/history",
+      "name": "billing_history",
+      "component": "./views/app/pages/billing/billing_history",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/billing/invoices",
+      "name": "billing_invoices",
+      "component": "./views/app/pages/billing/billing_invoices",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/pos",
+      "name": "pos",
+      "component": "./views/app/pages/pos",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "*",
+      "name": "NotFound",
+      "component": "./views/app/pages/notFound",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "not_authorize",
+      "name": "not_authorize",
+      "component": "./views/app/pages/NotAuthorize",
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui",
+      "name": "px_next_playground",
+      "component": "./views/app/_ui/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/dashboard",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/dashboard/",
+      "name": "px_next_dashboard_preview",
+      "component": "./views/app/dashboard/next/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/productos",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/productos/",
+      "name": "px_next_products_preview",
+      "component": "./views/app/products/next/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/producto/:id/detalle",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/producto/:id/detalle/",
+      "name": "px_next_product_detail_preview",
+      "component": "./views/app/products/next/detail/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/producto/:id/edicion",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/producto/:id/edicion/",
+      "name": "px_next_product_edit_preview",
+      "component": "./views/app/products/next/edit/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/producto/nuevo",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/producto/nuevo/",
+      "name": "px_next_product_create_preview",
+      "component": "./views/app/products/next/create/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/ajustes",
+      "name": null,
+      "component": "./views/app",
+      "children": 4,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/ajustes/",
+      "name": "px_next_adjustment_list_preview",
+      "component": "./views/app/inventory/next/adjustments/list.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/ajustes/nuevo",
+      "name": "px_next_adjustment_create_preview",
+      "component": "./views/app/inventory/next/adjustments/form.vue",
+      "props": "{ mode: \"create\" }",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/ajustes/:id/editar",
+      "name": "px_next_adjustment_edit_preview",
+      "component": "./views/app/inventory/next/adjustments/form.vue",
+      "props": "{ mode: \"edit\" }",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/ajustes/:id/detalle",
+      "name": "px_next_adjustment_detail_preview",
+      "component": "./views/app/inventory/next/adjustments/detail.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/danos",
+      "name": null,
+      "component": "./views/app",
+      "children": 3,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/danos/",
+      "name": "px_next_damage_list_preview",
+      "component": "./views/app/inventory/next/damages/list.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/danos/nuevo",
+      "name": "px_next_damage_create_preview",
+      "component": "./views/app/inventory/next/damages/form.vue",
+      "props": "{ mode: \"create\" }",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/danos/:id/editar",
+      "name": "px_next_damage_edit_preview",
+      "component": "./views/app/inventory/next/damages/form.vue",
+      "props": "{ mode: \"edit\" }",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/conteo",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/conteo/",
+      "name": "px_next_count_stock_preview",
+      "component": "./views/app/inventory/next/count-stock/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/importar-existencias",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/importar-existencias/",
+      "name": "px_next_opening_stock_preview",
+      "component": "./views/app/inventory/next/opening-stock/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/lotes",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/lotes/",
+      "name": "px_next_batches_preview",
+      "component": "./views/app/inventory/next/batches/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/seriales",
+      "name": null,
+      "component": "./views/app",
+      "children": 2,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/seriales/",
+      "name": "px_next_serial_list_preview",
+      "component": "./views/app/inventory/next/serial-numbers/list.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/inventario/seriales/:id",
+      "name": "px_next_serial_detail_preview",
+      "component": "./views/app/inventory/next/serial-numbers/detail.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/config/almacenes",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/config/almacenes/",
+      "name": "px_next_warehouses_preview",
+      "component": "./views/app/settings/next/warehouses/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/config/ubicaciones",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/config/ubicaciones/",
+      "name": "px_next_warehouse_locations_preview",
+      "component": "./views/app/settings/next/warehouse-locations/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/existencias",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/existencias/",
+      "name": "px_next_stock_report_preview",
+      "component": "./views/app/reports/next/stock/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/stock-negativo",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/stock-negativo/",
+      "name": "px_next_negative_stock_report_preview",
+      "component": "./views/app/reports/next/negative-stock/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/stock-muerto",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/stock-muerto/",
+      "name": "px_next_dead_stock_report_preview",
+      "component": "./views/app/reports/next/dead-stock/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/antiguedad",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/antiguedad/",
+      "name": "px_next_stock_aging_preview",
+      "component": "./views/app/reports/next/stock-aging/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/traslados",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/traslados/",
+      "name": "px_next_stock_transfer_report_preview",
+      "component": "./views/app/reports/next/stock-transfer/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/ajustes",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/ajustes/",
+      "name": "px_next_stock_adjustment_report_preview",
+      "component": "./views/app/reports/next/stock-adjustment/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/valoracion",
+      "name": null,
+      "component": "./views/app",
+      "children": 2,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/valoracion/",
+      "name": "px_next_valuation_summary_preview",
+      "component": "./views/app/reports/next/valuation-summary/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/valoracion/detalle",
+      "name": "px_next_valuation_detail_preview",
+      "component": "./views/app/reports/next/valuation-detail/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/lotes",
+      "name": null,
+      "component": "./views/app",
+      "children": 2,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/lotes/",
+      "name": "px_next_batch_register_preview",
+      "component": "./views/app/reports/next/batch-register/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/lotes/:id",
+      "name": "px_next_batch_history_preview",
+      "component": "./views/app/reports/next/batch-history/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/almacen",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/almacen/",
+      "name": "px_next_warehouse_report_preview",
+      "component": "./views/app/reports/next/warehouse/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/existencias-detalle",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/existencias-detalle/:id",
+      "name": "px_next_detail_stock_report_preview",
+      "component": "./views/app/reports/next/detail-stock/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/seriales",
+      "name": null,
+      "component": "./views/app",
+      "children": 4,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/seriales/disponibles",
+      "name": "px_next_serial_available_report_preview",
+      "component": "./views/app/reports/next/serials/available.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/seriales/vendidos",
+      "name": "px_next_serial_sold_report_preview",
+      "component": "./views/app/reports/next/serials/sold.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/seriales/inventario",
+      "name": "px_next_serial_inventory_report_preview",
+      "component": "./views/app/reports/next/serials/inventory.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/reportes/seriales/movimientos",
+      "name": "px_next_serial_movement_report_preview",
+      "component": "./views/app/reports/next/serials/movements.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/traslados",
+      "name": null,
+      "component": "./views/app",
+      "children": 4,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/traslados/",
+      "name": "px_next_transfer_list_preview",
+      "component": "./views/app/pages/transfers/next/list.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/traslados/nuevo",
+      "name": "px_next_transfer_create_preview",
+      "component": "./views/app/pages/transfers/next/form.vue",
+      "props": "{ mode: \"create\" }",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/traslados/:id/editar",
+      "name": "px_next_transfer_edit_preview",
+      "component": "./views/app/pages/transfers/next/form.vue",
+      "props": "{ mode: \"edit\" }",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/_ui/traslados/:id",
+      "name": "px_next_transfer_detail_preview",
+      "component": "./views/app/pages/transfers/next/detail.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell",
+      "name": null,
+      "component": "./views/app/shell/index.vue",
+      "children": 10,
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell/",
+      "name": null,
+      "redirect": "/app/shell/panel",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell/panel",
+      "name": "px_shell_panel",
+      "component": "./views/app/dashboard/next/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell/ventas",
+      "name": "px_shell_ventas",
+      "component": "./views/app/pages/sales/index_sale",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell/inventario",
+      "name": "px_shell_inventario",
+      "component": "./views/app/products/next/index.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell/compras",
+      "name": "px_shell_compras",
+      "component": "./views/app/pages/purchases/index_purchase",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell/finanzas",
+      "name": "px_shell_finanzas",
+      "component": "./views/app/shell/domain_landing.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell/reportes",
+      "name": "px_shell_reportes",
+      "component": "./views/app/shell/domain_landing.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell/rrhh",
+      "name": "px_shell_rrhh",
+      "component": "./views/app/shell/domain_landing.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell/config",
+      "name": "px_shell_config",
+      "component": "./views/app/shell/domain_landing.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/shell/mas",
+      "name": "px_shell_mas",
+      "component": "./views/app/shell/domain_landing.vue",
+      "devOnly": true,
+      "source": "resources/src/router.js"
+    },
+    {
+      "path": "/app/organization",
+      "name": null,
+      "component": "./views/app",
+      "children": 3,
+      "source": "resources/src/main.js"
+    },
+    {
+      "path": "/app/organization/branches",
+      "name": "organization_branches",
+      "component": "./views/app/pages/organization/branches",
+      "source": "resources/src/main.js"
+    },
+    {
+      "path": "/app/organization/employee-access",
+      "name": "organization_employee_access",
+      "component": "./views/app/pages/organization/employee_access",
+      "source": "resources/src/main.js"
+    },
+    {
+      "path": "/app/organization/role-templates",
+      "name": "organization_role_templates",
+      "component": "./views/app/pages/organization/role_templates",
+      "source": "resources/src/main.js"
+    },
+    {
+      "path": "/app/operations",
+      "name": null,
+      "component": "./views/app",
+      "children": 1,
+      "source": "resources/src/main.js"
+    },
+    {
+      "path": "/app/operations/stock-intake",
+      "name": "stock_intake",
+      "component": "./views/app/pages/inventory/stock_intake",
+      "source": "resources/src/main.js"
+    },
+    {
+      "path": "/app/inventory",
+      "name": null,
+      "component": "./views/app",
+      "children": 2,
+      "source": "resources/src/main.js"
+    },
+    {
+      "path": "/app/inventory/location-stock",
+      "name": "inventory_location_stock",
+      "component": "./views/app/pages/inventory/location_stock",
+      "source": "resources/src/main.js"
+    },
+    {
+      "path": "/app/inventory/missing",
+      "name": "inventory_missing",
+      "component": "./views/app/pages/inventory/missing",
+      "source": "resources/src/main.js"
+    }
+  ],
+  "portal": [
+    {
+      "path": "/login",
+      "name": "PortalLogin",
+      "component": "./views/Login.vue",
+      "metaKeys": [
+        "guest"
+      ],
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/set-password",
+      "name": "PortalSetPassword",
+      "component": "./views/SetPassword.vue",
+      "metaKeys": [
+        "guest"
+      ],
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/",
+      "name": null,
+      "component": "./components/AuthGate.vue",
+      "metaKeys": [
+        "requiresAuth"
+      ],
+      "children": 1,
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/",
+      "name": null,
+      "redirect": "dashboard",
+      "component": "./layouts/PortalLayout.vue",
+      "children": 16,
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/dashboard",
+      "name": "PortalDashboard",
+      "component": "./views/Dashboard.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/invoices",
+      "name": "PortalInvoices",
+      "component": "./views/Invoices.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/invoices/:id",
+      "name": "PortalInvoiceDetail",
+      "component": "./views/InvoiceDetail.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/payments",
+      "name": "PortalPayments",
+      "component": "./views/Payments.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/statement",
+      "name": "PortalStatement",
+      "component": "./views/Statement.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/quotations",
+      "name": "PortalQuotations",
+      "component": "./views/Quotations.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/quotations/new",
+      "name": "PortalQuotationRequest",
+      "component": "./views/QuotationRequest.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/quotations/:id",
+      "name": "PortalQuotationDetail",
+      "component": "./views/QuotationDetail.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/appointments",
+      "name": "PortalAppointments",
+      "component": "./views/Appointments.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/appointments/new",
+      "name": "PortalAppointmentBook",
+      "component": "./views/AppointmentBook.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/appointments/:id",
+      "name": "PortalAppointmentDetail",
+      "component": "./views/AppointmentDetail.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/contracts",
+      "name": "PortalContracts",
+      "component": "./views/Contracts.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/contracts/:id",
+      "name": "PortalContractDetail",
+      "component": "./views/ContractDetail.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/help",
+      "name": "PortalKnowledgeBase",
+      "component": "./views/KnowledgeBase.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/help/:slug",
+      "name": "PortalArticle",
+      "component": "./views/Article.vue",
+      "source": "resources/src/portal/router.js"
+    },
+    {
+      "path": "/profile",
+      "name": "PortalProfile",
+      "component": "./views/Profile.vue",
+      "source": "resources/src/portal/router.js"
+    }
+  ]
+}

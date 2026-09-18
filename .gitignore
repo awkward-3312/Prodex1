@@ -30,3 +30,9 @@ engine
 /FASE-A-LOCAL-NOTES.md
 /.impeccable/
 /.playwright-mcp/
+
+# E2E (Playwright) — entorno local aislado y artefactos de prueba
+/.env.e2e
+/tests/e2e/.env.e2e.local
+/tests/e2e/.artifacts/
+/public/images/tenants/

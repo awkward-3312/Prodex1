@@ -96,10 +96,15 @@ webhooks; PWA; per-tenant custom domains.
 
 **Durable constraints:**
 
-- **Stack is fixed:** the tenant admin is a Vue 2 (2.7) SPA on Bootstrap 4 + BootstrapVue,
-  built with Laravel Mix / webpack. The redesign works within this stack — it is not a
-  rewrite or a framework migration. Tailwind stays scoped to the storefront only
-  (`tailwind.config.js` content globs); the admin does not adopt Tailwind.
+- **Current stack, incremental modernization allowed:** the tenant admin is today a Vue 2
+  (2.7) SPA on Bootstrap 4 + BootstrapVue, built with Laravel Mix / webpack. Vue 2 /
+  Bootstrap 4 remain the stack of record until each migration step is complete. Incremental
+  technical modernization toward Vue 3 is authorized (see
+  `docs/architecture/FRONTEND_MODERNIZATION_AUDIT.md`); a rewrite is not. Modernization and
+  redesign are separate projects and must not be mixed in one change. Every migration step
+  must preserve behavior, multi-tenancy, per-tenant branding, i18n/RTL and operational
+  compatibility (POS, cash register, inventory, invoicing). Tailwind stays scoped to the
+  storefront only (`tailwind.config.js` content globs); the admin does not adopt Tailwind.
 - **Tenant appearance customization must keep working:** tenants override primary color,
   fonts, logo, and light/dark theme at runtime. The design system hooks into the existing
   `--primary-color` / `--primary-color-darker` / `--primary-color-soft` runtime variables

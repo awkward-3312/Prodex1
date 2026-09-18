@@ -1,0 +1,97 @@
+name: Frontend safety net
+
+# Red de seguridad de la modernización del frontend (ver docs/architecture/FRONTEND_MODERNIZATION_SAFETY_NET.md).
+# SÓLO valida. No despliega, no usa SSH, no toca el VPS y no depende de producción.
+#
+#  - route-snapshot: BLOQUEANTE. Determinista, sin servidor ni base de datos (~1 min). Falla si cambia el mapa de rutas
+#    del SPA respecto a tests/e2e/routes/routes.snapshot.json.
+#  - e2e: MANUAL (workflow_dispatch) y no bloqueante todavía. Levanta MySQL 8.4 como servicio, provisiona un tenant demo
+#    con los mecanismos del proyecto y ejecuta Playwright. Está escrito pero NO se ha ejecutado en GitHub Actions al
+#    crearlo (se validó el mismo flujo en local con Docker). Cuando pase en Actions dos veces seguidas, pasarlo a
+#    pull_request y a bloqueante. Ver "CI" en el documento de la red de seguridad.
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'resources/src/**'
+      - 'resources/static/**'
+      - 'tests/e2e/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/frontend-safety-net.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'resources/src/**'
+      - 'tests/e2e/**'
+  workflow_dispatch:
+
+jobs:
+  route-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Route snapshot (generado desde el código fuente)
+        run: npm run test:e2e:routes
+
+  e2e:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ github.run_id }}-e2e-only
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      E2E_SKIP_DOCKER: '1'
+      E2E_DB_PORT: '3307'
+      E2E_PORT: '8000'
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, gd, zip, pdo_mysql, bcmath, intl, fileinfo
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Build de desarrollo (los E2E prueban el SPA compilado desde este árbol)
+        run: npx mix
+      - name: Navegador de Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Secretos efímeros del entorno E2E
+        run: |
+          echo "E2E_DB_PASSWORD=${{ github.run_id }}-e2e-only" >> "$GITHUB_ENV"
+          echo "E2E_ADMIN_PASSWORD=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+          echo "E2E_RESTRICTED_PASSWORD=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+      - name: Provisionar tenant demo aislado
+        run: bash tests/e2e/scripts/setup.sh
+      - name: Ejecutar E2E
+        run: npm run test:e2e
+      - name: Reporte de Playwright
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-report
+          path: |
+            tests/e2e/.artifacts/report
+            tests/e2e/.artifacts/test-results
+          retention-days: 7

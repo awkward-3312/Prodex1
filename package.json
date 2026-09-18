@@ -10,7 +10,13 @@
         "watch-poll": "mix watch -- --watch-options-poll=1000",
         "hot": "mix watch --hot",
         "prod": "npm run production",
-        "production": "mix --production"
+        "production": "mix --production",
+        "test:e2e": "playwright test --config tests/e2e/playwright.config.js",
+        "test:e2e:smoke": "playwright test --config tests/e2e/playwright.config.js --grep @smoke",
+        "test:e2e:headed": "playwright test --config tests/e2e/playwright.config.js --headed",
+        "test:e2e:routes": "node tests/e2e/routes/route-snapshot.js --check",
+        "test:e2e:routes:update": "node tests/e2e/routes/route-snapshot.js --update",
+        "e2e:setup": "bash tests/e2e/scripts/setup.sh"
     },
     "dependencies": {
         "@alpinejs/collapse": "^3.15.11",
@@ -75,6 +81,7 @@
         "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
     },
     "devDependencies": {
+        "@playwright/test": "^1.63.0",
         "@tailwindcss/aspect-ratio": "^0.4.2",
         "@tailwindcss/forms": "^0.5.11",
         "@tailwindcss/typography": "^0.5.19",
