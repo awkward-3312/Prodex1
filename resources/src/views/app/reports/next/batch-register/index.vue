@@ -152,6 +152,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "@/utils/priceFormat";
@@ -347,7 +348,7 @@ export default {
         r.origin_supplier_name || "—"
       ]);
       const ok = printTableDoc({ title: "Informes / Registro de lotes", headers, rows, landscape: true });
-      if (!ok) this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+      if (!ok) notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
     }
   }
 };

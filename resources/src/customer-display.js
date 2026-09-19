@@ -13,9 +13,10 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 import VueI18n from 'vue-i18n';
 Vue.use(VueI18n);
 import { loadI18n } from './plugins/i18n.loader';
+import { createEventBus } from './platform/events.js';
 
 // Optional: global event bus if needed later
-window.CD = new Vue();
+window.CD = createEventBus();
 
 loadI18n().then((i18n) => {
   new Vue({

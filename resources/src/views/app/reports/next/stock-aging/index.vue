@@ -112,6 +112,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -308,7 +309,7 @@ export default {
       );
       const footer = headers.map((h, i) => (i === 0 ? "Total" : (this.columns[i].key === "on_hand" ? this.fmtNum(this.pageOnHand) : "")));
       const ok = printTableDoc({ title: "Informes / Antigüedad de inventario", headers, rows, footer, landscape: true });
-      if (!ok) this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+      if (!ok) notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
     }
   }
 };

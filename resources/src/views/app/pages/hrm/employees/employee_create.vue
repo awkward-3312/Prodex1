@@ -137,6 +137,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from 'nprogress';
 import Datepicker from 'vuejs-datepicker';
 
@@ -173,7 +174,7 @@ export default {
   created() { this.GetElements(); },
   methods: {
     getValidationState({dirty, validated, valid = null}) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, {title, variant, solid:true}); },
+    makeToast(variant, msg, title) { notifications.notify(msg, {title, variant, solid:true}); },
     formatFieldDate(field) {
       const d = this.employee[field];
       if (!d || typeof d === 'string') return;

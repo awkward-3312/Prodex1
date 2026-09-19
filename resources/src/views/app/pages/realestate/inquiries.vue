@@ -86,6 +86,7 @@
 </template>
 
 <script>
+import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
 export default {
@@ -126,7 +127,7 @@ export default {
       const map = { new: "badge-outline-primary", read: "badge-outline-info", responded: "badge-outline-success", closed: "badge-outline-secondary" };
       return map[s] || "badge-outline-secondary";
     },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
     updateParams(p) { this.serverParams = Object.assign({}, this.serverParams, p); },
     onPageChange({ currentPage }) { if (this.serverParams.page !== currentPage) { this.updateParams({ page: currentPage }); this.Get_Inquiries(currentPage); } },
     onPerPageChange({ currentPerPage }) { if (this.limit !== currentPerPage) { this.limit = currentPerPage; this.updateParams({ page: 1, perPage: currentPerPage }); this.Get_Inquiries(1); } },
@@ -137,7 +138,7 @@ export default {
     View(row) {
       axios.get("realestate/inquiries/" + row.id).then(res => {
         this.current = res.data.inquiry;
-        this.$bvModal.show("inquiryModal");
+        modals.show("inquiryModal");
         // refresh list so the auto "read" status reflects
         this.Get_Inquiries(this.serverParams.page);
       }).catch(() => { this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed")); });
@@ -168,12 +169,12 @@ export default {
     },
 
     Remove(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("realestate/inquiries/" + id).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Inquiries(this.serverParams.page);
@@ -183,12 +184,12 @@ export default {
     },
 
     delete_by_selected() {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.post("realestate/inquiries/delete/by_selection", { selectedIds: this.selectedIds }).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Inquiries(this.serverParams.page);

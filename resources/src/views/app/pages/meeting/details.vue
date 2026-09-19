@@ -230,6 +230,7 @@
 </template>
 
 <script>
+import { confirmDialog, modals, notifications } from "@/platform";
 import { mapGetters } from "vuex";
 
 export default {
@@ -309,7 +310,7 @@ export default {
       return dirty || validated ? valid : null;
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      notifications.notify(msg, { title: title, variant: variant, solid: true });
     },
 
     Get_Meeting() {
@@ -382,12 +383,12 @@ export default {
     },
 
     Remove_Attachment(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("meeting/attachments/" + id).then(() => {
             this.makeToast("success", this.$t("Deleted_in_successfully"), this.$t("Success"));
             this.Get_Meeting();
@@ -400,14 +401,14 @@ export default {
       this.note = this.empty_note();
       this.note.meeting_id = this.meeting.id;
       this.note_editmode = false;
-      this.$bvModal.show("Note_Modal");
+      modals.show("Note_Modal");
     },
 
     Edit_Note(n) {
       this.note = { ...this.empty_note(), ...n };
       if (this.note.due_date) this.note.due_date = String(this.note.due_date).substring(0, 10);
       this.note_editmode = true;
-      this.$bvModal.show("Note_Modal");
+      modals.show("Note_Modal");
     },
 
     Submit_Note() {
@@ -419,7 +420,7 @@ export default {
           : axios.post("meeting/notes", this.note);
         req.then(() => {
           this.SubmitProcessing = false;
-          this.$bvModal.hide("Note_Modal");
+          modals.hide("Note_Modal");
           this.makeToast("success", this.$t("Created_in_successfully"), this.$t("Success"));
           this.Get_Meeting();
         }).catch(() => {
@@ -430,12 +431,12 @@ export default {
     },
 
     Remove_Note(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("meeting/notes/" + id).then(() => {
             this.makeToast("success", this.$t("Deleted_in_successfully"), this.$t("Success"));
             this.Get_Meeting();

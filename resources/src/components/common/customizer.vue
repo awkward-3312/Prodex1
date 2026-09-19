@@ -136,6 +136,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters, mapActions } from "vuex";
 
 export default {
@@ -178,7 +179,7 @@ export default {
 
     changeSidebarLayout(layout) {
       this.setSidebarLayout(layout);
-      this.$root.$bvToast.toast(
+      notifications.notify(
         `Switched to ${layout} sidebar layout`,
         {
           title: 'Layout Changed',

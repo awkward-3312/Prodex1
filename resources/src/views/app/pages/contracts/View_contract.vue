@@ -218,6 +218,7 @@
 </template>
 
 <script>
+import { modals } from "@/platform";
 import { mapGetters } from "vuex";
 import DOMPurify from "dompurify";
 
@@ -330,7 +331,7 @@ export default {
       if (this.pdfPreviewUrl) window.URL.revokeObjectURL(this.pdfPreviewUrl);
       const pdfBlob = blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
       this.pdfPreviewUrl = window.URL.createObjectURL(pdfBlob);
-      this.$bvModal.show("pdf-preview-modal");
+      modals.show("pdf-preview-modal");
     },
     closePdfPreview() {
       if (this.pdfPreviewUrl) {
@@ -353,11 +354,11 @@ export default {
     },
     openTemplateForm() {
       this.templateForm = { id: null, name: "", content: "" };
-      this.$bvModal.show("contract-template-modal");
+      modals.show("contract-template-modal");
     },
     editTemplate(t) {
       this.templateForm = { id: t.id, name: t.name || "", content: t.content || "" };
-      this.$bvModal.show("contract-template-modal");
+      modals.show("contract-template-modal");
     },
     saveTemplate() {
       const name = (this.templateForm.name || "").trim();
@@ -371,7 +372,7 @@ export default {
         : axios.post("contracts-templates", payload);
       req.then(() => {
         this.makeToast("success", "Template saved.", "Success");
-        this.$bvModal.hide("contract-template-modal");
+        modals.hide("contract-template-modal");
         this.fetchTemplates().then(() => {
           if (this.selectedTemplateId) this.loadTemplatePreview();
         });

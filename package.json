@@ -11,6 +11,7 @@
         "hot": "mix watch --hot",
         "prod": "npm run production",
         "production": "mix --production",
+        "test:frontend": "node --test tests/frontend/*.test.mjs",
         "test:e2e": "playwright test --config tests/e2e/playwright.config.js",
         "test:e2e:smoke": "playwright test --config tests/e2e/playwright.config.js --grep @smoke",
         "test:e2e:headed": "playwright test --config tests/e2e/playwright.config.js --headed",

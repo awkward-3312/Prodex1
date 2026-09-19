@@ -49,6 +49,7 @@
 </template>
 
 <script>
+import { confirmDialog } from "@/platform";
 export default {
   name: 'AssetsIndex',
   data() {
@@ -115,7 +116,7 @@ export default {
       this.getAssets();
     },
     async removeAsset(id) {
-      const ok = await this.$bvModal.msgBoxConfirm(this.$t('AreYouSure'), { size: 'sm' });
+      const ok = await confirmDialog(this.$t('AreYouSure'), { presentation: 'modal', size: 'sm' });
       if (!ok) return;
       await axios.delete(`assets/${id}`);
       this.getAssets();

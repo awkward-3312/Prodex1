@@ -124,6 +124,7 @@
 </template>
 
 <script>
+import { modals } from "@/platform";
 
 export default {
   metaInfo: {
@@ -237,7 +238,7 @@ export default {
         }
 
         // Show modal
-        if (this.$bvModal) this.$bvModal.show('messageModal')
+        if (this.$bvModal) modals.show('messageModal')
       } finally {
         this.loadingOne = false
       }

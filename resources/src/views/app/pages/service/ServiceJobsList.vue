@@ -115,6 +115,7 @@
 </template>
 
 <script>
+import { confirmDialog, notifications } from "@/platform";
 export default {
   name: 'ServiceJobsList',
   data() {
@@ -243,7 +244,7 @@ export default {
       this.fetchJobs();
     },
     async deleteJob(row) {
-      const ok = await this.$bvModal.msgBoxConfirm(this.$t('AreYouSure'), { size: 'sm' });
+      const ok = await confirmDialog(this.$t('AreYouSure'), { presentation: 'modal', size: 'sm' });
       if (!ok) return;
       try {
         await axios.delete(`service_jobs/${row.id}`);
@@ -297,7 +298,7 @@ export default {
       return v.toFixed(2);
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     }
   }
 };

@@ -159,6 +159,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import Datepicker from 'vuejs-datepicker';
 import AttendanceIdentifiersCard from './AttendanceIdentifiersCard.vue';
@@ -185,7 +186,7 @@ export default {
         this.Edit_Employee();
       });
     },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title, variant, solid: true }); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
     formatDate(d) {
       if (!d || typeof d.getMonth !== 'function') return d;

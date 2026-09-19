@@ -124,6 +124,7 @@
 </template>
 
 <script>
+import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
 export default {
@@ -160,7 +161,7 @@ export default {
       };
     },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
     onAllChange() { this.previewCount = null; },
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
     onPageChange({ currentPage }) {
@@ -179,7 +180,7 @@ export default {
       this.segment = this.empty_segment();
       this.previewCount = null;
       this.editmode = false;
-      this.$bvModal.show("New_Segment");
+      modals.show("New_Segment");
     },
     Edit_Segment(row) {
       this.segment = {
@@ -189,7 +190,7 @@ export default {
       };
       this.previewCount = null;
       this.editmode = true;
-      this.$bvModal.show("New_Segment");
+      modals.show("New_Segment");
     },
 
     Preview_Segment() {
@@ -235,7 +236,7 @@ export default {
           : axios.post("marketing/segments", payload);
         req.then(() => {
           this.SubmitProcessing = false;
-          this.$bvModal.hide("New_Segment");
+          modals.hide("New_Segment");
           this.makeToast("success", this.$t(this.editmode ? "Updated_in_successfully" : "Created_in_successfully"), this.$t("Success"));
           this.Get_Segments(this.serverParams.page);
         }).catch(() => {
@@ -246,12 +247,12 @@ export default {
     },
 
     Remove_Segment(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("marketing/segments/" + id).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Segments(this.serverParams.page);

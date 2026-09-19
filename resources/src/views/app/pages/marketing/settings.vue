@@ -76,6 +76,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 export default {
   metaInfo: { title: "Marketing Settings" },
   data() {
@@ -86,7 +87,7 @@ export default {
     };
   },
   methods: {
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
     Get_Settings() {
       axios.get("marketing/settings").then(({ data }) => {
         this.settings = data.settings || {};

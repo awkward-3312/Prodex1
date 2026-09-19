@@ -165,6 +165,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxToolbar from "@/components/px-next/PxToolbar.vue";
 import PxTable from "@/components/px-next/PxTable.vue";
@@ -308,7 +309,7 @@ export default {
         else await axios.post('/designations', payload);
         this.modalOpen = false;
         await this.loadList();
-        this.$root.$bvToast.toast('Puesto guardado correctamente.', { title: 'Éxito', variant: 'success', solid: true });
+        notifications.notify('Puesto guardado correctamente.', { title: 'Éxito', variant: 'success', solid: true });
       } catch (e) {
         const data = e && e.response && e.response.data;
         this.error = (data && data.message) || 'No se pudo guardar el puesto.';

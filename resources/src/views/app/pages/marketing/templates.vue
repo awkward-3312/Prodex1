@@ -84,6 +84,7 @@
 </template>
 
 <script>
+import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
 export default {
@@ -124,7 +125,7 @@ export default {
   methods: {
     empty_template() { return { id: "", name: "", category: "", subject: "", content: "" }; },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
     onPageChange({ currentPage }) {
       if (this.serverParams.page !== currentPage) { this.updateParams({ page: currentPage }); this.Get_Templates(currentPage); }
@@ -138,8 +139,8 @@ export default {
     },
     onSearch(value) { this.search = value.searchTerm; this.Get_Templates(this.serverParams.page); },
 
-    New_Template() { this.template = this.empty_template(); this.editmode = false; this.$bvModal.show("New_Template"); },
-    Edit_Template(row) { this.template = { ...this.empty_template(), ...row }; this.editmode = true; this.$bvModal.show("New_Template"); },
+    New_Template() { this.template = this.empty_template(); this.editmode = false; modals.show("New_Template"); },
+    Edit_Template(row) { this.template = { ...this.empty_template(), ...row }; this.editmode = true; modals.show("New_Template"); },
 
     Duplicate_Template(id) {
       axios.post("marketing/templates/" + id + "/duplicate").then(() => {
@@ -182,7 +183,7 @@ export default {
           : axios.post("marketing/templates", payload);
         req.then(() => {
           this.SubmitProcessing = false;
-          this.$bvModal.hide("New_Template");
+          modals.hide("New_Template");
           this.makeToast("success", this.$t(this.editmode ? "Updated_in_successfully" : "Created_in_successfully"), this.$t("Success"));
           this.Get_Templates(this.serverParams.page);
         }).catch(() => {
@@ -193,12 +194,12 @@ export default {
     },
 
     Remove_Template(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("marketing/templates/" + id).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Templates(this.serverParams.page);

@@ -71,6 +71,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxToolbar from "@/components/px-next/PxToolbar.vue";
 import PxTable from "@/components/px-next/PxTable.vue";
@@ -144,12 +145,12 @@ export default {
         this.busyId = a.id;
         await axios.delete('/knowledge-base/articles/' + a.id);
         if (this.$root && this.$root.$bvToast) {
-          this.$root.$bvToast.toast(this.$t('Deleted_successfully'), { variant: 'success', solid: true });
+          notifications.notify(this.$t('Deleted_successfully'), { variant: 'success', solid: true });
         }
         this.articles = this.articles.filter(x => x.id !== a.id);
       } catch (e) {
         if (this.$root && this.$root.$bvToast) {
-          this.$root.$bvToast.toast(this.$t('Delete_failed'), { variant: 'danger', solid: true });
+          notifications.notify(this.$t('Delete_failed'), { variant: 'danger', solid: true });
         }
       } finally {
         this.busyId = null;

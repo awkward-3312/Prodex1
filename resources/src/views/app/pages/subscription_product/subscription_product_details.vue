@@ -86,6 +86,7 @@
 </template>
 
 <script>
+import { confirmDialog } from "@/platform";
 export default {
   data() {
     return {
@@ -122,8 +123,7 @@ export default {
   },
 
     initiateInitialPayment(subscriptionId) {
-    this.$bvModal.msgBoxConfirm("Are you sure you want to initiate the first payment?", {
-      title: "Confirm Payment",
+    confirmDialog("Are you sure you want to initiate the first payment?", { presentation: 'modal', title: "Confirm Payment",
       okTitle: "Yes",
       cancelTitle: "Cancel",
       centered: true

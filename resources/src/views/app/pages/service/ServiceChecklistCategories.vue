@@ -64,6 +64,7 @@
 </template>
 
 <script>
+import { confirmDialog, notifications } from "@/platform";
 export default {
   name: 'ServiceChecklistCategories',
   data() {
@@ -136,8 +137,7 @@ export default {
       }
     },
     async removeCategory(row) {
-      const ok = await this.$bvModal.msgBoxConfirm(this.$t('AreYouSure'), {
-        size: 'sm'
+      const ok = await confirmDialog(this.$t('AreYouSure'), { presentation: 'modal', size: 'sm'
       });
       if (!ok) return;
       
@@ -155,7 +155,7 @@ export default {
     
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

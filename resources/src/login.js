@@ -81,7 +81,8 @@ axios.interceptors.response.use((response) => {
   return Promise.reject(error.message);
 });
 
-window.Fire = new Vue();
+// Adaptador temporal: `window.Fire` ya no es una instancia de Vue sino el bus de plataforma.
+window.Fire = events;
 
 Vue.component('login-component', require('./views/app/sessions/signIn.vue').default);
 Vue.component('forgot-component', require('./views/app/sessions/forgot.vue').default);
@@ -95,6 +96,7 @@ import VueI18n from 'vue-i18n';
 Vue.use(VueI18n);
 
 import { loadI18n } from './plugins/i18n.loader';
+import { events, installVue2Platform } from './platform';
 
 loadI18n().then(i18n => {
  store.commit('SetDefaultLanguage', { i18n, Language: i18n.locale });
@@ -102,11 +104,12 @@ loadI18n().then(i18n => {
 
   try { store.dispatch('config/initPrimaryColor'); } catch (e) {}
 
-  new Vue({
+  const app = new Vue({
     el: '#login',
     store,
     router,
     i18n,
   });
+  installVue2Platform(app);
 });
 

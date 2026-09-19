@@ -67,6 +67,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 export default {
   data() {
     return {
@@ -107,7 +108,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     load() {
       const id = this.$route.params.id;

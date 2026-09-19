@@ -106,6 +106,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import {
@@ -316,7 +317,7 @@ export default {
         exportPdf({ title: "Valoración de inventario · Detalle", subtitle, filename: "Valoracion_inventario_detalle", headers, rows, footer, landscape: true });
       } else if (k === "print") {
         const ok = printTableDoc({ title: "Informes / Valoración de inventario · Detalle · " + subtitle, headers, rows, footer, landscape: true });
-        if (!ok) this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+        if (!ok) notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
       }
     }
   }

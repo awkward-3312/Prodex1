@@ -717,6 +717,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 
 export default {
@@ -1356,7 +1357,7 @@ export default {
       return dirty || validated ? valid : null;
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     }
   }
 };

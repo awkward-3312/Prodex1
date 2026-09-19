@@ -87,6 +87,7 @@
 
 
 <script>
+import { confirmDialog, notifications } from "@/platform";
 import NProgress from "nprogress";
 
 export default {
@@ -257,7 +258,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -305,7 +306,7 @@ export default {
 
     //--------------------------- Remove subscription----------------\\
     Remove_subscription(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"),
         text: this.$t("Delete_Text"),
         type: "warning",
@@ -314,8 +315,8 @@ export default {
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios
             .delete("subscriptions/" + id)
             .then(() => {

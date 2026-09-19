@@ -613,6 +613,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 
@@ -767,7 +768,7 @@ export default {
       return date.toLocaleString();
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

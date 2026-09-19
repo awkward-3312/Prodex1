@@ -89,6 +89,7 @@
 </template>
 
 <script>
+import { confirmDialog, modals, notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
 
@@ -125,7 +126,7 @@ export default {
     this.Get_Categories(1);
     Fire.$on('Create_Asset_Category', () => {
       this.Get_Categories(this.serverParams.page);
-      this.$bvModal.hide('New_Asset_Category');
+      modals.hide('New_Asset_Category');
     });
     Fire.$on('Delete_Asset_Category', () => {
       this.Get_Categories(this.serverParams.page);
@@ -142,7 +143,7 @@ export default {
       });
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     onPageChange({ currentPage }) {
       this.serverParams.page = currentPage;
@@ -169,13 +170,13 @@ export default {
     New_Category() {
       this.reset_Form();
       this.editmode = false;
-      this.$bvModal.show('New_Asset_Category');
+      modals.show('New_Asset_Category');
     },
     Edit_Category(cat) {
       this.reset_Form();
       this.category = { id: cat.id, name: cat.name, description: cat.description };
       this.editmode = true;
-      this.$bvModal.show('New_Asset_Category');
+      modals.show('New_Asset_Category');
     },
     reset_Form() {
       this.category = { id: '', name: '', description: '' };
@@ -230,7 +231,7 @@ export default {
         });
     },
     Delete_Category(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t('Delete_Title'),
         text: this.$t('Delete_Text'),
         type: 'warning',
@@ -239,8 +240,8 @@ export default {
         cancelButtonColor: '#d33',
         cancelButtonText: this.$t('Delete_cancelButtonText'),
         confirmButtonText: this.$t('Delete_confirmButtonText')
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete('assets_category/' + id)
             .then(() => {
               this.$swal(this.$t('Delete_Deleted'), this.$t('Deleted_in_successfully'), 'success');

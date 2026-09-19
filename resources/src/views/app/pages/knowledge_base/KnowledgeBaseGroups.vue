@@ -53,6 +53,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxToolbar from "@/components/px-next/PxToolbar.vue";
 import PxTable from "@/components/px-next/PxTable.vue";
@@ -89,7 +90,7 @@ export default {
   methods: {
     tv(v) { return typeof v === 'string' ? v.trim() : v; },
     makeToast(variant, msg) {
-      if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(msg, { variant, solid: true });
+      if (this.$root && this.$root.$bvToast) notifications.notify(msg, { variant, solid: true });
     },
     async fetch() {
       this.isLoading = true;

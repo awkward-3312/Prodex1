@@ -121,6 +121,7 @@
 </template>
 
 <script>
+import { confirmDialog, modals, notifications } from "@/platform";
 export default {
   name: 'ServiceChecklists',
   data() {
@@ -177,7 +178,7 @@ export default {
     openModal() {
       this.editmode = false;
       this.itemForm = { id: null, category_id: null, name: '' };
-      this.$bvModal.show('modal_Item');
+      modals.show('modal_Item');
     },
     editItem(row) {
       this.editmode = true;
@@ -186,7 +187,7 @@ export default {
         category_id: row.category_id,
         name: row.name
       };
-      this.$bvModal.show('modal_Item');
+      modals.show('modal_Item');
     },
     resetModal() {
       this.editmode = false;
@@ -220,7 +221,7 @@ export default {
         }
         
         if (response.data && response.data.success) {
-          this.$bvModal.hide('modal_Item');
+          modals.hide('modal_Item');
           await this.loadItems();
           await this.loadCategories();
         } else {
@@ -235,8 +236,7 @@ export default {
       }
     },
     async removeItem(row) {
-      const ok = await this.$bvModal.msgBoxConfirm(this.$t('AreYouSure'), {
-        size: 'sm'
+      const ok = await confirmDialog(this.$t('AreYouSure'), { presentation: 'modal', size: 'sm'
       });
       if (!ok) return;
       
@@ -254,7 +254,7 @@ export default {
     
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

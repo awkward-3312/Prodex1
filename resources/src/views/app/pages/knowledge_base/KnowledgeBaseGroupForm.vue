@@ -45,6 +45,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
@@ -87,7 +88,7 @@ export default {
         this.syncValidators();
       } catch (e) {
         if (this.$root && this.$root.$bvToast) {
-          this.$root.$bvToast.toast(this.$t('Failed_to_load') || 'Failed to load', { variant: 'danger', solid: true });
+          notifications.notify(this.$t('Failed_to_load') || 'Failed to load', { variant: 'danger', solid: true });
         }
       }
     },
@@ -98,15 +99,15 @@ export default {
       try {
         if (this.isEdit) {
           await axios.put('/knowledge-base/groups/' + this.id, this.form);
-          if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(this.$t('Updated') || 'Updated', { variant: 'success', solid: true });
+          if (this.$root && this.$root.$bvToast) notifications.notify(this.$t('Updated') || 'Updated', { variant: 'success', solid: true });
         } else {
           await axios.post('/knowledge-base/groups', this.form);
-          if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(this.$t('Saved') || 'Saved', { variant: 'success', solid: true });
+          if (this.$root && this.$root.$bvToast) notifications.notify(this.$t('Saved') || 'Saved', { variant: 'success', solid: true });
         }
         this.$router.push({ name: 'KnowledgeBaseGroups' });
       } catch (e) {
         const msg = (e.response && e.response.data && e.response.data.message) || this.$t('InvalidData') || 'Invalid data';
-        if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(msg, { variant: 'danger', solid: true });
+        if (this.$root && this.$root.$bvToast) notifications.notify(msg, { variant: 'danger', solid: true });
       } finally {
         this.saving = false;
       }

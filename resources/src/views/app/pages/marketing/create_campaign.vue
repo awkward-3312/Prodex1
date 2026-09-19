@@ -110,6 +110,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 export default {
   metaInfo: { title: "Create Campaign" },
   data() {
@@ -138,7 +139,7 @@ export default {
     },
     type_label(t) { const map = { sms: "SMS", email: "Email", whatsapp: "WhatsApp" }; return map[t] || t; },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
 
     onTypeChange() {
       this.selectedTemplate = "";

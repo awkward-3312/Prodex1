@@ -169,6 +169,7 @@
 </template>
 
 <script>
+import { confirmDialog } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
@@ -458,7 +459,7 @@ export default {
     //------------------------------- Remove Employee -------------------------\\
 
     Remove_Employee(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"),
         text: this.$t("Delete_Text"),
         type: "warning",
@@ -467,8 +468,8 @@ export default {
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           // Start the progress bar.
           NProgress.start();
           NProgress.set(0.1);
@@ -498,7 +499,7 @@ export default {
     //---- Delete Expense by selection
 
     delete_by_selected() {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"),
         text: this.$t("Delete_Text"),
         type: "warning",
@@ -507,8 +508,8 @@ export default {
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           // Start the progress bar.
           NProgress.start();
           NProgress.set(0.1);

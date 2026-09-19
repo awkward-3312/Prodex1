@@ -107,6 +107,7 @@
 </template>
 
 <script>
+import { confirmDialog } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import VueApexCharts from "vue-apexcharts";
@@ -204,8 +205,7 @@ export default {
       });
     },
     Remove_Contract(id) {
-      this.$bvModal.msgBoxConfirm(this.$t("Confirm_delete") || "Are you sure?", {
-        title: this.$t("Confirm"),
+      confirmDialog(this.$t("Confirm_delete") || "Are you sure?", { presentation: 'modal', title: this.$t("Confirm"),
         size: "sm",
         buttonSize: "sm",
         okVariant: "danger",

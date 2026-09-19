@@ -124,6 +124,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
@@ -207,7 +208,7 @@ export default {
         this.articles = [];
         this.total = 0;
         if (this.$root && this.$root.$bvToast) {
-          this.$root.$bvToast.toast('No se pudo cargar el Manual PRODEX.', { variant: 'danger', solid: true });
+          notifications.notify('No se pudo cargar el Manual PRODEX.', { variant: 'danger', solid: true });
         }
       } finally {
         this.loading = false;

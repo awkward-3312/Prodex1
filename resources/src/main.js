@@ -134,7 +134,9 @@ import vSelect from 'vue-select';
 Vue.component('v-select', vSelect);
 import 'vue-select/dist/vue-select.css';
 import '@trevoreyre/autocomplete-vue/dist/style.css';
-window.Fire = new Vue();
+// Bus de eventos global: `window.Fire` es un adaptador temporal de compatibilidad sobre el bus de plataforma (ya no es una
+// instancia de Vue). El código nuevo importa `events` desde "@/platform".
+window.Fire = events;
 Vue.prototype.$uploadPath = window.__uploadPath || 'images';
 Vue.prototype.$imgUrl = function(subfolder, filename) { return '/' + this.$uploadPath + '/' + subfolder + '/' + filename; };
 import Breadcumb from "./components/breadcumb";
@@ -146,11 +148,14 @@ Vue.config.silent = true;
 Vue.config.devtools = false;
 import { loadI18n } from './plugins/i18n.loader';
 import { setupGlobalOfflineSync } from './utils/globalOfflineSync';
+import { events, installVue2Platform } from './platform';
 
 loadI18n().then(i18n => {
   store.commit('SetDefaultLanguage', { i18n, Language: i18n.locale });
   setupRouterGuards(i18n);
   installNavigationPerformance(window.axios, router);
   try { setupGlobalOfflineSync(); } catch (e) {}
-  new Vue({ store, router, VueCookie, i18n, render: h => h(App) }).$mount('#app');
+  const app = new Vue({ store, router, VueCookie, i18n, render: h => h(App) }).$mount('#app');
+  // Conecta notificaciones, confirmaciones y modales por id (servicios de plataforma) con BootstrapVue/SweetAlert2.
+  installVue2Platform(app);
 });

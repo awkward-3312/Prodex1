@@ -386,6 +386,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import VueClockPicker from '@pencilpix/vue2-clock-picker';
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -498,7 +499,7 @@ export default {
       if (k === "edit") this.Edit_Attendance(row);
       else if (k === "delete") { this.pendingDelete = row; this.confirmOpen = true; }
     },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title, variant, solid: true }); },
 
     Submit_Attendance() {
       this.$refs.Create_Attendance.validate().then(success => {

@@ -95,6 +95,7 @@
 </template>
 
 <script>
+import { confirmDialog, notifications } from "@/platform";
 export default {
   metaInfo: { title: "Campaign Details" },
   data() {
@@ -129,17 +130,17 @@ export default {
       };
       return map[s] || "badge-outline-secondary";
     },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
 
     Edit_Campaign() { this.$router.push({ name: "marketing_edit_campaign", params: { id: this.campaign.id } }); },
 
     Send_Campaign() {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Send_Campaign"), text: this.$t("Send_Now") + " ?", type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         confirmButtonText: this.$t("Send_Now")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.post("marketing/campaigns/" + this.campaign.id + "/send").then(() => {
             this.makeToast("success", this.$t("Created_in_successfully"), this.$t("Success"));
             this.Get_Campaign();

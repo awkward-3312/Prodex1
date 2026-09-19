@@ -204,6 +204,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 export default {
   metaInfo: { title: "Property Form" },
   data() {
@@ -233,7 +234,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      notifications.notify(msg, { title: title, variant: variant, solid: true });
     },
     addAmenity() {
       const v = (this.amenityInput || "").trim();

@@ -117,6 +117,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "@/utils/priceFormat";
@@ -298,7 +299,7 @@ export default {
         " / real " + this.fmtNum(this.totals.actual_qty) +
         (this.hasDrift ? " / DESCUADRE " + this.fmtNum(this.totals.drift) : " / cuadrado");
       const ok = printTableDoc({ title, headers, rows });
-      if (!ok) this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+      if (!ok) notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
     }
   }
 };

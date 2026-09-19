@@ -221,6 +221,7 @@
 </template>
 
 <script>
+import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
 export default {
@@ -325,7 +326,7 @@ export default {
       return dirty || validated ? valid : null;
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      notifications.notify(msg, { title: title, variant: variant, solid: true });
     },
 
     View_Details(id) {
@@ -347,7 +348,7 @@ export default {
       this.reset_Form();
       this.editmode = false;
       this.Get_FormData();
-      this.$bvModal.show("New_Meeting");
+      modals.show("New_Meeting");
     },
 
     Edit_Meeting(meeting) {
@@ -366,7 +367,7 @@ export default {
           participants: (m.participants || []).map(p => p.user_id)
         };
         this.editmode = true;
-        this.$bvModal.show("New_Meeting");
+        modals.show("New_Meeting");
       }).catch(() => {
         this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
       });
@@ -439,12 +440,12 @@ export default {
     },
 
     Remove_Meeting(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("meeting/meetings/" + id).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             Fire.$emit("Event_Meeting");
@@ -456,12 +457,12 @@ export default {
     },
 
     delete_by_selected() {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.post("meeting/meetings/delete/by_selection", { selectedIds: this.selectedIds }).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             Fire.$emit("Event_Meeting");
@@ -478,7 +479,7 @@ export default {
     Fire.$on("Event_Meeting", () => {
       setTimeout(() => {
         this.Get_Meetings(this.serverParams.page);
-        this.$bvModal.hide("New_Meeting");
+        modals.hide("New_Meeting");
       }, 500);
     });
   }

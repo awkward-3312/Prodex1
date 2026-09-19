@@ -149,6 +149,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 export default {
   name: 'DueAssets',
   data() {
@@ -225,7 +226,7 @@ export default {
       this.makeToast('success', this.$t('Copied') || 'Copied to clipboard', this.$t('Success') || 'Success');
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast && this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      this.$root.$bvToast && notifications.notify(msg, { title, variant, solid: true });
     },
     async runValidationDueNow() {
       this.runCheckLoading = true;

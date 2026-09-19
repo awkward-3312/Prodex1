@@ -837,6 +837,7 @@
 
 
 <script>
+import { confirmDialog, modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import Datepicker from "vuejs-datepicker";
 import NProgress from "nprogress";
@@ -986,7 +987,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1220,7 +1221,7 @@ export default {
     New_Experience() {
       this.reset_Form_experience();
       this.edit_mode_experience = false;
-      this.$bvModal.show("Experience_Modal");
+      modals.show("Experience_Modal");
     },
 
     //------------------------------ Show Modal (Edit Experience) -------------------------------\\
@@ -1228,7 +1229,7 @@ export default {
       this.edit_mode_experience = true;
       this.reset_Form_experience();
       this.experience = experience;
-      this.$bvModal.show("Experience_Modal");
+      modals.show("Experience_Modal");
     },
 
     Selected_Employment_type(value) {
@@ -1332,7 +1333,7 @@ export default {
 
     //------------------------------- Remove_Experience ------------------------\\
     Remove_Experience(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"),
         text: this.$t("Delete_Text"),
         type: "warning",
@@ -1341,8 +1342,8 @@ export default {
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios
             .delete("work_experience/" + id)
             .then(() => {
@@ -1424,7 +1425,7 @@ export default {
     New_Account() {
       this.reset_Form_bank_account();
       this.edit_mode_account = false;
-      this.$bvModal.show("Account_Modal");
+      modals.show("Account_Modal");
     },
 
     //------------------------------ Show Modal (Edit Bank Account) -------------------------------\\
@@ -1433,7 +1434,7 @@ export default {
       this.edit_mode_account = true;
       this.reset_Form_bank_account();
       this.account_bank = account_bank;
-      this.$bvModal.show("Account_Modal");
+      modals.show("Account_Modal");
     },
 
     //----------------------------- Reset_Form_Bank Account---------------------------\\
@@ -1504,7 +1505,7 @@ export default {
 
     //------------------------------- Remove_Account ------------------------\\
     Remove_Account(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"),
         text: this.$t("Delete_Text"),
         type: "warning",
@@ -1513,8 +1514,8 @@ export default {
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios
             .delete("employee_account/" + id)
             .then(() => {
@@ -1548,7 +1549,7 @@ export default {
     Fire.$on("Event_experience", () => {
       setTimeout(() => {
         this.Get_experiences(1);
-        this.$bvModal.hide("Experience_Modal");
+        modals.hide("Experience_Modal");
       }, 500);
     });
 
@@ -1561,7 +1562,7 @@ export default {
     Fire.$on("Event_account", () => {
       setTimeout(() => {
         this.Get_accounts(1);
-        this.$bvModal.hide("Account_Modal");
+        modals.hide("Account_Modal");
       }, 500);
     });
 

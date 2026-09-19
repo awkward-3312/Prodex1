@@ -95,6 +95,7 @@
 </template>
 
 <script>
+import { confirmDialog } from "@/platform";
 export default {
   name: 'ServiceTechnicians',
   data() {
@@ -196,8 +197,7 @@ export default {
       await this.fetchTechnicians();
     },
     async removeTechnician(row) {
-      const ok = await this.$bvModal.msgBoxConfirm(this.$t('AreYouSure'), {
-        size: 'sm'
+      const ok = await confirmDialog(this.$t('AreYouSure'), { presentation: 'modal', size: 'sm'
       });
       if (!ok) return;
       await axios.delete(`service_technicians/${row.id}`);

@@ -82,6 +82,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -190,7 +191,7 @@ export default {
       const headers = this.columns.map(c => c.label);
       const rows = (this.reports || []).map(r => this.columns.map(c => (r[c.key] == null ? "" : r[c.key])));
       const ok = printTableDoc({ title: "Informes / Números de serie disponibles", headers, rows, landscape: true });
-      if (!ok) this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+      if (!ok) notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
     }
   }
 };

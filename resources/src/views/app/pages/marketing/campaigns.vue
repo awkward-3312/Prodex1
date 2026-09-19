@@ -85,6 +85,7 @@
 </template>
 
 <script>
+import { confirmDialog, notifications } from "@/platform";
 import NProgress from "nprogress";
 
 export default {
@@ -134,7 +135,7 @@ export default {
     canEdit(row) { return ["draft", "scheduled", "failed", "cancelled"].includes(row.status); },
     canSend(row) { return ["draft", "scheduled", "failed"].includes(row.status); },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      notifications.notify(msg, { title: title, variant: variant, solid: true });
     },
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
     onPageChange({ currentPage }) {
@@ -184,12 +185,12 @@ export default {
     },
 
     Send_Campaign(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Send_Campaign"), text: this.$t("Send_Now") + " ?", type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         confirmButtonText: this.$t("Send_Now")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.post("marketing/campaigns/" + id + "/send").then(() => {
             this.makeToast("success", this.$t("Created_in_successfully"), this.$t("Success"));
             this.Get_Campaigns(this.serverParams.page);
@@ -201,12 +202,12 @@ export default {
     },
 
     Remove_Campaign(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("marketing/campaigns/" + id).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Campaigns(this.serverParams.page);
@@ -218,12 +219,12 @@ export default {
     },
 
     delete_by_selected() {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.post("marketing/campaigns/delete/by_selection", { selectedIds: this.selectedIds }).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Campaigns(this.serverParams.page);
