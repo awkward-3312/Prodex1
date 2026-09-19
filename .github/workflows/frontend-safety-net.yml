@@ -22,9 +22,9 @@ on:
       - '.github/workflows/frontend-safety-net.yml'
   push:
     # La rama de estabilización se lista aquí porque GitHub solo permite lanzar workflow_dispatch de un workflow que ya
-    # existe en la rama por defecto. Mientras este archivo no esté en main, el job e2e corre con los push a esa rama.
+    # existe en la rama por defecto. Mientras este archivo no esté en main, el job e2e corre con los push a las ramas de modernización listadas aquí.
     # Cuando llegue a main se puede quitar esa rama y usar solo workflow_dispatch.
-    branches: [ main, fix/frontend-modernization-baseline ]
+    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup ]
   workflow_dispatch:
 
 jobs:
@@ -41,7 +41,10 @@ jobs:
         run: npm run test:e2e:routes
 
   e2e:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/fix/frontend-modernization-baseline'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/fix/frontend-modernization-baseline' ||
+      github.ref == 'refs/heads/chore/frontend-modernization-cleanup'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     continue-on-error: true
