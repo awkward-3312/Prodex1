@@ -180,6 +180,7 @@ Atribución a BV2: por componente que aparece primero en la traza, `PRIVATE_APIS
 
 - `npm run test:frontend`: 111/111 (100 + 11 nuevos en `bootstrap5-bridge.test.mjs`).
 - E2E `21-bootstrap5-bvn.spec.js` (12 tests): utilidades del puente LTR/RTL, `gap-*` no definido, BButton (variantes y emisión única del click) en calendario, navegación Router 4 desde un BButton, BAlert/BBadge/BCard en WooCommerce, BRow/BCol, navegación SPA entre pantallas migradas, modal simple de BV2 junto al puente, reglas BS4 conservadas (`.card-deck`, `.container`), RTL y móvil sin desbordamiento. Los fixtures fallan ante `pageerror`, `console.error` y 5xx.
+- Infraestructura E2E: el servidor PHP embebido con 4 workers (`PHP_CLI_SERVER_WORKERS`, experimental) terminó con `Segmentation fault` en GitHub Actions (PHP 8.3) durante el login de la sesión `restricted`, justo al servir el bundle de desarrollo (dos intentos seguidos; en local y en las fases anteriores no ocurría). `tests/e2e/scripts/serve.sh` ahora reinicia el servidor si termina, de modo que solo falla (y se reintenta) la petición en vuelo. La causa raíz del fallo de PHP no se investigó más allá de esto.
 - Toast, tooltip y modal de plataforma: cubiertos por `12-platform-services` y `17-router4` (sin cambios).
 
 ## 13. Deuda restante
