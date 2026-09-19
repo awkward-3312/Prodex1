@@ -5,7 +5,7 @@ name: Frontend safety net
 #
 #  - route-snapshot: BLOQUEANTE. Determinista, sin servidor ni base de datos (~1 min). Falla si cambia el mapa de rutas
 #    del SPA respecto a tests/e2e/routes/routes.snapshot.json.
-#  - e2e: MANUAL (workflow_dispatch) y no bloqueante todavía. Levanta MySQL 8.4 como servicio, provisiona un tenant demo
+#  - e2e: MANUAL (workflow_dispatch; hasta que el archivo llegue a main, también en push a la rama de estabilización) y no bloqueante todavía. Levanta MySQL 8.4 como servicio, provisiona un tenant demo
 #    con los mecanismos del proyecto y ejecuta Playwright. Está escrito pero NO se ha ejecutado en GitHub Actions al
 #    crearlo (se validó el mismo flujo en local con Docker). Cuando pase en Actions dos veces seguidas, pasarlo a
 #    pull_request y a bloqueante. Ver "CI" en el documento de la red de seguridad.
@@ -21,10 +21,10 @@ on:
       - 'package-lock.json'
       - '.github/workflows/frontend-safety-net.yml'
   push:
-    branches: [ main ]
-    paths:
-      - 'resources/src/**'
-      - 'tests/e2e/**'
+    # La rama de estabilización se lista aquí porque GitHub solo permite lanzar workflow_dispatch de un workflow que ya
+    # existe en la rama por defecto. Mientras este archivo no esté en main, el job e2e corre con los push a esa rama.
+    # Cuando llegue a main se puede quitar esa rama y usar solo workflow_dispatch.
+    branches: [ main, fix/frontend-modernization-baseline ]
   workflow_dispatch:
 
 jobs:
@@ -41,7 +41,7 @@ jobs:
         run: npm run test:e2e:routes
 
   e2e:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/fix/frontend-modernization-baseline'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     continue-on-error: true
