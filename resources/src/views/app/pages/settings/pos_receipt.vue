@@ -747,6 +747,8 @@ export default {
   metaInfo: {
     title: "POS Receipt"
   },
+  // Marcador de comportamiento para plugins/stocky.kit.js (panel "Diseño de la factura / recibo"); independiente del <head>.
+  prodexReceiptPresentation: true,
   data() {
     return {
       isLoading: true,

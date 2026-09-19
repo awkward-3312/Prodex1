@@ -1,6 +1,7 @@
 import './platform/vue-compat';
 import { patchBootstrapVueForCompat } from './platform/compat/bootstrap-vue';
 import { mountWithRouter } from './platform/compat/vue-router';
+import { head, installHead } from './platform/head';
 import store from "./store";
 import Vue from "vue";
 patchBootstrapVueForCompat(Vue);
@@ -23,15 +24,7 @@ Vue.component(
 Vue.component("vue-perfect-scrollbar", () =>
   import(/* webpackChunkName: "vue-perfect-scrollbar" */ "vue-perfect-scrollbar")
 );
-import Meta from "vue-meta";
-
-Vue.use(Meta, {
-  keyName: "metaInfo",
-  attribute: "data-vue-meta",
-  ssrAttribute: "data-vue-meta-server-rendered",
-  tagIDKeyName: "vmid",
-  refreshOnceOnNavigation: true
-});
+installHead(Vue);
 
 installValidation(Vue);
 
@@ -86,7 +79,7 @@ loadI18n().then(i18n => {
 
   try { store.dispatch('config/initPrimaryColor'); } catch (e) {}
 
-  const app = mountWithRouter({ store, i18n }, router, '#login');
+  const app = mountWithRouter({ store, i18n }, router, '#login', [head]);
   installVue2Platform(app);
 });
 

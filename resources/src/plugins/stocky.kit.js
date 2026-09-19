@@ -1,6 +1,5 @@
 import BootstrapVue from 'bootstrap-vue/dist/bootstrap-vue.esm';
 import VueGoodTablePlugin from "vue-good-table";
-import Meta from "vue-meta";
 import "./../assets/styles/sass/themes/lite-purple.scss";
 import "./sweetalert2.js";
 import VueHtmlToPaper from 'vue-html-to-paper';
@@ -133,8 +132,8 @@ function installReceiptPresentationEnhancer(Vue) {
 
   Vue.mixin({
     mounted() {
-      const title = this.$options && this.$options.metaInfo && this.$options.metaInfo.title;
-      if (title !== 'POS Receipt' || !this.pos_settings || this.__receiptPresentationMounted) return;
+      // Marcador explícito de la vista (antes se deducía de `metaInfo.title === 'POS Receipt'`, que es solo el título del <head>).
+      if (!this.$options || this.$options.prodexReceiptPresentation !== true || !this.pos_settings || this.__receiptPresentationMounted) return;
       this.__receiptPresentationMounted = true;
 
       Object.keys(defaults).forEach(key => {
@@ -437,13 +436,6 @@ export default {
     Vue.component("px-shell-layout", () => import(/* webpackChunkName: "px-next-shell" */ "../containers/layouts/PxShellLayout.vue"));
     Vue.component("customizer", () => import(/* webpackChunkName: "customizer" */ "../components/common/customizer.vue"));
     Vue.component("vue-perfect-scrollbar", () => import(/* webpackChunkName: "vue-perfect-scrollbar" */ "vue-perfect-scrollbar"));
-    Vue.use(Meta, {
-      keyName: "metaInfo",
-      attribute: "data-vue-meta",
-      ssrAttribute: "data-vue-meta-server-rendered",
-      tagIDKeyName: "vmid",
-      refreshOnceOnNavigation: true
-    });
     Vue.use(VueGoodTablePlugin);
     Vue.use(VueHtmlToPaper, options);
     installReceiptPresentationEnhancer(Vue);
