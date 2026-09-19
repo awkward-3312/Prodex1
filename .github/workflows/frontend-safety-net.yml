@@ -105,6 +105,12 @@ jobs:
           echo "E2E_PHP_GDB=1" >> "$GITHUB_ENV"
       - name: Ejecutar E2E
         run: npm run test:e2e
+      - name: Diagnóstico tras el E2E (dmesg, memoria)
+        if: always()
+        continue-on-error: true
+        run: |
+          sudo dmesg | grep -iE 'segfault|oom|killed process|general protection' | tail -20 || true
+          free -m; ls -la /tmp | grep -i core || true; ps aux | grep -E 'php|gdb' | grep -v grep | head
       - name: Avisos de @vue/compat agrupados (resumen del job)
         if: always()
         continue-on-error: true
