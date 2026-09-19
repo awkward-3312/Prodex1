@@ -24,7 +24,7 @@ on:
     # La rama de estabilización se lista aquí porque GitHub solo permite lanzar workflow_dispatch de un workflow que ya
     # existe en la rama por defecto. Mientras este archivo no esté en main, el job e2e corre con los push a las ramas de modernización listadas aquí.
     # Cuando llegue a main se puede quitar esa rama y usar solo workflow_dispatch.
-    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening, spike/vue3-compat-runtime, refactor/vue-router-4, refactor/vue3-own-code-cleanup, refactor/vue-meta-to-unhead ]
+    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening, spike/vue3-compat-runtime, refactor/vue-router-4, refactor/vue3-own-code-cleanup, refactor/vue-meta-to-unhead, refactor/remove-vue-clickaway ]
   workflow_dispatch:
 
 jobs:
@@ -52,7 +52,8 @@ jobs:
       github.ref == 'refs/heads/spike/vue3-compat-runtime' ||
       github.ref == 'refs/heads/refactor/vue-router-4' ||
       github.ref == 'refs/heads/refactor/vue3-own-code-cleanup' ||
-      github.ref == 'refs/heads/refactor/vue-meta-to-unhead'
+      github.ref == 'refs/heads/refactor/vue-meta-to-unhead' ||
+      github.ref == 'refs/heads/refactor/remove-vue-clickaway'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     continue-on-error: true

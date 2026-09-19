@@ -154,11 +154,9 @@ import Util from "./../../../utils";
 // import Sidebar from "./Sidebar";
 import { isMobile } from "mobile-device-detect";
 import { mapGetters, mapActions } from "vuex";
-import { mixin as clickaway } from "vue-clickaway";
 // import { setTimeout } from 'timers';
 
 export default {
-  mixins: [clickaway],
  
   data() {
   
