@@ -39,7 +39,7 @@ jobs:
       - run: npm ci
       - name: Route snapshot (generado desde el código fuente)
         run: npm run test:e2e:routes
-      - name: Pruebas del frontend: servicios de plataforma, puente legacy, capa de validación y guardas de API obsoletas (node:test, sin navegador)
+      - name: Pruebas del frontend (servicios de plataforma, puente legacy, capa de validación y guardas de API obsoletas; node:test, sin navegador)
         run: npm run test:frontend
 
   e2e:
