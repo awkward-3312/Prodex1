@@ -78,7 +78,10 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, xml, curl, gd, zip, pdo_mysql, bcmath, intl, fileinfo
+          # La imagen del runner trae ~20 extensiones de terceros (amqp, apcu, ast, ds, enchant, igbinary, imagick, imap, memcache(d), mongodb,
+          # msgpack, pspell, redis, sqlsrv, yaml, zmq) que el proyecto no usa y que en local no existen. El servidor PHP embebido de los E2E
+          # moría con SIGSEGV en `zend_objects_store_del` (backtrace del run 35475388416, corrupción de memoria del motor): se desactivan.
+          extensions: mbstring, xml, curl, gd, zip, pdo_mysql, bcmath, intl, fileinfo, :amqp, :apcu, :ast, :ds, :enchant, :igbinary, :imagick, :imap, :memcache, :memcached, :mongodb, :msgpack, :pspell, :redis, :sqlsrv, :pdo_sqlsrv, :yaml, :zmq
           coverage: none
       - run: composer install --no-interaction --prefer-dist --no-progress
       - uses: actions/setup-node@v5
