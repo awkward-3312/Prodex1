@@ -11,8 +11,4 @@ cd "$ROOT"
 export APP_ENV=e2e
 export PHP_CLI_SERVER_WORKERS="${PHP_CLI_SERVER_WORKERS:-1}"
 PHP_ARGS=(-d "error_reporting=E_ALL&~E_DEPRECATED" -S "127.0.0.1:${E2E_PORT:-8000}" -t public server.php)
-# Diagnóstico (CI): con E2E_PHP_GDB=1 el servidor corre bajo gdb y, si PHP muere por una señal, imprime el backtrace en el log.
-if [ "${E2E_PHP_GDB:-0}" = "1" ] && command -v gdb >/dev/null 2>&1; then
-  exec gdb -q -batch -ex "handle SIGPIPE nostop noprint pass" -ex run -ex "bt 40" -ex "info sharedlibrary" --args php "${PHP_ARGS[@]}"
-fi
 exec php "${PHP_ARGS[@]}"
