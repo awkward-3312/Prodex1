@@ -66,4 +66,38 @@ async function ensureRegisterClosed(page) {
   await expect(registerPill(page)).toHaveClass(/is-closed/, { timeout: 20_000 });
 }
 
-module.exports = { env, waitForApp, login, apiStatus, openPos, registerPill, ensureRegisterOpen, ensureRegisterClosed };
+/** JSON de un endpoint /api con la sesión del navegador (ver apiStatus). */
+async function apiJson(page, url) {
+  return page.evaluate(async (u) => {
+    const xsrf = decodeURIComponent((document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/) || [])[1] || '');
+    const r = await fetch(u, { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': xsrf } });
+    return r.json();
+  }, url);
+}
+
+/** Cierra el modal superior (p. ej. la factura POS que se abre tras cobrar). */
+async function closeTopModal(page) {
+  await page.locator('.modal.show .close, .modal.show button.close, .modal.show .close-button').first().click();
+  await expect(page.locator('.modal.show')).toHaveCount(0, { timeout: 10_000 });
+}
+
+/** Escribe un SKU en el cuadro de escáner/búsqueda del POS y pulsa Enter (como haría un lector de códigos). */
+async function scanSku(page, sku) {
+  const box = page.getByPlaceholder(/Escanear \/ Buscar producto|Scan|Search/i).first();
+  await box.fill(sku);
+  await box.press('Enter');
+}
+
+/**
+ * Cambia el idioma con el selector real del POS (lo que llama el store: guarda localStorage, el idioma
+ * predeterminado del tenant en el servidor y la cookie de sync-locale). `flag` es el código de la bandera del menú.
+ */
+async function setLanguageViaPosMenu(page, flag, code) {
+  await page.locator('#lang-dd__BV_toggle_').click();
+  const saved = page.waitForResponse((r) => r.url().includes(`/api/languages_setting/set-default/${code}`) && r.request().method() === 'POST');
+  await page.locator(`#lang-dd button:has(img[src$="/flags/${flag}.svg"])`).click();
+  await saved;
+}
+
+module.exports = {
+  apiJson, closeTopModal, scanSku, setLanguageViaPosMenu, env, waitForApp, login, apiStatus, openPos, registerPill, ensureRegisterOpen, ensureRegisterClosed };

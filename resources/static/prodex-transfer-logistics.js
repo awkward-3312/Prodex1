@@ -79,6 +79,15 @@
     if (!state.allowed || document.getElementById('px-transfer-logistics-btn')) return;
     var host = document.querySelector('.main-header .header-part-right.nav-right, .vertical-top-nav .header-part-right.nav-right');
     if (!host) return;
+
+    // El botón se coloca ANTES del menú de notificaciones, que debe ser hijo directo de `host`. En el header del shell
+    // px-next el menú está envuelto en otro .dropdown, así que insertBefore lanzaba NotFoundError (≈11 excepciones por
+    // carga, en cada mutación del DOM) y el botón nunca llegaba a montarse. Se conserva ese comportamiento visible
+    // (sin botón en ese header) pero sin excepción: mostrarlo allí es una decisión de producto, no de esta corrección.
+    var notificationHost = host.querySelector('#notif-dd');
+    var parent = notificationHost && notificationHost.closest ? notificationHost.closest('.dropdown') : null;
+    if (parent && parent.parentNode !== host) return;
+
     var button = document.createElement('button');
     button.id = 'px-transfer-logistics-btn';
     button.type = 'button';
@@ -88,8 +97,6 @@
     button.innerHTML = truckSvg() + '<span class="px-tl-badge" style="display:none"></span>';
     button.addEventListener('click', function () { togglePanel(); });
 
-    var notificationHost = host.querySelector('#notif-dd');
-    var parent = notificationHost && notificationHost.closest ? notificationHost.closest('.dropdown') : null;
     if (parent) host.insertBefore(button, parent);
     else host.appendChild(button);
     updateBadge();

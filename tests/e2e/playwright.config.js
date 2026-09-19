@@ -16,7 +16,9 @@ module.exports = defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
-  workers: isCI ? 2 : 2,
+  // Un solo worker: todos los specs comparten UN tenant demo y varios tocan estado global (caja abierta/cerrada,
+  // idioma del tenant, ventas). En paralelo se pisaban entre sí (p. ej. 07 cerraba la caja mientras 09 cobraba).
+  workers: 1,
   retries: isCI ? 1 : 0,
   forbidOnly: isCI,
   reporter: isCI

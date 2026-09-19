@@ -107,7 +107,6 @@ class ShellDefaultLayoutArchitectureTest extends TestCase
             '/app/pos',
             '/app/kitchen-display',
             '/app/customer-display',
-            '/app/real-time-sales-counter',
             '/app/reports/sales-3d-dashboard',
         ] as $route) {
             $this->assertStringContainsString(
@@ -116,6 +115,15 @@ class ShellDefaultLayoutArchitectureTest extends TestCase
                 "SHELL_EXCLUDED_ROUTES debe seguir excluyendo {$route}"
             );
         }
+
+        // Cambio deliberado (c28e5c07): el contador en tiempo real es una pantalla de consulta y vive DENTRO del
+        // shell. Ya no es fullscreen, así que no debe volver a la lista de exclusiones; su clasificación en el
+        // dominio Ventas la protege ShellDomainCoverageArchitectureTest.
+        $this->assertStringNotContainsString(
+            '"/app/real-time-sales-counter"',
+            $block,
+            'El contador en tiempo real debe renderizarse dentro del shell'
+        );
 
         // PxShellLayout sigue renderizando bare cuando la ruta está excluida.
         $layout = $this->repo('resources/src/containers/layouts/PxShellLayout.vue');

@@ -25,28 +25,6 @@ require __DIR__ . '/../../../vendor/autoload.php';
 $app = require __DIR__ . '/../../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
-/**
- * BASELINE PREEXISTENTE (no se arregla en esta fase): al aprovisionar un tenant desde cero, las migraciones
- * de tenant ya insertan 6 permisos con id 1..6 (transfer_receive, branches_*, ...) y después
- * `PermissionsSeeder` inserta ids 1..244 fijos => "Duplicate entry '1' for key 'permissions.PRIMARY'".
- * Este job de prueba desplaza esas filas a ids altos antes de sembrar, sin tocar el código de producto.
- */
-class E2EProvisionTenantWorkspace extends ProvisionTenantWorkspace
-{
-    protected function seedDatabase(Tenant $tenant, bool $freshDb = true): bool
-    {
-        $tenant->run(function () {
-            if (DB::table('permissions')->where('id', '<=', 244)->exists() && ! DB::table('roles')->exists()) {
-                DB::table('permissions')->orderByDesc('id')->get(['id'])->each(
-                    fn ($row) => DB::table('permissions')->where('id', $row->id)->update(['id' => $row->id + 10000])
-                );
-            }
-        });
-
-        return parent::seedDatabase($tenant, $freshDb);
-    }
-}
-
 function need(string $name): string
 {
     $v = getenv($name);
@@ -116,13 +94,13 @@ if (! $existing) {
         'ends_at' => now()->addYear(),
     ]);
 
-    (new E2EProvisionTenantWorkspace($tenant->id))->handle();
+    (new ProvisionTenantWorkspace($tenant->id))->handle();
     $existing = Tenant::find($tenant->id);
 }
 
 if ($existing->status === Tenant::STATUS_FAILED) {
     // Reintento tras un fallo parcial: el propio job limpia la BD del tenant (solo local, ver guardas arriba).
-    (new E2EProvisionTenantWorkspace($existing->id))->handle();
+    (new ProvisionTenantWorkspace($existing->id))->handle();
     $existing = Tenant::find($existing->id);
 }
 
@@ -131,12 +109,16 @@ if ($existing->status !== Tenant::STATUS_ACTIVE) {
     exit(4);
 }
 
-// El administrador de pruebas debe poder ejercer TODOS los permisos (incluidos los añadidos por migraciones).
+// El permiso `transfer_receive` (pantalla Recepciones) NO se concede a ningún rol por defecto: el propio proyecto documenta
+// que hay que asignarlo explícitamente a un rol. La suite necesita recorrer esa pantalla, así que se asigna al rol del
+// administrador de pruebas, como haría un administrador desde la UI de roles. Es un dato de prueba, no un parche.
 $existing->run(function () {
     $adminRoleId = DB::table('users')->where('id', 1)->value('role_id') ?? 1;
-    $missing = DB::table('permissions')->whereNotIn('id', DB::table('permission_role')->where('role_id', $adminRoleId)->pluck('permission_id'))->pluck('id');
-    foreach ($missing as $permissionId) {
-        DB::table('permission_role')->insert(['permission_id' => $permissionId, 'role_id' => $adminRoleId]);
+    foreach (['transfer_receive', 'transfer_issue_manage'] as $name) {
+        $permissionId = DB::table('permissions')->where('name', $name)->value('id');
+        if ($permissionId && ! DB::table('permission_role')->where(['permission_id' => $permissionId, 'role_id' => $adminRoleId])->exists()) {
+            DB::table('permission_role')->insert(['permission_id' => $permissionId, 'role_id' => $adminRoleId]);
+        }
     }
 });
 
@@ -189,6 +171,23 @@ $existing->run(function () {
 Artisan::call('prodex:seed-demo-tenant', ['tenant' => $domain, '--force' => true]);
 $existing->run(function () {
     DB::table('product_warehouse')->update(['qte' => 100000]);
+
+    // Los E2E también venden con lote y con serial: el demo trae 10 lotes de 10 unidades y 10 seriales, que se
+    // agotarían tras unas corridas. Se amplían con copias de las filas reales (mismos datos, otro número).
+    DB::table('product_batches')->update(['qty' => 100000]);
+    $serial = DB::table('product_serials')->where('serial_number', 'SN-DEMO2-001')->first();
+    if ($serial && ! DB::table('product_serials')->where('serial_number', 'SN-E2E-0001')->exists()) {
+        $rows = [];
+        for ($i = 1; $i <= 300; $i++) {
+            $row = (array) $serial;
+            unset($row['id']);
+            $row['serial_number'] = sprintf('SN-E2E-%04d', $i);
+            $rows[] = $row;
+        }
+        foreach (array_chunk($rows, 100) as $chunk) {
+            DB::table('product_serials')->insert($chunk);
+        }
+    }
 });
 
 echo "OK tenant={$existing->id} domain={$domain}\n";

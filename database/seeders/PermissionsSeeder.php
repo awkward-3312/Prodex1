@@ -14,8 +14,9 @@ class PermissionsSeeder extends Seeder
      */
     public function run()
     {
-        // Insert some stuff
-        DB::table('permissions')->insert(
+        // Catálogo base de permisos. Los ids son el contrato que usa PermissionRoleSeeder; se sincronizan sin
+        // asumir que la tabla está vacía (ver syncPermissions).
+        $this->syncPermissions(
             [[
                 'id' => 1,
                 'name' => 'users_view',
@@ -1068,5 +1069,57 @@ class PermissionsSeeder extends Seeder
 
             ]
         );
+    }
+
+    /**
+     * Inserta el catálogo base de forma idempotente y tolerante a filas previas.
+     *
+     * Al aprovisionar un tenant nuevo, las migraciones de tenant ya insertaron algunos permisos (transfer_receive,
+     * transfer_issue_manage, branches_*) con ids autoincrementales 1..N, ANTES de que corra este seeder. El seeder
+     * necesita sus ids fijos (PermissionRoleSeeder los referencia), así que:
+     *  - si el NOMBRE ya existe (con cualquier id) no se vuelve a insertar: nunca hay permisos duplicados;
+     *  - si el ID está ocupado por otro permiso, ese permiso se reubica a un id libre (conservando nombre, etiqueta,
+     *    descripción y sus asignaciones en permission_role) y el permiso del catálogo toma su id;
+     *  - volver a ejecutarlo en un tenant ya sembrado no cambia nada.
+     *
+     * @param  array<int, array{id:int,name:string}>  $catalog
+     */
+    private function syncPermissions(array $catalog): void
+    {
+        DB::transaction(function () use ($catalog) {
+            $existing = DB::table('permissions')->get()->keyBy('id');
+            $names = $existing->pluck('name')->flip();
+            $nextId = max((int) $existing->keys()->max(), (int) collect($catalog)->max('id')) + 1;
+
+            foreach ($catalog as $permission) {
+                if (isset($names[$permission['name']])) {
+                    continue;
+                }
+
+                $occupant = $existing->get($permission['id']);
+                if ($occupant) {
+                    $this->relocate($occupant, $nextId);
+                    $existing->forget($occupant->id);
+                    $existing->put($nextId, $occupant);
+                    $nextId++;
+                }
+
+                DB::table('permissions')->insert($permission);
+                $existing->put($permission['id'], (object) $permission);
+                $names[$permission['name']] = $permission['id'];
+            }
+        });
+    }
+
+    /** Mueve una fila de permissions a otro id y reapunta permission_role (la FK es RESTRICT, por eso copiar-repuntar-borrar). */
+    private function relocate(object $row, int $newId): void
+    {
+        $copy = (array) $row;
+        $oldId = $copy['id'];
+        $copy['id'] = $newId;
+
+        DB::table('permissions')->insert($copy);
+        DB::table('permission_role')->where('permission_id', $oldId)->update(['permission_id' => $newId]);
+        DB::table('permissions')->where('id', $oldId)->delete();
     }
 }

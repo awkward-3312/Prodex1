@@ -4,25 +4,10 @@
  * documenta POR QUÉ es preexistente y POR QUÉ no se corrige en esta fase (la fase 1 no cambia producto).
  *
  * Al corregir el error en una fase posterior, borra la entrada: la suite volverá a protegerlo.
+ * (`transfer-logistics-insertBefore` ya se corrigió y se eliminó; ver 11-header-widgets.spec.js.)
  * `maxPerTest` acota cuántas veces puede ocurrir; si crece, es una regresión y el test falla.
  */
 module.exports = [
-  {
-    id: 'transfer-logistics-insertBefore',
-    kind: 'pageerror',
-    message: /Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node\./,
-    stack: /prodex-transfer-logistics\.js/,
-    maxPerTest: 300,
-    why:
-      'resources/static/prodex-transfer-logistics.js (función ensureHeaderButton, línea ~93) inserta un botón con ' +
-      'insertBefore() sobre un nodo de referencia que Vue ya movió/reemplazó. Lo dispara un MutationObserver del script ' +
-      'suelto en cada re-render de la cabecera, así que aparece en toda pantalla /app/* (≈11 veces al cargar el panel). ' +
-      'Existe en f138210 (verificado en el worktree limpio). Es una carrera entre el script externo y el DOM de Vue, ' +
-      'exactamente el acoplamiento descrito en la sección 17 (#8) de FRONTEND_MODERNIZATION_AUDIT.md.',
-    notFixedBecause:
-      'Corregirlo exige modificar el script de transferencias (comportamiento de producto), fuera del alcance de la fase 1 ' +
-      '"red de seguridad, sin cambiar comportamiento". Se corregirá al sustituir los scripts sueltos (fase 4 de la auditoría).',
-  },
   {
     id: 'stripe-frame-csp-report-only',
     kind: 'console',

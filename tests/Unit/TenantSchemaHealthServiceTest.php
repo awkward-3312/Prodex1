@@ -118,5 +118,73 @@ class TenantSchemaHealthServiceTest extends TestCase
             $table->integer('store_credit_voucher_id')->nullable();
             $table->decimal('store_credit_amount', 15, 2)->default(0);
         });
+
+        $this->addRequirementsAddedAfterTheOriginalFixture();
+    }
+
+    /**
+     * TenantSchemaHealthService fue ganando requisitos (sucursales, ubicaciones, SAR, asistencia, logística de
+     * transferencias, kardex...) y este fixture de "esquema moderno" no se actualizó, por lo que el test dejó de
+     * representar su contrato: "si el esquema moderno existe, no falta nada". Aquí se completan esos requisitos.
+     * Solo importa que la tabla/columna exista (el servicio usa hasTable/hasColumn); el tipo no se comprueba.
+     */
+    private function addRequirementsAddedAfterTheOriginalFixture(): void
+    {
+        $schema = Schema::connection('tenant');
+
+        $tables = [
+            'cash_register_operations' => ['operation_uuid', 'cash_register_id', 'user_id', 'operation_type', 'amount', 'notes', 'payload_fingerprint', 'source'],
+            'user_branches' => ['user_id', 'branch_id'],
+            'user_inventory_locations' => ['user_id', 'inventory_location_id'],
+            'sar_fiscal_profiles' => ['invoice_settings'],
+            'sar_points_of_issue' => [],
+            'sar_authorizations' => [],
+            'sar_fiscal_documents' => [],
+            'attendance_devices' => [],
+            'attendance_employee_identifiers' => [],
+            'attendance_punches' => [],
+            'transfer_receipts' => ['request_token', 'inventory_location_id'],
+            'transfer_receipt_items' => [],
+            'transfer_receipt_item_batches' => [],
+            'transfer_discrepancies' => ['resolution_code', 'resolution_reference', 'resolution_notes', 'resolution_status', 'resolved_at', 'resolved_by_user_id'],
+            'transfer_quarantine_stock' => ['inventory_location_id'],
+            'transfer_events' => [],
+            'transfer_notifications' => [],
+            'transfer_detail_serials' => ['transfer_detail_id', 'product_serial_id', 'transfer_receipt_item_id', 'status', 'issue_type', 'received_at'],
+            'transfer_receipt_item_batch_issues' => ['transfer_receipt_item_id', 'transfer_detail_batch_id', 'source_batch_id', 'destination_batch_id', 'inventory_location_id', 'issue_type', 'quantity', 'resolved_quantity', 'resolution_status', 'resolution_code', 'resolved_at'],
+            'branches' => ['code', 'name', 'type', 'manager_employee_id', 'default_warehouse_id', 'default_inventory_location_id', 'is_active'],
+            'inventory_locations' => ['branch_id', 'warehouse_id', 'code', 'name', 'type', 'is_sellable', 'is_default_sales', 'is_quarantine', 'is_active'],
+            'inventory_location_stocks' => ['inventory_location_id', 'product_id', 'product_variant_id', 'variant_key', 'quantity', 'reserved_quantity', 'manage_stock'],
+            'inventory_location_movements' => ['movement_type', 'product_id', 'product_variant_id', 'from_inventory_location_id', 'to_inventory_location_id', 'quantity', 'user_id', 'reference_type', 'reference_id', 'idempotency_key', 'idempotency_fingerprint', 'notes', 'metadata'],
+            'inventory_transition_states' => ['warehouse_id', 'inventory_location_id', 'mode', 'status', 'mismatch_count', 'last_audited_at', 'last_reconciled_at', 'shadow_enabled_at', 'metadata'],
+        ];
+
+        foreach ($tables as $table => $columns) {
+            $schema->create($table, function (Blueprint $t) use ($columns) {
+                $t->increments('id');
+                foreach ($columns as $column) {
+                    $t->string($column)->nullable();
+                }
+            });
+        }
+
+        foreach ([
+            'cash_drawers' => ['branch_id', 'inventory_location_id'],
+            'users' => ['default_branch_id', 'default_inventory_location_id', 'employee_id'],
+            'user_operational_assignments' => [
+                'default_branch_id_snapshot', 'default_branch_name_snapshot',
+                'default_inventory_location_id_snapshot', 'default_inventory_location_name_snapshot',
+                'temporary_branch_id', 'temporary_branch_name_snapshot',
+                'temporary_inventory_location_id', 'temporary_inventory_location_name_snapshot',
+            ],
+            'sales' => ['fiscal_exemption_data', 'branch_id', 'inventory_location_id', 'cash_drawer_id', 'inventory_effect_snapshot', 'quotation_id'],
+            'sale_returns' => ['branch_id', 'inventory_location_id', 'cash_drawer_id', 'inventory_effect_snapshot'],
+        ] as $table => $columns) {
+            $schema->table($table, function (Blueprint $t) use ($columns) {
+                foreach ($columns as $column) {
+                    $t->string($column)->nullable();
+                }
+            });
+        }
     }
 }
