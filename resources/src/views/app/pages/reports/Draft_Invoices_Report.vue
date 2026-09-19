@@ -92,12 +92,12 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
-        <template slot="table-row" slot-scope="props">
+        </div></template>
+        <template #table-row="props">
           <span v-if="['GrandTotal','TaxNet','discount','shipping'].includes(props.column.field)">
             {{ money(props.row[props.column.field]) }}
           </span>
@@ -119,7 +119,7 @@
         </template>
 
         <!-- Footer totals -->
-        <template slot="table-actions-bottom">
+        <template #table-actions-bottom>
           <div class="d-flex justify-content-end w-100 pt-2">
             <div class="font-weight-bold">
               {{$t('Totals')}}:

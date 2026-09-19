@@ -85,7 +85,7 @@
 
     <!-- Crear / editar -->
     <px-modal v-model="modalOpen" :title="editing ? 'Editar puesto' : 'Nuevo puesto'" size="md">
-      <validation-observer ref="Create_Designation">
+      <px-validation-observer ref="Create_Designation">
         <form @submit.prevent="save">
           <v-field name="Company" label="Empresa" required :rules="{ required: true }" v-slot="{ invalid, id }">
             <vs-px
@@ -141,7 +141,7 @@
 
           <px-alert v-if="error" tone="danger" class="pxdesig__field">{{ error }}</px-alert>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer="{ close }">
         <span class="pxdesig__grow" />

@@ -17,13 +17,13 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="New_Segment()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
             <lucide-icon name="plus" /> {{ $t('New_Segment') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'all_customers'">
             <span class="badge" :class="props.row.all_customers ? 'badge-outline-success' : 'badge-outline-secondary'">
               {{ props.row.all_customers ? $t('All_Customers') : $t('Specific_Segment') }}
@@ -41,17 +41,17 @@
       </vue-good-table>
     </b-card>
 
-    <validation-observer ref="Segment_Form">
+    <px-validation-observer ref="Segment_Form">
       <b-modal hide-footer size="lg" id="New_Segment" :title="editmode ? $t('Edit_Segment') : $t('New_Segment')">
         <b-form @submit.prevent="Submit_Segment">
           <b-row>
             <b-col md="12">
-              <validation-provider name="name" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="name" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Segment_Name') + ' *'">
                   <b-form-input :state="getValidationState(validationContext)" v-model="segment.name"></b-form-input>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="12">
               <b-form-group :label="$t('Description')">
@@ -119,7 +119,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

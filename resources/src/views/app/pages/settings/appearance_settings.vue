@@ -9,57 +9,57 @@
       <px-skeleton variant="lines" :rows="8" />
     </div>
 
-    <validation-observer v-else ref="form_setting">
+    <px-validation-observer v-else ref="form_setting">
       <form @submit.prevent="Submit_Setting">
         <px-card :title="$t('Appearance_Settings')" class="pxcfg__card">
           <div class="pxcfg__grid pxcfg__grid--3">
-            <validation-provider ref="appNameProvider" name="App Name" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="appNameProvider" name="App Name" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('app_name') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }">
                   <px-input :id="id" v-model="setting.app_name" :invalid="invalid" @input="v.validate" />
                 </template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider ref="titleSuffixProvider" name="Page Title Suffix" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="titleSuffixProvider" name="Page Title Suffix" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('page_title_suffix') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }">
                   <px-input :id="id" v-model="setting.page_title_suffix" :invalid="invalid" @input="v.validate" />
                 </template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider ref="developedByProvider" name="developed by" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="developedByProvider" name="developed by" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('developed_by') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }">
                   <px-input :id="id" v-model="setting.developed_by" :invalid="invalid" @input="v.validate" />
                 </template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider ref="footerProvider" name="footer" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="footerProvider" name="footer" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('footer') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }">
                   <px-input :id="id" v-model="setting.footer" :invalid="invalid" @input="v.validate" />
                 </template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider name="Logo" ref="Logo" rules="mimes:image/*|size:200" v-slot="{ errors }">
+            <px-validation-provider name="Logo" ref="Logo" rules="mimes:image/*|size:200" v-slot="{ errors }">
               <px-field :label="$t('ChangeLogo')" hint="Tamaño máximo del archivo: 200 KB" :error="errors[0]">
                 <template #default="{ id }">
                   <input :id="id" class="pxcfg__file" :class="{ 'is-invalid': !!errors.length }" @change="onFileSelected" type="file" accept="image/*" />
                 </template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider name="Favicon" ref="Favicon" rules="mimes:image/*|size:100" v-slot="{ errors }">
+            <px-validation-provider name="Favicon" ref="Favicon" rules="mimes:image/*|size:100" v-slot="{ errors }">
               <px-field :label="$t('ChangeFavicon')" hint="Tamaño máximo del archivo: 100 KB" :error="errors[0]">
                 <template #default="{ id }">
                   <input :id="id" class="pxcfg__file" :class="{ 'is-invalid': !!errors.length }" @change="onFaviconSelected" type="file" accept="image/*" />
                 </template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
           </div>
 
           <div class="pxcfg__toggles">
@@ -123,7 +123,7 @@
           </template>
         </px-card>
       </form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

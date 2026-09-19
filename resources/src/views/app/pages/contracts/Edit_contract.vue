@@ -3,7 +3,7 @@
     <breadcumb :page="$t('Edit_Contract') || 'Edit Contract'" :folder="$t('Contracts') || 'Contracts'"/>
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
-    <validation-observer ref="ref_edit_contract" v-if="!isLoading && contract">
+    <px-validation-observer ref="ref_edit_contract" v-if="!isLoading && contract">
       <b-form @submit.prevent="Submit_Contract">
         <b-row>
           <b-col lg="12" md="12" sm="12">
@@ -21,7 +21,7 @@
                 </b-col>
 
                 <b-col lg="4" md="6" sm="12" v-if="contract.party_type === 'customer'">
-                  <validation-provider name="Customer" rules="required" v-slot="{ errors }">
+                  <px-validation-provider name="Customer" rules="required" v-slot="{ errors }">
                     <b-form-group :label="$t('Customer') + ' *'">
                       <v-select
                         v-model="contract.client_id"
@@ -32,11 +32,11 @@
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col lg="4" md="6" sm="12" v-else>
-                  <validation-provider name="Employee" rules="required" v-slot="{ errors }">
+                  <px-validation-provider name="Employee" rules="required" v-slot="{ errors }">
                     <b-form-group :label="($t('Employee') || 'Employee') + ' *'">
                       <v-select
                         v-model="contract.employee_id"
@@ -47,7 +47,7 @@
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col lg="4" md="6" sm="12">
@@ -68,20 +68,20 @@
                 </b-col>
 
                 <b-col lg="6" md="6" sm="12">
-                  <validation-provider name="Subject" rules="required" v-slot="{ errors }">
+                  <px-validation-provider name="Subject" rules="required" v-slot="{ errors }">
                     <b-form-group :label="$t('Subject') + ' *'">
                       <b-form-input v-model="contract.subject" :state="errors[0] ? false : null" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
                 <b-col lg="3" md="6" sm="12">
-                  <validation-provider name="Value" rules="required" v-slot="{ errors }">
+                  <px-validation-provider name="Value" rules="required" v-slot="{ errors }">
                     <b-form-group label="Value (USD) *">
                       <b-form-input v-model.number="contract.value" type="number" step="0.01" min="0" :state="errors[0] ? false : null" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
                 <b-col lg="3" md="6" sm="12">
                   <b-form-group :label="$t('Type') || 'Type'">
@@ -95,23 +95,23 @@
                 </b-col>
 
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="Start date" rules="required" v-slot="{ errors }">
+                  <px-validation-provider name="Start date" rules="required" v-slot="{ errors }">
                     <b-form-group :label="$t('start_date') + ' *'">
                       <b-form-input v-model="contract.start_date" type="date" :state="errors[0] ? false : null" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="End date" rules="required" v-slot="{ errors }">
+                  <px-validation-provider name="End date" rules="required" v-slot="{ errors }">
                     <b-form-group :label="$t('Finish_Date') + ' *'">
                       <b-form-input v-model="contract.end_date" type="date" :state="errors[0] ? false : null" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="Status" rules="required" v-slot="{ errors }">
+                  <px-validation-provider name="Status" rules="required" v-slot="{ errors }">
                     <b-form-group :label="$t('Status') + ' *'">
                       <v-select
                         v-model="contract.status"
@@ -121,7 +121,7 @@
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col lg="12">
@@ -144,7 +144,7 @@
           </b-col>
         </b-row>
       </b-form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

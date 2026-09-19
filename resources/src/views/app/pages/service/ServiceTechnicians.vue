@@ -53,7 +53,7 @@
               :pagination-options="{ enabled: true, mode: 'records' }"
               styleClass="tableOne vgt-table"
             >
-              <template slot="table-row" slot-scope="props">
+              <template #table-row="props">
                 <span v-if="props.column.field === 'actions'">
                   <b-button
                     size="sm"

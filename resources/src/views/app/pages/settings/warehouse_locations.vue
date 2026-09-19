@@ -41,7 +41,7 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev', perPage: serverParams.perPage, setCurrentPage: serverParams.page }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'is_active'">
             <span
               class="badge"

@@ -67,7 +67,7 @@
 
     <!-- Crear / editar -->
     <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
-      <validation-observer ref="Create_Type">
+      <px-validation-observer ref="Create_Type">
         <form @submit.prevent="Submit_Type">
           <v-field
             name="title"
@@ -79,7 +79,7 @@
             <px-input :id="id" v-model="leave_type.title" :placeholder="$t('Enter_title')" :invalid="invalid" />
           </v-field>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer="{ close }">
         <span class="pxlt__grow" />

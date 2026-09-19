@@ -23,7 +23,7 @@
     <b-tabs v-model="activeTab" content-class="mt-3" @input="onTabChanged">
       <!-- Stocky Customers Tab -->
       <b-tab title="Stocky Customers" active>
-        <template slot="title">
+        <template #title>
           <lucide-icon class="mr-2" name="user" />
           Stocky Customers
           <span v-if="loadingStockyTab" class="mini-spinner ml-2"></span>
@@ -111,7 +111,7 @@
             }"
             styleClass="tableOne table-hover vgt-table"
           >
-            <template slot="table-row" slot-scope="props">
+            <template #table-row="props">
                 <span v-if="props.column.field === 'sync_status'">
                   <b-badge v-if="props.row.woocommerce_id && parseInt(props.row.woocommerce_id, 10) > 0" variant="success">
                     <lucide-icon class="mr-1" name="check-check" /> Synced
@@ -143,7 +143,7 @@
 
       <!-- WooCommerce Customers Tab -->
       <b-tab title="WooCommerce Customers">
-        <template slot="title">
+        <template #title>
           <lucide-icon class="mr-2" name="shopping-bag" />
           WooCommerce Customers
           <span v-if="loadingWooTab" class="mini-spinner ml-2"></span>
@@ -231,7 +231,7 @@
             }"
             styleClass="tableOne table-hover vgt-table"
           >
-            <template slot="table-row" slot-scope="props">
+            <template #table-row="props">
               <span v-if="props.column.field === 'sync_status'">
                 <b-badge v-if="props.row.sync_status === 'synced'" variant="success">
                   <lucide-icon class="mr-1" name="check-check" /> Synced
@@ -263,7 +263,7 @@
 
       <!-- Sync Issues Tab -->
       <b-tab>
-        <template slot="title">
+        <template #title>
           <lucide-icon class="mr-2" name="alert-triangle" />
           Sync Issues
           <span v-if="loadingIssuesTab" class="mini-spinner ml-2"></span>
@@ -298,7 +298,7 @@
             }"
             styleClass="tableOne table-hover vgt-table"
           >
-            <template slot="table-row" slot-scope="props">
+            <template #table-row="props">
               <span v-if="props.column.field === 'sync_issue_type_label'">
                 <b-badge variant="warning">{{ issueTypeLabel(props.row.sync_issue_type) }}</b-badge>
               </span>

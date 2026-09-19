@@ -22,4 +22,17 @@ module.exports = [
       'Ajustar la CSP (añadir frame-src/script-src de Stripe) es un cambio de seguridad de producto, fuera de la fase 1. ' +
       'Debe revisarlo quien defina la política CSP; hasta entonces el aviso es inocuo (report-only).',
   },
+  {
+    id: 'product-without-image-404',
+    kind: 'http',
+    message: /^HTTP 404 GET \/images\/tenants\/[0-9a-f-]+\/products\/$/,
+    maxPerTest: 3,
+    why:
+      'La lista clásica de productos (/app/products/list-classic, columna `image` de vue-good-table) pide ' +
+      "`$imgUrl('products', row.image)`; un producto sin imagen produce la URL de la carpeta (404). Existe igual en 9b79172 " +
+      '(la plantilla de esa celda no cambió, solo la sintaxis de slot).',
+    notFixedBecause:
+      'Es una petición de imagen vacía en una vista clásica; corregirla (placeholder / no renderizar <img>) es un cambio de producto, ' +
+      'fuera de esta fase de compatibilidad.',
+  },
 ];

@@ -26,14 +26,14 @@
         styleClass="tableOne vgt-table"
       >
         <!-- selected actions -->
-        <div slot="selected-row-actions" v-if="can('products_delete')">
+        <template v-if="can('products_delete')" #selected-row-actions><div>
           <button class="btn btn-sm btn-outline-danger" @click="delete_by_selected()">
             <lucide-icon name="trash-2" /> {{$t('Del')}}
           </button>
-        </div>
+        </div></template>
 
         <!-- table actions -->
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -71,10 +71,10 @@
             <lucide-icon name="plus" />
             {{$t('Add')}}
           </router-link>
-        </div>
+        </div></template>
 
         <!-- SAFE rendering: never v-html for user text -->
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <!-- actions -->
           <span v-if="props.column.field === 'actions'" class="action-cell">
             <router-link

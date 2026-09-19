@@ -15,7 +15,7 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
-        <div slot="table-actions" class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+        <template #table-actions><div class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
           <b-form-group :label="$t('Action')" style="min-width:200px;">
             <v-select @input="loadItems(1)" v-model="action" :reduce="l => l.value"
               :placeholder="$t('Action')" :options="actionOptions" />
@@ -30,9 +30,9 @@
             :file-name="'serial_movements'" :file-type="'xlsx'" :sheet-name="'serial_movements'">
             <lucide-icon name="file-spreadsheet" /> EXCEL
           </vue-excel-xlsx>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'action'">{{ actionLabel(props.row.action) }}</span>
           <span v-else-if="props.column.field == 'transition'">
             <span v-if="props.row.from_status" class="text-muted">{{ statusLabel(props.row.from_status) }} &rarr; </span>

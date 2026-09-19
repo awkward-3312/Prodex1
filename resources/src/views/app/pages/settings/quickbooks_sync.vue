@@ -54,7 +54,7 @@
       <!-- ================= Settings ================= -->
       <div v-show="qbTab === 'settings'" class="pxcfg__panel">
         <px-card :title="$t('Settings')" class="pxcfg__card">
-          <validation-observer ref="qb_settings">
+          <px-validation-observer ref="qb_settings">
             <form @submit.prevent="save">
               <div class="pxcfg__formgrid">
                 <px-field :label="$t('Client_ID')" :hint="$t('From_Intuit_Keys_Identifies_App') + ' ' + $t('Paste_value_exactly_as_in_app_keys')">
@@ -89,7 +89,7 @@
                 </px-field>
               </div>
             </form>
-          </validation-observer>
+          </px-validation-observer>
           <template #footer>
             <px-button variant="primary" icon="check" :disabled="busy" @click="save">{{ $t('Save') }}</px-button>
           </template>
@@ -136,7 +136,7 @@
                 :placeholder="$t('Search_unsynced_by_name_email')"
                 icon-lead="search"
                 @input="v => search = tv(v)"
-                @keyup.native.enter="loadUnsynced(1)"
+                @keyup.enter="loadUnsynced(1)"
               />
               <px-button variant="secondary" size="sm" @click="loadUnsynced(1)">{{ $t('Search') }}</px-button>
             </div>

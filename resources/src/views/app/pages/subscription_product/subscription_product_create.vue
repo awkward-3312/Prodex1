@@ -23,7 +23,7 @@
                  <!-- client -->
                  <b-col lg="4" md="6" sm="12">
                   <validation-provider name="client" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Customer') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Customer') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -33,14 +33,14 @@
                         :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- warehouse -->
                 <b-col lg="4" md="6" sm="12">
                   <validation-provider name="warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('warehouse') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -50,14 +50,14 @@
                         :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                  <!-- product -->
                  <b-col lg="4" md="6" sm="12">
                   <validation-provider name="product" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('ProductName') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('ProductName') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -67,7 +67,7 @@
                         :options="products.map(products => ({label: products.name, value: products.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 

@@ -59,15 +59,15 @@
     </template>
 
     <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="lg">
-      <validation-observer ref="ref_create_webhook">
+      <px-validation-observer ref="ref_create_webhook">
         <form @submit.prevent="Submit_webhook">
           <div class="pxcfg__formgrid">
             <div class="pxcfg__grid">
-              <validation-provider ref="nameProvider" name="Name" :rules="{ required: true }" v-slot="v">
+              <px-validation-provider ref="nameProvider" name="Name" :rules="{ required: true }" v-slot="v">
                 <px-field :label="$t('Name') + ' *'" :error="v.errors[0]">
                   <template #default="{ id, invalid }"><px-input :id="id" v-model="webhook.name" :invalid="invalid" @input="v.validate" /></template>
                 </px-field>
-              </validation-provider>
+              </px-validation-provider>
               <px-field :label="$t('Status')">
                 <template #default>
                   <px-check type="switch" :modelValue="!!webhook.is_active" @change="v => webhook.is_active = v">
@@ -77,11 +77,11 @@
               </px-field>
             </div>
 
-            <validation-provider ref="urlProvider" name="URL" :rules="{ required: true, url: true }" v-slot="v">
+            <px-validation-provider ref="urlProvider" name="URL" :rules="{ required: true, url: true }" v-slot="v">
               <px-field :label="$t('URL') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="webhook.url" placeholder="https://example.com/webhook" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
             <px-field :label="$t('Events') + ' *'">
               <template #default>
@@ -111,7 +111,7 @@
             </div>
           </div>
         </form>
-      </validation-observer>
+      </px-validation-observer>
       <template #footer="{ close }">
         <px-button variant="ghost" @click="close">{{ $t('Cancel') }}</px-button>
         <px-button variant="primary" icon="check" :loading="SubmitProcessing" :disabled="SubmitProcessing" @click="Submit_webhook">{{ $t('submit') }}</px-button>

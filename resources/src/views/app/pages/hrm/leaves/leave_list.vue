@@ -118,7 +118,7 @@
 
     <!-- Crear / editar -->
     <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="lg">
-      <validation-observer ref="Create_Leave">
+      <px-validation-observer ref="Create_Leave">
         <form @submit.prevent="Submit_Leave">
           <div class="pxlv__grid">
             <v-field name="Company" :label="$t('Company')" required :rules="{ required: true }" v-slot="{ invalid, id }">
@@ -187,7 +187,7 @@
               <px-select :id="id" v-model="leave.status" :options="statusOptions" :placeholder="$t('Choose_status')" :invalid="invalid" />
             </v-field>
 
-            <validation-provider name="Attachment" ref="Attachment" rules="mimes:image/*|size:2048" v-slot="{ errors }">
+            <px-validation-provider name="Attachment" ref="Attachment" rules="mimes:image/*|size:2048" v-slot="{ errors }">
               <px-field :label="$t('Attachment')">
                 <template #default>
                   <div class="pxlv__file" :class="{ 'is-over': attachmentDragOver }"
@@ -204,7 +204,7 @@
                 </template>
               </px-field>
               <px-alert v-if="errors.length" tone="danger" class="pxlv__field">{{ errors[0] }}</px-alert>
-            </validation-provider>
+            </px-validation-provider>
           </div>
 
           <px-field :label="$t('Leave_Reason')" class="pxlv__field">
@@ -213,7 +213,7 @@
             </template>
           </px-field>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer="{ close }">
         <span class="pxlv__grow" />

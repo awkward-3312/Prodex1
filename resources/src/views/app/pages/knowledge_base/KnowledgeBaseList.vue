@@ -17,7 +17,7 @@
             icon-lead="search"
             placeholder="Ej.: crear producto, cerrar caja, CAI..."
             @input="v => searchQ = tv(v)"
-            @keyup.native.enter="search"
+            @keyup.enter="search"
           />
           <px-button variant="primary" :loading="loading" :disabled="loading" @click="search">Buscar</px-button>
         </div>

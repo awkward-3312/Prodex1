@@ -106,7 +106,7 @@
 
     <!-- Crear / editar -->
     <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
-      <validation-observer ref="Create_Application">
+      <px-validation-observer ref="Create_Application">
         <form @submit.prevent="Submit_Application">
           <v-field name="candidate" :label="$t('Candidate')" required :rules="{ required: true }" v-slot="{ invalid, id }">
             <vs-px
@@ -161,7 +161,7 @@
             </template>
           </px-field>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer="{ close }">
         <span class="pxapps__grow" />

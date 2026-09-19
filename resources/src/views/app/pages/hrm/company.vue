@@ -80,7 +80,7 @@
 
     <!-- Crear / editar -->
     <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
-      <validation-observer ref="Create_Company">
+      <px-validation-observer ref="Create_Company">
         <form @submit.prevent="Submit_Company">
           <v-field name="Name" :label="$t('Name')" required :rules="{ required: true }" v-slot="{ invalid, id }">
             <px-input :id="id" v-model="company.name" :placeholder="$t('Enter_Company_Name')" :invalid="invalid" />
@@ -104,7 +104,7 @@
             </template>
           </px-field>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer="{ close }">
         <span class="pxcompany__grow" />

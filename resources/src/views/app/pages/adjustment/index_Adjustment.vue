@@ -26,7 +26,7 @@
         styleClass="table-hover tableOne vgt-table"
       >
       
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -54,9 +54,9 @@
             </span>
             <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
           </router-link>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
 
 

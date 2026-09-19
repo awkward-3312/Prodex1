@@ -3,7 +3,7 @@
     <breadcumb :page="$t('Add_Employee')" :folder="$t('Employees')"/>
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
-    <validation-observer ref="Create_Employee" v-if="!isLoading">
+    <px-validation-observer ref="Create_Employee" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Employee">
         <b-row>
           <b-col lg="9" md="12">
@@ -15,30 +15,30 @@
 
               <b-row>
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="FirstName" :rules="{required:true}" v-slot="validationContext">
+                  <px-validation-provider name="FirstName" :rules="{required:true}" v-slot="validationContext">
                     <b-form-group :label="$t('FirstName') + ' *'">
                       <b-form-input :state="getValidationState(validationContext)" v-model="employee.firstname" :placeholder="$t('Enter_FirstName')"/>
                       <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="LastName" :rules="{required:true}" v-slot="validationContext">
+                  <px-validation-provider name="LastName" :rules="{required:true}" v-slot="validationContext">
                     <b-form-group :label="$t('LastName') + ' *'">
                       <b-form-input :state="getValidationState(validationContext)" v-model="employee.lastname" :placeholder="$t('Enter_LastName')"/>
                       <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Gender" :rules="{required:true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Gender') + ' *'">
+                  <px-validation-provider name="Gender" :rules="{required:true}">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Gender') + ' *'">
                       <v-select :class="{'is-invalid': !!errors.length}" :state="errors[0] ? false : (valid ? true : null)" v-model="employee.gender" :reduce="o => o.value" :options="genderOptions" :placeholder="$t('Choose_Gender')"/>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="6" class="mb-2">
@@ -80,12 +80,12 @@
 
               <b-row>
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Company" :rules="{required:true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Company') + ' *'">
+                  <px-validation-provider name="Company" :rules="{required:true}">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Company') + ' *'">
                       <v-select :class="{'is-invalid': !!errors.length}" :state="errors[0] ? false : (valid ? true : null)" v-model="employee.company_id" @input="Selected_Company" :reduce="o => o.value" :options="companyOptions" :placeholder="$t('Choose_Company')"/>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="6" class="mb-2">
@@ -96,31 +96,31 @@
                 </b-col>
 
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Department" :rules="{required:true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Department') + ' *'">
+                  <px-validation-provider name="Department" :rules="{required:true}">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Department') + ' *'">
                       <v-select :class="{'is-invalid': !!errors.length}" :state="errors[0] ? false : (valid ? true : null)" v-model="employee.department_id" @input="Selected_Department" :reduce="o => o.value" :options="departmentOptions" :placeholder="$t('Department')"/>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Designation" :rules="{required:true}">
-                    <b-form-group slot-scope="{ valid, errors }" label="Puesto laboral *">
+                  <px-validation-provider name="Designation" :rules="{required:true}">
+                    <template #default="{ valid, errors }"><b-form-group label="Puesto laboral *">
                       <v-select :class="{'is-invalid': !!errors.length}" :state="errors[0] ? false : (valid ? true : null)" v-model="employee.designation_id" :reduce="o => o.value" :options="designationOptions" placeholder="Seleccionar puesto"/>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                       <small class="text-muted">Los puestos predeterminados y personalizados se administran en Gestión de personal → Puestos.</small>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Office_Shift" :rules="{required:true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Office_Shift') + ' *'">
+                  <px-validation-provider name="Office_Shift" :rules="{required:true}">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Office_Shift') + ' *'">
                       <v-select :class="{'is-invalid': !!errors.length}" :state="errors[0] ? false : (valid ? true : null)" v-model="employee.office_shift_id" :reduce="o => o.value" :options="shiftOptions" :placeholder="$t('Choose_Office_Shift')"/>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
               </b-row>
             </b-card>
@@ -132,7 +132,7 @@
           </b-col>
         </b-row>
       </b-form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

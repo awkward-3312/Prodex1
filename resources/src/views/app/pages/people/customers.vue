@@ -38,10 +38,10 @@
       }"
        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >
-        <div slot="selected-row-actions" v-if="currentUserPermissions.includes('Customers_delete')">
+        <template v-if="currentUserPermissions.includes('Customers_delete')" #selected-row-actions><div>
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -76,9 +76,9 @@
             <lucide-icon name="plus" />
             {{$t('Add')}}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'opening_balance'">
             <span :class="props.row.opening_balance > 0 ? 'text-danger font-weight-bold' : ''">
               {{ formatPriceWithSymbol(currentUser.currency, props.row.opening_balance || 0, 2) }}
@@ -328,7 +328,7 @@
       id="modal_Pay_due"
       title="Pay Due"
     >
-      <validation-observer ref="ref_pay_due">
+      <px-validation-observer ref="ref_pay_due">
         <b-form @submit.prevent="Submit_Payment_sell_due">
           <b-row>
             <!-- Customer Name -->
@@ -406,7 +406,7 @@
           
             <!-- Paying Amount  -->
             <b-col lg="12" md="12" sm="12" class="mt-3">
-              <validation-provider
+              <px-validation-provider
                 name="Amount"
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
                 v-slot="validationContext"
@@ -425,14 +425,14 @@
                     Maximum payment: <strong>{{ formatPriceWithSymbol(currentUser.currency, totalDue, 2) }}</strong>
                   </small>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
 
              <!-- Payment choice -->
              <b-col lg="12" md="12" sm="12">
-              <validation-provider name="Payment choice" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')+ ' ' + '*'">
+              <px-validation-provider name="Payment choice" :rules="{ required: true}">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Paymentchoice')+ ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -443,14 +443,14 @@
 
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
              <!-- Account -->
              <b-col lg="12" md="6" sm="12">
-              <validation-provider name="Account">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
+              <px-validation-provider name="Account">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Account')">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -460,8 +460,8 @@
                     :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
                   />
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
             <!-- Note -->
@@ -484,11 +484,11 @@
 
           </b-row>
         </b-form>
-      </validation-observer>
+      </px-validation-observer>
     </b-modal>
 
     <!-- Modal Pay_return_Due-->
-    <validation-observer ref="ref_pay_return_due">
+    <px-validation-observer ref="ref_pay_return_due">
       <b-modal
         hide-footer
         size="md"
@@ -500,7 +500,7 @@
           
             <!-- Paying Amount -->
             <b-col lg="12" md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="Amount"
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
                 v-slot="validationContext"
@@ -517,14 +517,14 @@
                   <b-form-invalid-feedback id="Amount-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   <span class="badge badge-danger">{{$t('Due')}} : {{currentUser.currency}} {{payment_return.return_Due}}</span>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
 
             <!-- Payment choice -->
             <b-col lg="12" md="12" sm="12">
-              <validation-provider name="Payment choice" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')+ ' ' + '*'">
+              <px-validation-provider name="Payment choice" :rules="{ required: true}">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Paymentchoice')+ ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -535,14 +535,14 @@
 
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
             <!-- Account -->
             <b-col lg="12" md="12" sm="12">
-              <validation-provider name="Account">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
+              <px-validation-provider name="Account">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Account')">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -552,8 +552,8 @@
                     :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
                   />
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
             <!-- Note -->
@@ -577,7 +577,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
 
     <!-- Modal Show Customer_Invoice-->
     <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Customer_Credit_Note')">
@@ -840,7 +840,7 @@
     </b-modal>
 
      <!-- Modal edit store account for Customer -->
-     <validation-observer ref="Edit_Online_Store_Account">
+     <px-validation-observer ref="Edit_Online_Store_Account">
       <b-modal hide-footer size="md" id="form_Edit_Online_Store_Account" title="Edit Store Account">
         <b-form @submit.prevent="Submit_Edit_Online_Store_Account">
           <b-row>
@@ -849,7 +849,7 @@
             </b-col>
             <!-- Customer email -->
             <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="email Customer"
                 :rules="{ required: true, email: true }"
                 v-slot="validationContext"
@@ -870,12 +870,12 @@
                     v-if="email_exist !=''"
                   >{{email_exist}}</b-alert>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
              <!-- New Password -->
              <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="New password"
                 :rules="{min:6 , max:14}"
                 v-slot="validationContext"
@@ -892,7 +892,7 @@
                     id="Nawpassword-feedback"
                   >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
           
 
@@ -906,7 +906,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
 
     <!-- Portal Client Modal -->
     <b-modal

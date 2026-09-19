@@ -45,7 +45,7 @@
         @on-sort-change="onSortChange"
         styleClass="table-hover tableOne vgt-table"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'is_read'">
             <b-badge :variant="props.row.is_read ? 'secondary' : 'warning'">
               {{ props.row.is_read ? $t('Read') : $t('Unread') }}

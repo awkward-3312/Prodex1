@@ -39,7 +39,7 @@
         }"
         :styleClass="showDropdown ? 'tableOne table-hover vgt-table full-height' : 'tableOne table-hover vgt-table non-height'"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'actions'">
             <b-button size="sm" variant="outline-primary" class="mr-2" @click="editAccount(props.row)">
               <lucide-icon class="me-1" name="pencil" /> {{ $t('Edit') }}
@@ -53,7 +53,7 @@
     </div>
 
     <!-- Edit Ecommerce Account Modal -->
-    <validation-observer ref="Edit_Account">
+    <px-validation-observer ref="Edit_Account">
       <b-modal hide-footer size="md" id="Edit_Ecommerce_Account" :title="$t('Edit') + ' - ' + (form.client_name || '')">
         <b-form @submit.prevent="submitAccount">
           <b-row>
@@ -66,7 +66,7 @@
 
             <!-- Email -->
             <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="Email"
                 rules="required|email"
                 v-slot="validationContext"
@@ -91,12 +91,12 @@
                     {{ email_exist }}
                   </b-alert>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <!-- Password -->
             <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="password"
                 :rules="{ min: 6, max: 32 }"
                 v-slot="validationContext"
@@ -121,7 +121,7 @@
                     {{ showPassword ? 'Hide' : 'Show' }}
                   </b-button>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <!-- Status -->
@@ -144,7 +144,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

@@ -57,12 +57,12 @@
         @on-page-change="onPageChange"
         @on-per-page-change="onPerPageChange"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
-        <template slot="table-row" slot-scope="p">
+        </div></template>
+        <template #table-row="p">
           <span v-if="p.column.field==='quantity'" class="text-danger">{{ p.row.quantity }}</span>
           <span v-else>{{ p.formattedRow[p.column.field] }}</span>
         </template>

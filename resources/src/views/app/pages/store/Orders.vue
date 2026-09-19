@@ -57,13 +57,13 @@
         @on-sort-change="onSortChange"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button size="sm" class="btn-rounded" variant="btn btn-outline-secondary" @click="clearFilters">
             <lucide-icon name="refresh-cw" /> {{ $t('Clear') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <!-- Status -->
           <span v-if="props.column.field === 'status'">
             <b-badge :variant="badgeVariant(props.row.status)">{{ props.row.status }}</b-badge>

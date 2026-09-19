@@ -81,7 +81,7 @@
           :pagination-options="{ enabled: true, mode: 'records' }"
           styleClass="vgt-table table-hover"
         >
-          <template slot="table-row" slot-scope="props">
+          <template #table-row="props">
             <span v-if="props.column.field === 'actions'">
               <router-link :to="'/app/contracts/view/' + props.row.id" class="btn btn-sm btn-info mr-1" title="View"><lucide-icon name="eye" /></router-link>
               <router-link :to="'/app/contracts/edit/' + props.row.id" class="btn btn-sm btn-primary mr-1" title="Edit"><lucide-icon name="pencil" /></router-link>

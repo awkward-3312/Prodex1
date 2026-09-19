@@ -30,7 +30,7 @@
         </px-field>
 
         <px-field label="Número de sesión">
-          <template #default="{ id }"><px-input :id="id" v-model="filters.register_id" placeholder="Ej. 25" @keyup.native.enter="getData(1)" /></template>
+          <template #default="{ id }"><px-input :id="id" v-model="filters.register_id" placeholder="Ej. 25" @keyup.enter="getData(1)" /></template>
         </px-field>
 
         <px-field :label="$t('Cashier')">

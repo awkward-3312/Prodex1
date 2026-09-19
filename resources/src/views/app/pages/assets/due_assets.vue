@@ -126,7 +126,7 @@
             :pagination-options="{ enabled: true, perPage: 10, perPageDropdown: [10, 20, 50] }"
             styleClass="tableOne vgt-table due-assets-table">
 
-            <template slot="table-row" slot-scope="props">
+            <template #table-row="props">
               <span v-if="props.column.field == 'next_validation'">
                 <span :class="getValidationBadgeClass(props)">
                   {{ getValidationBadgeLabel(props) }}

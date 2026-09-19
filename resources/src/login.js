@@ -1,8 +1,7 @@
 import store from "./store";
 import Vue from "vue";
 import router, { setupRouterGuards } from "./router";
-import { ValidationObserver, ValidationProvider, extend, localize } from 'vee-validate';
-import * as rules from "vee-validate/dist/rules";
+import { installValidation } from './platform/validation';
 import BootstrapVue from 'bootstrap-vue/dist/bootstrap-vue.esm';
 Vue.use(BootstrapVue);
 
@@ -30,28 +29,7 @@ Vue.use(Meta, {
   refreshOnceOnNavigation: true
 });
 
-localize({
-  es: {
-    messages: {
-      required: 'Este campo es obligatorio',
-      required_if: 'Este campo es obligatorio',
-      regex: 'Este campo debe tener un formato válido',
-      mimes: 'Este archivo debe tener un tipo válido',
-      size: (_, { size }) => `El tamaño del archivo debe ser menor de ${size}`,
-      min: 'Este campo debe tener al menos {length} caracteres',
-      max: (_, { length }) => `Este campo no puede tener más de ${length} caracteres`
-    }
-  },
-});
-localize('es');
-// Install VeeValidate rules and localization
-Object.keys(rules).forEach(rule => {
-  extend(rule, rules[rule]);
-});
-
-// Register it globally
-Vue.component("ValidationObserver", ValidationObserver);
-Vue.component('ValidationProvider', ValidationProvider);
+installValidation(Vue);
 
 window.axios = require('axios');
 window.axios.defaults.baseURL = '';

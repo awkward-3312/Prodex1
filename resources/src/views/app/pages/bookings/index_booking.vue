@@ -67,7 +67,7 @@
           }"
           styleClass="modern-table table-hover vgt-table"
         >
-          <template slot="table-row" slot-scope="props">
+          <template #table-row="props">
             <!-- Actions -->
             <span v-if="props.column.field === 'actions'">
               <div class="action-buttons-cell">

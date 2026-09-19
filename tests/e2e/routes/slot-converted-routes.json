@@ -1,0 +1,337 @@
+{
+  "_readme": "Rutas tenant sin parámetros cuya vista tuvo slots migrados a v-slot (fase compat). Generado a partir del snapshot de rutas.",
+  "routes": [
+    {
+      "path": "/app/dashboard/legacy",
+      "file": "resources/src/views/app/dashboard/dashboard.vue"
+    },
+    {
+      "path": "/app/whatsapp/templates",
+      "file": "resources/src/views/app/pages/whatsapp/templates/index.vue"
+    },
+    {
+      "path": "/app/whatsapp/logs",
+      "file": "resources/src/views/app/pages/whatsapp/Logs.vue"
+    },
+    {
+      "path": "/app/products/list-classic",
+      "file": "resources/src/views/app/pages/products/index_products.vue"
+    },
+    {
+      "path": "/app/products/store-classic",
+      "file": "resources/src/views/app/pages/products/Add_product.vue"
+    },
+    {
+      "path": "/app/products/count_stock-classic",
+      "file": "resources/src/views/app/pages/products/count_stock.vue"
+    },
+    {
+      "path": "/app/products/Batches-classic",
+      "file": "resources/src/views/app/pages/products/batches.vue"
+    },
+    {
+      "path": "/app/serial_numbers/list-classic",
+      "file": "resources/src/views/app/pages/serial_numbers/list.vue"
+    },
+    {
+      "path": "/app/adjustments/list-classic",
+      "file": "resources/src/views/app/pages/adjustment/index_Adjustment.vue"
+    },
+    {
+      "path": "/app/adjustments/store-classic",
+      "file": "resources/src/views/app/pages/adjustment/Create_Adjustment.vue"
+    },
+    {
+      "path": "/app/damages/list-classic",
+      "file": "resources/src/views/app/pages/damage/index_Damage.vue"
+    },
+    {
+      "path": "/app/damages/store-classic",
+      "file": "resources/src/views/app/pages/damage/Create_Damage.vue"
+    },
+    {
+      "path": "/app/transfers/list-classic",
+      "file": "resources/src/views/app/pages/transfers/index_transfer.vue"
+    },
+    {
+      "path": "/app/transfers/store-classic",
+      "file": "resources/src/views/app/pages/transfers/create_transfer.vue"
+    },
+    {
+      "path": "/app/projects/list",
+      "file": "resources/src/views/app/pages/projects/index_project.vue"
+    },
+    {
+      "path": "/app/projects/store",
+      "file": "resources/src/views/app/pages/projects/store_project.vue"
+    },
+    {
+      "path": "/app/contracts/list",
+      "file": "resources/src/views/app/pages/contracts/index_contract.vue"
+    },
+    {
+      "path": "/app/tasks/list",
+      "file": "resources/src/views/app/pages/tasks/index_task.vue"
+    },
+    {
+      "path": "/app/tasks/store",
+      "file": "resources/src/views/app/pages/tasks/store_task.vue"
+    },
+    {
+      "path": "/app/bookings/list",
+      "file": "resources/src/views/app/pages/bookings/index_booking.vue"
+    },
+    {
+      "path": "/app/assets/list",
+      "file": "resources/src/views/app/pages/assets/index_asset.vue"
+    },
+    {
+      "path": "/app/assets/category",
+      "file": "resources/src/views/app/pages/assets/index_asset_category.vue"
+    },
+    {
+      "path": "/app/assets/due",
+      "file": "resources/src/views/app/pages/assets/due_assets.vue"
+    },
+    {
+      "path": "/app/service/jobs",
+      "file": "resources/src/views/app/pages/service/ServiceJobsList.vue"
+    },
+    {
+      "path": "/app/service/checklist-categories",
+      "file": "resources/src/views/app/pages/service/ServiceChecklistCategories.vue"
+    },
+    {
+      "path": "/app/service/checklists",
+      "file": "resources/src/views/app/pages/service/ServiceChecklists.vue"
+    },
+    {
+      "path": "/app/service/technicians",
+      "file": "resources/src/views/app/pages/service/ServiceTechnicians.vue"
+    },
+    {
+      "path": "/app/service/history",
+      "file": "resources/src/views/app/pages/service/CustomerMaintenanceHistory.vue"
+    },
+    {
+      "path": "/app/support/tickets",
+      "file": "resources/src/views/app/pages/support/TicketsList.vue"
+    },
+    {
+      "path": "/app/sales/store",
+      "file": "resources/src/views/app/pages/sales/create_sale.vue"
+    },
+    {
+      "path": "/app/hrm/employees/list",
+      "file": "resources/src/views/app/pages/hrm/employees/index_employee.vue"
+    },
+    {
+      "path": "/app/hrm/employees/store",
+      "file": "resources/src/views/app/pages/hrm/employees/employee_create.vue"
+    },
+    {
+      "path": "/app/hrm/payrolls",
+      "file": "resources/src/views/app/pages/hrm/payrolls.vue"
+    },
+    {
+      "path": "/app/meeting/meetings",
+      "file": "resources/src/views/app/pages/meeting/meetings.vue"
+    },
+    {
+      "path": "/app/marketing/campaigns",
+      "file": "resources/src/views/app/pages/marketing/campaigns.vue"
+    },
+    {
+      "path": "/app/marketing/segments",
+      "file": "resources/src/views/app/pages/marketing/segments.vue"
+    },
+    {
+      "path": "/app/marketing/templates/sms",
+      "file": "resources/src/views/app/pages/marketing/templates.vue"
+    },
+    {
+      "path": "/app/marketing/templates/whatsapp",
+      "file": "resources/src/views/app/pages/marketing/templates.vue"
+    },
+    {
+      "path": "/app/marketing/templates/email",
+      "file": "resources/src/views/app/pages/marketing/templates.vue"
+    },
+    {
+      "path": "/app/realestate/properties",
+      "file": "resources/src/views/app/pages/realestate/properties.vue"
+    },
+    {
+      "path": "/app/realestate/categories",
+      "file": "resources/src/views/app/pages/realestate/categories.vue"
+    },
+    {
+      "path": "/app/realestate/inquiries",
+      "file": "resources/src/views/app/pages/realestate/inquiries.vue"
+    },
+    {
+      "path": "/app/Store/Orders",
+      "file": "resources/src/views/app/pages/store/Orders.vue"
+    },
+    {
+      "path": "/app/Store/Subscribers",
+      "file": "resources/src/views/app/pages/store/Subscribers.vue"
+    },
+    {
+      "path": "/app/Store/Messages",
+      "file": "resources/src/views/app/pages/store/Messages.vue"
+    },
+    {
+      "path": "/app/Store/Banners",
+      "file": "resources/src/views/app/pages/store/Banners.vue"
+    },
+    {
+      "path": "/app/People/Customers",
+      "file": "resources/src/views/app/pages/people/customers.vue"
+    },
+    {
+      "path": "/app/People/Customers_without_ecommerce",
+      "file": "resources/src/views/app/pages/people/Customers_without_ecommerce.vue"
+    },
+    {
+      "path": "/app/People/Customers_ecommerce",
+      "file": "resources/src/views/app/pages/people/Customers_ecommerce.vue"
+    },
+    {
+      "path": "/app/People/Suppliers",
+      "file": "resources/src/views/app/pages/people/providers.vue"
+    },
+    {
+      "path": "/app/subscription_product/list",
+      "file": "resources/src/views/app/pages/subscription_product/subscription_product_list.vue"
+    },
+    {
+      "path": "/app/subscription_product/store",
+      "file": "resources/src/views/app/pages/subscription_product/subscription_product_create.vue"
+    },
+    {
+      "path": "/app/settings/Warehouses-classic",
+      "file": "resources/src/views/app/pages/settings/warehouses.vue"
+    },
+    {
+      "path": "/app/settings/Warehouse_Locations-classic",
+      "file": "resources/src/views/app/pages/settings/warehouse_locations.vue"
+    },
+    {
+      "path": "/app/settings/System_settings",
+      "file": "resources/src/views/app/pages/settings/system_settings.vue"
+    },
+    {
+      "path": "/app/reports/payments_purchases_returns",
+      "file": "resources/src/views/app/pages/reports/payments/payments_purchases_returns.vue"
+    },
+    {
+      "path": "/app/reports/payments_sales_returns",
+      "file": "resources/src/views/app/pages/reports/payments/payments_sales_returns.vue"
+    },
+    {
+      "path": "/app/reports/inactive_customers",
+      "file": "resources/src/views/app/pages/reports/Inactive_Customers_Report.vue"
+    },
+    {
+      "path": "/app/reports/zero_sales_products_report",
+      "file": "resources/src/views/app/pages/reports/Zero_Sales_Products_Report.vue"
+    },
+    {
+      "path": "/app/reports/dead_stock_report-classic",
+      "file": "resources/src/views/app/pages/reports/Dead_Stock_Report.vue"
+    },
+    {
+      "path": "/app/reports/batch_register_report-classic",
+      "file": "resources/src/views/app/pages/reports/Batch_Register_Report.vue"
+    },
+    {
+      "path": "/app/reports/stock_aging_report-classic",
+      "file": "resources/src/views/app/pages/reports/Stock_Aging_Report.vue"
+    },
+    {
+      "path": "/app/reports/stock_transfer_report-classic",
+      "file": "resources/src/views/app/pages/reports/Stock_Transfer_Report.vue"
+    },
+    {
+      "path": "/app/reports/stock_adjustment_report-classic",
+      "file": "resources/src/views/app/pages/reports/Stock_Adjustment_Report.vue"
+    },
+    {
+      "path": "/app/reports/draft_invoices_report",
+      "file": "resources/src/views/app/pages/reports/Draft_Invoices_Report.vue"
+    },
+    {
+      "path": "/app/reports/customer_loyalty_points_report",
+      "file": "resources/src/views/app/pages/reports/Customer_Loyalty_Points_Report.vue"
+    },
+    {
+      "path": "/app/reports/ai_reports",
+      "file": "resources/src/views/app/pages/reports/AI_Reports.vue"
+    },
+    {
+      "path": "/app/reports/inventory_valuation_summary-classic",
+      "file": "resources/src/views/app/pages/reports/inventory_valuation_summary.vue"
+    },
+    {
+      "path": "/app/reports/stock_inventory_valuation-classic",
+      "file": "resources/src/views/app/pages/reports/stock_inventory_valuation.vue"
+    },
+    {
+      "path": "/app/reports/negative_stock_report-classic",
+      "file": "resources/src/views/app/pages/reports/Negative_Stock_Report.vue"
+    },
+    {
+      "path": "/app/reports/warehouse_report-classic",
+      "file": "resources/src/views/app/pages/reports/warehouse_report.vue"
+    },
+    {
+      "path": "/app/reports/internal_location_report",
+      "file": "resources/src/views/app/pages/reports/internal_location_report.vue"
+    },
+    {
+      "path": "/app/reports/stock_report-classic",
+      "file": "resources/src/views/app/pages/reports/stock_report.vue"
+    },
+    {
+      "path": "/app/reports/serial_available_report-classic",
+      "file": "resources/src/views/app/pages/reports/Serial_Available_Report.vue"
+    },
+    {
+      "path": "/app/reports/serial_sold_report-classic",
+      "file": "resources/src/views/app/pages/reports/Serial_Sold_Report.vue"
+    },
+    {
+      "path": "/app/reports/serial_movement_report-classic",
+      "file": "resources/src/views/app/pages/reports/Serial_Movement_Report.vue"
+    },
+    {
+      "path": "/app/reports/serial_inventory_report-classic",
+      "file": "resources/src/views/app/pages/reports/Serial_Inventory_Report.vue"
+    },
+    {
+      "path": "/app/reports/report_error_logs",
+      "file": "resources/src/views/app/pages/reports/report_error_logs.vue"
+    },
+    {
+      "path": "/app/reports/warranty_guarantee_report",
+      "file": "resources/src/views/app/pages/reports/Warranty_Guarantee_Report.vue"
+    },
+    {
+      "path": "/app/reports/service_jobs_report",
+      "file": "resources/src/views/app/pages/reports/Service_Jobs_Report.vue"
+    },
+    {
+      "path": "/app/reports/checklist_completion_report",
+      "file": "resources/src/views/app/pages/reports/Checklist_Completion_Report.vue"
+    },
+    {
+      "path": "/app/profile",
+      "file": "resources/src/views/app/pages/profile.vue"
+    },
+    {
+      "path": "/app/pos",
+      "file": "resources/src/views/app/pages/pos.vue"
+    }
+  ]
+}

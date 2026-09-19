@@ -26,7 +26,7 @@
         styleClass="tableOne table-hover vgt-table mt-3"
       >
 
-       <div slot="table-actions" class="mt-2 mb-3 quantity_alert_warehouse">
+       <template #table-actions><div class="mt-2 mb-3 quantity_alert_warehouse">
         <!-- warehouse -->
         <b-form-group :label="$t('warehouse')">
           <v-select
@@ -39,7 +39,7 @@
         </b-form-group>
       </div>
 
-       <div slot="table-actions" class="mt-2 mb-3">
+       <div class="mt-2 mb-3">
         <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
           <lucide-icon name="printer" /> {{ $t("print") }}
         </b-button>
@@ -56,9 +56,9 @@
               >
               <lucide-icon name="file-spreadsheet" /> EXCEL
           </vue-excel-xlsx>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <router-link title="Report" :to="'/app/reports/detail_stock/'+props.row.id">
               <b-button variant="primary">{{$t('Reports')}}</b-button>

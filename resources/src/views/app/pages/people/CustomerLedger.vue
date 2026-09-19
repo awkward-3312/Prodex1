@@ -101,7 +101,7 @@
             <ListToolbar
               :placeholder="$t('Search_sales_ph')"
               v-model="sales.search"
-              :limit.sync="sales.limit"
+              :limit="sales.limit" @update:limit="sales.limit = $event"
               :per-page-options="perPageOptions"
               @search="fetchSales"
               @reset="resetSales"
@@ -124,7 +124,7 @@
             </b-table>
 
             <Pager
-              :page.sync="sales.page"
+              :page="sales.page" @update:page="sales.page = $event"
               :limit="sales.limit"
               :total-rows="sales.totalRows"
               @change="fetchSales"
@@ -136,7 +136,7 @@
             <ListToolbar
               :placeholder="$t('Search_payments_ph')"
               v-model="payments.search"
-              :limit.sync="payments.limit"
+              :limit="payments.limit" @update:limit="payments.limit = $event"
               :per-page-options="perPageOptions"
               @search="fetchPayments"
               @reset="resetPayments"
@@ -160,7 +160,7 @@
             </b-table>
 
             <Pager
-              :page.sync="payments.page"
+              :page="payments.page" @update:page="payments.page = $event"
               :limit="payments.limit"
               :total-rows="payments.totalRows"
               @change="fetchPayments"
@@ -172,7 +172,7 @@
             <ListToolbar
               :placeholder="$t('Search_quotations_ph')"
               v-model="quotations.search"
-              :limit.sync="quotations.limit"
+              :limit="quotations.limit" @update:limit="quotations.limit = $event"
               :per-page-options="perPageOptions"
               @search="fetchQuotations"
               @reset="resetQuotations"
@@ -189,7 +189,7 @@
             </b-table>
 
             <Pager
-              :page.sync="quotations.page"
+              :page="quotations.page" @update:page="quotations.page = $event"
               :limit="quotations.limit"
               :total-rows="quotations.totalRows"
               @change="fetchQuotations"
@@ -201,7 +201,7 @@
             <ListToolbar
               :placeholder="$t('Search_returns_ph')"
               v-model="returns.search"
-              :limit.sync="returns.limit"
+              :limit="returns.limit" @update:limit="returns.limit = $event"
               :per-page-options="perPageOptions"
               @search="fetchReturns"
               @reset="resetReturns"
@@ -224,7 +224,7 @@
             </b-table>
 
             <Pager
-              :page.sync="returns.page"
+              :page="returns.page" @update:page="returns.page = $event"
               :limit="returns.limit"
               :total-rows="returns.totalRows"
               @change="fetchReturns"

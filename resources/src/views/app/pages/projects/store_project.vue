@@ -3,7 +3,7 @@
     <breadcumb :page="$t('Create_Project')" :folder="$t('Projects')"/>
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
-    <validation-observer ref="ref_create_project" v-if="!isLoading">
+    <px-validation-observer ref="ref_create_project" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Project">
         <b-row>
           <b-col lg="12" md="12" sm="12">
@@ -12,7 +12,7 @@
 
                  <!-- Title -->
                  <b-col lg="4" md="6" sm="12">
-                  <validation-provider
+                  <px-validation-provider
                     name="Title"
                     :rules="{ required: true}"
                     v-slot="validationContext"
@@ -27,12 +27,12 @@
                       ></b-form-input>
                       <b-form-invalid-feedback id="title-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <!-- start_date  -->
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider
+                  <px-validation-provider
                     name="start_date"
                     :rules="{ required: true}"
                     v-slot="validationContext"
@@ -48,12 +48,12 @@
                         id="start_date-feedback"
                       >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                  <!-- end_date  -->
                  <b-col lg="4" md="6" sm="12">
-                  <validation-provider
+                  <px-validation-provider
                     name="end_date"
                     :rules="{ required: true}"
                     v-slot="validationContext"
@@ -69,13 +69,13 @@
                         id="end_date-feedback"
                       >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <!-- Client -->
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="Client">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Customer') + ' ' + '*'">
+                  <px-validation-provider name="Client">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Customer') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -86,14 +86,14 @@
                         :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                  <!-- Company -->
                  <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="Company">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Company') + ' ' + '*'">
+                  <px-validation-provider name="Company">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Company') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -104,14 +104,14 @@
                         :options="companies.map(companies => ({label: companies.name, value: companies.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                 <!-- Assigned_Employees -->
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="Assigned_Employees">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Assigned_Employees')">
+                  <px-validation-provider name="Assigned_Employees">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Assigned_Employees')">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -122,14 +122,14 @@
                         :options="employees.map(employees => ({label: employees.username, value: employees.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                   <!-- Status  -->
                   <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="Status" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' ' + '*'">
+                  <px-validation-provider name="Status" :rules="{ required: true}">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Status') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -147,15 +147,15 @@
                             ]"
                       ></v-select>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
 
                 <!-- Details -->
                 <b-col lg="8" md="8" sm="12">
-                  <validation-provider name="Description">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Details')">
+                  <px-validation-provider name="Description">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Details')">
                       <textarea
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -165,8 +165,8 @@
                         :placeholder="$t('Afewwords')"
                       ></textarea>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="12">
@@ -183,7 +183,7 @@
           </b-col>
         </b-row>
       </b-form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

@@ -51,7 +51,7 @@
         }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <!-- last sale (ever) -->
           <span v-if="props.column.field === 'last_sale_at'">
             {{ props.row.last_sale_at ? props.row.last_sale_at : '—' }}

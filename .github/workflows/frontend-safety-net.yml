@@ -24,7 +24,7 @@ on:
     # La rama de estabilización se lista aquí porque GitHub solo permite lanzar workflow_dispatch de un workflow que ya
     # existe en la rama por defecto. Mientras este archivo no esté en main, el job e2e corre con los push a las ramas de modernización listadas aquí.
     # Cuando llegue a main se puede quitar esa rama y usar solo workflow_dispatch.
-    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services ]
+    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening ]
   workflow_dispatch:
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
       - run: npm ci
       - name: Route snapshot (generado desde el código fuente)
         run: npm run test:e2e:routes
-      - name: Pruebas unitarias de los servicios de plataforma (node:test, sin navegador)
+      - name: Pruebas del frontend: servicios de plataforma, puente legacy, capa de validación y guardas de API obsoletas (node:test, sin navegador)
         run: npm run test:frontend
 
   e2e:
@@ -47,7 +47,8 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.ref == 'refs/heads/fix/frontend-modernization-baseline' ||
       github.ref == 'refs/heads/chore/frontend-modernization-cleanup' ||
-      github.ref == 'refs/heads/refactor/frontend-platform-services'
+      github.ref == 'refs/heads/refactor/frontend-platform-services' ||
+      github.ref == 'refs/heads/refactor/vue2-compat-hardening'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     continue-on-error: true

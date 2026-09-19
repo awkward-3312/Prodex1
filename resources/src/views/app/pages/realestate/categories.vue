@@ -17,10 +17,10 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'Siguiente', prevLabel: 'Anterior' }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="New_Category()" class="btn-rounded" variant="btn btn-primary btn-icon m-1"><lucide-icon name="plus" /> {{ $t('Add_Category') }}</b-button>
-        </div>
-        <template slot="table-row" slot-scope="props">
+        </div></template>
+        <template #table-row="props">
           <span v-if="props.column.field == 'image'"><img v-if="props.row.image" :src="'/' + props.row.image" class="rounded" style="width:48px;height:38px;object-fit:cover" /><span v-else class="text-muted">—</span></span>
           <span v-else-if="props.column.field == 'properties_count'"><span class="badge badge-outline-info">{{ props.row.properties_count }}</span></span>
           <span v-else-if="props.column.field == 'actions'"><a @click="Edit_Category(props.row)" class="cursor-pointer" title="Editar" v-b-tooltip.hover><lucide-icon class="text-25 text-success" name="pencil" /></a><a title="Eliminar" v-b-tooltip.hover class="cursor-pointer" @click="Remove_Category(props.row.id)"><lucide-icon class="text-25 text-danger" name="x" /></a></span>

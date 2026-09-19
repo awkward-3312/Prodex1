@@ -17,13 +17,13 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="New_Template()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
             <lucide-icon name="plus" /> {{ $t('New_Template') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <a @click="Duplicate_Template(props.row.id)" class="cursor-pointer" :title="$t('Duplicate')" v-b-tooltip.hover>
               <lucide-icon class="text-25 text-info" name="copy" />
@@ -39,17 +39,17 @@
       </vue-good-table>
     </b-card>
 
-    <validation-observer ref="Template_Form">
+    <px-validation-observer ref="Template_Form">
       <b-modal hide-footer size="lg" id="New_Template" :title="editmode ? $t('Edit_Template') : $t('New_Template')">
         <b-form @submit.prevent="Submit_Template">
           <b-row>
             <b-col md="8">
-              <validation-provider name="name" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="name" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Template_Name') + ' *'">
                   <b-form-input :state="getValidationState(validationContext)" v-model="template.name"></b-form-input>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="4">
               <b-form-group :label="$t('Category')">
@@ -62,12 +62,12 @@
               </b-form-group>
             </b-col>
             <b-col md="12">
-              <validation-provider name="content" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="content" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Message_Content') + ' *'">
                   <b-form-textarea :rows="templateType === 'email' ? 8 : 4" :state="getValidationState(validationContext)" v-model="template.content"></b-form-textarea>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
               <small class="text-muted">{{ $t('Available_Variables') }}: {customer_name} {phone} {email} {last_purchase} {total_spent}</small>
             </b-col>
             <b-col md="12" class="mt-3">
@@ -79,7 +79,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

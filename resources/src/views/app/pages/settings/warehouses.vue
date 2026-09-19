@@ -31,7 +31,7 @@
           :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
           styleClass="table-hover tableOne vgt-table"
         >
-          <template slot="table-row" slot-scope="props">
+          <template #table-row="props">
             <span v-if="props.column.field === 'default_inventory_location'">
               {{ props.row.default_inventory_location ? props.row.default_inventory_location.name : 'Pendiente de inicializar' }}
             </span>

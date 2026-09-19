@@ -18,7 +18,7 @@
         :pagination-options="{ enabled: true, mode: 'records' }"
         styleClass="tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button
             v-if="currentUserPermissions && currentUserPermissions.includes('assets')"
             @click="New_Category()"
@@ -28,9 +28,9 @@
             <lucide-icon name="plus" />
             {{$t('Add')}}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <a
               @click="Edit_Category(props.row)"
@@ -55,17 +55,17 @@
       </vue-good-table>
     </div>
 
-    <validation-observer ref="Create_Category">
+    <px-validation-observer ref="Create_Category">
       <b-modal hide-footer size="lg" id="New_Asset_Category" :title="editmode?$t('Edit'):$t('Add')">
         <b-form @submit.prevent="Submit_Category">
           <b-row>
             <b-col md="12">
-              <validation-provider name="Name" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="Name" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Name') + ' *'">
                   <b-form-input :state="getValidationState(validationContext)" aria-describedby="name-feedback" v-model="category.name"></b-form-input>
                   <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <b-col md="12">
@@ -83,7 +83,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
   
 </template>

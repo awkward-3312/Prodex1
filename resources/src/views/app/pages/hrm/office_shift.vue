@@ -110,7 +110,7 @@
 
     <!-- Crear / editar turno -->
     <px-modal v-model="modalOpen" :title="editmode ? 'Editar turno de oficina' : 'Añadir turno de oficina'" size="xl">
-      <validation-observer ref="Create_Office_Shift">
+      <px-validation-observer ref="Create_Office_Shift">
         <form @submit.prevent="Submit_Office_Shift">
           <div class="pxos__section">
             <div class="pxos__section-head">
@@ -221,7 +221,7 @@
             </div>
           </div>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer="{ close }">
         <span class="pxos__hint">Los días marcados como libres se guardarán sin hora de entrada ni salida.</span>

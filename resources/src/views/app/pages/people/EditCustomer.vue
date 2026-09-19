@@ -20,7 +20,7 @@
           </div>
         </div>
 
-        <validation-observer ref="Create_Customer">
+        <px-validation-observer ref="Create_Customer">
           <b-form @submit.prevent="Submit_Customer">
             <section class="px-section">
               <div class="px-section-header">
@@ -35,36 +35,36 @@
               <div class="px-section-body">
                 <b-row>
                   <b-col md="6" sm="12">
-                    <validation-provider name="Firstname" :rules="{ required: false }" v-slot="validationContext">
+                    <px-validation-provider name="Firstname" :rules="{ required: false }" v-slot="validationContext">
                       <b-form-group :label="$t('Firstname')">
                         <b-form-input :state="getValidationState(validationContext)" aria-describedby="firstname-feedback" label="Firstname" :placeholder="$t('Firstname')" v-model="client.firstname"></b-form-input>
                         <b-form-invalid-feedback id="firstname-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
                   <b-col md="6" sm="12">
-                    <validation-provider name="lastname" :rules="{ required: false }" v-slot="validationContext">
+                    <px-validation-provider name="lastname" :rules="{ required: false }" v-slot="validationContext">
                       <b-form-group :label="$t('lastname')">
                         <b-form-input :state="getValidationState(validationContext)" aria-describedby="lastname-feedback" label="lastname" :placeholder="$t('lastname')" v-model="client.lastname"></b-form-input>
                         <b-form-invalid-feedback id="lastname-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
                   <b-col md="6" sm="12">
-                    <validation-provider name="Username" :rules="{ required: true }" v-slot="validationContext">
+                    <px-validation-provider name="Username" :rules="{ required: true }" v-slot="validationContext">
                       <b-form-group :label="'Username *'">
                         <b-form-input :state="getValidationState(validationContext)" aria-describedby="name-feedback" label="name" placeholder="Username" v-model="client.name"></b-form-input>
                         <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
                   <b-col md="6" sm="12">
-                    <validation-provider name="Email" :rules="{ required: true }" v-slot="validationContext">
+                    <px-validation-provider name="Email" :rules="{ required: true }" v-slot="validationContext">
                       <b-form-group :label="$t('Email') + ' *'">
                         <b-form-input :state="getValidationState(validationContext)" aria-describedby="email-feedback" label="email" v-model="client.email" :placeholder="$t('Email')"></b-form-input>
                         <b-form-invalid-feedback id="email-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
                   <b-col md="6" sm="12">
                     <b-form-group :label="$t('Phone')">
@@ -228,7 +228,7 @@
               </div>
             </div>
           </b-form>
-        </validation-observer>
+        </px-validation-observer>
       </template>
     </div>
   </div>

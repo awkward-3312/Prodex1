@@ -42,7 +42,7 @@
           toggle-class="dropdown-toggle-no-caret"
           no-caret
         >
-          <template slot="button-content">
+          <template #button-content>
             <lucide-icon name="globe" />
           </template>
           <vue-perfect-scrollbar
@@ -76,7 +76,7 @@
           toggle-class="dropdown-toggle-no-caret"
           no-caret
         >
-          <template slot="button-content">
+          <template #button-content>
             <span class="badge badge-primary" v-if="notifs_alert > 0">1</span>
             <lucide-icon name="bell" />
           </template>
@@ -107,7 +107,7 @@
           no-caret
           variant="link"
         >
-          <template slot="button-content">
+          <template #button-content>
             <div class="user-avatar">
               <img
                 v-if="currentUser && currentUser.avatar"

@@ -16,14 +16,14 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'Siguiente', prevLabel: 'Anterior' }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
-        <div slot="table-actions" class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+        <template #table-actions><div class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
           <b-form-group label="Almacén" style="min-width:200px;">
             <v-select @input="loadItems(1)" v-model="warehouse_id" :reduce="l => l.value" placeholder="Selecciona un almacén" :options="warehouses.map(w => ({label:w.name, value:w.id}))" />
           </b-form-group>
           <vue-excel-xlsx class="btn btn-sm btn-outline-danger ripple m-1" :data="reports" :columns="columns" :file-name="'seriales_disponibles'" :file-type="'xlsx'" :sheet-name="'seriales_disponibles'">
             <lucide-icon name="file-spreadsheet" /> EXCEL
           </vue-excel-xlsx>
-        </div>
+        </div></template>
       </vue-good-table>
     </b-card>
   </div>

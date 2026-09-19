@@ -155,7 +155,7 @@
                   <!-- Barcode Symbology -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="Barcode Symbology" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }">
+                      <template #default="{ valid, errors }"><b-form-group>
                         <template #label>
                           <span class="label-with-help">
                             {{ $t('BarcodeSymbology') }} *
@@ -186,14 +186,14 @@
                           ]"
                         ></v-select>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
                   <!-- Product Code -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="Code Product" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }">
+                      <template #default="{ valid, errors }"><b-form-group>
                         <template #label>
                           <span class="label-with-help">
                             {{ $t('CodeProduct') }} *
@@ -236,7 +236,7 @@
                           v-if="code_exist !=''"
                         >{{ code_exist }}</b-alert>
                         <b-form-invalid-feedback id="CodeProduct-feedback" v-if="errors[0]">{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
@@ -269,7 +269,7 @@
                   <!-- Categories (multi-select; first = primary) -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="category" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }">
+                      <template #default="{ valid, errors }"><b-form-group>
                         <template #label>
                           <span class="label-with-help">
                             {{ $t('MultiCategoriesLabel') }} *
@@ -297,7 +297,7 @@
                           :options="categories.map(c => ({ label: c.name, value: c.id }))"
                         />
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
@@ -509,8 +509,7 @@
                   <!-- Unit Product -->
                   <b-col md="6" class="mb-3" v-if="product.type != 'is_service'">
                     <validation-provider name="Unit Product" :rules="{ required: true}">
-                      <b-form-group
-                        slot-scope="{ valid, errors }"
+                      <template #default="{ valid, errors }"><b-form-group
                         :label="$t('UnitProduct') + ' *'"
                       >
                         <v-select
@@ -523,15 +522,14 @@
                           :options="units.map(units => ({label: units.name, value: units.id}))"
                         />
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
                   <!-- Unit Sale -->
                   <b-col md="6" class="mb-3" v-if="product.type != 'is_service'">
                     <validation-provider name="Unit Sale" :rules="{ required: true}">
-                      <b-form-group
-                        slot-scope="{ valid, errors }"
+                      <template #default="{ valid, errors }"><b-form-group
                         :label="$t('UnitSale') + ' *'"
                       >
                         <v-select
@@ -543,15 +541,14 @@
                           :options="units_sub.map(units_sub => ({label: units_sub.name, value: units_sub.id}))"
                         />
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
                   <!-- Unit Purchase -->
                   <b-col md="6" class="mb-3" v-if="product.type != 'is_service'">
                     <validation-provider name="Unit Purchase" :rules="{ required: true}">
-                      <b-form-group
-                        slot-scope="{ valid, errors }"
+                      <template #default="{ valid, errors }"><b-form-group
                         :label="$t('UnitPurchase') + ' *'"
                       >
                         <v-select
@@ -563,7 +560,7 @@
                           :options="units_sub.map(units_sub => ({label: units_sub.name, value: units_sub.id}))"
                         />
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
@@ -807,8 +804,7 @@
                   <!-- Tax Method -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="Tax Method" :rules="{ required: true}">
-                      <b-form-group
-                        slot-scope="{ valid, errors }"
+                      <template #default="{ valid, errors }"><b-form-group
                         :label="$t('TaxMethod') + ' *'"
                       >
                         <v-select
@@ -823,14 +819,14 @@
                           ]"
                         ></v-select>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
                   <!-- Discount Method -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="Discount Method" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Discount_Method') + ' *'">
+                      <template #default="{ valid, errors }"><b-form-group :label="$t('Discount_Method') + ' *'">
                         <v-select
                           v-model="product.discount_method"
                           :reduce="label => label.value"
@@ -843,7 +839,7 @@
                           ]"
                         ></v-select>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 

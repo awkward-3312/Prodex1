@@ -21,7 +21,7 @@
               :pagination-options="{ enabled: true, mode: 'records' }"
               styleClass="tableOne vgt-table mt-3"
             >
-              <template slot="table-row" slot-scope="props">
+              <template #table-row="props">
                 <span v-if="props.column.field === 'actions'">
                   <b-button
                     size="sm"
@@ -45,7 +45,7 @@
     </div>
 
     <!-- Modal for Create/Edit Item -->
-    <validation-observer ref="Create_Item">
+    <px-validation-observer ref="Create_Item">
       <b-modal
         hide-footer
         size="md"
@@ -56,7 +56,7 @@
         <b-form @submit.prevent="saveItem">
           <b-row>
             <b-col md="12">
-              <validation-provider
+              <px-validation-provider
                 name="Category"
                 :rules="{ required: true }"
                 v-slot="validationContext"
@@ -79,10 +79,10 @@
                     {{ validationContext.errors[0] }}
                   </b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="12">
-              <validation-provider
+              <px-validation-provider
                 name="Item Name"
                 :rules="{ required: true }"
                 v-slot="validationContext"
@@ -98,7 +98,7 @@
                     {{ validationContext.errors[0] }}
                   </b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
           </b-row>
           <div class="text-right mt-3">
@@ -116,7 +116,7 @@
           </div>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

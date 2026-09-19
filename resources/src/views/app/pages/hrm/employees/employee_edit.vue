@@ -3,33 +3,33 @@
     <breadcumb :page="$t('Edit')" :folder="$t('Employees')"/>
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
-    <validation-observer ref="Edit_Employee" v-if="!isLoading">
+    <px-validation-observer ref="Edit_Employee" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Employee" enctype="multipart/form-data">
         <b-row>
           <b-col lg="8" md="12">
             <b-card>
               <b-row>
                 <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <validation-provider name="Nombre" :rules="{required:true}" v-slot="validationContext">
+                  <px-validation-provider name="Nombre" :rules="{required:true}" v-slot="validationContext">
                     <b-form-group label="Primer nombre *">
                       <b-form-input :state="getValidationState(validationContext)" aria-describedby="FirstName-feedback" placeholder="Primer nombre" v-model="employee.firstname" />
                       <b-form-invalid-feedback id="FirstName-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <validation-provider name="Apellido" :rules="{required:true}" v-slot="validationContext">
+                  <px-validation-provider name="Apellido" :rules="{required:true}" v-slot="validationContext">
                     <b-form-group label="Apellido *">
                       <b-form-input :state="getValidationState(validationContext)" aria-describedby="LastName-feedback" placeholder="Apellido" v-model="employee.lastname" />
                       <b-form-invalid-feedback id="LastName-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <validation-provider name="Género" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ errors }" label="Género *">
+                  <px-validation-provider name="Género" :rules="{ required: true}">
+                    <template #default="{ errors }"><b-form-group label="Género *">
                       <v-select
                         v-model="employee.gender"
                         :reduce="label => label.value"
@@ -37,8 +37,8 @@
                         :options="[{label: 'Masculino', value: 'male'}, {label: 'Femenino', value: 'female'}]"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col lg="6" md="6" sm="12" class="mb-2">
@@ -78,12 +78,12 @@
                 </b-col>
 
                 <b-col lg="6" md="6" sm="12" class="mb-2">
-                  <validation-provider name="Vacaciones anuales" :rules="{required:true}" v-slot="validationContext">
+                  <px-validation-provider name="Vacaciones anuales" :rules="{required:true}" v-slot="validationContext">
                     <b-form-group label="Vacaciones anuales *">
                       <b-form-input :state="getValidationState(validationContext)" aria-describedby="total_leave-feedback" placeholder="Días" v-model="employee.total_leave" />
                       <b-form-invalid-feedback id="total_leave-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col lg="6" md="6" sm="12" class="mb-2">
@@ -93,12 +93,12 @@
                 </b-col>
 
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Compañía" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ errors }" label="Compañía *">
+                  <px-validation-provider name="Compañía" :rules="{ required: true}">
+                    <template #default="{ errors }"><b-form-group label="Compañía *">
                       <v-select v-model="employee.company_id" class="required" required @input="Selected_Company" placeholder="Selecciona una compañía" :reduce="label => label.value" :options="companies.map(company => ({label: company.name, value: company.id}))" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="6" class="mb-2">
@@ -114,30 +114,30 @@
                 </b-col>
 
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Departamento" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ errors }" label="Departamento *">
+                  <px-validation-provider name="Departamento" :rules="{ required: true}">
+                    <template #default="{ errors }"><b-form-group label="Departamento *">
                       <v-select v-model="employee.department_id" class="required" required @input="Selected_Department" placeholder="Selecciona un departamento" :reduce="label => label.value" :options="departments.map(item => ({label: item.department, value: item.id}))" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Puesto" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ errors }" label="Puesto *">
+                  <px-validation-provider name="Puesto" :rules="{ required: true}">
+                    <template #default="{ errors }"><b-form-group label="Puesto *">
                       <v-select v-model="employee.designation_id" class="required" required @input="Selected_Designation" placeholder="Selecciona un puesto" :reduce="label => label.value" :options="designations.map(item => ({label: item.designation, value: item.id}))" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="6" class="mb-2">
-                  <validation-provider name="Turno de oficina" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ errors }" label="Turno de oficina *">
+                  <px-validation-provider name="Turno de oficina" :rules="{ required: true}">
+                    <template #default="{ errors }"><b-form-group label="Turno de oficina *">
                       <v-select v-model="employee.office_shift_id" class="required" required @input="Selected_Office_shift" placeholder="Selecciona un turno" :reduce="label => label.value" :options="office_shifts.map(item => ({label: item.name, value: item.id}))" />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </validation-provider>
+                    </b-form-group></template>
+                  </px-validation-provider>
                 </b-col>
               </b-row>
             </b-card>
@@ -154,7 +154,7 @@
           </b-col>
         </b-row>
       </b-form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

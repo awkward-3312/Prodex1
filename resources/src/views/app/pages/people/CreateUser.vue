@@ -11,46 +11,46 @@
       </template>
     </px-page-header>
 
-    <validation-observer ref="Create_User">
+    <px-validation-observer ref="Create_User">
       <form @submit.prevent="Submit_User" enctype="multipart/form-data">
         <px-card title="Datos de acceso" class="pxcfg__card">
           <div class="pxcfg__grid">
-            <validation-provider ref="firstnameProvider" name="Nombre" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
+            <px-validation-provider ref="firstnameProvider" name="Nombre" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
               <px-field label="Nombre *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" :value="user.firstname" :invalid="invalid" @input="val => onTextInput('firstname', 'firstnameProvider', val)" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="lastnameProvider" name="Apellido" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="lastnameProvider" name="Apellido" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
               <px-field label="Apellido *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" :value="user.lastname" :invalid="invalid" @input="val => onTextInput('lastname', 'lastnameProvider', val)" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="usernameProvider" name="Usuario" :rules="{ required: true, min: 3, max: 60 }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="usernameProvider" name="Usuario" :rules="{ required: true, min: 3, max: 60 }" v-slot="v">
               <px-field label="Nombre de usuario *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" :value="user.username" :invalid="invalid" @input="val => onTextInput('username', 'usernameProvider', val)" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
             <px-field label="Teléfono">
               <template #default="{ id }"><px-input :id="id" v-model="user.phone" /></template>
             </px-field>
-            <validation-provider ref="emailProvider" name="Correo" :rules="{ required: true, email: true }" v-slot="v">
+            <px-validation-provider ref="emailProvider" name="Correo" :rules="{ required: true, email: true }" v-slot="v">
               <px-field label="Correo *" :error="v.errors[0] || email_exist">
                 <template #default="{ id, invalid }"><px-input :id="id" type="email" :value="user.email" :invalid="invalid || !!email_exist" @input="val => onTextInput('email', 'emailProvider', val)" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="passwordProvider" name="Contraseña" :rules="{ required: true, min: 8 }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="passwordProvider" name="Contraseña" :rules="{ required: true, min: 8 }" v-slot="v">
               <px-field label="Contraseña temporal *" hint="Mínimo 8 caracteres." :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" type="password" :value="user.password" :invalid="invalid" @input="val => onTextInput('password', 'passwordProvider', val)" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="roleProvider" name="Rol" :rules="{ required: true }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="roleProvider" name="Rol" :rules="{ required: true }" v-slot="v">
               <px-field label="Rol *" hint="Los permisos se administran desde Usuarios y accesos → Roles y permisos." :error="v.errors[0]">
                 <template #default="{ id }">
                   <vs-px :input-id="id" v-model="user.role_id" :reduce="o => o.value" :options="roleOptions" placeholder="Seleccionar rol"
                     @input="onRoleSelected" />
                 </template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
             <px-field label="Imagen de usuario">
               <template #default="{ id }"><input :id="id" class="pxcfg__file" @change="onFileSelected" type="file" accept="image/*" /></template>
             </px-field>
@@ -130,7 +130,7 @@
           <px-button variant="ghost" @click="$router.push({ name: 'Users' })">Cancelar</px-button>
         </div>
       </form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

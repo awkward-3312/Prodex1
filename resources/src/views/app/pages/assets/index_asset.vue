@@ -27,7 +27,7 @@
           :pagination-options="{ enabled: true, mode: 'records' }"
           styleClass="tableOne vgt-table">
 
-          <template slot="table-row" slot-scope="props">
+          <template #table-row="props">
             <span v-if="props.column.field == 'last_verification' || props.column.field == 'next_validation'">
               <span :class="getValidationRowClass(props)">{{ props.formattedRow[props.column.field] || '—' }}</span>
             </span>

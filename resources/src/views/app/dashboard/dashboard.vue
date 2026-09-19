@@ -302,7 +302,7 @@
                   :rows="stock_alerts"
                   :pagination-options="{ enabled: false }"
                 >
-                  <template slot="table-row" slot-scope="props">
+                  <template #table-row="props">
                     <div v-if="props.column.field == 'stock_alert'">
                       <span class="stock-alert-badge">{{ props.row.stock_alert }}</span>
                     </div>
@@ -327,7 +327,7 @@
                   :rows="products"
                   :pagination-options="{ enabled: false }"
                 >
-                  <template slot="table-row" slot-scope="props">
+                  <template #table-row="props">
                     <div v-if="props.column.field == 'total'">
                       <span class="font-weight-bold text-success">{{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}</span>
                     </div>
@@ -354,7 +354,7 @@
                   :rows="sales"
                   :pagination-options="{ enabled: false }"
                 >
-                  <template slot="table-row" slot-scope="props">
+                  <template #table-row="props">
                     <div v-if="props.column.field == 'statut'">
                       <span v-if="props.row.statut == 'completed'" class="badge badge-success">{{ $t('complete') }}</span>
                       <span v-else-if="props.row.statut == 'pending'" class="badge badge-info">{{ $t('Pending') }}</span>

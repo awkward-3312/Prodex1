@@ -54,7 +54,7 @@
           </div>
         </div>
 
-        <validation-observer ref="Create_Service_Job">
+        <px-validation-observer ref="Create_Service_Job">
           <b-form @submit.prevent="submit">
             <b-tabs v-model="activeTab" content-class="mt-3" pills>
 
@@ -62,7 +62,7 @@
               <b-tab :title="$t('Intake') || 'Intake'" active>
                 <b-row>
                   <b-col md="4">
-                    <validation-provider
+                    <px-validation-provider
                       name="Customer"
                       :rules="{ required: true }"
                       v-slot="validationContext"
@@ -78,7 +78,7 @@
                         />
                         <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
 
                   <b-col md="4">
@@ -94,7 +94,7 @@
                   </b-col>
 
                   <b-col md="4">
-                    <validation-provider
+                    <px-validation-provider
                       name="Service Item"
                       :rules="{ required: true }"
                       v-slot="validationContext"
@@ -107,7 +107,7 @@
                         />
                         <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
 
                   <b-col md="4">
@@ -710,7 +710,7 @@
               </b-button>
             </div>
           </b-form>
-        </validation-observer>
+        </px-validation-observer>
       </div>
     </div>
   </div>

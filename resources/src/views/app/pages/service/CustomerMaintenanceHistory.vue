@@ -12,7 +12,7 @@
       </b-row>
 
       <vue-good-table mode="remote" :columns="columns" :totalRows="totalRows" :rows="rows" @on-page-change="onPageChange" @on-per-page-change="onPerPageChange" :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'Siguiente', prevLabel: 'Anterior' }" styleClass="tableOne vgt-table">
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'job_type'">{{ jobTypeLabel(props.row.job_type) }}</span>
           <span v-else-if="props.column.field === 'status'">{{ statusLabel(props.row.status) }}</span>
           <span v-else>{{ props.formattedRow[props.column.field] }}</span>

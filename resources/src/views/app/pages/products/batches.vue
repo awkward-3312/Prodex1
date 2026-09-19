@@ -64,7 +64,7 @@
         }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'product'">
             <div>
               <strong>{{ props.row.product_name }}</strong>

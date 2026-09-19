@@ -18,9 +18,9 @@
       </div>
 
       <px-card title="Install New Module" class="pxcfg__card">
-        <validation-observer ref="ref_Upload_Module">
+        <px-validation-observer ref="ref_Upload_Module">
           <form @submit.prevent="Submit_Upload_Module" enctype="multipart/form-data">
-            <validation-provider name="Upload Module" ref="Upload_Module" v-slot="{ errors }">
+            <px-validation-provider name="Upload Module" ref="Upload_Module" v-slot="{ errors }">
               <div
                 class="pxmod__drop"
                 :class="{ 'is-drag': isDragging, 'has-file': module_zip, 'is-invalid': !!errors.length }"
@@ -41,13 +41,13 @@
                     <span class="pxmod__file-name">{{ module_zip.name }}</span>
                     <span class="pxcfg__cardnote">{{ formatFileSize(module_zip.size) }}</span>
                   </div>
-                  <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="x" aria-label="Quitar" @click.stop.native="removeFile" />
+                  <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="x" aria-label="Quitar" @click.stop="removeFile" />
                 </template>
               </div>
               <div v-if="errors[0]" class="pxmod__err">{{ errors[0] }}</div>
-            </validation-provider>
+            </px-validation-provider>
           </form>
-        </validation-observer>
+        </px-validation-observer>
         <template #footer>
           <px-button variant="primary" icon="upload" :loading="SubmitProcessing" :disabled="SubmitProcessing || !module_zip" @click="Submit_Upload_Module">
             {{ SubmitProcessing ? 'Installing...' : 'Install Module' }}

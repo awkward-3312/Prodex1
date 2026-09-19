@@ -51,24 +51,24 @@
     </template>
 
     <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="lg">
-      <validation-observer ref="Create_CustomField">
+      <px-validation-observer ref="Create_CustomField">
         <form @submit.prevent="Submit_CustomField">
           <div class="pxcfg__formgrid">
-            <validation-provider ref="nameProvider" name="Field Name" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="nameProvider" name="Field Name" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('FieldName') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="customField.name" :placeholder="$t('FieldName')" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
             <div class="pxcfg__grid">
-              <validation-provider ref="typeProvider" name="Field Type" :rules="{ required: true }" v-slot="v">
+              <px-validation-provider ref="typeProvider" name="Field Type" :rules="{ required: true }" v-slot="v">
                 <px-field :label="$t('FieldType') + ' *'" :error="v.errors[0]">
                   <template #default="{ id }">
                     <vs-px :input-id="id" v-model="customField.field_type" :reduce="label => label.value" :options="fieldTypes"
                       :placeholder="$t('PleaseSelect')" @input="val => { onFieldTypeChange(); if ($refs.typeProvider) { $refs.typeProvider.syncValue(val); $refs.typeProvider.validate(); } }" />
                   </template>
                 </px-field>
-              </validation-provider>
+              </px-validation-provider>
               <px-field :label="$t('Required')">
                 <template #default>
                   <px-check type="switch" :modelValue="!!customField.is_required" @change="v => customField.is_required = v">
@@ -100,7 +100,7 @@
             </div>
           </div>
         </form>
-      </validation-observer>
+      </px-validation-observer>
       <template #footer="{ close }">
         <px-button variant="ghost" @click="() => { reset_Form(); close(); }">{{ $t('Cancel') }}</px-button>
         <px-button variant="primary" icon="check" :loading="SubmitProcessing" :disabled="SubmitProcessing" @click="Submit_CustomField">{{ $t('submit') }}</px-button>

@@ -17,7 +17,7 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
-        <div slot="table-actions" class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap;">
+        <template #table-actions><div class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap;">
           <b-form-group :label="$t('warehouse')" style="min-width:200px;">
             <v-select
               @input="loadOnFilter"
@@ -36,9 +36,9 @@
               :options="statusOptions"
             />
           </b-form-group>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'status'">
             <span class="badge" :class="statusBadge(props.row.status)">{{ statusLabel(props.row.status) }}</span>
           </span>

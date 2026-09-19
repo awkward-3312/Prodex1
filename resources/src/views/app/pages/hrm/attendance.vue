@@ -134,7 +134,7 @@
 
     <!-- Registro manual -->
     <px-modal v-model="modalOpen" :title="editmode ? 'Editar asistencia' : 'Registrar asistencia'" size="md">
-      <validation-observer ref="Create_Attendance">
+      <px-validation-observer ref="Create_Attendance">
         <form @submit.prevent="Submit_Attendance">
           <div class="pxat__intro">
             <div class="pxat__intro-icon"><lucide-icon name="clock" /></div>
@@ -195,7 +195,7 @@
             <span class="pxat__source-note"><lucide-icon name="edit" :size="13" /> Registro manual</span>
           </div>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer="{ close }">
         <span class="pxat__hint">La duración se calculará a partir de la entrada y salida.</span>

@@ -11,12 +11,12 @@
       </div>
       <div class="card-body">
         <!--  Profile -->
-        <validation-observer ref="Update_Profile">
+        <px-validation-observer ref="Update_Profile">
           <b-form @submit.prevent="Submit_Profile" enctype="multipart/form-data">
             <b-row>
               <!-- First name -->
               <b-col md="6" sm="12">
-                <validation-provider
+                <px-validation-provider
                   name="Firstname"
                   :rules="{ required: true , min:4 , max:20}"
                   v-slot="validationContext"
@@ -32,12 +32,12 @@
                       id="Firstname-feedback"
                     >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Last name -->
               <b-col md="6" sm="12">
-                <validation-provider
+                <px-validation-provider
                   name="lastname"
                   :rules="{ required: true , min:4 , max:20}"
                   v-slot="validationContext"
@@ -53,12 +53,12 @@
                       id="lastname-feedback"
                     >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Username -->
               <b-col md="6" sm="12">
-                <validation-provider
+                <px-validation-provider
                   name="username"
                   :rules="{ required: true , min:4 , max:20}"
                   v-slot="validationContext"
@@ -74,12 +74,12 @@
                       id="username-feedback"
                     >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Phone -->
               <b-col md="6" sm="12">
-                <validation-provider
+                <px-validation-provider
                   name="Phone"
                   :rules="{ required: true}"
                   v-slot="validationContext"
@@ -93,12 +93,12 @@
                     ></b-form-input>
                     <b-form-invalid-feedback id="Phone-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Email -->
               <b-col md="6" sm="12">
-                <validation-provider
+                <px-validation-provider
                   name="Email"
                   :rules="{ required: true}"
                   v-slot="validationContext"
@@ -112,13 +112,13 @@
                     ></b-form-input>
                     <b-form-invalid-feedback id="Email-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Avatar -->
               <b-col md="6" sm="12">
-                <validation-provider name="Avatar" ref="Avatar" rules="mimes:image/*|size:200">
-                  <b-form-group slot-scope="{validate, valid, errors }" :label="$t('UserImage')">
+                <px-validation-provider name="Avatar" ref="Avatar" rules="mimes:image/*|size:200">
+                  <template #default="{validate, valid, errors }"><b-form-group :label="$t('UserImage')">
                     <input
                       :state="errors[0] ? false : (valid ? true : null)"
                       :class="{'is-invalid': !!errors.length}"
@@ -127,8 +127,8 @@
                       type="file"
                     >
                     <b-form-invalid-feedback id="Avatar-feedback">{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
+                  </b-form-group></template>
+                </px-validation-provider>
               </b-col>
 
               <b-col md="12" class="mt-3">
@@ -136,7 +136,7 @@
               </b-col>
             </b-row>
           </b-form>
-        </validation-observer>
+        </px-validation-observer>
       </div>
     </div>
 
@@ -144,12 +144,12 @@
     <div class="card mb-30" v-if="!isLoading">
       <div class="card-body">
         <h5 class="mb-3">{{ $t('ChangePassword') }}</h5>
-        <validation-observer ref="Update_Password">
+        <px-validation-observer ref="Update_Password">
           <b-form @submit.prevent="Submit_Password">
             <b-row>
               <!-- Current Password -->
               <b-col md="4" sm="12">
-                <validation-provider
+                <px-validation-provider
                   name="Current password"
                   :rules="{ required: true }"
                   v-slot="validationContext"
@@ -165,12 +165,12 @@
                       {{ validationContext.errors[0] }}
                     </b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- New Password -->
               <b-col md="4" sm="12">
-                <validation-provider
+                <px-validation-provider
                   vid="new_password"
                   name="New password"
                   :rules="{ required: true, min:6 }"
@@ -187,12 +187,12 @@
                       {{ validationContext.errors[0] }}
                     </b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Confirm Password -->
               <b-col md="4" sm="12">
-                <validation-provider
+                <px-validation-provider
                   name="Confirm password"
                   :rules="{ required: true, confirmed: 'new_password' }"
                   v-slot="validationContext"
@@ -208,7 +208,7 @@
                       {{ validationContext.errors[0] }}
                     </b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <b-col md="12" class="mt-3">
@@ -218,7 +218,7 @@
               </b-col>
             </b-row>
           </b-form>
-        </validation-observer>
+        </px-validation-observer>
       </div>
     </div>
 

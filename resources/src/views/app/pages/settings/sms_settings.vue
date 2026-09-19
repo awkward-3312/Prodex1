@@ -11,7 +11,7 @@
 
     <template v-else>
       <!-- Default gateway -->
-      <validation-observer ref="default_form_sms">
+      <px-validation-observer ref="default_form_sms">
         <form @submit.prevent="Submit_Default_SMS">
           <px-card title="Pasarela de SMS predeterminada" class="pxcfg__card">
             <div class="pxcfg__grid pxcfg__grid--3">
@@ -27,50 +27,50 @@
             </template>
           </px-card>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <!-- Termii -->
-      <validation-observer ref="termi_form_sms">
+      <px-validation-observer ref="termi_form_sms">
         <form @submit.prevent="Submit_Termi_SMS">
           <px-card title="Termii" class="pxcfg__card">
             <div class="pxcfg__grid pxcfg__grid--3">
-              <validation-provider ref="termiKeyProvider" name="TERMI_KEY" :rules="{ required: true }" v-slot="v">
+              <px-validation-provider ref="termiKeyProvider" name="TERMI_KEY" :rules="{ required: true }" v-slot="v">
                 <px-field label="Termii KEY *" :error="v.errors[0]"><template #default="{ id, invalid }"><px-input :id="id" v-model="termi.TERMI_KEY" :invalid="invalid" @input="v.validate" /></template></px-field>
-              </validation-provider>
-              <validation-provider ref="termiSecretProvider" name="TERMI_SECRET" :rules="{ required: true }" v-slot="v">
+              </px-validation-provider>
+              <px-validation-provider ref="termiSecretProvider" name="TERMI_SECRET" :rules="{ required: true }" v-slot="v">
                 <px-field label="Termii SECRET *" :error="v.errors[0]"><template #default="{ id, invalid }"><px-input :id="id" v-model="termi.TERMI_SECRET" :invalid="invalid" @input="v.validate" /></template></px-field>
-              </validation-provider>
-              <validation-provider ref="termiSenderProvider" name="TERMI_SENDER" :rules="{ required: true }" v-slot="v">
+              </px-validation-provider>
+              <px-validation-provider ref="termiSenderProvider" name="TERMI_SENDER" :rules="{ required: true }" v-slot="v">
                 <px-field label="Termii Sender *" :error="v.errors[0]"><template #default="{ id, invalid }"><px-input :id="id" v-model="termi.TERMI_SENDER" :invalid="invalid" @input="v.validate" /></template></px-field>
-              </validation-provider>
+              </px-validation-provider>
             </div>
             <template #footer><px-button variant="primary" icon="check" type="submit" @click="Submit_Termi_SMS">{{ $t('submit') }}</px-button></template>
           </px-card>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <!-- Twilio -->
-      <validation-observer ref="twilio_form_sms">
+      <px-validation-observer ref="twilio_form_sms">
         <form @submit.prevent="Submit_Twilio_SMS">
           <px-card title="Twilio SMS" class="pxcfg__card">
             <div class="pxcfg__grid pxcfg__grid--3">
-              <validation-provider ref="twSidProvider" name="TWILIO_SID" :rules="{ required: true }" v-slot="v">
+              <px-validation-provider ref="twSidProvider" name="TWILIO_SID" :rules="{ required: true }" v-slot="v">
                 <px-field label="TWILIO_SID *" :error="v.errors[0]"><template #default="{ id, invalid }"><px-input :id="id" v-model="twilio.TWILIO_SID" :invalid="invalid" @input="v.validate" /></template></px-field>
-              </validation-provider>
-              <validation-provider ref="twTokenProvider" name="TWILIO_TOKEN" :rules="{ required: true }" v-slot="v">
+              </px-validation-provider>
+              <px-validation-provider ref="twTokenProvider" name="TWILIO_TOKEN" :rules="{ required: true }" v-slot="v">
                 <px-field label="TWILIO_TOKEN *" :error="v.errors[0]"><template #default="{ id, invalid }"><px-input :id="id" v-model="twilio.TWILIO_TOKEN" :invalid="invalid" @input="v.validate" /></template></px-field>
-              </validation-provider>
-              <validation-provider ref="twFromProvider" name="TWILIO_FROM" :rules="{ required: true }" v-slot="v">
+              </px-validation-provider>
+              <px-validation-provider ref="twFromProvider" name="TWILIO_FROM" :rules="{ required: true }" v-slot="v">
                 <px-field label="TWILIO_FROM *" :error="v.errors[0]"><template #default="{ id, invalid }"><px-input :id="id" v-model="twilio.TWILIO_FROM" :invalid="invalid" @input="v.validate" /></template></px-field>
-              </validation-provider>
+              </px-validation-provider>
             </div>
             <template #footer><px-button variant="primary" icon="check" type="submit" @click="Submit_Twilio_SMS">{{ $t('submit') }}</px-button></template>
           </px-card>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <!-- InfoBip -->
-      <validation-observer ref="infobip_form_sms">
+      <px-validation-observer ref="infobip_form_sms">
         <form @submit.prevent="Submit_infobip_SMS">
           <px-card title="InfoBip" class="pxcfg__card">
             <div class="pxcfg__grid pxcfg__grid--3">
@@ -86,18 +86,18 @@
             <template #footer><px-button variant="primary" icon="check" type="submit" @click="Submit_infobip_SMS">{{ $t('submit') }}</px-button></template>
           </px-card>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <!-- Custom gateway -->
-      <validation-observer ref="custom_form_sms">
+      <px-validation-observer ref="custom_form_sms">
         <form @submit.prevent="Submit_Custom_SMS">
           <px-card :title="$t('Custom_SMS_Gateway')" class="pxcfg__card">
             <div class="pxcfg__grid">
-              <validation-provider ref="customUrlProvider" name="api_url" :rules="{ required: true, url: true }" v-slot="v">
+              <px-validation-provider ref="customUrlProvider" name="api_url" :rules="{ required: true, url: true }" v-slot="v">
                 <px-field :label="$t('Custom_SMS_Api_Url') + ' *'" :error="v.errors[0]">
                   <template #default="{ id, invalid }"><px-input :id="id" v-model="custom.api_url" placeholder="https://api.provider.com/sms/send" :invalid="invalid" @input="v.validate" /></template>
                 </px-field>
-              </validation-provider>
+              </px-validation-provider>
               <px-field :label="$t('Custom_SMS_Method')">
                 <template #default="{ id }"><vs-px :input-id="id" v-model="custom.method" :clearable="false" :options="['POST', 'GET', 'PUT']" /></template>
               </px-field>
@@ -154,7 +154,7 @@
             <template #footer><px-button variant="primary" icon="check" type="submit" @click="Submit_Custom_SMS">{{ $t('submit') }}</px-button></template>
           </px-card>
         </form>
-      </validation-observer>
+      </px-validation-observer>
     </template>
   </div>
 </template>

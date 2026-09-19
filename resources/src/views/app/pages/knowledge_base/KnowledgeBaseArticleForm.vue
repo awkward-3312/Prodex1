@@ -10,10 +10,10 @@
     />
 
     <px-card :title="isEdit ? ($t('Edit') + ' ' + $t('Article')) : ($t('New') + ' ' + $t('Article'))" class="pxkb__card">
-      <validation-observer ref="form_article">
+      <px-validation-observer ref="form_article">
         <form @submit.prevent="save">
           <div class="pxkb__formgrid">
-            <validation-provider ref="groupProvider" name="Group" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="groupProvider" name="Group" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('Group') + ' *'" :error="v.errors[0]">
                 <template #default="{ id }">
                   <vs-px
@@ -26,19 +26,19 @@
                   />
                 </template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider ref="titleProvider" name="Title" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="titleProvider" name="Title" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('Title') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="form.title" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider ref="slugProvider" name="Slug" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="slugProvider" name="Slug" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('Slug') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="form.slug" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
             <px-field :label="$t('Content')">
               <template #default>
@@ -70,7 +70,7 @@
             </div>
           </div>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer>
         <px-button variant="ghost" @click="$router.push({ name: 'KnowledgeBaseArticles' })">{{ $t('Cancel') }}</px-button>

@@ -171,7 +171,7 @@
     </div>
 
     <!-- Note modal -->
-    <validation-observer ref="Create_Note">
+    <px-validation-observer ref="Create_Note">
       <b-modal hide-footer size="md" id="Note_Modal" :title="note_editmode ? $t('Edit') : $t('Add_Note')">
         <b-form @submit.prevent="Submit_Note">
           <b-row>
@@ -185,12 +185,12 @@
               </b-form-group>
             </b-col>
             <b-col md="12">
-              <validation-provider name="content" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="content" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Content') + ' *'">
                   <b-form-textarea :state="getValidationState(validationContext)" v-model="note.content" rows="3"></b-form-textarea>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <template v-if="note.type === 'action_item'">
               <b-col md="12">
@@ -225,7 +225,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

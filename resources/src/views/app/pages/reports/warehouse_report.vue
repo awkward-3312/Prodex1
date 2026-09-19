@@ -63,15 +63,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('quotations')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Quotation_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
+              </div></template>
+                <template #table-row="props">
                   <div v-if="props.column.field == 'statut'">
                     <span
                       v-if="props.row.statut == 'sent'"
@@ -122,15 +122,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('sales')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Sales_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
+              </div></template>
+                <template #table-row="props">
                   <div v-if="props.column.field == 'statut'">
                     <span
                       v-if="props.row.statut == 'completed'"
@@ -225,15 +225,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('purchases')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Purchases_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
+              </div></template>
+                <template #table-row="props">
                   <div v-if="props.column.field == 'statut'">
                     <span
                       v-if="props.row.statut == 'received'"
@@ -305,15 +305,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('returns_sale')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Sale_Return_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
+              </div></template>
+                <template #table-row="props">
                   <div v-if="props.column.field == 'statut'">
                     <span
                       v-if="props.row.statut == 'received'"
@@ -389,15 +389,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('returns_purchase')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Returns_Purchase_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
+              </div></template>
+                <template #table-row="props">
                   <div v-if="props.column.field == 'statut'">
                     <span
                       v-if="props.row.statut == 'completed'"
@@ -473,15 +473,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('expenses')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Expense_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-              <template slot="table-row" slot-scope="props">
+              </div></template>
+              <template #table-row="props">
                 <span v-if="props.column.field == 'amount'">
                   {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.amount, 2) }}
                 </span>

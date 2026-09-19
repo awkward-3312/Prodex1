@@ -102,7 +102,7 @@
 
     <!-- Crear / editar -->
     <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="lg">
-      <validation-observer ref="Create_Job">
+      <px-validation-observer ref="Create_Job">
         <form @submit.prevent="Submit_Job">
           <div class="pxjobs__grid">
             <v-field name="title" :label="$t('Job_Title')" required :rules="{ required: true }" v-slot="{ invalid, id }">
@@ -193,7 +193,7 @@
             </px-field>
           </div>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer="{ close }">
         <span class="pxjobs__grow" />

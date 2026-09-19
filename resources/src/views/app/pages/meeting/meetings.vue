@@ -48,16 +48,16 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="selected-row-actions">
+        <template #selected-row-actions><div>
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{ $t('Del') }}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="New_Meeting()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
             <lucide-icon name="plus" /> {{ $t('New_Meeting') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'title'">
             <a class="cursor-pointer text-primary font-weight-bold" @click="View_Details(props.row.id)">{{ props.row.title }}</a>
           </span>
@@ -94,34 +94,34 @@
       </vue-good-table>
     </b-card>
 
-    <validation-observer ref="Create_Meeting">
+    <px-validation-observer ref="Create_Meeting">
       <b-modal hide-footer size="lg" id="New_Meeting" :title="editmode ? $t('Edit') : $t('New_Meeting')">
         <b-form @submit.prevent="Submit_Meeting">
           <b-row>
             <b-col md="12">
-              <validation-provider name="title" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="title" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Meeting_Title') + ' *'">
                   <b-form-input :state="getValidationState(validationContext)" v-model="meeting.title"></b-form-input>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <b-col md="4">
-              <validation-provider name="meeting_date" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="meeting_date" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Meeting_Date') + ' *'">
                   <b-form-input type="date" :state="getValidationState(validationContext)" v-model="meeting.meeting_date"></b-form-input>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="4">
-              <validation-provider name="start_time" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="start_time" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Start_Time') + ' *'">
                   <b-form-input type="time" :state="getValidationState(validationContext)" v-model="meeting.start_time"></b-form-input>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="4">
               <b-form-group :label="$t('End_Time')">
@@ -216,7 +216,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

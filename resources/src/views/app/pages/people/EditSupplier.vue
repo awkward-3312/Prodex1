@@ -20,7 +20,7 @@
           </div>
         </div>
 
-        <validation-observer ref="Create_Provider" v-if="provider">
+        <px-validation-observer ref="Create_Provider" v-if="provider">
           <b-form @submit.prevent="Submit_Provider">
             <section class="px-section">
               <div class="px-section-header">
@@ -35,12 +35,12 @@
               <div class="px-section-body">
                 <b-row>
                   <b-col md="6" sm="12">
-                    <validation-provider name="Name Provider" :rules="{ required: true}" v-slot="validationContext">
+                    <px-validation-provider name="Name Provider" :rules="{ required: true}" v-slot="validationContext">
                       <b-form-group :label="$t('SupplierName') + ' *'">
                         <b-form-input :state="getValidationState(validationContext)" aria-describedby="name-feedback" label="name" v-model="provider.name" :placeholder="$t('SupplierName')"></b-form-input>
                         <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
                   <b-col md="6" sm="12">
                     <b-form-group :label="$t('Email')">
@@ -140,7 +140,7 @@
               </div>
             </div>
           </b-form>
-        </validation-observer>
+        </px-validation-observer>
       </template>
     </div>
   </div>

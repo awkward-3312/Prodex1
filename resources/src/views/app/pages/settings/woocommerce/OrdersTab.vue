@@ -105,7 +105,7 @@
           }"
           styleClass="tableOne table-hover vgt-table"
         >
-          <template slot="table-row" slot-scope="props">
+          <template #table-row="props">
             <span v-if="props.column.field === 'sync_status'">
               <b-badge v-if="props.row.sync_status === 'synced'" variant="success">
                 <lucide-icon class="mr-1" name="check-check" /> Sincronizado

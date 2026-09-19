@@ -68,7 +68,7 @@
       }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'Ref_return' && props.row.purchase_return_id">
             <router-link :to="{ name: 'detail_purchase_return', params: { id: props.row.purchase_return_id } }" class="text-primary">
               {{ props.formattedRow[props.column.field] }}
@@ -76,7 +76,7 @@
           </span>
           <span v-else>{{ props.formattedRow[props.column.field] }}</span>
         </template>
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -97,7 +97,7 @@
               >
               <lucide-icon name="file-spreadsheet" /> EXCEL
           </vue-excel-xlsx>
-        </div>
+        </div></template>
       </vue-good-table>
     </b-card>
 

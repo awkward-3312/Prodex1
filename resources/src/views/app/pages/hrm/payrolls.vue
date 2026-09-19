@@ -25,10 +25,10 @@
       }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="selected-row-actions">
+        <template #selected-row-actions><div>
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button
             @click="Function_New_Payroll()"
             class="btn-rounded"
@@ -37,9 +37,9 @@
             <lucide-icon name="plus" />
             {{$t('Add')}}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <a @click="Payroll_Details(props.row)" class="cursor-pointer" title="View" v-b-tooltip.hover>
               <lucide-icon class="text-25 text-info" name="eye" />
@@ -73,14 +73,14 @@
       </vue-good-table>
     </b-card>
 
-    <validation-observer ref="Create_Payroll">
+    <px-validation-observer ref="Create_Payroll">
       <b-modal hide-footer size="md" id="Modal_New_Payroll" :title="editmode?$t('Edit'):$t('Add')">
         <b-form @submit.prevent="Submit_Payroll">
           <b-row>
             
               <!-- date -->
               <b-col md="12">
-                <validation-provider
+                <px-validation-provider
                   name="date"
                   :rules="{ required: true}"
                   v-slot="validationContext"
@@ -91,13 +91,13 @@
                         </Datepicker>
                         <b-form-invalid-feedback id="date-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                      </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Employee -->
               <b-col md="12">
-                <validation-provider name="Employee" :rules="{ required: true}">
-                  <b-form-group slot-scope="{ valid, errors }" :label="$t('Employee') + ' ' + '*'">
+                <px-validation-provider name="Employee" :rules="{ required: true}">
+                  <template #default="{ valid, errors }"><b-form-group :label="$t('Employee') + ' ' + '*'">
                     <v-select
                       :class="{'is-invalid': !!errors.length}"
                       :state="errors[0] ? false : (valid ? true : null)"
@@ -110,14 +110,14 @@
                       :options="employees.map(employees => ({label: employees.username, value: employees.id}))"
                     />
                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
+                  </b-form-group></template>
+                </px-validation-provider>
               </b-col>
 
               <!-- Account -->
               <b-col md="12">
-                <validation-provider name="Account">
-                  <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
+                <px-validation-provider name="Account">
+                  <template #default="{ valid, errors }"><b-form-group :label="$t('Account')">
                     <v-select
                       :class="{'is-invalid': !!errors.length}"
                       :state="errors[0] ? false : (valid ? true : null)"
@@ -128,13 +128,13 @@
                       :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
                     />
                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
+                  </b-form-group></template>
+                </px-validation-provider>
               </b-col>
 
               <!-- Paying Amount  -->
               <b-col md="12">
-                <validation-provider
+                <px-validation-provider
                   name="Amount"
                   :rules="{ required: true , regex: /^\d*\.?\d*$/}"
                   v-slot="validationContext"
@@ -151,13 +151,13 @@
                     ></b-form-input>
                     <b-form-invalid-feedback id="Amount-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
                <!-- Payment choice -->
               <b-col md="12">
-                <validation-provider name="Payment choice" :rules="{ required: true}">
-                  <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice') + ' ' + '*'">
+                <px-validation-provider name="Payment choice" :rules="{ required: true}">
+                  <template #default="{ valid, errors }"><b-form-group :label="$t('Paymentchoice') + ' ' + '*'">
                     <v-select
                       :class="{'is-invalid': !!errors.length}"
                       :state="errors[0] ? false : (valid ? true : null)"
@@ -167,8 +167,8 @@
                       :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
                     ></v-select>
                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
+                  </b-form-group></template>
+                </px-validation-provider>
               </b-col>
 
               <!-- Receiver Account Number -->
@@ -298,7 +298,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
 
     <!-- Modal Payroll Details -->
     <b-modal ok-only size="md" id="Payroll_Details" :title="$t('Payroll') + ' ' + $t('Details')">

@@ -21,13 +21,13 @@
         @on-per-page-change="onPerPageChange"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <div v-if="props.column.field === 'details'">
             <pre style="max-height: 100px; overflow-y: auto; white-space: pre-wrap;">{{ props.row.details }}</pre>
           </div>

@@ -304,7 +304,7 @@
     </div>
 
     <!-- Pay Due Modal -->
-    <validation-observer ref="ref_pay_due">
+    <px-validation-observer ref="ref_pay_due">
       <b-modal
         hide-footer
         size="lg"
@@ -388,7 +388,7 @@
           
             <!-- Paying Amount  -->
             <b-col lg="12" md="12" sm="12" class="mt-3">
-              <validation-provider
+              <px-validation-provider
                 name="Amount"
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
                 v-slot="validationContext"
@@ -407,13 +407,13 @@
                     {{ $t('Maximum_payment') }}: <strong>{{ formatPriceWithSymbol(currentUser.currency, totalDue, 2) }}</strong>
                   </small>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
              <!-- Payment choice -->
              <b-col lg="12" md="12" sm="12">
-              <validation-provider name="Payment choice" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')+ ' ' + '*'">
+              <px-validation-provider name="Payment choice" :rules="{ required: true}">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Paymentchoice')+ ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -423,14 +423,14 @@
                     :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
              <!-- Account -->
              <b-col lg="12" md="6" sm="12">
-              <validation-provider name="Account">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
+              <px-validation-provider name="Account">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Account')">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -440,8 +440,8 @@
                     :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
                   />
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
             <!-- Note -->
@@ -465,7 +465,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
 
     <!-- Modal Show Customer Credit Note Receipt -->
     <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Customer_Credit_Note')">

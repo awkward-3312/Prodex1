@@ -9,50 +9,50 @@
       <px-skeleton variant="lines" :rows="6" />
     </div>
 
-    <validation-observer v-else ref="form_config_mail">
+    <px-validation-observer v-else ref="form_config_mail">
       <form @submit.prevent="Submit_config_mail">
         <px-card :title="$t('mail_settings')" class="pxcfg__card">
           <div class="pxcfg__grid pxcfg__grid--3">
-            <validation-provider ref="mailerProvider" name="MAIL_MAILER" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="mailerProvider" name="MAIL_MAILER" :rules="{ required: true }" v-slot="v">
               <px-field label="MAIL_MAILER *" hint='Soportados: "smtp", "sendmail", "mailgun", "ses", "postmark", "log"' :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="server.mail_mailer" placeholder="MAIL_MAILER" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="hostProvider" name="HOST" :rules="{ required: true }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="hostProvider" name="HOST" :rules="{ required: true }" v-slot="v">
               <px-field label="MAIL_HOST *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="server.host" placeholder="MAIL_HOST" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="portProvider" name="PORT" :rules="{ required: true }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="portProvider" name="PORT" :rules="{ required: true }" v-slot="v">
               <px-field label="MAIL_PORT *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="server.port" placeholder="MAIL_PORT" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="senderProvider" name="sender" :rules="{ required: true }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="senderProvider" name="sender" :rules="{ required: true }" v-slot="v">
               <px-field label="Sender Name *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="server.sender_name" placeholder="Sender Name" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="senderEmailProvider" name="sender_email" :rules="{ required: true, email: true }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="senderEmailProvider" name="sender_email" :rules="{ required: true, email: true }" v-slot="v">
               <px-field label="Sender Email *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" type="email" v-model="server.sender_email" placeholder="Sender Email" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="usernameProvider" name="Username" :rules="{ required: true }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="usernameProvider" name="Username" :rules="{ required: true }" v-slot="v">
               <px-field label="MAIL_USERNAME *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="server.username" placeholder="MAIL_USERNAME" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="passwordProvider" name="Password" :rules="{ required: true }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="passwordProvider" name="Password" :rules="{ required: true }" v-slot="v">
               <px-field label="MAIL_PASSWORD *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="server.password" placeholder="MAIL_PASSWORD" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="encryptionProvider" name="encryption" :rules="{ required: true }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="encryptionProvider" name="encryption" :rules="{ required: true }" v-slot="v">
               <px-field label="MAIL_ENCRYPTION *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="server.encryption" placeholder="MAIL_ENCRYPTION" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
           </div>
           <template #footer>
             <px-button variant="primary" icon="check" type="submit" @click="Submit_config_mail">{{ $t('submit') }}</px-button>
@@ -62,7 +62,7 @@
           </template>
         </px-card>
       </form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

@@ -8,7 +8,7 @@
         <b-card class="card mb-30" header-bg-variant="transparent ">
           <b-tabs active-nav-item-class="nav nav-tabs" content-class="mt-3">
             <b-tab :title="$t('Basic_Information')">
-              <validation-observer ref="Edit_Employee" v-if="!isLoading">
+              <px-validation-observer ref="Edit_Employee" v-if="!isLoading">
                 <b-form @submit.prevent="Submit_Employee" enctype="multipart/form-data">
                   <b-row>
                     <b-col md="12">
@@ -16,7 +16,7 @@
                         <b-row>
                           <!-- FirstName -->
                           <b-col md="4" class="mb-2">
-                            <validation-provider
+                            <px-validation-provider
                               name="FirstName"
                               :rules="{required:true}"
                               v-slot="validationContext"
@@ -33,12 +33,12 @@
                                   id="FirstName-feedback"
                                 >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                               </b-form-group>
-                            </validation-provider>
+                            </px-validation-provider>
                           </b-col>
 
                           <!-- LastName -->
                           <b-col md="4" class="mb-2">
-                            <validation-provider
+                            <px-validation-provider
                               name="LastName"
                               :rules="{required:true}"
                               v-slot="validationContext"
@@ -55,13 +55,13 @@
                                   id="LastName-feedback"
                                 >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                               </b-form-group>
-                            </validation-provider>
+                            </px-validation-provider>
                           </b-col>
 
                           <!-- Gender -->
                           <b-col md="4" class="mb-2">
-                            <validation-provider name="Gender" :rules="{ required: true}">
-                              <b-form-group slot-scope="{ valid, errors }" :label="$t('Gender') + ' ' + '*'">
+                            <px-validation-provider name="Gender" :rules="{ required: true}">
+                              <template #default="{ valid, errors }"><b-form-group :label="$t('Gender') + ' ' + '*'">
                                 <v-select
                                   :class="{'is-invalid': !!errors.length}"
                                   :state="errors[0] ? false : (valid ? true : null)"
@@ -75,8 +75,8 @@
                                     ]"
                                 ></v-select>
                                 <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                              </b-form-group>
-                            </validation-provider>
+                              </b-form-group></template>
+                            </px-validation-provider>
                           </b-col>
 
                           <!-- Family_status -->
@@ -244,7 +244,7 @@
 
                           <!-- Annual_Leave -->
                           <b-col md="4" class="mb-2">
-                            <validation-provider
+                            <px-validation-provider
                               name="total_leave"
                               :rules="{required:true}"
                               v-slot="validationContext"
@@ -261,7 +261,7 @@
                                   id="total_leave-feedback"
                                 >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                               </b-form-group>
-                            </validation-provider>
+                            </px-validation-provider>
                           </b-col>
 
                           <!-- Remaining_leave -->
@@ -277,8 +277,8 @@
 
                           <!-- Company -->
                           <b-col md="4" class="mb-2">
-                            <validation-provider name="Company" :rules="{ required: true}">
-                              <b-form-group slot-scope="{ valid, errors }" :label="$t('Company') + ' ' + '*'">
+                            <px-validation-provider name="Company" :rules="{ required: true}">
+                              <template #default="{ valid, errors }"><b-form-group :label="$t('Company') + ' ' + '*'">
                                 <v-select
                                   :class="{'is-invalid': !!errors.length}"
                                   :state="errors[0] ? false : (valid ? true : null)"
@@ -291,15 +291,14 @@
                                   :options="companies.map(companies => ({label: companies.name, value: companies.id}))"
                                 />
                                 <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                              </b-form-group>
-                            </validation-provider>
+                              </b-form-group></template>
+                            </px-validation-provider>
                           </b-col>
 
                           <!-- Department -->
                           <b-col md="4" class="mb-2">
-                            <validation-provider name="Department" :rules="{ required: true}">
-                              <b-form-group
-                                slot-scope="{ valid, errors }"
+                            <px-validation-provider name="Department" :rules="{ required: true}">
+                              <template #default="{ valid, errors }"><b-form-group
                                 :label="$t('Department') + ' ' + '*'"
                               >
                                 <v-select
@@ -314,15 +313,14 @@
                                   :options="departments.map(departments => ({label: departments.department, value: departments.id}))"
                                 />
                                 <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                              </b-form-group>
-                            </validation-provider>
+                              </b-form-group></template>
+                            </px-validation-provider>
                           </b-col>
 
                           <!-- Designation -->
                           <b-col md="4" class="mb-2">
-                            <validation-provider name="Designation" :rules="{ required: true}">
-                              <b-form-group
-                                slot-scope="{ valid, errors }"
+                            <px-validation-provider name="Designation" :rules="{ required: true}">
+                              <template #default="{ valid, errors }"><b-form-group
                                 :label="$t('Designation') + ' ' + '*'"
                               >
                                 <v-select
@@ -337,15 +335,14 @@
                                   :options="designations.map(designations => ({label: designations.designation, value: designations.id}))"
                                 />
                                 <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                              </b-form-group>
-                            </validation-provider>
+                              </b-form-group></template>
+                            </px-validation-provider>
                           </b-col>
 
                           <!-- Office_Shift -->
                           <b-col md="4" class="mb-2">
-                            <validation-provider name="Office_Shift" :rules="{ required: true}">
-                              <b-form-group
-                                slot-scope="{ valid, errors }"
+                            <px-validation-provider name="Office_Shift" :rules="{ required: true}">
+                              <template #default="{ valid, errors }"><b-form-group
                                 :label="$t('Office_Shift') + ' ' + '*'"
                               >
                                 <v-select
@@ -360,8 +357,8 @@
                                   :options="office_shifts.map(office_shifts => ({label: office_shifts.name, value: office_shifts.id}))"
                                 />
                                 <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                              </b-form-group>
-                            </validation-provider>
+                              </b-form-group></template>
+                            </px-validation-provider>
                           </b-col>
 
                           <!-- Hourly_rate -->
@@ -400,7 +397,7 @@
                     </b-col>
                   </b-row>
                 </b-form>
-              </validation-observer>
+              </px-validation-observer>
             </b-tab>
 
             <b-tab :title="$t('Social_Media')">
@@ -497,7 +494,7 @@
                 }"
                 styleClass="tableOne table-hover vgt-table"
               >
-                <div slot="table-actions" class="mt-2 mb-3">
+                <template #table-actions><div class="mt-2 mb-3">
                   <b-button
                     @click="New_Experience()"
                     class="btn-rounded"
@@ -506,8 +503,8 @@
                     <lucide-icon name="plus" />
                     {{$t('Add')}}
                   </b-button>
-                </div>
-                <template slot="table-row" slot-scope="props">
+                </div></template>
+                <template #table-row="props">
                   <span v-if="props.column.field == 'actions'">
                     <a @click="Edit_Experience(props.row)" title="Edit" v-b-tooltip.hover>
                       <lucide-icon class="text-25 text-success" name="pencil" />
@@ -537,7 +534,7 @@
                 }"
                 styleClass="tableOne table-hover vgt-table"
               >
-                <div slot="table-actions" class="mt-2 mb-3">
+                <template #table-actions><div class="mt-2 mb-3">
                   <b-button
                     @click="New_Account()"
                     class="btn-rounded"
@@ -546,8 +543,8 @@
                     <lucide-icon name="plus" />
                     {{$t('Add')}}
                   </b-button>
-                </div>
-                <template slot="table-row" slot-scope="props">
+                </div></template>
+                <template #table-row="props">
                   <span v-if="props.column.field == 'actions'">
                     <a @click="Edit_Account(props.row)" title="Edit" v-b-tooltip.hover>
                       <lucide-icon class="text-25 text-success" name="pencil" />
@@ -564,7 +561,7 @@
       </b-col>
 
       <!-- Modal_Experience -->
-      <validation-observer ref="Create_Experience">
+      <px-validation-observer ref="Create_Experience">
         <b-modal
           hide-footer
           size="lg"
@@ -575,7 +572,7 @@
             <b-row>
               <!-- Title -->
               <b-col md="6" class="mb-2">
-                <validation-provider
+                <px-validation-provider
                   name="Title"
                   :rules="{required:true}"
                   v-slot="validationContext"
@@ -590,12 +587,12 @@
                     ></b-form-input>
                     <b-form-invalid-feedback id="Title-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Company_Name -->
               <b-col md="6" class="mb-2">
-                <validation-provider
+                <px-validation-provider
                   name="Company_Name"
                   :rules="{required:true}"
                   v-slot="validationContext"
@@ -612,7 +609,7 @@
                       id="Company_Name-feedback"
                     >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Location -->
@@ -628,7 +625,7 @@
 
               <!-- start date -->
               <b-col md="6">
-                <validation-provider
+                <px-validation-provider
                   name="start_date"
                   :rules="{ required: true}"
                   v-slot="validationContext"
@@ -647,12 +644,12 @@
                       id="start_date-feedback"
                     >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- end date -->
               <b-col md="6">
-                <validation-provider
+                <px-validation-provider
                   name="Finish_Date"
                   :rules="{ required: true}"
                   v-slot="validationContext"
@@ -671,13 +668,13 @@
                       id="end_date-feedback"
                     >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Employment_type -->
               <b-col lg="6" md="6" sm="12" class="mb-2">
-                <validation-provider name="Status" :rules="{ required: true}">
-                  <b-form-group slot-scope="{ valid, errors }" :label="$t('Employment_type') + ' ' + '*'">
+                <px-validation-provider name="Status" :rules="{ required: true}">
+                  <template #default="{ valid, errors }"><b-form-group :label="$t('Employment_type') + ' ' + '*'">
                     <v-select
                       :class="{'is-invalid': !!errors.length}"
                       :state="errors[0] ? false : (valid ? true : null)"
@@ -698,8 +695,8 @@
                             ]"
                     ></v-select>
                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
+                  </b-form-group></template>
+                </px-validation-provider>
               </b-col>
 
               <!-- Description -->
@@ -727,10 +724,10 @@
             </b-row>
           </b-form>
         </b-modal>
-      </validation-observer>
+      </px-validation-observer>
 
       <!-- Modal_Account -->
-      <validation-observer ref="Create_Account">
+      <px-validation-observer ref="Create_Account">
         <b-modal
           hide-footer
           size="lg"
@@ -741,7 +738,7 @@
             <b-row>
               <!-- Title -->
               <b-col md="6" class="mb-2">
-                <validation-provider
+                <px-validation-provider
                   name="Bank_Name"
                   :rules="{required:true}"
                   v-slot="validationContext"
@@ -758,12 +755,12 @@
                       id="Bank_Name-feedback"
                     >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Bank_Branch -->
               <b-col md="6" class="mb-2">
-                <validation-provider
+                <px-validation-provider
                   name="Bank_Branch"
                   :rules="{required:true}"
                   v-slot="validationContext"
@@ -780,12 +777,12 @@
                       id="Bank_Branch-feedback"
                     >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Bank_Number -->
               <b-col md="6" class="mb-2">
-                <validation-provider
+                <px-validation-provider
                   name="Bank_Number"
                   :rules="{required:true}"
                   v-slot="validationContext"
@@ -802,7 +799,7 @@
                       id="Bank_Number-feedback"
                     >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Description -->
@@ -830,7 +827,7 @@
             </b-row>
           </b-form>
         </b-modal>
-      </validation-observer>
+      </px-validation-observer>
     </b-row>
   </div>
 </template>

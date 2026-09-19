@@ -10,20 +10,20 @@
     />
 
     <px-card :title="isEdit ? ($t('Edit') + ' ' + $t('Group')) : ($t('New') + ' ' + $t('Group'))" class="pxkb__card">
-      <validation-observer ref="form_group">
+      <px-validation-observer ref="form_group">
         <form @submit.prevent="save">
           <div class="pxkb__formgrid">
-            <validation-provider ref="nameProvider" name="Name" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="nameProvider" name="Name" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('Name') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="form.name" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider ref="slugProvider" name="Slug" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="slugProvider" name="Slug" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('Slug') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="form.slug" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
             <px-field :label="$t('Description')">
               <template #default="{ id }"><px-textarea :id="id" v-model="form.description" :rows="3" /></template>
@@ -34,7 +34,7 @@
             </px-field>
           </div>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer>
         <px-button variant="ghost" @click="$router.push({ name: 'KnowledgeBaseGroups' })">{{ $t('Cancel') }}</px-button>

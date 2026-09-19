@@ -38,17 +38,8 @@ import { installSarInvoiceBridge } from './utils/sarInvoiceBridge';
 import { installPosOperationalLocationBridge } from './utils/posOperationalLocationBridge';
 import { installNavigationPerformance } from './utils/navigationPerformance';
 window.auth = new Auth();
-import { ValidationObserver, ValidationProvider, extend, localize } from 'vee-validate';
-import * as rules from "vee-validate/dist/rules";
-
-localize({ es: { messages: { required: 'Este campo es obligatorio', required_if: 'Este campo es obligatorio', regex: 'Este campo debe tener un formato válido', mimes: 'Este archivo debe tener un tipo válido', size: (_, { size }) => `El tamaño del archivo debe ser menor de ${size}`, min: 'Este campo debe tener al menos {length} caracteres', max: (_, { length }) => `Este campo no puede tener más de ${length} caracteres` } } });
-localize('es');
-Object.keys(rules).forEach(rule => { extend(rule, rules[rule]); });
-
-extend('url', { validate(value) { if (!value) return false; try { const parsed = new URL(value); return parsed.protocol === 'http:' || parsed.protocol === 'https:'; } catch (e) { return false; } }, message: 'Este campo debe contener una URL válida (http:// o https://)' });
-
-Vue.component("ValidationObserver", ValidationObserver);
-Vue.component('ValidationProvider', ValidationProvider);
+import { installValidation } from './platform/validation';
+installValidation(Vue);
 
 Vue.component('qrcode-scanner', {
   props: { qrbox: { type: Number, default: 250 }, fps: { type: Number, default: 10 } },
@@ -148,7 +139,7 @@ Vue.config.silent = true;
 Vue.config.devtools = false;
 import { loadI18n } from './plugins/i18n.loader';
 import { setupGlobalOfflineSync } from './utils/globalOfflineSync';
-import { events, installVue2Platform } from './platform';
+import { events, installVue2Platform, installLegacyBridge } from './platform';
 
 loadI18n().then(i18n => {
   store.commit('SetDefaultLanguage', { i18n, Language: i18n.locale });
@@ -158,4 +149,10 @@ loadI18n().then(i18n => {
   const app = new Vue({ store, router, VueCookie, i18n, render: h => h(App) }).$mount('#app');
   // Conecta notificaciones, confirmaciones y modales por id (servicios de plataforma) con BootstrapVue/SweetAlert2.
   installVue2Platform(app);
+  // Puente explícito para los scripts sueltos prodex-*.js (sustituye a leer la instancia interna de Vue del DOM).
+  installLegacyBridge({
+    navigate: (path) => router.push(path),
+    getPermissions: () => store.getters.currentUserPermissions,
+    getPlanSummary: () => window.__planSummary,
+  });
 });

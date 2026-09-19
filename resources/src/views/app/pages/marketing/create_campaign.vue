@@ -4,19 +4,19 @@
 
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
 
-    <validation-observer ref="Campaign_Form" v-if="!isLoading">
+    <px-validation-observer ref="Campaign_Form" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Campaign">
         <b-row>
           <b-col md="8">
             <b-card :title="editmode ? $t('Edit_Campaign') : $t('Create_Campaign')">
               <b-row>
                 <b-col md="12">
-                  <validation-provider name="title" :rules="{ required: true }" v-slot="validationContext">
+                  <px-validation-provider name="title" :rules="{ required: true }" v-slot="validationContext">
                     <b-form-group :label="$t('Campaign_Title') + ' *'">
                       <b-form-input :state="getValidationState(validationContext)" v-model="campaign.title"></b-form-input>
                       <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="6">
@@ -48,12 +48,12 @@
                 </b-col>
 
                 <b-col md="12">
-                  <validation-provider name="message" :rules="{ required: true }" v-slot="validationContext">
+                  <px-validation-provider name="message" :rules="{ required: true }" v-slot="validationContext">
                     <b-form-group :label="$t('Message_Content') + ' *'">
                       <b-form-textarea ref="msgArea" :rows="campaign.type === 'email' ? 8 : 4" :state="getValidationState(validationContext)" v-model="campaign.message_content"></b-form-textarea>
                       <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                   <div class="mb-3">
                     <small class="text-muted">{{ $t('Personalization_Variables') }}:</small>
                     <b-button v-for="v in variables" :key="v" size="sm" variant="outline-secondary" class="m-1" @click="insertVariable(v)">{{ v }}</b-button>
@@ -105,7 +105,7 @@
           </b-col>
         </b-row>
       </b-form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

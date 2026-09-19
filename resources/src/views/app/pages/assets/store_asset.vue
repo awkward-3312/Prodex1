@@ -2,27 +2,27 @@
   <div class="main-content">
     <breadcumb :page="$t('Add_Asset')" :folder="$t('Assets')"/>
 
-    <validation-observer ref="create_asset" v-slot="{ validate, reset }">
+    <px-validation-observer ref="create_asset" v-slot="{ validate, reset }">
       <b-form @submit.prevent="submitAsset">
         <b-row>
           <b-col md="6">
             <b-form-group :label="$t('Tag') + ' *'">
-              <validation-provider name="tag" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="tag" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-input v-model="form.tag" :state="getValidationState(validationContext)" aria-describedby="tag-feedback"></b-form-input>
                 <b-form-invalid-feedback id="tag-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-              </validation-provider>
+              </px-validation-provider>
             </b-form-group>
           </b-col>
           <b-col md="6">
             <b-form-group :label="$t('Name') + ' *'">
-              <validation-provider name="name" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="name" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-input v-model="form.name" :state="getValidationState(validationContext)" aria-describedby="name-feedback"></b-form-input>
                 <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-              </validation-provider>
+              </px-validation-provider>
             </b-form-group>
           </b-col>
           <b-col md="6">
-            <validation-provider name="asset_category_id" :rules="{ required: true }" v-slot="{ valid, errors }">
+            <px-validation-provider name="asset_category_id" :rules="{ required: true }" v-slot="{ valid, errors }">
               <b-form-group :label="$t('Category') + ' *'">
                 <v-select
                   :class="{'is-invalid': !!errors.length}"
@@ -34,7 +34,7 @@
                 />
                 <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
               </b-form-group>
-            </validation-provider>
+            </px-validation-provider>
           </b-col>
           <b-col md="6">
             <b-form-group :label="$t('Serial')">
@@ -48,10 +48,10 @@
           </b-col>
           <b-col md="6">
             <b-form-group :label="$t('Purchase_Cost')">
-              <validation-provider name="purchase_cost" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="validationContext">
+              <px-validation-provider name="purchase_cost" :rules="{ regex: /^\d*\.?\d*$/ }" v-slot="validationContext">
                 <b-form-input type="text" step="0.01" v-model.number="form.purchase_cost" :state="getValidationState(validationContext)" aria-describedby="purchase_cost-feedback"></b-form-input>
                 <b-form-invalid-feedback id="purchase_cost-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-              </validation-provider>
+              </px-validation-provider>
             </b-form-group>
           </b-col>
           <b-col md="6">
@@ -60,7 +60,7 @@
             </b-form-group>
           </b-col>
           <b-col md="6">
-            <validation-provider name="warehouse_id" :rules="{ required: true }" v-slot="{ valid, errors }">
+            <px-validation-provider name="warehouse_id" :rules="{ required: true }" v-slot="{ valid, errors }">
               <b-form-group :label="$t('Warehouse') + ' *'">
                 <v-select
                   :class="{'is-invalid': !!errors.length}"
@@ -72,7 +72,7 @@
                 />
                 <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
               </b-form-group>
-            </validation-provider>
+            </px-validation-provider>
           </b-col>
           <b-col md="6">
             <b-form-group :label="$t('Last_Verification')">
@@ -101,7 +101,7 @@
           <router-link class="btn btn-outline-secondary ml-2" to="/app/assets/list">{{ $t('Cancel') }}</router-link>
         </div>
       </b-form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
   
 </template>

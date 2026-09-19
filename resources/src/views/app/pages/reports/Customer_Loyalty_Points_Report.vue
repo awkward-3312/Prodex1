@@ -69,12 +69,12 @@
           @on-sort-change="onSortChange"
           @on-search="onSearch"
         >
-          <div slot="table-actions" class="mt-2 mb-3">
+          <template #table-actions><div class="mt-2 mb-3">
             <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
               <lucide-icon name="printer" /> {{ $t("print") }}
             </b-button>
-          </div>
-          <template slot="table-actions-bottom">
+          </div></template>
+          <template #table-actions-bottom>
             <div class="d-flex justify-content-end w-100 pt-2">
               <div class="font-weight-bold">
                 {{$t('Totals')}}:

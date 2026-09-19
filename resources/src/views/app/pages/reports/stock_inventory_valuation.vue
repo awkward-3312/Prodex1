@@ -39,7 +39,7 @@
       >
 
         <!-- Filters -->
-        <div slot="table-actions" class="mt-2 mb-3 quantity_alert_warehouse">
+        <template #table-actions><div class="mt-2 mb-3 quantity_alert_warehouse">
           <b-form-group :label="$t('warehouse')">
             <v-select
               @input="Selected_Warehouse"
@@ -54,17 +54,17 @@
           </b-form-group>
         </div>
 
-        <div slot="table-actions" class="mt-2 mb-3">
+        <div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
           <b-button @click="stock_report_PDF()" size="sm" variant="outline-success ripple m-1">
             <lucide-icon name="copy" /> PDF
           </b-button>
-        </div>
+        </div></template>
 
         <!-- Custom cell rendering -->
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'selling_price'">
             {{ formatPrice(props.row.selling_price) }}
           </span>

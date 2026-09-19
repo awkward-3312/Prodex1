@@ -76,7 +76,7 @@
 
     <!-- Crear / editar -->
     <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
-      <validation-observer ref="Create_Category">
+      <px-validation-observer ref="Create_Category">
         <form @submit.prevent="Submit_Category">
           <v-field
             name="name"
@@ -96,7 +96,7 @@
 
           <px-check v-model="category.is_active" class="pxrc__active">{{ $t('Active') }}</px-check>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer="{ close }">
         <span class="pxrc__grow" />

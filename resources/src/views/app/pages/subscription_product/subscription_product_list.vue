@@ -42,7 +42,7 @@
         styleClass="table-hover tableOne vgt-table"
       >
        
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <router-link
             class="btn-sm btn btn-primary ripple btn-icon m-1"
             to="/app/subscription_product/store"
@@ -53,9 +53,9 @@
             <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
           </router-link>
 
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
           
             <router-link

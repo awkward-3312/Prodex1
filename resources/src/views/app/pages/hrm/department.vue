@@ -84,7 +84,7 @@
 
     <!-- Crear / editar -->
     <px-modal v-model="modalOpen" :title="editmode ? $t('Edit') : $t('Add')" size="md">
-      <validation-observer ref="Create_Department">
+      <px-validation-observer ref="Create_Department">
         <form @submit.prevent="Submit_Department">
           <v-field name="department" :label="$t('department')" required :rules="{ required: true }" v-slot="{ invalid, id }">
             <px-input :id="id" v-model="department.department" :placeholder="$t('Enter_Department_Name')" :invalid="invalid" />
@@ -115,7 +115,7 @@
             </template>
           </px-field>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer="{ close }">
         <span class="pxdept__grow" />

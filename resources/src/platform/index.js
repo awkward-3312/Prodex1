@@ -12,3 +12,4 @@ export { createNotifications, notifications } from './notifications.js';
 export { createConfirmService, confirm, confirm as confirmDialog, normalizeConfirmOptions } from './confirm.js';
 export { createModalService, modals } from './modals.js';
 export { installVue2Platform } from './adapters/vue2.js';
+export { createLegacyBridge, installLegacyBridge } from './legacy-bridge.js';

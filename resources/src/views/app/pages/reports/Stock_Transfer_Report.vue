@@ -21,7 +21,7 @@
             :linkedCalendars="false"
             @update="fetchReport"
           >
-            <!-- Vue 2.6+ slot syntax; for Vue 2.5 use slot="input" slot-scope="picker" -->
+            <!-- Vue 2.6+ slot syntax (v-slot) -->
             <template v-slot:input="picker">
               <b-button variant="light" class="btn-pill">
                 <lucide-icon class="mr-1" name="calendar-days" />
@@ -160,7 +160,7 @@
           @on-sort-change="onSortChange"
           @on-search="onSearch"
         >
-          <template slot="table-row" slot-scope="p">
+          <template #table-row="p">
             <span v-if="p.column.field==='value'">{{ money(p.row.value) }}</span>
             <span v-else>{{ p.formattedRow[p.column.field] }}</span>
           </template>

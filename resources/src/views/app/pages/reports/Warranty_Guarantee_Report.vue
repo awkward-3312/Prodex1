@@ -85,7 +85,7 @@
         @on-sort-change="onSortChange"
         @on-search="onSearch"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t('print') }}
           </b-button>
@@ -102,8 +102,8 @@
           >
             <lucide-icon name="file-spreadsheet" /> Excel
           </vue-excel-xlsx>
-        </div>
-        <template slot="table-row" slot-scope="props">
+        </div></template>
+        <template #table-row="props">
           <span v-if="props.column.field === 'Ref'">
             <router-link v-if="props.row.sale_id" :to="{ name: 'detail_sale', params: { id: props.row.sale_id } }" class="text-primary">
               {{ props.row.Ref }}

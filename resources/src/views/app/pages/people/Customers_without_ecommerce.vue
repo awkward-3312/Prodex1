@@ -34,7 +34,7 @@
        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >
 
-      <template slot="table-row" slot-scope="props">
+      <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <a class="btn btn-primary"  @click="Edit_Client(props.row)">
               <span class="text-white"><lucide-icon class="me-2 font-weight-bold" name="check" /> Register Account</span>
@@ -48,14 +48,14 @@
 
 
     <!-- Modal Create store account for Customer -->
-    <validation-observer ref="Create_Customer">
+    <px-validation-observer ref="Create_Customer">
       <b-modal hide-footer size="md" id="New_Customer" title="Register Account">
         <b-form @submit.prevent="Submit_Customer">
           <b-row>
 
             <!-- Customer email -->
             <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="email Customer"
                 :rules="{ required: true}"
                 v-slot="validationContext"
@@ -76,12 +76,12 @@
                     v-if="email_exist !=''"
                   >{{email_exist}}</b-alert>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
              <!-- password -->
              <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="password"
                 :rules="{ required: true , min:6 , max:14}"
                 v-slot="validationContext"
@@ -110,7 +110,7 @@
                   </div>
                   <b-form-invalid-feedback id="password-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
           
 
@@ -124,7 +124,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
 
   </div>
 </template>

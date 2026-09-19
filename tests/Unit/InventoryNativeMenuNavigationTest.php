@@ -6,13 +6,14 @@ use PHPUnit\Framework\TestCase;
 
 class InventoryNativeMenuNavigationTest extends TestCase
 {
-    public function test_inventory_native_menu_resolves_router_from_sidebar_vue_instance(): void
+    public function test_inventory_native_menu_navigates_through_the_explicit_app_bridge(): void
     {
         $script = file_get_contents(dirname(__DIR__, 2).'/resources/static/prodex-inventory-native-menu.js');
 
-        $this->assertStringContainsString("closest('.vertical-sidebar-wrapper')", $script);
-        $this->assertStringContainsString("document.querySelector('.vertical-sidebar')", $script);
+        // La navegación SPA ya no lee la instancia interna de Vue del DOM: usa el puente explícito de la app.
+        $this->assertStringContainsString('window.__prodexBridge', $script);
         $this->assertStringContainsString('event.preventDefault()', $script);
-        $this->assertStringContainsString('router.push(entry[1])', $script);
+        $this->assertStringContainsString('bridge.navigate(entry[1])', $script);
+        $this->assertStringNotContainsString('__vue__', $script);
     }
 }

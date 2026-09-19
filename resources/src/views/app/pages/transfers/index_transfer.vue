@@ -31,10 +31,10 @@
         :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
 
       >
-        <div slot="selected-row-actions" v-if="currentUserPermissions && currentUserPermissions.includes('transfer_delete')">
+        <template v-if="currentUserPermissions && currentUserPermissions.includes('transfer_delete')" #selected-row-actions><div>
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -62,9 +62,9 @@
             </span>
             <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
           </router-link>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'date'">
             {{ formatDisplayDate(props.row.date) }}
           </span>

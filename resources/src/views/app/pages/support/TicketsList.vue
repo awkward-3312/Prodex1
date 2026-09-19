@@ -76,7 +76,7 @@
           :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
           styleClass="tableOne table-hover vgt-table"
         >
-          <template slot="emptystate">
+          <template #emptystate>
             <div class="tk-empty">
               <div class="tk-empty__icon">
                 <lucide-icon name="inbox" />
@@ -90,7 +90,7 @@
             </div>
           </template>
 
-          <template slot="table-row" slot-scope="props">
+          <template #table-row="props">
             <span v-if="props.column.field == 'ticket_number'">
               <router-link :to="'/app/support/tickets/' + props.row.id" class="tk-ref">
                 {{ props.row.ticket_number }}

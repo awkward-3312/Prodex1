@@ -58,11 +58,11 @@
                 <div class="settings-content-body">
                   <!-- General Settings Tab -->
                   <div v-if="activeTab === 'general'" class="tab-content">
-        <validation-observer ref="generalObserver">
+        <px-validation-observer ref="generalObserver">
         <b-row>
                       <!-- Company Name -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="Company Name"
                           :rules="{ required: true}"
                           v-slot="validationContext"
@@ -76,12 +76,12 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="Company-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                   </b-col>
 
                       <!-- Company Phone -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="Company Phone"
                           :rules="{ required: true}"
                           v-slot="validationContext"
@@ -95,12 +95,12 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="Phone-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
 
                       <!-- Email -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                    <validation-provider
+                    <px-validation-provider
                       name="Email"
                       :rules="{ required: true}"
                       v-slot="validationContext"
@@ -114,7 +114,7 @@
                         ></b-form-input>
                             <b-form-invalid-feedback id="Email-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
 
                       <!-- Logo -->
@@ -132,7 +132,7 @@
 
                       <!-- Company Address -->
                       <b-col lg="12" md="12" sm="12" class="mb-3">
-                    <validation-provider
+                    <px-validation-provider
                           name="Adress"
                       :rules="{ required: true}"
                       v-slot="validationContext"
@@ -148,12 +148,12 @@
                             ></textarea>
                             <b-form-invalid-feedback id="Adress-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
 
                       <!-- Footer -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="footer"
                           :rules="{ required: true}"
                           v-slot="validationContext"
@@ -167,12 +167,12 @@
                         ></b-form-input>
                             <b-form-invalid-feedback id="footer-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
 
                       <!-- Developed By -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                    <validation-provider
+                    <px-validation-provider
                           name="developed by"
                       :rules="{ required: true}"
                       v-slot="validationContext"
@@ -186,7 +186,7 @@
                         ></b-form-input>
                             <b-form-invalid-feedback id="developed_by-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
                     </b-row>
                     
@@ -198,7 +198,7 @@
                         </b-button>
                       </b-col>
                     </b-row>
-        </validation-observer>
+        </px-validation-observer>
                   </div>
 
                   <!-- Appearance Settings Tab -->
@@ -209,7 +209,7 @@
                       <b-row>
                         <!-- App Name -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider
+                          <px-validation-provider
                             name="App Name"
                             :rules="{ required: true }"
                             v-slot="validationContext"
@@ -222,12 +222,12 @@
                               ></b-form-input>
                               <b-form-invalid-feedback id="app-name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                          </validation-provider>
+                          </px-validation-provider>
                   </b-col>
 
                         <!-- Page Title Suffix -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider
+                          <px-validation-provider
                             name="Page Title Suffix"
                             :rules="{ required: true }"
                             v-slot="validationContext"
@@ -240,14 +240,13 @@
                               ></b-form-input>
                               <b-form-invalid-feedback id="page-title-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                          </validation-provider>
+                          </px-validation-provider>
                   </b-col>
 
                         <!-- Logo -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider name="Logo" ref="AppearanceLogo" rules="mimes:image/*|size:200">
-                            <b-form-group
-                              slot-scope="{validate, valid, errors }"
+                          <px-validation-provider name="Logo" ref="AppearanceLogo" rules="mimes:image/*|size:200">
+                            <template #default="{validate, valid, errors }"><b-form-group
                               :label="$t('ChangeLogo')"
                             >
                               <input
@@ -258,15 +257,14 @@
                                 class="form-control"
                               >
                               <b-form-invalid-feedback id="AppearanceLogo-feedback">{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
-                          </validation-provider>
+                    </b-form-group></template>
+                          </px-validation-provider>
                   </b-col>
 
                         <!-- Favicon Upload -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider name="Favicon" ref="AppearanceFavicon" rules="mimes:image/*|size:100">
-                            <b-form-group
-                              slot-scope="{ validate, valid, errors }"
+                          <px-validation-provider name="Favicon" ref="AppearanceFavicon" rules="mimes:image/*|size:100">
+                            <template #default="{ validate, valid, errors }"><b-form-group
                               :label="$t('ChangeFavicon')"
                             >
                               <input
@@ -277,13 +275,13 @@
                                 class="form-control"
                               >
                               <b-form-invalid-feedback id="AppearanceFavicon-feedback">{{ errors[0] }}</b-form-invalid-feedback>
-                            </b-form-group>
-                          </validation-provider>
+                            </b-form-group></template>
+                          </px-validation-provider>
                         </b-col>
 
                         <!-- Developed By -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                    <validation-provider
+                    <px-validation-provider
                       name="developed by"
                       :rules="{ required: true}"
                       v-slot="validationContext"
@@ -297,12 +295,12 @@
                         ></b-form-input>
                               <b-form-invalid-feedback id="appearance-developed_by-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
 
                    <!-- Footer -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                    <validation-provider
+                    <px-validation-provider
                       name="footer"
                       :rules="{ required: true}"
                       v-slot="validationContext"
@@ -316,7 +314,7 @@
                         ></b-form-input>
                               <b-form-invalid-feedback id="appearance-footer-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                         </b-col>
                       </b-row>
                     </div>
@@ -428,9 +426,8 @@
                       <b-row>
                         <!-- 192x192 Icon -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider name="PWA Icon 192" ref="PwaIcon192" rules="mimes:image/*|size:1024">
-                            <b-form-group
-                              slot-scope="{ valid, errors }"
+                          <px-validation-provider name="PWA Icon 192" ref="PwaIcon192" rules="mimes:image/*|size:1024">
+                            <template #default="{ valid, errors }"><b-form-group
                               :label="$t('PWA_Icon_192') || 'App icon (192 x 192)'"
                             >
                               <div class="d-flex align-items-center mb-2" v-if="pwa_settings.icon_192_url">
@@ -447,15 +444,14 @@
                               >
                               <small class="text-muted d-block mt-1">{{ $t('PWA_Icon_192_Hint') || 'PNG recommended. 192x192. Max 1MB.' }}</small>
                               <b-form-invalid-feedback id="PwaIcon192-feedback">{{ errors[0] }}</b-form-invalid-feedback>
-                            </b-form-group>
-                          </validation-provider>
+                            </b-form-group></template>
+                          </px-validation-provider>
                         </b-col>
 
                         <!-- 512x512 Icon -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider name="PWA Icon 512" ref="PwaIcon512" rules="mimes:image/*|size:2048">
-                            <b-form-group
-                              slot-scope="{ valid, errors }"
+                          <px-validation-provider name="PWA Icon 512" ref="PwaIcon512" rules="mimes:image/*|size:2048">
+                            <template #default="{ valid, errors }"><b-form-group
                               :label="$t('PWA_Icon_512') || 'App icon (512 x 512)'"
                             >
                               <div class="d-flex align-items-center mb-2" v-if="pwa_settings.icon_512_url">
@@ -472,8 +468,8 @@
                               >
                               <small class="text-muted d-block mt-1">{{ $t('PWA_Icon_512_Hint') || 'PNG recommended. 512x512. Max 2MB.' }}</small>
                               <b-form-invalid-feedback id="PwaIcon512-feedback">{{ errors[0] }}</b-form-invalid-feedback>
-                            </b-form-group>
-                          </validation-provider>
+                            </b-form-group></template>
+                          </px-validation-provider>
                         </b-col>
                       </b-row>
                     </div>
@@ -853,7 +849,7 @@
 
                       <!-- Products Per Page -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="products_per_page"
                           :rules="{ required: true}"
                           v-slot="validationContext"
@@ -869,12 +865,12 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="products_per_page-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                   </b-col>
 
                       <!-- Default Tax (moved from Tax & Pricing tab) -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="Default Tax"
                           :rules="{ regex: /^\d*\.?\d*$/}"
                           v-slot="validationContext"
@@ -891,12 +887,12 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="default-tax-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
 
                       <!-- Point To Amount Rate (moved from Tax & Pricing tab) -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="Point To Amount Rate"
                           :rules="{ regex: /^\d*\.?\d*$/}"
                           v-slot="validationContext"
@@ -912,7 +908,7 @@
                             </b-input-group>
                             <b-form-invalid-feedback id="point-to-amount-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
 
                       <!-- Purchase Extra Charges section toggle -->
@@ -1161,11 +1157,11 @@
 
                   <!-- Mail Settings Tab -->
                   <div v-show="activeTab === 'mail'" class="tab-content">
-                    <validation-observer ref="mailObserver">
+                    <px-validation-observer ref="mailObserver">
                     <b-row>
                       <!-- MAIL_MAILER -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                    <validation-provider
+                    <px-validation-provider
                           name="MAIL_MAILER"
                           :rules="{ required: true}"
                       v-slot="validationContext"
@@ -1180,12 +1176,12 @@
                             <b-form-invalid-feedback id="MAIL_MAILER-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                             <small class="text-danger">Supported: "smtp", "sendmail", "mailgun", "ses","postmark", "log"</small>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
 
                       <!-- MAIL_HOST -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                    <validation-provider
+                    <px-validation-provider
                           name="HOST"
                       :rules="{ required: true}"
                       v-slot="validationContext"
@@ -1199,12 +1195,12 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="HOST-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
 
                       <!-- MAIL_PORT -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="PORT"
                           :rules="{ required: true}"
                           v-slot="validationContext"
@@ -1218,12 +1214,12 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="PORT-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
 
                       <!-- Sender Name -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="sender"
                           :rules="{ required: true}"
                           v-slot="validationContext"
@@ -1237,12 +1233,12 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="sender-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
 
                       <!-- Sender Email -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="sender_email"
                           :rules="{ required: true, email: true}"
                           v-slot="validationContext"
@@ -1257,12 +1253,12 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="sender_email-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
 
                       <!-- MAIL_USERNAME -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="Username"
                           :rules="{ required: true}"
                           v-slot="validationContext"
@@ -1276,12 +1272,12 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="Username-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
 
                       <!-- MAIL_PASSWORD -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="Password"
                           :rules="{ required: true}"
                           v-slot="validationContext"
@@ -1296,12 +1292,12 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="Password-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
 
                       <!-- MAIL_ENCRYPTION -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
-                        <validation-provider
+                        <px-validation-provider
                           name="encryption"
                           :rules="{ required: true}"
                           v-slot="validationContext"
@@ -1315,7 +1311,7 @@
                             ></b-form-input>
                             <b-form-invalid-feedback id="encryption-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
 
                       <!-- Submit and Test Buttons -->
@@ -1339,7 +1335,7 @@
                         </b-form-group>
                       </b-col>
                     </b-row>
-                    </validation-observer>
+                    </px-validation-observer>
                   </div>
 
                   <!-- Payment Gateway Tab -->
@@ -1439,7 +1435,7 @@
                       <b-row>
                         <!-- Termii KEY -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider
+                          <px-validation-provider
                             name="TERMI_KEY"
                             :rules="{ required: true}"
                             v-slot="validationContext"
@@ -1452,12 +1448,12 @@
                               ></b-form-input>
                               <b-form-invalid-feedback id="TERMI_KEY-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                             </b-form-group>
-                          </validation-provider>
+                          </px-validation-provider>
                         </b-col>
 
                         <!-- TERMI_SECRET -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider
+                          <px-validation-provider
                             name="TERMI_SECRET"
                             :rules="{ required: true}"
                             v-slot="validationContext"
@@ -1470,12 +1466,12 @@
                               ></b-form-input>
                               <b-form-invalid-feedback id="TERMI_SECRET-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                             </b-form-group>
-                          </validation-provider>
+                          </px-validation-provider>
                         </b-col>
 
                         <!-- TERMI_SENDER -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider
+                          <px-validation-provider
                             name="TERMI_SENDER"
                             :rules="{ required: true}"
                             v-slot="validationContext"
@@ -1488,7 +1484,7 @@
                               ></b-form-input>
                               <b-form-invalid-feedback id="TERMI_SENDER-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                             </b-form-group>
-                          </validation-provider>
+                          </px-validation-provider>
                         </b-col>
                       </b-row>
                       <b-row>
@@ -1508,7 +1504,7 @@
                       <b-row>
                         <!-- TWILIO_SID -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider
+                          <px-validation-provider
                             name="TWILIO_SID"
                             :rules="{ required: true}"
                             v-slot="validationContext"
@@ -1521,7 +1517,7 @@
                               ></b-form-input>
                               <b-form-invalid-feedback id="TWILIO_SID-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                             </b-form-group>
-                          </validation-provider>
+                          </px-validation-provider>
                         </b-col>
 
                         <!-- TWILIO_TOKEN -->
@@ -1537,7 +1533,7 @@
 
                         <!-- TWILIO_FROM -->
                         <b-col lg="6" md="6" sm="12" class="mb-3">
-                          <validation-provider
+                          <px-validation-provider
                             name="TWILIO_FROM"
                             :rules="{ required: true}"
                             v-slot="validationContext"
@@ -1550,7 +1546,7 @@
                               ></b-form-input>
                               <b-form-invalid-feedback id="TWILIO_FROM-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                             </b-form-group>
-                          </validation-provider>
+                          </px-validation-provider>
                         </b-col>
                       </b-row>
                       <b-row>
@@ -2377,7 +2373,7 @@
                   </b-col>
                       <!-- Note to Customer -->
                       <b-col lg="12" md="12" sm="12">
-                        <validation-provider
+                        <px-validation-provider
                           name="note"
                           :rules="{ required: true}"
                           v-slot="validationContext"
@@ -2393,7 +2389,7 @@
                             ></textarea>
                             <b-form-invalid-feedback id="note-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                           </b-form-group>
-                        </validation-provider>
+                        </px-validation-provider>
                       </b-col>
                       <!-- Show Logo -->
                       <b-col md="4" class="mt-3 mb-3">
@@ -3068,7 +3064,7 @@
 
                       <!-- Invoice Footer Text -->
                       <b-col lg="12" md="12" sm="12" class="mb-3" v-if="setting.is_invoice_footer">
-                  <validation-provider
+                  <px-validation-provider
                       name="invoice_footer"
                       :rules="{ required: true}"
                       v-slot="validationContext"
@@ -3085,7 +3081,7 @@
                             <b-form-text id="invoice_footer-help">{{ $t('invoice_footer_a4_help') || 'This footer is only used on the Invoice A4 PDF.' }}</b-form-text>
                             <b-form-invalid-feedback id="invoice_footer-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                 </b-col>
                     </b-row>
                     
@@ -3291,7 +3287,7 @@
                             :rows="backups"
                             styleClass="table-hover tableOne vgt-table"
                           >
-                            <template slot="table-row" slot-scope="props">
+                            <template #table-row="props">
                               <span v-if="props.column.field == 'actions'">
                                 <b-button
                                   variant="danger"
@@ -3508,7 +3504,7 @@
                           }"
                           styleClass="tableOne vgt-table"
                         >
-                          <template slot="table-row" slot-scope="props">
+                          <template #table-row="props">
                             <span v-if="props.column.field == 'field_type'">
                               {{ getFieldTypeLabel(props.row.field_type) }}
                             </span>
@@ -3575,7 +3571,7 @@
                           }"
                           styleClass="tableOne vgt-table"
                         >
-                          <template slot="table-row" slot-scope="props">
+                          <template #table-row="props">
                             <span v-if="props.column.field == 'field_type'">
                               {{ getFieldTypeLabel(props.row.field_type) }}
                             </span>
@@ -3615,7 +3611,7 @@
                     </b-tabs>
 
                     <!-- Modal Add/Edit Custom Field -->
-                    <validation-observer ref="Create_CustomField">
+                    <px-validation-observer ref="Create_CustomField">
                       <b-modal
                         hide-footer
                         size="lg"
@@ -3626,7 +3622,7 @@
                           <b-row>
                             <!-- Field Name -->
                             <b-col md="12" sm="12" class="mb-3">
-                              <validation-provider
+                              <px-validation-provider
                                 name="Field Name"
                                 :rules="{ required: true }"
                                 v-slot="validationContext"
@@ -3642,12 +3638,12 @@
                                     {{ validationContext.errors[0] }}
                                   </b-form-invalid-feedback>
                                 </b-form-group>
-                              </validation-provider>
+                              </px-validation-provider>
                             </b-col>
 
                             <!-- Field Type -->
                             <b-col md="6" sm="12" class="mb-3">
-                              <validation-provider
+                              <px-validation-provider
                                 name="Field Type"
                                 :rules="{ required: true }"
                                 v-slot="validationContext"
@@ -3666,7 +3662,7 @@
                                     {{ validationContext.errors[0] }}
                                   </b-form-invalid-feedback>
                                 </b-form-group>
-                              </validation-provider>
+                              </px-validation-provider>
                             </b-col>
 
                             <!-- Required -->
@@ -3744,7 +3740,7 @@
                           </b-row>
                         </b-form>
                       </b-modal>
-                    </validation-observer>
+                    </px-validation-observer>
                   </div>
                 </div>
               </div>

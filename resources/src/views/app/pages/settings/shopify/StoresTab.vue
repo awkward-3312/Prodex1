@@ -48,33 +48,33 @@
     </b-card>
 
     <!-- Create / edit store -->
-    <validation-observer ref="form">
+    <px-validation-observer ref="form">
       <b-modal v-model="showModal" :title="form.id ? $t('Edit_Store') : $t('Add_Store')" hide-footer size="lg">
         <b-form @submit.prevent="save">
           <b-row>
             <b-col md="6" class="mb-3">
-              <validation-provider :name="$t('Name')" :rules="{ required: true }" v-slot="v">
+              <px-validation-provider :name="$t('Name')" :rules="{ required: true }" v-slot="v">
                 <b-form-group :label="$t('Name') + ' *'">
                   <b-form-input v-model="form.name" :state="getState(v)" placeholder="My Shopify store" />
                   <b-form-invalid-feedback>{{ v.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="6" class="mb-3">
-              <validation-provider :name="$t('Shop_Domain')" :rules="{ required: true }" v-slot="v">
+              <px-validation-provider :name="$t('Shop_Domain')" :rules="{ required: true }" v-slot="v">
                 <b-form-group :label="$t('Shop_Domain') + ' *'">
                   <b-form-input v-model="form.shop_domain" :state="getState(v)" placeholder="my-store.myshopify.com" />
                   <b-form-invalid-feedback>{{ v.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="6" class="mb-3">
-              <validation-provider :name="$t('Access_Token')" :rules="{ required: true }" v-slot="v">
+              <px-validation-provider :name="$t('Access_Token')" :rules="{ required: true }" v-slot="v">
                 <b-form-group :label="$t('Admin_API_Access_Token') + ' *'">
                   <b-form-input type="password" v-model="form.access_token" :state="getState(v)" placeholder="shpat_..." />
                   <b-form-invalid-feedback>{{ v.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="6" class="mb-3">
               <b-form-group :label="$t('API_Secret_Key')">
@@ -112,7 +112,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 

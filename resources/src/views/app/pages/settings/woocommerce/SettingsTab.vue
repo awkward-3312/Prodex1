@@ -1,6 +1,6 @@
 <template>
   <div>
-    <validation-observer ref="form">
+    <px-validation-observer ref="form">
       <b-card class="settings-form-card shadow-sm mb-4">
         <template #header>
           <div class="d-flex align-items-center">
@@ -11,7 +11,7 @@
         <b-form @submit.prevent="onSubmit">
           <b-row>
             <b-col lg="6" md="6" sm="12" class="mb-3">
-              <validation-provider :name="$t('Store_URL')" :rules="{ required: true, regex: urlPattern }" v-slot="v">
+              <px-validation-provider :name="$t('Store_URL')" :rules="{ required: true, regex: urlPattern }" v-slot="v">
                 <b-form-group :label="$t('Store_URL') + ' *'" class="form-group-modern">
                   <div class="input-icon-wrapper">
                     <lucide-icon class="input-icon" name="globe" />
@@ -19,25 +19,25 @@
                   </div>
                   <b-form-invalid-feedback>{{ v.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <b-col lg="6" md="6" sm="12" class="mb-3">
-              <validation-provider :name="$t('Consumer_Key')" :rules="{ required: true }" v-slot="v">
+              <px-validation-provider :name="$t('Consumer_Key')" :rules="{ required: true }" v-slot="v">
                 <b-form-group :label="$t('Consumer_Key') + ' *'" class="form-group-modern">
                   <div class="input-icon-wrapper"><lucide-icon class="input-icon" name="key" /><b-form-input v-model="form.consumer_key" :state="getState(v)" class="form-control-modern" /></div>
                   <b-form-invalid-feedback>{{ v.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <b-col lg="6" md="6" sm="12" class="mb-3">
-              <validation-provider :name="$t('Consumer_Secret')" :rules="{ required: true }" v-slot="v">
+              <px-validation-provider :name="$t('Consumer_Secret')" :rules="{ required: true }" v-slot="v">
                 <b-form-group :label="$t('Consumer_Secret') + ' *'" class="form-group-modern">
                   <div class="input-icon-wrapper"><lucide-icon class="input-icon" name="lock" /><b-form-input type="password" v-model="form.consumer_secret" :state="getState(v)" class="form-control-modern" /></div>
                   <b-form-invalid-feedback>{{ v.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <b-col lg="6" md="6" sm="12" class="mb-3">
@@ -79,7 +79,7 @@
           </b-row>
         </b-form>
       </b-card>
-    </validation-observer>
+    </px-validation-observer>
 
     <b-card class="guide-card shadow-sm">
       <template #header>

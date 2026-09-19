@@ -9,10 +9,10 @@
     <px-card flush>
       <div class="ts-toolbar">
         <px-toolbar
-          :search.sync="search"
+          :search="search" @update:search="search = $event"
           search-placeholder="Buscar por nombre, SKU o código…"
           :filter-count="activeFilterCount"
-          :view.sync="view"
+          :view="view" @update:view="view = $event"
           :views="[
             { value: 'table', label: 'Tabla', icon: 'table' },
             { value: 'board', label: 'Tarjetas', icon: 'layout-grid' }
@@ -61,10 +61,10 @@
         <px-table
           :columns="columns"
           :rows="pageRows"
-          :selected.sync="selected"
+          :selected="selected" @update:selected="selected = $event"
           :density="density"
-          :sort-key.sync="sortKey"
-          :sort-dir.sync="sortDir"
+          :sort-key="sortKey" @update:sortKey="sortKey = $event"
+          :sort-dir="sortDir" @update:sortDir="sortDir = $event"
           selectable
           has-row-actions
           sticky-first
@@ -130,7 +130,7 @@
       </div>
 
       <template #footer>
-        <px-pagination :page.sync="page" :per-page.sync="perPage" :total="filtered.length" />
+        <px-pagination :page="page" @update:page="page = $event" :per-page="perPage" @update:perPage="perPage = $event" :total="filtered.length" />
       </template>
     </px-card>
   </section>

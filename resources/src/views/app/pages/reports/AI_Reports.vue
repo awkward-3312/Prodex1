@@ -354,7 +354,7 @@
             }"
             styleClass="vgt-table table-hover"
           >
-            <template slot="table-row" slot-scope="props">
+            <template #table-row="props">
               <span v-if="props.column.field === 'name'">
                 {{ productDisplayName(props.row) }}
               </span>
@@ -521,7 +521,7 @@
             }"
             styleClass="vgt-table table-hover"
           >
-            <template slot="table-row" slot-scope="props">
+            <template #table-row="props">
               <span v-if="props.column.field === 'outstanding_amount'">
                 <span class="text-danger font-weight-bold">{{ money(props.row.outstanding_amount) }}</span>
               </span>
