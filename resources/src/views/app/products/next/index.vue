@@ -360,7 +360,7 @@ export default {
     this.searchTimer = null;
     this.fetch();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.searchTimer) clearTimeout(this.searchTimer);
     if (this.abortCtl) this.abortCtl.abort();
   },

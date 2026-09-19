@@ -241,6 +241,7 @@
 // --- Small reusable toolbar for search + per-page ---
 const ListToolbar = {
   name: 'ListToolbar',
+  compilerOptions: { whitespace: 'condense' },
   props: {
     placeholder: String,
     value: String, // v-model: search
@@ -252,42 +253,31 @@ const ListToolbar = {
     emitSearch(){ this.$emit('search') },
     emitReset(){ this.$emit('input', ''); this.$emit('search'); this.$emit('reset') }
   },
-  render(h){
-    return h('div',{class:'toolbar'},[
-      h('b-form-input',{
-        class:'mr-2',
-        props:{ value:this.value, placeholder:this.placeholder },
-        on:{ input:v=>this.$emit('input', v), keyup:e=>{ if(e.key==='Enter') this.emitSearch() } }
-      }),
-      h('b-button',{class:'mr-2 mt-2',props:{size:'sm',variant:'primary'},on:{click:this.emitSearch}}, this.$parent.$t('Search')),
-      h('b-button',{class:'mr-2 mt-2',props:{size:'sm',variant:'outline-secondary'},on:{click:this.emitReset}}, this.$parent.$t('Reset')),
-      h('div',{class:'ml-auto d-flex align-items-center'},[
-        h('span',{class:'mr-2 small text-muted'}, this.$parent.$t('Per_page')),
-        h('b-form-select',{
-          class:'w-auto',
-          props:{ value:this.limit, options:this.perPageOptions, size:'sm' },
-          on:{ input:v=>this.$emit('update:limit', v) }
-        })
-      ])
-    ])
-  }
+  template: `<div class="toolbar">
+    <b-form-input class="mr-2" :value="value" :placeholder="placeholder" @input="v => $emit('input', v)" @keyup="e => { if (e.key === 'Enter') emitSearch() }" />
+    <b-button class="mr-2 mt-2" size="sm" variant="primary" @click="emitSearch">{{ $parent.$t('Search') }}</b-button>
+    <b-button class="mr-2 mt-2" size="sm" variant="outline-secondary" @click="emitReset">{{ $parent.$t('Reset') }}</b-button>
+    <div class="ml-auto d-flex align-items-center">
+      <span class="mr-2 small text-muted">{{ $parent.$t('Per_page') }}</span>
+      <b-form-select class="w-auto" :value="limit" :options="perPageOptions" size="sm" @input="v => $emit('update:limit', v)" />
+    </div>
+  </div>`
 }
 
 // --- Simple pager wrapper ---
 const Pager = {
   name: 'Pager',
+  compatConfig: { MODE: 3 },
+  compilerOptions: { whitespace: 'condense' },
   props: { page:Number, limit:Number, totalRows:Number },
   methods:{ onInput(){ this.$emit('change') } },
-  render(h){
-    const totalPages = Math.max(1, Math.ceil((this.totalRows||0) / (this.limit||10)))
-    return h('div',{class:'pager'},[
-      h('small',{class:'text-muted'}, `${this.$parent.$t('Page')} ${this.page} ${this.$parent.$t('Of')} ${totalPages}`),
-      h('b-pagination',{
-        props:{ value:this.page, totalRows:this.totalRows, perPage:this.limit, size:'sm', align:'right' },
-        on:{ input:v=>{ this.$emit('update:page', v); this.onInput() } }
-      })
-    ])
-  }
+  computed: {
+    totalPages() { return Math.max(1, Math.ceil((this.totalRows||0) / (this.limit||10))) }
+  },
+  template: `<div class="pager">
+    <small class="text-muted">{{ $parent.$t('Page') }} {{ page }} {{ $parent.$t('Of') }} {{ totalPages }}</small>
+    <b-pagination :value="page" :total-rows="totalRows" :per-page="limit" size="sm" align="right" @input="v => { $emit('update:page', v); onInput() }" />
+  </div>`
 }
 
 import {

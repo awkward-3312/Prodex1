@@ -588,26 +588,15 @@ import {
 
 const StatTile = {
   name: "StatTile",
-  functional: true,
+  compatConfig: { MODE: 3 },
+  compilerOptions: { whitespace: 'condense' },
   props: { 
     icon: String, 
     label: String, 
     value: [String, Number], 
     theme: { type: String, default: 'blue' } 
   },
-  render(h, { props }) {
-    return h('div', { 
-      class: ['stat-card', `theme-${props.theme}`, 'shadow-soft', 'rounded-xl', 'mb-2', 'h-100'] 
-    }, [
-      h('div', { class: 'stat-inner' }, [
-        h('div', { class: 'stat-icon' }, [h('lucide-icon', { props: { name: props.icon } })]),
-        h('div', { class: 'stat-content' }, [
-          h('div', { class: 'stat-label' }, props.label),
-          h('div', { class: 'stat-value' }, props.value)
-        ])
-      ])
-    ]);
-  }
+  template: `<div :class="['stat-card', 'theme-' + theme, 'shadow-soft', 'rounded-xl', 'mb-2', 'h-100']"><div class="stat-inner"><div class="stat-icon"><lucide-icon :name="icon" /></div><div class="stat-content"><div class="stat-label">{{ label }}</div><div class="stat-value">{{ value }}</div></div></div></div>`
 };
 
 export default {
@@ -1340,7 +1329,7 @@ export default {
     this.handleResize();
     window.addEventListener('resize', this.handleResize);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     window.removeEventListener('resize', this.handleResize);
     if (this.loadingInterval) {
       clearInterval(this.loadingInterval);

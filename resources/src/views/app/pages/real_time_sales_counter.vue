@@ -631,7 +631,7 @@ export default {
       this.now = Date.now();
     }, 1000);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.stopTimer();
     if (this.tickTimer) clearInterval(this.tickTimer);
     if (this.newSaleClearTimer) clearTimeout(this.newSaleClearTimer);

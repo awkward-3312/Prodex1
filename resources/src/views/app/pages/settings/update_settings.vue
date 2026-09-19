@@ -667,7 +667,7 @@ export default {
     this.isLoading = false;
   },
 
-  beforeDestroy: function() {
+  beforeUnmount: function() {
     this.stopProgressPolling();
     if (this._lastCheckedTimer) {
       clearInterval(this._lastCheckedTimer);

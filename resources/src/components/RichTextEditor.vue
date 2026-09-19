@@ -41,7 +41,7 @@ export default {
   mounted() {
     this.initQuill();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.quill) {
       this.quill = null;
     }

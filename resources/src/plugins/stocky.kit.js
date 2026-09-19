@@ -224,7 +224,7 @@ function installReceiptPresentationEnhancer(Vue) {
       }
     },
 
-    beforeDestroy() {
+    beforeUnmount() {
       if (Array.isArray(this.__receiptPresentationUnwatch)) {
         this.__receiptPresentationUnwatch.forEach(unwatch => { if (typeof unwatch === 'function') unwatch(); });
       }

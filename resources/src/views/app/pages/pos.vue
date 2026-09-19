@@ -10574,7 +10574,7 @@ export default {
     } catch (e) {}
 
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.stopPosResize();
     try {
       if (typeof document !== 'undefined' && document.documentElement) {
@@ -18843,7 +18843,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
    any other route — otherwise the topnav fullscreen button there would
    hide the topnav+sidebar and zero the main-content-wrap padding,
    shifting the footer. The class is added in mounted() above and
-   removed in beforeDestroy(). */
+   removed in beforeUnmount(). */
 @media (min-width: 769px) {
   html.pos-active:fullscreen,
   html.pos-active:-webkit-full-screen,

@@ -3,6 +3,7 @@
     <span v-if="iconLead" class="pxn-input__ico pxn-input__ico--lead"><lucide-icon :name="iconLead" :size="15" /></span>
     <span v-else-if="prefix" class="pxn-input__aff pxn-input__aff--lead">{{ prefix }}</span>
     <input
+      v-bind="listeners()"
       :id="id"
       class="pxn-input pxn-ring"
       :class="{ 'pxn-num': numeric }"
@@ -14,7 +15,7 @@
       :inputmode="inputmode"
       :aria-invalid="invalid ? 'true' : null"
       :aria-describedby="describedby"
-      v-on="listeners"
+      @input="onInput"
     />
     <span v-if="iconTrail" class="pxn-input__ico pxn-input__ico--trail"><lucide-icon :name="iconTrail" :size="15" /></span>
     <span v-else-if="suffix" class="pxn-input__aff pxn-input__aff--trail">{{ suffix }}</span>
@@ -22,9 +23,13 @@
 </template>
 
 <script>
+import { forwardListeners } from "@/utils/forwardListeners";
+
 export default {
   name: "PxInput",
   inheritAttrs: false,
+  compatConfig: { INSTANCE_LISTENERS: false },
+  emits: ["input"],
   props: {
     value: { type: [String, Number], default: "" },
     type: { type: String, default: "text" },
@@ -41,10 +46,9 @@ export default {
     invalid: { type: Boolean, default: false },
     describedby: { type: String, default: null }
   },
-  computed: {
-    listeners() {
-      return { ...this.$listeners, input: e => this.$emit("input", e.target.value) };
-    }
+  methods: {
+    listeners() { return forwardListeners(this.$attrs); },
+    onInput(e) { this.$emit("input", e.target.value); }
   }
 };
 </script>

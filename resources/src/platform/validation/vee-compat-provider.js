@@ -10,7 +10,7 @@
 //      `model` de Vue 2 (`value`) / evento `onModelCompat:*` — incluso si está dentro del slot de otro componente
 //      (<b-form-group>, <px-field>): el slot se envuelve para inspeccionar sus VNodes cuando el hijo lo renderiza;
 //   3. añade los listeners de vee-validate (input/change, blur y los del modo de validación) como `onXxx` en los props.
-import { Fragment, Text, Comment, vModelText, vModelCheckbox, vModelRadio, vModelSelect, vModelDynamic } from 'vue';
+import { Fragment, Text, Comment, onMounted, vModelText, vModelCheckbox, vModelRadio, vModelSelect, vModelDynamic } from 'vue';
 
 const MODEL_DIRECTIVES = [vModelText, vModelCheckbox, vModelRadio, vModelSelect, vModelDynamic].filter(Boolean);
 const TEXT_TYPES = ['text', 'password', 'search', 'email', 'tel', 'url', 'number'];
@@ -127,7 +127,7 @@ function onRenderUpdate(vm, value) {
     return;
   }
   if (vm.$ && vm.$.isMounted) validate();
-  else vm.$once('hook:mounted', () => validate());
+  else onMounted(() => validate(), vm.$);
 }
 
 function commonHandlers(vm) {
@@ -229,10 +229,9 @@ function validationContext(vm) {
 }
 
 function slotOutput(vm, ctx) {
-  const scoped = vm.$scopedSlots && vm.$scopedSlots.default;
-  if (typeof scoped === 'function') return scoped(ctx) || [];
-  const plain = vm.$slots && vm.$slots.default;
-  return (typeof plain === 'function' ? plain() : plain) || [];
+  // Slots reales de Vue 3 (`instance.slots`): evita `$scopedSlots` / `$slots` de compat, que avisan y devuelven arrays de Vue 2.
+  const slot = vm.$ && vm.$.slots && vm.$.slots.default;
+  return (typeof slot === 'function' ? slot(ctx) : null) || [];
 }
 
 const flatten = (list) => (Array.isArray(list) ? list.flat(Infinity) : list ? [list] : []);

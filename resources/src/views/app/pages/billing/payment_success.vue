@@ -100,7 +100,7 @@ export default {
   created() {
     this.init();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.stopPolling();
   },
   methods: {

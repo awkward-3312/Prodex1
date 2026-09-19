@@ -49,12 +49,13 @@ Vue.component('qrcode-scanner', {
   props: { qrbox: { type: Number, default: 250 }, fps: { type: Number, default: 10 } },
   data() { return { isFirstScan: true, html5QrcodeScanner: null }; },
   template: `<div id="reader"></div>`,
+  compilerOptions: { whitespace: "condense" },
   mounted () { this.initializeScanner(); },
   methods: {
     initializeScanner() { const config = { fps: this.fps, qrbox: this.qrbox }; this.html5QrcodeScanner = new Html5QrcodeScanner('reader', config); this.html5QrcodeScanner.render(this.onScanSuccess); },
     onScanSuccess (decodedText, decodedResult) { if (this.isFirstScan) { this.isFirstScan = false; this.$emit('result', decodedText, decodedResult); } else { this.html5QrcodeScanner.stop(); } },
   },
-  beforeDestroy() { if (this.html5QrcodeScanner) this.html5QrcodeScanner.clear(); }
+  beforeUnmount() { if (this.html5QrcodeScanner) this.html5QrcodeScanner.clear(); }
 });
 
 import StockyKit from "./plugins/stocky.kit";

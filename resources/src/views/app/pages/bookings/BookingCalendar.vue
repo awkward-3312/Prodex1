@@ -424,7 +424,7 @@ export default {
       this.isLoading = false;
     });
   },
-  beforeDestroy() {
+  beforeUnmount() {
     // Remove resize listener
     if (this._resizeHandler) {
       window.removeEventListener('resize', this._resizeHandler);

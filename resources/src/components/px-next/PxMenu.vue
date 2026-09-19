@@ -63,7 +63,7 @@ export default {
     align: { type: String, default: "end" } // start | end — borde del panel que se alinea con el trigger
   },
   data() { return { isOpen: false, dropUp: false }; },
-  beforeDestroy() { this.teardownListeners(); },
+  beforeUnmount() { this.teardownListeners(); },
   methods: {
     toggle() { this.isOpen ? this.close() : this.open(); },
     open() {

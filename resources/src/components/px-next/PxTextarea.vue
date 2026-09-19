@@ -9,13 +9,16 @@
     :readonly="readonly"
     :aria-invalid="invalid ? 'true' : null"
     :aria-describedby="describedby"
-    v-on="listeners"
+    @input="onInput"
   ></textarea>
 </template>
 
 <script>
 export default {
   name: "PxTextarea",
+  // Vue 3: los listeners del padre llegan en $attrs y caen solos en el <textarea> raíz (antes v-on="$listeners").
+  compatConfig: { INSTANCE_LISTENERS: false },
+  emits: ["input"],
   props: {
     value: { type: String, default: "" },
     id: { type: String, default: null },
@@ -26,8 +29,8 @@ export default {
     invalid: { type: Boolean, default: false },
     describedby: { type: String, default: null }
   },
-  computed: {
-    listeners() { return { ...this.$listeners, input: e => this.$emit("input", e.target.value) }; }
+  methods: {
+    onInput(e) { this.$emit("input", e.target.value); }
   }
 };
 </script>

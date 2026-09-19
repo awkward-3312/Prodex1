@@ -99,7 +99,7 @@ export default {
   watch: {
     disabled(v) { if (v) this.close(); }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.teardownListeners();
     if (this.typeaheadTimer) clearTimeout(this.typeaheadTimer);
   },

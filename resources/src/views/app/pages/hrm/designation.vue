@@ -232,7 +232,7 @@ export default {
     selectedTemplate() { return this.templates.find(x => x.code === this.form.template_code) || null; }
   },
   created() { this.loadList(); },
-  beforeDestroy() { if (this.timer) clearTimeout(this.timer); },
+  beforeUnmount() { if (this.timer) clearTimeout(this.timer); },
   methods: {
     emptyForm() { return { id: null, designation: '', template_code: null, description: '', company_id: null, department_id: null }; },
 

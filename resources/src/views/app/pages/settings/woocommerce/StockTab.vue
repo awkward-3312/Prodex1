@@ -234,7 +234,7 @@ export default {
     this.progress = { total_products: 0, synced_products: 0, failed_products: 0, percentage: 0 };
     this.load().finally(() => { this.$emit('ready'); });
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.poller) {
       clearInterval(this.poller);
       this.poller = null;

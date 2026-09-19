@@ -1023,7 +1023,7 @@ export default {
     document.addEventListener("click", this.onDocClick, true);
     document.addEventListener("keydown", this.onKeydown);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.notifTimer) window.clearInterval(this.notifTimer);
     if (this.issuesTimer) window.clearInterval(this.issuesTimer);
     if (this._compactMq) {

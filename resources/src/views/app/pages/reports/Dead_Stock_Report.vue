@@ -548,7 +548,7 @@ export default {
     this.fetchDeadStock(1);
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     if (this._cancelSource && typeof this._cancelSource.cancel === 'function') {
       this._cancelSource.cancel('Component destroyed');
     }

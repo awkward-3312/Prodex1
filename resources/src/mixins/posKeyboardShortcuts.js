@@ -491,7 +491,7 @@ export default {
     }catch(e){this._sarRequestInterceptor=null;this._sarResponseInterceptor=null;}
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     try{if(this._posShortcutsHandler)window.removeEventListener("keydown",this._posShortcutsHandler,true);}catch(e){}
     try{if(this._sarUiTimer)clearInterval(this._sarUiTimer);}catch(e){}
     try{const b=document.getElementById("prodex-sar-sale-data-btn");if(b&&b.parentNode)b.parentNode.removeChild(b);}catch(e){}

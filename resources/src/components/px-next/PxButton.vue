@@ -12,7 +12,6 @@
     :disabled="tag === 'button' ? (disabled || loading) : null"
     :aria-disabled="disabled || loading ? 'true' : null"
     :aria-busy="loading ? 'true' : null"
-    v-on="$listeners"
   >
     <span v-if="loading" class="pxn-btn__spinner" aria-hidden="true"></span>
     <lucide-icon v-if="icon && !loading" :name="icon" :size="iconSize" class="pxn-btn__icon" />
@@ -26,6 +25,8 @@
 // every other variant is neutral so a screen never has two competing accents.
 export default {
   name: "PxButton",
+  // Vue 3: los listeners del padre llegan en $attrs y caen solos en el elemento raíz (antes v-on="$listeners").
+  compatConfig: { INSTANCE_LISTENERS: false },
   props: {
     variant: { type: String, default: "secondary" }, // primary | secondary | ghost | subtle | danger | link
     size: { type: String, default: "md" },           // sm | md | lg

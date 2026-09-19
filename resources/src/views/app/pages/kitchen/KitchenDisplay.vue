@@ -340,7 +340,7 @@ export default {
     this.clockTimer = setInterval(() => { this.nowTs = Date.now(); }, 30000);
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     this.stopPolling();
     if (this.clockTimer) clearInterval(this.clockTimer);
   },

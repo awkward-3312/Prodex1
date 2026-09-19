@@ -1312,7 +1312,7 @@ export default {
     this.GetMonth();
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     this.cleanupDashboardViewport();
   }
 };

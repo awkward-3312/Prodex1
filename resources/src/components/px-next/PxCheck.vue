@@ -1,13 +1,14 @@
 <template>
-  <label class="pxn-check" :class="[`pxn-check--${type}`, { 'is-disabled': disabled }]">
+  <label v-bind="plainAttrs()" class="pxn-check" :class="[`pxn-check--${type}`, { 'is-disabled': disabled }]">
     <input
+      v-bind="listeners()"
       class="pxn-check__native pxn-ring"
       :type="type === 'switch' ? 'checkbox' : type"
       :checked="isChecked"
       :name="name"
       :value="nativeValue"
       :disabled="disabled"
-      v-on="listeners"
+      @change="onChange"
     />
     <span class="pxn-check__box" aria-hidden="true">
       <lucide-icon v-if="type === 'checkbox'" name="check" :size="12" class="pxn-check__tick" />
@@ -19,9 +20,14 @@
 </template>
 
 <script>
+import { forwardListeners, forwardPlainAttrs } from "@/utils/forwardListeners";
+
 // One component for checkbox / radio / switch — same label + focus behaviour.
 export default {
   name: "PxCheck",
+  inheritAttrs: false,
+  compatConfig: { INSTANCE_LISTENERS: false },
+  emits: ["change"],
   model: { prop: "modelValue", event: "change" },
   props: {
     type: { type: String, default: "checkbox" }, // checkbox | radio | switch
@@ -36,22 +42,21 @@ export default {
       if (this.type === "radio") return this.modelValue === this.nativeValue;
       return !!this.modelValue;
     },
-    listeners() {
-      return {
-        ...this.$listeners,
-        change: e => {
-          if (Array.isArray(this.modelValue)) {
-            const next = this.modelValue.slice();
-            const i = next.indexOf(this.nativeValue);
-            e.target.checked ? (i === -1 && next.push(this.nativeValue)) : (i > -1 && next.splice(i, 1));
-            this.$emit("change", next);
-          } else if (this.type === "radio") {
-            this.$emit("change", this.nativeValue);
-          } else {
-            this.$emit("change", e.target.checked);
-          }
-        }
-      };
+  },
+  methods: {
+    listeners() { return forwardListeners(this.$attrs); },
+    plainAttrs() { return forwardPlainAttrs(this.$attrs); },
+    onChange(e) {
+      if (Array.isArray(this.modelValue)) {
+        const next = this.modelValue.slice();
+        const i = next.indexOf(this.nativeValue);
+        e.target.checked ? (i === -1 && next.push(this.nativeValue)) : (i > -1 && next.splice(i, 1));
+        this.$emit("change", next);
+      } else if (this.type === "radio") {
+        this.$emit("change", this.nativeValue);
+      } else {
+        this.$emit("change", e.target.checked);
+      }
     }
   }
 };

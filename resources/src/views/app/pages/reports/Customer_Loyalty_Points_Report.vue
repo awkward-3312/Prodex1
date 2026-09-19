@@ -252,7 +252,7 @@ export default {
     }
   },
   created(){ this.handleResize(); if (typeof window !== 'undefined') window.addEventListener('resize', this.handleResize); this.fetchReport(); },
-  destroyed(){ if (typeof window !== 'undefined') window.removeEventListener('resize', this.handleResize); }
+  unmounted(){ if (typeof window !== 'undefined') window.removeEventListener('resize', this.handleResize); }
 };
 </script>
 

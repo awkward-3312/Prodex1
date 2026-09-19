@@ -310,7 +310,7 @@ export default {
     window.addEventListener("resize", this.resizeHandler);
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.resizeHandler) window.removeEventListener("resize", this.resizeHandler);
     Object.values(this.charts).forEach(c => c && c.dispose && c.dispose());
     this.charts = {};

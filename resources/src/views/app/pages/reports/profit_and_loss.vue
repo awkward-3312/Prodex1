@@ -154,7 +154,7 @@ export default {
     this.updatePickerPlacement();
     window.addEventListener('resize', this.updatePickerPlacement);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     window.removeEventListener('resize', this.updatePickerPlacement);
   },
   methods: {

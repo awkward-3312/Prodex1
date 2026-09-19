@@ -27,7 +27,7 @@
 
         <div class="pxn-modal__body pxn-scroll"><slot /></div>
 
-        <footer v-if="$slots.footer || $scopedSlots.footer" class="pxn-modal__foot"><slot name="footer" :close="() => close('footer')" /></footer>
+        <footer v-if="$slots.footer" class="pxn-modal__foot"><slot name="footer" :close="() => close('footer')" /></footer>
       </div>
     </div>
   </transition>
@@ -36,6 +36,7 @@
 <script>
 // Floating surface → shadow + scrim. Focus is trapped; Esc and scrim close
 // unless `persistent`. Entry: scrim fades, dialog rises 8px + fades.
+let modalSeq = 0; // identificador propio (antes el id interno de la instancia, API privada de Vue 2)
 export default {
   name: "PxModal",
   model: { prop: "value", event: "close" },
@@ -46,7 +47,7 @@ export default {
     size: { type: String, default: "md" }, // sm | md | lg
     persistent: { type: Boolean, default: false }
   },
-  data() { return { uid: `pxn-m-${this._uid}` }; },
+  data() { return { uid: `pxn-m-${(modalSeq += 1)}` }; },
   watch: {
     value(open) {
       if (open) {
@@ -59,7 +60,7 @@ export default {
       }
     }
   },
-  beforeDestroy() { document.removeEventListener("keydown", this.trap, true); },
+  beforeUnmount() { document.removeEventListener("keydown", this.trap, true); },
   methods: {
     close(reason) {
       if (this.persistent && (reason === "esc" || reason === "scrim")) return;

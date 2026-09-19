@@ -81,13 +81,13 @@
           <input
             class="form-check-input"
             type="checkbox"
-            :id="'serial-'+_uid+'-'+s.id"
+            :id="'serial-'+uidSeed+'-'+s.id"
             :value="s.serial_number"
             :checked="isSelected(s.serial_number)"
             :disabled="disabled"
             @change="toggleSelect(s.serial_number)"
           />
-          <label class="form-check-label" :for="'serial-'+_uid+'-'+s.id">{{ s.serial_number }}</label>
+          <label class="form-check-label" :for="'serial-'+uidSeed+'-'+s.id">{{ s.serial_number }}</label>
         </div>
       </div>
     </template>
@@ -113,6 +113,7 @@
 </template>
 
 <script>
+let serialFieldSeq = 0; // identificador propio (antes `_uid`, API privada de Vue 2)
 export default {
   name: "SerialNumbersField",
   props: {
@@ -130,6 +131,7 @@ export default {
   },
   data() {
     return {
+      uidSeed: `sn${(serialFieldSeq += 1)}`,
       scanInput: "",
       bulkText: "",
       showBulk: false,

@@ -186,20 +186,10 @@ import autoTable from "jspdf-autotable";
 
 const StatTile = {
   name: "StatTile",
-  functional: true,
+  compatConfig: { MODE: 3 },
+  compilerOptions: { whitespace: 'condense' },
   props: { icon:String, label:String, sub:String, value:[String,Number], theme:{type:String,default:'blue'} },
-  render(h,{props}) {
-    return h('div',{class:['stat-card',`theme-${props.theme}`,'shadow-soft','rounded-xl','mb-2']},[
-      h('div',{class:'stat-inner'},[
-        h('div',{class:'stat-icon'},[ h('lucide-icon', { props: { name: props.icon } }) ]),
-        h('div',{class:'stat-content'},[
-          h('div',{class:'stat-label'},props.label),
-          props.sub ? h('div',{class:'stat-sub text-muted'},props.sub) : null,
-          h('div',{class:'stat-value'},props.value),
-        ])
-      ])
-    ]);
-  }
+  template: `<div :class="['stat-card', 'theme-' + theme, 'shadow-soft', 'rounded-xl', 'mb-2']"><div class="stat-inner"><div class="stat-icon"><lucide-icon :name="icon" /></div><div class="stat-content"><div class="stat-label">{{ label }}</div><div v-if="sub" class="stat-sub text-muted">{{ sub }}</div><div class="stat-value">{{ value }}</div></div></div></div>`
 };
 
 export default {
@@ -711,7 +701,7 @@ export default {
     this.onResize();
     window.addEventListener('resize', this.onResize, { passive: true });
   },
-  beforeDestroy(){
+  beforeUnmount(){
     window.removeEventListener('resize', this.onResize);
   }
 };

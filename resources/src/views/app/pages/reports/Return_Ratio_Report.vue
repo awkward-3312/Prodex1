@@ -204,7 +204,7 @@ export default {
     }
   },
   mounted(){ this.updatePickerPlacement(); window.addEventListener('resize', this.updatePickerPlacement); },
-  beforeDestroy(){ window.removeEventListener('resize', this.updatePickerPlacement); },
+  beforeUnmount(){ window.removeEventListener('resize', this.updatePickerPlacement); },
   methods: {
     updatePickerPlacement(){ const isXs = window.matchMedia('(max-width: 576px)').matches; this.picker.opens = isXs ? 'center':'right'; this.picker.drops = 'auto'; },
     fmtDate(d){ return moment(d).format('YYYY-MM-DD'); },

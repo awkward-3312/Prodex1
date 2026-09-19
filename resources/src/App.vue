@@ -31,7 +31,7 @@ export default {
     titleTemplate() { return `%s | ${this.currentUser?.page_title_suffix || window.__pageTitleSuffix || "Gestión empresarial"}`; }
   },
   metaInfo() { return { title:window.__appName||"PRODEX", titleTemplate:this.titleTemplate, bodyAttrs:{class:[this.themeName,"text-left"]}, htmlAttrs:{dir:this.rtl,lang:'es'} }; },
-  beforeDestroy() { try { if(typeof window!=='undefined'&&window.Fire&&window.Fire.$off){ window.Fire.$off('offline-sync:start',this.onGlobalSyncStart); window.Fire.$off('offline-sync:end',this.onGlobalSyncEnd); window.Fire.$off('offline-sync:auto-result',this.onGlobalSyncResult); window.Fire.$off('show-limit-reached',this.showLimitReached); } } catch(e){} },
+  beforeUnmount() { try { if(typeof window!=='undefined'&&window.Fire&&window.Fire.$off){ window.Fire.$off('offline-sync:start',this.onGlobalSyncStart); window.Fire.$off('offline-sync:end',this.onGlobalSyncEnd); window.Fire.$off('offline-sync:auto-result',this.onGlobalSyncResult); window.Fire.$off('show-limit-reached',this.showLimitReached); } } catch(e){} },
   methods: {
     ...mapActions(["refreshUserPermissions"]), ...mapActions("config",["initPrimaryColor"]),
     translatedOrFallback(key,fallback){ try{ if(!this.$t)return fallback; const translated=this.$t(key); return translated&&translated!==key?translated:fallback; }catch(e){return fallback;} },

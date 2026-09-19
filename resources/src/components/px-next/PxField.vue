@@ -19,7 +19,7 @@
 // PxField — label / hint / error scaffold. The control is slotted so it works
 // with a native input, PxInput, PxSelect, a datepicker, anything. Wires the
 // a11y ids (for/aria-describedby) via slot props.
-let uid = 0;
+let uid = 0; // identificador propio (antes el id interno de la instancia, API privada de Vue 2)
 export default {
   name: "PxField",
   props: {
@@ -31,8 +31,9 @@ export default {
     disabled: { type: Boolean, default: false },
     idFor: { type: String, default: null }
   },
+  data() { return { autoId: `pxn-f-${(uid += 1)}` }; },
   computed: {
-    id() { return this.idFor || `pxn-f-${this._uid || (uid += 1)}`; },
+    id() { return this.idFor || this.autoId; },
     describedby() {
       return [this.hint && !this.error ? `${this.id}-hint` : null, this.error ? `${this.id}-error` : null]
         .filter(Boolean).join(" ") || null;

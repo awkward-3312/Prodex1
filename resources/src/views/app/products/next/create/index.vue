@@ -1136,7 +1136,7 @@ export default {
     this._onScrollSpy = () => this.updateActiveSection();
     window.addEventListener("scroll", this._onScrollSpy, true);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this._onScrollSpy) window.removeEventListener("scroll", this._onScrollSpy, true);
     (this.productGalleryItems || []).forEach(r => {
       if (r && r.url && r.url.indexOf("blob:") === 0) {

@@ -227,7 +227,7 @@ export default {
   created() {
     this.fetchTicket(true).then(() => this.startPolling());
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.stopPolling();
   }
 };

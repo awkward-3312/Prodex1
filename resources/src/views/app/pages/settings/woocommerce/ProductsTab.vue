@@ -899,7 +899,7 @@ export default {
     this.restoreRunningJob();
     this.load().finally(() => { this.$emit('ready'); });
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.poller) {
       clearInterval(this.poller);
       this.poller = null;

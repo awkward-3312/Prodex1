@@ -6,7 +6,7 @@
       (position:fixed, ancho = trigger, flip vertical, clamp al viewport,
       max-height con scroll interno). No lo recorta ningún card/overflow.
     · Funcionalidad intacta: v-model, búsqueda, clear, multiple, chips,
-      teclado/Enter/Esc/Tab pasan tal cual (v-bind="$attrs" / v-on="$listeners").
+      teclado/Enter/Esc/Tab pasan tal cual (v-bind="$attrs": en Vue 3 incluye los listeners).
     No cambia datos ni el value emitido: solo label/presentación.
   -->
   <v-select
@@ -17,7 +17,6 @@
     :calculate-position="positionDropdown"
     :disabled="disabled"
     v-bind="$attrs"
-    v-on="$listeners"
   >
     <template #no-options="slotProps">
       <slot name="no-options" v-bind="slotProps">No hay opciones disponibles</slot>
@@ -29,6 +28,7 @@
 export default {
   name: "VsPx",
   inheritAttrs: false,
+  compatConfig: { INSTANCE_LISTENERS: false },
   props: {
     invalid: { type: Boolean, default: false },
     disabled: { type: Boolean, default: false }

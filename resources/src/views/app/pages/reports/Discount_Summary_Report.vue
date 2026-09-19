@@ -454,7 +454,7 @@ export default {
     this.handleResize();
     window.addEventListener('resize', this.handleResize);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     window.removeEventListener('resize', this.handleResize);
   },
 
