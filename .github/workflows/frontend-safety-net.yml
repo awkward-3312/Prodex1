@@ -98,6 +98,11 @@ jobs:
           echo "E2E_RESTRICTED_PASSWORD=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
       - name: Provisionar tenant demo aislado
         run: bash tests/e2e/scripts/setup.sh
+      - name: Diagnóstico del servidor PHP (gdb, extensiones)
+        run: |
+          sudo apt-get install -y gdb >/dev/null
+          php -v; php -m | tr '\n' ' '; php -i | grep -iE 'opcache.jit|opcache.enable_cli|memory_limit' || true
+          echo "E2E_PHP_GDB=1" >> "$GITHUB_ENV"
       - name: Ejecutar E2E
         run: npm run test:e2e
       - name: Avisos de @vue/compat agrupados (resumen del job)
