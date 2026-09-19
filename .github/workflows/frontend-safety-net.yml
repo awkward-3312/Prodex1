@@ -5,10 +5,10 @@ name: Frontend safety net
 #
 #  - route-snapshot: BLOQUEANTE. Determinista, sin servidor ni base de datos (~1 min). Falla si cambia el mapa de rutas
 #    del SPA respecto a tests/e2e/routes/routes.snapshot.json.
-#  - e2e: MANUAL (workflow_dispatch; hasta que el archivo llegue a main, también en push a la rama de estabilización) y no bloqueante todavía. Levanta MySQL 8.4 como servicio, provisiona un tenant demo
-#    con los mecanismos del proyecto y ejecuta Playwright. Está escrito pero NO se ha ejecutado en GitHub Actions al
-#    crearlo (se validó el mismo flujo en local con Docker). Cuando pase en Actions dos veces seguidas, pasarlo a
-#    pull_request y a bloqueante. Ver "CI" en el documento de la red de seguridad.
+#  - e2e: REQUERIDO (sin continue-on-error: si falla, el workflow falla). Corre en workflow_dispatch y, mientras este archivo no esté en main,
+#    en push a las ramas de modernización listadas abajo. Levanta MySQL 8.4 como servicio, provisiona un tenant demo con los mecanismos del
+#    proyecto y ejecuta Playwright contra el servidor PHP embebido con UN worker (PHP_CLI_SERVER_WORKERS=1): el modo multi-worker terminó con
+#    Segmentation fault en Actions. Ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE2.md.
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ on:
     # La rama de estabilización se lista aquí porque GitHub solo permite lanzar workflow_dispatch de un workflow que ya
     # existe en la rama por defecto. Mientras este archivo no esté en main, el job e2e corre con los push a las ramas de modernización listadas aquí.
     # Cuando llegue a main se puede quitar esa rama y usar solo workflow_dispatch.
-    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening, spike/vue3-compat-runtime, refactor/vue-router-4, refactor/vue3-own-code-cleanup, refactor/vue-meta-to-unhead, refactor/remove-vue-clickaway, refactor/bootstrap5-bootstrapvue-next-phase1 ]
+    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening, spike/vue3-compat-runtime, refactor/vue-router-4, refactor/vue3-own-code-cleanup, refactor/vue-meta-to-unhead, refactor/remove-vue-clickaway, refactor/bootstrap5-bootstrapvue-next-phase1, refactor/bootstrap5-bootstrapvue-next-phase2 ]
   workflow_dispatch:
 
 jobs:
@@ -54,10 +54,10 @@ jobs:
       github.ref == 'refs/heads/refactor/vue3-own-code-cleanup' ||
       github.ref == 'refs/heads/refactor/vue-meta-to-unhead' ||
       github.ref == 'refs/heads/refactor/remove-vue-clickaway' ||
-      github.ref == 'refs/heads/refactor/bootstrap5-bootstrapvue-next-phase1'
+      github.ref == 'refs/heads/refactor/bootstrap5-bootstrapvue-next-phase1' ||
+      github.ref == 'refs/heads/refactor/bootstrap5-bootstrapvue-next-phase2'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    continue-on-error: true
     services:
       mysql:
         image: mysql:8.4
@@ -72,6 +72,7 @@ jobs:
       E2E_SKIP_DOCKER: '1'
       E2E_DB_PORT: '3307'
       E2E_PORT: '8000'
+      PHP_CLI_SERVER_WORKERS: '1'
       NODE_OPTIONS: --max-old-space-size=8192
     steps:
       - uses: actions/checkout@v5
