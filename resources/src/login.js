@@ -1,5 +1,6 @@
 import './platform/vue-compat';
 import { patchBootstrapVueForCompat } from './platform/compat/bootstrap-vue';
+import { mountWithRouter } from './platform/compat/vue-router';
 import store from "./store";
 import Vue from "vue";
 patchBootstrapVueForCompat(Vue);
@@ -85,12 +86,7 @@ loadI18n().then(i18n => {
 
   try { store.dispatch('config/initPrimaryColor'); } catch (e) {}
 
-  const app = new Vue({
-    el: '#login',
-    store,
-    router,
-    i18n,
-  });
+  const app = mountWithRouter({ store, i18n }, router, '#login');
   installVue2Platform(app);
 });
 

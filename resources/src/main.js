@@ -1,5 +1,6 @@
 import './platform/vue-compat';
 import { patchBootstrapVueForCompat } from './platform/compat/bootstrap-vue';
+import { mountWithRouter } from './platform/compat/vue-router';
 import store from "./store";
 
 import Vue from "vue";
@@ -8,7 +9,7 @@ import router, { setupRouterGuards } from "./router";
 
 // New organization/operations routes are registered here to avoid destabilizing
 // the very large legacy router while these modules are introduced incrementally.
-router.addRoutes([
+[
   {
     path: "/app/organization",
     component: () => import("./views/app"),
@@ -33,7 +34,7 @@ router.addRoutes([
       { path: "missing", name: "inventory_missing", component: () => import("./views/app/pages/inventory/missing") },
     ],
   },
-]);
+].forEach((route) => router.addRoute(route));
 
 import App from "./App.vue";
 import Auth from './auth/index.js';
@@ -149,7 +150,7 @@ loadI18n().then(i18n => {
   setupRouterGuards(i18n);
   installNavigationPerformance(window.axios, router);
   try { setupGlobalOfflineSync(); } catch (e) {}
-  const app = new Vue({ store, router, VueCookie, i18n, render: h => h(App) }).$mount('#app');
+  const app = mountWithRouter({ store, VueCookie, i18n, render: h => h(App) }, router, '#app');
   // Conecta notificaciones, confirmaciones y modales por id (servicios de plataforma) con BootstrapVue/SweetAlert2.
   installVue2Platform(app);
   // Puente explícito para los scripts sueltos prodex-*.js (sustituye a leer la instancia interna de Vue del DOM).

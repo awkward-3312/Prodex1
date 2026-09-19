@@ -8,7 +8,13 @@ import Vue, { configureCompat } from 'vue';
 // Configuración explícita de @vue/compat. MODE 2 = comportamiento de Vue 2 en todos los componentes (los que se migren
 // pasan a `compatConfig: { MODE: 3 }`). NO se desactiva ni silencia ningún aviso: se necesita ver cada uno (ver
 // docs/architecture/VUE3_COMPAT_SPIKE.md y `npm run test:e2e:compat-warnings`).
-if (String(Vue.version).startsWith('3')) configureCompat({ MODE: 2 });
+// INSTANCE_CHILDREN: vue-meta 2 recorre `vm.$children` de TODOS los componentes, también de `<router-view>` de vue-router 4, que
+// se declara `compatConfig: { MODE: 3 }` y hace que `$children` lance "INSTANCE_CHILDREN compat has been disabled". Activarlo de
+// forma global (`true`, con su aviso) deja a vue-meta funcionar sin tocar vue-router. Desaparece al migrar vue-meta.
+// CUSTOM_DIR: 23 plantillas usan `<router-link v-b-tooltip>`; una directiva sobre un componente se ejecuta en el contexto de
+// ese componente (RouterLink, MODE 3) y sin esta clave los hooks Vue 2 de BootstrapVue (`bind/inserted/componentUpdated`) se
+// desactivan ("compat behavior is disabled") y el tooltip no funciona. Desaparece al migrar BootstrapVue.
+if (String(Vue.version).startsWith('3')) configureCompat({ MODE: 2, INSTANCE_CHILDREN: true, CUSTOM_DIR: true });
 
 if (Vue && String(Vue.version).startsWith('3')) {
   const installed = new Set();

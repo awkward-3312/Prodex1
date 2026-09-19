@@ -1,13 +1,7 @@
-import Vue from 'vue';
-import Router from 'vue-router';
-import { patchRouterLinkForCompat } from '../platform/compat/router-link';
+import { createRouter, createWebHistory } from 'vue-router';
 
-Vue.use(Router);
-patchRouterLinkForCompat(Vue);
-
-const router = new Router({
-  mode: 'history',
-  base: '/portal',
+const router = createRouter({
+  history: createWebHistory('/portal'),
   routes: [
     { path: '/login', name: 'PortalLogin', component: () => import('./views/Login.vue'), meta: { guest: true } },
     { path: '/set-password', name: 'PortalSetPassword', component: () => import('./views/SetPassword.vue'), meta: { guest: true } },
@@ -44,16 +38,7 @@ const router = new Router({
   ],
 });
 
-router.beforeEach(function (to, from, next) {
-  if (to.meta.guest) {
-    next();
-    return;
-  }
-  if (to.meta.requiresAuth) {
-    next();
-    return;
-  }
-  next();
-});
+// Guard sin efecto (conservado tal cual): la autenticación del portal la resuelve el servidor (routes/tenant_web.php).
+router.beforeEach(() => {});
 
 export default router;

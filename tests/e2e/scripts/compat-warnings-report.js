@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 /**
+
+ * (WARNINGS_DIR=ruta permite leer otra carpeta de avisos.)
  * Agrupa los avisos de @vue/compat capturados durante los E2E (tests/e2e/.artifacts/warnings/*.json, los escribe
  * support/fixtures.js) y los imprime como tabla Markdown: aviso, ocurrencias, componentes/archivos, riesgo y acción.
  *
@@ -10,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
-const DIR = path.join(ROOT, 'tests', 'e2e', '.artifacts', 'warnings');
+const DIR = process.env.WARNINGS_DIR || path.join(ROOT, 'tests', 'e2e', '.artifacts', 'warnings');
 const SRC = path.join(ROOT, 'resources', 'src');
 
 // Clasificación de cada aviso conocido. riesgo: benigno | migrar | bloquea | comportamiento
@@ -106,6 +108,7 @@ function classify(text) {
   if (/provide\(\) can only be used inside setup/.test(text)) return { key: 'PROVIDE_OUTSIDE_SETUP', kind: 'vue' };
   if (/has already been registered in target app/.test(text)) return { key: 'COMPONENT_ALREADY_REGISTERED', kind: 'vue' };
   if (/only supports Vue 2/.test(text)) return { key: 'PLUGIN_VUE2_ONLY', kind: 'library' };
+  if (/\[Vue Router warn\]/.test(text)) return { key: `VUE_ROUTER_WARN: ${text.replace(/\[Vue Router warn\]:\s*/, '').replace(/"[^"]*"/g, '"…"').split('\n')[0].slice(0, 80)}`, kind: 'router' };
   if (/router-link.*scoped slot/.test(text)) return { key: 'ROUTER_LINK_SCOPED_SLOT', kind: 'router' };
   if (/\[vue-router\]/.test(text)) return { key: `VUE_ROUTER: ${text.replace(/\[vue-router\]\s*/, '').split(':')[0].slice(0, 70)}`, kind: 'router' };
   if (/Unhandled error during execution/.test(text)) return { key: 'UNHANDLED_ERROR_IN_HOOK', kind: 'vue' };

@@ -2440,13 +2440,13 @@
       "source": "resources/src/router.js"
     },
     {
-      "path": "*",
+      "path": "/:pathMatch(.*)*",
       "name": "NotFound",
       "component": "./views/app/pages/notFound",
       "source": "resources/src/router.js"
     },
     {
-      "path": "not_authorize",
+      "path": "/not_authorize",
       "name": "not_authorize",
       "component": "./views/app/pages/NotAuthorize",
       "source": "resources/src/router.js"

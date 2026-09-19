@@ -382,9 +382,9 @@
           v-for="tab in mobileTabBarItemsFiltered"
           :key="tab.key"
           :to="tab.to"
-          :exact="tab.exact"
           class="mobile-tabbar__item ripple-touch"
-          active-class="mobile-tabbar__item--active"
+          :active-class="tab.exact ? '' : 'mobile-tabbar__item--active'"
+          exact-active-class="mobile-tabbar__item--active"
         >
           <lucide-icon :name="tab.iconName" />
           <span class="mobile-tabbar__label">{{ tab.label }}</span>

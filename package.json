@@ -65,7 +65,7 @@
         "vue-localstorage": "^0.6.2",
         "vue-meta": "^2.4.0",
         "vue-perfect-scrollbar": "^0.2.1",
-        "vue-router": "^3.5.3",
+        "vue-router": "^4.6.4",
         "vue-select": "^3.20.3",
         "vue-sweetalert2": "^5.0.11",
         "vue2-daterange-picker": "^0.6.8",

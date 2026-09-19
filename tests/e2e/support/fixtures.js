@@ -28,7 +28,7 @@ const test = base.test.extend({
       page.on('pageerror', (e) => errors.push({ kind: 'pageerror', message: e.message, stack: e.stack || '' }));
       page.on('console', (m) => {
         // Avisos ([Vue warn], deprecaciones de @vue/compat): no fallan el test; se vuelcan a tests/e2e/.artifacts/warnings.
-        if (m.type() === 'warning' && /\[Vue warn\]|deprecation|compat/i.test(m.text())) {
+        if (m.type() === 'warning' && /\[Vue warn\]|\[Vue Router warn\]|deprecation|compat/i.test(m.text())) {
           warnings.push({ text: m.text().slice(0, 4000), url: page.url() });
           return;
         }

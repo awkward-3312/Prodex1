@@ -2,6 +2,7 @@ import './platform/vue-compat';
 import Vue from 'vue';
 import App from './portal/App.vue';
 import router from './portal/router';
+import { mountWithRouter } from './platform/compat/vue-router';
 import { installSpanishUiGuard } from './utils/spanishUiGuard';
 
 window.axios = require('axios');
@@ -33,7 +34,4 @@ axios.interceptors.response.use(
 Vue.config.productionTip = false;
 installSpanishUiGuard();
 
-new Vue({
-  router,
-  render: (h) => h(App),
-}).$mount('#portal-app');
+mountWithRouter({ render: (h) => h(App) }, router, '#portal-app');

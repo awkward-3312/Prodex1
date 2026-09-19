@@ -101,7 +101,7 @@
                 class="pxn-shell__panel-link"
                 :class="{ 'is-active': isActiveItem(it) }"
                 :aria-current="isActiveItem(it) ? 'page' : null"
-                @click.native="navDrawerOpen = false"
+                @click="navDrawerOpen = false"
               >
                 <lucide-icon :name="it.icon" :size="14" />
                 <span>{{ it.label }}</span>
@@ -122,7 +122,7 @@
                 class="pxn-shell__panel-link"
                 :class="{ 'is-active': isActiveItem(r) }"
                 :aria-current="isActiveItem(r) ? 'page' : null"
-                @click.native="navDrawerOpen = false"
+                @click="navDrawerOpen = false"
               >
                 <lucide-icon :name="r.icon" :size="14" />
                 <span>{{ r.label }}</span>
@@ -322,7 +322,7 @@
               </span>
             </div>
             <div class="pxn-userchip__menu-sep" role="separator"></div>
-            <router-link to="/app/profile" class="pxn-userchip__item" role="menuitem" @click.native="closeUserMenu">
+            <router-link to="/app/profile" class="pxn-userchip__item" role="menuitem" @click="closeUserMenu">
               <lucide-icon name="user" :size="15" /><span>{{ $t('profil') }}</span>
             </router-link>
             <router-link
@@ -330,7 +330,7 @@
               to="/app/settings/System_settings"
               class="pxn-userchip__item"
               role="menuitem"
-              @click.native="closeUserMenu"
+              @click="closeUserMenu"
             >
               <lucide-icon name="settings" :size="15" /><span>{{ $t('Settings') }}</span>
             </router-link>

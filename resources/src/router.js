@@ -1,10 +1,6 @@
-import Vue from "vue";
 import store from "./store";
 import NProgress from "nprogress";
-import Router from "vue-router";
-import { patchRouterLinkForCompat } from "./platform/compat/router-link";
-Vue.use(Router);
-patchRouterLinkForCompat(Vue);
+import { createRouter, createWebHistory } from "vue-router";
 
 // ---------------------------------------------------------------------------
 // POS-ONLY MANUAL SALES (PRODEX business rule)
@@ -24,21 +20,20 @@ function canUsePos() {
     return perms.includes("Pos_view");
 }
 
-function redirectManualSaleToPos(to, from, next) {
+// Guards de Vue Router 4: devolver una ubicación redirige (equivale al antiguo `next(location)`).
+function redirectManualSaleToPos() {
     if (canUsePos()) {
-        next({ path: "/app/pos" });
-    } else {
-        next({ name: "index_sales" });
+        return { path: "/app/pos" };
     }
+    return { name: "index_sales" };
 }
 
-function redirectQuotationToPos(to, from, next) {
+function redirectQuotationToPos(to) {
     const id = to.params.id;
     if (canUsePos()) {
-        next({ path: "/app/pos", query: id ? { quotation_id: id } : {} });
-    } else {
-        next({ name: "index_sales" });
+        return { path: "/app/pos", query: id ? { quotation_id: id } : {} };
     }
+    return { name: "index_sales" };
 }
 
 
@@ -3623,7 +3618,8 @@ const baseRoutes = [
 
 
     {
-        path: "*",
+        // Vue Router 4 no admite "*": el catch-all equivalente es un parámetro con regex (misma cobertura de URLs).
+        path: "/:pathMatch(.*)*",
         name: "NotFound",
         component: () =>
             import(
@@ -3632,7 +3628,8 @@ const baseRoutes = [
     },
 
     {
-        path: "not_authorize",
+        // Vue Router 4 exige "/" inicial en las rutas raíz (con Router 3 "not_authorize" se resolvía a la URL /not_authorize).
+        path: "/not_authorize",
         name: "not_authorize",
         component: () =>
             import(
@@ -3649,7 +3646,7 @@ const baseRoutes = [
 // Isolated: this is the only change to the real router for Fase A.
 // -----------------------------------------------------------------------------
 if (process.env.NODE_ENV !== "production") {
-    const wildcardIndex = baseRoutes.findIndex(r => r.path === "*");
+    const wildcardIndex = baseRoutes.findIndex(r => r.name === "NotFound");
     const at = wildcardIndex === -1 ? baseRoutes.length : wildcardIndex;
     baseRoutes.splice(at, 0,
         {
@@ -4115,26 +4112,18 @@ if (process.env.NODE_ENV !== "production") {
     );
 }
 
-const router = new Router({
-    mode: "history",
+const router = createRouter({
+    history: createWebHistory(),
     linkActiveClass: "open",
     routes: baseRoutes,
-    scrollBehavior(to, from, savedPosition) {
-        return { x: 0, y: 0 };
+    scrollBehavior() {
+        return { left: 0, top: 0 };
     }
 });
 
-// Fix redundant navigation error
-const originalPush = Router.prototype.push;
-Router.prototype.push = function push(location, onResolve, onReject) {
-  if (onResolve || onReject)
-    return originalPush.call(this, location, onResolve, onReject);
-  return originalPush.call(this, location).catch(err => err);
-};
-
 // ✅ Export function to set up navigation guards
 export function setupRouterGuards(i18n) {
-  router.beforeEach(async (to, from, next) => {
+  router.beforeEach(async (to) => {
     if (to.path) {
       NProgress.start();
       NProgress.set(0.1);
@@ -4174,7 +4163,7 @@ export function setupRouterGuards(i18n) {
       }).catch(() => {});
     }
 
-    next();
+    // Sin valor de retorno: la navegación continúa (equivale al antiguo `next()`).
   });
 
   router.afterEach(() => {
@@ -4210,7 +4199,7 @@ export function setupRouterGuards(i18n) {
 }
 
 
-async function Check_Token(to, from, next) {
+async function Check_Token(to) {
     let token = to.params.token;
     const res = await axios
         .get("password/find/" + token)
@@ -4219,10 +4208,8 @@ async function Check_Token(to, from, next) {
     if (!res.success) {
         // "/app/sessions/signIn" is not a registered SPA route; send the user to
         // the real (Blade) login page instead of a dead route.
-        next(false);
         if (typeof window !== "undefined") window.location.replace("/login");
-    } else {
-        return next();
+        return false;
     }
 }
 
