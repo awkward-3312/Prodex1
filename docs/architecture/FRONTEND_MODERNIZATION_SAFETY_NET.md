@@ -168,7 +168,7 @@ No se tocó Vue, Router, Vuex, BootstrapVue, Bootstrap, vee-validate, Vite ni Ty
 - **`e2e`**: MySQL 8.4 como servicio, PHP 8.3, Node 20, `npx mix`, `setup.sh` (`E2E_SKIP_DOCKER=1`) y Playwright. **No es un check requerido.** GitHub solo deja lanzar `workflow_dispatch` de un workflow que ya está en la rama por defecto; mientras este archivo no esté en `main`, el job también corre con los `push` a `fix/frontend-modernization-baseline`. Al llegar a `main` basta `workflow_dispatch` (o `pull_request`).
 - Ejecuciones verdes consecutivas (36/36 E2E + route snapshot cada una):
   1. https://github.com/awkward-3312/Prodex1/actions/runs/35411033528 (commit `6caaafc`)
-  2. _(se completa al terminar la segunda ejecución)_
+  2. https://github.com/awkward-3312/Prodex1/actions/runs/35411494307 (commit `c29aa68`)
 - Nada del flujo depende de producción ni del VPS.
 
 ## Condiciones antes de la siguiente fase
