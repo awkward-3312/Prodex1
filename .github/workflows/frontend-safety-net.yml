@@ -77,11 +77,11 @@ jobs:
       - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          # La imagen del runner trae ~20 extensiones de terceros (amqp, apcu, ast, ds, enchant, igbinary, imagick, imap, memcache(d), mongodb,
-          # msgpack, pspell, redis, sqlsrv, yaml, zmq) que el proyecto no usa y que en local no existen. El servidor PHP embebido de los E2E
-          # moría con SIGSEGV en `zend_objects_store_del` (backtrace del run 35475388416, corrupción de memoria del motor): se desactivan.
-          extensions: mbstring, xml, curl, gd, zip, pdo_mysql, bcmath, intl, fileinfo, :amqp, :apcu, :ast, :ds, :enchant, :igbinary, :imagick, :imap, :memcache, :memcached, :mongodb, :msgpack, :pspell, :redis, :sqlsrv, :pdo_sqlsrv, :yaml, :zmq
+          # PHP 8.4 SOLO para el job e2e: con 8.2.33 y 8.3.33 (runner de GitHub) el servidor PHP moría con SIGSEGV en `zend_objects_store_del`
+          # (~50 % de los arranques en frío en el flujo de login; reproducido con tests/e2e/scripts/login-stress.sh, 5/10 y 5/10 vs 0/10 en 8.4.25;
+          # ni `zend.enable_gc=0` ni quitar extensiones de terceros lo evitan). Ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE2.md.
+          php-version: '8.4'
+          extensions: mbstring, xml, curl, gd, zip, pdo_mysql, bcmath, intl, fileinfo
           coverage: none
       - run: composer install --no-interaction --prefer-dist --no-progress
       - uses: actions/setup-node@v5

@@ -2,23 +2,33 @@
 
 Base: `916454f` (fase 1). Vue 3.5.43 + `@vue/compat` MODE 2, Vue Router 4, Unhead. Esta fase estabiliza el E2E en CI, resuelve las clases BS5 latentes, migra a BootstrapVueNext (BVN) los formularios simples de pantallas no críticas y la directiva `v-b-tooltip`, retira más consumidores directos de `$bvToast` / `$bvModal`, y aísla con datos qué avisos de compat vienen de BVN y cuáles de BootstrapVue 2 (BV2). No se toca vee-validate, Vuex, vue-i18n, Vite ni TypeScript, ni backend, rutas, permisos, tenancy o lógica de negocio. No hay corte global a la hoja Bootstrap 5: el puente sigue siendo aditivo.
 
-## 1. CI E2E estabilizado
+## 1. CI E2E estabilizado — causa raíz encontrada
 
-**Síntoma.** El servidor PHP embebido de los E2E terminaba en Actions (PHP 8.3.33) durante el login de las sesiones de `auth.setup`, y todo lo siguiente fallaba con `ERR_CONNECTION_REFUSED`. En la fase 1 el fallo se veía como `Segmentation fault (core dumped)` con `PHP_CLI_SERVER_WORKERS=4`.
+**Síntoma.** El servidor PHP embebido de los E2E moría en Actions durante el login de `auth.setup` y todo lo siguiente fallaba con `ERR_CONNECTION_REFUSED`. Aparecía como `Segmentation fault (core dumped)`. Era intermitente: mismo commit, unos runs morían y otros no (en la fase 2, 5 de 9).
 
-**Lo que se descartó.**
-- *No es solo el multi-worker.* `PHP_CLI_SERVER_WORKERS=1` **no es válido** en PHP 8.3 (`number of workers must be larger than 1`): PHP imprime el aviso y arranca en modo de un solo proceso. Con ese valor el servidor siguió muriendo (runs `35466675774`, `35467844989`, `35470654268`), así que el fallo también ocurre en modo single-process. El primer intento de la fase ("usar 1 worker") por sí solo no fue una solución.
-- *No es la compilación de Blade con PCRE-JIT.* Un bucle de 12 × `view:clear` + `view:cache` con `pcre.jit=1` y `pcre.jit=0` en el runner terminó con 0 fallos de 12 en ambos modos.
-- Memoria: el runner tenía 6–7 GB libres; sin líneas de `segfault`/`oom` en `dmesg`.
+**Causa raíz: bug del motor de PHP 8.2.33 / 8.3.33 en el runner de GitHub, no del proyecto ni de Node ni del bundle.**
+- El volcado de núcleo (run `35475388416`) dio `SIGSEGV` en `zend_objects_store_del` (`segfault at 15600000012 … in php8.3`), es decir, liberación de un objeto con un identificador corrupto/ya liberado dentro del motor. El mismo `ip` y la misma dirección de fallo se repitieron en un segundo crash.
+- Se reprodujo **sin navegador ni build de JS** con `tests/e2e/scripts/login-stress.sh` (arranca el servidor en frío y hace `GET /login` → `POST /login` con `curl`, N veces) en un workflow temporal con matriz de versiones:
 
-**Lo que no se pudo demostrar.** La causa raíz del fallo del binario de PHP en el runner (intermitente: mismo commit y mismas condiciones, unos runs mueren y otros no) no se identificó. No hay backtrace: cuando el proceso muere no queda volcado que analizar (el envoltorio con `gdb` perdió su salida al ser terminado el proceso; el volcado de núcleo con `kernel.core_pattern` no llegó a generarse porque los runs siguientes no fallaron).
+| PHP (runner) | Ajuste | Arranques en frío que mueren |
+|---|---|---:|
+| 8.3.33 | — | 5/10, 6/30 |
+| 8.3.33 | `zend.enable_gc=0` | 6/10 |
+| 8.3.33 | `USE_ZEND_ALLOC=0` | 1/10 |
+| 8.3.33 | opcache activado | 1/10 |
+| 8.2.33 | — | 5/10 |
+| **8.4.25** | — | **0/10 + 3 × 0/30 = 0/100** |
+| 8.4.25 | opcache activado | 0/30 |
 
-**Mitigación aplicada (determinismo, no rendimiento).**
-1. `tests/e2e/scripts/serve.sh`: un solo proceso por defecto (no se exporta `PHP_CLI_SERVER_WORKERS` salvo que se pida > 1), `exec php` sin reinicio silencioso. Se quitó el bucle de reinicio de la fase 1: si el servidor muere, el E2E falla de forma visible. En local, 118 tests con 1 worker pasan sin crash (12,9 min frente a 8,8 min con 4).
-2. `.github/workflows/frontend-safety-net.yml`: el job `e2e` **ya no tiene `continue-on-error: true`**. Antes un run aparecía verde con el job E2E fallado; ahora un run verde significa E2E pasado.
-3. Diagnóstico permanente y barato si el fallo vuelve: `ulimit -c unlimited` + `kernel.core_pattern` en el paso E2E y un paso `if: always()` que imprime `dmesg` y, si existe un volcado, `gdb bt`.
+**Descartado:** el modo multi-worker (`PHP_CLI_SERVER_WORKERS=1` ni siquiera es válido en PHP 8.3: «number of workers must be larger than 1»; sigue muriendo en modo de un solo proceso), la compilación de Blade con PCRE-JIT (0/12 con y sin JIT), la memoria del runner, el recolector de basura (`zend.enable_gc=0` no lo evita), las extensiones de terceros de la imagen del runner (amqp, apcu, imagick, redis…: quitarlas no lo evitó) y el bundle/JS (se reproduce con `curl`).
 
-Resultado: runs consecutivos verdes `35472162519` (`72eeb08`) y `35473014195` (`be57c7f`) con 118/118, y los dos runs finales de la sección 12. **Aviso honesto**: como la causa raíz no está probada, la mitigación se apoya en la evidencia de los runs, no en una explicación; si el fallo reaparece, el paso de diagnóstico dará el backtrace.
+**Corrección (determinista):**
+1. El job `e2e` usa **PHP 8.4** (`setup-php`, solo ese job; `composer.json` exige `^8.2`; en local se corre con PHP 8.5 sin problemas). Los demás workflows (`validate*.yml`, unit/feature) no ejecutan el flujo de login sobre el servidor embebido y no se tocan.
+2. `tests/e2e/scripts/serve.sh`: un solo proceso por defecto (sin `PHP_CLI_SERVER_WORKERS` salvo que se pida > 1) y `exec php` sin reinicio silencioso: si el servidor muere el E2E falla de forma visible. Se quitó el bucle de reinicio de la fase 1.
+3. El job `e2e` **ya no tiene `continue-on-error: true`**: antes un run aparecía verde con el job E2E fallado; ahora un run verde significa E2E pasado.
+4. Diagnóstico que se conserva (barato): `ulimit -c unlimited` + `kernel.core_pattern` y un paso `if: always()` con `dmesg` y `gdb bt`.
+
+**Riesgo a revisar fuera de este PR (no se ha tocado nada del VPS).** El bug se reproduce en el flujo de login de la propia aplicación con PHP 8.2.33/8.3.33 en frío (con opcache activado baja a 1/10, no a 0). Conviene comprobar qué versión de PHP ejecuta el VPS y si se ven workers de php-fpm terminados por señal 11 en el log; si es 8.3.33, actualizar a 8.4 o esperar el parche. Esto es una observación, no una acción de esta fase.
 
 ## 2. Clases BS5 latentes (clasificación A / B / C)
 
