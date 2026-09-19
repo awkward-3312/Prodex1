@@ -103,6 +103,19 @@ jobs:
           sudo apt-get install -y gdb >/dev/null
           php -v; php -m | tr '\n' ' '; php -i | grep -iE 'opcache.jit|opcache.enable_cli|memory_limit' || true
           sudo sysctl -w kernel.core_pattern=/tmp/core.%e.%p
+      - name: Diagnóstico Blade/PCRE (¿segfault al compilar vistas?)
+        continue-on-error: true
+        run: |
+          for mode in 1 0; do
+            fails=0
+            for i in $(seq 1 12); do
+              APP_ENV=e2e php -d pcre.jit=$mode artisan view:clear >/dev/null 2>&1 || true
+              APP_ENV=e2e php -d pcre.jit=$mode artisan view:cache >/dev/null 2>&1; rc=$?
+              if [ "$rc" -ge 128 ]; then fails=$((fails+1)); echo "pcre.jit=$mode iter=$i exit=$rc"; fi
+            done
+            echo "pcre.jit=$mode: $fails fallos de 12"
+          done
+          APP_ENV=e2e php artisan view:clear >/dev/null 2>&1 || true
       - name: Ejecutar E2E
         run: |
           ulimit -c unlimited
