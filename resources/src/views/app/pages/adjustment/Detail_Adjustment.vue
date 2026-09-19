@@ -109,8 +109,8 @@
               </tr>
             </thead>
             <tbody>
-              <template v-for="(detail, idx) in details">
-                <tr :key="'r-' + idx">
+              <template v-for="(detail, idx) in details" :key="'r-' + idx">
+                <tr>
                   <td>{{ detail.code }}</td>
                   <td>
                     {{ detail.name }}

@@ -8,7 +8,7 @@
       :class="{ 'dashboard-static--mobile-app': isMobileViewport }"
       :style="dashboardFontStyle"
     >
-      <template v-for="sectionId in orderedDashboardSections">
+      <template v-for="sectionId in orderedDashboardSections" :key="sectionId">
         <!-- Header + mobile quick modules (modules directly under header) -->
         <template v-if="sectionId === 'header'">
           <div :key="'hdr-' + sectionId" class="dashboard-header mb-3">
@@ -122,7 +122,7 @@
         </b-row>
 
         <!-- Stat cards row 2 -->
-        <b-row v-else-if="sectionId === 'stat_cards_2'" :key="sectionId" class="mb-3 align-items-stretch dashboard-mobile-stat-grid">
+        <b-row v-else-if="sectionId === 'stat_cards_2'" class="mb-3 align-items-stretch dashboard-mobile-stat-grid">
           <b-col md="3" sm="6" class="mb-3 mb-md-0">
             <router-link to="/app/sales/list" class="stat-card sales-due-card h-100">
               <div class="stat-card-icon"><lucide-icon name="banknote" /></div>
@@ -162,7 +162,7 @@
         </b-row>
 
           <!-- Chart: Sales & Purchases -->
-        <b-row v-else-if="sectionId === 'chart_sales_purchases'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'chart_sales_purchases'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="chart-card h-100">
               <div class="chart-card-header">
@@ -177,7 +177,7 @@
         </b-row>
 
         <!-- Chart: Top Selling -->
-        <b-row v-else-if="sectionId === 'chart_top_selling'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'chart_top_selling'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="chart-card h-100">
               <div class="chart-card-header">
@@ -192,7 +192,7 @@
         </b-row>
 
         <!-- Sales by Payment + Stock Value -->
-        <b-row v-else-if="sectionId === 'sales_by_payment_stock_value'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'sales_by_payment_stock_value'" class="mb-3 align-items-stretch">
           <b-col md="6" class="mb-3 mb-md-0">
             <div class="info-card h-100">
               <div class="info-card-header">
@@ -258,7 +258,7 @@
         </b-row>
 
         <!-- Chart: Payment Sent/Received -->
-        <b-row v-else-if="sectionId === 'chart_payment_sent_received'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'chart_payment_sent_received'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="chart-card h-100">
               <div class="chart-card-header">
@@ -273,7 +273,7 @@
         </b-row>
 
         <!-- Chart: Top Customers -->
-        <b-row v-else-if="sectionId === 'chart_top_customers'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'chart_top_customers'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="chart-card h-100">
               <div class="chart-card-header">
@@ -288,7 +288,7 @@
         </b-row>
 
         <!-- Table: Stock Alert -->
-        <b-row v-else-if="sectionId === 'table_stock_alert'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'table_stock_alert'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="table-card h-100">
               <div class="table-card-header">
@@ -314,7 +314,7 @@
         </b-row>
 
         <!-- Table: Top Selling Products -->
-        <b-row v-else-if="sectionId === 'table_top_selling_products'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'table_top_selling_products'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="table-card h-100">
               <div class="table-card-header">
@@ -339,7 +339,7 @@
         </b-row>
 
         <!-- Table: Recent Sales -->
-        <b-row v-else-if="sectionId === 'table_recent_sales'" :key="sectionId" class="mb-3">
+        <b-row v-else-if="sectionId === 'table_recent_sales'" class="mb-3">
           <b-col cols="12">
             <div class="table-card">
               <div class="table-card-header">

@@ -1,3 +1,4 @@
+import './platform/vue-compat';
 import Vue from 'vue';
 import App from './portal/App.vue';
 import router from './portal/router';

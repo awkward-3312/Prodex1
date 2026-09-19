@@ -124,8 +124,8 @@
                     </thead>
                     <tbody>
                       <tr v-if="!details.length"><td colspan="7" class="pxadjf-tbl__empty">Añade productos al ajuste.</td></tr>
-                      <template v-for="detail in details">
-                        <tr :key="'r-' + detail.detail_id" :class="{ 'is-deleted': detail.del === 1 }">
+                      <template v-for="detail in details" :key="'r-' + detail.detail_id">
+                        <tr :class="{ 'is-deleted': detail.del === 1 }">
                           <td class="pxn-num">{{ detail.detail_id }}</td>
                           <td class="pxn-mono">{{ detail.code }}</td>
                           <td>

@@ -2,11 +2,24 @@
 // (contrato en ./contract.js); al migrar a una librería de validación de Vue 3 solo se sustituye este archivo.
 import { ValidationObserver, ValidationProvider, extend, localize } from 'vee-validate';
 import * as veeRules from 'vee-validate/dist/rules.js';
+import Vue from 'vue';
+import { compatProviderRender } from './vee-compat-provider.js';
 
 // Mismo comportamiento que los componentes de vee-validate 3: se hereda todo (props, inject/provide del observer,
 // detección de v-model, slot props, métodos validate/reset/setErrors/handleSubmit) y solo cambia el nombre público.
-export const PxValidationProvider = { name: 'PxValidationProvider', extends: ValidationProvider };
-export const PxValidationObserver = { name: 'PxValidationObserver', extends: ValidationObserver };
+// `render` se declara en el propio componente (delegando en el original): bajo @vue/compat solo se adapta el `h` de Vue 2
+// cuando `render` es propiedad directa del componente, no cuando se hereda por `extends`.
+const IS_VUE3 = String(Vue.version).startsWith('3');
+const wrapComponent = (name, Base, render) => ({
+  name,
+  extends: Base,
+  render: render || function delegatedRender(h) {
+    return Base.options.render.call(this, h);
+  },
+});
+// Bajo @vue/compat el ValidationProvider original no detecta ningún campo (ver ./vee-compat-provider.js).
+export const PxValidationProvider = wrapComponent('PxValidationProvider', ValidationProvider, IS_VUE3 ? compatProviderRender : undefined);
+export const PxValidationObserver = wrapComponent('PxValidationObserver', ValidationObserver);
 
 const MESSAGES_ES = {
   required: 'Este campo es obligatorio',
@@ -46,8 +59,8 @@ export function installValidation(Vue, { legacyAliases = true, extraRules = {} }
   Vue.component('PxValidationProvider', PxValidationProvider);
   Vue.component('PxValidationObserver', PxValidationObserver);
   if (legacyAliases) {
-    Vue.component('ValidationProvider', ValidationProvider);
-    Vue.component('ValidationObserver', ValidationObserver);
+    Vue.component('ValidationProvider', PxValidationProvider);
+    Vue.component('ValidationObserver', PxValidationObserver);
   }
 }
 

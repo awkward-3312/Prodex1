@@ -1333,8 +1333,8 @@
                 </thead>
 
                 <tbody>
-                  <template v-for="payment_pos in payments">
-                    <tr :key="'pay-' + payment_pos.id">
+                  <template v-for="payment_pos in payments" :key="'pay-' + payment_pos.id">
+                    <tr>
                       <td style="text-align: left;" colspan="1">{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                       <td style="text-align: center;" colspan="2">
                         {{ formatPriceDisplay(payment_pos.montant ,2) }}
@@ -1417,8 +1417,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <template v-for="detail_invoice in invoice_pos.details">
-                    <tr :key="'l2-item-' + detail_invoice.detail_id">
+                  <template v-for="detail_invoice in invoice_pos.details" :key="'l2-item-' + detail_invoice.detail_id">
+                    <tr>
                       <td>
                         {{detail_invoice.name}}
                         <br v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null">
@@ -1540,8 +1540,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <template v-for="payment_pos in payments">
-                    <tr :key="'pay2-' + payment_pos.id">
+                  <template v-for="payment_pos in payments" :key="'pay2-' + payment_pos.id">
+                    <tr>
                       <td style="text-align: left;" colspan="1">{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                       <td style="text-align: center;" colspan="2">
                         {{formatNumber(payment_pos.montant ,2)}}
@@ -1729,8 +1729,8 @@
                 </thead>
 
                 <tbody>
-                  <template v-for="payment_pos in payments">
-                    <tr :key="'pay3-' + payment_pos.id">
+                  <template v-for="payment_pos in payments" :key="'pay3-' + payment_pos.id">
+                    <tr>
                       <td style="text-align: left;" colspan="1">{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                       <td style="text-align: center;" colspan="2">
                         {{formatNumber(payment_pos.montant ,2)}}
@@ -1930,8 +1930,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <template v-for="payment_pos in payments">
-                    <tr :key="'pay4-' + payment_pos.id">
+                  <template v-for="payment_pos in payments" :key="'pay4-' + payment_pos.id">
+                    <tr>
                       <td style="text-align:left;" colspan="1">{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                       <td style="text-align:center;" colspan="2">{{ formatPriceDisplay(payment_pos.montant ,2) }}</td>
                       <td style="text-align:right;" colspan="1">{{ formatPriceDisplay(payment_pos.change ,2) }}</td>
@@ -2087,8 +2087,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <template v-for="payment_pos in payments">
-                    <tr :key="'pay5-' + payment_pos.id">
+                  <template v-for="payment_pos in payments" :key="'pay5-' + payment_pos.id">
+                    <tr>
                       <td>{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                       <td>{{ formatPriceDisplay(payment_pos.montant, 2) }}</td>
                       <td>{{ formatPriceDisplay(payment_pos.change, 2) }}</td>

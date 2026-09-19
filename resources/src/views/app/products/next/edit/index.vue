@@ -529,8 +529,8 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <template v-for="row in opening_rows">
-                        <tr :key="openingRowKey(row)">
+                      <template v-for="row in opening_rows" :key="openingRowKey(row)">
+                        <tr>
                           <td>{{ row.warehouse_name }}</td>
                           <td v-if="openingHasVariants">{{ row.variant_name || '—' }}</td>
                           <td class="is-right pxn-num">{{ row.stock_qty }}</td>

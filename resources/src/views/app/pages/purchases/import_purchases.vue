@@ -157,8 +157,8 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <template v-for="(row, idx) in previewRows">
-                      <tr :key="'prv-' + idx">
+                    <template v-for="(row, idx) in previewRows" :key="'prv-' + idx">
+                      <tr>
                         <td class="pxn-num">{{ idx + 1 }}</td>
                         <td>
                           <span class="pxn-mono">{{ row.code }}</span>

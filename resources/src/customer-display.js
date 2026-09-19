@@ -1,3 +1,4 @@
+import './platform/vue-compat';
 import Vue from 'vue';
 import CustomerDisplay from './views/app/pages/customer/CustomerDisplay.vue';
 

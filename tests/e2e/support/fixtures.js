@@ -5,6 +5,8 @@
  *  - respuestas HTTP >= 500, o 404 de recursos estáticos propios (/js, /css, /fonts, /images)
  * Las excepciones aceptadas viven en support/allowlist.js, con su justificación.
  */
+const fs = require('fs');
+const pathMod = require('path');
 const base = require('@playwright/test');
 const allowlist = require('./allowlist');
 
@@ -21,9 +23,15 @@ const test = base.test.extend({
   jsErrors: [
     async ({ page }, use, testInfo) => {
       const errors = [];
+      const warnings = [];
       const origin = testInfo.project.use.baseURL || '';
       page.on('pageerror', (e) => errors.push({ kind: 'pageerror', message: e.message, stack: e.stack || '' }));
       page.on('console', (m) => {
+        // Avisos ([Vue warn], deprecaciones de @vue/compat): no fallan el test; se vuelcan a tests/e2e/.artifacts/warnings.
+        if (m.type() === 'warning' && /\[Vue warn\]|deprecation|compat/i.test(m.text())) {
+          warnings.push({ text: m.text().slice(0, 4000), url: page.url() });
+          return;
+        }
         if (m.type() !== 'error') return;
         const text = m.text();
         if (/^Failed to load resource/i.test(text)) return; // cubierto por el listener de respuestas
@@ -40,6 +48,12 @@ const test = base.test.extend({
       });
 
       await use(errors);
+
+      if (warnings.length) {
+        const dir = pathMod.join(__dirname, '..', '.artifacts', 'warnings');
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(pathMod.join(dir, `${testInfo.testId}.json`), JSON.stringify({ test: testInfo.titlePath.join(' › '), warnings }));
+      }
 
       const counts = new Map();
       const real = [];

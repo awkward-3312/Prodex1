@@ -1,7 +1,9 @@
 import Vue from 'vue';
 import Router from 'vue-router';
+import { patchRouterLinkForCompat } from '../platform/compat/router-link';
 
 Vue.use(Router);
+patchRouterLinkForCompat(Vue);
 
 const router = new Router({
   mode: 'history',

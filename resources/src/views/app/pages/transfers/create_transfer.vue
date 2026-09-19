@@ -120,8 +120,8 @@
                         <tr v-if="details.length <=0">
                           <td colspan="9">{{$t('NodataAvailable')}}</td>
                         </tr>
-                        <template v-for="detail in details">
-                        <tr :key="'r-' + detail.detail_id">
+                        <template v-for="detail in details" :key="'r-' + detail.detail_id">
+                        <tr>
                           <td>{{detail.detail_id}}</td>
                           <td>
                             <span>{{detail.code}}</span>

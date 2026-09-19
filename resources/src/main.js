@@ -1,6 +1,9 @@
+import './platform/vue-compat';
+import { patchBootstrapVueForCompat } from './platform/compat/bootstrap-vue';
 import store from "./store";
 
 import Vue from "vue";
+patchBootstrapVueForCompat(Vue);
 import router, { setupRouterGuards } from "./router";
 
 // New organization/operations routes are registered here to avoid destabilizing

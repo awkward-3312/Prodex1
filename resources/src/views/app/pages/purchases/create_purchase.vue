@@ -116,8 +116,8 @@
               </thead>
               <tbody>
                 <tr v-if="details.length <= 0"><td colspan="9" class="pxpuf__empty">{{ $t('NodataAvailable') }}</td></tr>
-                <template v-for="detail in details">
-                  <tr :key="'detail-' + detail.detail_id">
+                <template v-for="detail in details" :key="'detail-' + detail.detail_id">
+                  <tr>
                     <td class="pxn-num">{{ detail.detail_id }}</td>
                     <td>
                       <span class="pxn-mono">{{ detail.code }}</span><br />

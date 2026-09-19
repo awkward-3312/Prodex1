@@ -67,8 +67,8 @@
                 </tr>
               </thead>
               <tbody>
-                <template v-for="(detail, idx) in details">
-                  <tr :key="'r-' + idx">
+                <template v-for="(detail, idx) in details" :key="'r-' + idx">
+                  <tr>
                     <td class="pxn-mono">{{ detail.code }}</td>
                     <td>
                       <span class="pxadjd-tbl__name">{{ detail.name }}</span>

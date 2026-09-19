@@ -24,7 +24,7 @@ on:
     # La rama de estabilización se lista aquí porque GitHub solo permite lanzar workflow_dispatch de un workflow que ya
     # existe en la rama por defecto. Mientras este archivo no esté en main, el job e2e corre con los push a las ramas de modernización listadas aquí.
     # Cuando llegue a main se puede quitar esa rama y usar solo workflow_dispatch.
-    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening ]
+    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening, spike/vue3-compat-runtime ]
   workflow_dispatch:
 
 jobs:
@@ -48,7 +48,8 @@ jobs:
       github.ref == 'refs/heads/fix/frontend-modernization-baseline' ||
       github.ref == 'refs/heads/chore/frontend-modernization-cleanup' ||
       github.ref == 'refs/heads/refactor/frontend-platform-services' ||
-      github.ref == 'refs/heads/refactor/vue2-compat-hardening'
+      github.ref == 'refs/heads/refactor/vue2-compat-hardening' ||
+      github.ref == 'refs/heads/spike/vue3-compat-runtime'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     continue-on-error: true
@@ -93,6 +94,10 @@ jobs:
         run: bash tests/e2e/scripts/setup.sh
       - name: Ejecutar E2E
         run: npm run test:e2e
+      - name: Avisos de @vue/compat agrupados (resumen del job)
+        if: always()
+        continue-on-error: true
+        run: npm run --silent test:e2e:compat-warnings >> "$GITHUB_STEP_SUMMARY"
       - name: Reporte de Playwright
         if: always()
         uses: actions/upload-artifact@v6
@@ -101,4 +106,5 @@ jobs:
           path: |
             tests/e2e/.artifacts/report
             tests/e2e/.artifacts/test-results
+            tests/e2e/.artifacts/warnings
           retention-days: 7

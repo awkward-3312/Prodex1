@@ -7,6 +7,11 @@ const { test, expect } = require('../support/fixtures');
  */
 test.use({ storageState: { cookies: [], origins: [] } });
 
+// Vue 2: `vue/dist/vue.js`. Vue 3 (@vue/compat): su build global (con compilador).
+const IS_COMPAT = String(require('vue/package.json').version).startsWith('3');
+const VUE_UMD_ID = IS_COMPAT ? '@vue/compat/dist/vue.global.js' : 'vue/dist/vue.js';
+const VUE_UMD = require.resolve(VUE_UMD_ID);
+
 const CASES = {
   'b-table: slot de celda con scope (cell(x))': {
     old: `<b-table id="t" :items="items" :fields="fields"><template slot="cell(a)" slot-scope="d">A:{{ d.value }}</template><template slot="cell(b)" slot-scope="{ item }"><i>B:{{ item.b }}</i></template></b-table>`,
@@ -55,7 +60,7 @@ const normalize = (html) => html.replace(/__BVID__\d+/g, '__BVID__').replace(/z-
 test.describe('Slots: sintaxis antigua y v-slot renderizan lo mismo @smoke', () => {
   test.beforeEach(async ({ page }) => {
     await page.setContent('<!doctype html><html><body><div id="host"></div></body></html>');
-    for (const lib of ['vue/dist/vue.js', 'bootstrap-vue/dist/bootstrap-vue.js', 'vue-good-table/dist/vue-good-table.js']) {
+    for (const lib of [VUE_UMD_ID, 'bootstrap-vue/dist/bootstrap-vue.js', 'vue-good-table/dist/vue-good-table.js']) {
       await page.addScriptTag({ path: require.resolve(lib) });
     }
     await page.evaluate(() => {
@@ -89,8 +94,15 @@ test.describe('Slots: sintaxis antigua y v-slot renderizan lo mismo @smoke', () 
           return vm.$el.innerHTML;
         }, template);
 
-      const before = normalize(await render(c.old));
       const after = normalize(await render(c.neu));
+      for (const fragment of c.expects) expect(after).toContain(fragment);
+      if (IS_COMPAT) {
+        // Bajo @vue/compat la sintaxis antigua (`slot` / `slot-scope`) se descarta en silencio: solo se exige que la nueva funcione.
+        const before = normalize(await render(c.old));
+        test.info().annotations.push({ type: 'sintaxis antigua bajo compat', description: before === after ? 'igual' : 'distinta (esperado)' });
+        return;
+      }
+      const before = normalize(await render(c.old));
       for (const fragment of c.expects) expect(before).toContain(fragment);
       expect(after).toBe(before);
     });
@@ -102,7 +114,7 @@ test.describe('Slots: sintaxis antigua y v-slot renderizan lo mismo @smoke', () 
 test.describe('.sync / .native: forma explícita equivalente a la antigua @smoke', () => {
   test.beforeEach(async ({ page }) => {
     await page.setContent('<!doctype html><html><body><div id="host"></div></body></html>');
-    await page.addScriptTag({ path: require.resolve('vue/dist/vue.js') });
+    await page.addScriptTag({ path: VUE_UMD });
   });
 
   const run = (page, template) =>
@@ -144,31 +156,35 @@ test.describe('.sync / .native: forma explícita equivalente a la antigua @smoke
     }, template);
 
   test('.sync: el padre recibe update:page y update:perPage igual que antes', async ({ page }) => {
-    const old = await run(page, '<probe-pager :page.sync="page" :per-page.sync="perPage" />');
+    const expected = { page: 2, perPage: 50 };
+    const neu = await run(page, '<probe-pager :page="page" @update:page="page = $event" :per-page="perPage" @update:perPage="perPage = $event" />');
+    expect(neu).toMatchObject(expected);
+    if (IS_COMPAT) return; // `.sync` ya no existe en las plantillas; solo se valida la forma explícita
     await page.reload();
     await page.setContent('<!doctype html><html><body><div id="host"></div></body></html>');
-    await page.addScriptTag({ path: require.resolve('vue/dist/vue.js') });
-    const neu = await run(page, '<probe-pager :page="page" @update:page="page = $event" :per-page="perPage" @update:perPage="perPage = $event" />');
-    expect(old).toMatchObject({ page: 2, perPage: 50 });
-    expect(neu).toEqual(old);
+    await page.addScriptTag({ path: VUE_UMD });
+    const old = await run(page, '<probe-pager :page.sync="page" :per-page.sync="perPage" />');
+    expect(old).toEqual(neu);
   });
 
   test('.native.enter sobre un input propio == @keyup.enter (listeners reenviados al <input>)', async ({ page }) => {
-    const old = await run(page, '<probe-input :value="\'x\'" @keyup.native.enter="hit" />');
-    await page.setContent('<!doctype html><html><body><div id="host"></div></body></html>');
-    await page.addScriptTag({ path: require.resolve('vue/dist/vue.js') });
     const neu = await run(page, '<probe-input :value="\'x\'" @keyup.enter="hit" />');
-    expect(old.hits).toBe(2);
-    expect(neu.hits).toBe(old.hits);
+    expect(neu.hits).toBe(2);
+    if (IS_COMPAT) return; // `.native` fue eliminado en Vue 3: solo se valida la forma nueva
+    await page.setContent('<!doctype html><html><body><div id="host"></div></body></html>');
+    await page.addScriptTag({ path: VUE_UMD });
+    const old = await run(page, '<probe-input :value="\'x\'" @keyup.native.enter="hit" />');
+    expect(old.hits).toBe(neu.hits);
   });
 
   test('@click.stop.native == @click.stop sobre un botón propio (no burbujea al padre)', async ({ page }) => {
     const mk = (mod) => `<div @click="outerClick"><probe-button class="stop" @click${mod}="hit">x</probe-button></div>`;
-    const old = await run(page, mk('.stop.native'));
-    await page.setContent('<!doctype html><html><body><div id="host"></div></body></html>');
-    await page.addScriptTag({ path: require.resolve('vue/dist/vue.js') });
     const neu = await run(page, mk('.stop'));
-    expect(old).toMatchObject({ hits: 1, outer: 0 });
-    expect(neu).toEqual(old);
+    expect(neu).toMatchObject({ hits: 1, outer: 0 });
+    if (IS_COMPAT) return;
+    await page.setContent('<!doctype html><html><body><div id="host"></div></body></html>');
+    await page.addScriptTag({ path: VUE_UMD });
+    const old = await run(page, mk('.stop.native'));
+    expect(old).toEqual(neu);
   });
 });

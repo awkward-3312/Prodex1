@@ -162,8 +162,8 @@
                     </thead>
                     <tbody>
                       <tr v-if="!details.length"><td colspan="9" class="pxtrf-tbl__empty">Añade productos al traslado.</td></tr>
-                      <template v-for="detail in details">
-                        <tr :key="'r-' + detail.detail_id">
+                      <template v-for="detail in details" :key="'r-' + detail.detail_id">
+                        <tr>
                           <td class="pxn-num">{{ detail.detail_id }}</td>
                           <td>
                             <div class="pxn-mono pxtrf-tbl__code">{{ detail.code }}</div>

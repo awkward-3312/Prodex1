@@ -1,5 +1,8 @@
+import './platform/vue-compat';
+import { patchBootstrapVueForCompat } from './platform/compat/bootstrap-vue';
 import store from "./store";
 import Vue from "vue";
+patchBootstrapVueForCompat(Vue);
 import router, { setupRouterGuards } from "./router";
 import { installValidation } from './platform/validation';
 import BootstrapVue from 'bootstrap-vue/dist/bootstrap-vue.esm';

@@ -137,8 +137,8 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <template v-for="(detail, index) in details">
-                      <tr :key="'r-' + index">
+                    <template v-for="(detail, index) in details" :key="'r-' + index">
+                      <tr>
                         <td class="text-left">
                           <span class="font-weight-bold">{{detail.name}}</span>
                           <span v-if="detail.is_batch_tracked" class="badge ml-1" style="background:#eef2ff; color:#4f46e5; font-weight:600; letter-spacing:0.3px;">

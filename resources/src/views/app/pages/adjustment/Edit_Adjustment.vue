@@ -121,10 +121,9 @@
                         <tr v-if="details.length <=0">
                           <td colspan="7">{{$t('NodataAvailable')}}</td>
                         </tr>
-                        <template v-for="detail in details">
+                        <template v-for="detail in details" :key="'r-' + detail.detail_id">
                         <tr
                           :class="{'row_deleted': detail.del === 1}"
-                          :key="'r-' + detail.detail_id"
                         >
                           <td>{{detail.detail_id}}</td>
                           <td>{{detail.code}}</td>

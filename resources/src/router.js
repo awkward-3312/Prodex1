@@ -2,7 +2,9 @@ import Vue from "vue";
 import store from "./store";
 import NProgress from "nprogress";
 import Router from "vue-router";
+import { patchRouterLinkForCompat } from "./platform/compat/router-link";
 Vue.use(Router);
+patchRouterLinkForCompat(Vue);
 
 // ---------------------------------------------------------------------------
 // POS-ONLY MANUAL SALES (PRODEX business rule)

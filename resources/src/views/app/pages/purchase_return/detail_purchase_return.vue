@@ -94,8 +94,8 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <template v-for="(detail, dIdx) in details">
-                      <tr :key="'r-' + dIdx">
+                    <template v-for="(detail, dIdx) in details" :key="'r-' + dIdx">
+                      <tr>
                         <td><span>{{detail.code}} ({{detail.name}})</span>
                           <p v-show="detail.is_imei && detail.imei_number !==null ">{{$t('IMEI_SN')}} : {{detail.imei_number}}</p>
                           <span v-if="detail.is_batch_tracked" class="badge ml-1" style="background:#eef2ff; color:#4f46e5; font-weight:600; letter-spacing:0.3px;">

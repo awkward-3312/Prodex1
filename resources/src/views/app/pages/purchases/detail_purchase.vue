@@ -126,8 +126,8 @@
               </tr>
             </thead>
             <tbody>
-              <template v-for="(detail, index) in details">
-                <tr :key="'d-' + index" :class="{'invoice-products-row-even': index % 2 === 1}">
+              <template v-for="(detail, index) in details" :key="'d-' + index">
+                <tr :class="{'invoice-products-row-even': index % 2 === 1}">
                   <td class="invoice-product-name-cell">
                     <div class="invoice-product-name">{{detail.name}}</div>
                     <div class="invoice-product-code">Code: {{detail.code}}</div>
