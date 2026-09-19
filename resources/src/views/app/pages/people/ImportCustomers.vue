@@ -5,7 +5,7 @@
       <div class="hero-bg"></div>
       <div class="hero-body d-flex align-items-center justify-content-between flex-wrap">
         <div class="d-flex align-items-center">
-          <div class="hero-icon mr-3"><lucide-icon name="upload" /></div>
+          <div class="hero-icon me-3"><lucide-icon name="upload" /></div>
           <div>
             <h3 class="mb-1">Import Customers</h3>
             <div class="text-muted small">Bulk add customers from an Excel file.</div>
@@ -39,8 +39,8 @@
 
               <!-- Selected file pill -->
               <div v-if="file" class="file-pill mt-3 d-inline-flex align-items-center">
-                <div class="file-dot mr-2"></div>
-                <div class="file-meta mr-3">
+                <div class="file-dot me-2"></div>
+                <div class="file-meta me-3">
                   <div class="file-name">{{ fileName }}</div>
                   <div class="file-size text-muted small">{{ prettySize }}</div>
                 </div>
@@ -54,7 +54,7 @@
           <!-- Example format (non-technical) -->
           <b-card class="mt-3">
             <div class="d-flex align-items-center mb-2">
-              <lucide-icon class="mr-2 text-primary" name="info" />
+              <lucide-icon class="me-2 text-primary" name="info" />
               <h6 class="mb-0">Example format</h6>
             </div>
 
@@ -123,10 +123,10 @@
           <!-- MULTI-ERROR PANEL -->
           <b-alert v-if="errorMessages.length" show variant="danger" class="mt-3">
             <div class="d-flex align-items-start">
-              <lucide-icon class="mr-2 mt-1" name="x" />
+              <lucide-icon class="me-2 mt-1" name="x" />
               <div>
-                <div class="font-weight-bold mb-1">Import failed. Fix the issues below:</div>
-                <ul class="mb-0 pl-3">
+                <div class="fw-bold mb-1">Import failed. Fix the issues below:</div>
+                <ul class="mb-0 ps-3">
                   <li v-for="(err, idx) in errorMessages" :key="'err-'+idx">{{ err }}</li>
                 </ul>
               </div>
@@ -136,10 +136,10 @@
           <!-- Optional warnings -->
           <b-alert v-if="warningMessages.length" show variant="warning" class="mt-3">
             <div class="d-flex align-items-start">
-              <lucide-icon class="mr-2 mt-1" name="info" />
+              <lucide-icon class="me-2 mt-1" name="info" />
               <div>
-                <div class="font-weight-bold mb-1">Warnings</div>
-                <ul class="mb-0 pl-3">
+                <div class="fw-bold mb-1">Warnings</div>
+                <ul class="mb-0 ps-3">
                   <li v-for="(w, idx) in warningMessages" :key="'warn-'+idx">{{ w }}</li>
                 </ul>
               </div>
@@ -160,18 +160,18 @@
             <b-button
               variant="primary"
               size="sm"
-              class="mr-2 mb-2"
+              class="me-2 mb-2"
               :disabled="!canSubmit || uploading"
               @click="submit"
             >
-              <span v-if="!uploading"><lucide-icon class="mr-1" name="upload" />Import now</span>
+              <span v-if="!uploading"><lucide-icon class="me-1" name="upload" />Import now</span>
               <span v-else class="d-inline-flex align-items-center">
-                <span class="spinner sm spinner-white mr-2"></span>Processing…
+                <span class="spinner sm spinner-white me-2"></span>Processing…
               </span>
             </b-button>
 
-            <a :href="exampleHref" class="btn btn-outline-info btn-sm mr-2 mb-2" target="_blank" rel="noopener">
-              <lucide-icon class="mr-1" name="file-spreadsheet" />Download example
+            <a :href="exampleHref" class="btn btn-outline-info btn-sm me-2 mb-2" target="_blank" rel="noopener">
+              <lucide-icon class="me-1" name="file-spreadsheet" />Download example
             </a>
 
             <b-button
@@ -181,7 +181,7 @@
               :disabled="!file || uploading"
               @click="clearFile"
             >
-              <lucide-icon class="mr-1" name="power" />Reset
+              <lucide-icon class="me-1" name="power" />Reset
             </b-button>
           </div>
         </b-col>
@@ -206,7 +206,7 @@
 
           <b-alert show variant="light" class="border">
             <div class="d-flex">
-              <div class="tip-badge mr-2"><lucide-icon name="info" /></div>
+              <div class="tip-badge me-2"><lucide-icon name="info" /></div>
               <div>
                 <strong>Heads up</strong>
                 <div class="small text-muted">Large files may take longer to process.</div>

@@ -2,13 +2,13 @@
   <div class="main-content">
     <breadcumb :page="$t('Assets_List')" :folder="$t('Assets')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <div class="control-bar">
         <div class="control-right">
           <router-link to="/app/assets/store" class="btn btn-primary btn-sm">
-            <lucide-icon class="mr-1" name="plus" />{{ $t('Add') }}
+            <lucide-icon class="me-1" name="plus" />{{ $t('Add') }}
           </router-link>
         </div>
       </div>
@@ -32,7 +32,7 @@
               <span :class="getValidationRowClass(props)">{{ props.formattedRow[props.column.field] || '—' }}</span>
             </span>
             <span v-else-if="props.column.field == 'actions'">
-              <router-link :to="'/app/assets/edit/' + props.row.id" class="btn btn-sm btn-outline-primary mr-2">
+              <router-link :to="'/app/assets/edit/' + props.row.id" class="btn btn-sm btn-outline-primary me-2">
                 <lucide-icon name="pencil" />
               </router-link>
               <button class="btn btn-sm btn-outline-danger" @click="removeAsset(props.row.id)">
@@ -128,8 +128,8 @@ export default {
       today.setHours(0, 0, 0, 0);
       d.setHours(0, 0, 0, 0);
       const workingDaysFromNow = this.addWorkingDays(today, 5);
-      if (d < today) return 'text-danger font-weight-bold';
-      if (d <= workingDaysFromNow) return 'text-warning font-weight-bold';
+      if (d < today) return 'text-danger fw-bold';
+      if (d <= workingDaysFromNow) return 'text-warning fw-bold';
       return '';
     },
     addWorkingDays(date, days) {

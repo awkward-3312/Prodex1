@@ -1,7 +1,7 @@
 <template>
   <div class="main-content prodex-ui supplier-edit-page">
     <div class="px-page">
-      <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+      <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
       <template v-else>
         <div class="px-page-header">

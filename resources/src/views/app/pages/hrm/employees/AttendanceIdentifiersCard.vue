@@ -44,7 +44,7 @@
           <b-form-input v-model.trim="form.external_user_id" placeholder="Ej. 0042" />
         </b-form-group>
         <b-button block variant="outline-primary" :disabled="saving || !form.external_user_id" @click="saveIdentifier">
-          <lucide-icon name="link" class="mr-1" /> {{ saving ? 'Vinculando...' : 'Vincular código' }}
+          <lucide-icon name="link" class="me-1" /> {{ saving ? 'Vinculando...' : 'Vincular código' }}
         </b-button>
       </div>
 

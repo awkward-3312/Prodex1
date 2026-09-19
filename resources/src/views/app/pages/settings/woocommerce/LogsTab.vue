@@ -3,8 +3,8 @@
     <b-card class="filters-card shadow-sm mb-4">
       <template #header>
         <div class="d-flex align-items-center">
-          <lucide-icon class="mr-2 text-primary" name="filter" />
-          <h6 class="mb-0 font-weight-bold">Filter Logs</h6>
+          <lucide-icon class="me-2 text-primary" name="filter" />
+          <h6 class="mb-0 fw-bold">Filter Logs</h6>
         </div>
       </template>
       <b-row>
@@ -55,17 +55,17 @@
       <template #header>
         <div class="d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center">
-            <lucide-icon class="mr-2 text-primary" name="clipboard-list" />
-            <h6 class="mb-0 font-weight-bold">Sync Logs</h6>
-            <b-badge variant="light" class="ml-3">{{ filteredLogs.length }} entries</b-badge>
+            <lucide-icon class="me-2 text-primary" name="clipboard-list" />
+            <h6 class="mb-0 fw-bold">Sync Logs</h6>
+            <b-badge variant="light" class="ms-3">{{ filteredLogs.length }} entries</b-badge>
           </div>
           <div>
-            <b-button size="sm" variant="outline-secondary" class="btn-action-refresh mr-2" @click="load">
-              <lucide-icon class="mr-1" name="refresh-cw" />
+            <b-button size="sm" variant="outline-secondary" class="btn-action-refresh me-2" @click="load">
+              <lucide-icon class="me-1" name="refresh-cw" />
               {{ $t('Refresh') }}
             </b-button>
             <b-button size="sm" variant="danger" class="btn-action-danger" @click="clearLogs" :disabled="processing">
-              <lucide-icon class="mr-1" name="trash-2" />
+              <lucide-icon class="me-1" name="trash-2" />
               {{ $t('Clear_Logs') }}
             </b-button>
           </div>
@@ -81,25 +81,25 @@
       >
         <template #cell(date)="{ item }">
           <div class="d-flex align-items-center">
-            <lucide-icon class="mr-2 text-muted" name="calendar" />
+            <lucide-icon class="me-2 text-muted" name="calendar" />
             {{ formatDate(item.created_at) }}
           </div>
         </template>
         <template #cell(action)="{ item }">
           <div class="d-flex align-items-center">
-            <lucide-icon class="mr-2 text-primary" name="package" />
+            <lucide-icon class="me-2 text-primary" name="package" />
             {{ formatAction(item.action) }}
           </div>
         </template>
         <template #cell(direction)="{ item }">
           <div class="d-flex align-items-center">
-            <lucide-icon :name="getDirectionIcon(item.action)" class="mr-2 text-info" />
+            <lucide-icon :name="getDirectionIcon(item.action)" class="me-2 text-info" />
             {{ formatDirection(item.action) }}
           </div>
         </template>
         <template #cell(status)="{ item }">
           <b-badge :variant="levelToVariant(item.level)" class="status-badge">
-            <lucide-icon :name="getStatusIcon(item.level)" class="mr-1" />
+            <lucide-icon :name="getStatusIcon(item.level)" class="me-1" />
             {{ formatStatus(item.level) }}
           </b-badge>
         </template>

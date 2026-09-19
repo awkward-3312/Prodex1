@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Edit')" :folder="$t('Employees')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <px-validation-observer ref="Edit_Employee" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Employee" enctype="multipart/form-data">
@@ -149,7 +149,7 @@
 
           <b-col md="12" class="mt-3">
             <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-              <lucide-icon class="mr-1" name="check" /> {{ SubmitProcessing ? 'Guardando...' : 'Guardar cambios' }}
+              <lucide-icon class="me-1" name="check" /> {{ SubmitProcessing ? 'Guardando...' : 'Guardar cambios' }}
             </b-button>
           </b-col>
         </b-row>

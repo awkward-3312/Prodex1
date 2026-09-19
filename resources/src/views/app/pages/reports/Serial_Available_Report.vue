@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb page="Números de serie disponibles" :folder="$t('Reports')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -37,12 +37,12 @@ export default {
   computed: {
     columns() {
       return [
-        { label: "Número de serie", field: "serial_number", thClass: "text-left", tdClass: "text-left" },
-        { label: "Producto", field: "product_name", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Código del producto", field: "product_code", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Almacén", field: "warehouse_name", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Proveedor", field: "provider_name", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Fecha de registro", field: "created_at", thClass: "text-left", tdClass: "text-left" }
+        { label: "Número de serie", field: "serial_number", thClass: "text-start", tdClass: "text-start" },
+        { label: "Producto", field: "product_name", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Código del producto", field: "product_code", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Almacén", field: "warehouse_name", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Proveedor", field: "provider_name", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Fecha de registro", field: "created_at", thClass: "text-start", tdClass: "text-start" }
       ];
     }
   },

@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="ticket ? ticket.ticket_number : $t('ticket')" :folder="$t('support_center')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else-if="ticket">
       <b-row>
@@ -17,7 +17,7 @@
                 </small>
               </div>
               <div>
-                <b-badge :variant="priorityVariant(ticket.priority)" class="mr-1">{{ $t('pri_' + ticket.priority) }}</b-badge>
+                <b-badge :variant="priorityVariant(ticket.priority)" class="me-1">{{ $t('pri_' + ticket.priority) }}</b-badge>
                 <b-badge :variant="statusVariant(ticket.status)">{{ $t('status_' + ticket.status) }}</b-badge>
               </div>
             </div>
@@ -31,7 +31,7 @@
               >
                 <div class="st-bubble" :class="m.author_type === 'tenant' ? 'st-bubble-me' : 'st-bubble-them'">
                   <div class="st-bubble-head">
-                    <span class="font-weight-bold">
+                    <span class="fw-bold">
                       {{ m.author_type === 'tenant' ? (m.author_name || $t('you')) : (m.author_name || $t('support_team')) }}
                     </span>
                     <span class="st-time">{{ formatDateTime(m.created_at) }}</span>

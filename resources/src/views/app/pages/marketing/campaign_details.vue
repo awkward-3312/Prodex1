@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Campaign_Details')" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-if="!isLoading && campaign">
       <b-row>
@@ -11,7 +11,7 @@
             <div class="d-flex justify-content-between align-items-start mb-3">
               <div>
                 <h4 class="mb-1">{{ campaign.title }}</h4>
-                <span class="badge badge-outline-info mr-1">{{ type_label(campaign.type) }}</span>
+                <span class="badge badge-outline-info me-1">{{ type_label(campaign.type) }}</span>
                 <span class="badge" :class="status_class(campaign.status)">{{ format_label(campaign.status) }}</span>
               </div>
               <div>
@@ -27,23 +27,23 @@
             <p v-if="campaign.description" class="text-muted">{{ campaign.description }}</p>
 
             <b-row class="mb-2" v-if="campaign.type === 'email' && campaign.subject">
-              <b-col md="3" class="font-weight-bold">{{ $t('Email_Subject') }}</b-col>
+              <b-col md="3" class="fw-bold">{{ $t('Email_Subject') }}</b-col>
               <b-col md="9">{{ campaign.subject }}</b-col>
             </b-row>
             <b-row class="mb-2">
-              <b-col md="3" class="font-weight-bold">{{ $t('Message_Content') }}</b-col>
+              <b-col md="3" class="fw-bold">{{ $t('Message_Content') }}</b-col>
               <b-col md="9"><pre class="mkt-msg">{{ campaign.message_content }}</pre></b-col>
             </b-row>
             <b-row class="mb-2" v-if="campaign.attachment">
-              <b-col md="3" class="font-weight-bold">{{ $t('Upload_Attachment') }}</b-col>
+              <b-col md="3" class="fw-bold">{{ $t('Upload_Attachment') }}</b-col>
               <b-col md="9"><a :href="'/' + campaign.attachment" target="_blank">{{ campaign.attachment }}</a></b-col>
             </b-row>
             <b-row class="mb-2">
-              <b-col md="3" class="font-weight-bold">{{ $t('Scheduled_At') }}</b-col>
+              <b-col md="3" class="fw-bold">{{ $t('Scheduled_At') }}</b-col>
               <b-col md="9">{{ campaign.send_immediately ? $t('Send_Immediately') : short_dt(campaign.scheduled_at) }}</b-col>
             </b-row>
             <b-row class="mb-2" v-if="campaign.segment">
-              <b-col md="3" class="font-weight-bold">{{ $t('Segment') }}</b-col>
+              <b-col md="3" class="fw-bold">{{ $t('Segment') }}</b-col>
               <b-col md="9">{{ campaign.segment.name }}</b-col>
             </b-row>
           </b-card>
@@ -95,8 +95,10 @@
 </template>
 
 <script>
+import { BRow, BCol, BCard, BButton } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
 export default {
+  components: { BRow, BCol, BCard, BButton },
   metaInfo: { title: "Campaign Details" },
   data() {
     return {

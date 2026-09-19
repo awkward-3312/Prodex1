@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Customer_Segments')" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -105,14 +105,14 @@
               <b-button size="sm" variant="outline-info" @click="Preview_Segment()">
                 <lucide-icon name="search" /> {{ $t('Preview_Segment') }}
               </b-button>
-              <span v-if="previewCount !== null" class="ml-2 font-weight-bold text-info">
+              <span v-if="previewCount !== null" class="ms-2 fw-bold text-info">
                 {{ previewCount }} {{ $t('Matching_Customers') }}
               </span>
             </b-col>
 
             <b-col md="12">
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('Save_Segment') }}
+                <lucide-icon class="me-2 fw-bold" name="check" /> {{ $t('Save_Segment') }}
               </b-button>
               <div v-if="SubmitProcessing" class="spinner sm spinner-primary mt-3"></div>
             </b-col>
@@ -146,10 +146,10 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("Segment_Name"), field: "name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Type"), field: "all_customers", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Matching_Customers"), field: "customers_count", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("Segment_Name"), field: "name", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Type"), field: "all_customers", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Matching_Customers"), field: "customers_count", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },

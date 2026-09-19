@@ -101,7 +101,7 @@
         style="border:1px solid #cbd5e1; font-size: 12px; padding: 6px 10px;"
       >
         {{ serial }}
-        <a href="#" class="text-danger ml-1" @click.prevent="removeSerial(idx)" :title="$t('Remove')">&times;</a>
+        <a href="#" class="text-danger ms-1" @click.prevent="removeSerial(idx)" :title="$t('Remove')">&times;</a>
       </span>
     </div>
 

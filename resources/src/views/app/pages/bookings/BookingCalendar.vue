@@ -2,7 +2,7 @@
   <div class="main-content bookings-page-modern">
     <breadcumb :page="$t('Calendar_View')" :folder="$t('Bookings')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <!-- Control Bar -->

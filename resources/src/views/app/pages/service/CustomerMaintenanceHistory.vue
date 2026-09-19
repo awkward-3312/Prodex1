@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Customer_Maintenance_History')" :folder="$t('Service_Maintenance')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <b-row class="mb-3">

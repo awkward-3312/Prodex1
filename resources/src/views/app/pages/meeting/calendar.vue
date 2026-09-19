@@ -15,7 +15,7 @@
         </router-link>
       </div>
 
-      <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+      <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
       <div v-else class="mt-cal-grid">
         <div class="mt-cal-weekday" v-for="d in weekdays" :key="d">{{ d }}</div>
@@ -47,12 +47,14 @@
 </template>
 
 <script>
+import { BCard, BButton } from "@/platform/bootstrap";
 import moment from "moment";
 import "moment/locale/es";
 
 moment.locale("es");
 
 export default {
+  components: { BCard, BButton },
   metaInfo: { title: "Calendario de reuniones" },
   data() {
     return {

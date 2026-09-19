@@ -4,8 +4,8 @@
       <b-card class="settings-form-card shadow-sm mb-4">
         <template #header>
           <div class="d-flex align-items-center">
-            <lucide-icon class="mr-2 text-primary" name="settings" />
-            <h5 class="mb-0 font-weight-bold">Configuración de conexión</h5>
+            <lucide-icon class="me-2 text-primary" name="settings" />
+            <h5 class="mb-0 fw-bold">Configuración de conexión</h5>
           </div>
         </template>
         <b-form @submit.prevent="onSubmit">
@@ -43,38 +43,38 @@
             <b-col lg="6" md="6" sm="12" class="mb-3">
               <b-form-group :label="$t('WP_Username_Optional')" class="form-group-modern">
                 <div class="input-icon-wrapper"><lucide-icon class="input-icon" name="user" /><b-form-input v-model="form.wp_username" :placeholder="$t('Enter_WP_Username')" class="form-control-modern" /></div>
-                <small class="text-muted form-help-text"><lucide-icon class="mr-1" name="info" />{{ $t('Used_for_media_upload_fallback') }}</small>
+                <small class="text-muted form-help-text"><lucide-icon class="me-1" name="info" />{{ $t('Used_for_media_upload_fallback') }}</small>
               </b-form-group>
             </b-col>
 
             <b-col lg="6" md="6" sm="12" class="mb-3">
               <b-form-group :label="$t('WP_Application_Password_Optional')" class="form-group-modern">
                 <div class="input-icon-wrapper"><lucide-icon class="input-icon" name="key-round" /><b-form-input type="password" v-model="form.wp_app_password" :placeholder="$t('Enter_WP_Application_Password')" class="form-control-modern" /></div>
-                <small class="text-muted form-help-text"><lucide-icon class="mr-1" name="info" />{{ $t('Create_from_WordPress_Profile') }}</small>
+                <small class="text-muted form-help-text"><lucide-icon class="me-1" name="info" />{{ $t('Create_from_WordPress_Profile') }}</small>
               </b-form-group>
             </b-col>
 
             <b-col lg="6" md="6" sm="12" class="mb-3">
               <b-form-group :label="$t('Connection_Status')" class="form-group-modern">
                 <div class="connection-status-wrapper">
-                  <b-badge :variant="connectionBadgeVariant" class="connection-status-badge px-3 py-2"><lucide-icon :name="connectionIcon" class="mr-2" />{{ connectionBadgeText }}</b-badge>
-                  <span class="mini-spinner ml-3" v-if="connecting"></span>
+                  <b-badge :variant="connectionBadgeVariant" class="connection-status-badge px-3 py-2"><lucide-icon :name="connectionIcon" class="me-2" />{{ connectionBadgeText }}</b-badge>
+                  <span class="mini-spinner ms-3" v-if="connecting"></span>
                 </div>
               </b-form-group>
             </b-col>
 
             <b-col lg="12" md="12" sm="12" class="mt-2">
               <div class="d-flex flex-wrap align-items-center">
-                <b-button variant="primary" type="submit" class="btn-modern-primary mr-3 mb-2"><lucide-icon class="mr-2" name="check" /> {{ $t('Save') }}</b-button>
-                <b-button variant="outline-success" class="btn-modern-outline mr-2 mb-2 d-inline-flex align-items-center" @click="testConnection" :disabled="connecting">
-                  <template v-if="!connecting"><lucide-icon class="mr-2" name="cloud-check" /> {{ $t('Test_Connection') }}</template>
-                  <template v-else><span class="mini-spinner mr-2"></span>{{ $t('Testing') }}</template>
+                <b-button variant="primary" type="submit" class="btn-modern-primary me-3 mb-2"><lucide-icon class="me-2" name="check" /> {{ $t('Save') }}</b-button>
+                <b-button variant="outline-success" class="btn-modern-outline me-2 mb-2 d-inline-flex align-items-center" @click="testConnection" :disabled="connecting">
+                  <template v-if="!connecting"><lucide-icon class="me-2" name="cloud-check" /> {{ $t('Test_Connection') }}</template>
+                  <template v-else><span class="mini-spinner me-2"></span>{{ $t('Testing') }}</template>
                 </b-button>
               </div>
             </b-col>
 
             <b-col lg="12" md="12" sm="12" class="mt-3" v-if="last_sync_at">
-              <b-alert show variant="light" class="sync-alert-modern"><lucide-icon class="mr-2" name="clock" />{{ $t('Last_Sync') }}: {{ lastSyncAtFromNow }}</b-alert>
+              <b-alert show variant="light" class="sync-alert-modern"><lucide-icon class="me-2" name="clock" />{{ $t('Last_Sync') }}: {{ lastSyncAtFromNow }}</b-alert>
             </b-col>
           </b-row>
         </b-form>
@@ -83,50 +83,50 @@
 
     <b-card class="guide-card shadow-sm">
       <template #header>
-        <div class="d-flex align-items-center"><lucide-icon class="mr-2 text-info" name="book" /><h5 class="mb-0 font-weight-bold">Guía de conexión con WooCommerce</h5></div>
+        <div class="d-flex align-items-center"><lucide-icon class="me-2 text-info" name="book" /><h5 class="mb-0 fw-bold">Guía de conexión con WooCommerce</h5></div>
       </template>
       <b-card-text>
         <div class="guide-section mb-4">
-          <h6 class="guide-title"><lucide-icon class="mr-2 text-info" name="key" />Obtener las claves de API</h6>
+          <h6 class="guide-title"><lucide-icon class="me-2 text-info" name="key" />Obtener las claves de API</h6>
           <ul class="guide-list">
-            <li><lucide-icon class="mr-2 text-primary" name="mouse-pointer" />En WooCommerce abre WooCommerce → Configuración → Avanzado → REST API.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="plus" />Agrega una clave, selecciona permisos de Lectura/Escritura y copia la clave de consumidor y el secreto de consumidor.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="globe" />En URL de la tienda usa la dirección principal del sitio sin una barra al final (por ejemplo, <code>https://tutienda.com</code>).</li>
+            <li><lucide-icon class="me-2 text-primary" name="mouse-pointer" />En WooCommerce abre WooCommerce → Configuración → Avanzado → REST API.</li>
+            <li><lucide-icon class="me-2 text-primary" name="plus" />Agrega una clave, selecciona permisos de Lectura/Escritura y copia la clave de consumidor y el secreto de consumidor.</li>
+            <li><lucide-icon class="me-2 text-primary" name="globe" />En URL de la tienda usa la dirección principal del sitio sin una barra al final (por ejemplo, <code>https://tutienda.com</code>).</li>
           </ul>
         </div>
 
         <div class="guide-section mb-4">
-          <h6 class="guide-title"><lucide-icon class="mr-2 text-info" name="user" />Usuario y contraseña de aplicación de WordPress (opcional)</h6>
+          <h6 class="guide-title"><lucide-icon class="me-2 text-info" name="user" />Usuario y contraseña de aplicación de WordPress (opcional)</h6>
           <p class="guide-intro mb-2">Estos campos se utilizan únicamente para imágenes de productos. La API de WooCommerce administra la sincronización de productos, inventario, categorías, marcas, clientes y pedidos; la API REST de WordPress administra la biblioteca multimedia.</p>
           <ul class="guide-list mb-2">
-            <li><lucide-icon class="mr-2 text-primary" name="image" />Al sincronizar productos o inventario, PRODEX puede asociar imágenes. Primero busca el archivo en la biblioteca multimedia de WordPress y, si no existe, lo sube mediante la API de WordPress.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="key" />Usa un usuario de WordPress con permisos para administrar medios. Crea una contraseña de aplicación en WordPress desde Usuarios → Perfil → Contraseñas de aplicación y pégala aquí.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="info" />Si dejas estos campos vacíos, la sincronización de datos continúa funcionando; únicamente se omite la búsqueda y carga de imágenes.</li>
+            <li><lucide-icon class="me-2 text-primary" name="image" />Al sincronizar productos o inventario, PRODEX puede asociar imágenes. Primero busca el archivo en la biblioteca multimedia de WordPress y, si no existe, lo sube mediante la API de WordPress.</li>
+            <li><lucide-icon class="me-2 text-primary" name="key" />Usa un usuario de WordPress con permisos para administrar medios. Crea una contraseña de aplicación en WordPress desde Usuarios → Perfil → Contraseñas de aplicación y pégala aquí.</li>
+            <li><lucide-icon class="me-2 text-primary" name="info" />Si dejas estos campos vacíos, la sincronización de datos continúa funcionando; únicamente se omite la búsqueda y carga de imágenes.</li>
           </ul>
         </div>
 
         <div class="guide-section mb-4">
-          <h6 class="guide-title"><lucide-icon class="mr-2 text-info" name="settings" />Cómo habilitar la conexión</h6>
+          <h6 class="guide-title"><lucide-icon class="me-2 text-info" name="settings" />Cómo habilitar la conexión</h6>
           <ul class="guide-list">
-            <li><lucide-icon class="mr-2 text-success" name="check" />Ingresa la URL de la tienda, la clave de consumidor y el secreto de consumidor; luego presiona Guardar.</li>
-            <li><lucide-icon class="mr-2 text-success" name="cloud-check" />Usa Probar conexión para verificar las credenciales.</li>
-            <li><lucide-icon class="mr-2 text-success" name="clock" />Ejecuta la sincronización manual desde la pestaña correspondiente cuando la necesites.</li>
+            <li><lucide-icon class="me-2 text-success" name="check" />Ingresa la URL de la tienda, la clave de consumidor y el secreto de consumidor; luego presiona Guardar.</li>
+            <li><lucide-icon class="me-2 text-success" name="cloud-check" />Usa Probar conexión para verificar las credenciales.</li>
+            <li><lucide-icon class="me-2 text-success" name="clock" />Ejecuta la sincronización manual desde la pestaña correspondiente cuando la necesites.</li>
           </ul>
         </div>
 
         <div class="guide-section mb-4">
-          <h6 class="guide-title"><lucide-icon class="mr-2 text-primary" name="mouse-pointer-click" />Sincronización manual</h6>
+          <h6 class="guide-title"><lucide-icon class="me-2 text-primary" name="mouse-pointer-click" />Sincronización manual</h6>
           <ul class="guide-list">
-            <li><lucide-icon class="mr-2 text-primary" name="arrow-right-left" />La sincronización funciona en ambas direcciones: PRODEX → WooCommerce y WooCommerce → PRODEX.</li>
-            <li><lucide-icon class="mr-2 text-primary" name="menu" />Las acciones de sincronización están disponibles en las pestañas de Productos, Inventario y demás módulos de WooCommerce.</li>
+            <li><lucide-icon class="me-2 text-primary" name="arrow-right-left" />La sincronización funciona en ambas direcciones: PRODEX → WooCommerce y WooCommerce → PRODEX.</li>
+            <li><lucide-icon class="me-2 text-primary" name="menu" />Las acciones de sincronización están disponibles en las pestañas de Productos, Inventario y demás módulos de WooCommerce.</li>
           </ul>
         </div>
 
         <div class="guide-section">
-          <h6 class="guide-title"><lucide-icon class="mr-2 text-info" name="info" />Notas</h6>
+          <h6 class="guide-title"><lucide-icon class="me-2 text-info" name="info" />Notas</h6>
           <ul class="guide-list mb-0">
-            <li><lucide-icon class="mr-2 text-warning" name="alert-circle" />Cambiar la URL o las claves de API restablece las vinculaciones de productos, categorías, marcas y clientes para que puedan sincronizarse con la nueva tienda.</li>
-            <li><lucide-icon class="mr-2 text-warning" name="alert-circle" />Mantén los SKU consistentes entre PRODEX y WooCommerce para evitar duplicados y volver a vincular productos de forma segura.</li>
+            <li><lucide-icon class="me-2 text-warning" name="alert-circle" />Cambiar la URL o las claves de API restablece las vinculaciones de productos, categorías, marcas y clientes para que puedan sincronizarse con la nueva tienda.</li>
+            <li><lucide-icon class="me-2 text-warning" name="alert-circle" />Mantén los SKU consistentes entre PRODEX y WooCommerce para evitar duplicados y volver a vincular productos de forma segura.</li>
           </ul>
         </div>
       </b-card-text>

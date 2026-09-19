@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Create_Contract') || 'Create Contract'" :folder="$t('Contracts') || 'Contracts'"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <px-validation-observer ref="ref_create_contract" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Contract">

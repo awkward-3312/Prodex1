@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Property_Categories')" :folder="$t('Real_Estate')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -33,7 +33,7 @@
         <b-form-group :label="$t('Name') + ' *'"><b-form-input v-model="form.name" required /></b-form-group>
         <b-form-group :label="$t('Description')"><b-form-textarea v-model="form.description" rows="3" /></b-form-group>
         <b-form-group :label="$t('Image')"><div v-if="imagePreview" class="mb-2"><img :src="imagePreview" class="img-fluid rounded" style="max-height:120px" /></div><b-form-file accept="image/*" @change="onImageChange" :placeholder="$t('Choose_file')" /></b-form-group>
-        <div class="text-right"><b-button variant="outline-secondary" @click="$bvModal.hide('categoryModal')">{{ $t('Cancel') }}</b-button><b-button variant="primary" type="submit" :disabled="saving">{{ editMode ? $t('Update') : $t('Save') }}</b-button></div>
+        <div class="text-end"><b-button variant="outline-secondary" @click="$bvModal.hide('categoryModal')">{{ $t('Cancel') }}</b-button><b-button variant="primary" type="submit" :disabled="saving">{{ editMode ? $t('Update') : $t('Save') }}</b-button></div>
       </b-form>
     </b-modal>
   </div>
@@ -45,7 +45,7 @@ import NProgress from "nprogress";
 export default {
   metaInfo: { title: "Categorías de propiedades" },
   data() { return { isLoading: true, saving: false, editMode: false, serverParams: { sort: { field: "id", type: "desc" }, page: 1, perPage: 10 }, totalRows: "", search: "", limit: "10", categories: [], imageFile: null, imagePreview: null, form: { id: null, name: "", description: "" } }; },
-  computed: { columns() { return [ { label: this.$t("Image"), field: "image", sortable: false, tdClass: "text-left", thClass: "text-left" }, { label: this.$t("Name"), field: "name", tdClass: "text-left", thClass: "text-left" }, { label: this.$t("Properties"), field: "properties_count", sortable: false, tdClass: "text-left", thClass: "text-left" }, { label: this.$t("Action"), field: "actions", sortable: false, tdClass: "text-left", thClass: "text-left" } ]; } },
+  computed: { columns() { return [ { label: this.$t("Image"), field: "image", sortable: false, tdClass: "text-start", thClass: "text-start" }, { label: this.$t("Name"), field: "name", tdClass: "text-start", thClass: "text-start" }, { label: this.$t("Properties"), field: "properties_count", sortable: false, tdClass: "text-start", thClass: "text-start" }, { label: this.$t("Action"), field: "actions", sortable: false, tdClass: "text-start", thClass: "text-start" } ]; } },
   methods: {
     makeToast(variant, msg, title) { notifications.notify(msg, { title, variant, solid: true }); },
     updateParams(p) { this.serverParams = Object.assign({}, this.serverParams, p); },

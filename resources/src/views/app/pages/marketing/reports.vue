@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Marketing_Reports')" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-if="!isLoading">
       <!-- Filter / Export toolbar -->
       <b-card class="mb-4 mkt-toolbar">
@@ -17,7 +17,7 @@
               <b-form-input type="date" v-model="date_to"></b-form-input>
             </b-form-group>
           </b-col>
-          <b-col md="6" class="text-md-right mt-2 mt-md-0">
+          <b-col md="6" class="text-md-end mt-2 mt-md-0">
             <b-button variant="primary" class="ripple m-1" @click="Get_Reports()">
               <lucide-icon name="search" size="16" /> {{ $t('Filter') || 'Filter' }}
             </b-button>
@@ -126,9 +126,9 @@
                 <th>{{ $t('Campaign_Title') }}</th>
                 <th>{{ $t('Type') }}</th>
                 <th>{{ $t('Status') }}</th>
-                <th class="text-right">{{ $t('Total_Recipients') }}</th>
-                <th class="text-right">{{ $t('Sent') }}</th>
-                <th class="text-right">{{ $t('Failed') }}</th>
+                <th class="text-end">{{ $t('Total_Recipients') }}</th>
+                <th class="text-end">{{ $t('Sent') }}</th>
+                <th class="text-end">{{ $t('Failed') }}</th>
                 <th style="min-width:150px">{{ $t('Success_Rate') || 'Success Rate' }}</th>
               </tr>
             </thead>
@@ -137,7 +137,7 @@
                 <td colspan="7" class="text-center text-muted p-4">{{ $t('No_Campaigns') }}</td>
               </tr>
               <tr v-for="c in campaigns" :key="c.id">
-                <td class="font-weight-bold">{{ c.title }}</td>
+                <td class="fw-bold">{{ c.title }}</td>
                 <td>
                   <span class="mkt-type__icon mkt-type__icon--sm" :class="'bg-' + type_color(c.type)">
                     <lucide-icon :name="type_icon(c.type)" size="13" />
@@ -145,9 +145,9 @@
                   {{ type_label(c.type) }}
                 </td>
                 <td><span class="badge" :class="status_class(c.status)">{{ format_label(c.status) }}</span></td>
-                <td class="text-right">{{ c.total_recipients }}</td>
-                <td class="text-right text-success">{{ c.sent_count }}</td>
-                <td class="text-right text-danger">{{ c.failed_count }}</td>
+                <td class="text-end">{{ c.total_recipients }}</td>
+                <td class="text-end text-success">{{ c.sent_count }}</td>
+                <td class="text-end text-danger">{{ c.failed_count }}</td>
                 <td>
                   <div class="mkt-rate">
                     <div class="mkt-rate__bar">

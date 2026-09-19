@@ -2,17 +2,17 @@
   <div class="main-content">
     <breadcumb :page="$t('Customers_with_Login')" :folder="$t('Customers')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else>
       <div class="d-flex justify-content-end mb-3">
         <b-button
           variant="outline-primary"
-          class="mr-2"
+          class="me-2"
           href="/online_store"
           target="_blank"
         >
-          <lucide-icon class="mr-1" name="shopping-bag" />
+          <lucide-icon class="me-1" name="shopping-bag" />
           <span>Online Store</span>
         </b-button>
        
@@ -41,7 +41,7 @@
       >
         <template #table-row="props">
           <span v-if="props.column.field === 'actions'">
-            <b-button size="sm" variant="outline-primary" class="mr-2" @click="editAccount(props.row)">
+            <b-button size="sm" variant="outline-primary" class="me-2" @click="editAccount(props.row)">
               <lucide-icon class="me-1" name="pencil" /> {{ $t('Edit') }}
             </b-button>
             <b-button size="sm" variant="outline-danger" @click="confirmDelete(props.row)">
@@ -207,39 +207,39 @@ export default {
         {
           label: this.$t("Code"),
           field: "client_code",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
         },
         {
           label: this.$t("Name"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
         },
         {
           label: this.$t("Phone"),
           field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
         },
         {
           label: this.$t("Email"),
           field: "email",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
         },
         {
           label: this.$t("Status"),
           field: "status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           formatFn: (val) => (val ? this.$t("Active") : this.$t("Inactive")),
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false,
         },
       ];

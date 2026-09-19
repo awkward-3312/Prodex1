@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Checklist_Categories')" :folder="$t('Service_Maintenance')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <b-row>
@@ -15,8 +15,8 @@
               <b-form-group :label="$t('Description')">
                 <b-form-textarea v-model="categoryForm.description" rows="2" />
               </b-form-group>
-              <div class="text-right">
-                <b-button size="sm" variant="secondary" class="mr-2" @click="resetCategoryForm">
+              <div class="text-end">
+                <b-button size="sm" variant="secondary" class="me-2" @click="resetCategoryForm">
                   {{ $t('Reset') }}
                 </b-button>
                 <b-button size="sm" type="submit" variant="primary">
@@ -41,7 +41,7 @@
                   <b-button
                     size="sm"
                     variant="outline-primary"
-                    class="mr-2"
+                    class="me-2"
                     @click.stop="editCategory(props.row)"
                   >
                     <lucide-icon name="pencil" />

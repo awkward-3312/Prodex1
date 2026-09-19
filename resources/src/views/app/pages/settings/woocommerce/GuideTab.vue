@@ -1,8 +1,8 @@
 <template>
   <div class="woo-guide">
-    <b-alert variant="info" show class="info-alert-modern mb-4">
+    <b-alert variant="info" :model-value="true" class="info-alert-modern mb-4">
       <div class="d-flex align-items-start">
-        <lucide-icon class="mr-3 mt-1" name="info" />
+        <lucide-icon class="me-3 mt-1" name="info" />
         <div>
           Esta guía explica cómo conectar tu tienda WooCommerce y mantener sincronizados productos,
           inventario, clientes y pedidos. La primera vez, sigue los pasos en el orden indicado.
@@ -12,7 +12,7 @@
 
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
-        <lucide-icon class="mr-2" name="rocket" />
+        <lucide-icon class="me-2" name="rocket" />
         <strong>Inicio rápido (3 pasos)</strong>
       </div>
       <div class="guide-steps">
@@ -53,7 +53,7 @@
 
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
-        <lucide-icon class="mr-2" name="layout-grid" />
+        <lucide-icon class="me-2" name="layout-grid" />
         <strong>Qué hace cada pestaña</strong>
       </div>
       <div class="guide-grid">
@@ -118,7 +118,7 @@
 
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
-        <lucide-icon class="mr-2" name="arrow-left-right" />
+        <lucide-icon class="me-2" name="arrow-left-right" />
         <strong>Enviar e importar: ¿cuál es la diferencia?</strong>
       </div>
       <div class="guide-grid">
@@ -143,9 +143,9 @@
           </div>
         </div>
       </div>
-      <b-alert variant="warning" show class="mt-3 mb-0">
+      <b-alert variant="warning" :model-value="true" class="mt-3 mb-0">
         <div class="d-flex align-items-start">
-          <lucide-icon class="mr-2 mt-1" name="lightbulb" />
+          <lucide-icon class="me-2 mt-1" name="lightbulb" />
           <div>
             <strong>Consejo:</strong> los productos se relacionan por <strong>SKU</strong>. Asegúrate
             de que cada producto tenga un SKU/código único en ambos sistemas para evitar duplicados.
@@ -156,7 +156,7 @@
 
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
-        <lucide-icon class="mr-2" name="activity" />
+        <lucide-icon class="me-2" name="activity" />
         <strong>Cómo funciona el progreso de sincronización</strong>
       </div>
       <ul class="guide-list">
@@ -169,13 +169,13 @@
 
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
-        <lucide-icon class="mr-2" name="server-cog" />
+        <lucide-icon class="me-2" name="server-cog" />
         <strong>Para administradores: mantener las sincronizaciones funcionando automáticamente</strong>
       </div>
 
-      <b-alert variant="warning" show class="mb-4">
+      <b-alert variant="warning" :model-value="true" class="mb-4">
         <div class="d-flex align-items-start">
-          <lucide-icon class="mr-2 mt-1" name="alert-triangle" />
+          <lucide-icon class="me-2 mt-1" name="alert-triangle" />
           <div>
             Las sincronizaciones grandes se procesan por lotes en segundo plano. Debe existir un
             <strong>worker de colas</strong> en ejecución; de lo contrario, la sincronización puede
@@ -202,7 +202,7 @@
 sudo supervisorctl reread &amp;&amp; sudo supervisorctl update
 sudo supervisorctl start prodex-queue-worker:*</code></pre>
         <div class="guide-option-note">
-          <lucide-icon class="mr-1" name="info" /> Después de desplegar código nuevo, ejecuta
+          <lucide-icon class="me-1" name="info" /> Después de desplegar código nuevo, ejecuta
           <code>php artisan queue:restart</code> para que el worker cargue los cambios.
         </div>
       </div>
@@ -218,7 +218,7 @@ sudo supervisorctl start prodex-queue-worker:*</code></pre>
         </div>
         <pre class="guide-code"><code>* * * * * cd /ruta-de-la-app &amp;&amp; php artisan schedule:run >> /dev/null 2>&amp;1</code></pre>
         <div class="guide-option-note">
-          <lucide-icon class="mr-1" name="info" /> Es más lento que Supervisor, pero no requiere software adicional.
+          <lucide-icon class="me-1" name="info" /> Es más lento que Supervisor, pero no requiere software adicional.
         </div>
       </div>
 
@@ -236,43 +236,43 @@ php artisan woocommerce:sync --scope=products --only-unsynced</code></pre>
       </div>
 
       <div class="guide-option-note mt-2">
-        <lucide-icon class="mr-1" name="book-open" /> La guía técnica completa está en
+        <lucide-icon class="me-1" name="book-open" /> La guía técnica completa está en
         <code>deploy/QUEUE_WORKER_SETUP.md</code>.
       </div>
     </b-card>
 
     <b-card class="action-card shadow-sm mb-4">
       <div class="d-flex align-items-center mb-3">
-        <lucide-icon class="mr-2" name="life-buoy" />
+        <lucide-icon class="me-2" name="life-buoy" />
         <strong>Solución de problemas</strong>
       </div>
       <div class="guide-faq">
         <div class="guide-faq-item">
-          <div class="guide-faq-q"><lucide-icon class="mr-2" name="help-circle" />El indicador de conexión muestra “Desconectado”</div>
+          <div class="guide-faq-q"><lucide-icon class="me-2" name="help-circle" />El indicador de conexión muestra “Desconectado”</div>
           <div class="guide-faq-a">Revisa la URL y las claves de API en Configuración. La clave y el secreto deben tener permisos de <strong>Lectura/Escritura</strong> y la tienda debe ser accesible desde internet.</div>
         </div>
         <div class="guide-faq-item">
-          <div class="guide-faq-q"><lucide-icon class="mr-2" name="help-circle" />La sincronización se detuvo después de pocos productos</div>
+          <div class="guide-faq-q"><lucide-icon class="me-2" name="help-circle" />La sincronización se detuvo después de pocos productos</div>
           <div class="guide-faq-a">Para sincronizaciones grandes o desatendidas, verifica que el worker de colas esté activo en el servidor.</div>
         </div>
         <div class="guide-faq-item">
-          <div class="guide-faq-q"><lucide-icon class="mr-2" name="help-circle" />Las imágenes no aparecen en WooCommerce</div>
+          <div class="guide-faq-q"><lucide-icon class="me-2" name="help-circle" />Las imágenes no aparecen en WooCommerce</div>
           <div class="guide-faq-a">La carga de imágenes requiere un <strong>usuario</strong> de WordPress y una <strong>contraseña de aplicación</strong> configurados en la pestaña Configuración.</div>
         </div>
         <div class="guide-faq-item">
-          <div class="guide-faq-q"><lucide-icon class="mr-2" name="help-circle" />Aparecen productos duplicados en WooCommerce</div>
+          <div class="guide-faq-q"><lucide-icon class="me-2" name="help-circle" />Aparecen productos duplicados en WooCommerce</div>
           <div class="guide-faq-a">Normalmente ocurre cuando los SKU no coinciden. Corrige los SKU y luego restablece la sincronización de productos antes de ejecutarla otra vez.</div>
         </div>
         <div class="guide-faq-item">
-          <div class="guide-faq-q"><lucide-icon class="mr-2" name="help-circle" />Algo salió mal, ¿dónde reviso?</div>
+          <div class="guide-faq-q"><lucide-icon class="me-2" name="help-circle" />Algo salió mal, ¿dónde reviso?</div>
           <div class="guide-faq-a">Abre la pestaña <strong>Registros</strong>. Cada sincronización guarda lo que realizó y los errores encontrados.</div>
         </div>
       </div>
     </b-card>
 
-    <b-alert variant="secondary" show class="mb-0">
+    <b-alert variant="secondary" :model-value="true" class="mb-0">
       <div class="d-flex align-items-start">
-        <lucide-icon class="mr-2 mt-1" name="shield-check" />
+        <lucide-icon class="me-2 mt-1" name="shield-check" />
         <div><strong>Es seguro reintentar:</strong> ejecutar nuevamente una sincronización no duplica los artículos ya vinculados; actualiza lo existente o agrega lo que falta.</div>
       </div>
     </b-alert>
@@ -280,7 +280,9 @@ php artisan woocommerce:sync --scope=products --only-unsynced</code></pre>
 </template>
 
 <script>
+import { BAlert, BCard, BBadge } from "@/platform/bootstrap";
 export default {
+  components: { BAlert, BCard, BBadge },
   name: 'GuideTab',
   mounted() {
     this.$emit('ready');

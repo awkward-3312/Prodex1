@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Meetings')" :folder="$t('Meeting_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <b-row class="mb-3">
         <b-col md="3">
@@ -59,7 +59,7 @@
 
         <template #table-row="props">
           <span v-if="props.column.field == 'title'">
-            <a class="cursor-pointer text-primary font-weight-bold" @click="View_Details(props.row.id)">{{ props.row.title }}</a>
+            <a class="cursor-pointer text-primary fw-bold" @click="View_Details(props.row.id)">{{ props.row.title }}</a>
           </span>
           <span v-else-if="props.column.field == 'datetime'">
             {{ props.row.meeting_date }} {{ short_time(props.row.start_time) }}
@@ -207,7 +207,7 @@
 
             <b-col md="12" class="mt-3">
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
+                <lucide-icon class="me-2 fw-bold" name="check" /> {{ $t('submit') }}
               </b-button>
               <div v-once class="typo__p" v-if="SubmitProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
@@ -252,13 +252,13 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("Meeting_Title"), field: "title", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Meeting_Date"), field: "datetime", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Meeting_Type"), field: "type", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Organizer"), field: "organizer", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Participants"), field: "participants_count", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Status"), field: "status", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("Meeting_Title"), field: "title", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Meeting_Date"), field: "datetime", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Meeting_Type"), field: "type", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Organizer"), field: "organizer", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Participants"), field: "participants_count", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Status"), field: "status", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },

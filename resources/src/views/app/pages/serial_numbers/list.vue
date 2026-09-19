@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Serial_Management')" :folder="$t('Serial_Numbers')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -85,13 +85,13 @@ export default {
     },
     columns() {
       return [
-        { label: this.$t("Serial_Number"), field: "serial_number", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Name_product"), field: "product_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Serial_Status"), field: "status", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Supplier"), field: "provider_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Customer"), field: "client_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("Serial_Number"), field: "serial_number", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Name_product"), field: "product_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Serial_Status"), field: "status", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Supplier"), field: "provider_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Customer"), field: "client_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },

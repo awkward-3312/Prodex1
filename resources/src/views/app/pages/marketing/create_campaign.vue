@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="editmode ? $t('Edit_Campaign') : $t('Create_Campaign')" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <px-validation-observer ref="Campaign_Form" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Campaign">
@@ -97,7 +97,7 @@
             </b-card>
 
             <b-button variant="primary" type="submit" block :disabled="SubmitProcessing">
-              <lucide-icon class="me-2 font-weight-bold" name="check" />
+              <lucide-icon class="me-2 fw-bold" name="check" />
               {{ sendMode === 'now' ? $t('Send_Campaign') : $t('submit') }}
             </b-button>
             <b-button variant="outline-secondary" block class="mt-2" @click="goBack()">{{ $t('Cancel') || 'Cancel' }}</b-button>

@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Marketing_Dashboard')" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-if="!isLoading">
       <!-- Stat cards -->
@@ -47,7 +47,7 @@
             <ul class="list-unstyled mkt-statuslist">
               <li v-for="s in statusList" :key="s.key">
                 <span class="badge" :class="status_class(s.key)">{{ format_label(s.key) }}</span>
-                <span class="float-right font-weight-bold">{{ s.value }}</span>
+                <span class="float-end fw-bold">{{ s.value }}</span>
               </li>
             </ul>
           </b-card>
@@ -73,7 +73,7 @@
                 <td colspan="6" class="text-center text-muted">{{ $t('No_Campaigns') }}</td>
               </tr>
               <tr v-for="c in stats.recent" :key="c.id" class="cursor-pointer" @click="View_Details(c.id)">
-                <td class="text-primary font-weight-bold">{{ c.title }}</td>
+                <td class="text-primary fw-bold">{{ c.title }}</td>
                 <td><span class="badge badge-outline-info">{{ format_label(c.type) }}</span></td>
                 <td><span class="badge" :class="status_class(c.status)">{{ format_label(c.status) }}</span></td>
                 <td>{{ c.total_recipients }}</td>
@@ -89,7 +89,9 @@
 </template>
 
 <script>
+import { BRow, BCol, BCard } from "@/platform/bootstrap";
 export default {
+  components: { BRow, BCol, BCard },
   metaInfo: { title: "Marketing Dashboard" },
   data() {
     return {

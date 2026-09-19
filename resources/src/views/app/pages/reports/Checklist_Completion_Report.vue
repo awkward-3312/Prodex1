@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Checklist_Completion_Report')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else>
       <b-row class="mb-3">

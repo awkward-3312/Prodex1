@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Employee_Details')" :folder="$t('Employee')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-row v-if="!isLoading">
       <b-col md="12">
@@ -390,7 +390,7 @@
                         variant="primary"
                         type="submit"
                         :disabled="SubmitProcessing"
-                      ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                      ><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
                       <div v-once class="typo__p" v-if="SubmitProcessing">
                         <div class="spinner sm spinner-primary mt-3"></div>
                       </div>
@@ -468,7 +468,7 @@
                       variant="primary"
                       type="submit"
                       :disabled="Submit_Processing_social"
-                    ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    ><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
                     <div v-once class="typo__p" v-if="Submit_Processing_social">
                       <div class="spinner sm spinner-primary mt-3"></div>
                     </div>
@@ -716,7 +716,7 @@
                   variant="primary"
                   type="submit"
                   :disabled="Submit_Processing_Experience"
-                ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                ><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
                 <div v-once class="typo__p" v-if="Submit_Processing_Experience">
                   <div class="spinner sm spinner-primary mt-3"></div>
                 </div>
@@ -819,7 +819,7 @@
                   variant="primary"
                   type="submit"
                   :disabled="Submit_Processing_Bank"
-                ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                ><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
                 <div v-once class="typo__p" v-if="Submit_Processing_Bank">
                   <div class="spinner sm spinner-primary mt-3"></div>
                 </div>
@@ -898,36 +898,36 @@ export default {
         {
           label: this.$t("title"),
           field: "title",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Company"),
           field: "company_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("start_date"),
           field: "start_date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Finish_Date"),
           field: "end_date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -937,29 +937,29 @@ export default {
         {
           label: this.$t("Bank_Name"),
           field: "bank_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Bank_Branch"),
           field: "bank_branch",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Bank_Number"),
           field: "account_no",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

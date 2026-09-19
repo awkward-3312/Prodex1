@@ -119,7 +119,7 @@
           </template>
           <div class="user-dropdown-menu">
             <div class="dropdown-header">
-              <lucide-icon class="mr-1" name="lock" />
+              <lucide-icon class="me-1" name="lock" />
               <span v-if="currentUser">{{ currentUser.username }}</span>
             </div>
             <router-link to="/app/profile" class="dropdown-item">

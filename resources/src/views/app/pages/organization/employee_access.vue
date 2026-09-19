@@ -9,17 +9,17 @@
           <p class="text-muted mb-0">El rol define qué puede hacer el usuario. La sucursal, ubicación y caja física definen dónde opera cuando utiliza POS.</p>
         </div>
         <div class="mt-2 mt-md-0">
-          <b-button variant="outline-secondary" class="mr-2" @click="openManual">
-            <lucide-icon name="book-open" class="mr-1"/> Ver manual
+          <b-button variant="outline-secondary" class="me-2" @click="openManual">
+            <lucide-icon name="book-open" class="me-1"/> Ver manual
           </b-button>
           <b-button variant="outline-primary" @click="$router.push('/app/organization/branches')">
-            <lucide-icon name="building-2" class="mr-1"/> Sucursales y cajas
+            <lucide-icon name="building-2" class="me-1"/> Sucursales y cajas
           </b-button>
         </div>
       </div>
     </b-card>
 
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else>
       <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
@@ -39,7 +39,7 @@
               <th>Cuenta</th>
               <th>Contexto operativo</th>
               <th>Estado</th>
-              <th class="text-right">Acciones</th>
+              <th class="text-end">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -62,7 +62,7 @@
                   <div>{{ branchName(employee.user.default_branch_id) }}</div>
                   <div class="text-muted text-11">{{ locationName(employee.user.default_inventory_location_id) }}</div>
                   <div v-if="employee.user.default_cash_drawer" class="text-info text-11">
-                    <lucide-icon name="wallet-cards" class="mr-1"/>{{ employee.user.default_cash_drawer.name }}
+                    <lucide-icon name="wallet-cards" class="me-1"/>{{ employee.user.default_cash_drawer.name }}
                   </div>
                 </template>
                 <span v-else>—</span>
@@ -73,10 +73,10 @@
                 </span>
                 <span v-else class="badge badge-light">Sin acceso</span>
               </td>
-              <td class="text-right text-nowrap">
+              <td class="text-end text-nowrap">
                 <b-button v-if="!employee.user" size="sm" variant="primary" @click="openCreate(employee)">Crear acceso</b-button>
                 <template v-else>
-                  <b-button size="sm" variant="outline-primary" class="mr-1" @click="editLegacyUser(employee.user.id)">Administrar acceso</b-button>
+                  <b-button size="sm" variant="outline-primary" class="me-1" @click="editLegacyUser(employee.user.id)">Administrar acceso</b-button>
                   <b-button size="sm" variant="outline-danger" @click="unlink(employee)">Desvincular</b-button>
                 </template>
               </td>
@@ -172,7 +172,7 @@
                 </small>
                 <b-alert v-if="selectedRole.requires_cash_drawer && !defaultCashDrawerOptions.length" show variant="warning" class="mt-2 mb-0 py-2">
                   Este rol necesita una caja física para operar POS. Crea una en la sucursal y ubicación seleccionadas antes de guardar el acceso.
-                  <b-button size="sm" variant="outline-warning" class="ml-2" @click="$router.push('/app/organization/branches')">Administrar cajas</b-button>
+                  <b-button size="sm" variant="outline-warning" class="ms-2" @click="$router.push('/app/organization/branches')">Administrar cajas</b-button>
                 </b-alert>
               </div>
             </b-col>
@@ -187,7 +187,7 @@
 
           <div v-if="error" class="alert alert-danger">{{ error }}</div>
           <div class="d-flex justify-content-end">
-            <b-button variant="outline-secondary" class="mr-2" @click="$bvModal.hide('create-access-modal')">Cancelar</b-button>
+            <b-button variant="outline-secondary" class="me-2" @click="$bvModal.hide('create-access-modal')">Cancelar</b-button>
             <b-button variant="primary" type="submit" :disabled="saving">{{ saving ? 'Creando…' : 'Crear acceso' }}</b-button>
           </div>
         </b-form>

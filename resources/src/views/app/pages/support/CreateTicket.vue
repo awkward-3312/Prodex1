@@ -75,7 +75,7 @@
               <b-button type="submit" variant="primary" :disabled="processing">
                 <lucide-icon name="send" /> {{ $t('submit') }}
               </b-button>
-              <router-link to="/app/support/tickets" class="btn btn-outline-secondary ml-2">
+              <router-link to="/app/support/tickets" class="btn btn-outline-secondary ms-2">
                 {{ $t('cancel') }}
               </router-link>
             </div>

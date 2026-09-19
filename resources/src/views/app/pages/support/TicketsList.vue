@@ -60,7 +60,7 @@
       </div>
 
       <div v-if="isLoading" class="tk-loading">
-        <div class="loading_page spinner spinner-primary mr-3"></div>
+        <div class="loading_page spinner spinner-primary me-3"></div>
       </div>
 
       <div v-else class="tk-table">
@@ -95,7 +95,7 @@
               <router-link :to="'/app/support/tickets/' + props.row.id" class="tk-ref">
                 {{ props.row.ticket_number }}
               </router-link>
-              <b-badge v-if="props.row.tenant_unread" variant="danger" class="ml-1 tk-pill">{{ $t('new_reply') }}</b-badge>
+              <b-badge v-if="props.row.tenant_unread" variant="danger" class="ms-1 tk-pill">{{ $t('new_reply') }}</b-badge>
             </span>
             <span v-else-if="props.column.field == 'subject'">
               <router-link :to="'/app/support/tickets/' + props.row.id" class="tk-subject">
@@ -131,10 +131,12 @@
 </template>
 
 <script>
+import { BRow, BCol, BBadge } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 
 export default {
+  components: { BRow, BCol, BBadge },
   metaInfo: { title: "Support Tickets" },
   data() {
     return {
@@ -168,13 +170,13 @@ export default {
     },
     columns() {
       return [
-        { label: this.$t("ticket_number"), field: "ticket_number", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("subject"), field: "subject", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("category"), field: "category", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("priority"), field: "priority", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("status"), field: "status", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("last_activity"), field: "last_reply_at", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("ticket_number"), field: "ticket_number", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("subject"), field: "subject", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("category"), field: "category", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("priority"), field: "priority", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("status"), field: "status", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("last_activity"), field: "last_reply_at", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },

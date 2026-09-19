@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Add_Employee')" :folder="$t('Employees')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <px-validation-observer ref="Create_Employee" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Employee">
@@ -126,8 +126,8 @@
             </b-card>
 
             <div class="mt-3 d-flex flex-wrap">
-              <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="mr-1" name="check"/> {{ SubmitProcessing ? 'Guardando…' : $t('submit') }}</b-button>
-              <b-button variant="outline-secondary" class="ml-2" @click="$router.push({name:'employees_list'})">Cancelar</b-button>
+              <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="me-1" name="check"/> {{ SubmitProcessing ? 'Guardando…' : $t('submit') }}</b-button>
+              <b-button variant="outline-secondary" class="ms-2" @click="$router.push({name:'employees_list'})">Cancelar</b-button>
             </div>
           </b-col>
         </b-row>

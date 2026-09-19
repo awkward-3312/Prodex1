@@ -4,11 +4,11 @@
       <template #header>
         <div class="d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center">
-            <lucide-icon class="mr-2 text-primary" name="store" />
-            <h5 class="mb-0 font-weight-bold">{{ $t('Shopify_Stores') }}</h5>
+            <lucide-icon class="me-2 text-primary" name="store" />
+            <h5 class="mb-0 fw-bold">{{ $t('Shopify_Stores') }}</h5>
           </div>
           <b-button variant="primary" size="sm" @click="openCreate">
-            <lucide-icon class="mr-1" name="plus" /> {{ $t('Add') }}
+            <lucide-icon class="me-1" name="plus" /> {{ $t('Add') }}
           </b-button>
         </div>
       </template>
@@ -17,7 +17,7 @@
         <lucide-icon name="store" style="font-size: 40px;" />
         <p class="mt-3 mb-0">{{ $t('No_Shopify_store_yet') }}</p>
         <b-button variant="outline-primary" class="mt-3" @click="openCreate">
-          <lucide-icon class="mr-1" name="plus" /> {{ $t('Connect_your_first_store') }}
+          <lucide-icon class="me-1" name="plus" /> {{ $t('Connect_your_first_store') }}
         </b-button>
       </div>
 
@@ -31,13 +31,13 @@
           {{ warehouseName(item.warehouse_id) }}
         </template>
         <template #cell(actions)="{ item }">
-          <b-button size="sm" variant="outline-success" class="mr-1 mb-1" :disabled="busyId === item.id" @click="test(item)">
+          <b-button size="sm" variant="outline-success" class="me-1 mb-1" :disabled="busyId === item.id" @click="test(item)">
             <lucide-icon name="cloud-check" /> {{ $t('Test_Connection') }}
           </b-button>
-          <b-button size="sm" variant="outline-info" class="mr-1 mb-1" :disabled="busyId === item.id" @click="registerWebhooks(item)">
+          <b-button size="sm" variant="outline-info" class="me-1 mb-1" :disabled="busyId === item.id" @click="registerWebhooks(item)">
             <lucide-icon name="webhook" /> {{ $t('Register_Webhooks') }}
           </b-button>
-          <b-button size="sm" variant="outline-primary" class="mr-1 mb-1" @click="openEdit(item)">
+          <b-button size="sm" variant="outline-primary" class="me-1 mb-1" @click="openEdit(item)">
             <lucide-icon name="edit" /> {{ $t('Edit') }}
           </b-button>
           <b-button size="sm" variant="outline-danger" class="mb-1" @click="remove(item)">
@@ -106,7 +106,7 @@
             </b-col>
             <b-col md="12">
               <b-button variant="primary" type="submit">
-                <lucide-icon class="mr-1" name="check" /> {{ $t('Save') }}
+                <lucide-icon class="me-1" name="check" /> {{ $t('Save') }}
               </b-button>
             </b-col>
           </b-row>

@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Service_Jobs')" :folder="$t('Service_Maintenance')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <!-- Filters -->
@@ -34,12 +34,12 @@
       <div class="control-bar mb-3 d-flex justify-content-between">
         <div>
           <b-button v-if="hasActiveFilters" variant="outline-secondary" size="sm" @click="clearFilters">
-            <lucide-icon class="mr-1" name="x" /> {{ $t('Clear_Filters') || 'Clear filters' }}
+            <lucide-icon class="me-1" name="x" /> {{ $t('Clear_Filters') || 'Clear filters' }}
           </b-button>
         </div>
         <div>
           <router-link to="/app/service/jobs/create" class="btn btn-primary btn-sm">
-            <lucide-icon class="mr-1" name="plus" />{{ $t('Add') }}
+            <lucide-icon class="me-1" name="plus" />{{ $t('Add') }}
           </router-link>
         </div>
       </div>
@@ -62,14 +62,14 @@
             <span v-if="props.column.field === 'actions'">
               <router-link
                 :to="`/app/service/jobs/details/${props.row.id}`"
-                class="btn btn-sm btn-outline-info mr-2"
+                class="btn btn-sm btn-outline-info me-2"
                 :title="$t('View_Details') || 'View Details'"
               >
                 <lucide-icon name="eye" />
               </router-link>
               <router-link
                 :to="`/app/service/jobs/edit/${props.row.id}`"
-                class="btn btn-sm btn-outline-primary mr-2"
+                class="btn btn-sm btn-outline-primary me-2"
                 :title="$t('Edit') || 'Edit'"
               >
                 <lucide-icon name="pencil" />
@@ -99,10 +99,10 @@
                 {{ $t(props.row.payment_status || 'unpaid') }}
               </span>
             </span>
-            <span v-else-if="props.column.field === 'total_amount'" class="text-right">
+            <span v-else-if="props.column.field === 'total_amount'" class="text-end">
               {{ formatNumber(props.row.total_amount) }}
             </span>
-            <span v-else-if="props.column.field === 'balance_due'" class="text-right">
+            <span v-else-if="props.column.field === 'balance_due'" class="text-end">
               <span :class="props.row.balance_due > 0 ? 'text-danger' : 'text-success'">
                 {{ formatNumber(props.row.balance_due) }}
               </span>

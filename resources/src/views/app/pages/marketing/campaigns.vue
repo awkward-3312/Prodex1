@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Campaign_List')" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <b-row class="mb-3">
         <b-col md="3">
@@ -49,7 +49,7 @@
 
         <template #table-row="props">
           <span v-if="props.column.field == 'title'">
-            <a class="cursor-pointer text-primary font-weight-bold" @click="View_Details(props.row.id)">{{ props.row.title }}</a>
+            <a class="cursor-pointer text-primary fw-bold" @click="View_Details(props.row.id)">{{ props.row.title }}</a>
           </span>
           <span v-else-if="props.column.field == 'type'">
             <span class="badge badge-outline-info">{{ type_label(props.row.type) }}</span>
@@ -108,12 +108,12 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("Campaign_Title"), field: "title", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Type"), field: "type", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Status"), field: "status", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Delivery_Status"), field: "progress", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Scheduled_At"), field: "schedule", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("Campaign_Title"), field: "title", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Type"), field: "type", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Status"), field: "status", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Delivery_Status"), field: "progress", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Scheduled_At"), field: "schedule", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },

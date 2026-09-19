@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="pageTitle" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -72,7 +72,7 @@
             </b-col>
             <b-col md="12" class="mt-3">
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
+                <lucide-icon class="me-2 fw-bold" name="check" /> {{ $t('submit') }}
               </b-button>
               <div v-if="SubmitProcessing" class="spinner sm spinner-primary mt-3"></div>
             </b-col>
@@ -110,9 +110,9 @@ export default {
     },
     columns() {
       return [
-        { label: this.$t("Template_Name"), field: "name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Category"), field: "category", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("Template_Name"), field: "name", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Category"), field: "category", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },

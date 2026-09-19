@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Property_Inquiries')" :folder="$t('Real_Estate')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <b-row class="mb-3">
         <b-col md="3">
@@ -39,7 +39,7 @@
 
         <template #table-row="props">
           <span v-if="props.column.field == 'name'">
-            <a class="cursor-pointer text-primary font-weight-bold" @click="View(props.row)">{{ props.row.name }}</a>
+            <a class="cursor-pointer text-primary fw-bold" @click="View(props.row)">{{ props.row.name }}</a>
           </span>
           <span v-else-if="props.column.field == 'property'">
             {{ props.row.property ? props.row.property.title : '—' }}
@@ -107,13 +107,13 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("Name"), field: "name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Property"), field: "property", sortable: false, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Email"), field: "email", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Phone"), field: "phone", sortable: false, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Status"), field: "status", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Date"), field: "created_at", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", sortable: false, tdClass: "text-left", thClass: "text-left" }
+        { label: this.$t("Name"), field: "name", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Property"), field: "property", sortable: false, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Email"), field: "email", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Phone"), field: "phone", sortable: false, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Status"), field: "status", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Date"), field: "created_at", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", sortable: false, tdClass: "text-start", thClass: "text-start" }
       ];
     }
   },

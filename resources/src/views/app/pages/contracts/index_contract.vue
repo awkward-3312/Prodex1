@@ -2,7 +2,7 @@
   <div class="main-content contracts-page">
     <breadcumb :page="$t('Contract_List') || 'Contract List'" :folder="$t('Contracts') || 'Contracts'"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <!-- Dashboard counters -->
@@ -83,8 +83,8 @@
         >
           <template #table-row="props">
             <span v-if="props.column.field === 'actions'">
-              <router-link :to="'/app/contracts/view/' + props.row.id" class="btn btn-sm btn-info mr-1" title="View"><lucide-icon name="eye" /></router-link>
-              <router-link :to="'/app/contracts/edit/' + props.row.id" class="btn btn-sm btn-primary mr-1" title="Edit"><lucide-icon name="pencil" /></router-link>
+              <router-link :to="'/app/contracts/view/' + props.row.id" class="btn btn-sm btn-info me-1" title="View"><lucide-icon name="eye" /></router-link>
+              <router-link :to="'/app/contracts/edit/' + props.row.id" class="btn btn-sm btn-primary me-1" title="Edit"><lucide-icon name="pencil" /></router-link>
               <b-button size="sm" variant="danger" @click="Remove_Contract(props.row.id)" title="Delete"><lucide-icon name="x" /></b-button>
             </span>
             <span v-else-if="props.column.field === 'status'">
@@ -136,16 +136,16 @@ export default {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
     columns() {
       return [
-        { label: this.$t("Contract_Number") || "Contract #", field: "contract_number", thClass: "text-left" },
-        { label: this.$t("Subject") || "Subject", field: "subject", thClass: "text-left" },
-        { label: this.$t("Party_Type") || "Party", field: "party_type", thClass: "text-left" },
-        { label: this.$t("Name") || "Name", field: "party_name", thClass: "text-left" },
-        { label: this.$t("Value") || "Value", field: "value", thClass: "text-right" },
-        { label: this.$t("Type") || "Type", field: "type", thClass: "text-left" },
-        { label: this.$t("start_date") || "Start", field: "start_date", thClass: "text-left" },
-        { label: this.$t("Finish_Date") || "End", field: "end_date", thClass: "text-left" },
-        { label: this.$t("Status") || "Status", field: "status", thClass: "text-left" },
-        { label: this.$t("Action") || "Actions", field: "actions", sortable: false, thClass: "text-left" },
+        { label: this.$t("Contract_Number") || "Contract #", field: "contract_number", thClass: "text-start" },
+        { label: this.$t("Subject") || "Subject", field: "subject", thClass: "text-start" },
+        { label: this.$t("Party_Type") || "Party", field: "party_type", thClass: "text-start" },
+        { label: this.$t("Name") || "Name", field: "party_name", thClass: "text-start" },
+        { label: this.$t("Value") || "Value", field: "value", thClass: "text-end" },
+        { label: this.$t("Type") || "Type", field: "type", thClass: "text-start" },
+        { label: this.$t("start_date") || "Start", field: "start_date", thClass: "text-start" },
+        { label: this.$t("Finish_Date") || "End", field: "end_date", thClass: "text-start" },
+        { label: this.$t("Status") || "Status", field: "status", thClass: "text-start" },
+        { label: this.$t("Action") || "Actions", field: "actions", sortable: false, thClass: "text-start" },
       ];
     },
   },

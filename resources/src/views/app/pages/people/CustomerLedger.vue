@@ -13,26 +13,26 @@
     <!-- Header / Client Card -->
     <b-card v-show="!pageLoading" class="mb-3 p-0 overflow-hidden soft-shadow">
       <div class="header-hero d-flex align-items-center p-3">
-        <div class="avatar-circle mr-3"><span>{{ clientInitials }}</span></div>
+        <div class="avatar-circle me-3"><span>{{ clientInitials }}</span></div>
         <div class="flex-grow-1">
           <h4 class="mb-1">{{ client.name || '-' }}</h4>
           <div class="text-light small">
-            <span class="mr-3">{{ $t('Code') }}: <b>{{ client.code || '-' }}</b></span>
-            <span class="mr-3">{{ $t('City') }}: <b>{{ client.city || '-' }}</b></span>
-            <span class="mr-3">{{ $t('Country') }}: <b>{{ client.country || '-' }}</b></span>
-            <span class="mr-3">{{ $t('Tax_Number') }}: <b>{{ client.tax_number || '-' }}</b></span>
+            <span class="me-3">{{ $t('Code') }}: <b>{{ client.code || '-' }}</b></span>
+            <span class="me-3">{{ $t('City') }}: <b>{{ client.city || '-' }}</b></span>
+            <span class="me-3">{{ $t('Country') }}: <b>{{ client.country || '-' }}</b></span>
+            <span class="me-3">{{ $t('Tax_Number') }}: <b>{{ client.tax_number || '-' }}</b></span>
           </div>
         </div>
-        <div class="text-right">
+        <div class="text-end">
           <div class="text-white small mb-1">
-            <lucide-icon class="mr-1" name="mail" />{{ client.email || '-' }} &nbsp;|&nbsp;
-            <lucide-icon class="mr-1" name="phone" />{{ client.phone || '-' }}
+            <lucide-icon class="me-1" name="mail" />{{ client.email || '-' }} &nbsp;|&nbsp;
+            <lucide-icon class="me-1" name="phone" />{{ client.phone || '-' }}
           </div>
-          <b-button size="sm" variant="light" class="mr-2" @click="$router.push({ name: 'Customers' })">
-            <lucide-icon class="mr-1" name="chevron-left" /> {{ $t('Back') }}
+          <b-button size="sm" variant="light" class="me-2" @click="$router.push({ name: 'Customers' })">
+            <lucide-icon class="me-1" name="chevron-left" /> {{ $t('Back') }}
           </b-button>
-          <b-button size="sm" variant="primary" class="mr-2" :disabled="exportingPdf" @click="exportPdf">
-            <lucide-icon class="mr-1" name="file-down" />
+          <b-button size="sm" variant="primary" class="me-2" :disabled="exportingPdf" @click="exportPdf">
+            <lucide-icon class="me-1" name="file-down" />
             <span v-if="!exportingPdf">{{ $t('Download_PDF') }}</span>
             <span v-else>{{ $t('Generating') }}</span>
           </b-button>
@@ -254,11 +254,11 @@ const ListToolbar = {
     emitReset(){ this.$emit('input', ''); this.$emit('search'); this.$emit('reset') }
   },
   template: `<div class="toolbar">
-    <b-form-input class="mr-2" :value="value" :placeholder="placeholder" @input="v => $emit('input', v)" @keyup="e => { if (e.key === 'Enter') emitSearch() }" />
-    <b-button class="mr-2 mt-2" size="sm" variant="primary" @click="emitSearch">{{ $parent.$t('Search') }}</b-button>
-    <b-button class="mr-2 mt-2" size="sm" variant="outline-secondary" @click="emitReset">{{ $parent.$t('Reset') }}</b-button>
-    <div class="ml-auto d-flex align-items-center">
-      <span class="mr-2 small text-muted">{{ $parent.$t('Per_page') }}</span>
+    <b-form-input class="me-2" :value="value" :placeholder="placeholder" @input="v => $emit('input', v)" @keyup="e => { if (e.key === 'Enter') emitSearch() }" />
+    <b-button class="me-2 mt-2" size="sm" variant="primary" @click="emitSearch">{{ $parent.$t('Search') }}</b-button>
+    <b-button class="me-2 mt-2" size="sm" variant="outline-secondary" @click="emitReset">{{ $parent.$t('Reset') }}</b-button>
+    <div class="ms-auto d-flex align-items-center">
+      <span class="me-2 small text-muted">{{ $parent.$t('Per_page') }}</span>
       <b-form-select class="w-auto" :value="limit" :options="perPageOptions" size="sm" @input="v => $emit('update:limit', v)" />
     </div>
   </div>`
@@ -280,6 +280,7 @@ const Pager = {
   </div>`
 }
 
+import { BSpinner } from "@/platform/bootstrap";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting
@@ -287,7 +288,7 @@ import {
 
 export default {
   name: 'CustomerLedgerRefactored',
-  components: { ListToolbar, Pager },
+  components: { BSpinner, ListToolbar, Pager },
   props: { id: [String, Number] },
   metaInfo () { return { title: this.$t('Customer_Ledger') } },
   data(){
@@ -311,9 +312,9 @@ export default {
         { key:'Ref', label: this.$t('Sale_Ref') },
         { key:'warehouse_name', label: this.$t('Warehouse') },
         { key:'statut', label: this.$t('Status') },
-        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-right' },
-        { key:'paid_amount', label: this.$t('Paid'), class:'text-right' },
-        { key:'due', label: this.$t('Due'), class:'text-right' },
+        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-end' },
+        { key:'paid_amount', label: this.$t('Paid'), class:'text-end' },
+        { key:'due', label: this.$t('Due'), class:'text-end' },
         { key:'payment_status', label: this.$t('Payment_Status') },
         { key:'shipping_status', label: this.$t('Shipping_Status') },
       ],
@@ -323,14 +324,14 @@ export default {
         { key:'payment_type', label: this.$t('Type') },
         { key:'Sale_Ref', label: this.$t('Sale_Ref') },
         { key:'payment_method', label: this.$t('Method') },
-        { key:'montant', label: this.$t('Amount'), class:'text-right' },
+        { key:'montant', label: this.$t('Amount'), class:'text-end' },
       ],
       quotationsFields: [
         { key:'date', label: this.$t('Date') },
         { key:'Ref', label: this.$t('Quotation_Ref') },
         { key:'warehouse_name', label: this.$t('Warehouse') },
         { key:'statut', label: this.$t('Status') },
-        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-right' },
+        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-end' },
       ],
       returnsFields: [
         { key:'Ref', label: this.$t('Return_Ref') },
@@ -338,9 +339,9 @@ export default {
         { key:'client_name', label: this.$t('Customer') },
         { key:'sale_ref', label: this.$t('Sale_Ref') },
         { key:'warehouse_name', label: this.$t('Warehouse') },
-        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-right' },
-        { key:'paid_amount', label: this.$t('Paid'), class:'text-right' },
-        { key:'due', label: this.$t('Due'), class:'text-right' },
+        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-end' },
+        { key:'paid_amount', label: this.$t('Paid'), class:'text-end' },
+        { key:'due', label: this.$t('Due'), class:'text-end' },
         { key:'payment_status', label: this.$t('Payment_Status') },
       ],
     }

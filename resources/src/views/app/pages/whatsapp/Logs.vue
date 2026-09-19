@@ -2,8 +2,8 @@
   <div class="main-content">
     <breadcumb page="Registro de mensajes" folder="WhatsApp" />
     <b-card>
-      <b-row class="mb-3"><b-col md="4" class="mb-2"><b-form-input v-model="search" placeholder="Buscar destinatario o mensaje" @keyup.enter="fetchLogs(1)" /></b-col><b-col md="3" class="mb-2"><b-form-select v-model="statusFilter" :options="statusOptions" @change="fetchLogs(1)" /></b-col><b-col md="5" class="mb-2 text-right"><b-button variant="primary" @click="fetchLogs(1)"><lucide-icon name="refresh-cw" /> Actualizar</b-button></b-col></b-row>
-      <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+      <b-row class="mb-3"><b-col md="4" class="mb-2"><b-form-input v-model="search" placeholder="Buscar destinatario o mensaje" @keyup.enter="fetchLogs(1)" /></b-col><b-col md="3" class="mb-2"><b-form-select v-model="statusFilter" :options="statusOptions" @change="fetchLogs(1)" /></b-col><b-col md="5" class="mb-2 text-end"><b-button variant="primary" @click="fetchLogs(1)"><lucide-icon name="refresh-cw" /> Actualizar</b-button></b-col></b-row>
+      <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
       <vue-good-table v-if="!isLoading" mode="remote" :columns="columns" :totalRows="totalRows" :rows="logs" :pagination-options="{ enabled: true, mode: 'records', perPage: perPage }" @on-page-change="onPageChange" @on-per-page-change="onPerPageChange" styleClass="table-hover tableOne vgt-table">
         <template #table-row="props"><span v-if="props.column.field === 'status'"><b-badge :variant="statusVariant(props.row.status)">{{ statusLabel(props.row.status) }}</b-badge></span><span v-else-if="props.column.field === 'error'"><span v-if="props.row.error" class="text-danger" :title="props.row.error">{{ truncate(props.row.error) }}</span><span v-else>—</span></span><span v-else-if="props.column.field === 'actions'"><b-button size="sm" variant="outline-danger" @click="remove(props.row.id)"><lucide-icon name="trash-2" /></b-button></span><span v-else>{{ props.formattedRow[props.column.field] }}</span></template>
       </vue-good-table>

@@ -4,7 +4,7 @@
       <!-- Stocky -> WooCommerce -->
       <b-tab active>
         <template #title>
-          <lucide-icon class="mr-2" name="arrow-right" />
+          <lucide-icon class="me-2" name="arrow-right" />
           Stocky → WooCommerce
         </template>
 
@@ -47,21 +47,21 @@
           <div class="d-flex flex-wrap align-items-center">
             <b-button
               variant="info"
-              class="btn-action-primary mr-3 mb-2 d-inline-flex align-items-center"
+              class="btn-action-primary me-3 mb-2 d-inline-flex align-items-center"
               @click="manualSync('push', false)"
               :disabled="syncing"
             >
               <template v-if="!syncing">
-                <lucide-icon class="mr-2" name="play" />
+                <lucide-icon class="me-2" name="play" />
                 {{ $t('Run_Manual_Sync_Now') }}
               </template>
               <template v-else>
-                <span class="mini-spinner mr-2"></span>
+                <span class="mini-spinner me-2"></span>
                 {{ $t('Syncing') }}
               </template>
             </b-button>
-            <b-button variant="danger" size="sm" class="btn-action-danger mr-2 mb-2" :disabled="resetting" @click="resetSync">
-              <lucide-icon class="mr-1" name="refresh-ccw" />
+            <b-button variant="danger" size="sm" class="btn-action-danger me-2 mb-2" :disabled="resetting" @click="resetSync">
+              <lucide-icon class="me-1" name="refresh-ccw" />
               <span v-if="!resetting">{{ $t('Reset_Sync_State') }}</span>
               <span v-else>{{ $t('Resetting') }}...</span>
             </b-button>
@@ -72,7 +72,7 @@
       <!-- WooCommerce -> Stocky -->
       <b-tab>
         <template #title>
-          <lucide-icon class="mr-2" name="arrow-left" />
+          <lucide-icon class="me-2" name="arrow-left" />
           WooCommerce → Stocky
         </template>
 
@@ -115,21 +115,21 @@
           <div class="d-flex flex-wrap align-items-center">
             <b-button
               variant="success"
-              class="btn-action-secondary mr-3 mb-2 d-inline-flex align-items-center"
+              class="btn-action-secondary me-3 mb-2 d-inline-flex align-items-center"
               @click="manualSync('pull', false)"
               :disabled="syncing"
             >
               <template v-if="!syncing">
-                <lucide-icon class="mr-2" name="play" />
+                <lucide-icon class="me-2" name="play" />
                 Sync WooCommerce to Stocky
               </template>
               <template v-else>
-                <span class="mini-spinner mr-2"></span>
+                <span class="mini-spinner me-2"></span>
                 {{ $t('Syncing') }}
               </template>
             </b-button>
-            <b-button variant="danger" size="sm" class="btn-action-danger mr-2 mb-2" :disabled="resetting" @click="resetSync">
-              <lucide-icon class="mr-1" name="refresh-ccw" />
+            <b-button variant="danger" size="sm" class="btn-action-danger me-2 mb-2" :disabled="resetting" @click="resetSync">
+              <lucide-icon class="me-1" name="refresh-ccw" />
               <span v-if="!resetting">{{ $t('Reset_Sync_State') }}</span>
               <span v-else>{{ $t('Resetting') }}...</span>
             </b-button>

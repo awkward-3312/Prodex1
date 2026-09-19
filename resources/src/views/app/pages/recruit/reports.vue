@@ -15,7 +15,7 @@
       </b-col>
     </b-row>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-if="!isLoading">
       <b-row>
@@ -48,12 +48,12 @@
           <b-card :header="$t('Applications_By_Job')" class="h-100">
             <div class="table-responsive">
               <table class="table">
-                <thead><tr><th>{{ $t('Job') }}</th><th class="text-right">{{ $t('Applications') }}</th></tr></thead>
+                <thead><tr><th>{{ $t('Job') }}</th><th class="text-end">{{ $t('Applications') }}</th></tr></thead>
                 <tbody>
                   <tr v-if="by_job.length === 0"><td colspan="2" class="text-center text-muted">{{ $t('No_data') }}</td></tr>
                   <tr v-for="r in by_job" :key="r.job_id">
                     <td>{{ r.job ? r.job.title : '-' }}</td>
-                    <td class="text-right">{{ r.count }}</td>
+                    <td class="text-end">{{ r.count }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -85,18 +85,18 @@
                 <thead>
                   <tr>
                     <th>{{ $t('Month') }}</th>
-                    <th class="text-right">{{ $t('Total') }}</th>
-                    <th class="text-right">{{ $t('Hired') }}</th>
-                    <th class="text-right">{{ $t('Rejected') }}</th>
+                    <th class="text-end">{{ $t('Total') }}</th>
+                    <th class="text-end">{{ $t('Hired') }}</th>
+                    <th class="text-end">{{ $t('Rejected') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="monthly_trend.length === 0"><td colspan="4" class="text-center text-muted">{{ $t('No_data') }}</td></tr>
                   <tr v-for="m in monthly_trend" :key="m.month">
                     <td>{{ m.month }}</td>
-                    <td class="text-right">{{ m.total }}</td>
-                    <td class="text-right">{{ m.hired }}</td>
-                    <td class="text-right">{{ m.rejected }}</td>
+                    <td class="text-end">{{ m.total }}</td>
+                    <td class="text-end">{{ m.hired }}</td>
+                    <td class="text-end">{{ m.rejected }}</td>
                   </tr>
                 </tbody>
               </table>

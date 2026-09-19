@@ -1,0 +1,116 @@
+// ---------------------------------------------------------------------------------------------------------------------
+// Puente Bootstrap 5 sobre la base Bootstrap 4 (migración por familias, fase 1).
+//
+// Bootstrap 4 y Bootstrap 5 no pueden convivir como hojas completas (mismos selectores, reglas distintas, y todo el marcado de
+// BootstrapVue 2 depende de las reglas de BS4). Este archivo es ADITIVO: solo declara clases que BS4 no tiene y que BS5 /
+// BootstrapVueNext generan (utilidades lógicas, `text-bg-*`, `visually-hidden`, `btn-close`). Ninguna regla de BS4
+// se sustituye. Al hacer el corte final a BS5 el archivo se elimina.
+//
+// Las utilidades usan propiedades LÓGICAS (`margin-inline-start`…): equivalen en RTL a lo que hacía `bootstrap-rtl.scss` con
+// `.ml-*` / `.mr-*` / `.text-left`…, así que migrar `ml-2` → `ms-2` conserva el comportamiento en LTR y RTL.
+// ---------------------------------------------------------------------------------------------------------------------
+
+$bs5-spacers: map-merge($spacers, (auto: auto));
+
+@mixin bs5-responsive-utility($class, $properties, $values) {
+  @each $breakpoint in map-keys($grid-breakpoints) {
+    @include media-breakpoint-up($breakpoint) {
+      $infix: breakpoint-infix($breakpoint, $grid-breakpoints);
+      @each $key, $value in $values {
+        .#{$class}#{$infix}-#{$key} {
+          @each $property in $properties {
+            #{$property}: $value !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Márgenes y rellenos lógicos: ms / me / ps / pe (0–5 y auto, con sufijo responsive).
+@include bs5-responsive-utility(ms, margin-inline-start, $bs5-spacers);
+@include bs5-responsive-utility(me, margin-inline-end, $bs5-spacers);
+@include bs5-responsive-utility(ps, padding-inline-start, $spacers);
+@include bs5-responsive-utility(pe, padding-inline-end, $spacers);
+
+// Alineación y flotado lógicos.
+@include bs5-responsive-utility(text, text-align, (start: start, end: end));
+@include bs5-responsive-utility(float, float, (start: inline-start, end: inline-end));
+
+// Bordes y radios lógicos (mismos valores que `.border-left` / `.rounded-left` de BS4).
+.border-start { border-inline-start: 1px solid #dee2e6 !important; }
+.border-end { border-inline-end: 1px solid #dee2e6 !important; }
+.border-start-0 { border-inline-start: 0 !important; }
+.border-end-0 { border-inline-end: 0 !important; }
+.rounded-start {
+  border-start-start-radius: .25rem !important;
+  border-end-start-radius: .25rem !important;
+}
+.rounded-end {
+  border-start-end-radius: .25rem !important;
+  border-end-end-radius: .25rem !important;
+}
+
+// Peso de fuente (BS5: fw-*).
+.fw-bold { font-weight: 700 !important; }
+.fw-bolder { font-weight: bolder !important; }
+.fw-semibold { font-weight: 600 !important; }
+.fw-medium { font-weight: 500 !important; }
+.fw-normal { font-weight: 400 !important; }
+.fw-light { font-weight: 300 !important; }
+.fw-lighter { font-weight: lighter !important; }
+
+// Accesibilidad: BS5 renombra `.sr-only` a `.visually-hidden`.
+.visually-hidden,
+.visually-hidden-focusable:not(:focus):not(:focus-within) {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+// `text-bg-*` (BS5.3) = combinación color + fondo que en BS4 daba `.badge-*`; el primario sigue el color del tenant.
+@each $color, $value in $theme-colors {
+  .text-bg-#{$color} {
+    color: color-yiq($value) !important;
+    background-color: $value !important;
+  }
+}
+.text-bg-primary {
+  color: #fff !important;
+  background-color: var(--primary-color, #{$primary}) !important;
+}
+
+// Botón de cierre de BS5 (`btn-close`), que reemplaza a `.close`. Mismo tamaño/opacidad que el `×` de BS4.
+.btn-close {
+  box-sizing: content-box;
+  width: 1em;
+  height: 1em;
+  padding: .25em;
+  color: #000;
+  background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e") center / 1em auto no-repeat;
+  border: 0;
+  border-radius: .25rem;
+  opacity: .5;
+  cursor: pointer;
+  &:hover { opacity: .75; }
+  &:focus { outline: 0; opacity: 1; }
+  &:disabled,
+  &.disabled { pointer-events: none; user-select: none; opacity: .25; }
+}
+.alert-dismissible .btn-close {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  z-index: 2;
+  padding: 1.25rem 1rem;
+}
+.alert-dismissible { padding-inline-end: 4rem; }
+
+// NO se declaran `gap-*` ni `form-select`: las vistas existentes ya usan esos nombres con estilos propios (`gap-2` sin regla
+// global, `.form-select` en ModernPaymentModal) y una regla global cambiaría su aspecto (regresión detectada en dashboard).

@@ -12,7 +12,7 @@
       </router-link>
     </div>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="card">
       <div class="card-body">
@@ -243,7 +243,7 @@
                     md="4"
                     class="mt-2 mb-2"
                   >
-                    <label class="switch switch-primary mr-3">
+                    <label class="switch switch-primary me-3">
                       {{ item.name }}
                       <input type="checkbox" v-model="checklistState[item.id]">
                       <span class="slider"></span>
@@ -284,7 +284,7 @@
                   <b-col md="3" v-if="isEdit && jobMeta && jobMeta.parent_job_id">
                     <b-form-group :label="$t('Warranty_Claim_For') || 'Warranty claim for'">
                       <div class="form-control-plaintext">
-                        <lucide-icon class="text-success mr-1" name="shield-check" />
+                        <lucide-icon class="text-success me-1" name="shield-check" />
                         Job #{{ jobMeta.parent_job_id }}
                       </div>
                     </b-form-group>
@@ -292,33 +292,33 @@
                 </b-row>
 
                 <div v-if="isEdit" class="mt-3 mb-2">
-                  <b-button size="sm" variant="outline-warning" class="mr-2" @click="downloadQuotePdf">
-                    <lucide-icon class="mr-1" name="file-down" /> {{ $t('Download_Quote_PDF') || 'Download Quote PDF' }}
+                  <b-button size="sm" variant="outline-warning" class="me-2" @click="downloadQuotePdf">
+                    <lucide-icon class="me-1" name="file-down" /> {{ $t('Download_Quote_PDF') || 'Download Quote PDF' }}
                   </b-button>
                   <template v-if="jobMeta && jobMeta.quotation_id">
                     <router-link :to="`/app/quotations/detail/${jobMeta.quotation_id}`" class="btn btn-sm btn-outline-success">
-                      <lucide-icon class="mr-1" name="check" /> Linked to {{ jobMeta.quotation_ref || ('Quotation #' + jobMeta.quotation_id) }}
+                      <lucide-icon class="me-1" name="check" /> Linked to {{ jobMeta.quotation_ref || ('Quotation #' + jobMeta.quotation_id) }}
                     </router-link>
                   </template>
                   <b-button v-else size="sm" variant="outline-primary" :disabled="creatingQuotation" @click="sendToQuotations">
-                    <lucide-icon class="mr-1" name="send" /> {{ creatingQuotation ? 'Sending...' : 'Send to Quotations' }}
+                    <lucide-icon class="me-1" name="send" /> {{ creatingQuotation ? 'Sending...' : 'Send to Quotations' }}
                   </b-button>
                 </div>
 
                 <div v-if="isEdit && jobMeta" class="quote-status-box mt-3">
                   <template v-if="jobMeta.quote_approved_at">
-                    <lucide-icon class="text-success mr-2" name="check" />
+                    <lucide-icon class="text-success me-2" name="check" />
                     <strong>{{ $t('Quote_Approved') || 'Quote approved' }}</strong>
                     {{ $t('on') || 'on' }} {{ formatDate(jobMeta.quote_approved_at) }}
                     <span v-if="jobMeta.quote_approved_by"> {{ $t('by') || 'by' }} {{ jobMeta.quote_approved_by }}</span>
                   </template>
                   <template v-else-if="jobMeta.status === 'declined'">
-                    <lucide-icon class="text-danger mr-2" name="x" />
+                    <lucide-icon class="text-danger me-2" name="x" />
                     <strong class="text-danger">{{ $t('Quote_Declined') || 'Quote declined' }}</strong>
                   </template>
                   <template v-else>
                     <div>
-                      <lucide-icon class="text-warning mr-2" name="info" />
+                      <lucide-icon class="text-warning me-2" name="info" />
                       {{ $t('Quote_Awaiting_Approval') || 'Awaiting customer approval' }}
                     </div>
                     <div class="mt-2">
@@ -326,7 +326,7 @@
                         v-model="approveBy"
                         :placeholder="$t('Customer_signature_name') || 'Customer signature/name'"
                         size="sm"
-                        class="d-inline-block w-auto mr-2"
+                        class="d-inline-block w-auto me-2"
                       />
                       <b-button size="sm" variant="success" @click="approveQuote">
                         <lucide-icon name="check" /> {{ $t('Approve_Quote') || 'Approve' }}
@@ -377,10 +377,10 @@
                   <h5 class="mb-0">{{ $t('Line_Items') || 'Line Items' }}</h5>
                   <div>
                     <b-button size="sm" variant="outline-primary" @click="addLaborLine">
-                      <lucide-icon class="mr-1" name="plus" /> {{ $t('Add_Labor_Line') || 'Add Labor' }}
+                      <lucide-icon class="me-1" name="plus" /> {{ $t('Add_Labor_Line') || 'Add Labor' }}
                     </b-button>
-                    <b-button size="sm" variant="outline-secondary" @click="addOtherLine" class="ml-2">
-                      <lucide-icon class="mr-1" name="plus" /> {{ $t('Add_Other_Line') || 'Add Other' }}
+                    <b-button size="sm" variant="outline-secondary" @click="addOtherLine" class="ms-2">
+                      <lucide-icon class="me-1" name="plus" /> {{ $t('Add_Other_Line') || 'Add Other' }}
                     </b-button>
                   </div>
                 </div>
@@ -430,7 +430,7 @@
                       <td>
                         <b-form-input v-model.number="row.tax_rate" type="number" min="0" step="0.01" size="sm" @input="recomputeRow(row)" />
                       </td>
-                      <td class="text-right">
+                      <td class="text-end">
                         <strong>{{ currencySymbol }}{{ formatNumber(row.total) }}</strong>
                       </td>
                       <td class="text-center">
@@ -442,18 +442,18 @@
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colspan="6" class="text-right"><strong>{{ $t('Items_Subtotal') || 'Items Subtotal' }}</strong></td>
-                      <td class="text-right"><strong>{{ currencySymbol }}{{ formatNumber(itemsSubtotal) }}</strong></td>
+                      <td colspan="6" class="text-end"><strong>{{ $t('Items_Subtotal') || 'Items Subtotal' }}</strong></td>
+                      <td class="text-end"><strong>{{ currencySymbol }}{{ formatNumber(itemsSubtotal) }}</strong></td>
                       <td></td>
                     </tr>
                     <tr v-if="form.diagnostic_fee > 0">
-                      <td colspan="6" class="text-right">{{ $t('Diagnostic_Fee') || 'Diagnostic Fee' }}</td>
-                      <td class="text-right">{{ currencySymbol }}{{ formatNumber(form.diagnostic_fee) }}</td>
+                      <td colspan="6" class="text-end">{{ $t('Diagnostic_Fee') || 'Diagnostic Fee' }}</td>
+                      <td class="text-end">{{ currencySymbol }}{{ formatNumber(form.diagnostic_fee) }}</td>
                       <td></td>
                     </tr>
                     <tr>
-                      <td colspan="6" class="text-right"><strong>{{ $t('Grand_Total') || 'Grand Total' }}</strong></td>
-                      <td class="text-right"><strong class="text-primary">{{ currencySymbol }}{{ formatNumber(grandTotal) }}</strong></td>
+                      <td colspan="6" class="text-end"><strong>{{ $t('Grand_Total') || 'Grand Total' }}</strong></td>
+                      <td class="text-end"><strong class="text-primary">{{ currencySymbol }}{{ formatNumber(grandTotal) }}</strong></td>
                       <td></td>
                     </tr>
                   </tfoot>
@@ -488,7 +488,7 @@
                     </b-col>
                     <b-col md="12">
                       <b-button variant="primary" :disabled="!photoFiles || photoFiles.length === 0 || photoUploading" @click="uploadPhotos">
-                        <lucide-icon class="mr-1" name="upload" /> {{ photoUploading ? ($t('Uploading') || 'Uploading...') : ($t('Upload') || 'Upload') }}
+                        <lucide-icon class="me-1" name="upload" /> {{ photoUploading ? ($t('Uploading') || 'Uploading...') : ($t('Upload') || 'Upload') }}
                       </b-button>
                     </b-col>
                   </b-row>
@@ -573,7 +573,7 @@
                         <b-badge variant="light" class="pay-card__count">{{ payments.length }}</b-badge>
                       </div>
                       <b-button size="sm" variant="primary" class="pay-add-btn" @click="openPaymentModal()">
-                        <lucide-icon class="mr-1" name="plus" /> {{ $t('Add_Payment') || 'Add Payment' }}
+                        <lucide-icon class="me-1" name="plus" /> {{ $t('Add_Payment') || 'Add Payment' }}
                       </b-button>
                     </div>
 
@@ -585,7 +585,7 @@
                             <th>{{ $t('Date') }}</th>
                             <th>{{ $t('Kind') || 'Kind' }}</th>
                             <th>{{ $t('Method') || 'Method' }}</th>
-                            <th class="text-right">{{ $t('Amount') || 'Amount' }}</th>
+                            <th class="text-end">{{ $t('Amount') || 'Amount' }}</th>
                             <th>{{ $t('Notes') }}</th>
                             <th style="width: 100px;" class="text-center">{{ $t('Actions') || '' }}</th>
                           </tr>
@@ -618,7 +618,7 @@
                               <span v-if="p.payment_method" class="pay-method">{{ p.payment_method }}</span>
                               <span v-else class="text-muted">—</span>
                             </td>
-                            <td class="text-right">
+                            <td class="text-end">
                               <span class="pay-amount" :class="p.payment_kind === 'refund' ? 'text-danger' : 'text-dark'">
                                 {{ p.payment_kind === 'refund' ? '-' : '' }}{{ currencySymbol }}{{ formatNumber(p.montant) }}
                               </span>
@@ -631,7 +631,7 @@
                               <b-button size="sm" variant="light" class="pay-action" :title="$t('Edit')" @click="openPaymentModal(p)">
                                 <lucide-icon name="pencil" />
                               </b-button>
-                              <b-button size="sm" variant="light" class="pay-action pay-action--danger ml-1" :title="$t('Delete')" @click="deletePayment(p)">
+                              <b-button size="sm" variant="light" class="pay-action pay-action--danger ms-1" :title="$t('Delete')" @click="deletePayment(p)">
                                 <lucide-icon name="trash-2" />
                               </b-button>
                             </td>
@@ -642,12 +642,12 @@
                   </div>
 
                   <hr v-if="canMarkDelivered" />
-                  <div v-if="canMarkDelivered" class="text-right">
+                  <div v-if="canMarkDelivered" class="text-end">
                     <b-button variant="success" @click="markDelivered">
-                      <lucide-icon class="mr-1" name="check" /> {{ $t('Mark_Delivered_Decrement_Stock') || 'Mark Delivered (decrements stock + starts warranty)' }}
+                      <lucide-icon class="me-1" name="check" /> {{ $t('Mark_Delivered_Decrement_Stock') || 'Mark Delivered (decrements stock + starts warranty)' }}
                     </b-button>
                   </div>
-                  <div v-else-if="jobMeta && jobMeta.status === 'delivered'" class="text-right text-success">
+                  <div v-else-if="jobMeta && jobMeta.status === 'delivered'" class="text-end text-success">
                     <lucide-icon name="check" />
                     {{ $t('Delivered_On') || 'Delivered on' }} {{ formatDate(jobMeta.delivered_at) }}
                     <span v-if="jobMeta.warranty_expires_at"> · {{ $t('Warranty_until') || 'Warranty until' }} {{ formatDate(jobMeta.warranty_expires_at) }}</span>
@@ -690,8 +690,8 @@
                         </b-form-group>
                       </b-col>
                     </b-row>
-                    <div class="text-right">
-                      <b-button variant="secondary" class="mr-2" @click="paymentModalShow = false">{{ $t('Cancel') }}</b-button>
+                    <div class="text-end">
+                      <b-button variant="secondary" class="me-2" @click="paymentModalShow = false">{{ $t('Cancel') }}</b-button>
                       <b-button type="submit" variant="primary" :disabled="paymentSaving">
                         {{ paymentSaving ? ($t('Saving') || 'Saving...') : ($t('Save') || 'Save') }}
                       </b-button>
@@ -701,8 +701,8 @@
               </b-tab>
             </b-tabs>
 
-            <div class="mt-4 text-right">
-              <b-button variant="secondary" class="mr-2" @click="$router.back()">
+            <div class="mt-4 text-end">
+              <b-button variant="secondary" class="me-2" @click="$router.back()">
                 {{ $t('Cancel') }}
               </b-button>
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">

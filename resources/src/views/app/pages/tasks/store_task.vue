@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Create_Task')" :folder="$t('Tasks')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <px-validation-observer ref="ref_create_task" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Task">
@@ -173,7 +173,7 @@
 
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
                       <div v-once class="typo__p" v-if="SubmitProcessing">
                         <div class="spinner sm spinner-primary mt-3"></div>
                       </div>

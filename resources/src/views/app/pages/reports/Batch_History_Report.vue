@@ -2,21 +2,21 @@
   <div class="main-content">
     <breadcumb :page="$t('Batch_History') || 'Batch History'" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-if="!isLoading">
       <!-- Top action bar -->
       <div class="d-flex flex-wrap align-items-center mb-3">
-        <b-button size="sm" variant="outline-secondary" class="btn-pill mr-2" @click="$router.push({ name: 'batch_register_report' })">
-          <lucide-icon class="mr-1" name="arrow-left" />{{ $t('back') || 'Back' }}
+        <b-button size="sm" variant="outline-secondary" class="btn-pill me-2" @click="$router.push({ name: 'batch_register_report' })">
+          <lucide-icon class="me-1" name="arrow-left" />{{ $t('back') || 'Back' }}
         </b-button>
         <h4 class="m-0">
           {{ $t('Batch_History') || 'Batch History' }}:
           <span class="text-primary">{{ batch.batch_no || '—' }}</span>
         </h4>
-        <div class="ml-auto">
+        <div class="ms-auto">
           <b-button size="sm" variant="outline-secondary" class="btn-pill" @click="printTable()">
-            <lucide-icon class="mr-1" name="printer" />{{ $t('print') }}
+            <lucide-icon class="me-1" name="printer" />{{ $t('print') }}
           </b-button>
         </div>
       </div>
@@ -38,7 +38,7 @@
             </div>
             <div class="mt-2"><strong>{{ $t('Warehouse') }}:</strong> {{ batch.warehouse_name }}</div>
             <div><strong>{{ $t('Status') }}:</strong>
-              <span class="badge ml-1" :class="statusBadge(batch.status)">
+              <span class="badge ms-1" :class="statusBadge(batch.status)">
                 {{ $t('Batch_Status_' + batch.status) || batch.status }}
               </span>
             </div>
@@ -47,11 +47,11 @@
             <div><strong>{{ $t('Mfg_Date') }}:</strong> {{ batch.mfg_date || '—' }}</div>
             <div>
               <strong>{{ $t('Expiry_Date') }}:</strong>
-              <span v-if="batch.expiry_date" :style="expiryPillStyle(batch.expiry_bucket)" class="ml-1">
+              <span v-if="batch.expiry_date" :style="expiryPillStyle(batch.expiry_bucket)" class="ms-1">
                 {{ batch.expiry_date }}
               </span>
-              <span v-else class="text-muted ml-1">—</span>
-              <small v-if="batch.expiry_date" class="ml-2"
+              <span v-else class="text-muted ms-1">—</span>
+              <small v-if="batch.expiry_date" class="ms-2"
                 :class="{
                   'text-danger': batch.expiry_bucket === 'expired',
                   'text-warning': batch.expiry_bucket === 'near',
@@ -81,7 +81,7 @@
           <h5 class="m-0">{{ $t('Movements') || 'Movements' }}
             <small class="text-muted">({{ filteredTransactions.length }})</small>
           </h5>
-          <div class="ml-auto">
+          <div class="ms-auto">
             <b-form-select v-model="typeFilter" size="sm" class="w-auto">
               <option value="all">{{ $t('All') }}</option>
               <option value="in">↑ {{ $t('In') || 'In' }}</option>
@@ -100,7 +100,7 @@
         </div>
 
         <div v-if="!filteredTransactions.length" class="text-center py-4 text-muted">
-          <lucide-icon class="mr-1" name="info" />
+          <lucide-icon class="me-1" name="info" />
           {{ $t('No_movements_recorded') || 'No movements recorded for this batch yet.' }}
         </div>
 
@@ -130,7 +130,7 @@
                   <router-link
                     v-if="sourceLink(t)"
                     :to="sourceLink(t)"
-                    class="text-primary font-weight-bold"
+                    class="text-primary fw-bold"
                   >{{ t.ref }}</router-link>
                   <span v-else>{{ t.ref }}</span>
                 </td>
@@ -139,7 +139,7 @@
                   <small class="text-muted">{{ t.party_label }}</small>
                 </td>
                 <td style="text-align:right;">
-                  <span v-if="t.qty_in" class="text-success font-weight-bold">+{{ formatNumber(t.qty_in) }}</span>
+                  <span v-if="t.qty_in" class="text-success fw-bold">+{{ formatNumber(t.qty_in) }}</span>
                   <span v-else-if="t.type === 'quotation' && t.reserved_qty"
                         class="text-muted"
                         :title="$t('Quotation_Reserved') || 'Quotation reserved (not yet sold)'">
@@ -148,7 +148,7 @@
                   <span v-else class="text-muted">—</span>
                 </td>
                 <td style="text-align:right;">
-                  <span v-if="t.qty_out" class="text-danger font-weight-bold">-{{ formatNumber(t.qty_out) }}</span>
+                  <span v-if="t.qty_out" class="text-danger fw-bold">-{{ formatNumber(t.qty_out) }}</span>
                   <span v-else class="text-muted">—</span>
                 </td>
                 <td style="text-align:right;">
@@ -194,11 +194,11 @@
             }"
           >
             <span v-if="hasDrift">
-              <lucide-icon class="mr-1" name="alert-triangle" />
+              <lucide-icon class="me-1" name="alert-triangle" />
               {{ $t('Drift_Warning') || 'Ledger drift detected' }}: {{ formatNumber(totals.drift) }}
             </span>
             <span v-else>
-              <lucide-icon class="mr-1" name="check" />
+              <lucide-icon class="me-1" name="check" />
               {{ $t('Ledger_Balanced') || 'Ledger balanced — actual qty matches sum of transactions.' }}
             </span>
           </div>

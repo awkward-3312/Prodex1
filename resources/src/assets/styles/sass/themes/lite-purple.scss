@@ -92,6 +92,7 @@ $theme-colors: (
 @import "../../vendor/bootstrap/bootstrap.scss";
 // @import "~bootstrap/scss/bootstrap.scss";
 @import "../bootstrap-rtl.scss";
+@import "../bootstrap5/bridge";
 
 @import "../globals/globals.scss";
 @import "dark/dark";

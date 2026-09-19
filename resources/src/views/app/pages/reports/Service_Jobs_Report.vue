@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Service_Jobs_Report')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="print-table-only">
       <b-row class="mb-3">
@@ -148,7 +148,7 @@ export default {
       // Table Header
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
-        tableHtml += `<th class="text-left">${col.label}</th>`;
+        tableHtml += `<th class="text-start">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
 
@@ -158,7 +158,7 @@ export default {
         tableHtml += `<tr>`;
         this.columns.forEach(col => {
           let cellContent = row[col.field] || '';
-          tableHtml += `<td class="text-left">${cellContent}</td>`;
+          tableHtml += `<td class="text-start">${cellContent}</td>`;
         });
         tableHtml += `</tr>`;
       });

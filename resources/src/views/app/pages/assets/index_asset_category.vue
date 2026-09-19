@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Asset_Category')" :folder="$t('Assets')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <vue-good-table
@@ -75,7 +75,7 @@
             </b-col>
 
             <b-col md="12" class="mt-3">
-              <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+              <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
               <div v-once class="typo__p" v-if="SubmitProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
               </div>
@@ -116,9 +116,9 @@ export default {
     ...mapGetters(['currentUserPermissions']),
     columns() {
       return [
-        { label: this.$t('Name'), field: 'name', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Description'), field: 'description', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Action'), field: 'actions', tdClass: 'text-left', thClass: 'text-left', sortable: false },
+        { label: this.$t('Name'), field: 'name', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Description'), field: 'description', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Action'), field: 'actions', tdClass: 'text-start', thClass: 'text-start', sortable: false },
       ];
     }
   },

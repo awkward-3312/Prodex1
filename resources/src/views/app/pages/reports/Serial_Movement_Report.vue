@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Serial_Movement_Log') || 'Serial Movement Log'" :folder="$t('Reports')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -73,11 +73,11 @@ export default {
     },
     columns() {
       return [
-        { label: this.$t("date"), field: "created_at", thClass: "text-left", tdClass: "text-left" },
-        { label: this.$t("Serial_Number"), field: "serial_number", thClass: "text-left", tdClass: "text-left" },
-        { label: this.$t("Action"), field: "action", thClass: "text-left", tdClass: "text-left" },
-        { label: this.$t("Serial_Status"), field: "transition", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: this.$t("Reference") || "Reference", field: "reference", thClass: "text-left", tdClass: "text-left", sortable: false }
+        { label: this.$t("date"), field: "created_at", thClass: "text-start", tdClass: "text-start" },
+        { label: this.$t("Serial_Number"), field: "serial_number", thClass: "text-start", tdClass: "text-start" },
+        { label: this.$t("Action"), field: "action", thClass: "text-start", tdClass: "text-start" },
+        { label: this.$t("Serial_Status"), field: "transition", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: this.$t("Reference") || "Reference", field: "reference", thClass: "text-start", tdClass: "text-start", sortable: false }
       ];
     }
   },

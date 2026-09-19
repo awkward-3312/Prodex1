@@ -24,7 +24,7 @@
 
         <b-button class="kh-btn" size="sm" variant="light" :disabled="refreshing" @click="fetch(true)">
           <lucide-icon name="rotate-cw" :size="15" :class="{ spin: refreshing }" />
-          <span class="d-none d-md-inline ml-1">{{ $t('Refresh') || 'Refresh' }}</span>
+          <span class="d-none d-md-inline ms-1">{{ $t('Refresh') || 'Refresh' }}</span>
         </b-button>
       </div>
     </div>
@@ -241,13 +241,13 @@
           <b-thead>
             <b-tr>
               <b-th>{{ $t('Product') || 'Product' }}</b-th>
-              <b-th class="text-right">{{ $t('Quantity') || 'Quantity' }}</b-th>
+              <b-th class="text-end">{{ $t('Quantity') || 'Quantity' }}</b-th>
             </b-tr>
           </b-thead>
           <b-tbody>
             <b-tr v-for="item in selected.items" :key="item.id">
               <b-td>{{ item.name }}</b-td>
-              <b-td class="text-right">{{ formatQty(item.quantity) }}<span v-if="item.unit"> {{ item.unit }}</span></b-td>
+              <b-td class="text-end">{{ formatQty(item.quantity) }}<span v-if="item.unit"> {{ item.unit }}</span></b-td>
             </b-tr>
           </b-tbody>
         </b-table-simple>
@@ -260,7 +260,7 @@
         <div v-if="canManage" class="km-assign">
           <label>{{ $t('AssignedStaff') || 'Assigned Staff' }}</label>
           <div class="d-flex">
-            <b-form-select v-model="assignChoice" :options="staffOptions" class="mr-2" />
+            <b-form-select v-model="assignChoice" :options="staffOptions" class="me-2" />
             <b-button variant="primary" :disabled="assignBusy" @click="saveAssignment">
               <span v-if="assignBusy" class="spinner-border spinner-border-sm"></span>
               <span v-else>{{ $t('Save') || 'Save' }}</span>

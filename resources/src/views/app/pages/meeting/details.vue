@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Meeting_Details')" :folder="$t('Meeting_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-if="!isLoading && meeting">
       <!-- Header -->
@@ -12,22 +12,22 @@
             <h4 class="mb-1">{{ meeting.title }}</h4>
             <div class="text-muted mb-2">
               <lucide-icon name="calendar" size="15" /> {{ meeting.meeting_date }}
-              <lucide-icon name="clock" size="15" class="ml-2" /> {{ short_time(meeting.start_time) }}<span v-if="meeting.end_time"> - {{ short_time(meeting.end_time) }}</span>
-              <span class="badge ml-2" :class="status_class(meeting.status)">{{ format_label(meeting.status) }}</span>
-              <span class="badge badge-outline-info ml-1">{{ format_label(meeting.type) }}</span>
+              <lucide-icon name="clock" size="15" class="ms-2" /> {{ short_time(meeting.start_time) }}<span v-if="meeting.end_time"> - {{ short_time(meeting.end_time) }}</span>
+              <span class="badge ms-2" :class="status_class(meeting.status)">{{ format_label(meeting.status) }}</span>
+              <span class="badge badge-outline-info ms-1">{{ format_label(meeting.type) }}</span>
             </div>
             <div v-if="meeting.type === 'physical' && meeting.location" class="text-muted">
               <lucide-icon name="map-pin" size="15" /> {{ meeting.location }}
             </div>
             <div v-if="meeting.type === 'online'" class="text-muted">
               <lucide-icon name="link" size="15" /> {{ meeting.meeting_link || '-' }}
-              <span v-if="meeting.platform" class="badge badge-outline-secondary ml-1">{{ platform_label(meeting.platform) }}</span>
+              <span v-if="meeting.platform" class="badge badge-outline-secondary ms-1">{{ platform_label(meeting.platform) }}</span>
             </div>
             <div class="text-muted mt-1">
               <lucide-icon name="user" size="15" /> {{ $t('Organizer') }}: {{ user_name(meeting.organizer) }}
             </div>
           </div>
-          <div class="text-right">
+          <div class="text-end">
             <a
               v-if="meeting.type === 'online' && meeting.meeting_link"
               :href="meeting.meeting_link"
@@ -139,15 +139,15 @@
               <div class="d-flex justify-content-between">
                 <span class="badge" :class="note_type_class(n.type)">{{ format_label(n.type) }}</span>
                 <span v-if="canEdit">
-                  <a class="cursor-pointer text-success mr-1" @click="Edit_Note(n)"><lucide-icon name="pencil" size="14" /></a>
+                  <a class="cursor-pointer text-success me-1" @click="Edit_Note(n)"><lucide-icon name="pencil" size="14" /></a>
                   <a class="cursor-pointer text-danger" @click="Remove_Note(n.id)"><lucide-icon name="x" size="15" /></a>
                 </span>
               </div>
               <div class="mt-1" style="white-space: pre-line">{{ n.content }}</div>
               <div v-if="n.type === 'action_item'" class="text-muted small mt-1">
                 <span v-if="n.assignee"><lucide-icon name="user" size="12" /> {{ user_name(n.assignee) }}</span>
-                <span v-if="n.due_date" class="ml-2"><lucide-icon name="calendar" size="12" /> {{ n.due_date }}</span>
-                <span class="badge ml-2" :class="note_status_class(n.status)">{{ format_label(n.status) }}</span>
+                <span v-if="n.due_date" class="ms-2"><lucide-icon name="calendar" size="12" /> {{ n.due_date }}</span>
+                <span class="badge ms-2" :class="note_status_class(n.status)">{{ format_label(n.status) }}</span>
               </div>
             </div>
           </b-card>
@@ -162,7 +162,7 @@
               <li v-for="l in meeting.logs" :key="l.id" class="py-1">
                 <span class="dot"></span>
                 <span>{{ l.description || format_label(l.action) }}</span>
-                <span class="text-muted small d-block ml-3">{{ user_name(l.user) }} · {{ format_datetime(l.created_at) }}</span>
+                <span class="text-muted small d-block ms-3">{{ user_name(l.user) }} · {{ format_datetime(l.created_at) }}</span>
               </li>
             </ul>
           </b-card>

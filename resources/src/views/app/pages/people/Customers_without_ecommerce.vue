@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Customers_without_Login')" :folder="$t('Customers')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <div class="mb-5">
         <div class="alert alert-danger" v-show="clients_without_ecommerce > 0">
@@ -37,7 +37,7 @@
       <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <a class="btn btn-primary"  @click="Edit_Client(props.row)">
-              <span class="text-white"><lucide-icon class="me-2 font-weight-bold" name="check" /> Register Account</span>
+              <span class="text-white"><lucide-icon class="me-2 fw-bold" name="check" /> Register Account</span>
             </a>
            
           </span>
@@ -186,33 +186,33 @@ export default {
         {
           label: this.$t("Code"),
           field: "code",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Name"),
           field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("Phone"),
           field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Email"),
           field: "email",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

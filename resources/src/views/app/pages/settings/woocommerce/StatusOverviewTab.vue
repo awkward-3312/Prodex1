@@ -18,8 +18,8 @@
     <b-card class="logs-overview-card shadow-sm">
       <template #header>
         <div class="d-flex align-items-center">
-          <lucide-icon class="mr-2 text-primary" name="clipboard-list" />
-          <h5 class="mb-0 font-weight-bold">{{ $t('Last_5_Log_Entries') }}</h5>
+          <lucide-icon class="me-2 text-primary" name="clipboard-list" />
+          <h5 class="mb-0 fw-bold">{{ $t('Last_5_Log_Entries') }}</h5>
         </div>
       </template>
       <b-table 
@@ -32,25 +32,25 @@
       >
         <template #cell(date)="{ item }">
           <div class="d-flex align-items-center">
-            <lucide-icon class="mr-2 text-muted" name="calendar" />
+            <lucide-icon class="me-2 text-muted" name="calendar" />
             {{ formatDate(item.created_at) }}
           </div>
         </template>
         <template #cell(action)="{ item }">
           <div class="d-flex align-items-center">
-            <lucide-icon class="mr-2 text-primary" name="package" />
+            <lucide-icon class="me-2 text-primary" name="package" />
             {{ formatAction(item.action) }}
           </div>
         </template>
         <template #cell(direction)="{ item }">
           <div class="d-flex align-items-center">
-            <lucide-icon :name="getDirectionIcon(item.action)" class="mr-2 text-info" />
+            <lucide-icon :name="getDirectionIcon(item.action)" class="me-2 text-info" />
             {{ formatDirection(item.action) }}
           </div>
         </template>
         <template #cell(status)="{ item }">
           <b-badge :variant="levelToVariant(item.level)" class="status-badge">
-            <lucide-icon :name="getStatusIcon(item.level)" class="mr-1" />
+            <lucide-icon :name="getStatusIcon(item.level)" class="me-1" />
             {{ formatStatus(item.level) }}
           </b-badge>
         </template>

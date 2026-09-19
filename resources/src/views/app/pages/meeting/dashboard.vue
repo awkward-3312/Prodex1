@@ -2,7 +2,7 @@
   <div class="main-content meeting-dashboard">
     <breadcumb :page="$t('Dashboard')" :folder="$t('Meeting_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-if="!isLoading">
       <!-- Hero header -->

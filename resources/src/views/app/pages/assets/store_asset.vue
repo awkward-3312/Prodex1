@@ -94,11 +94,11 @@
           <b-button type="submit" variant="primary" :disabled="SubmitProcessing">
             <span v-if="!SubmitProcessing">{{ $t('Save') }}</span>
             <span v-else>
-              <span class="spinner sm spinner-primary align-middle mr-2"></span>
+              <span class="spinner sm spinner-primary align-middle me-2"></span>
               {{ $t('Processing') }}
             </span>
           </b-button>
-          <router-link class="btn btn-outline-secondary ml-2" to="/app/assets/list">{{ $t('Cancel') }}</router-link>
+          <router-link class="btn btn-outline-secondary ms-2" to="/app/assets/list">{{ $t('Cancel') }}</router-link>
         </div>
       </b-form>
     </px-validation-observer>

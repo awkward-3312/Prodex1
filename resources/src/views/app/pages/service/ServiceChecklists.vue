@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Checklist_Items')" :folder="$t('Service_Maintenance')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <b-card :title="$t('Checklist_Items')">
@@ -26,7 +26,7 @@
                   <b-button
                     size="sm"
                     variant="outline-primary"
-                    class="mr-2"
+                    class="me-2"
                     @click.stop="editItem(props.row)"
                   >
                     <lucide-icon name="pencil" />
@@ -101,8 +101,8 @@
               </px-validation-provider>
             </b-col>
           </b-row>
-          <div class="text-right mt-3">
-            <b-button variant="secondary" @click="$bvModal.hide('modal_Item')" class="mr-2">
+          <div class="text-end mt-3">
+            <b-button variant="secondary" @click="$bvModal.hide('modal_Item')" class="me-2">
               {{ $t('Cancel') }}
             </b-button>
             <b-button type="submit" variant="primary" :disabled="SubmitProcessing">

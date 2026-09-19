@@ -4,12 +4,12 @@
       <template #header>
         <div class="d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center">
-            <lucide-icon class="mr-2 text-primary" name="clipboard-list" />
-            <h5 class="mb-0 font-weight-bold">{{ $t('View_Logs') }}</h5>
+            <lucide-icon class="me-2 text-primary" name="clipboard-list" />
+            <h5 class="mb-0 fw-bold">{{ $t('View_Logs') }}</h5>
           </div>
           <div>
-            <b-form-select v-model="level" :options="levelOptions" size="sm" class="d-inline-block mr-2" style="width:auto" @change="load(1)" />
-            <b-button size="sm" variant="outline-secondary" class="mr-2" @click="load(page)">
+            <b-form-select v-model="level" :options="levelOptions" size="sm" class="d-inline-block me-2" style="width:auto" @change="load(1)" />
+            <b-button size="sm" variant="outline-secondary" class="me-2" @click="load(page)">
               <lucide-icon name="refresh-cw" /> {{ $t('Refresh') }}
             </b-button>
             <b-button size="sm" variant="outline-danger" @click="clearLogs">

@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Edit_Contract') || 'Edit Contract'" :folder="$t('Contracts') || 'Contracts'"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <px-validation-observer ref="ref_edit_contract" v-if="!isLoading && contract">
       <b-form @submit.prevent="Submit_Contract">
@@ -136,7 +136,7 @@
                   <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
                     <lucide-icon class="me-2" name="check" /> {{ $t('submit') }}
                   </b-button>
-                  <router-link :to="'/app/contracts/view/' + id" class="btn btn-secondary ml-2">View</router-link>
+                  <router-link :to="'/app/contracts/view/' + id" class="btn btn-secondary ms-2">View</router-link>
                   <div v-if="SubmitProcessing" class="spinner sm spinner-primary mt-3"></div>
                 </b-col>
               </b-row>

@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Edit_Booking')" :folder="$t('Bookings')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <px-validation-observer ref="ref_edit_booking" v-if="!isLoading">
       <b-form @submit.prevent="submitBooking">
@@ -186,7 +186,7 @@
                       type="submit"
                       :disabled="submitProcessing"
                     >
-                      <lucide-icon class="me-2 font-weight-bold" name="check" />
+                      <lucide-icon class="me-2 fw-bold" name="check" />
                       {{ $t('submit') }}
                     </b-button>
                     <div v-once class="typo__p" v-if="submitProcessing">

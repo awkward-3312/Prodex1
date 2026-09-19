@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('profil')" :folder="$t('Settings')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div class="card user-profile mb-30" v-if="!isLoading">
       <div class="header-cover"></div>
@@ -132,7 +132,7 @@
               </b-col>
 
               <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                <b-button variant="primary" type="submit"><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
               </b-col>
             </b-row>
           </b-form>
@@ -213,7 +213,7 @@
 
               <b-col md="12" class="mt-3">
                 <b-button variant="primary" type="submit">
-                  <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('UpdatePassword') }}
+                  <lucide-icon class="me-2 fw-bold" name="check" /> {{ $t('UpdatePassword') }}
                 </b-button>
               </b-col>
             </b-row>

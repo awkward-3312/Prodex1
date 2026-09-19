@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('SuppliersManagement')" :folder="$t('Suppliers')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <vue-good-table
         mode="remote"
@@ -93,7 +93,7 @@
                   v-if="props.row.due > 0 && currentUserPermissions && currentUserPermissions.includes('pay_supplier_due')"
                   @click="Pay_due(props.row)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="dollar-sign" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="dollar-sign" />
                   {{$t('pay_all_purchase_due_at_a_time')}}
                 </b-dropdown-item>
 
@@ -101,14 +101,14 @@
                   v-if="props.row.return_Due > 0 && currentUserPermissions && currentUserPermissions.includes('pay_purchase_return_due')"
                   @click="Pay_return_due(props.row)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="dollar-sign" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="dollar-sign" />
                   {{$t('pay_all_purchase_return_due_at_a_time')}}
                 </b-dropdown-item>
 
                 <b-dropdown-item
                   @click="showDetails(props.row)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="eye" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="eye" />
                   {{$t('Provider_details')}}
                 </b-dropdown-item>
 
@@ -116,7 +116,7 @@
                  v-if="currentUserPermissions && currentUserPermissions.includes('Suppliers_edit')"
                   @click="Edit_Provider(props.row)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="pencil" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="pencil" />
                   {{$t('Edit_Provider')}}
                 </b-dropdown-item>
 
@@ -125,7 +125,7 @@
                   v-if="currentUserPermissions.includes('Suppliers_delete')"
                   @click="Remove_Provider(props.row.id)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="x" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="x" />
                   {{$t('Delete_Provider')}}
                 </b-dropdown-item>
                 </b-dropdown>
@@ -271,7 +271,7 @@
                 variant="primary"
                 type="submit"
                 :disabled="paymentProcessing"
-              ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+              ><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
               <div v-once class="typo__p" v-if="paymentProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
               </div>
@@ -363,7 +363,7 @@
                 variant="primary"
                 type="submit"
                 :disabled="payment_return_Processing"
-              ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+              ><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
               <div v-once class="typo__p" v-if="payment_return_Processing">
                 <div class="spinner sm spinner-primary mt-3"></div>
               </div>
@@ -537,7 +537,7 @@
           <!-- Custom Fields Section -->
           <div v-if="providerCustomFields && providerCustomFields.length > 0" class="mt-4">
             <h6 class="text-primary mb-3">
-              <lucide-icon class="mr-2" name="database-zap" />
+              <lucide-icon class="me-2" name="database-zap" />
               {{ $t('CustomFields') }}
             </h6>
             <table class="table table-striped table-md">
@@ -732,62 +732,62 @@ export default {
         {
           label: this.$t("Code"),
           field: "code",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Name"),
           field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("Phone"),
           field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Email"),
           field: "email",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("City"),
           field: "city",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Tax_Number"),
           field: "tax_number",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Total_Purchase_Due"),
           field: "due",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
          {
           label: this.$t("Total_Purchase_Return_Due"),
           field: "return_Due",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
 
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

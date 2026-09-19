@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Error_Logs')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="print-table-only" v-if="!isLoading">
       <vue-good-table
@@ -39,7 +39,9 @@
 
 <script>
 
+import { BCard, BButton } from "@/platform/bootstrap";
 export default {
+  components: { BCard, BButton },
   data() {
     return {
       logs: [],
@@ -111,7 +113,7 @@ export default {
       // Table Header
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
-        tableHtml += `<th class="text-left">${col.label}</th>`;
+        tableHtml += `<th class="text-start">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
 
@@ -126,7 +128,7 @@ export default {
             // Escape HTML and preserve whitespace
             cellContent = String(cellContent).replace(/</g, '&lt;').replace(/>/g, '&gt;');
           }
-          tableHtml += `<td class="text-left" style="${col.field === 'details' ? 'max-width: 400px; word-wrap: break-word; white-space: pre-wrap;' : ''}">${cellContent}</td>`;
+          tableHtml += `<td class="text-start" style="${col.field === 'details' ? 'max-width: 400px; word-wrap: break-word; white-space: pre-wrap;' : ''}">${cellContent}</td>`;
         });
         tableHtml += `</tr>`;
       });

@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Service_Technicians')" :folder="$t('Service_Maintenance')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <b-row>
@@ -26,8 +26,8 @@
                   {{ form.is_active ? $t('Actif') : $t('Inactif') }}
                 </b-form-checkbox>
               </b-form-group>
-              <div class="text-right">
-                <b-button size="sm" variant="secondary" class="mr-2" @click="resetForm">
+              <div class="text-end">
+                <b-button size="sm" variant="secondary" class="me-2" @click="resetForm">
                   {{ $t('Reset') }}
                 </b-button>
                 <b-button size="sm" type="submit" variant="primary">
@@ -58,7 +58,7 @@
                   <b-button
                     size="sm"
                     variant="outline-primary"
-                    class="mr-1"
+                    class="me-1"
                     @click="editTechnician(props.row)"
                   >
                     <lucide-icon name="pencil" />

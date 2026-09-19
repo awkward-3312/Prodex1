@@ -2,13 +2,13 @@
   <div>
     <b-alert variant="info" show class="info-alert-modern mb-4">
       <div class="d-flex align-items-start">
-        <lucide-icon class="mr-3 mt-1" name="info" />
+        <lucide-icon class="me-3 mt-1" name="info" />
         <div>
           <strong>Two-way customer sync:</strong> Sync customers between Stocky and WooCommerce.<br>
           <strong>Email is required</strong> for sync; customers without email are skipped.<br>
           Matching uses <strong>Email</strong> as the unique identifier to prevent duplicates.<br>
           <span v-if="lastSyncResult" class="d-block mt-2">
-            <lucide-icon class="mr-1 text-success" name="check-check" />
+            <lucide-icon class="me-1 text-success" name="check-check" />
             Last sync: 
             <span v-if="lastSyncResult.created > 0">Created: <strong>{{ lastSyncResult.created }}</strong></span>
             <span v-if="lastSyncResult.created > 0 && lastSyncResult.updated > 0"> · </span>
@@ -24,28 +24,28 @@
       <!-- Stocky Customers Tab -->
       <b-tab title="Stocky Customers" active>
         <template #title>
-          <lucide-icon class="mr-2" name="user" />
+          <lucide-icon class="me-2" name="user" />
           Stocky Customers
-          <span v-if="loadingStockyTab" class="mini-spinner ml-2"></span>
+          <span v-if="loadingStockyTab" class="mini-spinner ms-2"></span>
         </template>
 
-        <div v-if="loadingStockyTab" class="loading_page spinner spinner-primary mr-3"></div>
+        <div v-if="loadingStockyTab" class="loading_page spinner spinner-primary me-3"></div>
         <div v-show="!loadingStockyTab">
         <!-- Stocky Action Buttons -->
         <b-card class="action-card shadow-sm mb-4">
           <div class="d-flex flex-wrap align-items-center">
-            <b-button variant="info" class="btn-action-primary mr-3 mb-2 d-inline-flex align-items-center" @click="manualSync('push')" :disabled="syncing || syncMode !== null">
+            <b-button variant="info" class="btn-action-primary me-3 mb-2 d-inline-flex align-items-center" @click="manualSync('push')" :disabled="syncing || syncMode !== null">
               <template v-if="!syncing || syncMode !== 'push'">
-                <lucide-icon class="mr-2" name="arrow-right" />
+                <lucide-icon class="me-2" name="arrow-right" />
                 Sync Stocky to WooCommerce
               </template>
               <template v-else>
-                <span class="mini-spinner mr-2"></span>
+                <span class="mini-spinner me-2"></span>
                 Syncing...
               </template>
             </b-button>
-            <b-button variant="danger" size="sm" class="btn-action-danger mr-2 mb-2" :disabled="resetting" @click="resetSync">
-              <lucide-icon class="mr-1" name="refresh-ccw" />
+            <b-button variant="danger" size="sm" class="btn-action-danger me-2 mb-2" :disabled="resetting" @click="resetSync">
+              <lucide-icon class="me-1" name="refresh-ccw" />
               <span v-if="!resetting">Reset Sync State</span>
               <span v-else>Resetting...</span>
             </b-button>
@@ -114,10 +114,10 @@
             <template #table-row="props">
                 <span v-if="props.column.field === 'sync_status'">
                   <b-badge v-if="props.row.woocommerce_id && parseInt(props.row.woocommerce_id, 10) > 0" variant="success">
-                    <lucide-icon class="mr-1" name="check-check" /> Synced
+                    <lucide-icon class="me-1" name="check-check" /> Synced
                   </b-badge>
                   <b-badge v-else variant="warning">
-                    <lucide-icon class="mr-1" name="pause" /> Not Synced
+                    <lucide-icon class="me-1" name="pause" /> Not Synced
                   </b-badge>
                 </span>
               <span v-else-if="props.column.field === 'actions'">
@@ -128,10 +128,10 @@
                   :disabled="syncingCustomerId === props.row.id"
                 >
                   <template v-if="syncingCustomerId !== props.row.id">
-                    <lucide-icon class="mr-1" name="arrow-right" /> Sync
+                    <lucide-icon class="me-1" name="arrow-right" /> Sync
                   </template>
                   <template v-else>
-                    <span class="mini-spinner mr-1"></span> Syncing...
+                    <span class="mini-spinner me-1"></span> Syncing...
                   </template>
                 </b-button>
               </span>
@@ -144,28 +144,28 @@
       <!-- WooCommerce Customers Tab -->
       <b-tab title="WooCommerce Customers">
         <template #title>
-          <lucide-icon class="mr-2" name="shopping-bag" />
+          <lucide-icon class="me-2" name="shopping-bag" />
           WooCommerce Customers
-          <span v-if="loadingWooTab" class="mini-spinner ml-2"></span>
+          <span v-if="loadingWooTab" class="mini-spinner ms-2"></span>
         </template>
 
-        <div v-if="loadingWooTab" class="loading_page spinner spinner-primary mr-3"></div>
+        <div v-if="loadingWooTab" class="loading_page spinner spinner-primary me-3"></div>
         <div v-show="!loadingWooTab">
         <!-- WooCommerce Action Buttons -->
         <b-card class="action-card shadow-sm mb-4">
           <div class="d-flex flex-wrap align-items-center">
-            <b-button variant="success" class="btn-action-secondary mr-3 mb-2 d-inline-flex align-items-center" @click="manualSync('pull')" :disabled="syncing || syncMode !== null">
+            <b-button variant="success" class="btn-action-secondary me-3 mb-2 d-inline-flex align-items-center" @click="manualSync('pull')" :disabled="syncing || syncMode !== null">
               <template v-if="!syncing || syncMode !== 'pull'">
-                <lucide-icon class="mr-2" name="arrow-left" />
+                <lucide-icon class="me-2" name="arrow-left" />
                 Sync WooCommerce to Stocky
               </template>
               <template v-else>
-                <span class="mini-spinner mr-2"></span>
+                <span class="mini-spinner me-2"></span>
                 Syncing...
               </template>
             </b-button>
-            <b-button variant="danger" size="sm" class="btn-action-danger mr-2 mb-2" :disabled="resetting" @click="resetSync">
-              <lucide-icon class="mr-1" name="refresh-ccw" />
+            <b-button variant="danger" size="sm" class="btn-action-danger me-2 mb-2" :disabled="resetting" @click="resetSync">
+              <lucide-icon class="me-1" name="refresh-ccw" />
               <span v-if="!resetting">Reset Sync State</span>
               <span v-else>Resetting...</span>
             </b-button>
@@ -234,10 +234,10 @@
             <template #table-row="props">
               <span v-if="props.column.field === 'sync_status'">
                 <b-badge v-if="props.row.sync_status === 'synced'" variant="success">
-                  <lucide-icon class="mr-1" name="check-check" /> Synced
+                  <lucide-icon class="me-1" name="check-check" /> Synced
                 </b-badge>
                 <b-badge v-else variant="warning">
-                  <lucide-icon class="mr-1" name="pause" /> Not Synced
+                  <lucide-icon class="me-1" name="pause" /> Not Synced
                 </b-badge>
               </span>
               <span v-else-if="props.column.field === 'actions'">
@@ -248,10 +248,10 @@
                   :disabled="syncingCustomerId === props.row.id"
                 >
                   <template v-if="syncingCustomerId !== props.row.id">
-                    <lucide-icon class="mr-1" name="arrow-left" /> Sync
+                    <lucide-icon class="me-1" name="arrow-left" /> Sync
                   </template>
                   <template v-else>
-                    <span class="mini-spinner mr-1"></span> Syncing...
+                    <span class="mini-spinner me-1"></span> Syncing...
                   </template>
                 </b-button>
               </span>
@@ -264,13 +264,13 @@
       <!-- Sync Issues Tab -->
       <b-tab>
         <template #title>
-          <lucide-icon class="mr-2" name="alert-triangle" />
+          <lucide-icon class="me-2" name="alert-triangle" />
           Sync Issues
-          <span v-if="loadingIssuesTab" class="mini-spinner ml-2"></span>
-          <b-badge v-if="issuesTotalRows > 0" variant="danger" class="ml-2">{{ issuesTotalRows }}</b-badge>
+          <span v-if="loadingIssuesTab" class="mini-spinner ms-2"></span>
+          <b-badge v-if="issuesTotalRows > 0" variant="danger" class="ms-2">{{ issuesTotalRows }}</b-badge>
         </template>
 
-        <div v-if="loadingIssuesTab" class="loading_page spinner spinner-primary mr-3"></div>
+        <div v-if="loadingIssuesTab" class="loading_page spinner spinner-primary me-3"></div>
         <div v-show="!loadingIssuesTab">
         <b-alert variant="warning" show class="mb-4">
           Review and resolve customer sync problems (email conflicts, missing email, ambiguous matches).
@@ -311,7 +311,7 @@
                 <b-button
                   size="sm"
                   variant="success"
-                  class="mr-2"
+                  class="me-2"
                   @click="resolveIssue(props.row)"
                   :disabled="syncingCustomerId === props.row.id"
                 >
@@ -320,7 +320,7 @@
                 <b-button
                   size="sm"
                   variant="info"
-                  class="mr-2"
+                  class="me-2"
                   @click="manualLinkIssue(props.row)"
                   :disabled="syncingCustomerId === props.row.id"
                 >
@@ -403,26 +403,26 @@ export default {
         {
           label: this.$t('Code'),
           field: 'code',
-          tdClass: 'text-left',
-          thClass: 'text-left',
+          tdClass: 'text-start',
+          thClass: 'text-start',
         },
         {
           label: this.$t('Name'),
           field: 'name',
-          tdClass: 'text-left',
-          thClass: 'text-left',
+          tdClass: 'text-start',
+          thClass: 'text-start',
         },
         {
           label: this.$t('Email'),
           field: 'email',
-          tdClass: 'text-left',
-          thClass: 'text-left',
+          tdClass: 'text-start',
+          thClass: 'text-start',
         },
         {
           label: this.$t('Phone'),
           field: 'phone',
-          tdClass: 'text-left',
-          thClass: 'text-left',
+          tdClass: 'text-start',
+          thClass: 'text-start',
         },
         {
           label: 'Sync Status',
@@ -445,32 +445,32 @@ export default {
         {
           label: 'ID',
           field: 'id',
-          tdClass: 'text-left',
-          thClass: 'text-left',
+          tdClass: 'text-start',
+          thClass: 'text-start',
         },
         {
           label: this.$t('Name'),
           field: 'name',
-          tdClass: 'text-left',
-          thClass: 'text-left',
+          tdClass: 'text-start',
+          thClass: 'text-start',
         },
         {
           label: this.$t('Email'),
           field: 'email',
-          tdClass: 'text-left',
-          thClass: 'text-left',
+          tdClass: 'text-start',
+          thClass: 'text-start',
         },
         {
           label: this.$t('Phone'),
           field: 'phone',
-          tdClass: 'text-left',
-          thClass: 'text-left',
+          tdClass: 'text-start',
+          thClass: 'text-start',
         },
         {
           label: 'City',
           field: 'city',
-          tdClass: 'text-left',
-          thClass: 'text-left',
+          tdClass: 'text-start',
+          thClass: 'text-start',
         },
         {
           label: 'Sync Status',
@@ -490,15 +490,15 @@ export default {
     },
     issuesColumns() {
       return [
-        { label: 'ID', field: 'id', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Name'), field: 'name', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Email'), field: 'email', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Phone'), field: 'phone', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Woo ID', field: 'woocommerce_id', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Issue', field: 'sync_issue_type_label', tdClass: 'text-left', thClass: 'text-left', sortable: false },
-        { label: 'Message', field: 'sync_issue_message', tdClass: 'text-left', thClass: 'text-left', sortable: false },
-        { label: 'Source', field: 'sync_issue_source', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'At', field: 'sync_issue_at', tdClass: 'text-left', thClass: 'text-left' },
+        { label: 'ID', field: 'id', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Name'), field: 'name', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Email'), field: 'email', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Phone'), field: 'phone', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Woo ID', field: 'woocommerce_id', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Issue', field: 'sync_issue_type_label', tdClass: 'text-start', thClass: 'text-start', sortable: false },
+        { label: 'Message', field: 'sync_issue_message', tdClass: 'text-start', thClass: 'text-start', sortable: false },
+        { label: 'Source', field: 'sync_issue_source', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'At', field: 'sync_issue_at', tdClass: 'text-start', thClass: 'text-start' },
         { label: 'Actions', field: 'actions', tdClass: 'text-center', thClass: 'text-center', sortable: false },
       ];
     },

@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Marketing_Settings')" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-form @submit.prevent="Save_Settings" v-if="!isLoading">
       <b-row>
         <!-- SMS Provider -->
@@ -66,7 +66,7 @@
 
         <b-col md="12">
           <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-            <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('Save_Settings') }}
+            <lucide-icon class="me-2 fw-bold" name="check" /> {{ $t('Save_Settings') }}
           </b-button>
           <div v-if="SubmitProcessing" class="spinner sm spinner-primary mt-3"></div>
         </b-col>

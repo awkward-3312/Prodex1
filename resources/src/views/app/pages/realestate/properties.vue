@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Properties')" :folder="$t('Real_Estate')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <b-row class="mb-3">
         <b-col md="3">
@@ -64,7 +64,7 @@
             <span v-else class="text-muted">—</span>
           </span>
           <span v-else-if="props.column.field == 'title'">
-            <a class="cursor-pointer text-primary font-weight-bold" @click="Edit_Property(props.row.id)">{{ props.row.title }}</a>
+            <a class="cursor-pointer text-primary fw-bold" @click="Edit_Property(props.row.id)">{{ props.row.title }}</a>
             <div class="text-small text-muted">{{ [props.row.city, props.row.region].filter(Boolean).join(', ') }}</div>
           </span>
           <span v-else-if="props.column.field == 'category'">
@@ -123,14 +123,14 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("Image"), field: "featured_image", sortable: false, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Property_Title"), field: "title", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Property_Type"), field: "category", sortable: false, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Purpose"), field: "purpose", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Price"), field: "price", tdClass: "text-left", thClass: "text-left" },
+        { label: this.$t("Image"), field: "featured_image", sortable: false, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Property_Title"), field: "title", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Property_Type"), field: "category", sortable: false, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Purpose"), field: "purpose", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Price"), field: "price", tdClass: "text-start", thClass: "text-start" },
         { label: this.$t("Featured"), field: "featured", sortable: false, tdClass: "text-center", thClass: "text-center" },
-        { label: this.$t("Status"), field: "status", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", sortable: false, tdClass: "text-left", thClass: "text-left" }
+        { label: this.$t("Status"), field: "status", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", sortable: false, tdClass: "text-start", thClass: "text-start" }
       ];
     }
   },

@@ -6,11 +6,11 @@
     <div class="ai-reports-header mb-4">
       <b-card class="header-card shadow-soft border-0">
         <div class="d-flex align-items-center">
-          <div class="header-icon-wrapper mr-3">
+          <div class="header-icon-wrapper me-3">
             <lucide-icon class="header-icon" name="lightbulb" />
           </div>
           <div class="flex-grow-1">
-            <h4 class="mb-1 font-weight-bold text-white">AI Reports</h4>
+            <h4 class="mb-1 fw-bold text-white">AI Reports</h4>
             <p class="mb-0 text-white" style="opacity: 0.9;">Get instant insights with AI-powered report questions</p>
           </div>
         </div>
@@ -21,7 +21,7 @@
     <b-card class="mb-4 shadow-soft border-0 question-card">
       <div class="card-header-custom mb-4">
         <h5 class="mb-0">
-          <lucide-icon class="mr-2 text-primary" name="help-circle" />
+          <lucide-icon class="me-2 text-primary" name="help-circle" />
           Quick Report Questions
         </h5>
       </div>
@@ -67,8 +67,8 @@
             block
             class="btn-run"
           >
-            <lucide-icon class="mr-1" name="play" v-if="!isLoading" />
-            <span v-if="isLoading" class="spinner-border spinner-border-sm mr-1"></span>
+            <lucide-icon class="me-1" name="play" v-if="!isLoading" />
+            <span v-if="isLoading" class="spinner-border spinner-border-sm me-1"></span>
             <span v-if="!isLoading">Run</span>
             <span v-else>Running...</span>
           </b-button>
@@ -110,11 +110,11 @@
         <div class="success-banner mb-4">
           <b-card class="shadow-soft border-0 success-card">
             <div class="d-flex align-items-center">
-              <div class="success-icon-wrapper mr-3">
+              <div class="success-icon-wrapper me-3">
                 <lucide-icon name="check" />
               </div>
               <div class="flex-grow-1">
-                <h5 class="mb-1 font-weight-bold">Report Generated Successfully</h5>
+                <h5 class="mb-1 fw-bold">Report Generated Successfully</h5>
                 <p class="mb-0 text-muted">Your AI-powered insights are ready</p>
               </div>
               <div class="report-timestamp">
@@ -127,16 +127,16 @@
         <!-- Filters Summary -->
         <b-card class="mb-4 shadow-soft border-0 filters-summary-card animated-card">
           <div class="filters-header mb-3">
-            <h6 class="mb-0 font-weight-bold">
-              <lucide-icon class="text-primary mr-2" name="filter" />
+            <h6 class="mb-0 fw-bold">
+              <lucide-icon class="text-primary me-2" name="filter" />
               Report Filters
             </h6>
           </div>
           <div class="filters-content">
-            <div class="filter-badge mb-2 mr-2" v-for="(filter, index) in activeFilters" :key="index">
-              <lucide-icon class="mr-2" :name="filter.icon" />
+            <div class="filter-badge mb-2 me-2" v-for="(filter, index) in activeFilters" :key="index">
+              <lucide-icon class="me-2" :name="filter.icon" />
               <strong>{{ filter.label }}:</strong>
-              <span class="ml-1">{{ filter.value }}</span>
+              <span class="ms-1">{{ filter.value }}</span>
             </div>
           </div>
         </b-card>
@@ -148,11 +148,11 @@
         >
             <div class="insights-header">
               <div class="d-flex align-items-center mb-3">
-                <div class="insights-icon-wrapper mr-3">
+                <div class="insights-icon-wrapper me-3">
                   <lucide-icon class="insights-icon" name="lightbulb" />
                 </div>
                 <div class="flex-grow-1">
-                  <h5 class="mb-0 font-weight-bold">AI Insights</h5>
+                  <h5 class="mb-0 fw-bold">AI Insights</h5>
                   <small class="text-white-50">Automated analysis of your data</small>
                 </div>
                 <div class="insights-badge">
@@ -173,21 +173,21 @@
           <b-card class="mb-4 shadow-soft border-0 report-actions-card">
             <div class="d-flex align-items-center justify-content-between flex-wrap">
               <div class="report-title-section">
-                <h4 class="mb-1 font-weight-bold">
-                  <lucide-icon class="text-primary mr-2" name="bar-chart-2" />
+                <h4 class="mb-1 fw-bold">
+                  <lucide-icon class="text-primary me-2" name="bar-chart-2" />
                   {{ reportResult.question.title }}
                 </h4>
                 <p class="text-muted mb-0 small">{{ questionUi.subtitle }}</p>
               </div>
               <div class="report-actions">
-                <b-button variant="outline-primary" size="sm" class="mr-2" @click="exportToPDF('daily_sales')">
-                  <lucide-icon class="mr-1" name="file-text" /> PDF
+                <b-button variant="outline-primary" size="sm" class="me-2" @click="exportToPDF('daily_sales')">
+                  <lucide-icon class="me-1" name="file-text" /> PDF
                 </b-button>
-                <b-button variant="outline-success" size="sm" class="mr-2" @click="exportToExcel('daily_sales')">
-                  <lucide-icon class="mr-1" name="file-spreadsheet" /> Excel
+                <b-button variant="outline-success" size="sm" class="me-2" @click="exportToExcel('daily_sales')">
+                  <lucide-icon class="me-1" name="file-spreadsheet" /> Excel
                 </b-button>
                 <b-button variant="outline-secondary" size="sm" @click="printReport('daily_sales')">
-                  <lucide-icon class="mr-1" name="printer" /> Print
+                  <lucide-icon class="me-1" name="printer" /> Print
                 </b-button>
               </div>
             </div>
@@ -196,15 +196,15 @@
           <!-- AI Explanation Card -->
           <b-card v-if="reportResult.insights" class="mb-4 shadow-soft border-0 ai-explanation-card">
             <div class="d-flex align-items-start">
-              <div class="ai-icon-wrapper mr-3">
+              <div class="ai-icon-wrapper me-3">
                 <lucide-icon name="brain" />
               </div>
               <div class="flex-grow-1">
-                <h6 class="mb-2 font-weight-bold">AI Analysis & Insights</h6>
+                <h6 class="mb-2 fw-bold">AI Analysis & Insights</h6>
                 <p class="mb-0 ai-explanation-text">{{ reportResult.insights }}</p>
                 <div class="ai-suggestions mt-3" v-if="getAISuggestions('daily_sales').length > 0">
                   <strong class="d-block mb-2 small">Key Recommendations:</strong>
-                  <ul class="mb-0 pl-3">
+                  <ul class="mb-0 ps-3">
                     <li v-for="(suggestion, idx) in getAISuggestions('daily_sales')" :key="idx" class="small">
                       {{ suggestion }}
                     </li>
@@ -217,8 +217,8 @@
           <!-- KPI Cards -->
           <b-card class="mb-4 shadow-soft border-0">
             <div class="card-header-custom mb-3">
-              <h6 class="mb-0 font-weight-bold">
-                <lucide-icon class="mr-2 text-primary" name="layout-dashboard" />
+              <h6 class="mb-0 fw-bold">
+                <lucide-icon class="me-2 text-primary" name="layout-dashboard" />
                 Key Performance Indicators
               </h6>
             </div>
@@ -239,8 +239,8 @@
           <!-- Chart Visualization -->
           <b-card class="mb-4 shadow-soft border-0">
             <div class="card-header-custom mb-3">
-              <h6 class="mb-0 font-weight-bold">
-                <lucide-icon class="mr-2 text-primary" name="trending-up" />
+              <h6 class="mb-0 fw-bold">
+                <lucide-icon class="me-2 text-primary" name="trending-up" />
                 {{ questionUi.chartTitle }}
               </h6>
             </div>
@@ -261,21 +261,21 @@
           <b-card class="mb-4 shadow-soft border-0 report-actions-card">
             <div class="d-flex align-items-center justify-content-between flex-wrap">
               <div class="report-title-section">
-                <h4 class="mb-1 font-weight-bold">
-                  <lucide-icon class="text-primary mr-2" name="bar-chart-2" />
+                <h4 class="mb-1 fw-bold">
+                  <lucide-icon class="text-primary me-2" name="bar-chart-2" />
                   {{ reportResult.question.title }}
                 </h4>
                 <p class="text-muted mb-0 small">{{ questionUi.subtitle }}</p>
               </div>
               <div class="report-actions">
-                <b-button variant="outline-primary" size="sm" class="mr-2" @click="exportToPDF('products')">
-                  <lucide-icon class="mr-1" name="file-text" /> PDF
+                <b-button variant="outline-primary" size="sm" class="me-2" @click="exportToPDF('products')">
+                  <lucide-icon class="me-1" name="file-text" /> PDF
                 </b-button>
-                <b-button variant="outline-success" size="sm" class="mr-2" @click="exportToExcel('products')">
-                  <lucide-icon class="mr-1" name="file-spreadsheet" /> Excel
+                <b-button variant="outline-success" size="sm" class="me-2" @click="exportToExcel('products')">
+                  <lucide-icon class="me-1" name="file-spreadsheet" /> Excel
                 </b-button>
                 <b-button variant="outline-secondary" size="sm" @click="printReport('products')">
-                  <lucide-icon class="mr-1" name="printer" /> Print
+                  <lucide-icon class="me-1" name="printer" /> Print
                 </b-button>
               </div>
             </div>
@@ -284,15 +284,15 @@
           <!-- AI Explanation Card -->
           <b-card v-if="reportResult.insights" class="mb-4 shadow-soft border-0 ai-explanation-card">
             <div class="d-flex align-items-start">
-              <div class="ai-icon-wrapper mr-3">
+              <div class="ai-icon-wrapper me-3">
                 <lucide-icon name="brain" />
               </div>
               <div class="flex-grow-1">
-                <h6 class="mb-2 font-weight-bold">AI Analysis & Insights</h6>
+                <h6 class="mb-2 fw-bold">AI Analysis & Insights</h6>
                 <p class="mb-0 ai-explanation-text">{{ reportResult.insights }}</p>
                 <div class="ai-suggestions mt-3" v-if="getAISuggestions('products').length > 0">
                   <strong class="d-block mb-2 small">Key Recommendations:</strong>
-                  <ul class="mb-0 pl-3">
+                  <ul class="mb-0 ps-3">
                     <li v-for="(suggestion, idx) in getAISuggestions('products')" :key="idx" class="small">
                       {{ suggestion }}
                     </li>
@@ -305,8 +305,8 @@
           <!-- Chart Visualization -->
           <b-card class="mb-4 shadow-soft border-0 animated-card">
             <div class="card-header-custom mb-3">
-              <h6 class="mb-0 font-weight-bold">
-                <lucide-icon class="mr-2 text-primary" name="bar-chart" />
+              <h6 class="mb-0 fw-bold">
+                <lucide-icon class="me-2 text-primary" name="bar-chart" />
                 {{ questionUi.chartTitle }}
               </h6>
             </div>
@@ -326,8 +326,8 @@
             <div class="card-header-custom mb-3">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <h6 class="mb-0 font-weight-bold">
-                    <lucide-icon class="mr-2 text-primary" name="table" />
+                  <h6 class="mb-0 fw-bold">
+                    <lucide-icon class="me-2 text-primary" name="table" />
                     {{ questionUi.tableTitle }}
                   </h6>
                   <p class="text-muted mb-0 mt-1 small">{{ questionUi.tableSubtitle }}</p>
@@ -365,7 +365,7 @@
                 <span class="text-danger">{{ money(props.row.cost) }}</span>
               </span>
               <span v-else-if="props.column.field === 'profit'">
-                <span class="text-primary font-weight-bold">{{ money(props.row.profit) }}</span>
+                <span class="text-primary fw-bold">{{ money(props.row.profit) }}</span>
               </span>
               <span v-else-if="props.column.field === 'margin_percent'">
                 <b-badge :variant="props.row.margin_percent >= 30 ? 'success' : props.row.margin_percent >= 15 ? 'warning' : 'danger'">
@@ -386,21 +386,21 @@
           <b-card class="mb-4 shadow-soft border-0 report-actions-card">
             <div class="d-flex align-items-center justify-content-between flex-wrap">
               <div class="report-title-section">
-                <h4 class="mb-1 font-weight-bold">
-                  <lucide-icon class="text-warning mr-2" name="alert-triangle" />
+                <h4 class="mb-1 fw-bold">
+                  <lucide-icon class="text-warning me-2" name="alert-triangle" />
                   {{ reportResult.question.title }}
                 </h4>
                 <p class="text-muted mb-0 small">{{ questionUi.subtitle }}</p>
               </div>
               <div class="report-actions">
-                <b-button variant="outline-primary" size="sm" class="mr-2" @click="exportToPDF('late_payments')">
-                  <lucide-icon class="mr-1" name="file-text" /> PDF
+                <b-button variant="outline-primary" size="sm" class="me-2" @click="exportToPDF('late_payments')">
+                  <lucide-icon class="me-1" name="file-text" /> PDF
                 </b-button>
-                <b-button variant="outline-success" size="sm" class="mr-2" @click="exportToExcel('late_payments')">
-                  <lucide-icon class="mr-1" name="file-spreadsheet" /> Excel
+                <b-button variant="outline-success" size="sm" class="me-2" @click="exportToExcel('late_payments')">
+                  <lucide-icon class="me-1" name="file-spreadsheet" /> Excel
                 </b-button>
                 <b-button variant="outline-secondary" size="sm" @click="printReport('late_payments')">
-                  <lucide-icon class="mr-1" name="printer" /> Print
+                  <lucide-icon class="me-1" name="printer" /> Print
                 </b-button>
               </div>
             </div>
@@ -409,15 +409,15 @@
           <!-- AI Explanation Card -->
           <b-card v-if="reportResult.insights" class="mb-4 shadow-soft border-0 ai-explanation-card">
             <div class="d-flex align-items-start">
-              <div class="ai-icon-wrapper mr-3">
+              <div class="ai-icon-wrapper me-3">
                 <lucide-icon name="brain" />
               </div>
               <div class="flex-grow-1">
-                <h6 class="mb-2 font-weight-bold">AI Analysis & Insights</h6>
+                <h6 class="mb-2 fw-bold">AI Analysis & Insights</h6>
                 <p class="mb-0 ai-explanation-text">{{ reportResult.insights }}</p>
                 <div class="ai-suggestions mt-3" v-if="getAISuggestions('late_payments').length > 0">
                   <strong class="d-block mb-2 small">Key Recommendations:</strong>
-                  <ul class="mb-0 pl-3">
+                  <ul class="mb-0 ps-3">
                     <li v-for="(suggestion, idx) in getAISuggestions('late_payments')" :key="idx" class="small">
                       {{ suggestion }}
                     </li>
@@ -473,8 +473,8 @@
           <!-- Chart Visualization -->
           <b-card class="mb-4 shadow-soft border-0 animated-card">
             <div class="card-header-custom mb-3">
-              <h6 class="mb-0 font-weight-bold">
-                <lucide-icon class="mr-2 text-primary" name="pie-chart" />
+              <h6 class="mb-0 fw-bold">
+                <lucide-icon class="me-2 text-primary" name="pie-chart" />
                 {{ questionUi.chartTitle }}
               </h6>
             </div>
@@ -493,8 +493,8 @@
             <div class="card-header-custom mb-3">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <h6 class="mb-0 font-weight-bold">
-                    <lucide-icon class="mr-2 text-primary" name="table" />
+                  <h6 class="mb-0 fw-bold">
+                    <lucide-icon class="me-2 text-primary" name="table" />
                     Customer Payment Details
                   </h6>
                   <p class="text-muted mb-0 mt-1 small">Complete list of customers with overdue payments</p>
@@ -523,7 +523,7 @@
           >
             <template #table-row="props">
               <span v-if="props.column.field === 'outstanding_amount'">
-                <span class="text-danger font-weight-bold">{{ money(props.row.outstanding_amount) }}</span>
+                <span class="text-danger fw-bold">{{ money(props.row.outstanding_amount) }}</span>
               </span>
               <span v-else-if="props.column.field === 'max_days_overdue'">
                 <b-badge :variant="props.row.max_days_overdue > 60 ? 'danger' : props.row.max_days_overdue > 30 ? 'warning' : 'info'">
@@ -702,43 +702,43 @@ export default {
         {
           label: 'Product',
           field: 'name',
-          tdClass: 'text-left',
-          thClass: 'text-left'
+          tdClass: 'text-start',
+          thClass: 'text-start'
         },
         {
           label: 'Quantity',
           field: 'qty',
           type: 'number',
-          tdClass: 'text-right',
-          thClass: 'text-right'
+          tdClass: 'text-end',
+          thClass: 'text-end'
         },
         {
           label: 'Revenue',
           field: 'revenue',
           type: 'number',
-          tdClass: 'text-right',
-          thClass: 'text-right'
+          tdClass: 'text-end',
+          thClass: 'text-end'
         },
         {
           label: 'Cost',
           field: 'cost',
           type: 'number',
-          tdClass: 'text-right',
-          thClass: 'text-right'
+          tdClass: 'text-end',
+          thClass: 'text-end'
         },
         {
           label: 'Profit',
           field: 'profit',
           type: 'number',
-          tdClass: 'text-right',
-          thClass: 'text-right'
+          tdClass: 'text-end',
+          thClass: 'text-end'
         },
         {
           label: 'Margin %',
           field: 'margin_percent',
           type: 'number',
-          tdClass: 'text-right',
-          thClass: 'text-right'
+          tdClass: 'text-end',
+          thClass: 'text-end'
         }
       ];
     },
@@ -747,8 +747,8 @@ export default {
         {
           label: 'Customer',
           field: 'name',
-          tdClass: 'text-left',
-          thClass: 'text-left'
+          tdClass: 'text-start',
+          thClass: 'text-start'
         },
         {
           label: 'Invoices Count',
@@ -761,8 +761,8 @@ export default {
           label: 'Outstanding Amount',
           field: 'outstanding_amount',
           type: 'number',
-          tdClass: 'text-right',
-          thClass: 'text-right'
+          tdClass: 'text-end',
+          thClass: 'text-end'
         },
         {
           label: 'Max Days Overdue',

@@ -28,8 +28,8 @@
                           <div class="status-icon-wrapper" :class="statusIconClass">
                             <lucide-icon :name="statusIcon" :class="{ 'spin-icon': updating }" />
                           </div>
-                          <div class="ml-3">
-                            <h5 class="mb-1 font-weight-bold">{{ statusTitle }}</h5>
+                          <div class="ms-3">
+                            <h5 class="mb-1 fw-bold">{{ statusTitle }}</h5>
                             <p class="mb-0 small opacity-80">{{ statusDescription }}</p>
                           </div>
                         </div>
@@ -47,7 +47,7 @@
                                 {{ $t('Installed_Version') }}
                               </div>
                               <div class="version-number">
-                                <span class="h3 font-weight-bold mb-0">v{{ currentVersion }}</span>
+                                <span class="h3 fw-bold mb-0">v{{ currentVersion }}</span>
                               </div>
                               <div class="text-muted small mt-1">
                                 {{ $t('Currently_Running') }}
@@ -65,7 +65,7 @@
                                 {{ $t('Latest_Version') }}
                               </div>
                               <div class="version-number">
-                                <span class="h3 font-weight-bold mb-0">
+                                <span class="h3 fw-bold mb-0">
                                   {{ latestVersion ? 'v' + latestVersion : '—' }}
                                 </span>
                               </div>
@@ -83,7 +83,7 @@
                           <px-button variant="secondary" size="sm" icon="repeat" :loading="checking" :disabled="checking" @click="checkForUpdates">
                             {{ $t('Check_for_Updates') }}
                           </px-button>
-                          <span class="text-muted small ml-3" v-if="lastChecked">
+                          <span class="text-muted small ms-3" v-if="lastChecked">
                             {{ lastCheckedText }}
                           </span>
                         </div>
@@ -107,7 +107,7 @@
                   <div class="card inner-card h-100">
                     <div class="card-body p-4">
                       <div class="d-flex align-items-center justify-content-between mb-3">
-                        <h6 class="font-weight-bold mb-0">{{ $t('System_Checks') }}</h6>
+                        <h6 class="fw-bold mb-0">{{ $t('System_Checks') }}</h6>
                         <px-button variant="ghost" size="sm" icon-only icon="repeat" :loading="preflightLoading" :disabled="preflightLoading" aria-label="Run checks" @click="run_preflight" />
                       </div>
                       <div v-if="preflight" class="preflight-checks">
@@ -124,7 +124,7 @@
                       <div v-if="preflight" class="mt-3 pt-3 border-top">
                         <div class="d-flex align-items-center">
                           <span class="check-dot" :class="canUpdate ? 'bg-success' : 'bg-danger'"></span>
-                          <span class="small font-weight-bold">
+                          <span class="small fw-bold">
                             {{ canUpdate ? $t('All_checks_passed') : $t('Some_checks_failed') }}
                           </span>
                         </div>
@@ -137,7 +137,7 @@
                 <div class="col-12 mb-4" v-if="updating">
                   <div class="card inner-card">
                     <div class="card-body p-4">
-                      <h6 class="font-weight-bold mb-3">{{ $t('Update_Progress') }}</h6>
+                      <h6 class="fw-bold mb-3">{{ $t('Update_Progress') }}</h6>
 
                       <!-- Step Tracker -->
                       <div class="step-tracker">
@@ -159,7 +159,7 @@
                             <div v-if="index < updateSteps.length - 1" class="step-line" :class="{ 'active': isStepComplete(step) }"></div>
                           </div>
                           <div class="step-content mt-2">
-                            <div class="small font-weight-bold">{{ step.label }}</div>
+                            <div class="small fw-bold">{{ step.label }}</div>
                             <div class="text-muted" style="font-size: 0.7rem;">{{ step.description }}</div>
                           </div>
                         </div>
@@ -169,7 +169,7 @@
                       <div class="mt-4">
                         <div class="d-flex justify-content-between mb-1">
                           <span class="small text-muted">{{ currentStepLabel }}</span>
-                          <span class="small font-weight-bold">{{ updatePercent }}%</span>
+                          <span class="small fw-bold">{{ updatePercent }}%</span>
                         </div>
                         <div class="progress" style="height: 6px; border-radius: 3px;">
                           <div
@@ -191,8 +191,8 @@
                 <div class="col-lg-8 col-md-12 mb-4" v-if="changelog && changelog.length">
                   <div class="card inner-card">
                     <div class="card-body p-4">
-                      <h6 class="font-weight-bold mb-3">
-                        <lucide-icon class="mr-2" name="clipboard-list" />
+                      <h6 class="fw-bold mb-3">
+                        <lucide-icon class="me-2" name="clipboard-list" />
                         {{ $t('Release_Notes') }}
                       </h6>
                       <div class="changelog-list">
@@ -203,14 +203,14 @@
                           :class="{ 'border-bottom pb-3 mb-3': idx < changelog.length - 1 }"
                         >
                           <div class="d-flex align-items-center mb-2">
-                            <span class="badge badge-pill mr-2" :class="entry.version === latestVersion ? 'badge-primary' : 'badge-light'">
+                            <span class="badge badge-pill me-2" :class="entry.version === latestVersion ? 'badge-primary' : 'badge-light'">
                               v{{ entry.version }}
                             </span>
                             <span class="text-muted small" v-if="entry.date">{{ entry.date }}</span>
                           </div>
-                          <ul class="changelog-items mb-0 pl-3">
+                          <ul class="changelog-items mb-0 ps-3">
                             <li v-for="(item, i) in entry.items" :key="i" class="small mb-1">
-                              <span class="changelog-tag mr-1" :class="'tag-' + (item.type || 'misc')">
+                              <span class="changelog-tag me-1" :class="'tag-' + (item.type || 'misc')">
                                 {{ (item.type || 'misc').toUpperCase() }}
                               </span>
                               {{ item.text }}
@@ -226,8 +226,8 @@
                 <div :class="changelog && changelog.length ? 'col-lg-4' : 'col-lg-12'" class="col-md-12 mb-4" v-if="updateHistory && updateHistory.length">
                   <div class="card inner-card">
                     <div class="card-body p-4">
-                      <h6 class="font-weight-bold mb-3">
-                        <lucide-icon class="mr-2" name="clock" />
+                      <h6 class="fw-bold mb-3">
+                        <lucide-icon class="me-2" name="clock" />
                         {{ $t('Update_History') }}
                       </h6>
                       <div class="table-responsive">
@@ -241,7 +241,7 @@
                           </thead>
                           <tbody>
                             <tr v-for="(h, idx) in updateHistory" :key="idx">
-                              <td class="font-weight-bold">v{{ h.version }}</td>
+                              <td class="fw-bold">v{{ h.version }}</td>
                               <td>
                                 <span class="badge badge-pill" :class="h.status === 'success' ? 'badge-success' : 'badge-danger'">
                                   {{ h.status }}

@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div
       v-else-if="!loading && currentUserPermissions && currentUserPermissions.includes('dashboard')"
@@ -17,7 +17,7 @@
                 <h2 class="mb-1 text-dark">{{ $t('dashboard') }}</h2>
                 <p class="welcome-text mb-0">{{ $t('Welcome_back_message', { username: currentUser.username }) }}</p>
               </div>
-              <div class="col-md-6 text-right dashboard-header-filters-col">
+              <div class="col-md-6 text-end dashboard-header-filters-col">
                 <div class="dashboard-header-filters d-flex align-items-center justify-content-end gap-2 flex-wrap">
                   <div class="warehouse-filter">
                     <v-select
@@ -29,11 +29,11 @@
                       :clearable="true"
                     >
                       <template v-slot:option="option">
-                        <lucide-icon class="mr-2" name="home" />
+                        <lucide-icon class="me-2" name="home" />
                         {{ option.label }}
                       </template>
                       <template v-slot:selected-option="option">
-                        <lucide-icon class="mr-2" name="home" />
+                        <lucide-icon class="me-2" name="home" />
                         {{ option ? option.label : $t('Filter_by_warehouse') }}
                       </template>
                     </v-select>
@@ -50,7 +50,7 @@
                     >
                       <template v-slot:input="picker">
                         <button type="button" class="date-picker-header-btn">
-                          <lucide-icon class="mr-2" name="calendar-days" />
+                          <lucide-icon class="me-2" name="calendar-days" />
                           <span>{{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}</span>
                         </button>
                       </template>
@@ -298,7 +298,7 @@
               <div class="table-card-body">
                 <vue-good-table
                   :columns="columns_stock"
-                  row-style-class="text-left"
+                  row-style-class="text-start"
                   :rows="stock_alerts"
                   :pagination-options="{ enabled: false }"
                 >
@@ -323,13 +323,13 @@
               <div class="table-card-body">
                 <vue-good-table
                   :columns="columns_products"
-                  row-style-class="text-left"
+                  row-style-class="text-start"
                   :rows="products"
                   :pagination-options="{ enabled: false }"
                 >
                   <template #table-row="props">
                     <div v-if="props.column.field == 'total'">
-                      <span class="font-weight-bold text-success">{{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}</span>
+                      <span class="fw-bold text-success">{{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}</span>
                     </div>
                   </template>
                 </vue-good-table>
@@ -350,7 +350,7 @@
                 <vue-good-table
                   v-if="!loading"
                   :columns="columns_sales"
-                  row-style-class="text-left"
+                  row-style-class="text-start"
                   :rows="sales"
                   :pagination-options="{ enabled: false }"
                 >
@@ -405,6 +405,7 @@
 </template>
 
 <script>
+import { BRow, BCol } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
 import VueApexCharts from "vue-apexcharts";
 import DateRangePicker from "vue2-daterange-picker";
@@ -474,7 +475,7 @@ import {
 } from "../../../utils/priceFormat";
 
 export default {
-  components: {
+  components: { BRow, BCol,
     apexchart: VueApexCharts,
     "date-range-picker": DateRangePicker,
   },
@@ -671,30 +672,30 @@ export default {
 
     columns_sales() {
       return [
-        { label: this.$t("Reference"), field: "Ref", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Customer"), field: "client_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Status"), field: "statut", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Total"), field: "GrandTotal", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Paid"), field: "paid_amount", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Due"), field: "due", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("PaymentStatus"), field: "payment_status", sortable: false, tdClass: "text-left", thClass: "text-left" }
+        { label: this.$t("Reference"), field: "Ref", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Customer"), field: "client_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Status"), field: "statut", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Total"), field: "GrandTotal", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Paid"), field: "paid_amount", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Due"), field: "due", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("PaymentStatus"), field: "payment_status", sortable: false, tdClass: "text-start", thClass: "text-start" }
       ];
     },
     columns_stock() {
       return [
-        { label: this.$t("ProductCode"), field: "code", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("ProductName"), field: "name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("warehouse"), field: "warehouse", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Quantity"), field: "quantity", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("AlertQuantity"), field: "stock_alert", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("ProductCode"), field: "code", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("ProductName"), field: "name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("warehouse"), field: "warehouse", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Quantity"), field: "quantity", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("AlertQuantity"), field: "stock_alert", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     },
     columns_products() {
       return [
-        { label: this.$t("ProductName"), field: "name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("TotalSales"), field: "total_sales", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("TotalAmount"), field: "total", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("ProductName"), field: "name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("TotalSales"), field: "total_sales", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("TotalAmount"), field: "total", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     },
 

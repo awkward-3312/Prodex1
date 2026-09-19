@@ -12,7 +12,7 @@
       </router-link>
     </div>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else-if="job" class="service-job-details-container">
       <!-- Hero Header -->
@@ -427,9 +427,9 @@
                 <tr>
                   <th>{{ $t('Type') || 'Type' }}</th>
                   <th>{{ $t('Description') || 'Description' }}</th>
-                  <th class="text-right">{{ $t('Qty') }}</th>
-                  <th class="text-right">{{ $t('Unit_Price') }}</th>
-                  <th class="text-right">{{ $t('Total') }}</th>
+                  <th class="text-end">{{ $t('Qty') }}</th>
+                  <th class="text-end">{{ $t('Unit_Price') }}</th>
+                  <th class="text-end">{{ $t('Total') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -441,19 +441,19 @@
                     </span>
                   </td>
                   <td class="td-strong">{{ row.description }}</td>
-                  <td class="text-right">{{ row.quantity }}</td>
-                  <td class="text-right">{{ currencySymbol }}{{ formatNumber(row.unit_price) }}</td>
-                  <td class="text-right td-amount">{{ currencySymbol }}{{ formatNumber(row.total) }}</td>
+                  <td class="text-end">{{ row.quantity }}</td>
+                  <td class="text-end">{{ currencySymbol }}{{ formatNumber(row.unit_price) }}</td>
+                  <td class="text-end td-amount">{{ currencySymbol }}{{ formatNumber(row.total) }}</td>
                 </tr>
               </tbody>
               <tfoot>
                 <tr v-if="job.diagnostic_fee > 0" class="tfoot-row">
-                  <td colspan="4" class="text-right">{{ $t('Diagnostic_Fee') || 'Diagnostic Fee' }}</td>
-                  <td class="text-right">{{ currencySymbol }}{{ formatNumber(job.diagnostic_fee) }}</td>
+                  <td colspan="4" class="text-end">{{ $t('Diagnostic_Fee') || 'Diagnostic Fee' }}</td>
+                  <td class="text-end">{{ currencySymbol }}{{ formatNumber(job.diagnostic_fee) }}</td>
                 </tr>
                 <tr class="tfoot-row tfoot-row--grand">
-                  <td colspan="4" class="text-right">{{ $t('Grand_Total') || 'Grand Total' }}</td>
-                  <td class="text-right">{{ currencySymbol }}{{ formatNumber(job.total_amount) }}</td>
+                  <td colspan="4" class="text-end">{{ $t('Grand_Total') || 'Grand Total' }}</td>
+                  <td class="text-end">{{ currencySymbol }}{{ formatNumber(job.total_amount) }}</td>
                 </tr>
               </tfoot>
             </table>
@@ -497,7 +497,7 @@
                   <th>{{ $t('Date') }}</th>
                   <th>{{ $t('Kind') || 'Kind' }}</th>
                   <th>{{ $t('Method') || 'Method' }}</th>
-                  <th class="text-right">{{ $t('Amount') }}</th>
+                  <th class="text-end">{{ $t('Amount') }}</th>
                   <th>{{ $t('Notes') }}</th>
                 </tr>
               </thead>
@@ -520,7 +520,7 @@
                     <span v-if="p.payment_method" class="method-pill">{{ p.payment_method }}</span>
                     <span v-else class="text-muted">—</span>
                   </td>
-                  <td class="text-right td-amount" :class="p.payment_kind === 'refund' ? 'text-danger' : ''">
+                  <td class="text-end td-amount" :class="p.payment_kind === 'refund' ? 'text-danger' : ''">
                     {{ p.payment_kind === 'refund' ? '-' : '' }}{{ currencySymbol }}{{ formatNumber(p.montant) }}
                   </td>
                   <td>
@@ -1766,7 +1766,7 @@ export default {
   padding: 12px 14px;
   text-align: left;
 }
-.modern-table thead th.text-right { text-align: right; }
+.modern-table thead th.text-end { text-align: right; }
 .modern-table tbody td {
   padding: 14px;
   border-top: 1px solid #f1f5f9;

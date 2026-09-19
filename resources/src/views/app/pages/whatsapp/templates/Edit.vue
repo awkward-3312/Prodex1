@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb page="Editar plantilla" folder="WhatsApp" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-row v-if="!isLoading">
       <b-col md="7">
@@ -37,7 +37,7 @@
             <b-button variant="primary" @click="save" :disabled="saving">
               <lucide-icon name="check" /> Actualizar
             </b-button>
-            <router-link to="/app/whatsapp/templates" class="btn btn-outline-secondary ml-2">Cancelar</router-link>
+            <router-link to="/app/whatsapp/templates" class="btn btn-outline-secondary ms-2">Cancelar</router-link>
           </div>
         </b-card>
       </b-col>
