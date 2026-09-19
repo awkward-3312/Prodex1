@@ -77,6 +77,8 @@ export function applyPrimaryColor(color) {
     .form-control:focus { border-color: ${lighter} !important; box-shadow: 0 0 0 0.2rem ${soft} !important; }
     .custom-control-input:checked ~ .custom-control-label::before { background-color: ${color} !important; border-color: ${color} !important; }
     .custom-control-input:focus ~ .custom-control-label::before { box-shadow: 0 0 0 0.2rem ${soft} !important; }
+    .form-check-input.px-bvn-check:checked { background-color: ${color} !important; border-color: ${color} !important; }
+    .form-check-input.px-bvn-check:focus { box-shadow: 0 0 0 0.2rem ${soft} !important; }
     .custom-select:focus { border-color: ${lighter} !important; box-shadow: 0 0 0 0.2rem ${soft} !important; }
     .switch input:checked + .slider { background-color: ${color} !important; }
     .checkbox-primary input:checked ~ .checkmark,

@@ -87,10 +87,11 @@
 </template>
 
 <script>
+import { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormSelectOption } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormSelectOption },
   metaInfo: { title: "Create Support Ticket" },
   data() {
     return {

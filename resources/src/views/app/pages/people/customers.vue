@@ -1025,6 +1025,7 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
 import { BSpinner } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
@@ -1289,7 +1290,7 @@ export default {
       this.portalClient.email = row.email || "";
       this.portalClient.password = "";
       this.portalClient.errors = [];
-      this.$bvModal.show("modal_portal_client");
+      modals.show("modal_portal_client");
     },
 
     onPortalModalShow() {
@@ -1351,7 +1352,7 @@ export default {
           })
           .then(({ data }) => {
             this.makeToast("success", data.message || this.$t("Successfully_Updated"), this.$t("Success"));
-            this.$bvModal.hide("modal_portal_client");
+            modals.hide("modal_portal_client");
             this.Get_Clients(this.serverParams.page);
           })
           .catch((e) => {
@@ -1381,7 +1382,7 @@ export default {
           .post("clients/" + clientId + "/portal-disable")
           .then(({ data }) => {
             this.makeToast("success", data.message || (this.$t("Portal_Disabled") || "Portal disabled"), this.$t("Success"));
-            this.$bvModal.hide("modal_portal_client");
+            modals.hide("modal_portal_client");
             this.Get_Clients(this.serverParams.page);
           })
           .catch(() => {
@@ -1477,7 +1478,7 @@ export default {
       this.get_client_store_data(client.id);
       this.client_store.NewPassword = null;
       setTimeout(() => {
-        this.$bvModal.show("form_Edit_Online_Store_Account");
+        modals.show("form_Edit_Online_Store_Account");
       }, 500);
     },
 
@@ -1612,7 +1613,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1752,7 +1753,7 @@ export default {
 
     //----------------------------------- Show import Client -------------------------------\\
     Show_import_clients() {
-      this.$bvModal.show("importClients");
+      modals.show("importClients");
     },
 
     //------------------------------ Event Import clients -------------------------------\\
@@ -2110,7 +2111,7 @@ export default {
       this.payment.opening_balance = row.opening_balance || 0;
       this.payment.date = new Date().toISOString().slice(0, 10);
       setTimeout(() => {
-        this.$bvModal.show("modal_Pay_due");
+        modals.show("modal_Pay_due");
       }, 500);
       
     },
@@ -2160,9 +2161,9 @@ export default {
           Object.assign(this.payment, paymentDataForReceipt);
           
           // Close payment modal and show receipt
-          this.$bvModal.hide("modal_Pay_due");
+          modals.hide("modal_Pay_due");
           setTimeout(() => {
-            this.$bvModal.show("Show_invoice");
+            modals.show("Show_invoice");
           }, 300);
           
           // Refresh clients data without affecting receipt
@@ -2246,7 +2247,7 @@ export default {
       this.payment_return.payment_method_id = null;
       this.payment_return.date = new Date().toISOString().slice(0, 10);
       setTimeout(() => {
-        this.$bvModal.show("modal_Pay_return_due");
+        modals.show("modal_Pay_return_due");
       }, 500);
       
     },
@@ -2330,12 +2331,12 @@ export default {
 
     Fire.$on("get_credit_card_details", () => {
       setTimeout(() => NProgress.done(), 500);
-      this.$bvModal.show("show_credit_card_details");
+      modals.show("show_credit_card_details");
     });
 
     Fire.$on("Get_Details_customers", () => {
       setTimeout(() => NProgress.done(), 500);
-      this.$bvModal.show("showDetails");
+      modals.show("showDetails");
     });
 
     // Event_pay_due is now handled directly in Submit_Pay_due method
@@ -2347,15 +2348,15 @@ export default {
     Fire.$on("Event_pay_return_due", () => {
       setTimeout(() => {
         this.Get_Clients(this.serverParams.page);
-        this.$bvModal.hide("modal_Pay_return_due");
+        modals.hide("modal_Pay_return_due");
       }, 500);
-       this.$bvModal.show("Show_invoice_return");
+       modals.show("Show_invoice_return");
     });
 
     Fire.$on("Event_edit_store_account", () => {
       setTimeout(() => {
         this.Get_Clients(this.serverParams.page);
-        this.$bvModal.hide("form_Edit_Online_Store_Account");
+        modals.hide("form_Edit_Online_Store_Account");
       }, 500);
     });
 
@@ -2375,7 +2376,7 @@ export default {
     Fire.$on("Event_import", () => {
       setTimeout(() => {
         this.Get_Clients(this.serverParams.page);
-        this.$bvModal.hide("importClients");
+        modals.hide("importClients");
       }, 500);
     });
   }

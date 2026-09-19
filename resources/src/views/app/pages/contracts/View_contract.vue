@@ -218,11 +218,12 @@
 </template>
 
 <script>
-import { modals } from "@/platform";
+import { BFormGroup, BFormInput, BFormTextarea, BFormSelect } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import DOMPurify from "dompurify";
 
-export default {
+export default { components: { BFormGroup, BFormInput, BFormTextarea, BFormSelect },
   metaInfo: { title: "View Contract" },
   data() {
     return {
@@ -270,7 +271,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$bvToast.toast(msg, { title: title || this.$t("Notice") || "Notice", variant: variant, solid: true });
+      notifications.notify(msg, { title: title || this.$t("Notice") || "Notice", variant: variant, solid: true });
     },
     formatDate(val) {
       if (!val) return "";

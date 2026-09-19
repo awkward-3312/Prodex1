@@ -516,6 +516,7 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
 import { BSpinner } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
@@ -862,7 +863,7 @@ export default {
       this.payment.opening_balance = this.client.opening_balance || 0;
       this.payment.date = new Date().toISOString().slice(0, 10);
       setTimeout(() => {
-        this.$bvModal.show("modal_Pay_due");
+        modals.show("modal_Pay_due");
       }, 500);
     },
 
@@ -917,9 +918,9 @@ export default {
           Object.assign(this.payment, paymentDataForReceipt);
           
           // Close payment modal and show receipt
-          this.$bvModal.hide("modal_Pay_due");
+          modals.hide("modal_Pay_due");
           setTimeout(() => {
-            this.$bvModal.show("Show_invoice");
+            modals.show("Show_invoice");
           }, 300);
           
           // Refresh data without affecting receipt
@@ -1015,7 +1016,7 @@ export default {
 
     // Make Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

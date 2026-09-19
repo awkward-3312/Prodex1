@@ -116,6 +116,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
@@ -225,7 +226,7 @@ export default {
       try {
         if (this.isEdit) await axios.put(`/roles/${this.resolvedRoleId}`, payload, { meta: { skipErrorRedirect: true } });
         else await axios.post('/roles', payload, { meta: { skipErrorRedirect: true } });
-        this.$root.$bvToast.toast(this.isEdit ? 'Rol actualizado correctamente.' : 'Rol creado correctamente.', { title: 'Éxito', variant: 'success', solid: true });
+        notifications.notify(this.isEdit ? 'Rol actualizado correctamente.' : 'Rol creado correctamente.', { title: 'Éxito', variant: 'success', solid: true });
         this.$router.push('/app/User_Management/permissions');
       } catch (e) {
         this.error = this.errorMessage(e, 'No se pudo guardar el rol.');

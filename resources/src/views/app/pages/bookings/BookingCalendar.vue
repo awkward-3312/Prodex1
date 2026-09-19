@@ -99,6 +99,7 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
 export default {
@@ -376,7 +377,7 @@ export default {
         notes: data.notes
       };
 
-      this.$bvModal.show("booking-calendar-detail-modal");
+      modals.show("booking-calendar-detail-modal");
     },
 
     statusLabel(status) {
@@ -403,7 +404,7 @@ export default {
       return "";
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

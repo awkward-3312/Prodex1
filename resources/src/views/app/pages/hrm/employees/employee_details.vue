@@ -834,12 +834,13 @@
 
 
 <script>
+import { vBTooltip } from "@/platform/bootstrap";
 import { confirmDialog, modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import Datepicker from "vuejs-datepicker";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Details Employee"
   },

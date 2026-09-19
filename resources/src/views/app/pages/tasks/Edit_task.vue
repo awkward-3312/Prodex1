@@ -188,10 +188,11 @@
 </template>
 
 <script>
+import { BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BFormGroup, BFormInput, BFormInvalidFeedback },
   metaInfo: {
     title: "Edit Task"
   },

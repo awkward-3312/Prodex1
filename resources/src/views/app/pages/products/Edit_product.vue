@@ -95,7 +95,7 @@
                     type="submit"
                     :disabled="quickWarehouseLocationSubmitting"
                   >
-                    <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
+                    <lucide-icon class="font-weight-bold" name="check" /> {{ $t('submit') }}
                   </b-button>
                   <div v-if="quickWarehouseLocationSubmitting" class="spinner-inline">
                     <div class="spinner sm spinner-primary mt-2"></div>
@@ -456,7 +456,7 @@
                           alt=""
                         >
                       </div>
-                      <div class="flex-grow-1 gallery-item-meta ms-2 me-2">
+                      <div class="flex-grow-1 gallery-item-meta">
                         <div class="small text-truncate font-weight-medium text-dark">{{ row.image_path }}</div>
                         <div v-if="row.is_main" class="mt-1">
                           <b-badge variant="success" class="gallery-main-badge">{{ $t('MainImage') }}</b-badge>
@@ -1555,7 +1555,7 @@
                   </table>
                 </div>
                 <b-button variant="primary" size="sm" @click="add_pack()">
-                  <lucide-icon class="me-2" name="plus" />{{ $t('Add_Pack') || 'Add Pack' }}
+                  <lucide-icon name="plus" />{{ $t('Add_Pack') || 'Add Pack' }}
                 </b-button>
               </b-card>
             </div>
@@ -1581,7 +1581,7 @@
                       ></b-form-input>
                       <b-input-group-append>
                         <b-button variant="primary" @click="add_variant(tag)">
-                          <lucide-icon class="me-2" name="plus" />{{ $t('Add') }}
+                          <lucide-icon name="plus" />{{ $t('Add') }}
                         </b-button>
                       </b-input-group-append>
                     </b-input-group>

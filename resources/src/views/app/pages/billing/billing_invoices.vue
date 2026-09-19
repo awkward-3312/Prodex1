@@ -37,10 +37,10 @@
             </thead>
             <tbody>
               <tr v-for="inv in invoices" :key="inv.id">
-                <td class="td-billing"><span class="fw-bold">{{ inv.invoice_number || '—' }}</span></td>
+                <td class="td-billing"><span>{{ inv.invoice_number || '—' }}</span></td>
                 <td class="td-billing">{{ inv.plan_name }}</td>
                 <td class="td-billing">
-                  <span class="fw-bold">{{ currencySymbol }}{{ inv.total.toFixed(2) }}</span>
+                  <span>{{ currencySymbol }}{{ inv.total.toFixed(2) }}</span>
                   <span class="text-muted small">{{ inv.currency }}</span>
                 </td>
                 <td class="td-billing">{{ inv.gateway_label }}</td>

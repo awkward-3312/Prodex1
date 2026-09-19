@@ -16,7 +16,9 @@ const OUT = path.resolve(process.argv[2] || 'visual-out');
 const ONLY = (process.argv[3] || '').split(',').filter(Boolean); // nombres de pantalla a capturar (vacío = todas)
 fs.mkdirSync(OUT, { recursive: true });
 
-const SCREENS = [
+// VISUAL_SCREENS=<archivo.json> reemplaza la lista: [{ name, url, user?, click?: "texto|selector", waitFor?: "selector" }].
+const SCREENS_FILE = process.env.VISUAL_SCREENS ? JSON.parse(fs.readFileSync(path.resolve(process.env.VISUAL_SCREENS), 'utf8')).map((s) => [s.name, s.url, s.user || 'admin', s]) : null;
+const SCREENS = SCREENS_FILE || [
   ['tickets', '/app/support/tickets'],
   ['calendario', '/app/meeting/calendar'],
   ['plantillas-rol', '/app/organization/role-templates'],
@@ -43,7 +45,7 @@ const VIEWPORTS = [
 (async () => {
   const browser = await chromium.launch();
   for (const [vpName, viewport, rtl] of VIEWPORTS) {
-    for (const [name, url, user = 'admin'] of SCREENS) {
+    for (const [name, url, user = 'admin', extra = {}] of SCREENS) {
       if (ONLY.length && !ONLY.includes(name)) continue;
       const ctx = await browser.newContext({ baseURL: env.baseURL, viewport, storageState: path.join(env.authDir, `${user}.json`), locale: 'es-ES', reducedMotion: 'reduce' });
       const page = await ctx.newPage();
@@ -57,6 +59,12 @@ const VIEWPORTS = [
           const tab = page.getByRole('tab', { name: /gu[ií]a|guide/i }).first();
           if (await tab.count()) await tab.click();
         }
+        if (extra.click) {
+          const target = extra.click.startsWith('css:') ? page.locator(extra.click.slice(4)).first() : page.locator('button, a.btn, .btn').filter({ hasText: new RegExp(extra.click, 'i') }).first();
+          await target.click();
+          await page.waitForTimeout(600);
+        }
+        if (extra.waitFor) await page.waitForSelector(extra.waitFor, { timeout: 10_000 });
         await page.waitForTimeout(1500);
         await page.screenshot({ path: path.join(OUT, `${name}__${vpName}.png`), fullPage: true });
         console.log('ok', name, vpName);

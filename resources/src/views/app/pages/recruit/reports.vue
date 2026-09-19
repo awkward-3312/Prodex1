@@ -109,7 +109,8 @@
 </template>
 
 <script>
-export default {
+import { BFormGroup, BFormSelect, BFormSelectOption } from "@/platform/bootstrap";
+export default { components: { BFormGroup, BFormSelect, BFormSelectOption },
   metaInfo: { title: "Informes de reclutamiento" },
   data() {
     return {

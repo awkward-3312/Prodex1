@@ -87,7 +87,7 @@
                     </div>
                     <div class="billing-detail-row">
                       <span class="billing-label">{{ $t('Amount') || 'Amount' }}</span>
-                      <span class="billing-value fw-bold">{{ currencySymbol }}{{ subscription.amount.toFixed(2) }} {{ subscription.currency }}</span>
+                      <span class="billing-value">{{ currencySymbol }}{{ subscription.amount.toFixed(2) }} {{ subscription.currency }}</span>
                     </div>
                     <div class="billing-detail-row">
                       <span class="billing-label">{{ $t('start_date') || 'Start Date' }}</span>
@@ -106,7 +106,7 @@
                     <div class="billing-detail-row">
                       <span class="billing-label">{{ $t('Days_Remaining') || 'Days Remaining' }}</span>
                       <span class="billing-value">
-                        <span :class="subscription.days_remaining <= 7 ? 'text-danger fw-bold' : ''">
+                        <span :class="subscription.days_remaining <= 7 ? 'text-danger' : ''">
                           {{ subscription.days_remaining }} {{ $t('days') || 'days' }}
                         </span>
                       </span>
@@ -347,8 +347,8 @@ export default {
 
     limitValueClass(limit) {
       if (limit.unlimited) return 'text-primary';
-      if (limit.percentage >= 100) return 'text-danger fw-bold';
-      if (limit.percentage >= 80) return 'text-warning fw-bold';
+      if (limit.percentage >= 100) return 'text-danger';
+      if (limit.percentage >= 80) return 'text-warning';
       return '';
     },
 

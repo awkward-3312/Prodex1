@@ -576,6 +576,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import moment from "moment";
 import VueApexCharts from "vue-apexcharts";
@@ -1723,7 +1724,7 @@ export default {
       return '';
     },
     makeToast(variant, title, message) {
-      this.$bvToast.toast(message, {
+      notifications.notify(message, {
         title: title,
         variant: variant,
         solid: true,

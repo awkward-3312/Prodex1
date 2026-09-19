@@ -107,7 +107,7 @@
 </template>
 
 <script>
-import { confirmDialog } from "@/platform";
+import { confirmDialog, notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import VueApexCharts from "vue-apexcharts";
@@ -151,7 +151,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$bvToast.toast(msg, { title: title || this.$t("Notice") || "Notice", variant: variant, solid: true });
+      notifications.notify(msg, { title: title || this.$t("Notice") || "Notice", variant: variant, solid: true });
     },
     updateParams(newProps) {
       this.serverParams = Object.assign({}, this.serverParams, newProps);

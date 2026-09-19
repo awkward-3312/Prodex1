@@ -9,6 +9,7 @@
 // `compatConfig: { MODE: 3 }`. Es configuración del propio componente, no un parche de su lógica; desaparece al quitar compat.
 import { h } from 'vue';
 import { createBootstrap } from 'bootstrap-vue-next/plugins';
+import { vBTooltip as _vBTooltip } from 'bootstrap-vue-next/directives';
 import { BButton as _BButton, BCloseButton } from 'bootstrap-vue-next/components/BButton';
 import { BBadge as _BBadge } from 'bootstrap-vue-next/components/BBadge';
 import { BAlert as _BAlert } from 'bootstrap-vue-next/components/BAlert';
@@ -20,6 +21,13 @@ import {
   BCardText as _BCardText, BCardTitle as _BCardTitle, BCardSubtitle as _BCardSubtitle,
 } from 'bootstrap-vue-next/components/BCard';
 import { BProgress, BProgressBar } from 'bootstrap-vue-next/components/BProgress';
+import { BFormGroup as _BFormGroup } from 'bootstrap-vue-next/components/BFormGroup';
+import { BFormInput as _BFormInput } from 'bootstrap-vue-next/components/BFormInput';
+import { BFormTextarea as _BFormTextarea } from 'bootstrap-vue-next/components/BFormTextarea';
+import { BFormCheckbox as _BFormCheckbox } from 'bootstrap-vue-next/components/BFormCheckbox';
+import { BFormRadio as _BFormRadio } from 'bootstrap-vue-next/components/BFormRadio';
+import { BFormSelect as _BFormSelect, BFormSelectOption as _BFormSelectOption } from 'bootstrap-vue-next/components/BFormSelect';
+import { BFormInvalidFeedback as _BFormInvalidFeedback } from 'bootstrap-vue-next/components/BForm';
 
 const VUE3 = { MODE: 3 };
 
@@ -66,6 +74,64 @@ export const BBadge = wrapper('BBadge', _BBadge, { variant: { type: String, defa
   variant: null,
   class: [`badge-${props.variant}`, attrs.class],
 }));
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Formularios simples (fase 2). Contrato Vue 3 explícito, SIN adaptador de eventos de Vue 2:
+//   - `v-model` = `modelValue` + `update:modelValue` (modificadores `.trim` / `.number` vía `modelModifiers`, los implementa BVN).
+//   - `@input` / `@change` sobre b-form-input / b-form-select / b-form-textarea / b-form-checkbox son los eventos NATIVOS del
+//     elemento (reciben un `Event`), no el valor que emitía BootstrapVue 2: las vistas que necesitan el valor usan
+//     `@update:model-value` o leen el modelo.
+//   - no hay props `value`, `checked`, `trim`, `number`, `lazy` (BV2): `:model-value`, `.trim`, `.number`, `.lazy`.
+//   - BFormInput / BFormTextarea / BFormInvalidFeedback / BFormSelectOption: solo MODE 3 (marcado ya idéntico).
+//   - BFormGroup: clase `form-group` (margen inferior de BS4) y `label-for=""` por defecto (fieldset + legend, como BV2).
+//   - BFormSelect: se añade `custom-select` (+ `-sm` / `-lg`), que es lo que estila la base BS4 y el tema; BVN emite `form-select`.
+//   - BFormCheckbox / BFormRadio: clase `px-bvn-check` en el input para que el puente pinte la casilla/radio como el `custom-control` de BS4.
+// Quitar estas clases cuando la hoja base pase a Bootstrap 5.
+// ---------------------------------------------------------------------------------------------------------------------------------
+export const BFormGroup = pure({
+  name: 'BFormGroup',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots }) {
+    // BootstrapVue 2 sin `label-for` pintaba `fieldset.form-group > legend.col-form-label.pt-0`, marcado que la capa de diseño ya estila
+    // (también dentro de modales). BootstrapVueNext localizaría el input hijo y emitiría `label.form-label`; `label-for=""` (no es
+    // nulo) mantiene el marcado de BV2. Si la vista pasa `label-for`, se respeta.
+    return () => {
+      const explicit = 'label-for' in attrs || 'labelFor' in attrs;
+      return h(_BFormGroup, { ...attrs, ...(explicit ? {} : { labelFor: '' }), class: [attrs.class, 'form-group'] }, slots);
+    };
+  },
+});
+export const BFormInput = pure(_BFormInput);
+export const BFormTextarea = pure(_BFormTextarea);
+export const BFormInvalidFeedback = pure(_BFormInvalidFeedback);
+export const BFormSelectOption = pure(_BFormSelectOption);
+
+export const BFormSelect = pure({
+  name: 'BFormSelect',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots }) {
+    return () => {
+      const size = attrs.size === 'sm' || attrs.size === 'lg' ? attrs.size : null;
+      return h(_BFormSelect, { ...attrs, class: [attrs.class, 'custom-select', size ? `custom-select-${size}` : null] }, slots);
+    };
+  },
+});
+
+// BFormRadio aplica `class` al <input>; BFormCheckbox, al contenedor. Para tener el mismo gancho en ambos, la marca va SIEMPRE en el
+// input (`inputClass` en la casilla, `class` en el radio) y el puente localiza el contenedor con `:has(> .px-bvn-check)`.
+const checkWrapper = (name, component, mark) => pure({
+  name,
+  inheritAttrs: false,
+  setup(_props, { attrs, slots }) {
+    return () => h(component, mark(attrs), slots);
+  },
+});
+export const BFormCheckbox = checkWrapper('BFormCheckbox', _BFormCheckbox, (attrs) => ({ ...attrs, inputClass: [attrs.inputClass, attrs['input-class'], 'px-bvn-check'] }));
+export const BFormRadio = checkWrapper('BFormRadio', _BFormRadio, (attrs) => ({ ...attrs, class: [attrs.class, 'px-bvn-check'] }));
+
+// Directiva `v-b-tooltip` de BootstrapVueNext (Floating UI). Se registra localmente (`directives: { 'b-tooltip': vBTooltip }`); la global de
+// BootstrapVue 2 sigue en las vistas no migradas. Hooks de Vue 3 (`mounted/updated/beforeUnmount`): no depende de `CUSTOM_DIR`.
+export const vBTooltip = _vBTooltip;
 
 /** Plugin de aplicación (registros, RTL, valores por defecto). No registra componentes: se importan explícitamente. */
 export const bootstrapPlugin = createBootstrap({ components: {} });

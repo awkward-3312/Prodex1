@@ -52,9 +52,10 @@
 </template>
 
 <script>
+import { BFormSelect } from "@/platform/bootstrap";
 import moment from 'moment';
 
-export default {
+export default { components: { BFormSelect },
   props: { store: { type: Object, default: null } },
   data() {
     return {

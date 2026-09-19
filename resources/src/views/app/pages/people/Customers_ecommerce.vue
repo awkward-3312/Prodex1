@@ -149,6 +149,7 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 
@@ -253,7 +254,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true,
@@ -335,7 +336,7 @@ export default {
       this.form.client_name = row.client_name;
       this.form.email = row.email;
       this.form.status = !!row.status;
-      this.$bvModal.show("Edit_Ecommerce_Account");
+      modals.show("Edit_Ecommerce_Account");
     },
 
     // Confirm delete
@@ -406,7 +407,7 @@ export default {
               this.$t("Updated_in_successfully"),
               this.$t("Success")
             );
-            this.$bvModal.hide("Edit_Ecommerce_Account");
+            modals.hide("Edit_Ecommerce_Account");
             this.getAccounts(this.serverParams.page);
           })
           .catch((error) => {

@@ -237,6 +237,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 
 // --- Small reusable toolbar for search + per-page ---
 const ListToolbar = {
@@ -509,7 +510,7 @@ export default {
       } catch (err) {
         const fallbackMsg = (this.$t && this.$t('Failed_to_export') !== 'Failed_to_export') ? this.$t('Failed_to_export') : 'Failed to export PDF'
         if (this.$bvToast) {
-          this.$bvToast.toast(fallbackMsg, { title: this.$t ? this.$t('Error') : 'Error', variant: 'danger', solid: true })
+          notifications.notify(fallbackMsg, { title: this.$t ? this.$t('Error') : 'Error', variant: 'danger', solid: true })
         } else {
           // eslint-disable-next-line no-alert
           alert(fallbackMsg)

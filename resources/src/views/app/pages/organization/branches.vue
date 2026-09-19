@@ -195,6 +195,7 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
 export default {
   metaInfo: { title: 'Sucursales' },
   data() {
@@ -270,7 +271,7 @@ export default {
       this.form = this.emptyForm();
       this.editing = false;
       this.error = '';
-      this.$bvModal.show('branch-modal');
+      modals.show('branch-modal');
     },
     openEdit(branch) {
       this.editing = true;
@@ -290,7 +291,7 @@ export default {
         create_storage_location: false,
         is_active: !!branch.is_active,
       };
-      this.$bvModal.show('branch-modal');
+      modals.show('branch-modal');
     },
     async saveBranch() {
       if (!this.form.name) return;
@@ -299,9 +300,9 @@ export default {
       try {
         if (this.editing) await axios.put(`/organization/branches/${this.form.id}`, this.form, this.apiConfig());
         else await axios.post('/organization/branches', this.form, this.apiConfig());
-        this.$bvModal.hide('branch-modal');
+        modals.hide('branch-modal');
         await Promise.all([this.loadOptions(), this.loadBranches()]);
-        this.$root.$bvToast.toast('Sucursal guardada correctamente.', { title: 'Éxito', variant: 'success', solid: true });
+        notifications.notify('Sucursal guardada correctamente.', { title: 'Éxito', variant: 'success', solid: true });
       } catch (e) {
         const data = (e && e.response && e.response.data) || (e && typeof e === 'object' ? e : null);
         this.error = (data && (data.message || (data.errors && Object.values(data.errors)[0][0]))) || 'No se pudo guardar la sucursal.';
@@ -313,7 +314,7 @@ export default {
       this.locationBranch = branch;
       this.locationForm = this.emptyLocationForm();
       this.locationError = '';
-      this.$bvModal.show('location-modal');
+      modals.show('location-modal');
     },
     async saveLocation() {
       if (!this.locationBranch || !this.locationForm.name || !this.locationForm.code) return;
@@ -321,9 +322,9 @@ export default {
       this.locationError = '';
       try {
         await axios.post(`/organization/branches/${this.locationBranch.id}/inventory-locations`, this.locationForm, this.apiConfig());
-        this.$bvModal.hide('location-modal');
+        modals.hide('location-modal');
         await this.loadBranches();
-        this.$root.$bvToast.toast('Ubicación de inventario creada.', { title: 'Éxito', variant: 'success', solid: true });
+        notifications.notify('Ubicación de inventario creada.', { title: 'Éxito', variant: 'success', solid: true });
       } catch (e) {
         const data = (e && e.response && e.response.data) || (e && typeof e === 'object' ? e : null);
         this.locationError = (data && (data.message || (data.errors && Object.values(data.errors)[0][0]))) || 'No se pudo crear la ubicación.';

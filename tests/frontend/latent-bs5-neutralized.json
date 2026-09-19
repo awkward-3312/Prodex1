@@ -1,0 +1,588 @@
+[
+ {
+  "file": "views/app/pages/adjustment/Create_Adjustment.vue",
+  "line": 338,
+  "was": "<b-button variant=\"primary\" :disabled=\"SubmitProcessing || hasBatchValidationErrors\" @click=\"Submit_Adjustment\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/adjustment/Edit_Adjustment.vue",
+  "line": 346,
+  "was": "<b-button variant=\"primary\" :disabled=\"SubmitProcessing || hasBatchValidationErrors\" @click=\"Submit_Adjustment\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/billing_history.vue",
+  "line": 40,
+  "was": "<td class=\"td-billing\"><span class=\"fw-bold\">{{ p.invoice_number || '—' }}</span></td>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/billing_history.vue",
+  "line": 42,
+  "was": "<td class=\"td-billing\"><span class=\"fw-bold\">{{ currencySymbol }}{{ p.amount.toFixed(2) }}</span> <span class=\"text-muted small\">{{ p.currency }}</span></td>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/billing_invoices.vue",
+  "line": 40,
+  "was": "<td class=\"td-billing\"><span class=\"fw-bold\">{{ inv.invoice_number || '—' }}</span></td>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/billing_invoices.vue",
+  "line": 43,
+  "was": "<span class=\"fw-bold\">{{ currencySymbol }}{{ inv.total.toFixed(2) }}</span>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 38,
+  "was": "<div class=\"summary-row\"><span class=\"text-muted\">{{ $t('Plan') || 'Plan' }}</span><span class=\"fw-bold\">{{ plan.name }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 39,
+  "was": "<div class=\"summary-row\"><span class=\"text-muted\">{{ $t('Billing_Cycle') || 'Billing Cycle' }}</span><span class=\"fw-bold\">{{ selectedCycleLabel }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 41,
+  "was": "<div class=\"summary-row\"><span class=\"text-muted\">{{ $t('Subtotal') || 'Subtotal' }}</span><span class=\"fw-bold\">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 42,
+  "was": "<div class=\"summary-row\"><span class=\"text-muted\">{{ $t('Tax') || 'Tax' }}</span><span class=\"fw-bold\">{{ currencySymbol }}0.00</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 45,
+  "was": "<span class=\"fw-bold summary-total-label\">{{ $t('Total') || 'Total' }}</span>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 46,
+  "was": "<span class=\"fw-bold text-primary summary-total-amount\">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 51,
+  "was": "<div class=\"small fw-bold\">Paddle Sandbox</div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 56,
+  "was": "<span v-else class=\"fw-bold\">{{ paddlePreviewDisplay || paddleFallbackPrice }}</span>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 73,
+  "was": "<div class=\"small fw-bold text-muted text-uppercase mb-2\">{{ $t('Included') || 'Included' }}</div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 96,
+  "was": "<div class=\"fw-bold\">{{ $t('Monthly') || 'Monthly' }}</div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 99,
+  "was": "<span class=\"fw-bold\">{{ currencySymbol }}{{ plan.price.toFixed(2) }}</span>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 106,
+  "was": "<div class=\"fw-bold\">",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 112,
+  "was": "<span class=\"fw-bold\">{{ currencySymbol }}{{ plan.yearly_price.toFixed(2) }}</span>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 137,
+  "was": "<div class=\"fw-bold small\">{{ gw.label }}</div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 157,
+  "was": "<p class=\"mb-0 fw-bold amount-value\">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</p>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 190,
+  "was": "<p class=\"mb-1 fw-bold small-label\">{{ $t('Instructions') || 'Instructions' }}</p>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 204,
+  "was": "<label class=\"fw-bold small-label mb-2\">",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 216,
+  "was": "<p class=\"mb-1 fw-bold small-label\">{{ $t('Click_or_drag') || 'Click or drag file here' }}</p>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/checkout.vue",
+  "line": 221,
+  "was": "<p class=\"mb-0 fw-bold small-label\">{{ proofFile.name }}</p>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/current_plan.vue",
+  "line": 90,
+  "was": "<span class=\"billing-value fw-bold\">{{ currencySymbol }}{{ subscription.amount.toFixed(2) }} {{ subscription.currency }}</span>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/current_plan.vue",
+  "line": 109,
+  "was": "<span :class=\"subscription.days_remaining <= 7 ? 'text-danger fw-bold' : ''\">",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/current_plan.vue",
+  "line": 350,
+  "was": "if (limit.percentage >= 100) return 'text-danger fw-bold';",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/current_plan.vue",
+  "line": 351,
+  "was": "if (limit.percentage >= 80) return 'text-warning fw-bold';",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/payment_failed.vue",
+  "line": 16,
+  "was": "<div class=\"detail-row\"><span class=\"text-muted\">{{ $t('Plan') || 'Plan' }}</span><span class=\"fw-bold\">{{ payment.plan_name }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/payment_failed.vue",
+  "line": 17,
+  "was": "<div class=\"detail-row\"><span class=\"text-muted\">{{ $t('Amount') || 'Amount' }}</span><span class=\"fw-bold\">{{ currencySymbol }}{{ payment.amount.toFixed(2) }} {{ payment.currency }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/payment_failed.vue",
+  "line": 18,
+  "was": "<div class=\"detail-row\"><span class=\"text-muted\">{{ $t('Gateway') || 'Gateway' }}</span><span class=\"fw-bold\">{{ payment.gateway_label }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/payment_failed.vue",
+  "line": 36,
+  "was": "<p class=\"fw-bold small\"><lucide-icon name=\"info\" class=\"mr-1\" />{{ $t('Common_reasons') || 'Common reasons for payment failure:' }}</p>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/payment_success.vue",
+  "line": 28,
+  "was": "<div class=\"detail-row\"><span class=\"text-muted\">{{ $t('Invoice') || 'Invoice' }}</span><span class=\"fw-bold\">{{ payment.invoice_number }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/payment_success.vue",
+  "line": 29,
+  "was": "<div class=\"detail-row\"><span class=\"text-muted\">{{ $t('Plan') || 'Plan' }}</span><span class=\"fw-bold\">{{ payment.plan_name }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/payment_success.vue",
+  "line": 30,
+  "was": "<div class=\"detail-row\"><span class=\"text-muted\">{{ $t('Billing_Cycle') || 'Billing' }}</span><span class=\"fw-bold\">{{ capitalize(payment.billing_cycle) }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/payment_success.vue",
+  "line": 31,
+  "was": "<div class=\"detail-row\"><span class=\"text-muted\">{{ $t('Amount') || 'Amount' }}</span><span class=\"fw-bold\">{{ currencySymbol }}{{ payment.amount.toFixed(2) }} {{ payment.currency }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/payment_success.vue",
+  "line": 32,
+  "was": "<div class=\"detail-row\"><span class=\"text-muted\">{{ $t('Gateway') || 'Gateway' }}</span><span class=\"fw-bold\">{{ payment.gateway_label }}</span></div>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/billing/payment_success.vue",
+  "line": 39,
+  "was": "<span class=\"fw-bold\">{{ formatDate(subscription.ends_at) }}</span>",
+  "tokens": [
+   "fw-bold"
+  ]
+ },
+ {
+  "file": "views/app/pages/damage/Create_Damage.vue",
+  "line": 252,
+  "was": "<b-button variant=\"primary\" :disabled=\"SubmitProcessing || hasBatchValidationErrors\" @click=\"Submit_Damage\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/damage/Edit_Damage.vue",
+  "line": 252,
+  "was": "<b-button variant=\"primary\" :disabled=\"SubmitProcessing || hasBatchValidationErrors\" @click=\"Submit_Damage\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/hrm/payrolls.vue",
+  "line": 292,
+  "was": "<b-button variant=\"primary\" type=\"submit\"  :disabled=\"SubmitProcessing\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Add_product.vue",
+  "line": 91,
+  "was": "<lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{ $t('submit') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Add_product.vue",
+  "line": 147,
+  "was": "<lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{ $t('submit') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Add_product.vue",
+  "line": 261,
+  "was": "<lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{ $t('submit') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Add_product.vue",
+  "line": 330,
+  "was": "<lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{ $t('submit') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Add_product.vue",
+  "line": 710,
+  "was": "<div class=\"flex-grow-1 gallery-item-meta ms-2 me-2\">",
+  "tokens": [
+   "ms-2",
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Add_product.vue",
+  "line": 1716,
+  "was": "<lucide-icon class=\"me-2\" name=\"plus\" />{{ $t('Add_Pack') || 'Add Pack' }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Add_product.vue",
+  "line": 1742,
+  "was": "<lucide-icon class=\"me-2\" name=\"plus\" />{{ $t('Add') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Edit_product.vue",
+  "line": 98,
+  "was": "<lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{ $t('submit') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Edit_product.vue",
+  "line": 459,
+  "was": "<div class=\"flex-grow-1 gallery-item-meta ms-2 me-2\">",
+  "tokens": [
+   "ms-2",
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Edit_product.vue",
+  "line": 1558,
+  "was": "<lucide-icon class=\"me-2\" name=\"plus\" />{{ $t('Add_Pack') || 'Add Pack' }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Edit_product.vue",
+  "line": 1584,
+  "was": "<lucide-icon class=\"me-2\" name=\"plus\" />{{ $t('Add') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/batches.vue",
+  "line": 224,
+  "was": "<lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{ $t('submit') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/batches.vue",
+  "line": 255,
+  "was": "<lucide-icon class=\"me-2\" name=\"trash-2\" /> {{ $t('Write_Off') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/count_stock.vue",
+  "line": 107,
+  "was": "<b-button variant=\"primary\" type=\"submit\"  :disabled=\"SubmitProcessing\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/sales/change_to_sale.vue",
+  "line": 442,
+  "was": "<b-button variant=\"primary\" @click=\"Submit_Sale\" :disabled=\"SubmitProcessing\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/sales/change_to_sale.vue",
+  "line": 591,
+  "was": "<b-button variant=\"primary\" type=\"submit\" :disabled=\"Submit_Processing_detail\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/sales/create_sale.vue",
+  "line": 759,
+  "was": "<b-button variant=\"primary\" :disabled=\"paymentProcessing || hasMinPriceViolation || (sale.statut === 'completed' && hasBatchValidationErrors)\" @click=\"Submit_Sale\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" ",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/sales/create_sale.vue",
+  "line": 1041,
+  "was": "><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/sales/edit_sale.vue",
+  "line": 597,
+  "was": "<lucide-icon class=\"me-1\" name=\"info\" />",
+  "tokens": [
+   "me-1"
+  ]
+ },
+ {
+  "file": "views/app/pages/sales/edit_sale.vue",
+  "line": 603,
+  "was": "<b-button variant=\"primary\" @click=\"Submit_Sale\" :disabled=\"SubmitProcessing || (sale.statut === 'completed' && hasBatchValidationErrors)\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-bu",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/sales/edit_sale.vue",
+  "line": 730,
+  "was": "><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/settings/system_settings.vue",
+  "line": 3263,
+  "was": "<lucide-icon class=\"me-2\" name=\"plus\" />{{$t('GenerateBackup')}}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/settings/system_settings.vue",
+  "line": 3353,
+  "was": "<b-badge v-if=\"row.item.is_current\" variant=\"success\" class=\"ms-2\">Current</b-badge>",
+  "tokens": [
+   "ms-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/settings/system_settings.vue",
+  "line": 3392,
+  "was": "<lucide-icon class=\"me-2\" name=\"refresh-cw\" />{{$t('Clear_Cache')}}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/settings/system_settings.vue",
+  "line": 3469,
+  "was": "<lucide-icon class=\"me-2\" name=\"check\" /> {{ $t('submit') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/settings/system_settings.vue",
+  "line": 3727,
+  "was": "<lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{ $t('submit') }}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/settings/warehouse_locations.vue",
+  "line": 111,
+  "was": "<lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/subscription_product/subscription_product_create.vue",
+  "line": 178,
+  "was": "<b-button variant=\"primary\" type=\"submit\"  :disabled=\"SubmitProcessing\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/transfers/create_transfer.vue",
+  "line": 441,
+  "was": "<b-button variant=\"primary\" @click=\"Submit_Transfer\" :disabled=\"SubmitProcessing || hasBatchValidationErrors\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/transfers/edit_transfer.vue",
+  "line": 451,
+  "was": "<b-button variant=\"primary\" @click=\"Submit_Transfer\" :disabled=\"SubmitProcessing || hasBatchValidationErrors\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ },
+ {
+  "file": "views/app/pages/transfers/edit_transfer.vue",
+  "line": 572,
+  "was": "<b-button variant=\"primary\" type=\"submit\"><lucide-icon class=\"me-2 font-weight-bold\" name=\"check\" /> {{$t('submit')}}</b-button>",
+  "tokens": [
+   "me-2"
+  ]
+ }
+]

@@ -67,8 +67,9 @@
 </template>
 
 <script>
+import { BFormGroup, BFormInput, BFormTextarea } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default {
+export default { components: { BFormGroup, BFormInput, BFormTextarea },
   data() {
     return {
       isLoading: true,

@@ -179,9 +179,10 @@
 </template>
 
 <script>
+import { vBTooltip } from "@/platform/bootstrap";
 import moment from "moment";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: { title: "Meeting Reports" },
   data() {
     return {

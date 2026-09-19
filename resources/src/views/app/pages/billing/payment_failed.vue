@@ -13,9 +13,9 @@
 
       <div v-if="payment" class="billing-card text-left mx-auto mb-4 result-detail-card">
         <div class="billing-card-body">
-          <div class="detail-row"><span class="text-muted">{{ $t('Plan') || 'Plan' }}</span><span class="fw-bold">{{ payment.plan_name }}</span></div>
-          <div class="detail-row"><span class="text-muted">{{ $t('Amount') || 'Amount' }}</span><span class="fw-bold">{{ currencySymbol }}{{ payment.amount.toFixed(2) }} {{ payment.currency }}</span></div>
-          <div class="detail-row"><span class="text-muted">{{ $t('Gateway') || 'Gateway' }}</span><span class="fw-bold">{{ payment.gateway_label }}</span></div>
+          <div class="detail-row"><span class="text-muted">{{ $t('Plan') || 'Plan' }}</span><span>{{ payment.plan_name }}</span></div>
+          <div class="detail-row"><span class="text-muted">{{ $t('Amount') || 'Amount' }}</span><span>{{ currencySymbol }}{{ payment.amount.toFixed(2) }} {{ payment.currency }}</span></div>
+          <div class="detail-row"><span class="text-muted">{{ $t('Gateway') || 'Gateway' }}</span><span>{{ payment.gateway_label }}</span></div>
           <div class="detail-row">
             <span class="text-muted">{{ $t('Status') || 'Status' }}</span>
             <span class="badge-billing badge-failed"><lucide-icon name="x" class="mr-1" />{{ $t('Failed') || 'Failed' }}</span>
@@ -33,7 +33,7 @@
       </div>
 
       <div class="tips-box mt-4 text-left mx-auto">
-        <p class="fw-bold small"><lucide-icon name="info" class="mr-1" />{{ $t('Common_reasons') || 'Common reasons for payment failure:' }}</p>
+        <p class="small"><lucide-icon name="info" class="mr-1" />{{ $t('Common_reasons') || 'Common reasons for payment failure:' }}</p>
         <ul class="small text-muted mb-0 pl-3">
           <li>{{ $t('Insufficient_funds') || 'Insufficient funds in your account' }}</li>
           <li>{{ $t('Card_declined') || 'Card was declined by your bank' }}</li>

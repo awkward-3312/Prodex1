@@ -60,6 +60,9 @@ $bs5-spacers: map-merge($spacers, (auto: auto));
 .fw-light { font-weight: 300 !important; }
 .fw-lighter { font-weight: lighter !important; }
 
+// BFormText (descripción de b-form-group) emite `text-body-secondary`; BS4 lo pintaba `text-muted`.
+.text-body-secondary { color: $text-muted !important; }
+
 // Accesibilidad: BS5 renombra `.sr-only` a `.visually-hidden`.
 .visually-hidden,
 .visually-hidden-focusable:not(:focus):not(:focus-within) {
@@ -114,3 +117,88 @@ $bs5-spacers: map-merge($spacers, (auto: auto));
 
 // NO se declaran `gap-*` ni `form-select`: las vistas existentes ya usan esos nombres con estilos propios (`gap-2` sin regla
 // global, `.form-select` en ModernPaymentModal) y una regla global cambiaría su aspecto (regresión detectada en dashboard).
+
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Casillas y radios de BootstrapVueNext (`BFormCheckbox` / `BFormRadio`, wrapper `px-bvn-check` de platform/bootstrap).
+// BVN emite el marcado de BS5 (`.form-check > input.form-check-input + label.form-check-label`); PRODEX ya estila el `custom-control` de
+// BS4 (indicador propio del tema). Aquí se pinta el mismo indicador con las MISMAS variables de BS4 para que no cambie el aspecto.
+// Solo dentro de `.px-bvn-check`: no afecta a los `<input class="form-check-input">` escritos a mano en otras vistas.
+// ---------------------------------------------------------------------------------------------------------------------------------
+$px-check-line: $font-size-base * $line-height-base;
+$px-check-top: ($px-check-line - $custom-control-indicator-size) / 2;
+
+.form-check:has(> .form-check-input.px-bvn-check) {
+  position: relative;
+  display: block;
+  min-height: $px-check-line;
+  padding-left: 0;
+  padding-inline-start: $custom-control-gutter;
+  margin-bottom: 0;
+
+  &.form-check-inline { display: inline-flex; margin-inline-end: $custom-control-spacer-x; }
+
+}
+// Igual que `.custom-control-label { margin-bottom: 0 }` de BS4: especificidad mínima para que la capa de diseño (`.form-group label`) siga mandando.
+:where(.form-check:has(> .form-check-input.px-bvn-check)) > .form-check-label { margin-bottom: 0; }
+
+.form-check-input.px-bvn-check {
+  position: absolute;
+  top: $px-check-top;
+  inset-inline-start: 0;
+  float: none;
+  width: $custom-control-indicator-size;
+  height: $custom-control-indicator-size;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  background-color: $custom-control-indicator-bg;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: $custom-control-indicator-bg-size;
+  border: 0;
+  box-shadow: $custom-control-indicator-box-shadow;
+  print-color-adjust: exact;
+
+  &[type="checkbox"] { border-radius: $custom-checkbox-indicator-border-radius; }
+  &[type="radio"] { border-radius: $custom-radio-indicator-border-radius; }
+
+  &:checked {
+    background-color: $custom-control-indicator-checked-bg;
+    box-shadow: $custom-control-indicator-checked-box-shadow;
+    &[type="checkbox"] { background-image: $custom-checkbox-indicator-icon-checked; }
+    &[type="radio"] { background-image: $custom-radio-indicator-icon-checked; }
+  }
+  &[type="checkbox"]:indeterminate {
+    background-color: $custom-checkbox-indicator-indeterminate-bg;
+    background-image: $custom-checkbox-indicator-icon-indeterminate;
+  }
+  &:focus { outline: 0; box-shadow: $custom-control-indicator-focus-box-shadow; }
+  &:active { background-color: $custom-control-indicator-active-bg; box-shadow: $custom-control-indicator-active-box-shadow; }
+  &:disabled {
+    background-color: $custom-control-indicator-disabled-bg;
+    &:checked { background-color: $custom-control-indicator-checked-disabled-bg; }
+    & ~ .form-check-label { color: $custom-control-label-disabled-color; }
+  }
+  &.is-invalid ~ .form-check-label { color: $form-feedback-invalid-color; }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Tooltip de BootstrapVueNext (`v-b-tooltip` con Floating UI): marcado de BS5 (`.tooltip > .tooltip-arrow + .tooltip-inner`, clases
+// `bs-tooltip-top|bottom|start|end`). BS4 estila `.arrow` y `bs-tooltip-top|bottom|left|right`.
+// ---------------------------------------------------------------------------------------------------------------------------------
+.tooltip-arrow {
+  position: absolute;
+  display: block;
+  width: $tooltip-arrow-width;
+  height: $tooltip-arrow-height;
+  &::before { position: absolute; content: ""; border-color: transparent; border-style: solid; }
+}
+.bs-tooltip-top .tooltip-arrow { bottom: 0; &::before { top: 0; border-width: $tooltip-arrow-height ($tooltip-arrow-width / 2) 0; border-top-color: $tooltip-arrow-color; } }
+.bs-tooltip-bottom .tooltip-arrow { top: 0; &::before { bottom: 0; border-width: 0 ($tooltip-arrow-width / 2) $tooltip-arrow-height; border-bottom-color: $tooltip-arrow-color; } }
+.bs-tooltip-start { padding: 0 $tooltip-arrow-height; }
+.bs-tooltip-start .tooltip-arrow { right: 0; width: $tooltip-arrow-height; height: $tooltip-arrow-width; &::before { left: 0; border-width: ($tooltip-arrow-width / 2) 0 ($tooltip-arrow-width / 2) $tooltip-arrow-height; border-left-color: $tooltip-arrow-color; } }
+.bs-tooltip-end { padding: 0 $tooltip-arrow-height; }
+.bs-tooltip-end .tooltip-arrow { left: 0; width: $tooltip-arrow-height; height: $tooltip-arrow-width; &::before { right: 0; border-width: ($tooltip-arrow-width / 2) $tooltip-arrow-height ($tooltip-arrow-width / 2) 0; border-right-color: $tooltip-arrow-color; } }
+// BVN deja el nodo montado al ocultar (BV2 lo eliminaba): que no capture clics ni se vea.
+.tooltip.b-tooltip:not(.show) { visibility: hidden; pointer-events: none; transition: opacity .15s linear, visibility 0s linear .15s; }

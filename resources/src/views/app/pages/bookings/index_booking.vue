@@ -421,9 +421,11 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
+import { vBTooltip } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Bookings"
   },
@@ -647,7 +649,7 @@ export default {
     },
     showBookingDetails(row) {
       this.selectedBooking = Object.assign({}, row);
-      this.$bvModal.show("booking-detail-modal");
+      modals.show("booking-detail-modal");
     },
     formatPrice(price) {
       if (price === null || price === undefined || price === '') {
@@ -701,7 +703,7 @@ export default {
       this.$htmlToPaper('print_Booking');
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

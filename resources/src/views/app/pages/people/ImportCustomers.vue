@@ -220,6 +220,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from 'nprogress';
 // axios assumed globally available
 
@@ -280,7 +281,7 @@ export default {
     // UI helpers
     toast: function (msg, title, variant) {
       if (this.$root && this.$root.$bvToast) {
-        this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+        notifications.notify(msg, { title: title, variant: variant, solid: true });
       }
     },
 

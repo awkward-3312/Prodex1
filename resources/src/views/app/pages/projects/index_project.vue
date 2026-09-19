@@ -668,13 +668,14 @@
 </template>
 
 <script>
+import { BFormGroup, BFormInput, vBTooltip } from "@/platform/bootstrap";
 import { confirmDialog } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BFormGroup, BFormInput },
   metaInfo: {
     title: "Projects"
   },

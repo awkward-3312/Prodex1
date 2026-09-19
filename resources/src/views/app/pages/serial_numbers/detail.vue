@@ -65,6 +65,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 
@@ -91,7 +92,7 @@ export default {
         .post("serial_numbers/" + this.serial.id + "/status", { status })
         .then(() => {
           NProgress.done();
-          this.$root.$bvToast.toast(this.$t("Successfully_Updated") || "Updated", { variant: "success", solid: true });
+          notifications.notify(this.$t("Successfully_Updated") || "Updated", { variant: "success", solid: true });
           this.loadData();
         })
         .catch(error => {
@@ -99,7 +100,7 @@ export default {
           const msg = (error.response && error.response.data && error.response.data.errors && error.response.data.errors.status)
             ? error.response.data.errors.status[0]
             : (this.$t("InvalidData") || "Failed");
-          this.$root.$bvToast.toast(msg, { variant: "danger", solid: true });
+          notifications.notify(msg, { variant: "danger", solid: true });
         });
     },
     statusLabel(s) {

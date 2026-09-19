@@ -108,10 +108,11 @@
 </template>
 
 <script>
+import { BFormTextarea } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BFormTextarea },
   metaInfo: { title: "Support Ticket" },
   data() {
     return {

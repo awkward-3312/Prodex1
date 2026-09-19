@@ -756,7 +756,7 @@
 
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" :disabled="paymentProcessing || hasMinPriceViolation || (sale.statut === 'completed' && hasBatchValidationErrors)" @click="Submit_Sale"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" :disabled="paymentProcessing || hasMinPriceViolation || (sale.statut === 'completed' && hasBatchValidationErrors)" @click="Submit_Sale"><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
                     <div v-once class="typo__p" v-if="paymentProcessing">
                     <div class="spinner sm spinner-primary mt-3"></div>
                   </div>
@@ -1038,7 +1038,7 @@
                   variant="primary"
                   type="submit"
                   :disabled="Submit_Processing_detail || detailHasMinPriceViolation"
-                ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                ><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
                 <div v-once class="typo__p" v-if="Submit_Processing_detail">
                   <div class="spinner sm spinner-primary mt-3"></div>
                 </div>

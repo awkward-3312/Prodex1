@@ -640,6 +640,7 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
@@ -798,7 +799,7 @@ export default {
 
     //----------------------------------- Show import providers -------------------------------\\
     Show_import_providers() {
-      this.$bvModal.show("importProviders");
+      modals.show("importProviders");
     },
 
     //------------------------------ Event Import providers -------------------------------\\
@@ -932,7 +933,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1322,7 +1323,7 @@ export default {
       this.payment.payment_method_id = null;
       this.payment.date = new Date().toISOString().slice(0, 10);
       setTimeout(() => {
-        this.$bvModal.show("modal_Pay_due");
+        modals.show("modal_Pay_due");
       }, 500);
       
     },
@@ -1451,7 +1452,7 @@ export default {
       this.payment_return.payment_method_id = null;
       this.payment_return.date = new Date().toISOString().slice(0, 10);
       setTimeout(() => {
-        this.$bvModal.show("modal_Pay_return_due");
+        modals.show("modal_Pay_return_due");
       }, 500);
       
     },
@@ -1511,25 +1512,25 @@ export default {
      Fire.$on("Event_pay_due", () => {
       setTimeout(() => {
         this.Get_Providers(this.serverParams.page);
-        this.$bvModal.hide("modal_Pay_due");
+        modals.hide("modal_Pay_due");
       }, 500);
-       this.$bvModal.show("Show_invoice");
+       modals.show("Show_invoice");
       //  setTimeout(() => this.print_it(), 1000);
     });
 
     Fire.$on("Event_pay_return_due", () => {
       setTimeout(() => {
         this.Get_Providers(this.serverParams.page);
-        this.$bvModal.hide("modal_Pay_return_due");
+        modals.hide("modal_Pay_return_due");
       }, 500);
-       this.$bvModal.show("Show_invoice_return");
+       modals.show("Show_invoice_return");
       //  setTimeout(() => this.print_return_due(), 1000);
     });
 
     Fire.$on("Get_Details_Provider", () => {
       // Complete the animation of theprogress bar.
       setTimeout(() => NProgress.done(), 500);
-      this.$bvModal.show("showDetails");
+      modals.show("showDetails");
     });
 
     Fire.$on("Event_Provider", () => {
@@ -1547,7 +1548,7 @@ export default {
     Fire.$on("Event_import", () => {
       setTimeout(() => {
         this.Get_Providers(this.serverParams.page);
-        this.$bvModal.hide("importProviders");
+        modals.hide("importProviders");
       }, 500);
     });
   }

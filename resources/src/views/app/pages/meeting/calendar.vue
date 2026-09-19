@@ -47,13 +47,13 @@
 </template>
 
 <script>
-import { BCard, BButton } from "@/platform/bootstrap";
+import { BCard, BButton, vBTooltip } from "@/platform/bootstrap";
 import moment from "moment";
 import "moment/locale/es";
 
 moment.locale("es");
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   components: { BCard, BButton },
   metaInfo: { title: "Calendario de reuniones" },
   data() {

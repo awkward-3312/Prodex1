@@ -172,6 +172,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
@@ -229,7 +230,7 @@ export default {
   methods: {
     tv(v) { return typeof v === 'string' ? v.trim() : v; },
     selectTab(key) { this.activeTab = key; if (key === 'documents') this.loadDocuments(1); },
-    toast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title || 'ZATCA', variant, solid: true }); },
+    toast(variant, msg, title) { notifications.notify(msg, { title: title || 'ZATCA', variant, solid: true }); },
     environmentLabel(value) { return { production: 'Producción', sandbox: 'Sandbox', simulation: 'Simulación' }[value] || value; },
     messageLevelLabel(level) { return { error: 'Error', warning: 'Advertencia', info: 'Información' }[level] || level; },
     translateComplianceStatus(status) { return { PASSED: 'APROBADO', FAILED: 'FALLÓ', passed: 'Aprobado', failed: 'Falló' }[status] || status; },

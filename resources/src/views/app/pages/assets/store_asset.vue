@@ -107,7 +107,8 @@
 </template>
 
 <script>
-export default {
+import { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormInvalidFeedback } from "@/platform/bootstrap";
+export default { components: { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormInvalidFeedback },
   name: 'AssetCreate',
   data() {
     return {

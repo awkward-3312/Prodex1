@@ -37,9 +37,9 @@
             </thead>
             <tbody>
               <tr v-for="p in payments" :key="p.id">
-                <td class="td-billing"><span class="fw-bold">{{ p.invoice_number || '—' }}</span></td>
+                <td class="td-billing"><span>{{ p.invoice_number || '—' }}</span></td>
                 <td class="td-billing">{{ p.plan_name }} <span class="text-muted small">({{ capitalize(p.billing_cycle) }})</span></td>
-                <td class="td-billing"><span class="fw-bold">{{ currencySymbol }}{{ p.amount.toFixed(2) }}</span> <span class="text-muted small">{{ p.currency }}</span></td>
+                <td class="td-billing"><span>{{ currencySymbol }}{{ p.amount.toFixed(2) }}</span> <span class="text-muted small">{{ p.currency }}</span></td>
                 <td class="td-billing">{{ p.gateway_label }}</td>
                 <td class="td-billing">
                   <span :class="'badge-billing badge-' + p.status">{{ capitalize(p.status) }}</span>

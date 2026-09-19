@@ -35,25 +35,25 @@
           <div class="billing-card sticky-card">
             <div class="billing-card-header"><lucide-icon name="receipt" class="mr-2" />{{ $t('Order_Summary') || 'Order Summary' }}</div>
             <div class="billing-card-body">
-              <div class="summary-row"><span class="text-muted">{{ $t('Plan') || 'Plan' }}</span><span class="fw-bold">{{ plan.name }}</span></div>
-              <div class="summary-row"><span class="text-muted">{{ $t('Billing_Cycle') || 'Billing Cycle' }}</span><span class="fw-bold">{{ selectedCycleLabel }}</span></div>
+              <div class="summary-row"><span class="text-muted">{{ $t('Plan') || 'Plan' }}</span><span>{{ plan.name }}</span></div>
+              <div class="summary-row"><span class="text-muted">{{ $t('Billing_Cycle') || 'Billing Cycle' }}</span><span>{{ selectedCycleLabel }}</span></div>
               <hr>
-              <div class="summary-row"><span class="text-muted">{{ $t('Subtotal') || 'Subtotal' }}</span><span class="fw-bold">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span></div>
-              <div class="summary-row"><span class="text-muted">{{ $t('Tax') || 'Tax' }}</span><span class="fw-bold">{{ currencySymbol }}0.00</span></div>
+              <div class="summary-row"><span class="text-muted">{{ $t('Subtotal') || 'Subtotal' }}</span><span>{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span></div>
+              <div class="summary-row"><span class="text-muted">{{ $t('Tax') || 'Tax' }}</span><span>{{ currencySymbol }}0.00</span></div>
               <hr>
               <div class="summary-row">
-                <span class="fw-bold summary-total-label">{{ $t('Total') || 'Total' }}</span>
-                <span class="fw-bold text-primary summary-total-amount">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span>
+                <span class="summary-total-label">{{ $t('Total') || 'Total' }}</span>
+                <span class="text-primary summary-total-amount">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span>
               </div>
               <div v-if="paddleReady" class="paddle-preview-box mt-3">
                 <div class="d-flex justify-content-between align-items-start">
                   <div>
-                    <div class="small fw-bold">Paddle Sandbox</div>
+                    <div class="small">Paddle Sandbox</div>
                     <div class="text-muted tiny-text">Precio internacional estimado</div>
                   </div>
                   <div class="text-right">
                     <span v-if="paddlePreviewLoading" class="spinner-border spinner-border-sm"></span>
-                    <span v-else class="fw-bold">{{ paddlePreviewDisplay || paddleFallbackPrice }}</span>
+                    <span v-else>{{ paddlePreviewDisplay || paddleFallbackPrice }}</span>
                   </div>
                 </div>
                 <p class="mb-0 mt-2 text-muted tiny-text">
@@ -70,7 +70,7 @@
 
               <!-- Plan features summary -->
               <div class="mt-3 pt-3 summary-included">
-                <div class="small fw-bold text-muted text-uppercase mb-2">{{ $t('Included') || 'Included' }}</div>
+                <div class="small text-muted text-uppercase mb-2">{{ $t('Included') || 'Included' }}</div>
                 <div v-for="(limit, key) in plan.limits" :key="'l'+key" class="d-flex align-items-center gap-1 mb-1 small">
                   <lucide-icon name="check" class="text-success" /> {{ limit.display }} {{ limit.label }}
                 </div>
@@ -93,23 +93,23 @@
                   <input type="radio" v-model="selectedCycle" value="monthly" class="d-none">
                   <div class="cycle-card">
                     <div>
-                      <div class="fw-bold">{{ $t('Monthly') || 'Monthly' }}</div>
+                      <div>{{ $t('Monthly') || 'Monthly' }}</div>
                       <div class="text-muted small">{{ $t('Billed_monthly') || 'Billed every month' }}</div>
                     </div>
-                    <span class="fw-bold">{{ currencySymbol }}{{ plan.price.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ plan.price.toFixed(2) }}</span>
                   </div>
                 </label>
                 <label :class="['cycle-option flex-fill', { selected: selectedCycle === 'yearly' }]">
                   <input type="radio" v-model="selectedCycle" value="yearly" class="d-none">
                   <div class="cycle-card">
                     <div>
-                      <div class="fw-bold">
+                      <div>
                         {{ $t('Yearly') || 'Yearly' }}
                         <span v-if="plan.savings_percent > 0" class="save-chip">-{{ plan.savings_percent }}%</span>
                       </div>
                       <div class="text-muted small">{{ $t('Billed_annually') || 'Billed annually' }}</div>
                     </div>
-                    <span class="fw-bold">{{ currencySymbol }}{{ plan.yearly_price.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ plan.yearly_price.toFixed(2) }}</span>
                   </div>
                 </label>
               </div>
@@ -134,7 +134,7 @@
                         <lucide-icon :name="mapGatewayIcon(gw.icon)" :style="{ color: gw.color }" />
                       </div>
                       <div>
-                        <div class="fw-bold small">{{ gw.label }}</div>
+                        <div class="small">{{ gw.label }}</div>
                         <div class="text-muted gateway-description">
                           {{ gatewayDescription(gw) }}
                         </div>
@@ -154,7 +154,7 @@
               <!-- Amount to transfer -->
               <div class="offline-amount-box mb-3">
                 <p class="mb-1 text-muted small-label">{{ $t('Amount_to_Transfer') || 'Amount to Transfer' }}</p>
-                <p class="mb-0 fw-bold amount-value">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</p>
+                <p class="mb-0 amount-value">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</p>
               </div>
 
               <!-- Bank details grid -->
@@ -187,7 +187,7 @@
 
               <!-- Instructions -->
               <div v-if="bankDetails.instructions" class="bank-instructions mb-3">
-                <p class="mb-1 fw-bold small-label">{{ $t('Instructions') || 'Instructions' }}</p>
+                <p class="mb-1 small-label">{{ $t('Instructions') || 'Instructions' }}</p>
                 <p class="mb-0 text-muted small-text">{{ bankDetails.instructions }}</p>
               </div>
 
@@ -201,7 +201,7 @@
 
               <!-- Proof of payment upload -->
               <div class="mb-2">
-                <label class="fw-bold small-label mb-2">
+                <label class="small-label mb-2">
                   <lucide-icon name="upload" class="mr-1" /> {{ $t('Upload_Proof') || 'Upload Proof of Payment' }} <span class="text-danger">*</span>
                 </label>
                 <div class="offline-upload-area"
@@ -213,12 +213,12 @@
                   <input ref="proofInput" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="d-none" @change="onProofSelected">
                   <div v-if="!proofFile" class="text-center">
                     <lucide-icon name="upload" class="upload-icon" />
-                    <p class="mb-1 fw-bold small-label">{{ $t('Click_or_drag') || 'Click or drag file here' }}</p>
+                    <p class="mb-1 small-label">{{ $t('Click_or_drag') || 'Click or drag file here' }}</p>
                     <p class="mb-0 text-muted tiny-text">{{ $t('File_formats') || 'JPG, PNG, WebP or PDF (max 5MB)' }}</p>
                   </div>
                   <div v-else class="text-center">
                     <lucide-icon name="file-text" class="upload-icon-success" />
-                    <p class="mb-0 fw-bold small-label">{{ proofFile.name }}</p>
+                    <p class="mb-0 small-label">{{ proofFile.name }}</p>
                     <button type="button" class="btn btn-sm btn-outline-danger mt-2" @click.stop="removeProof">
                       <lucide-icon name="x" /> {{ $t('Remove') || 'Remove' }}
                     </button>

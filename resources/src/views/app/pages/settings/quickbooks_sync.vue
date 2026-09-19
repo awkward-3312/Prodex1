@@ -279,6 +279,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from 'nprogress';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
@@ -357,7 +358,7 @@ export default {
     // --------------------- helpers ---------------------
     tv(v) { return typeof v === 'string' ? v.trim() : v; },
     toast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     levelTone(level) {
       if (level === 'error') return 'danger';

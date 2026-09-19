@@ -7,8 +7,8 @@ name: Frontend safety net
 #    del SPA respecto a tests/e2e/routes/routes.snapshot.json.
 #  - e2e: REQUERIDO (sin continue-on-error: si falla, el workflow falla). Corre en workflow_dispatch y, mientras este archivo no esté en main,
 #    en push a las ramas de modernización listadas abajo. Levanta MySQL 8.4 como servicio, provisiona un tenant demo con los mecanismos del
-#    proyecto y ejecuta Playwright contra el servidor PHP embebido con UN worker (PHP_CLI_SERVER_WORKERS=1): el modo multi-worker terminó con
-#    Segmentation fault en Actions. Ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE2.md.
+#    proyecto y ejecuta Playwright contra el servidor PHP embebido en modo de un solo proceso (sin PHP_CLI_SERVER_WORKERS): el modo multi-worker
+#    terminó con Segmentation fault en Actions. Ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE2.md.
 
 on:
   pull_request:
@@ -72,7 +72,6 @@ jobs:
       E2E_SKIP_DOCKER: '1'
       E2E_DB_PORT: '3307'
       E2E_PORT: '8000'
-      PHP_CLI_SERVER_WORKERS: '1'
       NODE_OPTIONS: --max-old-space-size=8192
     steps:
       - uses: actions/checkout@v5
@@ -98,29 +97,16 @@ jobs:
           echo "E2E_RESTRICTED_PASSWORD=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
       - name: Provisionar tenant demo aislado
         run: bash tests/e2e/scripts/setup.sh
-      - name: Diagnóstico del servidor PHP (gdb, extensiones)
+      - name: Preparar diagnóstico del servidor PHP (volcado de núcleo, extensiones)
         run: |
           sudo apt-get install -y gdb >/dev/null
           php -v; php -m | tr '\n' ' '; php -i | grep -iE 'opcache.jit|opcache.enable_cli|memory_limit' || true
           sudo sysctl -w kernel.core_pattern=/tmp/core.%e.%p
-      - name: Diagnóstico Blade/PCRE (¿segfault al compilar vistas?)
-        continue-on-error: true
-        run: |
-          for mode in 1 0; do
-            fails=0
-            for i in $(seq 1 12); do
-              APP_ENV=e2e php -d pcre.jit=$mode artisan view:clear >/dev/null 2>&1 || true
-              APP_ENV=e2e php -d pcre.jit=$mode artisan view:cache >/dev/null 2>&1; rc=$?
-              if [ "$rc" -ge 128 ]; then fails=$((fails+1)); echo "pcre.jit=$mode iter=$i exit=$rc"; fi
-            done
-            echo "pcre.jit=$mode: $fails fallos de 12"
-          done
-          APP_ENV=e2e php artisan view:clear >/dev/null 2>&1 || true
       - name: Ejecutar E2E
         run: |
           ulimit -c unlimited
           npm run test:e2e
-      - name: Diagnóstico tras el E2E (dmesg, memoria)
+      - name: Diagnóstico del servidor PHP tras el E2E (backtrace si murió por una señal)
         if: always()
         continue-on-error: true
         run: |

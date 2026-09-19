@@ -249,7 +249,7 @@
 
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" :disabled="SubmitProcessing || hasBatchValidationErrors" @click="Submit_Damage"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" :disabled="SubmitProcessing || hasBatchValidationErrors" @click="Submit_Damage"><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
                     <div v-once class="typo__p" v-if="SubmitProcessing"><div class="spinner sm spinner-primary mt-3"></div></div>
                   </b-form-group>
                 </b-col>

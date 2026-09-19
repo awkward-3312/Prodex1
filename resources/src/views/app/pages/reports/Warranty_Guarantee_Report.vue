@@ -135,6 +135,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import moment from 'moment'
 import DateRangePicker from 'vue2-daterange-picker'
@@ -309,7 +310,7 @@ export default {
         })
         .catch(() => {
           if (this.$bvToast && this.$bvToast.toast) {
-            this.$bvToast.toast(this.$t('OperationFailed'), { title: this.$t('Failed'), variant: 'danger', solid: true })
+            notifications.notify(this.$t('OperationFailed'), { title: this.$t('Failed'), variant: 'danger', solid: true })
           }
         })
         .finally(() => {
@@ -374,7 +375,7 @@ export default {
       })
       pdf.save('warranty_guarantee_report.pdf')
       if (this.$bvToast && this.$bvToast.toast) {
-        this.$bvToast.toast(this.$t('Export_PDF') || 'PDF exported', { title: this.$t('Success'), variant: 'success', solid: true })
+        notifications.notify(this.$t('Export_PDF') || 'PDF exported', { title: this.$t('Success'), variant: 'success', solid: true })
       }
     },
     printTableOnly() {

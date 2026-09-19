@@ -197,6 +197,7 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
 export default {
   metaInfo: { title: 'Acceso de empleados' },
   data() {
@@ -326,7 +327,7 @@ export default {
         this.form.inventory_location_ids = locationId ? [locationId] : [];
       }
       this.error = '';
-      this.$bvModal.show('create-access-modal');
+      modals.show('create-access-modal');
     },
     onRoleChanged() {
       if (!this.selectedRole || !this.selectedRole.uses_pos) {
@@ -420,9 +421,9 @@ export default {
           branch_ids: this.selectedBranchIds,
         });
         await axios.post(`/organization/employee-access/${this.activeEmployee.id}/create`, payload, { meta: { skipErrorRedirect: true } });
-        this.$bvModal.hide('create-access-modal');
+        modals.hide('create-access-modal');
         await this.load();
-        this.$root.$bvToast.toast('Cuenta vinculada al empleado correctamente.', { title: 'Éxito', variant: 'success', solid: true });
+        notifications.notify('Cuenta vinculada al empleado correctamente.', { title: 'Éxito', variant: 'success', solid: true });
       } catch (e) {
         this.error = this.errorMessage(e, 'No se pudo crear el acceso.');
       } finally {

@@ -124,10 +124,11 @@
 </template>
 
 <script>
+import { BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback, vBTooltip } from "@/platform/bootstrap";
 import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback },
   metaInfo: { title: "Customer Segments" },
   data() {
     return {

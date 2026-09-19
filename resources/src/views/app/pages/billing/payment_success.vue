@@ -25,18 +25,18 @@
 
       <div class="billing-card text-left mx-auto mb-4 result-detail-card">
         <div class="billing-card-body">
-          <div class="detail-row"><span class="text-muted">{{ $t('Invoice') || 'Invoice' }}</span><span class="fw-bold">{{ payment.invoice_number }}</span></div>
-          <div class="detail-row"><span class="text-muted">{{ $t('Plan') || 'Plan' }}</span><span class="fw-bold">{{ payment.plan_name }}</span></div>
-          <div class="detail-row"><span class="text-muted">{{ $t('Billing_Cycle') || 'Billing' }}</span><span class="fw-bold">{{ capitalize(payment.billing_cycle) }}</span></div>
-          <div class="detail-row"><span class="text-muted">{{ $t('Amount') || 'Amount' }}</span><span class="fw-bold">{{ currencySymbol }}{{ payment.amount.toFixed(2) }} {{ payment.currency }}</span></div>
-          <div class="detail-row"><span class="text-muted">{{ $t('Gateway') || 'Gateway' }}</span><span class="fw-bold">{{ payment.gateway_label }}</span></div>
+          <div class="detail-row"><span class="text-muted">{{ $t('Invoice') || 'Invoice' }}</span><span>{{ payment.invoice_number }}</span></div>
+          <div class="detail-row"><span class="text-muted">{{ $t('Plan') || 'Plan' }}</span><span>{{ payment.plan_name }}</span></div>
+          <div class="detail-row"><span class="text-muted">{{ $t('Billing_Cycle') || 'Billing' }}</span><span>{{ capitalize(payment.billing_cycle) }}</span></div>
+          <div class="detail-row"><span class="text-muted">{{ $t('Amount') || 'Amount' }}</span><span>{{ currencySymbol }}{{ payment.amount.toFixed(2) }} {{ payment.currency }}</span></div>
+          <div class="detail-row"><span class="text-muted">{{ $t('Gateway') || 'Gateway' }}</span><span>{{ payment.gateway_label }}</span></div>
           <div class="detail-row">
             <span class="text-muted">{{ $t('Status') || 'Status' }}</span>
             <span class="badge-billing badge-paid"><lucide-icon name="check" class="mr-1" />{{ $t('Paid') || 'Paid' }}</span>
           </div>
           <div v-if="subscription && subscription.ends_at" class="detail-row">
             <span class="text-muted">{{ $t('Valid_Until') || 'Valid Until' }}</span>
-            <span class="fw-bold">{{ formatDate(subscription.ends_at) }}</span>
+            <span>{{ formatDate(subscription.ends_at) }}</span>
           </div>
         </div>
       </div>

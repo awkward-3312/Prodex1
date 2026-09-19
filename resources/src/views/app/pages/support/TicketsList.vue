@@ -131,11 +131,11 @@
 </template>
 
 <script>
-import { BRow, BCol, BBadge } from "@/platform/bootstrap";
+import { BRow, BCol, BBadge, vBTooltip } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   components: { BRow, BCol, BBadge },
   metaInfo: { title: "Support Tickets" },
   data() {

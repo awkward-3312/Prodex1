@@ -3260,7 +3260,7 @@
                             variant="primary"
                             class="btn-generate-backup"
                           >
-                            <lucide-icon class="me-2" name="plus" />{{$t('GenerateBackup')}}
+                            <lucide-icon name="plus" />{{$t('GenerateBackup')}}
                           </b-button>
                         </div>
 
@@ -3350,7 +3350,7 @@
                             <template #cell(device)="row">
                               <div class="d-flex align-items-center">
                                 <span>{{ row.item.device }}</span>
-                                <b-badge v-if="row.item.is_current" variant="success" class="ms-2">Current</b-badge>
+                                <b-badge v-if="row.item.is_current" variant="success">Current</b-badge>
                               </div>
                             </template>
 
@@ -3389,7 +3389,7 @@
                         <div class="system-actions-card">
                           <h5 class="mb-3">{{$t('Clear_Cache')}}</h5>
                           <b-button variant="primary" @click="Clear_Cache()" class="action-btn-system">
-                            <lucide-icon class="me-2" name="refresh-cw" />{{$t('Clear_Cache')}}
+                            <lucide-icon name="refresh-cw" />{{$t('Clear_Cache')}}
                           </b-button>
                         </div>
                   </b-col>
@@ -3466,7 +3466,7 @@
 
                       <b-col lg="12" md="12" sm="12" class="mt-2">
                         <b-button variant="primary" @click="Update_Settings()">
-                          <lucide-icon class="me-2" name="check" /> {{ $t('submit') }}
+                          <lucide-icon name="check" /> {{ $t('submit') }}
                         </b-button>
                       </b-col>
                     </b-row>
@@ -3724,7 +3724,7 @@
                                 type="submit"
                                 :disabled="customFieldSubmitProcessing"
                               >
-                                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
+                                <lucide-icon class="font-weight-bold" name="check" /> {{ $t('submit') }}
                               </b-button>
                               <b-button
                                 variant="secondary"

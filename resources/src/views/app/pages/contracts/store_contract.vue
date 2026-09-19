@@ -151,11 +151,13 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
+import { BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback } from "@/platform/bootstrap";
 import RichTextEditor from "@/components/RichTextEditor.vue";
 
 export default {
   metaInfo: { title: "Create Contract" },
-  components: {
+  components: { BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback,
     RichTextEditor,
   },
   data() {
@@ -224,7 +226,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$bvToast.toast(msg, { title: title || this.$t("Notice") || "Notice", variant: variant, solid: true });
+      notifications.notify(msg, { title: title || this.$t("Notice") || "Notice", variant: variant, solid: true });
     },
     Submit_Contract() {
       this.$refs.ref_create_contract.validate().then(success => {

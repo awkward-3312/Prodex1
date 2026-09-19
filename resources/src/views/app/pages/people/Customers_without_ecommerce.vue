@@ -130,6 +130,7 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 
@@ -283,7 +284,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -332,7 +333,7 @@ export default {
       this.Get_Clients(this.serverParams.page);
       this.reset_Form();
       this.client = client;
-      this.$bvModal.show("New_Customer");
+      modals.show("New_Customer");
     },
 
     //---------------------------------------- Create new Client -------------------------------\\
@@ -387,7 +388,7 @@ export default {
     Fire.$on("Event_Customer", () => {
       setTimeout(() => {
         this.Get_Clients(this.serverParams.page);
-        this.$bvModal.hide("New_Customer");
+        modals.hide("New_Customer");
       }, 500);
     });
 

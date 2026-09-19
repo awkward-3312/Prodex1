@@ -141,6 +141,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import moment from 'moment';
 
 export default {
@@ -196,7 +197,7 @@ export default {
         this.$emit('refreshed');
       });
     },
-    toast(variant, msg) { this.$root.$bvToast.toast(msg, { title: this.$t('WooCommerce'), variant, solid: true }); },
+    toast(variant, msg) { notifications.notify(msg, { title: this.$t('WooCommerce'), variant, solid: true }); },
     resetSync() {
       if (this.resetting) return;
       this.resetting = true;

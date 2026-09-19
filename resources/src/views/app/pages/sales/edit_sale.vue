@@ -594,13 +594,13 @@
                 </b-col>
                 <b-col md="12" v-if="sale.statut === 'completed' && hasBatchValidationErrors">
                   <div class="alert alert-warning mt-2" style="font-size: 13px; font-weight: 600;">
-                    <lucide-icon class="me-1" name="info" />
+                    <lucide-icon name="info" />
                     {{ firstBatchErrorMessage }}
                   </div>
                 </b-col>
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" @click="Submit_Sale" :disabled="SubmitProcessing || (sale.statut === 'completed' && hasBatchValidationErrors)"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" @click="Submit_Sale" :disabled="SubmitProcessing || (sale.statut === 'completed' && hasBatchValidationErrors)"><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
                      <div v-once class="typo__p" v-if="SubmitProcessing">
                       <div class="spinner sm spinner-primary mt-3"></div>
                     </div>
@@ -727,7 +727,7 @@
                   variant="primary"
                   type="submit"
                   :disabled="Submit_Processing_detail"
-                ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                ><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
                 <div v-once class="typo__p" v-if="Submit_Processing_detail">
                   <div class="spinner sm spinner-primary mt-3"></div>
                 </div>

@@ -4,14 +4,23 @@
 //     `Vue.use(Vuex)` y Vuex informaba "[vuex] already installed".
 //  3. Los plugins híbridos (vue-sweetalert2 5.x) que publican en `Vue.config.globalProperties` se traspasan a `Vue.prototype`.
 import Vue, { configureCompat } from 'vue';
+import { compatModeFor } from './compat/bvn-mode.js';
 
 // Configuración explícita de @vue/compat. MODE 2 = comportamiento de Vue 2 en todos los componentes (los que se migren
 // pasan a `compatConfig: { MODE: 3 }`). NO se desactiva ni silencia ningún aviso: se necesita ver cada uno (ver
 // docs/architecture/VUE3_COMPAT_SPIKE.md y `npm run test:e2e:compat-warnings`).
-// CUSTOM_DIR: 23 plantillas usan `<router-link v-b-tooltip>`; una directiva sobre un componente se ejecuta en el contexto de
-// ese componente (RouterLink, MODE 3) y sin esta clave los hooks Vue 2 de BootstrapVue (`bind/inserted/componentUpdated`) se
-// desactivan ("compat behavior is disabled") y el tooltip no funciona. Desaparece al migrar BootstrapVue.
-if (String(Vue.version).startsWith('3')) configureCompat({ MODE: 2, CUSTOM_DIR: true });
+// CUSTOM_DIR (hooks de directivas de Vue 2: bind/inserted/componentUpdated/unbind, con `vnode.context`) sigue activo porque quedan
+// consumidores REALES, todos de terceros (las directivas propias PxSelect/PxMenu ya usan mounted/unmounted):
+//   1. vue-select        -> node_modules/vue-select/src/directives/appendToBody.js        (`v-append-to-body`; 12 vistas con append-to-body)
+//   2. vue2-daterange-picker -> node_modules/vue2-daterange-picker/src/directives/appendToBody.js (mismo patrón; selector de rango de fechas)
+//   3. bootstrap-vue 2   -> `v-b-tooltip` (en vistas críticas), `v-b-toggle` (b-sidebar de BV2), `v-b-popover`.
+// Se puede quitar cuando esas librerías se sustituyan (Fase 3+). Ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE2.md.
+//
+// MODE por componente: BootstrapVueNext es Vue 3 puro y se compone de componentes internos NO exportados (p. ej. BFormSelect ->
+// BFormSelectPlain). `compatConfig` solo se puede fijar en los exportados (platform/bootstrap); en los internos compat aplicaría el
+// contrato de Vue 2 (`v-model` -> `value`/`input`) y el <select> quedaba sin valor. `compat/bvn-mode.js` los reconoce (`__name: 'B…'`) y los
+// ejecuta en MODE 3.
+if (String(Vue.version).startsWith('3')) configureCompat({ MODE: compatModeFor, CUSTOM_DIR: true });
 
 if (Vue && String(Vue.version).startsWith('3')) {
   const installed = new Set();

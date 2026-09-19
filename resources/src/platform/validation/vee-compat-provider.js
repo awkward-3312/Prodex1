@@ -61,7 +61,7 @@ function componentModelConfig(vnode) {
 }
 
 /** Devuelve { value, event } si el VNode es un campo con v-model, o null. */
-function describeField(vnode) {
+export function describeField(vnode) {
   const dir = nativeModelDirective(vnode);
   if (dir) {
     const tag = vnode.type;
@@ -73,6 +73,10 @@ function describeField(vnode) {
   if (typeof vnode.type === 'object' || typeof vnode.type === 'function') {
     const props = vnode.props || {};
     const model = componentModelConfig(vnode);
+    // Contrato Vue 3 (`v-model` = `modelValue` + `update:modelValue`; BootstrapVueNext, `defineModel`): componentes sin `model` de Vue 2.
+    if (!model.prop && !('value' in props) && ('modelValue' in props || 'onUpdate:modelValue' in props)) {
+      return { value: props.modelValue, event: 'update:modelValue', native: false, checkable: false };
+    }
     const prop = model.prop || 'value';
     const event = model.event || 'input';
     const hasVModel = Object.keys(props).some((k) => k.startsWith(MODEL_COMPAT_PREFIX));

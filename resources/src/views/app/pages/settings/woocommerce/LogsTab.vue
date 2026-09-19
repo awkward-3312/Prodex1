@@ -122,9 +122,11 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
+import { BFormGroup, BFormInput } from "@/platform/bootstrap";
 import moment from 'moment';
 
-export default {
+export default { components: { BFormGroup, BFormInput },
   data() {
     return {
       processing: false,
@@ -199,7 +201,7 @@ export default {
       if (level === 'warning') return 'alert-circle';
       return 'check-circle';
     },
-    toast(variant, msg) { this.$root.$bvToast.toast(msg, { title: this.$t('WooCommerce'), variant, solid: true }); },
+    toast(variant, msg) { notifications.notify(msg, { title: this.$t('WooCommerce'), variant, solid: true }); },
   },
   created() { this.load().finally(() => { this.$emit('ready'); }); }
 };

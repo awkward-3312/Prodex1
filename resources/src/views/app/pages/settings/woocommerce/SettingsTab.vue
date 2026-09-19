@@ -135,10 +135,12 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
+import { BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
 import moment from 'moment';
 
-export default {
+export default { components: { BFormGroup, BFormInput, BFormInvalidFeedback },
   data() {
     return {
       connecting: false,
@@ -177,7 +179,7 @@ export default {
         if (data.ok) this.toast('success', this.$t('Connection_successful')); else this.toast('danger', this.$t('Connection_failed'));
       }).catch(() => { this.connectionOk = false; this.$emit('connection', false); this.toast('danger', this.$t('Connection_failed')); }).finally(() => { this.connecting = false; });
     },
-    toast(variant, msg) { this.$root.$bvToast.toast(msg, { title: this.$t('WooCommerce'), variant, solid: true }); }
+    toast(variant, msg) { notifications.notify(msg, { title: this.$t('WooCommerce'), variant, solid: true }); }
   },
   created() { this.loadSettings().then(() => this.testConnection()).finally(() => { this.$emit('ready'); }); }
 };

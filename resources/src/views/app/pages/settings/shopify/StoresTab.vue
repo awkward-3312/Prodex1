@@ -117,9 +117,11 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
+import { BFormGroup, BFormInput, BFormSelect, BFormInvalidFeedback } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
 
-export default {
+export default { components: { BFormGroup, BFormInput, BFormSelect, BFormInvalidFeedback },
   props: {
     stores: { type: Array, default: () => [] },
     warehouses: { type: Array, default: () => [] },
@@ -257,7 +259,7 @@ export default {
       });
     },
     toast(variant, msg) {
-      this.$root.$bvToast.toast(msg, { title: 'Shopify', variant, solid: true });
+      notifications.notify(msg, { title: 'Shopify', variant, solid: true });
     },
   },
   created() {
