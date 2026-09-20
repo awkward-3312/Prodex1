@@ -183,7 +183,7 @@ Por implementación real (una etiqueta importada localmente de `@/platform/boots
 
 ## 14. CI
 
-Sigue en PHP 8.4, servidor embebido de un solo proceso, sin bucle de reinicio silencioso y sin `continue-on-error`; el paso de diagnóstico (`gdb bt`/`dmesg`) se mantiene. Runs finales: ver el commit de cierre del historial de la rama.
+Sigue en PHP 8.4, servidor embebido de un solo proceso, sin bucle de reinicio silencioso y sin `continue-on-error`; el paso de diagnóstico (`gdb bt`/`dmesg`) se mantiene. Evidencia: dos ejecuciones consecutivas del mismo commit `07845df` (run `35487697046`, intento 1 y intento 2) con `route-snapshot` y `e2e` en verde, 165/165 E2E y PHP 8.4.25 en el log del servidor, sin `Segmentation fault`.
 
 ## 15. Superficie restante de BootstrapVue 2
 
