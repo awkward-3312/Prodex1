@@ -92,17 +92,19 @@ test('clases BS5 latentes: en pantallas críticas el puente NO las activa (neutr
   }
 });
 
-// Dominios que la fase 3 NO toca (POS, caja, pagos, inventario crítico, ventas/compras): siguen con $bvToast/$bvModal de BootstrapVue 2.
-const PLATFORM_EXEMPT = /(pos|cash|caja|register|payment|pago|inventory|stock|adjustment|transfer|damage|warehouse|sale|purchase|quotation|checkout|receiv|opening|customfields|_ui)/i;
-
-test('servicios de plataforma: ninguna vista fuera de los dominios exentos usa $bvToast / $bvModal (ni en script ni en plantilla)', () => {
+// Fase 4: `$bvToast` / `$bvModal` a 0 en TODO el código propio (vistas, componentes, contenedores, mixins, utilidades), incluidos POS, caja,
+// pagos, inventario, transferencias, ajustes, mermas y ventas/compras. Todo pasa por los servicios de plataforma.
+test('servicios de plataforma: ningún archivo propio usa $bvToast / $bvModal (ni en script ni en plantilla)', () => {
   const offenders = [];
-  walk(path.join(SRC, 'views'), (file) => {
-    const rel = path.relative(SRC, file).replace(/\\/g, '/');
-    if (!file.endsWith('.vue') || PLATFORM_EXEMPT.test(rel)) return;
-    const text = fs.readFileSync(file, 'utf8').replace(/<!--[\s\S]*?-->/g, '').split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
-    if (/\$bv(Toast|Modal)\b/.test(text)) offenders.push(rel);
-  });
+  for (const dir of ['views', 'components', 'containers', 'mixins', 'utils', 'layouts', 'store', 'routes']) {
+    if (!fs.existsSync(path.join(SRC, dir))) continue;
+    walk(path.join(SRC, dir), (file) => {
+      if (!/\.(vue|js)$/.test(file)) return;
+      const rel = path.relative(SRC, file).replace(/\\/g, '/');
+      const text = fs.readFileSync(file, 'utf8').replace(/<!--[\s\S]*?-->/g, '').split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+      if (/\$bv(Toast|Modal)\b/.test(text)) offenders.push(rel);
+    });
+  }
   assert.deepEqual(offenders, []);
 });
 

@@ -336,6 +336,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals, getPriceFormatSetting, formatPriceDisplay } from "@/utils/priceFormat";
@@ -540,7 +541,7 @@ export default {
       return Number.isFinite(n) ? n : (fallback == null ? 0 : fallback);
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     goCancel() { this.$router.push({ name: "index_transfer" }); },
     errMsg(err) {

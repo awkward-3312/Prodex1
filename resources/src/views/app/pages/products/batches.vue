@@ -263,12 +263,12 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip } from "@/platform/bootstrap";
+import { vBTooltip, BModal } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default { directives: { 'b-tooltip': vBTooltip },
+export default { components: { BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Batches"
   },

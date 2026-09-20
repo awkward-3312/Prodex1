@@ -86,8 +86,9 @@
 </template>
 
 <script>
+import { BTable } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
-export default {
+export default { components: { BTable },
   data() {
     return {
       loading: false,

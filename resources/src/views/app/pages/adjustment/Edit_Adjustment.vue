@@ -359,10 +359,12 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default {
+export default { components: { BModal },
   metaInfo: {
     title: "Edit Adjustment"
   },
@@ -491,7 +493,7 @@ export default {
   methods: {
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
@@ -499,7 +501,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
 
@@ -611,7 +613,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

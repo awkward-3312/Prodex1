@@ -7,11 +7,12 @@
 // BootstrapVueNext es Vue 3 puro. Bajo @vue/compat MODE 2 hay que excluirlo de los comportamientos de Vue 2
 // (`v-model` value/input, class/style de atributos, `$listeners`…): cada componente exportado (y los que usa por dentro) se marca
 // `compatConfig: { MODE: 3 }`. Es configuración del propio componente, no un parche de su lógica; desaparece al quitar compat.
-import { h } from 'vue';
+import { h, ref } from 'vue';
 import { bootstrapPlugin } from './plugin.js';
 import { vBTooltip as _vBTooltip, vBToggle as _vBToggle, vBPopover as _vBPopover } from 'bootstrap-vue-next/directives';
 import { BOffcanvas as _BOffcanvas } from 'bootstrap-vue-next/components/BOffcanvas';
-import { BTable as _BTable } from 'bootstrap-vue-next/components/BTable';
+import { BModal as _BModal } from 'bootstrap-vue-next/components/BModal';
+import { BTable as _BTable, BTableSimple as _BTableSimple, BThead as _BThead, BTbody as _BTbody, BTr as _BTr, BTh as _BTh, BTd as _BTd } from 'bootstrap-vue-next/components/BTable';
 import { BButton as _BButton, BCloseButton } from 'bootstrap-vue-next/components/BButton';
 import { BBadge as _BBadge } from 'bootstrap-vue-next/components/BBadge';
 import { BAlert as _BAlert } from 'bootstrap-vue-next/components/BAlert';
@@ -175,8 +176,76 @@ export const BSidebar = pure({
   },
 });
 
-// Tabla (piloto de la fase 3, solo settings/woocommerce/LogsTab): BTable de BootstrapVueNext sin wrapper; ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE3.md.
-export const BTable = pure(_BTable);
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Modal (fase 4): `<b-modal>` de BootstrapVue 2 → BModal de BootstrapVueNext. Contrato de BootstrapVue 2 conservado (subconjunto usado):
+//   - `id` (se abre/cierra por id con `modals.show/hide`, que resuelve el registro de BootstrapVueNext), `title`, `size`, `centered`,
+//     `scrollable`, `modal-class`, `body-class`, `ok-only/ok-title/ok-variant/ok-disabled`, `no-close-on-backdrop/esc`, `visible` y `v-model`.
+//   - Nombres que BootstrapVueNext cambió: `hide-footer` → `noFooter`, `hide-header` → `noHeader`, `hide-header-close` → `noHeaderClose`,
+//     `static` → `teleportDisabled`.
+//   - Ubicación en el DOM: el `<b-modal>` de BootstrapVue 2 se quedaba dentro de la vista (bajo `.prodex-ui`, de la que dependen la jerarquía
+//     y el espaciado de `.modal-header/.modal-title/.modal-body`). BootstrapVueNext teletransporta a `<body>` y perdería esas reglas, así que
+//     `teleportDisabled` es `true` por defecto (igual que en `BSidebar`).
+//   - Ciclo de vida de BootstrapVue 2: un modal no estático solo renderiza su contenido mientras está abierto y lo destruye al cerrarse
+//     (los formularios de dentro se reinician y sus `mounted` se repiten). BootstrapVueNext monta siempre el contenido por defecto:
+//     se activan `lazy` + `unmountLazy` salvo que la vista los indique.
+//   - Eventos `@show/@shown/@hide/@hidden/@ok/@cancel/@close` (con `preventDefault()`, como BootstrapVue 2) y `$refs.x.show()/hide()/toggle()`.
+// El resto de BootstrapVueNext se deja tal cual; las diferencias de marcado (cabecera, cierre) las absorbe el puente de Bootstrap 5.
+// ---------------------------------------------------------------------------------------------------------------------------------
+const MODAL_RENAMED = {
+  'hide-footer': 'noFooter', hideFooter: 'noFooter',
+  'hide-header': 'noHeader', hideHeader: 'noHeader',
+  'hide-header-close': 'noHeaderClose', hideHeaderClose: 'noHeaderClose',
+  static: 'teleportDisabled',
+};
+
+export const BModal = pure({
+  name: 'BModal',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots, expose }) {
+    const inner = ref(null);
+    expose({
+      show: (...args) => inner.value && inner.value.show(...args),
+      hide: (trigger, ...rest) => inner.value && inner.value.hide(trigger, ...rest),
+      toggle: (...args) => inner.value && inner.value.toggle(...args),
+    });
+    return () => {
+      const props = { lazy: true, unmountLazy: true, ref: inner };
+      for (const key of Object.keys(attrs)) props[MODAL_RENAMED[key] || key] = attrs[key];
+      return h(_BModal, props, slots);
+    };
+  },
+});
+
+// Tabla (fase 4): `b-table` de BootstrapVue 2 → BTable de BootstrapVueNext. El contrato de props usado (`items`, `fields`, `busy`, `small`, `striped`,
+// `hover`, `bordered`, `responsive`, `show-empty`, `empty-text`, `thead-class`, slots `#cell(x)`, `#table-busy`, orden local con `sortable`) es
+// el mismo. Única diferencia de marcado: `head-variant="light|dark"`. BootstrapVue 2 (BS4) pintaba `thead.thead-light`, que estila la base
+// (`.thead-light th`); BootstrapVueNext emite `table-light` (fila de color, otro gris). Se emite la clase de BS4 y no se pasa `headVariant`.
+export const BTable = pure({
+  name: 'BTable',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots, expose }) {
+    const inner = ref(null);
+    expose({ refresh: () => inner.value && inner.value.refresh && inner.value.refresh() });
+    return () => {
+      const { headVariant, 'head-variant': headVariantKebab, ...rest } = attrs;
+      const variant = headVariant || headVariantKebab;
+      const theadClass = rest.theadClass !== undefined ? rest.theadClass : rest['thead-class'];
+      const merged = variant === 'light' || variant === 'dark' ? [theadClass, `thead-${variant}`] : theadClass;
+      const props = { ...rest, ref: inner };
+      delete props['thead-class'];
+      if (variant && variant !== 'light' && variant !== 'dark') props.headVariant = variant;
+      if (merged !== undefined) props.theadClass = merged;
+      return h(_BTable, props, slots);
+    };
+  },
+});
+export const BTableSimple = pure(_BTableSimple);
+export const BThead = pure(_BThead);
+export const BTbody = pure(_BTbody);
+export const BTr = pure(_BTr);
+export const BTh = pure(_BTh);
+export const BTd = pure(_BTd);
 
 /** `v-b-toggle` de BootstrapVueNext (hooks de Vue 3). Uso local: `directives: { 'b-toggle': vBToggle }`. */
 export const vBToggle = _vBToggle;

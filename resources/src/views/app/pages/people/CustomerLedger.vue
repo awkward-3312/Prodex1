@@ -281,7 +281,7 @@ const Pager = {
   </div>`
 }
 
-import { BSpinner } from "@/platform/bootstrap";
+import { BSpinner, BTable } from "@/platform/bootstrap";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting
@@ -289,7 +289,7 @@ import {
 
 export default {
   name: 'CustomerLedgerRefactored',
-  components: { BSpinner, ListToolbar, Pager },
+  components: { BTable, BSpinner, ListToolbar, Pager },
   props: { id: [String, Number] },
   metaInfo () { return { title: this.$t('Customer_Ledger') } },
   data(){

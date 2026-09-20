@@ -77,7 +77,7 @@ async function apiJson(page, url) {
 
 /** Cierra el modal superior (p. ej. la factura POS que se abre tras cobrar). */
 async function closeTopModal(page) {
-  await page.locator('.modal.show .close, .modal.show button.close, .modal.show .close-button').first().click();
+  await page.locator('.modal.show .btn-close, .modal.show .close, .modal.show button.close, .modal.show .close-button').first().click();
   await expect(page.locator('.modal.show')).toHaveCount(0, { timeout: 10_000 });
 }
 

@@ -122,10 +122,11 @@
 </template>
 
 <script>
-import { vBTooltip } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
+import { vBTooltip, BModal } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default { directives: { 'b-tooltip': vBTooltip },
+export default { components: { BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Warehouse Locations"
   },
@@ -185,7 +186,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
 
     onWarehouseFilterChange() {
@@ -228,7 +229,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
     New_Location() {
       this.editmode = false;
       this.reset_Form();
-      this.$bvModal.show("New_Warehouse_Location");
+      modals.show("New_Warehouse_Location");
     },
 
     Edit_Location(row) {
@@ -240,7 +241,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
         name: row.name,
         is_active: !!row.is_active
       };
-      this.$bvModal.show("New_Warehouse_Location");
+      modals.show("New_Warehouse_Location");
     },
 
     Submit_Location() {
@@ -269,7 +270,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
           .then(() => {
             NProgress.done();
             this.SubmitProcessing = false;
-            this.$bvModal.hide("New_Warehouse_Location");
+            modals.hide("New_Warehouse_Location");
             this.makeToast(
               "success",
               wasNew ? this.$t("Successfully_Created") : this.$t("Successfully_Updated"),

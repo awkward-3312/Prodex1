@@ -184,13 +184,14 @@
 </template>
 
 <script>
-import { BSidebar, vBToggle, vBTooltip } from "@/platform/bootstrap";
+import { modals } from "@/platform";
+import { BSidebar, vBToggle, vBTooltip, BModal } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BSidebar },
+export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BModal, BSidebar },
   metaInfo: { title: "Damage" },
   data() {
     return {
@@ -359,7 +360,7 @@ export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, c
   },
   created() {
     this.Get_Damages(1);
-    Fire.$on("Get_Details_Damage", () => { setTimeout(() => NProgress.done(), 500); this.$bvModal.show("showDetails"); });
+    Fire.$on("Get_Details_Damage", () => { setTimeout(() => NProgress.done(), 500); modals.show("showDetails"); });
     Fire.$on("Delete_Damage", () => { setTimeout(() => { NProgress.done(); this.Get_Damages(this.serverParams.page); }, 500); });
   }
 };

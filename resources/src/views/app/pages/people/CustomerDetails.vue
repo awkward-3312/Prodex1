@@ -517,7 +517,7 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { BSpinner } from "@/platform/bootstrap";
+import { BSpinner, BModal, BTable } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import {
@@ -526,7 +526,7 @@ import {
 } from "../../../../utils/priceFormat";
 
 export default {
-  components: { BSpinner },
+  components: { BTable, BModal, BSpinner },
   metaInfo: {
     title: "Customer Details"
   },

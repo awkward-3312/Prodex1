@@ -2,8 +2,7 @@
  * Notificaciones (toasts) de PRODEX.
  *
  * Las vistas llaman a este servicio; un "driver" que se instala una sola vez al arrancar (ver adapters/vue2.js) decide cómo
- * se muestran. Hoy el driver usa `$bvToast` de BootstrapVue; en Vue 3 se sustituye por el componente `PxToast` sin tocar las
- * vistas.
+ * se muestran. El driver actual usa `useToast()` de BootstrapVueNext (adapters/bvn.js); cambiarlo no toca las vistas.
  *
  * `notify(mensaje, opciones)` reenvía las opciones tal cual al driver (por eso reproduce EXACTAMENTE las llamadas antiguas
  * `$bvToast.toast(msg, { title, variant, solid })`). `success/error/warning/info` son atajos con el `variant` de

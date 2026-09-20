@@ -106,6 +106,32 @@ $bs5-spacers: map-merge($spacers, (auto: auto));
   &:disabled,
   &.disabled { pointer-events: none; user-select: none; opacity: .25; }
 }
+// Cabecera de modal: BootstrapVueNext pinta `btn-close` (icono SVG); BootstrapVue 2 pintaba `.close` con el glifo `×` de BS4 (1.5rem, 700,
+// opacidad .5, relleno 1rem con margen negativo). Se reproduce el glifo y su caja para conservar el aspecto y la altura de la cabecera.
+.modal-header .btn-close {
+  box-sizing: border-box;
+  width: auto;
+  height: auto;
+  padding: 1rem;
+  margin: -1rem;
+  margin-inline-start: auto;
+  font-size: 1.2195rem; // el `.close` del proyecto (variables de BS4 del tema), no 1.5rem
+  font-weight: 700;
+  line-height: 1;
+  color: #000;
+  text-shadow: 0 1px 0 #fff;
+  background: transparent;
+  opacity: .5;
+  &::before { content: "\00d7"; }
+  &:hover { opacity: .75; }
+}
+// Móvil: `_globals.scss` posiciona `button.close` en la esquina (absolute, top 0, 5px del borde) y lo saca del flujo de la cabecera.
+@media (max-width: 576px) {
+  .modal-header .btn-close { position: absolute; top: 0; inset-inline-end: 5px; padding: 0; margin: 0; }
+}
+// BootstrapVueNext teletransporta el modal a <body>, fuera de `.prodex-ui`: el título 1rem/700 de `.prodex-ui .modal-title`
+// (prodex/_interactions.scss), que es lo que pintaba BootstrapVue 2, se aplica aquí a todo modal.
+.modal-header .modal-title { color: var(--px-text, #111827); font-size: 1rem; font-weight: 700; }
 .alert-dismissible .btn-close {
   position: absolute;
   top: 0;

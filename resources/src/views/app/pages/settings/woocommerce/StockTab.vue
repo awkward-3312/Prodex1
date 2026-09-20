@@ -81,6 +81,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import moment from 'moment';
 export default {
   data() {
@@ -204,7 +205,7 @@ export default {
       }).finally(() => { this.refreshing = false; });
     },
     
-    toast(variant, msg) { this.$root.$bvToast.toast(msg, { title: this.$t('WooCommerce'), variant, solid: true }); },
+    toast(variant, msg) { notifications.notify(msg, { title: this.$t('WooCommerce'), variant, solid: true }); },
     formatDate(v) { return v ? moment(v).format('YYYY-MM-DD HH:mm') : ''; },
     resetSync() {
       if (this.resetting) return;

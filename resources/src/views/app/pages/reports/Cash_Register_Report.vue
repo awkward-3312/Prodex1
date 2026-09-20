@@ -237,6 +237,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import moment from 'moment'
 import DateRangePicker from 'vue2-daterange-picker'
@@ -376,7 +377,7 @@ export default {
         this.drawers = payload.cash_drawers || []
         this.legacyWarehouses = payload.legacy_warehouses || []
       }).catch(() => {
-        if (this.$bvToast && this.$bvToast.toast) this.$bvToast.toast(this.$t('OperationFailed'), { title: this.$t('Failed'), variant: 'danger', solid: true })
+        notifications.notify(this.$t('OperationFailed'), { title: this.$t('Failed'), variant: 'danger', solid: true })
       }).finally(() => {
         this.isLoading = false
         setTimeout(() => NProgress.done(), 250)

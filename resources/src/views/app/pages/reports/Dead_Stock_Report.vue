@@ -98,6 +98,7 @@
 
 <script>
 import NProgress from 'nprogress';
+import { notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 // axios assumed globally available
 
@@ -365,7 +366,7 @@ export default {
       } catch (err) {
         // ignore cancellations
         if (!axios.isCancel?.(err)) {
-          this.$bvToast?.toast(this.$t('UnexpectedError') || 'Unexpected error.', { variant: 'danger', solid: true });
+          notifications.notify(this.$t('UnexpectedError') || 'Unexpected error.', { variant: 'danger', solid: true });
           // eslint-disable-next-line no-console
           console.error('Dead stock fetch error:', err);
         }
@@ -383,7 +384,7 @@ export default {
         const items = (this.rows?.[0]?.children || []);
         await this._buildAndSavePdf(items, { suffix: 'page' });
       } catch (e) {
-        this.$bvToast?.toast(this.$t ? this.$t('Export_Failed') : 'Export failed. Please try again.', { variant: 'danger', solid: true });
+        notifications.notify(this.$t ? this.$t('Export_Failed') : 'Export failed. Please try again.', { variant: 'danger', solid: true });
         // eslint-disable-next-line no-console
         console.error('PDF export error:', e);
       } finally {
@@ -412,7 +413,7 @@ export default {
         const items = Array.isArray(data?.report) ? data.report : [];
         await this._buildAndSavePdf(items, { suffix: 'all' });
       } catch (e) {
-        this.$bvToast?.toast(this.$t ? this.$t('Export_Failed') : 'Export failed. Please try again.', { variant: 'danger', solid: true });
+        notifications.notify(this.$t ? this.$t('Export_Failed') : 'Export failed. Please try again.', { variant: 'danger', solid: true });
         // eslint-disable-next-line no-console
         console.error('PDF export all error:', e);
       } finally {

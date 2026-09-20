@@ -5,7 +5,7 @@
       (/app/recruit/categories, sin entrada de sidebar — igual que antes).
       Conserva endpoint, payloads, permisos (ninguno a nivel de componente,
       igual que el archivo legacy), búsqueda, orden, paginación, selección
-      múltiple y borrado individual/masivo. Toast sigue siendo $bvToast
+      múltiple y borrado individual/masivo. Toast por el servicio notifications
       (la normalización de toasts es una tarea aparte, no esta).
     -->
     <px-page-header :title="$t('Job_Categories')" :breadcrumbs="[{ label: $t('Recruit') }, { label: $t('Job_Categories') }]">

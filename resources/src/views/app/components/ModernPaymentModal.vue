@@ -341,10 +341,12 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import { loadStripe } from "@stripe/stripe-js";
 import Util from "../../../utils";
 import { getPriceDecimals } from "../../../utils/priceFormat";
-export default {
+export default { components: { BModal },
   name: 'ModernPaymentModal',
   props: {
     paymentMethods: { type: Array, default: () => [] },
@@ -562,8 +564,8 @@ export default {
     },
     //------ Toast (mirror old POS behavior)
     makeToast(variant, msg, title) {
-      if (this.$root && this.$root.$bvToast) {
-        this.$root.$bvToast.toast(msg, {
+      if (notifications.hasDriver()) {
+        notifications.notify(msg, {
           title: title,
           variant: variant,
           solid: true

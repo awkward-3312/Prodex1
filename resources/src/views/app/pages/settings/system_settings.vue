@@ -3838,6 +3838,7 @@
 </template>
 
 <script>
+import { BModal, BTable } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
@@ -3847,7 +3848,7 @@ import { posShortcutsEnabled, setPosShortcutsEnabled, POS_SHORTCUTS } from "../.
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 
 export default {
-  components: { draggable, PxPageHeader },
+  components: { BTable, BModal, draggable, PxPageHeader },
   metaInfo: {
     title: "System Settings"
   },

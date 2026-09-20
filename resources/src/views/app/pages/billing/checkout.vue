@@ -245,6 +245,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import axios from "axios";
 
 export default {
@@ -368,7 +369,7 @@ export default {
       this.loading = false;
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true,

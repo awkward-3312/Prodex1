@@ -69,7 +69,7 @@
             <b-col md="6"><b-form-group label="Correo"><b-form-input type="email" v-model.trim="warehouse.email" /></b-form-group></b-col>
             <b-col md="6"><b-form-group label="Código postal"><b-form-input v-model.trim="warehouse.zip" /></b-form-group></b-col>
             <b-col md="12" class="mt-3 text-right">
-              <b-button variant="outline-secondary" class="mr-2" @click="$bvModal.hide('New_Warehouse')">Cancelar</b-button>
+              <b-button variant="outline-secondary" class="mr-2" @click="$modals.hide('New_Warehouse')">Cancelar</b-button>
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="mr-1" name="check" /> Guardar</b-button>
               <div v-if="SubmitProcessing" class="spinner sm spinner-primary mt-3"></div>
             </b-col>
@@ -81,10 +81,11 @@
 </template>
 
 <script>
-import { vBTooltip } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
+import { vBTooltip, BModal } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default { directives: { 'b-tooltip': vBTooltip },
+export default { components: { BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: { title: "Almacenes / CD" },
   data() {
     return {
@@ -119,13 +120,13 @@ export default { directives: { 'b-tooltip': vBTooltip },
     onSortChange(params) { this.updateParams({ sort: { type: params[0].type, field: params[0].field } }); this.Get_Warehouses(this.serverParams.page); },
     onSearch(value) { this.search = value.searchTerm; this.Get_Warehouses(1); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    toast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }); },
+    toast(variant, msg, title) { notifications.notify(msg, { title, variant, solid: true }); },
     Submit_Warehouse() { this.$refs.Create_Warehouse.validate().then(success => { if (!success) return this.toast("danger", "Completa los campos obligatorios.", "Error"); this.editmode ? this.Update_Warehouse() : this.Create_Warehouse(); }); },
-    New_Warehouse() { this.warehouse = this.emptyWarehouse(); this.editmode = false; this.$bvModal.show("New_Warehouse"); },
+    New_Warehouse() { this.warehouse = this.emptyWarehouse(); this.editmode = false; modals.show("New_Warehouse"); },
     Edit_Warehouse(row) {
       this.warehouse = { id: row.id, name: row.name || "", mobile: row.mobile || "", email: row.email || "", zip: row.zip || "", country: row.country || "", city: row.city || "" };
       this.editmode = true;
-      this.$bvModal.show("New_Warehouse");
+      modals.show("New_Warehouse");
     },
     async Get_Warehouses(page) {
       NProgress.start();
@@ -138,13 +139,13 @@ export default { directives: { 'b-tooltip': vBTooltip },
     payload() { return { name: this.warehouse.name, mobile: this.warehouse.mobile || null, email: this.warehouse.email || null, zip: this.warehouse.zip || null, country: this.warehouse.country || null, city: this.warehouse.city || null }; },
     async Create_Warehouse() {
       this.SubmitProcessing = true;
-      try { await axios.post("warehouses", this.payload()); this.$bvModal.hide("New_Warehouse"); this.toast("success", "Almacén/CD creado correctamente.", "Éxito"); await this.Get_Warehouses(1); }
+      try { await axios.post("warehouses", this.payload()); modals.hide("New_Warehouse"); this.toast("success", "Almacén/CD creado correctamente.", "Éxito"); await this.Get_Warehouses(1); }
       catch (error) { this.toast("danger", (error.response && error.response.data && error.response.data.message) || "No se pudo crear el almacén/CD.", "Error"); }
       finally { this.SubmitProcessing = false; }
     },
     async Update_Warehouse() {
       this.SubmitProcessing = true;
-      try { await axios.put("warehouses/" + this.warehouse.id, this.payload()); this.$bvModal.hide("New_Warehouse"); this.toast("success", "Almacén/CD actualizado correctamente.", "Éxito"); await this.Get_Warehouses(this.serverParams.page); }
+      try { await axios.put("warehouses/" + this.warehouse.id, this.payload()); modals.hide("New_Warehouse"); this.toast("success", "Almacén/CD actualizado correctamente.", "Éxito"); await this.Get_Warehouses(this.serverParams.page); }
       catch (error) { this.toast("danger", (error.response && error.response.data && error.response.data.message) || "No se pudo actualizar el almacén/CD.", "Error"); }
       finally { this.SubmitProcessing = false; }
     },

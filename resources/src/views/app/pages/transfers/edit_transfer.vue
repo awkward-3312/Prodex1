@@ -580,11 +580,13 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BModal },
   metaInfo: {
     title: "Update Transfer"
   },
@@ -750,7 +752,7 @@ export default {
     },
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
@@ -758,7 +760,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
     
@@ -804,7 +806,7 @@ export default {
       this.detail.discount = detail.discount;
       this.detail.quantity = detail.quantity;
       this.detail.tax_percent = detail.tax_percent;
-      this.$bvModal.show("form_Update_Detail");
+      modals.show("form_Update_Detail");
     },
 
     //---------- Submit Update Detail Product
@@ -856,12 +858,12 @@ export default {
         }
       }
       this.Calcul_Total();
-      this.$bvModal.hide("form_Update_Detail");
+      modals.hide("form_Update_Detail");
     },
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

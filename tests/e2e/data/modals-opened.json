@@ -1,0 +1,536 @@
+{
+ "views/app/pages/adjustment/Create_Adjustment#open_scan": {
+  "opened": true,
+  "title": "Barcode Scanner",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/assets/index_asset_category#New_Asset_Category": {
+  "opened": true,
+  "title": "Añadir",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/bookings/BookingCalendar#booking-calendar-detail-modal": {
+  "opened": true,
+  "title": "Detalles de la reserva",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/bookings/index_booking#booking-detail-modal": {
+  "opened": true,
+  "title": null,
+  "size": "xl",
+  "centered": true,
+  "scrollable": false
+ },
+ "views/app/pages/damage/Create_Damage#open_scan": {
+  "opened": true,
+  "title": "Escáner de código de barras",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/damage/index_Damage#showDetails": {
+  "opened": true,
+  "title": "Detalle del Daño",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/hrm/payrolls#Modal_New_Payroll": {
+  "opened": true,
+  "title": "Añadir",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/hrm/payrolls#Payroll_Details": {
+  "opened": true,
+  "title": "Nómina Detalles",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/hrm/payrolls#Payroll_Documents": {
+  "opened": true,
+  "title": "Documentos adjuntos",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/inventory/stock_intake#manual-scan-modal": {
+  "opened": true,
+  "title": "Escanear transferencia",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/marketing/segments#New_Segment": {
+  "opened": true,
+  "title": "Nuevo segmento",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/marketing/templates#New_Template": {
+  "opened": true,
+  "title": "Nueva plantilla",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/meeting/meetings#New_Meeting": {
+  "opened": true,
+  "title": "Nueva reunión",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/organization/branches#branch-modal": {
+  "opened": true,
+  "title": "Nueva sucursal",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/organization/branches#location-modal": {
+  "opened": true,
+  "title": "Nueva ubicación de inventario",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/organization/employee_access#create-access-modal": {
+  "opened": true,
+  "title": "Crear acceso a PRODEX",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/Customers_without_ecommerce#New_Customer": {
+  "opened": true,
+  "title": "Register Account",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/customers#Show_invoice": {
+  "opened": true,
+  "title": "Nota de crédito",
+  "size": "sm",
+  "centered": false,
+  "scrollable": true
+ },
+ "views/app/pages/people/customers#Show_invoice_return": {
+  "opened": true,
+  "title": "deuda de devolución de venta",
+  "size": "sm",
+  "centered": false,
+  "scrollable": true
+ },
+ "views/app/pages/people/customers#adjust-opening-balance-modal": {
+  "opened": true,
+  "title": "Ajustar saldo inicial",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/customers#adjust-points-modal": {
+  "opened": true,
+  "title": "Ajustar puntos del cliente",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/customers#form_Edit_Online_Store_Account": {
+  "opened": true,
+  "title": "Edit Store Account",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/customers#importClients": {
+  "opened": true,
+  "title": "Importar clientes",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/customers#modal_Pay_due": {
+  "opened": true,
+  "title": "Pay Due",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/customers#modal_Pay_return_due": {
+  "opened": true,
+  "title": "Pay Sell Return Due",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/customers#modal_portal_client": {
+  "opened": true,
+  "title": "Cliente del portal",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/customers#showDetails": {
+  "opened": true,
+  "title": "Detalles del cliente",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/providers#Show_invoice": {
+  "opened": true,
+  "title": "Nota de crédito",
+  "size": "sm",
+  "centered": false,
+  "scrollable": true
+ },
+ "views/app/pages/people/providers#Show_invoice_return": {
+  "opened": true,
+  "title": "Deuda de devolución de compra",
+  "size": "sm",
+  "centered": false,
+  "scrollable": true
+ },
+ "views/app/pages/people/providers#importProviders": {
+  "opened": true,
+  "title": "Importar proveedores",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/providers#modal_Pay_due": {
+  "opened": true,
+  "title": "Pay Due",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/providers#modal_Pay_return_due": {
+  "opened": true,
+  "title": "Pay Purchase Return Due",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/people/providers#showDetails": {
+  "opened": true,
+  "title": "Detalles del proveedor",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#CloseRegisterModal": {
+  "opened": true,
+  "title": "Cerrar caja",
+  "size": "xl",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#New_Customer": {
+  "opened": true,
+  "title": "Nuevo cliente",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#OnlineReloadModal": {
+  "opened": true,
+  "title": "Conexión a Internet restablecida",
+  "size": "md",
+  "centered": true,
+  "scrollable": false
+ },
+ "views/app/pages/pos#OpenRegisterModal": {
+  "opened": true,
+  "title": "Abrir caja",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#Quick_Add_Customer": {
+  "opened": true,
+  "title": "Agregar cliente rápidamente",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#Show_invoice": {
+  "opened": true,
+  "title": "Factura POS",
+  "size": "sm",
+  "centered": false,
+  "scrollable": true
+ },
+ "views/app/pages/pos#form_Update_Detail": {
+  "opened": true,
+  "title": "",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#modal_pos_settings": {
+  "opened": true,
+  "title": null,
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#modal_today_sales": {
+  "opened": true,
+  "title": null,
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#open_scan": {
+  "opened": true,
+  "title": "Escanear",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#pos-confirm-clear-cart": {
+  "opened": true,
+  "title": null,
+  "size": "sm",
+  "centered": true,
+  "scrollable": false
+ },
+ "views/app/pages/pos#pos-keyboard-shortcuts-help": {
+  "opened": true,
+  "title": "Keyboard Shortcuts",
+  "size": "lg",
+  "centered": false,
+  "scrollable": true
+ },
+ "views/app/pages/pos#pos_calculator": {
+  "opened": true,
+  "title": "Calculator",
+  "size": "sm",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#show_draft_sales": {
+  "opened": true,
+  "title": "Borradores recientes",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/pos#store-credit-voucher-generated": {
+  "opened": true,
+  "title": "Store Credit",
+  "size": "md",
+  "centered": true,
+  "scrollable": false
+ },
+ "views/app/pages/products/Add_product#Quick_Add_Brand": {
+  "opened": true,
+  "title": "Añadir Marca",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/products/Add_product#Quick_Add_Category": {
+  "opened": true,
+  "title": "Añadir Categoría",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/products/Add_product#Quick_Add_Unit": {
+  "opened": true,
+  "title": "Añadir Producto unitario",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/products/Add_product#Quick_Add_Warehouse_Location": {
+  "opened": true,
+  "title": "Añadir Almacén ubicación",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/products/Add_product#open_scan": {
+  "opened": true,
+  "title": "Escáner de código de barras",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/products/batches#Edit_batch": {
+  "opened": true,
+  "title": "Editar Lote",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/products/batches#WriteOff_batch": {
+  "opened": true,
+  "title": "Dar de Baja",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/products/count_stock#New_count": {
+  "opened": true,
+  "title": "Contar Inventario",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/products/index_products#importProducts": {
+  "opened": true,
+  "title": "Importar productos",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/realestate/categories#categoryModal": {
+  "opened": true,
+  "title": "Añadir categoría",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/realestate/inquiries#inquiryModal": {
+  "opened": true,
+  "title": "Detalles de la consulta",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/sales/create_sale#Quick_Add_Customer": {
+  "opened": true,
+  "title": "Agregar cliente rápidamente",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/sales/create_sale#form_Update_Detail": {
+  "opened": true,
+  "title": "",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/sales/create_sale#open_scan": {
+  "opened": true,
+  "title": "Escanear",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/service/ServiceChecklists#modal_Item": {
+  "opened": true,
+  "title": "Añadir",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/settings/system_settings#customFieldEditmode ? ": {
+  "opened": false
+ },
+ "views/app/pages/settings/system_settings#pos-shortcuts-guide": {
+  "opened": true,
+  "title": "Atajos de Teclado del TPV",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/settings/warehouse_locations#New_Warehouse_Location": {
+  "opened": true,
+  "title": "Añadir",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/settings/warehouses#New_Warehouse": {
+  "opened": true,
+  "title": "Nuevo almacén / CD",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/transfers/create_transfer#form_Update_Detail": {
+  "opened": true,
+  "title": "",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/transfers/create_transfer#open_scan": {
+  "opened": true,
+  "title": "Barcode Scanner",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/adjustment/Edit_Adjustment#open_scan": {
+  "opened": false
+ },
+ "views/app/pages/products/Edit_product#open_scan": {
+  "opened": true,
+  "title": "Escáner de código de barras",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/products/Edit_product#Quick_Add_Warehouse_Location": {
+  "opened": true,
+  "title": "Añadir Almacén ubicación",
+  "size": "md",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/sales/edit_sale#open_scan": {
+  "opened": false
+ },
+ "views/app/pages/sales/edit_sale#form_Update_Detail": {
+  "opened": false
+ },
+ "views/app/pages/transfers/edit_transfer#open_scan": {
+  "opened": false
+ },
+ "views/app/pages/transfers/edit_transfer#form_Update_Detail": {
+  "opened": false
+ },
+ "views/app/pages/damage/Edit_Damage#open_scan": {
+  "opened": false
+ },
+ "views/app/pages/contracts/View_contract#contract-template-modal": {
+  "opened": false
+ },
+ "views/app/pages/contracts/View_contract#pdf-preview-modal": {
+  "opened": false
+ },
+ "views/app/pages/meeting/details#Note_Modal": {
+  "opened": false
+ },
+ "views/app/pages/hrm/employees/employee_details#Experience_Modal": {
+  "opened": true,
+  "title": "Añadir",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ },
+ "views/app/pages/hrm/employees/employee_details#Account_Modal": {
+  "opened": true,
+  "title": "Añadir",
+  "size": "lg",
+  "centered": false,
+  "scrollable": false
+ }
+}

@@ -31,7 +31,7 @@
       - El slug se autogenera en el backend (Str::slug + random) — no es
         un campo del formulario, no se toca.
       - Result de eliminar/bulk-eliminar sigue usando $swal (igual que
-        crear/editar toast sigue usando $bvToast) — sin homogenizar.
+        crear/editar toast usa notifications) — sin homogenizar.
     -->
     <px-page-header :title="$t('Jobs')" :breadcrumbs="[{ label: $t('Recruit') }, { label: $t('Jobs') }]">
       <template #actions>

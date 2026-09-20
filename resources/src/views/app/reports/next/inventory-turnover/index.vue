@@ -320,7 +320,7 @@ export default {
       );
       const sub = this.meta ? `Período ${this.meta.from} — ${this.meta.to}` : "";
       const ok = printTableDoc({ title: "Informes / Rotación de inventario", headers, rows, landscape: true, subtitle: sub });
-      if (!ok && this.$root.$bvToast) {
+      if (!ok) {
         notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
       }
     }

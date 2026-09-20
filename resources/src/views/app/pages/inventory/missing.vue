@@ -41,7 +41,8 @@
 </template>
 
 <script>
-export default {
+import { BModal } from "@/platform/bootstrap";
+export default { components: { BModal },
   name: 'InventoryMissing',
   data() { return { issues: [], openCount: 0, canManage: false, resolutions: {}, loading: false, error: '', status: 'open', statusOptions: [{value:'open',text:'Abiertas'},{value:'resolved',text:'Resueltas'},{value:'',text:'Todas'}], showResolve:false, selected:null, saving:false, resolveError:'', form:{resolution_code:'',resolution_reference:'',resolution_notes:''} }; },
   computed: {

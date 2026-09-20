@@ -124,10 +124,10 @@
 </template>
 
 <script>
-import { vBTooltip } from "@/platform/bootstrap";
+import { vBTooltip, BModal } from "@/platform/bootstrap";
 import { modals } from "@/platform";
 
-export default { directives: { 'b-tooltip': vBTooltip },
+export default { components: { BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Store Messages"
   },

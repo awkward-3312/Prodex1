@@ -99,10 +99,11 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BModal },
   name: "BookingCalendar",
   metaInfo: {
     title: "Bookings Calendar"

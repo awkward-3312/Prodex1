@@ -1,0 +1,379 @@
+{
+ "sesiones": {
+  "table": [
+   "b-table",
+   "table",
+   "table-sm"
+  ],
+  "responsive": "table-responsive-sm",
+  "thead": [],
+  "ths": [
+   "Device / Browser",
+   "IP Address",
+   "Login date & time",
+   "Last activity",
+   "Action"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Device / Browser IP Address Login date & time Last activity Action Chrome on macOS Actual 10.0.0.5 1/3/2026, 9:00:00 1/3/2026, 10:30:00 Cerrar sesión Firefox on Windows 10.0.0.9 28/2/2026, 18:20:00 28/2/2026, 19:00:00 Cerrar sesión"
+ },
+ "sesiones-vacio": {
+  "table": [
+   "b-table",
+   "table",
+   "table-sm"
+  ],
+  "responsive": "table-responsive-sm",
+  "thead": [],
+  "ths": [
+   "Device / Browser",
+   "IP Address",
+   "Login date & time",
+   "Last activity",
+   "Action"
+  ],
+  "rows": 1,
+  "busy": "false",
+  "text": "Device / Browser IP Address Login date & time Last activity Action No active sessions found."
+ },
+ "woo-fallos": {
+  "table": [
+   "b-table",
+   "table",
+   "table-sm",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [],
+  "ths": [
+   "Woo Product ID",
+   "Woo Variation ID",
+   "SKU",
+   "Failures",
+   "Last Order",
+   "Last Seen"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Woo Product ID Woo Variation ID SKU Failures Last Order Last Seen"
+ },
+ "woo-productos": {
+  "table": [
+   "b-table",
+   "table",
+   "table-sm",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [],
+  "ths": [
+   "ID",
+   "Name",
+   "SKU / Code"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "ID Name SKU / Code 5 Camisa 6 Pantalón"
+ },
+ "woo-variantes": {
+  "table": [
+   "b-table",
+   "table",
+   "table-sm",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [],
+  "ths": [
+   "ID",
+   "Product ID",
+   "Variant",
+   "SKU / Code"
+  ],
+  "rows": 1,
+  "busy": "false",
+  "text": "ID Product ID Variant SKU / Code 7 Camisa M"
+ },
+ "suscripcion-facturas": {
+  "table": [
+   "b-table",
+   "table",
+   "table-bordered"
+  ],
+  "responsive": "table-responsive",
+  "thead": [],
+  "ths": [
+   "Ref",
+   "Fecha",
+   "Total",
+   "Estado"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Ref Fecha Total Estado INV-9 2026-03-01 $100.00 paid INV-10 2026-04-01 $100.00 unpaid"
+ },
+ "cliente-ventas": {
+  "table": [
+   "b-table",
+   "table",
+   "table-hover",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [],
+  "ths": [
+   "Referencia",
+   "fecha",
+   "almacén",
+   "Total General",
+   "Pagado",
+   "Pendiente",
+   "Pago",
+   "Estado"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Referencia fecha almacén Total General Pagado Pendiente Pago Estado REF-1 2026-03-01 L 100.00 L 50.00 L 50.00 partial completed REF-2 2026-03-01 L 200.00 L 100.00 L 0.00 paid completed"
+ },
+ "cliente-pagos": {
+  "table": [
+   "b-table",
+   "table",
+   "table-hover",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [],
+  "ths": [
+   "Referencia",
+   "fecha",
+   "Tipo",
+   "Venta Ref",
+   "Método",
+   "Monto"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Referencia fecha Tipo Venta Ref Método Monto REF-1 2026-03-01 Venta SL-1 L 25.00 REF-2 2026-03-01 Venta SL-2 L 50.00"
+ },
+ "cliente-devoluciones": {
+  "table": [
+   "b-table",
+   "table",
+   "table-hover",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [],
+  "ths": [
+   "Referencia",
+   "fecha",
+   "Venta Ref",
+   "almacén",
+   "Total General",
+   "Pagado",
+   "Pendiente",
+   "Pago",
+   "Estado"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Referencia fecha Venta Ref almacén Total General Pagado Pendiente Pago Estado REF-1 2026-03-01 L 100.00 L 50.00 L 50.00 partial completed REF-2 2026-03-01 L 200.00 L 100.00 L 0.00 paid completed"
+ },
+ "cliente-pagos-devol": {
+  "table": [
+   "b-table",
+   "table",
+   "table-hover",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [],
+  "ths": [
+   "Referencia",
+   "fecha",
+   "Venta devolución Ref",
+   "Método",
+   "Monto"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Referencia fecha Venta devolución Ref Método Monto REF-1 2026-03-01 L 25.00 REF-2 2026-03-01 L 50.00"
+ },
+ "cliente-ventas-ocupada": {
+  "table": [
+   "b-table",
+   "table",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [],
+  "ths": [
+   "Referencia",
+   "fecha",
+   "almacén",
+   "Total General",
+   "Pagado",
+   "Pendiente",
+   "Pago",
+   "Estado"
+  ],
+  "rows": 1,
+  "busy": "true",
+  "text": "Referencia fecha almacén Total General Pagado Pendiente Pago Estado Cargando..."
+ },
+ "mayor-ventas": {
+  "table": [
+   "b-table",
+   "table",
+   "table-hover",
+   "table-sm",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [
+   "thead-light"
+  ],
+  "ths": [
+   "Fecha",
+   "Venta Ref",
+   "Almacén",
+   "Estado",
+   "Total General",
+   "Pagado",
+   "Pendiente",
+   "Pago",
+   "Shipping estado"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Fecha Venta Ref Almacén Estado Total General Pagado Pendiente Pago Shipping estado 2026-03-01 REF-1 completed 100.00 50.00 50.00 partial 2026-03-01 REF-2 completed 200.00 100.00 0.00 paid"
+ },
+ "mayor-pagos": {
+  "table": [
+   "b-table",
+   "table",
+   "table-hover",
+   "table-sm",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [
+   "thead-light"
+  ],
+  "ths": [
+   "Fecha",
+   "Ref. de pago",
+   "Tipo",
+   "Venta Ref",
+   "Método",
+   "Monto"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Fecha Ref. de pago Tipo Venta Ref Método Monto 2026-03-01 REF-1 Venta SL-1 25.00 2026-03-01 REF-2 Venta SL-2 50.00"
+ },
+ "mayor-cotizaciones": {
+  "table": [
+   "b-table",
+   "table",
+   "table-hover",
+   "table-sm",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [
+   "thead-light"
+  ],
+  "ths": [
+   "Fecha",
+   "Ref. de la cotización",
+   "Almacén",
+   "Estado",
+   "Total General"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Fecha Ref. de la cotización Almacén Estado Total General 2026-03-01 REF-1 completed 100.00 2026-03-01 REF-2 completed 200.00"
+ },
+ "mayor-devoluciones": {
+  "table": [
+   "b-table",
+   "table",
+   "table-hover",
+   "table-sm",
+   "table-striped"
+  ],
+  "responsive": "table-responsive",
+  "thead": [
+   "thead-light"
+  ],
+  "ths": [
+   "Ref. de la devolución",
+   "Estado",
+   "Cliente",
+   "Venta Ref",
+   "Almacén",
+   "Total General",
+   "Pagado",
+   "Pendiente",
+   "Pago"
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Ref. de la devolución Estado Cliente Venta Ref Almacén Total General Pagado Pendiente Pago REF-1 completed 100.00 50.00 50.00 partial REF-2 completed 200.00 100.00 0.00 paid"
+ },
+ "cocina": {
+  "table": [
+   "b-table",
+   "table",
+   "table-sm"
+  ],
+  "responsive": "table-responsive",
+  "thead": [],
+  "ths": [
+   "Producto",
+   "Cantidad"
+  ],
+  "rows": 2,
+  "busy": null,
+  "text": "Producto Cantidad Hamburguesa 2u Papas 1"
+ },
+ "contrato-tareas": {
+  "table": [
+   "b-table",
+   "table",
+   "table-sm"
+  ],
+  "responsive": null,
+  "thead": [],
+  "ths": [
+   "Title",
+   "Due",
+   "Status",
+   ""
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Title Due Status Firmar 2026-03-01 pending Eliminar Enviar 2026-03-05 done Eliminar"
+ },
+ "contrato-plantillas": {
+  "table": [
+   "b-table",
+   "table",
+   "table-hover",
+   "table-sm",
+   "table-striped"
+  ],
+  "responsive": null,
+  "thead": [],
+  "ths": [
+   "Name",
+   ""
+  ],
+  "rows": 2,
+  "busy": "false",
+  "text": "Name Plantilla A EditarEliminar Plantilla B EditarEliminar"
+ }
+}

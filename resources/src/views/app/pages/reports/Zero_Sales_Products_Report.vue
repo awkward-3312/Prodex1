@@ -75,6 +75,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import {
@@ -359,7 +360,7 @@ export default {
         pdf.save(fname);
       } catch (e) {
         // optional toast
-        this.$bvToast && this.$bvToast.toast(this.$t ? this.$t('Export_Failed') : 'Export failed', { variant: 'danger', solid: true });
+        notifications.notify(this.$t ? this.$t('Export_Failed') : 'Export failed', { variant: 'danger', solid: true });
         // console.error(e);
       } finally {
         NProgress.done();

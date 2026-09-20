@@ -74,7 +74,7 @@
         directamente en el legacy — se migran a PxModal para la
         confirmación (regla del proyecto), pero el RESULTADO se queda
         exactamente en `$swal` como ya estaba. Crear/editar/importar/
-        dispositivo siguen usando `$bvToast` sin homogenizar.
+        dispositivo siguen usando `notifications` sin homogenizar.
     -->
     <px-page-header :title="$t('Attendances')" :breadcrumbs="[{ label: $t('hrm') }, { label: $t('Attendances') }]">
       <template #actions>

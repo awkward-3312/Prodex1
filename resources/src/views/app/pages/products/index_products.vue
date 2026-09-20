@@ -260,7 +260,7 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { BSidebar, vBToggle, vBTooltip } from "@/platform/bootstrap";
+import { BSidebar, vBToggle, vBTooltip, BModal } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
@@ -271,7 +271,7 @@ import {
   getPriceDecimals
 } from "../../../../utils/priceFormat";
 
-export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BSidebar },
+export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BModal, BSidebar },
   metaInfo: { title: "Products" },
   data() {
     return {

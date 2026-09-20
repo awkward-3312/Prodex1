@@ -19,7 +19,7 @@
         vez desactivado, el puesto desaparece de la lista para siempre. No
         existe UI de "ver inactivos" ni de reactivar — no se inventa una.
       - Tras desactivar, el legacy NO muestra ninguna notificación de
-        resultado (ni $swal ni $bvToast) — solo cierra el diálogo y
+        resultado (ni $swal ni notifications) — solo cierra el diálogo y
         recarga la lista. Se preserva: SIN notificación de resultado.
       - limit=-1 en la petición: el legacy carga TODOS los puestos de una
         vez, sin paginación real. Se preserva: no se agrega PxPagination.
@@ -31,7 +31,7 @@
         otras pantallas, no por esta). No se agrega selección/bulk aquí.
       - Errores de guardar se muestran INLINE dentro del modal (no toast,
         no swal) — se preserva con PxAlert danger dentro del modal.
-      - Exito de guardar SÍ usa $bvToast — se preserva igual.
+      - Exito de guardar SÍ usa notifications — se preserva igual.
       - is_system_default (Plantilla PRODEX / Personalizado) es un tipo,
         no un estado activo/inactivo, así que se usa PxTag (para
         categorías/tipos) en vez de PxBadge (reservado para estados

@@ -717,10 +717,11 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 
-export default {
+export default { components: { BModal },
   name: 'ServiceJobForm',
   data() {
     return {

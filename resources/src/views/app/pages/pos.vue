@@ -24,7 +24,7 @@
           type="button"
           class="pos-shell-register-pill"
           :class="(currentRegister && currentRegister.status === 'open') ? 'is-open' : 'is-closed'"
-          @click="(currentRegister && currentRegister.status === 'open') ? $bvModal.show('CloseRegisterModal') : $bvModal.show('OpenRegisterModal')"
+          @click="(currentRegister && currentRegister.status === 'open') ? $modals.show('CloseRegisterModal') : $modals.show('OpenRegisterModal')"
           :title="(currentRegister && currentRegister.status === 'open') ? $t('Close Register') : $t('Open Register')">
           <span class="pos-shell-register-pill-dot"></span>
           <span v-if="currentRegister && currentRegister.status === 'open'">OPEN</span>
@@ -1060,7 +1060,7 @@
       @result="onScan"
     />
     <div class="text-center mt-2">
-      <b-button variant="primary" @click="$bvModal.hide('open_scan')">{{ $t('Close') }}</b-button>
+      <b-button variant="primary" @click="$modals.hide('open_scan')">{{ $t('Close') }}</b-button>
     </div>
   </b-modal>
 
@@ -1133,7 +1133,7 @@
         <button type="button" class="btn btn-primary" @click="printGeneratedVoucher">
           <i class="i-Billing"></i> Imprimir vale
         </button>
-        <button type="button" class="btn btn-outline-secondary" @click="$bvModal.hide('store-credit-voucher-generated')">
+        <button type="button" class="btn btn-outline-secondary" @click="$modals.hide('store-credit-voucher-generated')">
           {{ $t('Close') || 'Cerrar' }}
         </button>
       </div>
@@ -2323,7 +2323,7 @@
 
           <b-col md="12">
             <b-form-group class="d-flex justify-content-end mt-2">
-              <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('form_Update_Detail')">{{ $t('Cancel') }}</b-button>
+              <b-button variant="secondary" class="mr-2" @click="$modals.hide('form_Update_Detail')">{{ $t('Cancel') }}</b-button>
               <b-button variant="primary" type="submit">{{ $t('Save') }}</b-button>
             </b-form-group>
           </b-col>
@@ -2387,7 +2387,7 @@
         </b-col>
 
         <b-col cols="12" class="d-flex justify-content-end">
-        <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('New_Customer')">{{ $t('Close') }}</b-button>
+        <b-button variant="secondary" class="mr-2" @click="$modals.hide('New_Customer')">{{ $t('Close') }}</b-button>
         <b-button variant="primary" type="submit">{{ $t('Save') }}</b-button>
         </b-col>
       </b-row>
@@ -2521,7 +2521,7 @@
 
           <b-col md="12" class="mt-3 d-flex justify-content-end align-items-center">
             <div v-if="SubmitProcessing" class="spinner sm spinner-primary mr-3"></div>
-            <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
+            <b-button variant="secondary" class="mr-2" @click="$modals.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
             <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{ $t('Save') }}</b-button>
           </b-col>
 
@@ -2546,7 +2546,7 @@
           type="button"
           class="ts-close"
           :aria-label="$t('Close')"
-          @click="$bvModal.hide('modal_today_sales')"
+          @click="$modals.hide('modal_today_sales')"
         >
           <lucide-icon name="x" />
         </button>
@@ -2652,7 +2652,7 @@
           type="button"
           class="ps-close"
           :aria-label="$t('Close')"
-          @click="$bvModal.hide('modal_pos_settings')"
+          @click="$modals.hide('modal_pos_settings')"
         >
           <lucide-icon name="x" />
         </button>
@@ -2873,7 +2873,7 @@
             <button
               type="button"
               class="ps-btn ps-btn-secondary"
-              @click="$bvModal.hide('modal_pos_settings')"
+              @click="$modals.hide('modal_pos_settings')"
             >
               {{ $t('Cancel') || 'Cancel' }}
             </button>
@@ -2918,7 +2918,7 @@
         <textarea class="form-control" v-model="registerForm.notes"></textarea>
       </div>
       <div class="text-right">
-        <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('OpenRegisterModal')">{{$t('Cancel')}}</b-button>
+        <b-button variant="secondary" class="mr-2" @click="$modals.hide('OpenRegisterModal')">{{$t('Cancel')}}</b-button>
         <b-button variant="success" @click="submitOpenRegister" :disabled="registerBusy">{{$t('Open Register')}}</b-button>
       </div>
     </b-modal>
@@ -3080,7 +3080,7 @@
             </div>
           </div>
           <div class="text-right">
-            <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('CloseRegisterModal')">{{$t('Cancel')}}</b-button>
+            <b-button variant="secondary" class="mr-2" @click="$modals.hide('CloseRegisterModal')">{{$t('Cancel')}}</b-button>
             <b-button variant="danger" @click="submitCloseRegister" :disabled="registerBusy">Cerrar caja</b-button>
           </div>
         </div>
@@ -3170,14 +3170,14 @@
           <button
             type="button"
             class="pos-confirm-btn pos-confirm-btn-secondary"
-            @click="$bvModal.hide('pos-confirm-clear-cart'); Submit_Draft();">
+            @click="$modals.hide('pos-confirm-clear-cart'); Submit_Draft();">
             <lucide-icon name="bookmark" />
             <span>{{ $t('Draft_Hold') || 'Draft / Hold' }}</span>
           </button>
           <button
             type="button"
             class="pos-confirm-btn pos-confirm-btn-danger"
-            @click="$bvModal.hide('pos-confirm-clear-cart'); Reset_Pos();">
+            @click="$modals.hide('pos-confirm-clear-cart'); Reset_Pos();">
             <lucide-icon name="trash-2" />
             <span>{{ $t('Yes_Clear_It') || 'Yes, Clear It' }}</span>
           </button>
@@ -3575,6 +3575,8 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
 import vueEasyPrint from "vue-easy-print";
@@ -3589,7 +3591,7 @@ import CustomFieldsForm from "../../../components/CustomFieldsForm.vue";
 import posKeyboardShortcutsMixin, { POS_SHORTCUTS } from "../../../mixins/posKeyboardShortcuts";
 
 export default {
-  components: {
+  components: { BModal,
     vueEasyPrint,
     barcode: VueBarcode,
     ModernPaymentModal,
@@ -4941,7 +4943,7 @@ export default {
           opening_balance: this.registerForm.opening_balance || 0,
           notes: this.registerForm.notes || ''
         });
-        this.$bvModal.hide('OpenRegisterModal');
+        modals.hide('OpenRegisterModal');
         this.makeToast('success', this.$t('RegisterOpened'), this.$t('Success'));
         // Immediately reflect UI without waiting for fetch
         this.currentRegister = data && data.register ? data.register : this.currentRegister;
@@ -4973,7 +4975,7 @@ export default {
           transfer_notes: this.closeForm.transfer_notes || '',
           notes: this.closeForm.notes || ''
         });
-        this.$bvModal.hide('CloseRegisterModal');
+        modals.hide('CloseRegisterModal');
         this.makeToast('success', this.$t('RegisterClosed'), this.$t('Success'));
         this.resetCloseForm();
         this.refreshCurrentRegister();
@@ -5040,7 +5042,7 @@ export default {
 
     
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
@@ -5048,7 +5050,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
     addPaymentLine() {
@@ -5526,7 +5528,7 @@ export default {
               const afterCleanup = () => {
                 this.last_sale_id = saleId;
                 this.Invoice_POS(saleId);
-                this.$bvModal.hide("Add_Payment");
+                modals.hide("Add_Payment");
                 this.Reset_Pos();
               };
               if (draftId) {
@@ -5639,7 +5641,7 @@ export default {
               const afterCleanup = () => {
                 this.last_sale_id = saleId;
                 this.Invoice_POS(saleId);
-                this.$bvModal.hide("Add_Payment");
+                modals.hide("Add_Payment");
                 this.Reset_Pos();
               };
               if (draftId) {
@@ -5722,7 +5724,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -6528,7 +6530,7 @@ export default {
       this.detailLoading = true;
       this.detail = {};
       this.detail.name = detail.name;
-      this.$bvModal.show("form_Update_Detail");
+      modals.show("form_Update_Detail");
       this.get_units(detail.product_id)
         .catch(() => {})
         .finally(() => {
@@ -6632,7 +6634,7 @@ export default {
       }
       this.CalculTotal();
       setTimeout(() => {
-        this.$bvModal.hide("form_Update_Detail");
+        modals.hide("form_Update_Detail");
       }, 1000);
     },
 
@@ -7036,7 +7038,7 @@ export default {
       this.draft_sales_page = 1;
       this.get_Draft_Sales(1);
       setTimeout(() => {
-        this.$bvModal.show("show_draft_sales");
+        modals.show("show_draft_sales");
       }, 1000);
     },
 
@@ -7299,7 +7301,7 @@ export default {
           }
 
           // Close draft list modal
-          try { this.$bvModal.hide('show_draft_sales'); } catch (e) {}
+          try { modals.hide('show_draft_sales'); } catch (e) {}
 
           NProgress.done();
         })
@@ -7911,7 +7913,7 @@ export default {
       this.detailLoading = true;
       this.detail = {};
       this.detail.name = detail.name;
-      this.$bvModal.show("form_Update_Detail");
+      modals.show("form_Update_Detail");
       this.get_units(detail.product_id)
         .catch(() => {})
         .finally(() => {
@@ -8028,7 +8030,7 @@ export default {
       }
       this.CalculTotal();
       setTimeout(() => {
-        this.$bvModal.hide("form_Update_Detail");
+        modals.hide("form_Update_Detail");
       }, 1000);
     },
 
@@ -8391,7 +8393,7 @@ export default {
         } catch (e) {}
 
         setTimeout(() => {
-          try { this.$bvModal.show('Show_invoice'); } catch(e) {}
+          try { modals.show('Show_invoice'); } catch(e) {}
           this.$nextTick(() => {
             const qrReady = this.awaitQrReady();
             if (autoPrintable) {
@@ -8745,7 +8747,7 @@ export default {
             this.$t("Success")
           );
           this.Get_Client_Without_Paginate();
-          this.$bvModal.hide("New_Customer");
+          modals.hide("New_Customer");
         })
         .catch(() => {
           NProgress.done();
@@ -8794,7 +8796,7 @@ export default {
                 this.$t("Success")
               );
               this.Get_Client_Without_Paginate();
-              this.$bvModal.hide("Quick_Add_Customer");
+              modals.hide("Quick_Add_Customer");
               this.reset_Form_client();
               this.quickAddCustomFieldValues = {};
             };
@@ -8821,11 +8823,11 @@ export default {
     },
     New_Client() {
       this.reset_Form_client();
-      this.$bvModal.show("New_Customer");
+      modals.show("New_Customer");
     },
     Quick_Add_Client() {
       this.reset_Form_client();
-      this.$bvModal.show("Quick_Add_Customer");
+      modals.show("Quick_Add_Customer");
     },
     reset_Form_client() {
       this.client = {
@@ -8855,7 +8857,7 @@ export default {
         .then(response => {
           this.today_sales = response.data;
           setTimeout(() => {
-            this.$bvModal.show("modal_today_sales");
+            modals.show("modal_today_sales");
             NProgress.done();
           }, 1000);
         })
@@ -8926,7 +8928,7 @@ export default {
     // ==================== POS SETTINGS MODAL ====================
     open_pos_settings_modal() {
       this.ps_loading = true;
-      this.$bvModal.show("modal_pos_settings");
+      modals.show("modal_pos_settings");
       // Refresh from server so the modal always shows authoritative state
       // (and so we have the row id needed for the PUT request).
       axios.get("get_pos_Settings_api")
@@ -9025,7 +9027,7 @@ export default {
         .then(() => {
           this.makeToast('success', this.$t('Successfully_Updated'), this.$t('Success'));
           try { Fire.$emit('Event_Pos_Settings'); } catch (e) {}
-          this.$bvModal.hide('modal_pos_settings');
+          modals.hide('modal_pos_settings');
         })
         .catch(() => {
           this.makeToast('danger', this.$t('InvalidData'), this.$t('Failed'));
@@ -9374,7 +9376,7 @@ export default {
 
         // If auto-print is disabled, just ensure the invoice modal/DOM is available and skip printing.
         if (!autoPrintable) {
-          try { this.$bvModal && this.$bvModal.show && this.$bvModal.show('Show_invoice'); } catch(e) {}
+          try { modals.show('Show_invoice'); } catch(e) {}
           // Still kick off QR rendering so the on-screen modal shows the codes.
           try { this.$nextTick(() => { this.awaitQrReady(); }); } catch (e) {}
         } else {
@@ -9387,7 +9389,7 @@ export default {
               const el = (typeof document !== 'undefined') ? document.getElementById('invoice-POS') : null;
               if (!el) {
                 // As a fallback, show the modal once so its DOM is guaranteed to exist, then print.
-                try { this.$bvModal && this.$bvModal.show && this.$bvModal.show('Show_invoice'); } catch(e) {}
+                try { modals.show('Show_invoice'); } catch(e) {}
                 this.$nextTick(() => {
                   this.awaitQrReady().then(doPrint);
                 });
@@ -10185,7 +10187,7 @@ export default {
     // ===== Calculator =====
     openCalculator() {
       this.calcClear();
-      this.$bvModal.show('pos_calculator');
+      modals.show('pos_calculator');
     },
     calcClear() {
       this.calc.display = '0';
@@ -10265,9 +10267,7 @@ export default {
       if (voucher && voucher.code) {
         this.generatedReturnVoucher = voucher;
         this.$nextTick(() => {
-          if (this.$bvModal && typeof this.$bvModal.show === 'function') {
-            this.$bvModal.show('store-credit-voucher-generated');
-          }
+          modals.show('store-credit-voucher-generated');
         });
       }
     },
@@ -10394,9 +10394,7 @@ export default {
     confirmClearCart() {
       if (!this.details || !this.details.length) return;
       try {
-        if (this.$bvModal && typeof this.$bvModal.show === 'function') {
-          this.$bvModal.show('pos-confirm-clear-cart');
-        }
+        modals.show('pos-confirm-clear-cart');
       } catch (e) {}
     },
   },
@@ -10521,7 +10519,7 @@ export default {
         }];
         this.globalPaymentNote = '';
         this.selectedAccount= null; 
-        this.$bvModal.show("Add_Payment");
+        modals.show("Add_Payment");
         // Complete the animation of theprogress bar.
         NProgress.done();
       }, 500);
@@ -19206,14 +19204,16 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
   font-weight: var(--pxn-fw-semibold);
   color: var(--pxn-ink);
 }
-.modal.px-next .modal-header .close {
+.modal.px-next .modal-header .close,
+.modal.px-next .modal-header .btn-close {
   color: var(--pxn-ink-3);
   opacity: 1;
   text-shadow: none;
   font-weight: 400;
   transition: color var(--pxn-dur-1) var(--pxn-ease);
 }
-.modal.px-next .modal-header .close:hover { color: var(--pxn-ink); }
+.modal.px-next .modal-header .close:hover,
+.modal.px-next .modal-header .btn-close:hover { color: var(--pxn-ink); opacity: 1; }
 .modal.px-next .modal-body {
   padding: var(--pxn-space-5) var(--pxn-space-6);
   font-family: var(--pxn-font-sans);

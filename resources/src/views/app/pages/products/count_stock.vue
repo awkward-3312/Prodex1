@@ -119,9 +119,11 @@
 
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BModal },
   metaInfo: {
     title: "Count Stock"
   },
@@ -268,7 +270,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -278,7 +280,7 @@ export default {
     //------------------------------ Modal  (create Count stock) -------------------------------\\
     New_count() {
       this.reset_Form();
-      this.$bvModal.show("New_count");
+      modals.show("New_count");
     },
 
   
@@ -367,7 +369,7 @@ export default {
     Fire.$on("Event_Count", () => {
       setTimeout(() => {
         this.Get_Stocks(this.serverParams.page);
-        this.$bvModal.hide("New_count");
+        modals.hide("New_count");
       }, 500);
     });
 

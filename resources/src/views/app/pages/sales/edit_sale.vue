@@ -741,11 +741,13 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 
-export default {
+export default { components: { BModal },
   metaInfo: {
     title: "Editar venta"
   },
@@ -920,7 +922,7 @@ export default {
   methods: {
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
@@ -928,7 +930,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
      handleFocus() {
@@ -975,7 +977,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1000,7 +1002,7 @@ export default {
 
       setTimeout(() => {
         NProgress.done();
-        this.$bvModal.show("form_Update_Detail");
+        modals.show("form_Update_Detail");
       }, 1000);
 
     },
@@ -1064,7 +1066,7 @@ export default {
        setTimeout(() => {
         NProgress.done();
         this.Submit_Processing_detail = false;
-        this.$bvModal.hide("form_Update_Detail");
+        modals.hide("form_Update_Detail");
       }, 1000);
 
     },

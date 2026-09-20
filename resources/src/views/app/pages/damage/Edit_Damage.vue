@@ -263,9 +263,11 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BModal },
   metaInfo: { title: "Edit Damage" },
   data() {
     return {
@@ -353,8 +355,8 @@ export default {
     }
   },
   methods: {
-    showModal() { this.$bvModal.show('open_scan'); },
-    onScan(decodedText) { const code = decodedText; this.search_input = code; this.search(); this.$bvModal.hide('open_scan'); },
+    showModal() { modals.show('open_scan'); },
+    onScan(decodedText) { const code = decodedText; this.search_input = code; this.search(); modals.hide('open_scan'); },
     handleFocus() { this.focused = true },
     handleBlur() { this.focused = false },
     search(){
@@ -397,7 +399,7 @@ export default {
     },
     Submit_Damage() { this.$refs.Edit_damage.validate().then(success => { if (!success) { this.makeToast("danger", this.$t("Please_fill_the_form_correctly"), this.$t("Failed")); } else { this.Update_Damage(); } }); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
     // (#81 · C3) al cambiar de ubicación se recarga el catálogo POR UBICACIÓN.
     Selected_Inventory_Location(value) {
       this.search_input = '';

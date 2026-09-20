@@ -352,10 +352,11 @@
 </template>
 
 <script>
+import { BModal, BTable } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import moment from 'moment';
 
-export default {
+export default { components: { BTable, BModal },
   data() {
     return {
       activeMiniTab: 0,

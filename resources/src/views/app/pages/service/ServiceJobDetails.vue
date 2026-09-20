@@ -613,11 +613,12 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 
-export default {
+export default { components: { BModal },
   name: 'ServiceJobDetails',
   metaInfo: {
     title: 'Service Job Details'

@@ -1,3 +1,4 @@
+import { modals } from "@/platform";
 /**
  * POS keyboard shortcuts + Honduras fiscal checkout helpers.
  * Receipt rendering itself is global (utils/sarInvoiceBridge.js), so POS and
@@ -29,7 +30,7 @@ export const POS_SHORTCUTS = [
   { id:"inc", keys:"Ctrl + ArrowUp", descriptionKey:"Shortcut_Increase_Last", descriptionFallback:"Aumentar cantidad del último artículo", match:e=>e.ctrlKey&&e.key==="ArrowUp", action:vm=>{ const last=vm.details&&vm.details[vm.details.length-1];if(last&&vm.increment)vm.increment(last.detail_id); } },
   { id:"dec", keys:"Ctrl + ArrowDown", descriptionKey:"Shortcut_Decrease_Last", descriptionFallback:"Disminuir cantidad del último artículo", match:e=>e.ctrlKey&&e.key==="ArrowDown", action:vm=>{ const last=vm.details&&vm.details[vm.details.length-1];if(last&&vm.decrement)vm.decrement(last,last.detail_id); } },
   { id:"remove", keys:"Ctrl + Delete", descriptionKey:"Shortcut_Remove_Last", descriptionFallback:"Eliminar el último artículo del carrito", match:e=>e.ctrlKey&&e.key==="Delete", action:vm=>{ const last=vm.details&&vm.details[vm.details.length-1];if(last&&vm.delete_Product_Detail)vm.delete_Product_Detail(last.detail_id); } },
-  { id:"help", keys:"Shift + ?", descriptionKey:"Shortcut_Show_Help", descriptionFallback:"Mostrar ayuda de atajos", match:e=>e.shiftKey&&(e.key==="?"||e.key==="/"), action:vm=>{ if(vm.$bvModal&&vm.$bvModal.show)vm.$bvModal.show("pos-keyboard-shortcuts-help"); } },
+  { id:"help", keys:"Shift + ?", descriptionKey:"Shortcut_Show_Help", descriptionFallback:"Mostrar ayuda de atajos", match:e=>e.shiftKey&&(e.key==="?"||e.key==="/"), action:vm=>{ modals.show("pos-keyboard-shortcuts-help"); } },
 ];
 
 function isTypingTarget(target) {
@@ -293,9 +294,9 @@ function ensurePosAuxiliaryStyles() {
       gap: 8px;
     }
     @media (max-width: 575px) {
-      #OpenRegisterModal___BV_modal_outer_ .modal-dialog,
-      #CloseRegisterModal___BV_modal_outer_ .modal-dialog,
-      #Quick_Add_Customer___BV_modal_outer_ .modal-dialog { margin: 12px !important; }
+      #OpenRegisterModal .modal-dialog,
+      #CloseRegisterModal .modal-dialog,
+      #Quick_Add_Customer .modal-dialog { margin: 12px !important; }
       #OpenRegisterModal___BV_modal_body,
       #CloseRegisterModal___BV_modal_body,
       #Quick_Add_Customer___BV_modal_body { padding: 16px !important; }

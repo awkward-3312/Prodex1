@@ -422,10 +422,10 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip, BSidebar, vBToggle } from "@/platform/bootstrap";
+import { vBTooltip, BSidebar, vBToggle, BModal } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default { components: { BSidebar }, directives: { 'b-toggle': vBToggle, 'b-tooltip': vBTooltip },
+export default { components: { BModal, BSidebar }, directives: { 'b-toggle': vBToggle, 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Bookings"
   },

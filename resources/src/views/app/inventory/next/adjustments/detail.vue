@@ -124,6 +124,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "@/utils/priceFormat";
@@ -273,7 +274,7 @@ export default {
   <div class="foot">Impreso ${esc(new Date().toLocaleString())} · PRODEX</div>
 </body></html>`;
       const w = window.open("", "_blank", "width=920,height=780,scrollbars=yes");
-      if (!w) { this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true }); return; }
+      if (!w) { notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true }); return; }
       w.document.open();
       w.document.write(html);
       w.document.close();

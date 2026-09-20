@@ -1676,7 +1676,7 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip } from "@/platform/bootstrap";
+import { vBTooltip, BModal } from "@/platform/bootstrap";
 import VueTagsInput from "@johmun/vue-tags-input";
 import draggable from "vuedraggable";
 import NProgress from "nprogress";
@@ -1781,7 +1781,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
     };
   },
 
-  components: {
+  components: { BModal,
     VueTagsInput,
     draggable
   },

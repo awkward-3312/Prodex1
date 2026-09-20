@@ -63,9 +63,10 @@
 </template>
 
 <script>
+import { BTable } from "@/platform/bootstrap";
 import moment from 'moment';
 
-export default {
+export default { components: { BTable },
   data() {
     return {
       connectionOk: null,

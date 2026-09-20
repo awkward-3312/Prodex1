@@ -640,14 +640,14 @@
 </template>
 
 <script>
-import { BSidebar, vBToggle } from "@/platform/bootstrap";
+import { BSidebar, vBToggle, BModal } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default { directives: { 'b-toggle': vBToggle }, components: { BSidebar },
+export default { directives: { 'b-toggle': vBToggle }, components: { BModal, BSidebar },
   metaInfo: {
     title: "Provider"
   },

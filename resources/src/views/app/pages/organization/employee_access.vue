@@ -197,8 +197,9 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
-export default {
+export default { components: { BModal },
   metaInfo: { title: 'Acceso de empleados' },
   data() {
     return {

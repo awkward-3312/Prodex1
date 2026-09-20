@@ -82,7 +82,7 @@
         </b-form-group>
         <div v-if="scanError" class="alert alert-danger">{{ scanError }}</div>
         <div class="d-flex justify-content-end">
-          <b-button variant="outline-secondary" class="mr-2" @click="$bvModal.hide('manual-scan-modal')">Cancelar</b-button>
+          <b-button variant="outline-secondary" class="mr-2" @click="$modals.hide('manual-scan-modal')">Cancelar</b-button>
           <b-button type="submit" variant="primary">Abrir transferencia</b-button>
         </div>
       </b-form>
@@ -91,7 +91,9 @@
 </template>
 
 <script>
-export default {
+import { BModal } from "@/platform/bootstrap";
+import { modals } from "@/platform";
+export default { components: { BModal },
   metaInfo: { title: 'Ingreso de stock' },
   data() {
     return { loading:true, incoming:[], notifications:[], unread:0, search:'', manualToken:'', scanError:'' };
@@ -133,9 +135,9 @@ export default {
         headerButton.click();
         window.setTimeout(() => {
           const scan = document.querySelector('#px-transfer-logistics-panel [data-action="scan"]');
-          if (scan) scan.click(); else this.$bvModal.show('manual-scan-modal');
+          if (scan) scan.click(); else modals.show('manual-scan-modal');
         }, 20);
-      } else this.$bvModal.show('manual-scan-modal');
+      } else modals.show('manual-scan-modal');
     },
     openToken() {
       let token = (this.manualToken || '').trim();

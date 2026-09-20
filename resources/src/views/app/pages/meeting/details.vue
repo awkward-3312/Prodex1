@@ -230,11 +230,11 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormSelectOption, BFormInvalidFeedback, vBTooltip } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormSelectOption, BFormInvalidFeedback, vBTooltip, BModal } from "@/platform/bootstrap";
 import { confirmDialog, modals, notifications } from "@/platform";
 import { mapGetters } from "vuex";
 
-export default { directives: { 'b-tooltip': vBTooltip }, components: { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormSelectOption, BFormInvalidFeedback },
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BModal, BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormSelectOption, BFormInvalidFeedback },
   metaInfo: { title: "Meeting Details" },
   data() {
     return {

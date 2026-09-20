@@ -93,13 +93,12 @@ export function installBootstrapVueNextPlatform(rootVm) {
     })
   );
 
-  // Modales por id. Los `<b-modal id>` declarativos de BootstrapVueNext se resuelven por su registro; los de BootstrapVue 2 que aún quedan en las
-  // vistas escuchan los eventos `bv::show::modal` / `bv::hide::modal` de la raíz (mismo mecanismo que usaba $bvModal.show/hide).
-  const knows = (id) => !!modal.get(id);
+  // Modales por id: todos los `<b-modal id>` son de BootstrapVueNext (fase 4) y se resuelven por su registro. Un id que no está montado
+  // (vista con `v-if`, otra ruta) es un no-op, como lo era `bv::show::modal` de BootstrapVue 2 para un id desconocido.
   disposers.push(
     modals.setDriver({
-      show: (id) => (knows(id) ? modal.show(id) : rootVm.$root.$emit('bv::show::modal', id)),
-      hide: (id) => (knows(id) ? modal.hide('hide', id) : rootVm.$root.$emit('bv::hide::modal', id)),
+      show: (id) => { const target = modal.get(id); if (target) target.show(); },
+      hide: (id) => { const target = modal.get(id); if (target) target.hide('hide'); },
     })
   );
 

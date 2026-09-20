@@ -264,9 +264,11 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BModal },
   metaInfo: { title: "Create Damage" },
   data() {
     return {
@@ -356,8 +358,8 @@ export default {
   methods: {
     handleFocus() { this.focused = true },
     handleBlur() { this.focused = false },
-    showModal() { this.$bvModal.show('open_scan'); },
-    onScan(decodedText) { const code = decodedText; this.search_input = code; this.search(); this.$bvModal.hide('open_scan'); },
+    showModal() { modals.show('open_scan'); },
+    onScan(decodedText) { const code = decodedText; this.search_input = code; this.search(); modals.hide('open_scan'); },
     search(){
       if (this.timer) { clearTimeout(this.timer); this.timer = null; }
       if (this.search_input.length < 2) { return this.product_filter= []; }
@@ -398,7 +400,7 @@ export default {
     getResultValue(result) { return result.code + " " + "(" + result.name + ")"; },
     Submit_Damage() { this.$refs.Create_damage.validate().then(success => { if (!success) { this.makeToast("danger", this.$t("Please_fill_the_form_correctly"), this.$t("Failed")); } else { this.Create_Damage(); } }); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
     Selected_Warehouse(value) {
       this.search_input= '';
       this.product_filter = [];

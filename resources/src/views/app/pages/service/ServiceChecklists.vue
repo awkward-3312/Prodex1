@@ -121,8 +121,9 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
 import { confirmDialog, modals, notifications } from "@/platform";
-export default {
+export default { components: { BModal },
   name: 'ServiceChecklists',
   data() {
     return {

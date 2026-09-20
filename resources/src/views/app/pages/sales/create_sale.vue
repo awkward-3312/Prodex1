@@ -878,7 +878,7 @@
             </b-col>
 
             <b-col md="12" class="mt-3">
-              <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
+              <b-button variant="secondary" class="mr-2" @click="$modals.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{$t('submit')}}</b-button>
               <div v-once class="typo__p" v-if="SubmitProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
@@ -1053,11 +1053,13 @@
 
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 
-export default {
+export default { components: { BModal },
   metaInfo: {
     title: "Nueva venta"
   },
@@ -1342,7 +1344,7 @@ export default {
   methods: {
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
@@ -1350,7 +1352,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
     
 
@@ -1626,7 +1628,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1668,7 +1670,7 @@ export default {
 
        setTimeout(() => {
         NProgress.done();
-        this.$bvModal.show("form_Update_Detail");
+        modals.show("form_Update_Detail");
       }, 1000);
     },
 
@@ -1774,7 +1776,7 @@ export default {
       setTimeout(() => {
         NProgress.done();
         this.Submit_Processing_detail = false;
-        this.$bvModal.hide("form_Update_Detail");
+        modals.hide("form_Update_Detail");
       }, 1000);
 
     },
@@ -1960,7 +1962,7 @@ export default {
     // ---------------- Quick Add Customer (like POS) ---------------- \\
     Quick_Add_Client() {
       this.reset_Form_client();
-      this.$bvModal.show("Quick_Add_Customer");
+      modals.show("Quick_Add_Customer");
     },
 
     reset_Form_client() {
@@ -2026,7 +2028,7 @@ export default {
                 this.$t("Successfully_Created"),
                 this.$t("Success")
               );
-              this.$bvModal.hide("Quick_Add_Customer");
+              modals.hide("Quick_Add_Customer");
               this.reset_Form_client();
             })
             .catch(() => {

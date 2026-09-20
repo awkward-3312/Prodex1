@@ -1,8 +1,8 @@
 /**
  * Abrir/cerrar modales por id (`show`/`hide`), sin que la vista conozca `$bvModal`.
  *
- * Los modales siguen siendo `<b-modal id="...">` dentro de cada vista; este servicio solo sustituye a
- * `this.$bvModal.show('id')` / `this.$bvModal.hide('id')`. Las confirmaciones NO van aquí: usan `confirm()`.
+ * Los modales siguen siendo `<b-modal id="...">` dentro de cada vista (el BModal de platform/bootstrap, sobre BootstrapVueNext); este servicio
+ * abre y cierra por id, lo que antes hacían `this.$bvModal.show('id')` / `this.$bvModal.hide('id')`. Las confirmaciones NO van aquí: usan `confirm()`.
  */
 
 export function createModalService() {
