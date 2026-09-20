@@ -37,6 +37,30 @@ test.describe('Traslados, ajustes y mermas: aviso de validación por toast @smok
   });
 });
 
+test.describe('Modales: foco (regla de BootstrapVue 2) @smoke', () => {
+  test('quien ya escribe en el primer campo mientras el modal se abre no pierde el foco; sin foco dentro, el modal lo toma (ESC cierra)', async ({ page }) => {
+    await page.goto('/app/marketing/templates/email');
+    await waitForApp(page);
+    await page.getByRole('button', { name: /Nueva plantilla/ }).click();
+    const modal = page.locator('.modal.show');
+    await expect(modal).toContainText(/Nueva plantilla/);
+    const input = modal.locator('input').first();
+    await input.fill('Escribo mientras abre'); // antes de que termine la transición
+    await page.waitForTimeout(900); // `shown` ya ocurrió
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue('Escribo mientras abre');
+    // sin foco dentro (p. ej. se abre desde un botón): el modal toma el foco y ESC lo cierra
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.modal.show')).toHaveCount(0);
+    await page.evaluate(() => document.querySelector('#app').__vue_app__.config.globalProperties.$platform.modals.show('New_Template'));
+    await expect(page.locator('.modal.show')).toHaveCount(1);
+    await page.waitForTimeout(900);
+    expect(await page.evaluate(() => document.querySelector('.modal.show').contains(document.activeElement))).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.modal.show')).toHaveCount(0);
+  });
+});
+
 test.describe.serial('POS: líneas, confirmaciones, cobro y factura @smoke', () => {
   test.beforeEach(async ({ page }) => {
     await openPos(page);

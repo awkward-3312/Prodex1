@@ -83,6 +83,14 @@ test('BModal conserva el ciclo de vida de BootstrapVue 2 (lazy + unmountLazy) y 
   assert.match(block, /expose\(\{[^}]*show[^}]*hide[^}]*toggle/s);
 });
 
+test('BModal conserva la regla de foco de BootstrapVue 2: sin foco inicial de BVN y foco en `shown` solo si no está ya dentro', () => {
+  const src = fs.readFileSync(path.join(SRC, 'platform/bootstrap/index.js'), 'utf8');
+  const block = src.slice(src.indexOf('const MODAL_RENAMED'), src.indexOf('// Tabla (fase 4)'));
+  assert.match(block, /focus: false/);
+  assert.match(block, /contains\(document\.activeElement\)/);
+  assert.match(block, /props\.onShown = \[focusIfOutside/);
+});
+
 test('BTable traduce head-variant light/dark a la clase thead-* de BS4', () => {
   const src = fs.readFileSync(path.join(SRC, 'platform/bootstrap/index.js'), 'utf8');
   assert.match(src, /`thead-\$\{variant\}`/);

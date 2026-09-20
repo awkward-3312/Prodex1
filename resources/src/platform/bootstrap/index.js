@@ -189,6 +189,7 @@ export const BSidebar = pure({
 //   - Ciclo de vida de BootstrapVue 2: un modal no estático solo renderiza su contenido mientras está abierto y lo destruye al cerrarse
 //     (los formularios de dentro se reinician y sus `mounted` se repiten). BootstrapVueNext monta siempre el contenido por defecto:
 //     se activan `lazy` + `unmountLazy` salvo que la vista los indique.
+//   - Foco: el modal toma el foco en `shown` solo si el foco no está ya dentro (regla de BootstrapVue 2; BootstrapVueNext lo roba siempre).
 //   - Eventos `@show/@shown/@hide/@hidden/@ok/@cancel/@close` (con `preventDefault()`, como BootstrapVue 2) y `$refs.x.show()/hide()/toggle()`.
 // El resto de BootstrapVueNext se deja tal cual; las diferencias de marcado (cabecera, cierre) las absorbe el puente de Bootstrap 5.
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -210,8 +211,17 @@ export const BModal = pure({
       toggle: (...args) => inner.value && inner.value.toggle(...args),
     });
     return () => {
-      const props = { lazy: true, unmountLazy: true, ref: inner };
+      // Foco (BV2): al terminar la animación el modal recibe el foco SOLO si no está ya dentro de él. BVN lo mueve siempre al contenedor
+      // (`focus` por defecto), con lo que quien ya escribía en el primer campo lo pierde ~300 ms después de abrir. Se desactiva el foco inicial
+      // de BVN (`focus: false`) y se aplica la regla de BV2 en `shown` (el ESC y el ciclo con Tab necesitan el foco dentro).
+      const focusIfOutside = () => {
+        const el = inner.value && document.getElementById(inner.value.id);
+        if (el && !el.contains(document.activeElement)) el.focus({ preventScroll: true });
+      };
+      const props = { lazy: true, unmountLazy: true, focus: false, ref: inner };
       for (const key of Object.keys(attrs)) props[MODAL_RENAMED[key] || key] = attrs[key];
+      const userShown = props.onShown;
+      props.onShown = [focusIfOutside, ...(Array.isArray(userShown) ? userShown : userShown ? [userShown] : [])];
       return h(_BModal, props, slots);
     };
   },
