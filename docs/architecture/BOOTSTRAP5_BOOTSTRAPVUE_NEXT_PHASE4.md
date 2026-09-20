@@ -170,7 +170,7 @@ Modales: 72 modales que abren en frío × 3 vistas (LTR, RTL, móvil 390 px) = *
 
 ## 15. CI
 
-PHP 8.4, servidor embebido de un solo proceso, sin bucle de reinicio y sin `continue-on-error`; el paso de diagnóstico (`gdb`/`dmesg`/core) **se mantiene** (no se acumulan aún ~10 ejecuciones limpias desde el arreglo de PHP). Se añadió la rama `refactor/bootstrap5-bootstrapvue-next-phase4` a `frontend-safety-net.yml` (push + condición del job `e2e`). @@CI@@
+PHP 8.4, servidor embebido de un solo proceso, sin bucle de reinicio y sin `continue-on-error`; el paso de diagnóstico (`gdb`/`dmesg`/core) **se mantiene** (no se acumulan aún ~10 ejecuciones limpias desde el arreglo de PHP). Se añadió la rama `refactor/bootstrap5-bootstrapvue-next-phase4` a `frontend-safety-net.yml` (push + condición del job `e2e`). Evidencia: el primer run (`35536212761`, commit `8e9b961`) falló en `e2e` por una prueba intermitente real (`14-validation-layer`, ver el hallazgo de foco en §4; 220 pasan, 1 falla, con un reintento); tras el arreglo (`9f5cb11`), **dos ejecuciones consecutivas del mismo commit** (run `35538792732`, intento 1 y intento 2) con `route-snapshot` y `e2e` en verde. Solo cambia la documentación después de `9f5cb11`.
 
 ## 16. Superficie restante de BootstrapVue 2 y plan exacto de la fase 5
 
