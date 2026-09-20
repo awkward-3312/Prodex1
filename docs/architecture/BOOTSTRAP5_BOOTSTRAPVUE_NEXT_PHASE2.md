@@ -26,7 +26,8 @@ Base: `916454f` (fase 1). Vue 3.5.43 + `@vue/compat` MODE 2, Vue Router 4, Unhea
 1. El job `e2e` usa **PHP 8.4** (`setup-php`, solo ese job; `composer.json` exige `^8.2`; en local se corre con PHP 8.5 sin problemas). Los demás workflows (`validate*.yml`, unit/feature) no ejecutan el flujo de login sobre el servidor embebido y no se tocan.
 2. `tests/e2e/scripts/serve.sh`: un solo proceso por defecto (sin `PHP_CLI_SERVER_WORKERS` salvo que se pida > 1) y `exec php` sin reinicio silencioso: si el servidor muere el E2E falla de forma visible. Se quitó el bucle de reinicio de la fase 1.
 3. El job `e2e` **ya no tiene `continue-on-error: true`**: antes un run aparecía verde con el job E2E fallado; ahora un run verde significa E2E pasado.
-4. Diagnóstico que se conserva (barato): `ulimit -c unlimited` + `kernel.core_pattern` y un paso `if: always()` con `dmesg` y `gdb bt`.
+4. **Evidencia final:** dos ejecuciones consecutivas del mismo commit `f806e4d` (run `35477072991`, intento 1 y intento 2) con `route-snapshot` y `e2e` en verde, 127/127 E2E cada una y PHP 8.4.25 en el log del servidor.
+5. Diagnóstico que se conserva (barato): `ulimit -c unlimited` + `kernel.core_pattern` y un paso `if: always()` con `dmesg` y `gdb bt`.
 
 **Riesgo a revisar fuera de este PR (no se ha tocado nada del VPS).** El bug se reproduce en el flujo de login de la propia aplicación con PHP 8.2.33/8.3.33 en frío (con opcache activado baja a 1/10, no a 0). Conviene comprobar qué versión de PHP ejecuta el VPS y si se ven workers de php-fpm terminados por señal 11 en el log; si es 8.3.33, actualizar a 8.4 o esperar el parche. Esto es una observación, no una acción de esta fase.
 
