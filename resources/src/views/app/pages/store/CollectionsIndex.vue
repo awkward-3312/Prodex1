@@ -112,8 +112,10 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
+import { vBTooltip } from "@/platform/bootstrap";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Store Collections Index"
   },
@@ -154,8 +156,8 @@ export default {
 
   methods: {
     makeToast (variant, msg, title) {
-      if (this.$root && this.$root.$bvToast) {
-        this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true })
+      if (notifications.hasDriver()) {
+        notifications.notify(msg, { title: title, variant: variant, solid: true })
       }
     },
 

@@ -137,6 +137,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 export default {
   data() {
     return {
@@ -174,7 +175,7 @@ export default {
   },
   methods: {
     toast(variant, msg) {
-      this.$root.$bvToast.toast(msg, { title: this.$t('WooCommerce'), variant, solid: true });
+      notifications.notify(msg, { title: this.$t('WooCommerce'), variant, solid: true });
     },
     load() {
       this.loadingWooTab = true;

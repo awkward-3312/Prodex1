@@ -102,7 +102,7 @@
             </b-col>
           </b-row>
           <div class="text-end mt-3">
-            <b-button variant="secondary" @click="$bvModal.hide('modal_Item')" class="me-2">
+            <b-button variant="secondary" @click="$modals.hide('modal_Item')" class="me-2">
               {{ $t('Cancel') }}
             </b-button>
             <b-button type="submit" variant="primary" :disabled="SubmitProcessing">

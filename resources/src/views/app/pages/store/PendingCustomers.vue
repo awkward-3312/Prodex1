@@ -80,6 +80,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 export default {
   metaInfo: { title: 'Pending Customers' },
   data () {
@@ -95,7 +96,7 @@ export default {
   mounted () { this.fetchCustomers() },
   methods: {
     makeToast (variant, msg, title) {
-      this.$root.$bvToast && this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true })
+      notifications.notify(msg, { title: title, variant: variant, solid: true })
     },
     formatDate (d) {
       if (!d) return ''

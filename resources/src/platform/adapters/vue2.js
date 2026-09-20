@@ -1,13 +1,11 @@
 /**
- * ÚNICO sitio que conoce Vue 2 y BootstrapVue para los servicios de plataforma.
- * Se instala una vez, con la instancia raíz, cuando la aplicación ya arrancó.
- *
- * Al pasar a Vue 3 este archivo se reemplaza por un adaptador equivalente (PxToast, PxConfirm, PxModal) y las vistas no
- * cambian. Se usa siempre `rootVm` como origen: es lo que hacían las llamadas `this.$root.$bvToast` / `this.$root.$bvModal`.
+ * Confirmación por SweetAlert2 (`vue-sweetalert2` expone `$swal` en la raíz; es un plugin de Vue 2/compat) + entrada única que instala el
+ * driver de BootstrapVueNext (toast, modales por id, confirmación en modal). Lo que era `$bvToast` / `$bvModal` ya no se usa.
  */
-import { notifications } from '../notifications.js';
 import { confirm } from '../confirm.js';
 import { modals } from '../modals.js';
+import { notifications } from '../notifications.js';
+import { installBootstrapVueNextPlatform } from './bvn.js';
 
 function swalOptions({ title, message, confirmText, cancelText, native }) {
   const options = { showCancelButton: true };
@@ -18,37 +16,23 @@ function swalOptions({ title, message, confirmText, cancelText, native }) {
   return { ...options, ...native };
 }
 
+/** Confirmación por SweetAlert2 (`vue-sweetalert2` expone `$swal` en la raíz con los colores del tenant ya configurados). Sin DOM: se puede probar en node. */
+export function installSweetAlertConfirm(rootVm) {
+  return confirm.setDriver('swal', async (options) => {
+    const result = await rootVm.$swal(swalOptions(options));
+    return result ? (result.isConfirmed !== undefined ? result.isConfirmed === true : !!result.value) : false;
+  });
+}
+
 export function installVue2Platform(rootVm) {
-  const disposers = [];
+  const disposers = [installBootstrapVueNextPlatform(rootVm), installSweetAlertConfirm(rootVm)];
 
-  disposers.push(notifications.setDriver((message, options) => rootVm.$bvToast.toast(message, options)));
-
-  disposers.push(
-    modals.setDriver({
-      show: (id) => rootVm.$bvModal.show(id),
-      hide: (id) => rootVm.$bvModal.hide(id),
-    })
-  );
-
-  // SweetAlert2 (vue-sweetalert2 expone la función en `$swal` con los colores del tenant ya configurados).
-  disposers.push(
-    confirm.setDriver('swal', async (options) => {
-      const result = await rootVm.$swal(swalOptions(options));
-      return result ? (result.isConfirmed !== undefined ? result.isConfirmed === true : !!result.value) : false;
-    })
-  );
-
-  // msgBoxConfirm de BootstrapVue.
-  disposers.push(
-    confirm.setDriver('modal', (options) => {
-      const modalOptions = { ...options.native };
-      if (options.title !== undefined) modalOptions.title = options.title;
-      if (options.confirmText !== undefined) modalOptions.okTitle = options.confirmText;
-      if (options.cancelText !== undefined) modalOptions.cancelTitle = options.cancelText;
-      if (options.variant !== undefined) modalOptions.okVariant = options.variant;
-      return rootVm.$bvModal.msgBoxConfirm(options.message, modalOptions);
-    })
-  );
+  // Las plantillas no pueden importar el servicio: `@click="$modals.hide('id')"` (antes `$bvModal.hide`). Mismo objeto que `modals` del script.
+  const globals = rootVm.$.appContext.config.globalProperties;
+  globals.$modals = modals;
+  // `$platform`: los tres servicios juntos para plantillas y pruebas E2E (`app.config.globalProperties.$platform`).
+  globals.$platform = { notifications, modals, confirm };
+  disposers.push(() => { delete globals.$modals; delete globals.$platform; });
 
   return () => disposers.forEach((dispose) => dispose());
 }

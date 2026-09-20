@@ -8,8 +8,10 @@
 // (`v-model` value/input, class/style de atributos, `$listeners`…): cada componente exportado (y los que usa por dentro) se marca
 // `compatConfig: { MODE: 3 }`. Es configuración del propio componente, no un parche de su lógica; desaparece al quitar compat.
 import { h } from 'vue';
-import { createBootstrap } from 'bootstrap-vue-next/plugins';
-import { vBTooltip as _vBTooltip } from 'bootstrap-vue-next/directives';
+import { bootstrapPlugin } from './plugin.js';
+import { vBTooltip as _vBTooltip, vBToggle as _vBToggle, vBPopover as _vBPopover } from 'bootstrap-vue-next/directives';
+import { BOffcanvas as _BOffcanvas } from 'bootstrap-vue-next/components/BOffcanvas';
+import { BTable as _BTable } from 'bootstrap-vue-next/components/BTable';
 import { BButton as _BButton, BCloseButton } from 'bootstrap-vue-next/components/BButton';
 import { BBadge as _BBadge } from 'bootstrap-vue-next/components/BBadge';
 import { BAlert as _BAlert } from 'bootstrap-vue-next/components/BAlert';
@@ -133,5 +135,53 @@ export const BFormRadio = checkWrapper('BFormRadio', _BFormRadio, (attrs) => ({ 
 // BootstrapVue 2 sigue en las vistas no migradas. Hooks de Vue 3 (`mounted/updated/beforeUnmount`): no depende de `CUSTOM_DIR`.
 export const vBTooltip = _vBTooltip;
 
-/** Plugin de aplicación (registros, RTL, valores por defecto). No registra componentes: se importan explícitamente. */
-export const bootstrapPlugin = createBootstrap({ components: {} });
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Barra lateral (fase 3): `b-sidebar` de BootstrapVue 2 → BOffcanvas de BootstrapVueNext. Contrato conservado (subconjunto realmente usado):
+// `id`, `title`, `right`, `shadow`, `bg-variant`, `sidebar-class`, contenido por el slot por defecto. Comportamiento de BV2 conservado:
+// sin backdrop, el resto de la página sigue interactuando y con scroll (`body-scrolling`), sin trampa de foco, se cierra con ESC y con la
+// cruz. Se abre/cierra con `v-b-toggle.<id>` (directiva de BVN, `vBToggle`) o por id. No cierra por cambio de ruta: el componente se
+// desmonta con la vista.
+// ---------------------------------------------------------------------------------------------------------------------------------
+export const BSidebar = pure({
+  name: 'BSidebar',
+  inheritAttrs: false,
+  props: {
+    right: { type: Boolean, default: false },
+    shadow: { type: [Boolean, String], default: false },
+    bgVariant: { type: String, default: 'light' },
+    textVariant: { type: String, default: 'dark' },
+    sidebarClass: { type: [String, Array, Object], default: undefined },
+    width: { type: String, default: '320px' },
+  },
+  setup(props, { attrs, slots }) {
+    return () =>
+      h(
+        _BOffcanvas,
+        {
+          ...attrs,
+          placement: props.right ? 'end' : 'start',
+          noBackdrop: true,
+          bodyScrolling: true,
+          noTrap: true,
+          teleportDisabled: true, // b-sidebar se renderizaba en su sitio: las reglas `.prodex-ui …` de la capa de diseño deben alcanzarlo
+          width: props.width,
+          headerClass: 'b-sidebar-header',
+          bodyClass: 'b-sidebar-body',
+          shadow: props.shadow === '' || props.shadow === true ? 'sm' : props.shadow || undefined,
+          class: ['b-sidebar', props.right ? 'b-sidebar-right' : null, `bg-${props.bgVariant}`, `text-${props.textVariant}`, props.sidebarClass, attrs.class],
+        },
+        slots
+      );
+  },
+});
+
+// Tabla (piloto de la fase 3, solo settings/woocommerce/LogsTab): BTable de BootstrapVueNext sin wrapper; ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE3.md.
+export const BTable = pure(_BTable);
+
+/** `v-b-toggle` de BootstrapVueNext (hooks de Vue 3). Uso local: `directives: { 'b-toggle': vBToggle }`. */
+export const vBToggle = _vBToggle;
+
+/** `v-b-popover` de BootstrapVueNext. Uso local: `directives: { 'b-popover': vBPopover }`. */
+export const vBPopover = _vBPopover;
+
+export { bootstrapPlugin };

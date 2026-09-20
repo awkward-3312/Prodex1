@@ -401,6 +401,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 
 export default {
   metaInfo: {
@@ -484,7 +485,7 @@ export default {
   mounted(){ this.fetch() },
   methods:{
     makeToast(variant,msg,title){
-      this.$root.$bvToast?.toast(msg,{title,variant,solid:true})
+      notifications.notify(msg,{title,variant,solid:true})
     },
     asset(p){
       if (!p) return ''

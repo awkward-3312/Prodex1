@@ -143,6 +143,7 @@
 </template>
 
 <script>
+import { confirmDialog, notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -273,11 +274,11 @@ export default {
       }).catch((e) => this.makeToast('danger', e.response?.data?.message || this.$t('Error')));
     },
     confirmDelete(row) {
-      this.$bvModal.msgBoxConfirm(this.$t('Confirm_delete')).then((ok) => {
+      confirmDialog(this.$t('Confirm_delete'), { presentation: 'modal' }).then((ok) => {
         if (ok) axios.delete(`commission_rules/${row.id}`).then(() => { this.makeToast('success', this.$t('Deleted')); this.load(this.serverParams.page); }).catch((e) => this.makeToast('danger', e.response?.data?.message || this.$t('Error')));
       });
     },
-    makeToast(variant, msg) { this.$bvToast.toast(msg, { title: this.$t('Notice'), variant, solid: true }); },
+    makeToast(variant, msg) { notifications.notify(msg, { title: this.$t('Notice'), variant, solid: true }); },
   },
 };
 </script>

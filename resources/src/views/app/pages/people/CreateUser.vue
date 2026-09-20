@@ -192,7 +192,7 @@ export default {
   methods: {
     goto(path) { this.$router.push(path).catch(() => {}); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { if (this.$root && this.$root.$bvToast) notifications.notify(msg, { title, variant, solid: true }); },
+    makeToast(variant, msg, title) { if (notifications.hasDriver()) notifications.notify(msg, { title, variant, solid: true }); },
     // user.* is the single source of truth. The model-carrying control sits
     // inside PxField's scoped slot, which VeeValidate 3.4.15 cannot auto-detect,
     // so every required provider is fed its real value explicitly.

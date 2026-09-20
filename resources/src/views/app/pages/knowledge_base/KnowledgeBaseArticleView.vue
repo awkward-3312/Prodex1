@@ -130,7 +130,7 @@ export default {
         this.$nextTick(this.buildTableOfContents);
       } catch (e) {
         this.article = {};
-        if (this.$root && this.$root.$bvToast) {
+        if (notifications.hasDriver()) {
           const status = e && e.response ? e.response.status : null;
           const message = status === 404
             ? 'Este manual no está disponible.'
@@ -201,7 +201,7 @@ export default {
         this.linkCopied = true;
         window.setTimeout(() => { this.linkCopied = false; }, 1600);
       } catch (e) {
-        if (this.$root && this.$root.$bvToast) {
+        if (notifications.hasDriver()) {
           notifications.notify('No se pudo copiar el enlace.', { variant: 'warning', solid: true });
         }
       }

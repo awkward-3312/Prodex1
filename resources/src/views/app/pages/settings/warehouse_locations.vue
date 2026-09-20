@@ -122,9 +122,10 @@
 </template>
 
 <script>
+import { vBTooltip } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Warehouse Locations"
   },

@@ -352,6 +352,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import moment from 'moment';
 
 export default {
@@ -754,7 +755,7 @@ export default {
         this.progress = { total_products: 0, processed: 0, synced_products: 0, failed_products: 0, percentage: 0, created: 0, updated: 0 };
       }).finally(() => { this.refreshing = false; });
     },
-    toast(variant, msg) { this.$root.$bvToast.toast(msg, { title: this.$t('WooCommerce'), variant, solid: true }); },
+    toast(variant, msg) { notifications.notify(msg, { title: this.$t('WooCommerce'), variant, solid: true }); },
     fixProductCategories() {
       if (this.fixingCategories) return;
       this.fixingCategories = true;

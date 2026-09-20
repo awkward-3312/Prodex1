@@ -117,6 +117,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 
 export default {
@@ -244,8 +245,8 @@ export default {
     },
 
     toast (variant, title, msg) {
-      if (this.$bvToast && this.$bvToast.toast) {
-        this.$bvToast.toast(msg, { title, variant, autoHideDelay: 3000, solid: true })
+      if (notifications.hasDriver()) {
+        notifications.notify(msg, { title, variant, autoHideDelay: 3000, solid: true })
       } else {
         if (variant === 'danger') alert((title || 'Error') + ': ' + msg)
       }

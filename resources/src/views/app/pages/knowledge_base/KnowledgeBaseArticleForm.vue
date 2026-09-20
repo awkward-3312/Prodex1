@@ -160,7 +160,7 @@ export default {
         };
         this.syncValidators();
       } catch (e) {
-        if (this.$root && this.$root.$bvToast) {
+        if (notifications.hasDriver()) {
           notifications.notify(this.$t('Failed_to_load') || 'Failed to load', { variant: 'danger', solid: true });
         }
       }
@@ -174,19 +174,19 @@ export default {
         if (!payload.published_at) payload.published_at = null;
         if (this.isEdit) {
           await axios.put('/knowledge-base/articles/' + this.id, payload);
-          if (this.$root && this.$root.$bvToast) {
+          if (notifications.hasDriver()) {
             notifications.notify(this.$t('Updated') || 'Updated', { variant: 'success', solid: true });
           }
         } else {
           await axios.post('/knowledge-base/articles', payload);
-          if (this.$root && this.$root.$bvToast) {
+          if (notifications.hasDriver()) {
             notifications.notify(this.$t('Saved') || 'Saved', { variant: 'success', solid: true });
           }
         }
         this.$router.push({ name: 'KnowledgeBaseArticles' });
       } catch (e) {
         const msg = (e.response && e.response.data && (e.response.data.message || (e.response.data.errors && Object.values(e.response.data.errors).flat()[0]))) || this.$t('InvalidData') || 'Invalid data';
-        if (this.$root && this.$root.$bvToast) {
+        if (notifications.hasDriver()) {
           notifications.notify(msg, { variant: 'danger', solid: true });
         }
       } finally {

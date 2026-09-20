@@ -230,6 +230,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
@@ -375,7 +376,7 @@ export default {
       return o ? o.label : value;
     },
     toast(variant, msg, title) {
-      if (this.$bvToast) this.$bvToast.toast(msg, { title: title || "Productos", variant, solid: true });
+      if (notifications.hasDriver()) notifications.notify(msg, { title: title || "Productos", variant, solid: true });
     },
 
     // ---- fetch server-side, con guarda de carrera + abort ------------------

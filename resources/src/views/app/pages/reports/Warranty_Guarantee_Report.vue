@@ -309,7 +309,7 @@ export default {
           }
         })
         .catch(() => {
-          if (this.$bvToast && this.$bvToast.toast) {
+          if (notifications.hasDriver()) {
             notifications.notify(this.$t('OperationFailed'), { title: this.$t('Failed'), variant: 'danger', solid: true })
           }
         })
@@ -374,7 +374,7 @@ export default {
         styles: { fontSize: 8, cellPadding: 3 }
       })
       pdf.save('warranty_guarantee_report.pdf')
-      if (this.$bvToast && this.$bvToast.toast) {
+      if (notifications.hasDriver()) {
         notifications.notify(this.$t('Export_PDF') || 'PDF exported', { title: this.$t('Success'), variant: 'success', solid: true })
       }
     },

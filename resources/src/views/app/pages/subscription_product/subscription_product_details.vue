@@ -86,7 +86,7 @@
 </template>
 
 <script>
-import { confirmDialog } from "@/platform";
+import { confirmDialog, notifications } from "@/platform";
 export default {
   data() {
     return {
@@ -112,7 +112,7 @@ export default {
       this.invoices = data.invoices;
       this.invoiceFields = data.invoiceFields;
     } catch (error) {
-      this.$bvToast.toast("Unable to load subscription details", {
+      notifications.notify("Unable to load subscription details", {
         variant: "danger",
         title: "Error",
         solid: true,

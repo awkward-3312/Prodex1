@@ -119,6 +119,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from 'nprogress';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
@@ -175,8 +176,8 @@ export default {
   methods: {
     // ---------- UI helpers ----------
     toast(msg, title, variant) {
-      if (this.$root && this.$root.$bvToast) {
-        this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      if (notifications.hasDriver()) {
+        notifications.notify(msg, { title: title, variant: variant, solid: true });
       }
     },
     downloadExample() {

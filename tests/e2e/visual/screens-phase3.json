@@ -1,0 +1,147 @@
+[
+ {
+  "name": "sidebar-tareas",
+  "url": "/app/tasks/list",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-proyectos",
+  "url": "/app/projects/list",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-reservas",
+  "url": "/app/bookings/list",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-empleados",
+  "url": "/app/hrm/employees/list",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-clientes",
+  "url": "/app/People/Customers",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-proveedores",
+  "url": "/app/People/Suppliers",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-ajustes-clasico",
+  "url": "/app/adjustments/list-classic",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-productos-clasico",
+  "url": "/app/products/list-classic",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-traslados-clasico",
+  "url": "/app/transfers/list-classic",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-danos-clasico",
+  "url": "/app/damages/list-classic",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-pagos-devol-ventas",
+  "url": "/app/reports/payments_sales_returns",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-pagos-devol-compras",
+  "url": "/app/reports/payments_purchases_returns",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "eval": "document.querySelector('#app').__vue_app__.config.globalProperties.$platform.notifications.notify('Mensaje de prueba PRODEX',{title:'Éxito',variant:'success',solid:true})",
+  "evalBase": "document.querySelector('.main-content, .card, #app *').__vueParentComponent.proxy.$bvToast.toast('Mensaje de prueba PRODEX',{title:'Éxito',variant:'success',solid:true})",
+  "name": "toast-success",
+  "url": "/app/meeting/calendar",
+  "wait": 500,
+  "viewportOnly": true
+ },
+ {
+  "eval": "document.querySelector('#app').__vue_app__.config.globalProperties.$platform.notifications.notify('Mensaje de prueba PRODEX',{title:'Error',variant:'danger',solid:true})",
+  "evalBase": "document.querySelector('.main-content, .card, #app *').__vueParentComponent.proxy.$bvToast.toast('Mensaje de prueba PRODEX',{title:'Error',variant:'danger',solid:true})",
+  "name": "toast-danger",
+  "url": "/app/meeting/calendar",
+  "wait": 500,
+  "viewportOnly": true
+ },
+ {
+  "eval": "document.querySelector('#app').__vue_app__.config.globalProperties.$platform.notifications.notify('Mensaje de prueba PRODEX',{title:'Aviso',variant:'warning',solid:true})",
+  "evalBase": "document.querySelector('.main-content, .card, #app *').__vueParentComponent.proxy.$bvToast.toast('Mensaje de prueba PRODEX',{title:'Aviso',variant:'warning',solid:true})",
+  "name": "toast-warning",
+  "url": "/app/meeting/calendar",
+  "wait": 500,
+  "viewportOnly": true
+ },
+ {
+  "eval": "document.querySelector('#app').__vue_app__.config.globalProperties.$platform.notifications.notify('Mensaje de prueba PRODEX',{title:'Información',variant:'info',solid:true})",
+  "evalBase": "document.querySelector('.main-content, .card, #app *').__vueParentComponent.proxy.$bvToast.toast('Mensaje de prueba PRODEX',{title:'Información',variant:'info',solid:true})",
+  "name": "toast-info",
+  "url": "/app/meeting/calendar",
+  "wait": 500,
+  "viewportOnly": true
+ },
+ {
+  "name": "confirm-modal",
+  "url": "/app/meeting/calendar",
+  "eval": "document.querySelector('#app').__vue_app__.config.globalProperties.$platform.confirm('¿Seguro que deseas continuar?',{presentation:'modal',title:'Confirmar',size:'sm'})",
+  "evalBase": "document.querySelector('.main-content, .card, #app *').__vueParentComponent.proxy.$bvModal.msgBoxConfirm('¿Seguro que deseas continuar?',{title:'Confirmar',size:'sm'})",
+  "wait": 800,
+  "viewportOnly": true
+ },
+ {
+  "name": "tooltip-productos",
+  "url": "/app/products/list-classic",
+  "hover": "tbody tr:first-child td:last-child a, tbody tr:first-child td:last-child button",
+  "wait": 600,
+  "viewportOnly": true
+ },
+ {
+  "name": "vselect-abierto",
+  "url": "/app/adjustments/store-classic",
+  "click": "css:.vs__dropdown-toggle",
+  "wait": 700,
+  "viewportOnly": true
+ },
+ {
+  "name": "daterange-abierto",
+  "url": "/app/reports/sales_report",
+  "click": "css:.reportrange-text, .daterangepicker-input, .form-control.reportrange-text",
+  "wait": 700,
+  "viewportOnly": true
+ }
+]

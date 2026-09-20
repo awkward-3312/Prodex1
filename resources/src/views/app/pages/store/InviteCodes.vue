@@ -66,12 +66,13 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 export default {
   metaInfo: { title: 'Códigos de invitación' },
   data () { return { isLoading: true, saving: false, search: '', filterStatus: '', codes: [], pagination: { current_page: 1, last_page: 1 }, showModal: false, showBatchModal: false, editingCode: null, codeForm: { code: '', max_uses: null, expires_at: '', is_active: true }, batchForm: { count: 5, max_uses: null, expires_at: '' }, debounceTimer: null } },
   mounted () { this.fetchCodes() },
   methods: {
-    makeToast (variant, msg, title) { this.$root.$bvToast && this.$root.$bvToast.toast(msg, { title, variant, solid: true }) },
+    makeToast (variant, msg, title) { notifications.notify(msg, { title, variant, solid: true }) },
     formatDate (d) { if (!d) return ''; var dt = new Date(d); return dt.toLocaleDateString('es-HN') + ' ' + dt.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' }) },
     codeStatusVariant (c) { if (!c.is_active) return 'secondary'; if (c.expires_at && new Date(c.expires_at) < new Date()) return 'danger'; if (c.max_uses != null && c.times_used >= c.max_uses) return 'warning'; return 'success' },
     codeStatusLabel (c) { if (!c.is_active) return 'Inactivo'; if (c.expires_at && new Date(c.expires_at) < new Date()) return 'Vencido'; if (c.max_uses != null && c.times_used >= c.max_uses) return 'Agotado'; return 'Activo' },

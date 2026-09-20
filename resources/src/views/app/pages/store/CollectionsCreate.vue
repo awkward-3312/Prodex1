@@ -228,6 +228,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 
 export default {
   metaInfo: {
@@ -260,8 +261,8 @@ export default {
 
   methods: {
     makeToast (variant, msg, title) {
-      if (this.$root && this.$root.$bvToast) {
-        this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true })
+      if (notifications.hasDriver()) {
+        notifications.notify(msg, { title: title, variant: variant, solid: true })
       }
     },
 

@@ -144,12 +144,12 @@ export default {
       try {
         this.busyId = a.id;
         await axios.delete('/knowledge-base/articles/' + a.id);
-        if (this.$root && this.$root.$bvToast) {
+        if (notifications.hasDriver()) {
           notifications.notify(this.$t('Deleted_successfully'), { variant: 'success', solid: true });
         }
         this.articles = this.articles.filter(x => x.id !== a.id);
       } catch (e) {
-        if (this.$root && this.$root.$bvToast) {
+        if (notifications.hasDriver()) {
           notifications.notify(this.$t('Delete_failed'), { variant: 'danger', solid: true });
         }
       } finally {

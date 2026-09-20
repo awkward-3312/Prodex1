@@ -207,7 +207,7 @@ export default {
       } catch (e) {
         this.articles = [];
         this.total = 0;
-        if (this.$root && this.$root.$bvToast) {
+        if (notifications.hasDriver()) {
           notifications.notify('No se pudo cargar el Manual PRODEX.', { variant: 'danger', solid: true });
         }
       } finally {

@@ -149,7 +149,7 @@
 </template>
 
 <script>
-import { modals, notifications } from "@/platform";
+import { modals, notifications, confirmDialog } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 
@@ -341,8 +341,7 @@ export default {
 
     // Confirm delete
     confirmDelete(row) {
-      this.$bvModal
-        .msgBoxConfirm(this.$t("AreYouSure"), {
+      confirmDialog(this.$t("AreYouSure"), { presentation: 'modal',
           title: this.$t("Confirm"),
           size: "sm",
           okVariant: "danger",

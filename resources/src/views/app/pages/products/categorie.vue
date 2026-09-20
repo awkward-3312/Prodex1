@@ -118,6 +118,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
@@ -214,7 +215,7 @@ export default {
   methods: {
     // Helpers
     getState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null },
-    toast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }) },
+    toast(variant, msg, title) { notifications.notify(msg, { title, variant, solid: true }) },
     updateParams(patch) { this.serverParams = { ...this.serverParams, ...patch } },
 
     // Table events (px-next: local emits, same remote-refetch pattern as before)

@@ -192,10 +192,11 @@
 </template>
 
 <script>
+import { vBTooltip } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Create Subscription"
   },

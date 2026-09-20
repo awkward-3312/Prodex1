@@ -90,7 +90,7 @@ export default {
   methods: {
     tv(v) { return typeof v === 'string' ? v.trim() : v; },
     makeToast(variant, msg) {
-      if (this.$root && this.$root.$bvToast) notifications.notify(msg, { variant, solid: true });
+      if (notifications.hasDriver()) notifications.notify(msg, { variant, solid: true });
     },
     async fetch() {
       this.isLoading = true;

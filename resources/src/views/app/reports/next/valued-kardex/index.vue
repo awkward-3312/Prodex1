@@ -373,7 +373,7 @@ export default {
       );
       const title = "Informes / Kardex valorizado" + (this.productMeta ? " — " + this.productMeta.name : "");
       const ok = printTableDoc({ title, headers, rows, landscape: true });
-      if (!ok && this.$root.$bvToast) {
+      if (!ok && notifications.hasDriver()) {
         notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
       }
     }

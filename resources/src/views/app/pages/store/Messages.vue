@@ -124,9 +124,10 @@
 </template>
 
 <script>
+import { vBTooltip } from "@/platform/bootstrap";
 import { modals } from "@/platform";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Store Messages"
   },
@@ -238,7 +239,7 @@ export default {
         }
 
         // Show modal
-        if (this.$bvModal) modals.show('messageModal')
+        modals.show('messageModal')
       } finally {
         this.loadingOne = false
       }

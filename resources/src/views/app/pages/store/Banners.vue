@@ -46,7 +46,8 @@
 </template>
 
 <script>
-export default {
+import { vBTooltip } from "@/platform/bootstrap";
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Banners de la tienda"
   },

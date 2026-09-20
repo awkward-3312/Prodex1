@@ -454,7 +454,7 @@ export default {
         if (resp && resp.status < 400) {
           await this.fetch(false);
           const wh = this.warehouses.find((w) => String(w.id) === String(warehouseId));
-          if (this.$bvToast) {
+          if (notifications.hasDriver()) {
             notifications.notify(
               (this.$t("SentToWarehouse") || "Sent to") + " " + (wh ? wh.name : ""),
               { title: this.$t("Success") || "Success", variant: "success", solid: true }
@@ -507,7 +507,7 @@ export default {
       }
     },
     notifyNewOrder(count) {
-      if (this.$bvToast) {
+      if (notifications.hasDriver()) {
         notifications.notify(
           (this.$t("NewKitchenOrders") || "New kitchen order(s)") + (count > 1 ? " (" + count + ")" : ""),
           { title: this.$t("Kitchen") || "Kitchen", variant: "info", solid: true, autoHideDelay: 4000 }
@@ -539,7 +539,7 @@ export default {
         const resp = await axios.patch("/kitchen/orders/" + order.id + "/status", { status }, { validateStatus: () => true });
         if (resp && resp.status < 400) {
           await this.fetch(false);
-          if (this.$bvToast) {
+          if (notifications.hasDriver()) {
             notifications.notify(this.$t("Successfully_Updated") || "Updated", {
               title: this.$t("Success") || "Success",
               variant: "success",
@@ -574,7 +574,7 @@ export default {
         if (resp && resp.status < 400) {
           await this.fetch(false);
           if (resp.data && resp.data.order) this.selected = resp.data.order;
-          if (this.$bvToast) {
+          if (notifications.hasDriver()) {
             notifications.notify(this.$t("Successfully_Updated") || "Updated", {
               title: this.$t("Success") || "Success",
               variant: "success",
@@ -596,7 +596,7 @@ export default {
         (resp && resp.data && (resp.data.error || resp.data.message)) ||
         this.$t("Network_error") ||
         "Error";
-      if (this.$bvToast) {
+      if (notifications.hasDriver()) {
         notifications.notify(String(msg), { title: this.$t("Failed") || "Failed", variant: "danger", solid: true });
       }
     },

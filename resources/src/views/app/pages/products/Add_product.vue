@@ -1834,13 +1834,15 @@
 
 
 <script>
+import { modals, notifications } from "@/platform";
+import { vBTooltip } from "@/platform/bootstrap";
 import VueTagsInput from "@johmun/vue-tags-input";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
 import draggable from "vuedraggable";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Create Product"
   },
@@ -2092,7 +2094,7 @@ export default {
     //-------------------------- Quick Add Category (modal) --------------------------\\
     openQuickCategoryModal() {
       this.quickCategory = { name: "", code: "" };
-      this.$bvModal.show("Quick_Add_Category");
+      modals.show("Quick_Add_Category");
     },
 
     submitQuickCategory() {
@@ -2144,7 +2146,7 @@ export default {
             }
           }
 
-          this.$bvModal.hide("Quick_Add_Category");
+          modals.hide("Quick_Add_Category");
           this.quickCategory = { name: "", code: "" };
           this.makeToast(
             "success",
@@ -2173,7 +2175,7 @@ export default {
     //-------------------------- Quick Add Brand (modal) --------------------------\\
     openQuickBrandModal() {
       this.quickBrand = { name: "", description: "" };
-      this.$bvModal.show("Quick_Add_Brand");
+      modals.show("Quick_Add_Brand");
     },
 
     submitQuickBrand() {
@@ -2210,7 +2212,7 @@ export default {
             }
           }
 
-          this.$bvModal.hide("Quick_Add_Brand");
+          modals.hide("Quick_Add_Brand");
           this.quickBrand = { name: "", description: "" };
           this.makeToast(
             "success",
@@ -2252,7 +2254,7 @@ export default {
         this.loadBaseUnits();
       }
       
-      this.$bvModal.show("Quick_Add_Unit");
+      modals.show("Quick_Add_Unit");
     },
 
     // Load base units
@@ -2333,7 +2335,7 @@ export default {
             console.warn("Newly created unit not found in list");
           }
 
-          this.$bvModal.hide("Quick_Add_Unit");
+          modals.hide("Quick_Add_Unit");
           this.quickUnit = {
             name: "",
             ShortName: "",
@@ -2378,7 +2380,7 @@ export default {
         is_active: true,
       };
       this.quickWarehouseLocationWarehouseLocked = true;
-      this.$bvModal.show("Quick_Add_Warehouse_Location");
+      modals.show("Quick_Add_Warehouse_Location");
     },
 
     submitQuickWarehouseLocation() {
@@ -2421,7 +2423,7 @@ export default {
             }
           }
 
-          this.$bvModal.hide("Quick_Add_Warehouse_Location");
+          modals.hide("Quick_Add_Warehouse_Location");
           this.makeToast(
             "success",
             this.$t("Successfully_Created"),
@@ -2522,14 +2524,14 @@ export default {
 
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
     onScan (decodedText, decodedResult) {
       const code = decodedText;
       this.product.code = code;
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
 
@@ -2713,7 +2715,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

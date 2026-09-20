@@ -87,10 +87,11 @@
 
 
 <script>
+import { vBTooltip } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Subscriptions"
   },

@@ -175,6 +175,7 @@
 
 
 <script>
+import { BSidebar, vBToggle } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -189,11 +190,11 @@ import {
   getPriceDecimals
 } from "../../../../../utils/priceFormat";
 
-export default {
+export default { directives: { 'b-toggle': vBToggle },
   metaInfo: {
     title: "Payment Sale Returns"
   },
-  components: { DateRangePicker, apexchart: VueApexCharts },
+  components: { BSidebar, DateRangePicker, apexchart: VueApexCharts },
   data() {
     return {
       isLoading: true,

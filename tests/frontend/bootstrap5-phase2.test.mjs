@@ -31,7 +31,7 @@ test('compat: BootstrapVueNext (SFC con __name B…) corre en MODE 3; BootstrapV
   assert.equal(compatModeFor(function legacyCtor() {}), 2);
   assert.equal(isBootstrapVueNext({ __name: 'BAr' }), true, 'la heurística es el prefijo B + mayúscula (documentada)');
   const compat = read('platform/vue-compat.js');
-  assert.match(compat, /configureCompat\(\{\s*MODE:\s*compatModeFor,\s*CUSTOM_DIR:\s*true\s*\}\)/);
+  assert.match(compat, /configureCompat\(\{\s*MODE:\s*compatModeFor,\s*CUSTOM_DIR:\s*false\s*\}\)/);
 });
 
 test('vee-validate: detecta el campo con el contrato de Vue 3 (modelValue) y conserva el de Vue 2 (value)', async () => {
@@ -67,8 +67,9 @@ test('vistas migradas a formularios BVN: registro local coherente (cada b-form-*
     const m = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap["']/.exec(text);
     if (!m) return;
     for (const name of m[1].split(',').map((s) => s.trim()).filter(Boolean)) {
-      if (name === 'vBTooltip') {
-        if (!/'b-tooltip':\s*vBTooltip/.test(text)) offenders.push(`${path.relative(SRC, file)}: vBTooltip importado sin registrar`);
+      const directive = { vBTooltip: 'b-tooltip', vBToggle: 'b-toggle', vBPopover: 'b-popover' }[name];
+      if (directive) {
+        if (!new RegExp(`'${directive}':\\s*${name}`).test(text)) offenders.push(`${path.relative(SRC, file)}: ${name} importado sin registrar`);
         continue;
       }
       const registered = new RegExp(`components:\\s*\\{[^}]*\\b${name}\\b`).test(text);
@@ -91,26 +92,43 @@ test('clases BS5 latentes: en pantallas críticas el puente NO las activa (neutr
   }
 });
 
-test('servicios de plataforma: las vistas no críticas ya no llaman a this.$bvToast.toast ni a $bvModal.show/hide desde el script', () => {
+// Dominios que la fase 3 NO toca (POS, caja, pagos, inventario crítico, ventas/compras): siguen con $bvToast/$bvModal de BootstrapVue 2.
+const PLATFORM_EXEMPT = /(pos|cash|caja|register|payment|pago|inventory|stock|adjustment|transfer|damage|warehouse|sale|purchase|quotation|checkout|receiv|opening|customfields|_ui)/i;
+
+test('servicios de plataforma: ninguna vista fuera de los dominios exentos usa $bvToast / $bvModal (ni en script ni en plantilla)', () => {
   const offenders = [];
   walk(path.join(SRC, 'views'), (file) => {
     const rel = path.relative(SRC, file).replace(/\\/g, '/');
-    if (!file.endsWith('.vue') || CRITICAL.test(rel)) return;
-    const text = fs.readFileSync(file, 'utf8');
-    const script = /<script[^>]*>([\s\S]*?)<\/script>/.exec(text);
-    if (script && /\$(bvToast\.toast|bvModal\.(show|hide))\(/.test(script[1])) offenders.push(rel);
+    if (!file.endsWith('.vue') || PLATFORM_EXEMPT.test(rel)) return;
+    const text = fs.readFileSync(file, 'utf8').replace(/<!--[\s\S]*?-->/g, '').split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    if (/\$bv(Toast|Modal)\b/.test(text)) offenders.push(rel);
   });
   assert.deepEqual(offenders, []);
 });
 
-test('CUSTOM_DIR: las directivas propias usan hooks de Vue 3 y los consumidores restantes son de terceros (documentados)', () => {
-  const compat = read('platform/vue-compat.js');
-  assert.match(compat, /vue-select\/src\/directives\/appendToBody\.js/);
-  assert.match(compat, /vue2-daterange-picker\/src\/directives\/appendToBody\.js/);
-  for (const pkg of ['vue-select', 'vue2-daterange-picker']) {
-    const file = path.join(ROOT, 'node_modules', pkg, 'src/directives/appendToBody.js');
-    if (fs.existsSync(file)) assert.match(fs.readFileSync(file, 'utf8'), /\binserted\s*\(/, `${pkg} sigue usando hooks de Vue 2`);
-  }
+test('CUSTOM_DIR eliminado: vue-select y vue2-daterange-picker usan wrappers con directivas de Vue 3 (sin parchear node_modules)', () => {
+  const dir = read('platform/directives/append-to-body.js');
+  assert.match(dir, /mounted:/);
+  assert.match(dir, /unmounted:/);
+  assert.doesNotMatch(dir.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n'), /\b(inserted|unbind|componentUpdated)\b/);
+  assert.match(read('platform/compat/vue-select.js'), /appendToBody:\s*vSelectAppendToBody/);
+  assert.match(read('platform/compat/daterange-picker.js'), /appendToBody:\s*daterangeAppendToBody/);
+  assert.match(read('main.js'), /import vSelect from '\.\/platform\/compat\/vue-select\.js'/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'webpack.mix.js'), 'utf8'), /'vue2-daterange-picker\$'/);
+});
+
+test('sin claves duplicadas `components` / `directives` en el objeto de opciones de una vista (la última pisaría a la primera)', () => {
+  const offenders = [];
+  walk(path.join(SRC, 'views'), (file) => {
+    if (!file.endsWith('.vue')) return;
+    const script = /<script[^>]*>([\s\S]*?)<\/script>/.exec(fs.readFileSync(file, 'utf8'));
+    if (!script) return;
+    for (const key of ['components', 'directives']) {
+      const n = (script[1].match(new RegExp(`(?<![\\w.'"])${key}\\s*:\\s*\\{`, 'g')) || []).length;
+      if (n > 1) offenders.push(`${path.relative(SRC, file)}: ${key} x${n}`);
+    }
+  });
+  assert.deepEqual(offenders, []);
 });
 
 test('patrones de BootstrapVue 2 que NO se migran a BVN (blockers documentados): v-model.trim, :value/:checked, @input en select, switch, multiple', () => {

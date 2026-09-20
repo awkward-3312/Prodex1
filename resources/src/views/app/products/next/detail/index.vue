@@ -324,6 +324,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import VueBarcode from "vue-barcode";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -494,8 +495,8 @@ export default {
         this.m.isBatchTracked ? this.batchModel : null
       );
       const ok = openPrintWindow(html);
-      if (!ok && this.$bvToast) {
-        this.$bvToast.toast("Permite las ventanas emergentes para imprimir.", {
+      if (!ok && notifications.hasDriver()) {
+        notifications.notify("Permite las ventanas emergentes para imprimir.", {
           title: "Imprimir",
           variant: "warning",
           solid: true

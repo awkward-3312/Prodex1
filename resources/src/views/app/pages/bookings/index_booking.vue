@@ -225,7 +225,7 @@
             <button @click="printBooking()" class="action-btn print-btn" title="Print">
               <lucide-icon name="receipt" />
             </button>
-            <button @click="$bvModal.hide('booking-detail-modal')" class="action-btn close-btn" title="Close">
+            <button @click="$modals.hide('booking-detail-modal')" class="action-btn close-btn" title="Close">
               <lucide-icon name="x" />
             </button>
           </div>
@@ -422,10 +422,10 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip } from "@/platform/bootstrap";
+import { vBTooltip, BSidebar, vBToggle } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default { directives: { 'b-tooltip': vBTooltip },
+export default { components: { BSidebar }, directives: { 'b-toggle': vBToggle, 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Bookings"
   },

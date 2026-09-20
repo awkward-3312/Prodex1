@@ -44,9 +44,9 @@ test.describe('Servicios de plataforma @smoke', () => {
     await modal.locator('textarea').last().fill('Hola {customer_name}');
     await modal.locator('form').evaluate((f) => f.requestSubmit());
 
-    // modals.hide + notifications.notify (toast de BootstrapVue con el mismo texto de siempre)
+    // modals.hide + notifications.notify (toast de BootstrapVueNext con el mismo texto de siempre)
     await expect(page.locator('.modal.show')).toHaveCount(0, { timeout: 15_000 });
-    await expect(page.locator('.b-toast').first()).toContainText(/Creado correctamente/, { timeout: 15_000 });
+    await expect(page.locator('.toast').first()).toContainText(/Creado correctamente/, { timeout: 15_000 });
     await expect(rows).toHaveCount(1);
 
     // confirmDialog (SweetAlert2): cancelar no borra

@@ -75,6 +75,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 
 export default {
   metaInfo: {
@@ -195,7 +196,7 @@ export default {
           await axios.post(`/store/banners/${this.id}?_method=PUT`, fd)
         }
 
-        this.$bvToast && this.$bvToast.toast(this.$t('Saved_successfully'), {
+        this.notifications.notify(this.$t('Saved_successfully'), {
           title: this.$t('Banners'), variant: 'success'
         })
         this.$router.push({ name: 'StoreBanners' })

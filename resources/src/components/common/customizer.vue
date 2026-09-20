@@ -136,10 +136,11 @@
 </template>
 
 <script>
+import { vBPopover } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapGetters, mapActions } from "vuex";
 
-export default {
+export default { directives: { 'b-popover': vBPopover },
   data() {
     return {
       isOpen: false,

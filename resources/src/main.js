@@ -131,7 +131,7 @@ axios.interceptors.response.use(response => { decrementPending(response && respo
 
 installSarInvoiceBridge(window.axios);
 installPosOperationalLocationBridge(window.axios);
-import vSelect from 'vue-select';
+import vSelect from './platform/compat/vue-select.js';
 Vue.component('v-select', vSelect);
 import 'vue-select/dist/vue-select.css';
 import '@trevoreyre/autocomplete-vue/dist/style.css';

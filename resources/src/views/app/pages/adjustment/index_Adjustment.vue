@@ -148,12 +148,13 @@
 </template>
 
 <script>
+import { BSidebar, vBToggle, vBTooltip } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BSidebar },
   metaInfo: {
     title: "Adjustment"
   },

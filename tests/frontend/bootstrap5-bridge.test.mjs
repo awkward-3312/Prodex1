@@ -63,7 +63,7 @@ test('platform/bootstrap: envoltorios de BVN marcados MODE 3, BButton acepta `bl
   assert.match(src, /compatConfig\s*[:=]\s*\{\s*MODE:\s*3/);
   assert.match(src, /btn-block/);
   assert.match(src, /badge-\$\{/);
-  assert.match(src, /createBootstrap\(/);
+  assert.match(fs.readFileSync(path.join(SRC, 'platform/bootstrap/plugin.js'), 'utf8'), /createBootstrap\(/);
   for (const name of ['BButton', 'BBadge', 'BAlert', 'BSpinner', 'BContainer', 'BRow', 'BCol', 'BCard']) assert.match(src, new RegExp(`export const ${name}\\b`), name);
 });
 
@@ -80,7 +80,7 @@ test('BVN no se importa fuera de platform/bootstrap (las vistas usan el envoltor
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, e.name);
       if (e.isDirectory()) walk(full);
-      else if (/\.(vue|js)$/.test(e.name) && !full.includes(`${path.sep}platform${path.sep}bootstrap${path.sep}`)) {
+      else if (/\.(vue|js)$/.test(e.name) && !full.includes(`${path.sep}platform${path.sep}bootstrap${path.sep}`) && !full.includes(`${path.sep}platform${path.sep}adapters${path.sep}`)) {
         if (/from\s+['"]bootstrap-vue-next/.test(fs.readFileSync(full, 'utf8'))) offenders.push(path.relative(SRC, full));
       }
     }
@@ -127,7 +127,7 @@ test('toolchain: la hoja completa de Bootstrap 5.3 compila con el sass del proye
   assert.ok(!css.includes('.custom-select'), 'BS5 ya no tiene .custom-select');
 });
 
-test('directivas propias con hooks de Vue 3 (mounted/unmounted): solo BootstrapVue 2 y vue-good-table mantienen CUSTOM_DIR activo', () => {
+test('directivas propias con hooks de Vue 3 (mounted/unmounted) y CUSTOM_DIR retirado', () => {
   const offenders = [];
   const walk = (dir) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -138,6 +138,6 @@ test('directivas propias con hooks de Vue 3 (mounted/unmounted): solo BootstrapV
   };
   walk(SRC);
   assert.deepEqual(offenders, []);
-  const compat = fs.readFileSync(path.join(SRC, 'platform/vue-compat.js'), 'utf8');
-  assert.match(compat, /CUSTOM_DIR:\s*true/, 'CUSTOM_DIR sigue activo mientras existan v-b-* de BootstrapVue 2 (130 usos en 41 archivos)');
+  const compat = fs.readFileSync(path.join(SRC, 'platform/vue-compat.js'), 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  assert.match(compat, /CUSTOM_DIR:\s*false/, 'CUSTOM_DIR desactivado explícitamente');
 });

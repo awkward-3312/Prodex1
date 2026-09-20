@@ -509,7 +509,7 @@ export default {
         window.URL.revokeObjectURL(url)
       } catch (err) {
         const fallbackMsg = (this.$t && this.$t('Failed_to_export') !== 'Failed_to_export') ? this.$t('Failed_to_export') : 'Failed to export PDF'
-        if (this.$bvToast) {
+        if (notifications.hasDriver()) {
           notifications.notify(fallbackMsg, { title: this.$t ? this.$t('Error') : 'Error', variant: 'danger', solid: true })
         } else {
           // eslint-disable-next-line no-alert

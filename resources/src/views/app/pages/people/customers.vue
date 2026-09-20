@@ -1005,7 +1005,7 @@
         </template>
 
         <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-          <b-button variant="secondary" @click="$bvModal.hide('modal_portal_client')">
+          <b-button variant="secondary" @click="$modals.hide('modal_portal_client')">
             {{ $t('Cancel') }}
           </b-button>
           <b-button
@@ -1026,7 +1026,7 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { BSpinner } from "@/platform/bootstrap";
+import { BSpinner, BSidebar, vBToggle } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
@@ -1036,8 +1036,8 @@ import {
   getPriceFormatSetting
 } from "../../../../utils/priceFormat";
 
-export default {
-  components: { BSpinner },
+export default { directives: { 'b-toggle': vBToggle },
+  components: { BSidebar, BSpinner },
   metaInfo: {
     title: "Customer"
   },

@@ -221,6 +221,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import VueBarcode from "vue-barcode";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
@@ -707,7 +708,7 @@ export default {
     },
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

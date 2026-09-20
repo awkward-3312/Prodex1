@@ -262,11 +262,13 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
+import { vBTooltip } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Batches"
   },
@@ -360,7 +362,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
 
     updateParams(newProps) {
@@ -438,7 +440,7 @@ export default {
         status: row.status,
         notes: row.notes || ''
       };
-      this.$bvModal.show('Edit_batch');
+      modals.show('Edit_batch');
     },
 
     submitEdit() {
@@ -461,7 +463,7 @@ export default {
           .put('product_batches/' + this.editing.id, payload)
           .then(() => {
             this.SubmitProcessing = false;
-            this.$bvModal.hide('Edit_batch');
+            modals.hide('Edit_batch');
             this.makeToast('success', this.$t('Successfully_Updated'), this.$t('Success'));
             this.fetch(this.serverParams.page);
           })
@@ -480,7 +482,7 @@ export default {
         qty: row.qty,
         reason: ''
       };
-      this.$bvModal.show('WriteOff_batch');
+      modals.show('WriteOff_batch');
     },
 
     submitWriteOff() {
@@ -491,7 +493,7 @@ export default {
         })
         .then(() => {
           this.SubmitProcessing = false;
-          this.$bvModal.hide('WriteOff_batch');
+          modals.hide('WriteOff_batch');
           this.makeToast('success', this.$t('Successfully_Updated'), this.$t('Success'));
           this.fetch(this.serverParams.page);
         })

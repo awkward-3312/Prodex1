@@ -259,6 +259,8 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
+import { BSidebar, vBToggle, vBTooltip } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
@@ -269,7 +271,7 @@ import {
   getPriceDecimals
 } from "../../../../utils/priceFormat";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BSidebar },
   metaInfo: { title: "Products" },
   data() {
     return {
@@ -463,7 +465,7 @@ export default {
       pdf.save("Product_List.pdf");
     },
 
-    Show_import_products() { this.$bvModal.show("importProducts"); },
+    Show_import_products() { modals.show("importProducts"); },
 
     onFileSelected(e) {
       this.import_products = "";
@@ -507,7 +509,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
 
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
@@ -672,7 +674,7 @@ export default {
     Fire.$on("Event_import", () => {
       setTimeout(() => {
         this.Get_Products(this.serverParams.page);
-        this.$bvModal.hide("importProducts");
+        modals.hide("importProducts");
       }, 500);
     });
   }

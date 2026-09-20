@@ -1675,13 +1675,15 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
+import { vBTooltip } from "@/platform/bootstrap";
 import VueTagsInput from "@johmun/vue-tags-input";
 import draggable from "vuedraggable";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Edit Product"
   },
@@ -2028,14 +2030,14 @@ export default {
 
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
     onScan (decodedText, decodedResult) {
       const code = decodedText;
       this.product.code = code;
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
 
@@ -2114,7 +2116,7 @@ export default {
         is_active: true
       };
       this.quickWarehouseLocationWarehouseLocked = true;
-      this.$bvModal.show("Quick_Add_Warehouse_Location");
+      modals.show("Quick_Add_Warehouse_Location");
     },
 
     submitQuickWarehouseLocation() {
@@ -2152,7 +2154,7 @@ export default {
             this.$set(this.warehouse_location_map, wid, newLoc.id);
           }
 
-          this.$bvModal.hide("Quick_Add_Warehouse_Location");
+          modals.hide("Quick_Add_Warehouse_Location");
           this.makeToast(
             "success",
             this.$t("Successfully_Created"),
@@ -2168,7 +2170,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

@@ -64,9 +64,14 @@ const VIEWPORTS = [
           await target.click();
           await page.waitForTimeout(600);
         }
+        const variant = process.env.VISUAL_VARIANT === 'base' ? 'evalBase' : 'eval';
+        const script = extra[variant] || (variant === 'evalBase' ? extra.eval : null);
+        if (script) { await page.evaluate(`(() => { ${script}; return null; })()`); await page.waitForTimeout(700); }
+        if (extra.hover) { await page.locator(extra.hover).first().hover(); await page.waitForTimeout(700); }
+        if (extra.wait) await page.waitForTimeout(extra.wait);
         if (extra.waitFor) await page.waitForSelector(extra.waitFor, { timeout: 10_000 });
         await page.waitForTimeout(1500);
-        await page.screenshot({ path: path.join(OUT, `${name}__${vpName}.png`), fullPage: true });
+        await page.screenshot({ path: path.join(OUT, `${name}__${vpName}.png`), fullPage: extra.viewportOnly ? false : true });
         console.log('ok', name, vpName);
       } catch (e) {
         console.log('FAIL', name, vpName, String(e.message).slice(0, 100));

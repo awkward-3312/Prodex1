@@ -114,6 +114,7 @@
 
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -238,7 +239,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      notifications.notify(msg, { title: title, variant: variant, solid: true });
     },
 
     New_Unit() {

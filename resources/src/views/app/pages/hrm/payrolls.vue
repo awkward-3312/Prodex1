@@ -422,10 +422,12 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
+import { vBTooltip } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import Datepicker from 'vuejs-datepicker';
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Payroll"
   },
@@ -626,7 +628,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -637,7 +639,7 @@ export default {
     Function_New_Payroll() {
         this.reset_Form();
         this.editmode = false;
-        this.$bvModal.show("Modal_New_Payroll");
+        modals.show("Modal_New_Payroll");
     },
 
     //------------------------------ Show Modal (Update Payroll) -------------------------------\\
@@ -647,7 +649,7 @@ export default {
         this.payroll = payroll;
         this.currentPayrollId = payroll.id;
         this.Get_Documents(payroll.id);
-        this.$bvModal.show("Modal_New_Payroll");
+        modals.show("Modal_New_Payroll");
     },
 
     //------------------------------ Show Modal (Payroll Details) -------------------------------\\
@@ -660,7 +662,7 @@ export default {
         this.Get_Documents(payroll.id).then(() => {
           setTimeout(() => {
             NProgress.done();
-            this.$bvModal.show("Payroll_Details");
+            modals.show("Payroll_Details");
           }, 500);
         });
     },
@@ -674,7 +676,7 @@ export default {
         this.Get_Documents(payroll.id).then(() => {
           setTimeout(() => {
             NProgress.done();
-            this.$bvModal.show("Payroll_Documents");
+            modals.show("Payroll_Documents");
           }, 500);
         });
     },
@@ -1028,7 +1030,7 @@ export default {
     Fire.$on("Event_Payroll", () => {
       setTimeout(() => {
         this.Get_Payrolls(this.serverParams.page);
-        this.$bvModal.hide("Modal_New_Payroll");
+        modals.hide("Modal_New_Payroll");
       }, 500);
     });
 

@@ -123,10 +123,10 @@
 
 <script>
 import { notifications } from "@/platform";
-import { BFormGroup, BFormInput } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BTable } from "@/platform/bootstrap";
 import moment from 'moment';
 
-export default { components: { BFormGroup, BFormInput },
+export default { components: { BFormGroup, BFormInput, BTable },
   data() {
     return {
       processing: false,

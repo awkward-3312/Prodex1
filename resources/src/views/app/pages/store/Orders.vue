@@ -136,9 +136,11 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
+import { vBTooltip } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 
-export default {  
+export default { directives: { 'b-tooltip': vBTooltip },  
   metaInfo: { title: 'Store Orders' },
   data () {
     return {
@@ -420,8 +422,8 @@ export default {
         row.status = 'confirmed'
         this.clearErrors()
         // success: toast
-        if (this.$bvToast) {
-          this.$bvToast.toast(this.$t('Order_confirmed') || 'Order confirmed.', { title: this.$t('Success') || 'Success', variant: 'success', solid: true })
+        if (notifications.hasDriver()) {
+          notifications.notify(this.$t('Order_confirmed') || 'Order confirmed.', { title: this.$t('Success') || 'Success', variant: 'success', solid: true })
         } else if (this.$swal) {
           this.$swal({ icon: 'success', title: this.$t('Success') || 'Success', text: this.$t('Order_confirmed') || 'Order confirmed.' })
         }
@@ -459,8 +461,8 @@ export default {
         }
         row.status = 'cancelled'
         this.clearErrors()
-        if (this.$bvToast) {
-          this.$bvToast.toast(this.$t('Order_cancelled') || 'Order cancelled.', { title: this.$t('Success') || 'Success', variant: 'success', solid: true })
+        if (notifications.hasDriver()) {
+          notifications.notify(this.$t('Order_cancelled') || 'Order cancelled.', { title: this.$t('Success') || 'Success', variant: 'success', solid: true })
         } else if (this.$swal) {
           this.$swal({ icon: 'success', title: this.$t('Success') || 'Success', text: this.$t('Order_cancelled') || 'Order cancelled.' })
         }

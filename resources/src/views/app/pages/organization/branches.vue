@@ -157,7 +157,7 @@
 
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
         <div class="d-flex justify-content-end">
-          <b-button variant="outline-secondary" class="me-2" @click="$bvModal.hide('branch-modal')">Cancelar</b-button>
+          <b-button variant="outline-secondary" class="me-2" @click="$modals.hide('branch-modal')">Cancelar</b-button>
           <b-button variant="primary" type="submit" :disabled="saving">{{ saving ? 'Guardando…' : 'Guardar sucursal' }}</b-button>
         </div>
       </b-form>
@@ -186,7 +186,7 @@
         </b-form-checkbox>
         <div v-if="locationError" class="alert alert-danger mt-3">{{ locationError }}</div>
         <div class="d-flex justify-content-end mt-3">
-          <b-button variant="outline-secondary" class="me-2" @click="$bvModal.hide('location-modal')">Cancelar</b-button>
+          <b-button variant="outline-secondary" class="me-2" @click="$modals.hide('location-modal')">Cancelar</b-button>
           <b-button type="submit" variant="primary" :disabled="savingLocation">{{ savingLocation ? 'Guardando…' : 'Crear ubicación' }}</b-button>
         </div>
       </b-form>

@@ -72,6 +72,7 @@ Vue.use(VueI18n);
 
 import { loadI18n } from './plugins/i18n.loader';
 import { events, installVue2Platform } from './platform';
+import { bootstrapPlugin } from './platform/bootstrap/plugin.js';
 
 loadI18n().then(i18n => {
  store.commit('SetDefaultLanguage', { i18n, Language: i18n.locale });
@@ -79,7 +80,7 @@ loadI18n().then(i18n => {
 
   try { store.dispatch('config/initPrimaryColor'); } catch (e) {}
 
-  const app = mountWithRouter({ store, i18n }, router, '#login', [head]);
+  const app = mountWithRouter({ store, i18n }, router, '#login', [head, bootstrapPlugin]);
   installVue2Platform(app);
 });
 

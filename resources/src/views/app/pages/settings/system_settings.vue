@@ -2756,7 +2756,7 @@
                         </label>
                         <small class="text-muted d-block mt-2">
                           {{$t('Enable_Keyboard_Shortcuts_Help') || 'Per-device setting. In the POS press Shift + ? at any time to view shortcuts.'}}
-                          <a href="#" class="ml-1" @click.prevent="$bvModal.show('pos-shortcuts-guide')">
+                          <a href="#" class="ml-1" @click.prevent="$modals.show('pos-shortcuts-guide')">
                             <lucide-icon name="info" />
                             {{$t('View_Shortcuts') || 'View shortcuts'}}
                           </a>
@@ -3838,6 +3838,7 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
 import { cachePriceFormat, cachePriceDecimals } from "../../../../utils/priceFormat";
@@ -4702,7 +4703,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -4789,7 +4790,7 @@ export default {
     resetDashboardSectionOrder() {
       this.dashboardSectionOrderList = this.defaultDashboardSections.map(s => ({ id: s.id, labelKey: s.labelKey }));
       this.setting.dashboard_section_order = JSON.stringify(this.dashboardSectionOrderList.map(x => x.id));
-      this.$bvToast && this.$bvToast.toast(this.$t('Dashboard_order_reset') || 'Dashboard section order reset to default.', { title: this.$t('Success') || 'Success', variant: 'success' });
+      this.notifications.notify(this.$t('Dashboard_order_reset') || 'Dashboard section order reset to default.', { title: this.$t('Success') || 'Success', variant: 'success' });
     },
 
     //---------------------------------- Update Settings ----------------\\
@@ -5866,7 +5867,7 @@ export default {
       this.customField.entity_type = entityType;
       this.customFieldEditmode = false;
       setTimeout(() => {
-        this.$bvModal.show("New_CustomField");
+        modals.show("New_CustomField");
       }, 500);
     },
 
@@ -5895,7 +5896,7 @@ export default {
 
       this.customFieldEditmode = true;
       setTimeout(() => {
-        this.$bvModal.show("Edit_CustomField");
+        modals.show("Edit_CustomField");
       }, 500);
     },
 
@@ -5944,7 +5945,7 @@ export default {
               this.$t("Success")
             );
             this.customFieldSubmitProcessing = false;
-            this.$bvModal.hide(this.customFieldEditmode ? "Edit_CustomField" : "New_CustomField");
+            modals.hide(this.customFieldEditmode ? "Edit_CustomField" : "New_CustomField");
             this.Get_CustomFields().then(() => {
               // Force table re-render after data is refreshed
               this.$nextTick(() => {

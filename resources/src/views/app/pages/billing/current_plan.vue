@@ -283,6 +283,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import axios from "axios";
 import { mapGetters } from "vuex";
 
@@ -314,7 +315,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     async fetchCurrentPlan() {
       this.loading = true;

@@ -111,6 +111,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -179,7 +180,7 @@ export default {
 
   methods: {
     getState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null },
-    toast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }) },
+    toast(variant, msg, title) { notifications.notify(msg, { title, variant, solid: true }) },
     updateParams(patch) { this.serverParams = { ...this.serverParams, ...patch } },
 
     onSearchInput(v) {

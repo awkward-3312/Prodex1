@@ -1,3 +1,4 @@
+import { notifications } from "@/platform";
 /**
  * Shared batch-loop for Shopify sync tabs.
  *
@@ -82,7 +83,7 @@ export default {
       });
     },
     notify(variant, msg) {
-      this.$root.$bvToast.toast(msg, { title: 'Shopify', variant, solid: true });
+      notifications.notify(msg, { title: 'Shopify', variant, solid: true });
     },
   },
 };

@@ -148,6 +148,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import Util from '../../../../utils';
 import {
@@ -377,7 +378,7 @@ export default {
       if (this.entry.lines.length <= 1) { return this.makeToast('warning', this.$t('At_Least_One_Line'), this.$t('Notice')); }
       this.entry.lines.splice(idx,1);
     },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }); }
+    makeToast(variant, msg, title) { notifications.notify(msg, { title, variant, solid: true }); }
   }
 };
 </script>

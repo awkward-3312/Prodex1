@@ -33,7 +33,7 @@
         <b-form-group :label="$t('Name') + ' *'"><b-form-input v-model="form.name" required /></b-form-group>
         <b-form-group :label="$t('Description')"><b-form-textarea v-model="form.description" rows="3" /></b-form-group>
         <b-form-group :label="$t('Image')"><div v-if="imagePreview" class="mb-2"><img :src="imagePreview" class="img-fluid rounded" style="max-height:120px" /></div><b-form-file accept="image/*" @change="onImageChange" :placeholder="$t('Choose_file')" /></b-form-group>
-        <div class="text-end"><b-button variant="outline-secondary" @click="$bvModal.hide('categoryModal')">{{ $t('Cancel') }}</b-button><b-button variant="primary" type="submit" :disabled="saving">{{ editMode ? $t('Update') : $t('Save') }}</b-button></div>
+        <div class="text-end"><b-button variant="outline-secondary" @click="$modals.hide('categoryModal')">{{ $t('Cancel') }}</b-button><b-button variant="primary" type="submit" :disabled="saving">{{ editMode ? $t('Update') : $t('Save') }}</b-button></div>
       </b-form>
     </b-modal>
   </div>

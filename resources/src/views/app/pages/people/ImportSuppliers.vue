@@ -260,7 +260,7 @@ export default {
   methods: {
     // UI helpers
     toast: function (msg, title, variant) {
-      if (this.$root && this.$root.$bvToast) {
+      if (notifications.hasDriver()) {
         notifications.notify(msg, { title: title, variant: variant, solid: true });
       }
     },
