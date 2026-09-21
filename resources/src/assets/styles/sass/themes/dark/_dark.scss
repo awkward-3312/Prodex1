@@ -249,7 +249,7 @@ body.dark-theme {
         border-bottom: 2px solid $dark-forground;
       }
     }
-    .thead-light {
+    .table-light {
       th {
         color: $dark-heading;
         background-color: $dark-forground;
@@ -286,7 +286,7 @@ body.dark-theme {
     border: 1px solid $dark-forground;
   }
 
-  .custom-select {
+  .form-select {
     color: $dark-heading;
     background-color: $dark-forground;
     border: 1px solid $dark-forground;
@@ -550,7 +550,7 @@ body.dark-theme {
         color: $dark-heading !important;
       }
       
-      .close {
+      .btn-close {
         color: $dark-heading !important;
         opacity: 0.8;
         
@@ -1255,7 +1255,7 @@ body.dark-theme {
     }
     
     .form-control,
-    .custom-select,
+    .form-select,
     select {
       background: $dark-bg !important;
       border-color: $dark-bg !important;
@@ -1384,7 +1384,7 @@ body.dark-theme {
 
   // Button Groups in Settings
   .settings-content {
-    .btn-group-toggle {
+    .px-bvn-group {
       .btn {
         background: $dark-bg !important;
         border-color: $dark-bg !important;
@@ -1402,30 +1402,22 @@ body.dark-theme {
           color: #ffffff !important;
         }
       }
+
+      .btn-check:checked + .btn {
+        background: $primary !important;
+        border-color: $primary !important;
+        color: #ffffff !important;
+      }
     }
   }
 
   // Custom Switch in Settings
   .settings-content {
-    .custom-switch {
-      .custom-control-label {
-        color: $dark-heading !important;
-        
-        &::before {
-          background: $dark-bg !important;
-          border-color: $dark-bg !important;
-        }
-        
-        &::after {
-          background: $dark-heading !important;
-        }
-      }
-      
-      .custom-control-input:checked ~ .custom-control-label {
-        &::before {
-          background: $primary !important;
-          border-color: $primary !important;
-        }
+    .form-switch, .form-check {
+      .form-check-label { color: $dark-heading !important; }
+      .form-check-input.px-bvn-check {
+        background-color: $dark-bg !important;
+        &:checked { background-color: $primary !important; }
       }
     }
   }
@@ -1592,33 +1584,14 @@ body.dark-theme {
     }
     
     // Custom Switch Checkbox
-    .custom-switch {
-      .custom-control-label {
-        color: $dark-heading !important;
-        
-        &::before {
-          background: $dark-bg !important;
-          border-color: $dark-bg !important;
-        }
-        
-        &::after {
-          background: $dark-heading !important;
-        }
-      }
-      
-      .custom-control-input:checked ~ .custom-control-label {
-        &::before {
-          background: $primary !important;
-          border-color: $primary !important;
-        }
+    .form-switch, .form-check {
+      .form-check-label { color: $dark-heading !important; }
+      .form-check-input.px-bvn-check {
+        background-color: $dark-bg !important;
+        &:checked { background-color: $primary !important; }
       }
     }
     
-    // Bootstrap Vue Checkbox Switch
-    .custom-control-input:checked ~ .custom-control-label::before {
-      background: $primary !important;
-      border-color: $primary !important;
-    }
   }
 
   // Images in Store Settings
@@ -1817,7 +1790,7 @@ body.dark-theme {
 
   // Collections Index - Table Headers
   .table {
-    thead.thead-light {
+    thead.table-light {
       background: $dark-bg !important;
       
       th {
@@ -1891,7 +1864,7 @@ body.dark-theme {
   // Store Pages - Form Controls
   .main-content {
     .form-control,
-    .custom-select,
+    .form-select,
     select {
       background: $dark-bg !important;
       border-color: $dark-bg !important;
@@ -1930,48 +1903,31 @@ body.dark-theme {
       color: $dark-heading !important;
     }
     
-    .input-group-prepend,
-    .input-group-append {
-      .input-group-text {
-        background: $dark-bg !important;
-        border-color: $dark-bg !important;
-        color: $dark-heading !important;
-      }
-      
-      .btn {
-        background: $dark-bg !important;
-        border-color: $dark-bg !important;
-        color: $dark-heading !important;
-        
-        &:hover:not(:disabled) {
-          background: rgba(102, 126, 234, 0.15) !important;
-          border-color: $primary !important;
-          color: $primary !important;
-        }
+    > .input-group-text {
+      background: $dark-bg !important;
+      border-color: $dark-bg !important;
+      color: $dark-heading !important;
+    }
+
+    > .btn {
+      background: $dark-bg !important;
+      border-color: $dark-bg !important;
+      color: $dark-heading !important;
+
+      &:hover:not(:disabled) {
+        background: rgba(102, 126, 234, 0.15) !important;
+        border-color: $primary !important;
+        color: $primary !important;
       }
     }
   }
 
   // Store Pages - Custom Checkbox Switch
-  .custom-switch {
-    .custom-control-label {
-      color: $dark-heading !important;
-      
-      &::before {
-        background: $dark-bg !important;
-        border-color: $dark-bg !important;
-      }
-      
-      &::after {
-        background: $dark-heading !important;
-      }
-    }
-    
-    .custom-control-input:checked ~ .custom-control-label {
-      &::before {
-        background: $primary !important;
-        border-color: $primary !important;
-      }
+  .form-switch, .form-check {
+    .form-check-label { color: $dark-heading !important; }
+    .form-check-input.px-bvn-check {
+      background-color: $dark-bg !important;
+      &:checked { background-color: $primary !important; }
     }
   }
 
@@ -2253,7 +2209,7 @@ body.dark-theme {
   }
 
   // Dropdown Menus
-  .dropdown-menu-left {
+  .dropdown-menu-start {
     background: $dark-forground !important;
     border-color: $dark-bg !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;

@@ -1,0 +1,9 @@
+// CSS de PRODEX que complementa a Bootstrap 5 (fase de corte 5C). Sustituye a `bootstrap5/_bridge.scss` (puente aditivo de la fase 1, eliminado), a `bootstrap-rtl`
+// (BS4) y a `bootstrap-vue.css` (eliminado). Orden: reglas RTL de Bootstrap 5 (generadas), diferencias de base con BS4, nombres heredados, componentes propios con
+// marcado de BV2, controles de formulario, aspecto de BootstrapVueNext.
+@import "compat/bs5-rtl.generated";
+@import "compat/legacy-base";
+@import "compat/legacy-names";
+@import "compat/bv-components";
+@import "compat/controls";
+@import "compat/bvn-overrides";

@@ -1,0 +1,139 @@
+// Aspecto PRODEX de los componentes de BootstrapVueNext (Bootstrap 5): botón de cierre y cabecera de modal, título de modal, alerta descartable, tooltip,
+// toasts del orquestador, barra lateral (`BSidebar` = offcanvas), pestañas, desplegables y alerta. Lo que Bootstrap 5 ya provee (utilidades lógicas,
+// `visually-hidden`, `text-bg-*`, `.btn-close`, tooltip, posicionamiento) se eliminó del antiguo puente de la fase 1.
+// Cabecera de modal: BootstrapVueNext pinta `btn-close` (icono SVG); BootstrapVue 2 pintaba `.close` con el glifo `×` de BS4 (1.5rem, 700,
+// opacidad .5, relleno 1rem con margen negativo). Se reproduce el glifo y su caja para conservar el aspecto y la altura de la cabecera.
+.modal-header .btn-close {
+  box-sizing: border-box;
+  width: auto;
+  height: auto;
+  padding: 1rem;
+  margin: -1rem;
+  margin-inline-start: auto;
+  font-size: 1.2195rem; // el `.close` del proyecto (variables de BS4 del tema), no 1.5rem
+  font-weight: 700;
+  line-height: 1;
+  color: #000;
+  text-shadow: 0 1px 0 #fff;
+  background: transparent;
+  opacity: .5;
+  &::before { content: "\00d7"; }
+  &:hover { opacity: .75; }
+}
+// Móvil: `_globals.scss` posiciona `button.close` en la esquina (absolute, top 0, 5px del borde) y lo saca del flujo de la cabecera.
+@media (max-width: 576px) {
+  .modal-header .btn-close { position: absolute; top: 0; inset-inline-end: 5px; padding: 0; margin: 0; }
+}
+// BootstrapVueNext teletransporta el modal a <body>, fuera de `.prodex-ui`: el título 1rem/700 de `.prodex-ui .modal-title`
+// (prodex/_interactions.scss), que es lo que pintaba BootstrapVue 2, se aplica aquí a todo modal.
+.modal-header .modal-title { color: var(--px-text, #111827); font-size: 1rem; font-weight: 700; }
+.alert-dismissible .btn-close {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  z-index: 2;
+  padding: 1.25rem 1rem;
+}
+.alert-dismissible { padding-inline-end: 4rem; }
+
+
+// Orquestador de BootstrapVueNext (toasts / modales programáticos).
+.orchestrator-container .toast-container { z-index: 1090; }
+
+// BVN deja el nodo montado al ocultar (BV2 lo eliminaba): que no capture clics ni se vea.
+.tooltip.b-tooltip:not(.show) { visibility: hidden; pointer-events: none; transition: opacity .15s linear, visibility 0s linear .15s; }
+
+// Toast de BootstrapVueNext con el aspecto del `b-toast` de BootstrapVue 2 (`solid`). bootstrap-vue.css está compilado con la paleta POR
+// DEFECTO de BS4 (no con los colores del tema), así que se reproducen esos valores: fondo, borde y texto de la escala `.alert-*` de BS4.
+// Cabecera con el fondo al 85 % y cuerpo al 58 % (medido sobre el b-toast real). Solo dentro del orquestador.
+$px-toast-palette: (
+  primary: (#cce5ff, #b8daff, #004085),
+  secondary: (#e2e3e5, #d6d8db, #383d41),
+  success: (#d4edda, #c3e6cb, #155724),
+  info: (#d1ecf1, #bee5eb, #0c5460),
+  warning: (#fff3cd, #ffeeba, #856404),
+  danger: (#f8d7da, #f5c6cb, #721c24),
+  light: (#fefefe, #fdfdfe, #818182),
+  dark: (#d6d8d9, #c6c8ca, #1b1e21),
+);
+.orchestrator-container .toast-container { padding: 0.5rem !important; }
+// El `b-toaster` de BV2 quedaba SIEMPRE en el borde derecho/izquierdo físico (también en RTL): posición física, no lógica.
+.orchestrator-container .toast-container.end-0 { inset-inline-end: auto !important; right: 0 !important; }
+.orchestrator-container .toast-container.start-0 { inset-inline-start: auto !important; left: 0 !important; }
+.orchestrator-container .toast {
+  @each $name, $c in $px-toast-palette {
+    &.text-bg-#{$name} {
+      color: nth($c, 3) !important;
+      background-color: rgba(nth($c, 1), 0.58) !important;
+      border-color: nth($c, 2);
+      .toast-header { color: nth($c, 3); background-color: rgba(nth($c, 1), 0.85); border-bottom-color: rgba(nth($c, 2), 0.85); }
+    }
+  }
+  .btn-close { width: 0.6rem; height: 0.6rem; padding: 0.25rem; margin-inline-start: auto; opacity: 0.5; &:hover { opacity: 0.75; } }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Offcanvas de BootstrapVueNext usado como `b-sidebar` de BootstrapVue 2 (wrapper BSidebar de platform/bootstrap). BS4 no tiene `.offcanvas`.
+// El aspecto reproduce `.b-sidebar` de BV2: 320px, cabecera con título en negrita y cruz, sin backdrop, posición física derecha/izquierda.
+// ---------------------------------------------------------------------------------------------------------------------------------
+.offcanvas.b-sidebar {
+  // sin el relleno ni el borde de `.offcanvas` de BS5: el cuerpo y la cabecera los estila la capa de diseño (`b-sidebar-body|header`)
+  --bs-offcanvas-padding-x: 0;
+  --bs-offcanvas-padding-y: 0;
+  border: 0;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 1035;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  height: 100vh;
+  max-height: 100%;
+  margin: 0;
+  outline: 0;
+  visibility: hidden;
+  background-clip: padding-box;
+  transition: transform 0.3s ease-in-out;
+  &.offcanvas-start { left: 0; right: auto; transform: translateX(-100%); }
+  &.offcanvas-end { right: 0; left: auto; transform: translateX(100%); }
+  &.show:not(.hiding), &.showing { transform: none; visibility: visible; }
+  &.hiding { visibility: visible; }
+  // Cabecera y cuerpo con las clases de BV2 (`b-sidebar-header` / `b-sidebar-body`): la capa de diseño (`_lists`, `_interactions`, cada vista)
+  // ya las estila (relleno, borde inferior). Aquí solo la estructura de BV2: título a la izquierda y cruz a la derecha, invertido en el
+  // panel derecho, y vuelto a invertir en RTL.
+  > .b-sidebar-header { display: flex; flex-direction: row; flex-grow: 0; align-items: center; padding: 0.5rem 1rem; font-size: 1.5rem; }
+  &.b-sidebar-right > .b-sidebar-header { flex-direction: row-reverse; }
+  .offcanvas-title { margin-bottom: 0; font-size: inherit; font-weight: 700; line-height: 1.5; }
+  .b-sidebar-header .btn-close { width: 1rem; height: 1rem; padding: 0.25rem; margin: 0; opacity: 0.5; &:hover { opacity: 1; } }
+  > .b-sidebar-body { flex-grow: 1; height: 100%; overflow-y: auto; }
+  &.shadow-sm { box-shadow: 0 0.5rem 1rem rgba($black, 0.15) !important; }
+}
+
+[dir="rtl"] .offcanvas.b-sidebar.b-sidebar-right > .b-sidebar-header { flex-direction: row; }
+[dir="rtl"] .offcanvas.b-sidebar:not(.b-sidebar-right) > .b-sidebar-header { flex-direction: row-reverse; }
+
+// En móvil el `b-sidebar` de BV2 (con la capa de diseño de PRODEX) muestra el título a la izquierda y la cruz a la derecha (medido con capturas).
+@media (max-width: 767.98px) {
+  .offcanvas.b-sidebar.b-sidebar-right > .b-sidebar-header { flex-direction: row; }
+  .offcanvas.b-sidebar.b-sidebar-right > .b-sidebar-header .btn-close { margin-inline-start: auto; }
+}
+.orchestrator-container .toast .btn-close { background-size: 0.6rem; }
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Fase 5A: primitives y navegación de BootstrapVueNext sobre la base BS4.
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Alerta: BVN envuelve el contenido en `.d-flex > .alert-body` (BV2 lo pintaba directo dentro de `.alert`). El cuerpo debe ocupar el ancho para
+// que `text-center`, listas y bloques se comporten como antes.
+.alert > .d-flex > .alert-body { flex: 1 1 auto; min-width: 0; }
+// Pestañas: BVN pinta `<button class="nav-link">` (BV2, `<a>`); la base BS4 solo estila el enlace. Se quita el aspecto de botón.
+.nav > .nav-item > button.nav-link,
+.nav > button.nav-link { background: none; cursor: pointer; }
+// Tipografía y color heredados como en el `<a>` (el color de enlace del tenant es `a { color: var(--primary-color) }`; hover, `--primary-color-darker`) (sin especificidad, para no pisar `.prodex-ui .nav-tabs .nav-link { font-size; font-weight }`).
+:where(.nav > .nav-item > button.nav-link, .nav > button.nav-link) { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--primary-color, #{$link-color}); }
+:where(.nav > .nav-item > button.nav-link:hover, .nav > button.nav-link:hover) { color: var(--primary-color-darker, #{$link-hover-color}); }
+.nav-pills > .nav-item > button.nav-link { border: 0; }
+// Desplegables: el menú de BVN es `position:absolute; left:0` dentro de un envoltorio del ancho del botón, así que se contrae al ancho mínimo y el
+// contenido (rejillas, textos largos) se parte; el de BV2 (popper) tomaba el ancho natural del contenido.
+.b-dropdown > .dropdown-menu { width: max-content; max-width: calc(100vw - 16px); }
+

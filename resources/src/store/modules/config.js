@@ -86,7 +86,7 @@ export function applyPrimaryColor(color) {
     .px-bvn-group > .form-check > .form-check-input:checked { background-color: ${color} !important; border-color: ${color} !important; }
     .form-check-input.px-bvn-check:focus,
     .px-bvn-group > .form-check > .form-check-input:focus { box-shadow: 0 0 0 0.2rem ${soft} !important; }
-    .custom-select:focus { border-color: ${lighter} !important; box-shadow: 0 0 0 0.2rem ${soft} !important; }
+    .form-select:focus { border-color: ${lighter} !important; box-shadow: 0 0 0 0.2rem ${soft} !important; }
     .switch input:checked + .slider { background-color: ${color} !important; }
     .checkbox-primary input:checked ~ .checkmark,
     .checkbox.checkbox-primary input:checked ~ .checkmark { background-color: ${color} !important; border-color: ${color} !important; }
@@ -104,7 +104,7 @@ export function applyPrimaryColor(color) {
 
     /* Dropdown */
     .dropdown-item.active, .dropdown-item:active { background-color: ${color} !important; color: #fff !important; }
-    .dropdown-menu-right .dropdown-item:hover { background-color: ${soft} !important; }
+    .dropdown-menu-end .dropdown-item:hover { background-color: ${soft} !important; }
 
     /* Progress / spinners / loaders */
     .progress-bar { background-color: ${color} !important; }

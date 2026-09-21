@@ -1,0 +1,120 @@
+// Diferencias de BASE entre la hoja de Bootstrap 4 (con la que se diseñó la aplicación) y Bootstrap 5 que se conservan para no cambiar el aspecto de las pantallas.
+// Cada regla indica qué hacía Bootstrap 4 y qué hace Bootstrap 5. Medido comparando estilos calculados antes/después del corte (tests/e2e/visual).
+
+// `<label>`: BS4 le daba `margin-bottom: .5rem` (reboot); BS5 no. Las etiquetas de casillas, botones y addons no lo llevaban.
+label { margin-bottom: $label-margin-bottom; }
+.form-check-label,
+.col-form-label,
+.form-label,
+.input-group-text,
+label.btn,
+.btn-check + .btn,
+.form-switch .form-check-label { margin-bottom: 0; }
+
+// Tablas: BS4 = relleno .75rem, alineación arriba, borde SUPERIOR de una línea y de dos bajo la cabecera; BS5 = relleno .5rem, borde inferior y variables CSS.
+// Mismos selectores (y especificidad) que Bootstrap 4, para que las reglas de las vistas que los sobrescribían sigan ganando.
+.table {
+  margin-bottom: $spacer;
+
+  th,
+  td {
+    padding: $table-cell-padding;
+    vertical-align: top;
+    border-top: $table-border-width solid $table-border-color;
+    border-bottom-width: 0;
+  }
+  thead th {
+    vertical-align: bottom;
+    border-bottom: (2 * $table-border-width) solid $table-border-color;
+  }
+  tbody + tbody { border-top: (2 * $table-border-width) solid $table-border-color; }
+  > :not(:first-child) { border-top: 0; }
+}
+.table-sm {
+  th,
+  td { padding: $table-cell-padding-sm; }
+}
+.table-bordered {
+  border: $table-border-width solid $table-border-color;
+  th,
+  td { border: $table-border-width solid $table-border-color; }
+  thead {
+    th,
+    td { border-bottom-width: (2 * $table-border-width); }
+  }
+}
+.table-borderless {
+  th,
+  td,
+  thead th,
+  tbody + tbody { border: 0; }
+}
+
+// Grupos de botones: BS4 no redondeaba el contenedor.
+.btn-group,
+.btn-group-vertical { border-radius: 0; }
+
+// Columnas: BS4 les daba `position: relative` y `min-height: 1px` (hay hijos absolutos que se posicionan respecto a la columna).
+$px-col-selectors: ".col, .col-auto";
+@for $i from 1 through 12 { $px-col-selectors: "#{$px-col-selectors}, .col-#{$i}"; }
+@each $bp in map-keys($grid-breakpoints) {
+  @if $bp != xs {
+    $px-col-selectors: "#{$px-col-selectors}, .col-#{$bp}, .col-#{$bp}-auto";
+    @for $i from 1 through 12 { $px-col-selectors: "#{$px-col-selectors}, .col-#{$bp}-#{$i}"; }
+  }
+}
+#{$px-col-selectors} {
+  position: relative;
+  min-height: 1px;
+  // BS4 rellenaba y ensanchaba la columna aunque no estuviera dentro de un `.row` (BS5 solo lo hace con `.row > *`); dentro de una fila manda `--bs-gutter-x`.
+  padding-right: calc(var(--#{$prefix}gutter-x, #{$grid-gutter-width}) * .5);
+  padding-left: calc(var(--#{$prefix}gutter-x, #{$grid-gutter-width}) * .5);
+}
+
+// Tarjetas: BS4 no fijaba el color de texto (heredaba del contenedor) y rellenaba `.card-body` con `$card-spacer-x` en los cuatro lados (BS5: `$card-spacer-y` arriba/abajo).
+.card { color: inherit; }
+.card-body { padding: $card-spacer-x; }
+
+// Secciones de tabla: BS4 solo alineaba las celdas de cabecera abajo, no toda la fila.
+.table > thead,
+.table > tbody,
+.table > tfoot { vertical-align: inherit; }
+
+// Campos: BS4 fijaba el ALTO de `.form-control` (`$input-height`, y `-sm` / `-lg`); BS5 lo deja a `auto` (relleno + interlineado), con lo que un `<div class="form-control">`
+// (selector de rango de fechas, contenedores de v-select…) crecía con su contenido. Los textarea y las listas múltiples conservan el alto automático.
+.form-control { height: $input-height; }
+.form-control-sm { height: $input-height-sm; }
+.form-control-lg { height: $input-height-lg; }
+textarea.form-control,
+select.form-control[size],
+select.form-control[multiple] { height: auto; }
+
+// `<hr>`: BS4 = margen de 1rem y una línea de 1px `rgba(0,0,0,.1)`; BS5 = línea heredada con opacidad .25.
+hr { margin: $hr-margin-y 0; color: inherit; border: 0; border-top: $hr-border-width solid $hr-border-color; opacity: 1; height: 0; overflow: visible; }
+
+// `textarea.form-control`: BS5 le pone `min-height` de una línea de campo; BS4 no (el alto lo da `rows`).
+textarea.form-control { min-height: 0; }
+
+// Cabecera de modal: BS4 alineaba arriba y separaba título y cierre; el radio superior es el del diálogo (no el interior de BS5).
+.modal-header {
+  align-items: flex-start;
+  justify-content: space-between;
+  border-top-left-radius: var(--#{$prefix}modal-border-radius);
+  border-top-right-radius: var(--#{$prefix}modal-border-radius);
+}
+
+// `<select class="form-control">`: BS4 conservaba la flecha nativa; BS5 aplica `appearance: none` a todo `.form-control` y la flecha desaparece (los `.form-select` llevan la suya).
+select.form-control { appearance: auto; }
+
+// Pestañas: BS4 desplazaba `-1px` el `.nav-item` (el enlace, 0); BS5 desplaza el enlace. BVN pinta `li.nav-item > button.nav-link`.
+.nav-tabs > .nav-item { margin-bottom: -1px; }
+.nav-tabs > .nav-item > .nav-link { margin-bottom: 0; }
+
+// `<table class="table">`: BS5 fija `vertical-align: top` en la tabla (lo heredan `tbody` y `tr`); BS4 no.
+.table { vertical-align: baseline; }
+
+// Botones deshabilitados: BS5 les pone `pointer-events: none`, con lo que el clic ATRAVIESA el botón y llega al contenedor (un `@click` de la fila se ejecutaría);
+// BS4 solo lo hacía con `a.btn.disabled` y el `<button disabled>` se tragaba el clic.
+button.btn:disabled,
+input.btn:disabled,
+fieldset:disabled button.btn { pointer-events: auto; }

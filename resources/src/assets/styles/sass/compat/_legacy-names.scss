@@ -1,0 +1,16 @@
+// Nombres de clase de Bootstrap 4 que Bootstrap 5 ya no define y que la capa de diseño y el marcado de PRODEX conservan como contrato PROPIO:
+//   - `.form-group`: `BFormGroup` (platform/bootstrap) lo emite y ~60 reglas de vistas lo estilan (espaciado entre campos).
+//   - `.badge-<variante>`: `BBadge` y ~60 <span> de las vistas; la capa de diseño (`prodex/_interactions.scss`) y el color del tenant (`store/modules/config.js`)
+//     estilan `.badge-primary` & co. Bootstrap 5 solo trae `.text-bg-*`.
+// No se añade nada más: las utilidades direccionales (`ml-*`, `text-right`…), `btn-block`, `custom-select`, `input-group-prepend|append`, `sr-only`, `no-gutters`
+// y `thead-light` se migraron en el marcado y en el CSS propio.
+.form-group { margin-bottom: $form-group-margin-bottom; }
+
+@each $color, $value in $theme-colors {
+  .badge-#{$color} { @include badge-variant($value); }
+}
+
+// `.sr-only`: BS5 lo renombró a `.visually-hidden`. Ya no queda ninguna plantilla ni CSS propio que lo use; lo escribe vue-good-table (texto accesible de sus
+// controles), que no se migra en esta fase.
+.sr-only { @include visually-hidden(); }
+.sr-only-focusable:not(:focus):not(:focus-within) { @include visually-hidden(); }

@@ -1,0 +1,19 @@
+// Bootstrap 5.3.8 con los valores de PRODEX. Lo importan el tema (`lite-purple.scss`) y el generador de reglas RTL (`scripts/generate-bs5-rtl.mjs`).
+// Requiere `variables-theme` importado antes.
+$table-accent-bg: transparent;        // BS5: el sombreado de filas lo dan `--bs-table-striped-bg` / `-hover-bg`; el `.05` de la API de BS4 pintaba TODAS las celdas
+// API SCSS de PRODEX (funciones, variables y mixins de la era Bootstrap 4): NO emite CSS. Las hojas de estilos de la aplicación (globals, prodex,
+// dark) están escritas contra estos nombres; se irán sustituyendo por los de Bootstrap 5 en fases posteriores.
+@import "../bs4-api/functions";
+@import "../bs4-api/variables";
+@import "../bs4-api/mixins";
+
+// Bootstrap 5.3.8: la hoja REAL. Las variables de tema de arriba y las de la API anterior (`!default`) ya fijan colores, tipografía, gutters,
+// radios y espaciados; Bootstrap 5 solo añade las que no existían.
+// Variables que solo existen en Bootstrap 5 y deben conservar el aspecto de la aplicación:
+$body-secondary-color: $text-muted;        // `text-body-secondary` (BFormText de BVN): el gris `text-muted` de siempre
+$enable-rfs: false;                        // BS4 (con `$enable-responsive-font-sizes: false`) no escalaba tipografías por viewport; BS5 sí (RFS)
+$min-contrast-ratio: 2.5;                  // texto blanco/oscuro de botones y fondos: reproduce el umbral YIQ de BS4 con la paleta del tema (success/info/danger blancos; warning y grises claros oscuros)
+$table-color: currentcolor;                // BS4 no coloreaba las tablas: heredan el color del contenedor (BS5: `--bs-emphasis-color`)
+$card-cap-padding-y: $card-spacer-y;       // BS4: cabecera y pie de tarjeta con el relleno vertical completo (`.75rem`); BS5 usa la mitad
+@import "~bootstrap/scss/bootstrap";
+

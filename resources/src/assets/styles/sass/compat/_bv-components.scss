@@ -1,0 +1,198 @@
+// CSS de los componentes propios de PRODEX que reproducen el marcado de BootstrapVue 2 (`BFormDatepicker`, `BFormFile`, `BSkeletonImg`) y de reglas de
+// `bootstrap-vue.css` que seguían teniendo efecto. Extraído REGLA A REGLA de bootstrap-vue.css 2.23.1 (eliminado) tras medir cuáles coincidían con
+// elementos reales (537 reglas: 50 vivas en las pantallas y estados de la sonda); el resto (tags, rating, spinbutton, avatar, popover, toast, tabla
+// apilada / seleccionable / sticky…) era CSS muerto y no se copia. Cada bloque indica su origen.
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// utilidad requerida: foco sin contorno (grupos de casillas/radios de BVN), menú de desplegable, desplegable sin flecha, tooltip de BVN
+// ---------------------------------------------------------------------------------------------------------------------------------
+.bv-no-focus-ring:focus { outline: none; }
+.dropdown .dropdown-menu:focus { outline: none; }
+.dropdown:not(.dropleft) .dropdown-toggle.dropdown-toggle-no-caret::after { display: none !important; }
+.tooltip.b-tooltip { display: block; opacity: 0.9; outline: 0; }
+.tooltip.b-tooltip.fade:not(.show) { opacity: 0; }
+
+// BV2 separaba las tablas responsivas del contenido siguiente: afecta a TODA `.table-responsive` de la aplicación (Bootstrap 4 no lo hacía).
+.table-responsive,
+[class*="table-responsive-"] { margin-bottom: 1rem; }
+.table-responsive > .table,
+[class*="table-responsive-"] > .table { margin-bottom: 0; }
+
+// `input[type=color].form-control` (Bootstrap 4 no fijaba su alto; BV2 sí).
+input[type="color"].form-control { width: 100%; height: calc(1.5em + 0.75rem + 2px); padding: 0.125rem 0.25rem; }
+input[type="color"].form-control:disabled { background-color: #adb5bd; opacity: 0.65; }
+
+// Cabeceras de `BTable` de BVN con `aria-sort` (sin ordenación en uso): BV2 dibujaba el icono de "sin ordenar" y reservaba su hueco.
+.table.b-table > thead > tr > [aria-sort],
+.table.b-table > tfoot > tr > [aria-sort] {
+  cursor: pointer;
+  background-image: none;
+  background-repeat: no-repeat;
+  background-size: 0.65em 1em;
+}
+.table.b-table > thead > tr > [aria-sort]:not(.b-table-sort-icon-left),
+.table.b-table > tfoot > tr > [aria-sort]:not(.b-table-sort-icon-left) {
+  background-position: right calc(0.75rem / 2) center;
+  padding-right: calc(0.75rem + 0.65em);
+}
+
+.table.b-table > thead > tr > [aria-sort=none],
+.table.b-table > tfoot > tr > [aria-sort=none] { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='101' height='101' view-box='0 0 101 101' preserveAspectRatio='none'%3e%3cpath fill='black' opacity='.3' d='M51 1l25 23 24 22H1l25-22zM51 101l25-23 24-22H1l25 22z'/%3e%3c/svg%3e");
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// datepicker (`BFormDatepicker`: `.b-form-btn-label-control`, `.b-calendar*`) + iconos `.b-icon.bi` del botón y de la navegación
+// ---------------------------------------------------------------------------------------------------------------------------------
+.b-form-btn-label-control.form-control { display: flex; align-items: stretch; height: auto; padding: 0; background-image: none;
+}
+.b-form-btn-label-control.form-control > .btn { line-height: 1; font-size: inherit; box-shadow: none !important; border: 0;
+}
+.b-form-btn-label-control.form-control > .btn:disabled { pointer-events: none;
+}
+.b-form-btn-label-control.form-control.is-invalid > .btn { color: #dc3545;
+}
+.b-form-btn-label-control.form-control > .dropdown-menu { padding: 0.5rem;
+}
+.b-form-btn-label-control.form-control > .form-control { height: auto; min-height: calc(calc(1.5em + 0.75rem + 2px) - 2px); padding-left: 0.25rem; margin: 0; border: 0; outline: 0; background: transparent; word-break: break-word; font-size: inherit; white-space: normal; cursor: pointer;
+}
+.b-form-btn-label-control.form-control > .form-control.form-control-sm { min-height: calc(calc(1.5em + 0.5rem + 2px) - 2px);
+}
+.b-calendar { display: inline-flex;
+}
+.b-calendar .b-calendar-inner { min-width: 250px;
+}
+.b-calendar .b-calendar-header,
+.b-calendar .b-calendar-nav { margin-bottom: 0.25rem;
+}
+.b-calendar .b-calendar-nav .btn { padding: 0.25rem;
+}
+.b-calendar output { padding: 0.25rem; font-size: 80%;
+}
+.b-calendar .b-calendar-footer { margin-top: 0.5rem;
+}
+.b-calendar .b-calendar-grid { padding: 0; margin: 0; overflow: hidden;
+}
+.b-calendar .b-calendar-grid .row { flex-wrap: nowrap;
+}
+.b-calendar .b-calendar-grid-caption { padding: 0.25rem;
+}
+.b-calendar .b-calendar-grid-body .col[data-date] .btn { width: 32px; height: 32px; font-size: 14px; line-height: 1; margin: 3px auto; padding: 9px 0;
+}
+.b-calendar .btn:disabled, .b-calendar .btn.disabled, .b-calendar .btn[aria-disabled=true] { cursor: default; pointer-events: none;
+}
+.b-icon.bi { display: inline-block; overflow: visible; vertical-align: -0.15em;
+}
+.btn .b-icon.bi,
+.nav-link .b-icon.bi,
+.dropdown-toggle .b-icon.bi,
+.dropdown-item .b-icon.bi,
+.input-group-text .b-icon.bi { font-size: 125%; vertical-align: text-bottom;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// archivo (`BFormFile`: `.custom-file*`). Base de Bootstrap 4.1 (ya no existe en Bootstrap 5) + reglas de BV2 (`b-custom-control-sm`, etiqueta sin salto).
+// El texto del botón es `data-browse` (BV2 lo pintaba con la palabra fija "Browse" en inglés).
+// ---------------------------------------------------------------------------------------------------------------------------------
+.custom-file {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  height: $custom-file-height;
+  margin-bottom: 0;
+}
+.custom-file-input {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: $custom-file-height;
+  margin: 0;
+  opacity: 0;
+
+  &:focus ~ .custom-file-label {
+    border-color: $custom-file-focus-border-color;
+    box-shadow: $custom-file-focus-box-shadow;
+    &::after { border-color: $custom-file-focus-border-color; }
+  }
+  &:disabled ~ .custom-file-label { background-color: $custom-file-disabled-bg; }
+}
+.custom-file-label {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  height: $custom-file-height;
+  padding: $custom-file-padding-y $custom-file-padding-x;
+  line-height: $custom-file-line-height;
+  color: $custom-file-color;
+  background-color: $custom-file-bg;
+  border: $custom-file-border-width solid $custom-file-border-color;
+  @include border-radius($custom-file-border-radius);
+  @include box-shadow($custom-file-box-shadow);
+  white-space: nowrap;
+  overflow-x: hidden;
+
+  &::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    display: block;
+    height: $custom-file-height-inner;
+    padding: $custom-file-padding-y $custom-file-padding-x;
+    line-height: $custom-file-line-height;
+    color: $custom-file-button-color;
+    content: attr(data-browse);
+    @include gradient-bg($custom-file-button-bg);
+    border-left: $custom-file-border-width solid $custom-file-border-color;
+    @include border-radius(0 $custom-file-border-radius $custom-file-border-radius 0);
+  }
+}
+.b-custom-control-sm.custom-file,
+.b-custom-control-sm .custom-file-input,
+.b-custom-control-sm .custom-file-label,
+.input-group-sm.custom-file,
+.input-group-sm .custom-file-input,
+.input-group-sm .custom-file-label { font-size: 0.875rem; height: calc(1.5em + 0.5rem + 2px);
+}
+.b-custom-control-sm .custom-file-label,
+.b-custom-control-sm .custom-file-label:after,
+.input-group-sm .custom-file-label,
+.input-group-sm .custom-file-label:after { padding: 0.25rem 0.5rem; line-height: 1.5;
+}
+.b-custom-control-sm .custom-file-label,
+.input-group-sm .custom-file-label { border-radius: 0.2rem;
+}
+.b-custom-control-sm .custom-file-label::after,
+.input-group-sm .custom-file-label::after { font-size: inherit; height: calc( 1.5em + 0.5rem
+); border-radius: 0 0.2rem 0.2rem 0;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// marcador de carga (`BSkeletonImg`: `.b-skeleton*`, animaciones wave y fade)
+// ---------------------------------------------------------------------------------------------------------------------------------
+.b-skeleton { position: relative; overflow: hidden; background-color: rgba(0, 0, 0, 0.12); cursor: wait; -webkit-mask-image: radial-gradient(white, black); mask-image: radial-gradient(white, black);
+}
+.b-skeleton::before { content: " ";
+}
+.b-skeleton-img { height: 100%; width: 100%;
+}
+.b-skeleton-animate-wave::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent); -webkit-animation: b-skeleton-animate-wave 1.75s linear infinite; animation: b-skeleton-animate-wave 1.75s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .b-skeleton-animate-wave::after { background: none; -webkit-animation: none; animation: none; }
+}
+.b-skeleton-animate-fade { -webkit-animation: b-skeleton-animate-fade 0.875s ease-in-out alternate infinite; animation: b-skeleton-animate-fade 0.875s ease-in-out alternate infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .b-skeleton-animate-fade { -webkit-animation: none; animation: none; }
+}
+@keyframes b-skeleton-animate-wave {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+@keyframes b-skeleton-animate-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
