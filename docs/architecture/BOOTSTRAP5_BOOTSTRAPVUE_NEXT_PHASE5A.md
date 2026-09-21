@@ -218,7 +218,7 @@ PHP 8.4, servidor embebido de un solo proceso, sin bucle de reinicio y sin `cont
 
 **Ejecuciones limpias desde la mitigación de PHP (`f806e4d`, PHP 8.4)**: 9 hasta la fase 4 (runs `35477072991` ×2, `35478645001`, `35487697046` ×2, `35489278752`, `35538792732` ×2, `35541587364`; el único fallo, `35536212761`, fue el defecto real de foco de la fase 4, no una señal de PHP) **+ 4 de esta fase** (`35552836867` ×2 sobre `052d7d7`, `35557856530` ×2 sobre `edc598a`) = **13**, todas con `route-snapshot` y `e2e` en verde y sin `Segmentation fault`. Los pasos de diagnóstico (`gdb`, `dmesg`, volcado de núcleo) no imprimieron nada en ninguna de ellas, así que **se retiran** (más `ulimit -c unlimited` y `kernel.core_pattern`); solo queda un paso que registra la versión de PHP.
 
-@@CI2@@
+**Evidencia del contenido final** (`4afd9b8`, sin los pasos de diagnóstico): run `35561055698`, intentos 1 y 2, ambos con `route-snapshot` y `e2e` en verde (257 pasan + 1 skipped). Antes, `052d7d7` (`35552836867` ×2) y `edc598a` (`35557856530` ×2) también en verde. Con estos 2 runs más, las ejecuciones limpias acumuladas desde la mitigación son **15**. Solo cambia la documentación después de `4afd9b8`.
 
 ## 18. Superficie restante de BV2, blockers exactos y plan de la fase 5B
 
