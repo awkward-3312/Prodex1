@@ -1,14 +1,11 @@
 // Wrappers de BootstrapVueNext de PRODEX, partidos por FAMILIA (fase 5B) para que cada entrypoint importe solo la que usa (login: `buttons` + `forms`).
 // `index.js` reexporta todas (las vistas importan de `@/platform/bootstrap`); ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE5B.md.
-// Botones e "primitives": botón, insignia, spinner, enlace, listas, imagen y avatar.
+// Botones e "primitives": botón, insignia, spinner y enlace.
 import { pure, wrapper } from './core.js';
 import { BButton as _BButton, BButtonGroup as _BButtonGroup, BCloseButton } from 'bootstrap-vue-next/components/BButton';
 import { BBadge as _BBadge } from 'bootstrap-vue-next/components/BBadge';
 import { BSpinner as _BSpinner } from 'bootstrap-vue-next/components/BSpinner';
 import { BLink as _BLink } from 'bootstrap-vue-next/components/BLink';
-import { BListGroup as _BListGroup, BListGroupItem as _BListGroupItem } from 'bootstrap-vue-next/components/BListGroup';
-import { BImg as _BImg } from 'bootstrap-vue-next/components/BImg';
-import { BAvatar as _BAvatar } from 'bootstrap-vue-next/components/BAvatar';
 
 // Los componentes internos de la familia (BLink, BCloseButton) también deben quedar en MODE 3. Se marcan dentro de una llamada `/*#__PURE__*/`
 // para que solo se evalúe cuando el wrapper que los usa se importa (un `forEach` a nivel de módulo no se puede eliminar por tree-shaking).
@@ -34,7 +31,3 @@ export const BBadge = /*#__PURE__*/ wrapper('BBadge', _BBadge, { variant: { type
 }));
 
 export const BLink = /*#__PURE__*/ pure(_BLink);
-export const BListGroup = /*#__PURE__*/ pure(_BListGroup);
-export const BListGroupItem = /*#__PURE__*/ pure(_BListGroupItem);
-export const BImg = /*#__PURE__*/ pure(_BImg);
-export const BAvatar = /*#__PURE__*/ pure(_BAvatar);

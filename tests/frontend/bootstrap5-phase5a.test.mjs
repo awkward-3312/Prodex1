@@ -8,7 +8,7 @@ import { collectInventory } from './inventory/bootstrap-inventory.mjs';
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
 const SRC = path.join(ROOT, 'resources/src');
 // Los wrappers viven en módulos por familia (fase 5B): las comprobaciones de contrato leen el conjunto.
-const bootstrapSource = () => ['index', 'core', 'layout', 'buttons', 'forms', 'file', 'datepicker', 'skeleton', 'feedback', 'nav', 'table', 'overlay']
+const bootstrapSource = () => ['index', 'core', 'layout', 'buttons', 'forms', 'form-text', 'form-choice', 'primitives', 'file', 'datepicker', 'skeleton', 'feedback', 'nav', 'table', 'overlay']
   .map((m) => fs.readFileSync(path.join(SRC, `platform/bootstrap/${m}.js`), 'utf8')).join('\n');
 
 const inv = collectInventory(ROOT);
@@ -86,7 +86,7 @@ test('plantillas en cadena (`template: `...`` dentro de <script>) con etiquetas 
   // CustomerLedger registra `BButton` / `BPagination` en sus dos componentes en línea
   assert.deepEqual(offenders.filter((o) => !o.startsWith('views/app/pages/people/CustomerLedger.vue')), []);
   const ledger = fs.readFileSync(path.join(SRC, 'views/app/pages/people/CustomerLedger.vue'), 'utf8');
-  assert.match(ledger, /ListToolbar\.components = \{ BButton \}/);
+  assert.match(ledger, /ListToolbar\.components = \{ BButton, BFormInput, BFormSelect \}/);
   assert.match(ledger, /Pager\.components = \{ BPagination \}/);
 });
 

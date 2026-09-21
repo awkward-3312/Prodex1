@@ -92,7 +92,7 @@
 </template>
 
 <script>
-import { BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap/forms";
+import { BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap/form-text";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 export default {

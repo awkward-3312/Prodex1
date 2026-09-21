@@ -7,7 +7,7 @@ import path from 'node:path';
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
 const SRC = path.join(ROOT, 'resources/src');
 // Los wrappers viven en módulos por familia (fase 5B): las comprobaciones de contrato leen el conjunto.
-const bootstrapSource = () => ['index', 'core', 'layout', 'buttons', 'forms', 'file', 'datepicker', 'skeleton', 'feedback', 'nav', 'table', 'overlay']
+const bootstrapSource = () => ['index', 'core', 'layout', 'buttons', 'forms', 'form-text', 'form-choice', 'primitives', 'file', 'datepicker', 'skeleton', 'feedback', 'nav', 'table', 'overlay']
   .map((m) => fs.readFileSync(path.join(SRC, `platform/bootstrap/${m}.js`), 'utf8')).join('\n');
 
 
@@ -30,7 +30,7 @@ const parts = (text) => {
   return { template: text.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, ''), script: script ? script[1] : '' };
 };
 const importsFromPlatform = (script, name) => {
-  const m = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap(?:\/[a-z]+)?["']/g;
+  const m = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap(?:\/[a-z-]+)?["']/g;
   let x;
   while ((x = m.exec(script))) if (x[1].split(',').map((s) => s.trim()).includes(name)) return true;
   return false;

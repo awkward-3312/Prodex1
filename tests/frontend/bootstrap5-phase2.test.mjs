@@ -47,7 +47,7 @@ test('vee-validate: detecta el campo con el contrato de Vue 3 (modelValue) y con
 });
 
 test('wrappers de formularios: contrato explícito y documentado (platform/bootstrap/forms.js)', () => {
-  const src = read('platform/bootstrap/forms.js');
+  const src = ['form-text', 'form-choice'].map((m) => read(`platform/bootstrap/${m}.js`)).join('\n');
   const index = read('platform/bootstrap/index.js');
   for (const name of ['BFormGroup', 'BFormInput', 'BFormTextarea', 'BFormSelect', 'BFormSelectOption', 'BFormCheckbox', 'BFormRadio', 'BFormInvalidFeedback']) {
     assert.match(src, new RegExp(`export const ${name}\\b`), name);
@@ -67,15 +67,15 @@ test('vistas migradas a formularios BVN: registro local coherente (cada b-form-*
   walk(path.join(SRC, 'views'), (file) => {
     if (!file.endsWith('.vue')) return;
     const text = fs.readFileSync(file, 'utf8');
-    const m = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap(?:\/[a-z]+)?["']/.exec(text);
-    if (!m) return;
-    for (const name of m[1].split(',').map((s) => s.trim()).filter(Boolean)) {
+    const imports = [...text.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap(?:\/[a-z-]+)?["']/g)];
+    if (!imports.length) return;
+    for (const name of imports.flatMap((m) => m[1].split(',')).map((s) => s.trim()).filter(Boolean)) {
       const directive = { vBTooltip: 'b-tooltip', vBToggle: 'b-toggle', vBPopover: 'b-popover' }[name];
       if (directive) {
         if (!new RegExp(`'${directive}':\\s*${name}`).test(text)) offenders.push(`${path.relative(SRC, file)}: ${name} importado sin registrar`);
         continue;
       }
-      const registered = new RegExp(`components:\\s*\\{[^}]*\\b${name}\\b`).test(text);
+      const registered = new RegExp(`(?:components:|\\.components =)\\s*\\{[^}]*\\b${name}\\b`).test(text);
       if (!registered) offenders.push(`${path.relative(SRC, file)}: ${name} importado sin registrar`);
     }
   });
@@ -137,7 +137,7 @@ test('sin claves duplicadas `components` / `directives` en el objeto de opciones
 });
 
 test('patrones que en la fase 2 eran blockers (v-model.trim, :value, switch, multiple, @input) los resuelve el wrapper (fase 5B), no cada vista', () => {
-  const forms = read('platform/bootstrap/forms.js');
+  const forms = ['form-text', 'form-choice'].map((m) => read(`platform/bootstrap/${m}.js`)).join('\n');
   // .trim: el modelo se recorta en cada evento y el campo conserva el texto que escribe el usuario (BVN recortaba el DOM al perder el foco)
   assert.match(forms, /const trim = !!\(modelModifiers && modelModifiers\.trim\)/);
   assert.match(forms, /const \{ trim: _trim, \.\.\.others \} = modelModifiers/, 'el modificador `trim` no llega a BVN');

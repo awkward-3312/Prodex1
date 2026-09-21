@@ -9,6 +9,7 @@
 // configuración del propio componente, no un parche de su lógica; desaparece al quitar compat.
 export * from './layout.js';
 export * from './buttons.js';
+export * from './primitives.js';
 export * from './forms.js';
 export { BFormFile } from './file.js';
 export { BFormDatepicker } from './datepicker.js';

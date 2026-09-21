@@ -43,7 +43,7 @@ const familyOf = (tag) => (FAMILIES.find(([, rx]) => rx.test(tag)) || ['other'])
 
 const importedNames = (script) => {
   const names = new Set();
-  const rx = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap(?:\/[a-z]+)?["']/g;
+  const rx = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap(?:\/[a-z-]+)?["']/g;
   let m;
   while ((m = rx.exec(script))) m[1].split(',').map((s) => s.trim().split(/\s+as\s+/).pop()).filter(Boolean).forEach((n) => names.add(n));
   return names;
