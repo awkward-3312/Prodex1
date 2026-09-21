@@ -150,13 +150,14 @@
   <!-- header top menu end -->
 </template>
 <script>
+import { BDropdown } from "@/platform/bootstrap";
 import Util from "./../../../utils";
 // import Sidebar from "./Sidebar";
 import { isMobile } from "mobile-device-detect";
 import { mapGetters, mapActions } from "vuex";
 // import { setTimeout } from 'timers';
 
-export default {
+export default { components: { BDropdown },
  
   data() {
   

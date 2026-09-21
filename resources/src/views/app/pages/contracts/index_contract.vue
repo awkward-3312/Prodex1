@@ -107,6 +107,7 @@
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
@@ -114,7 +115,7 @@ import VueApexCharts from "vue-apexcharts";
 
 export default {
   metaInfo: { title: "Contracts" },
-  components: { apexchart: VueApexCharts },
+  components: { BButton, BCard, BCol, BRow, apexchart: VueApexCharts },
   data() {
     return {
       isLoading: true,

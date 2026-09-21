@@ -91,6 +91,7 @@
   </template>
 
 <script>
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
 import { mapGetters } from 'vuex';
 import DateRangePicker from 'vue2-daterange-picker';
@@ -99,7 +100,7 @@ import moment from 'moment';
 
 export default {
   metaInfo: { title: 'Customer Loyalty Points Report' },
-  components: { 'date-range-picker': DateRangePicker },
+  components: { BButton, BCard, BCol, BRow, 'date-range-picker': DateRangePicker },
   data(){
     const end = new Date(), start = new Date(); start.setDate(end.getDate()-29);
     return {

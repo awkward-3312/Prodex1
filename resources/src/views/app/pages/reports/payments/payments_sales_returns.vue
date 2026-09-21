@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('payments_Sales_Return')" :folder="$t('Reports')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
       <b-col md="12" class="text-center" v-if="!isLoading">
         <date-range-picker 
@@ -175,7 +175,7 @@
 
 
 <script>
-import { BSidebar, vBToggle } from "@/platform/bootstrap";
+import { BSidebar, vBToggle, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -194,7 +194,7 @@ export default { directives: { 'b-toggle': vBToggle },
   metaInfo: {
     title: "Payment Sale Returns"
   },
-  components: { BSidebar, DateRangePicker, apexchart: VueApexCharts },
+  components: { BButton, BCard, BCol, BRow, BSidebar, DateRangePicker, apexchart: VueApexCharts },
   data() {
     return {
       isLoading: true,

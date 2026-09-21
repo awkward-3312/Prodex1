@@ -76,9 +76,9 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput, BFormCheckbox, BFormSelect, BFormSelectOption } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormCheckbox, BFormSelect, BFormSelectOption, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default { components: { BFormGroup, BFormInput, BFormCheckbox, BFormSelect, BFormSelectOption },
+export default { components: { BButton, BCard, BCol, BRow, BFormGroup, BFormInput, BFormCheckbox, BFormSelect, BFormSelectOption },
   metaInfo: { title: "Marketing Settings" },
   data() {
     return {

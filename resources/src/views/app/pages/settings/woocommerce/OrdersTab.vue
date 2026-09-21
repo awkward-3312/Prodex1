@@ -2,7 +2,7 @@
   <div>
     <b-alert variant="info" show class="info-alert-modern mb-4">
       <div class="d-flex align-items-start">
-        <lucide-icon class="mr-3 mt-1" name="info" />
+        <lucide-icon class="me-3 mt-1" name="info" />
         <div>
           Los pedidos se sincronizan desde WooCommerce hacia PRODEX (WooCommerce → PRODEX).
         </div>
@@ -13,16 +13,16 @@
       <div class="d-flex flex-wrap align-items-center">
         <b-button
           variant="success"
-          class="btn-action-secondary mr-3 mb-2 d-inline-flex align-items-center"
+          class="btn-action-secondary me-3 mb-2 d-inline-flex align-items-center"
           :disabled="syncing || tabRefreshing"
           @click="syncOrders"
         >
           <template v-if="!syncing">
-            <lucide-icon class="mr-2" name="chevron-down" />
+            <lucide-icon class="me-2" name="chevron-down" />
             Sincronizar pedidos de WooCommerce con PRODEX
           </template>
           <template v-else>
-            <span class="mini-spinner mr-2"></span>
+            <span class="mini-spinner me-2"></span>
             Sincronizando...
           </template>
         </b-button>
@@ -41,12 +41,12 @@
     </b-alert>
 
     <div class="d-flex align-items-center mb-3">
-      <lucide-icon class="mr-2" name="shopping-bag" />
+      <lucide-icon class="me-2" name="shopping-bag" />
       <strong>Pedidos de WooCommerce</strong>
-      <span v-if="loadingWooTab" class="mini-spinner ml-2"></span>
+      <span v-if="loadingWooTab" class="mini-spinner ms-2"></span>
     </div>
 
-    <div v-if="loadingWooTab" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loadingWooTab" class="loading_page spinner spinner-primary me-3"></div>
     <div v-show="!loadingWooTab">
       <div class="stats-dashboard mb-4">
         <div class="stat-card total-customers">
@@ -108,10 +108,10 @@
           <template #table-row="props">
             <span v-if="props.column.field === 'sync_status'">
               <b-badge v-if="props.row.sync_status === 'synced'" variant="success">
-                <lucide-icon class="mr-1" name="check-check" /> Sincronizado
+                <lucide-icon class="me-1" name="check-check" /> Sincronizado
               </b-badge>
               <b-badge v-else variant="warning">
-                <lucide-icon class="mr-1" name="pause" /> No sincronizado
+                <lucide-icon class="me-1" name="pause" /> No sincronizado
               </b-badge>
             </span>
             <span v-else-if="props.column.field === 'actions'">
@@ -122,10 +122,10 @@
                 :disabled="syncingOrderId === props.row.id || props.row.sync_status === 'synced'"
               >
                 <template v-if="syncingOrderId !== props.row.id">
-                  <lucide-icon class="mr-1" name="chevron-down" /> Sincronizar
+                  <lucide-icon class="me-1" name="chevron-down" /> Sincronizar
                 </template>
                 <template v-else>
-                  <span class="mini-spinner mr-2"></span> Sincronizando...
+                  <span class="mini-spinner me-2"></span> Sincronizando...
                 </template>
               </b-button>
             </span>
@@ -137,8 +137,9 @@
 </template>
 
 <script>
+import { BAlert, BBadge, BButton, BCard } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default {
+export default { components: { BAlert, BBadge, BButton, BCard },
   data() {
     return {
       syncing: false,

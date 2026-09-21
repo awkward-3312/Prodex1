@@ -315,3 +315,20 @@ $px-toast-palette: (
   .offcanvas.b-sidebar.b-sidebar-right > .b-sidebar-header .btn-close { margin-inline-start: auto; }
 }
 .orchestrator-container .toast .btn-close { background-size: 0.6rem; }
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Fase 5A: primitives y navegación de BootstrapVueNext sobre la base BS4.
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Alerta: BVN envuelve el contenido en `.d-flex > .alert-body` (BV2 lo pintaba directo dentro de `.alert`). El cuerpo debe ocupar el ancho para
+// que `text-center`, listas y bloques se comporten como antes.
+.alert > .d-flex > .alert-body { flex: 1 1 auto; min-width: 0; }
+// Pestañas: BVN pinta `<button class="nav-link">` (BV2, `<a>`); la base BS4 solo estila el enlace. Se quita el aspecto de botón.
+.nav > .nav-item > button.nav-link,
+.nav > button.nav-link { background: none; cursor: pointer; }
+// Tipografía y color heredados como en el `<a>` (el color de enlace del tenant es `a { color: var(--primary-color) }`; hover, `--primary-color-darker`) (sin especificidad, para no pisar `.prodex-ui .nav-tabs .nav-link { font-size; font-weight }`).
+:where(.nav > .nav-item > button.nav-link, .nav > button.nav-link) { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--primary-color, #{$link-color}); }
+:where(.nav > .nav-item > button.nav-link:hover, .nav > button.nav-link:hover) { color: var(--primary-color-darker, #{$link-hover-color}); }
+.nav-pills > .nav-item > button.nav-link { border: 0; }
+// Desplegables: el menú de BVN es `position:absolute; left:0` dentro de un envoltorio del ancho del botón, así que se contrae al ancho mínimo y el
+// contenido (rejillas, textos largos) se parte; el de BV2 (popper) tomaba el ancho natural del contenido.
+.b-dropdown > .dropdown-menu { width: max-content; max-width: calc(100vw - 16px); }

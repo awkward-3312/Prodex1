@@ -74,11 +74,12 @@
   </div>
 </template>
 <script>
+import { BButton } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapGetters, mapActions } from "vuex";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BButton },
   metaInfo: {
     title: "SignIn"
   },

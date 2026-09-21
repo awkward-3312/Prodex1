@@ -2,7 +2,7 @@
   <div class="main-content">
 <breadcumb :page="$t('Banners')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="wrapper">
       <vue-good-table
@@ -34,7 +34,7 @@
             <a v-b-tooltip.hover :title="$t('Edit')" @click="$router.push({name:'StoreBannerEdit', params:{id:props.row.id}})">
               <lucide-icon class="text-20 text-info" name="pencil" />
             </a>
-            <a v-b-tooltip.hover :title="$t('Delete')" class="ml-2" @click="remove(props.row.id)">
+            <a v-b-tooltip.hover :title="$t('Delete')" class="ms-2" @click="remove(props.row.id)">
               <lucide-icon class="text-20 text-danger" name="x" />
             </a>
           </span>
@@ -46,8 +46,8 @@
 </template>
 
 <script>
-import { vBTooltip } from "@/platform/bootstrap";
-export default { directives: { 'b-tooltip': vBTooltip },
+import { vBTooltip, BBadge, BButton, BCard } from "@/platform/bootstrap";
+export default { components: { BBadge, BButton, BCard }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Banners de la tienda"
   },

@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Warehouse_report')" :folder="$t('Reports')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-row class="justify-content-center mb-5" v-if="!isLoading">
       <!-- warehouse -->
@@ -86,7 +86,7 @@
                     <router-link
                       :to="'/app/quotations/detail/'+props.row.id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
                   <span v-else>
@@ -189,7 +189,7 @@
                     <router-link
                       :to="'/app/sales/detail/'+props.row.id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
                   <span v-else>
@@ -269,7 +269,7 @@
                     <router-link
                       :to="'/app/purchases/detail/'+props.row.id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
                   <span v-else>
@@ -346,14 +346,14 @@
                     <router-link
                       :to="'/app/sale_return/detail/'+props.row.id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
                   <div v-else-if="props.column.field == 'sale_ref' && props.row.sale_id">
                   <router-link
                     :to="'/app/sales/detail/'+props.row.sale_id"
                   >
-                    <span class="ul-btn__text ml-1">{{props.row.sale_ref}}</span>
+                    <span class="ul-btn__text ms-1">{{props.row.sale_ref}}</span>
                   </router-link>
                 </div>
                 <span v-else>
@@ -430,14 +430,14 @@
                     <router-link
                       :to="'/app/purchase_return/detail/'+props.row.id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
                    <div v-else-if="props.column.field == 'purchase_ref' && props.row.purchase_id">
                     <router-link
                       :to="'/app/purchases/detail/'+props.row.purchase_id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.purchase_ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.purchase_ref}}</span>
                     </router-link>
                   </div>
                   <span v-else>
@@ -518,6 +518,7 @@
 
 
 <script>
+import { BButton, BCard, BCol, BRow, BTab, BTabs } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import VueApexCharts from "vue-apexcharts";
 import jsPDF from "jspdf";
@@ -529,7 +530,7 @@ import {
 } from "../../../../utils/priceFormat";
 
 export default {
-  components: {
+  components: { BButton, BCard, BCol, BRow, BTab, BTabs,
     apexchart: VueApexCharts,
     StatTile: {
       name: "StatTile",

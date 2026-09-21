@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Settings')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="wrapper">
       <b-form @submit.prevent="save">
@@ -97,7 +97,7 @@
 
               <!-- Registration Access Control -->
               <div class="col-md-12 mt-2">
-                <h6 class="text-muted border-bottom pb-2 mb-3"><lucide-icon class="mr-1" name="lock" /> {{ $t('Registration_Access_Control') }}</h6>
+                <h6 class="text-muted border-bottom pb-2 mb-3"><lucide-icon class="me-1" name="lock" /> {{ $t('Registration_Access_Control') }}</h6>
               </div>
               <div class="col-md-4">
                 <b-form-group :label="$t('Public_Registration')">
@@ -132,7 +132,7 @@
               <div class="col-md-12" v-if="pendingCustomersCount > 0">
                 <div class="alert alert-warning d-flex align-items-center justify-content-between py-2 mb-3">
                   <div>
-                    <lucide-icon class="mr-1" name="clock" />
+                    <lucide-icon class="me-1" name="clock" />
                     <strong>{{ pendingCustomersCount }}</strong> {{ $t('Pending_Customers_Awaiting_Approval') }}
                   </div>
                   <router-link :to="{name: 'StorePendingCustomers'}" class="btn btn-sm btn-outline-warning">
@@ -143,7 +143,7 @@
               <div class="col-md-12" v-if="form.require_invite_code">
                 <div class="d-flex align-items-center justify-content-between bg-light rounded p-2 mb-3">
                   <div class="small text-muted">
-                    <lucide-icon class="mr-1" name="ticket" /> {{ $t('Manage_invite_codes_from_dedicated_page') }}
+                    <lucide-icon class="me-1" name="ticket" /> {{ $t('Manage_invite_codes_from_dedicated_page') }}
                   </div>
                   <router-link :to="{name: 'StoreInviteCodes'}" class="btn btn-sm btn-outline-primary">
                     {{ $t('Manage_Invite_Codes') }}
@@ -336,9 +336,9 @@
           <div class="card-body">
             <div v-if="!form.social_links.length" class="text-muted small mb-2">{{ $t('No_items') }}</div>
             <div v-for="(link, i) in form.social_links" :key="'soc-'+i" class="d-flex mb-2 align-items-center section-row">
-              <span class="pill-type mr-2">🔗</span>
-              <b-form-input v-model="link.platform" placeholder="Platform (e.g. facebook)" class="mr-2"/>
-              <b-form-input v-model="link.url" placeholder="URL (https://…)" class="mr-2"/>
+              <span class="pill-type me-2">🔗</span>
+              <b-form-input v-model="link.platform" placeholder="Platform (e.g. facebook)" class="me-2"/>
+              <b-form-input v-model="link.url" placeholder="URL (https://…)" class="me-2"/>
               <b-button size="sm" variant="danger" @click="form.social_links.splice(i,1)">×</b-button>
             </div>
           </div>
@@ -371,7 +371,7 @@
                 </div>
 
                 <div class="right">
-                  <b-form-checkbox v-model="row.active" switch class="mr-2">
+                  <b-form-checkbox v-model="row.active" switch class="me-2">
                     {{ row.active ? $t('Active') : $t('Inactive') }}
                   </b-form-checkbox>
 
@@ -390,7 +390,7 @@
           <div class="d-flex align-items-center justify-content-between">
             <small class="text-muted">{{ $t('Unsaved_changes_may_be_lost') }}</small>
             <b-button :disabled="saving" type="submit" variant="btn btn-primary">
-              <span v-if="saving" class="spinner-border spinner-border-sm mr-2"/>
+              <span v-if="saving" class="spinner-border spinner-border-sm me-2"/>
               <lucide-icon name="check" /> {{ $t('Save') }}
             </b-button>
           </div>
@@ -401,9 +401,10 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard, BCol } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 
-export default {
+export default { components: { BBadge, BButton, BCard, BCol },
   metaInfo: {
     title: "Store Settings"
   },

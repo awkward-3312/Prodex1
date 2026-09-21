@@ -2454,7 +2454,7 @@
     {
       "path": "/app/_ui",
       "name": "px_next_playground",
-      "component": "./views/app/_ui/index.vue",
+      "component": "./views/app/_ui/UiEntry.vue",
       "devOnly": true,
       "source": "resources/src/router.js"
     },

@@ -3652,8 +3652,9 @@ if (process.env.NODE_ENV !== "production") {
         {
             path: "/app/_ui",
             name: "px_next_playground",
+            // `?probe=bv` monta la sonda de contratos BV2 vs BVN (E2E de la fase 5A); sin parámetro, el playground de siempre.
             component: () =>
-                import(/* webpackChunkName: "px-next-playground" */ "./views/app/_ui/index.vue")
+                import(/* webpackChunkName: "px-next-playground" */ "./views/app/_ui/UiEntry.vue")
         },
         {
             // Fase C0 — el Dashboard px-next ya vive en su ubicación definitiva

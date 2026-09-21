@@ -149,8 +149,9 @@
 </template>
 
 <script>
+import { BButton, BCol, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default {
+export default { components: { BButton, BCol, BRow },
   name: 'DueAssets',
   data() {
     return {

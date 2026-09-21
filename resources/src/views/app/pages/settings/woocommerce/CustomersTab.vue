@@ -345,10 +345,11 @@
 </template>
 
 <script>
+import { BAlert, BBadge, BButton, BCard, BTab, BTabs } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import moment from 'moment';
 
-export default {
+export default { components: { BAlert, BBadge, BButton, BCard, BTab, BTabs },
   data() {
     return {
       syncing: false,

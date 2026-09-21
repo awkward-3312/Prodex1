@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="isNew ? $t('Create') : $t('Edit')" :folder="$t('Banners')" />
 
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="wrapper">
       <b-form @submit.prevent="save">
@@ -17,7 +17,7 @@
               <b-form-select v-model="form.position" :options="positions" />
               <!-- Recommended size hint -->
               <div class="mt-2 p-2 border rounded bg-light d-flex align-items-center">
-                <div class="mr-2">🖼️</div>
+                <div class="me-2">🖼️</div>
                 <div class="small" style=" color: #ffff; ">
                   <div class="mb-1">
                     <strong>{{ posInfo.label }}</strong> —
@@ -50,7 +50,7 @@
             </b-form-group>
 
             <b-button type="submit" :disabled="saving" variant="btn btn-primary btn-icon m-1">
-              <span v-if="saving" class="spinner-border spinner-border-sm mr-2"></span>
+              <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
               <lucide-icon name="check" /> {{ $t('Save') }}
             </b-button>
             <b-button variant="btn btn-outline-secondary m-1" @click="$router.back()">
@@ -60,7 +60,7 @@
             <!-- Quick cheat sheet -->
             <div class="mt-3 p-2 border rounded small text-muted">
               <div class="mb-1"><strong>{{ $t('Size guide') }}</strong></div>
-              <ul class="mb-0 pl-3">
+              <ul class="mb-0 ps-3">
                 <li>Top (Left/Right): 1200×600 (2:1)</li>
                 <li>Center (Left/Right): 1200×600 (2:1)</li>
                 <li>Footer (Left/Right): 1200×600 (2:1)</li>
@@ -75,9 +75,10 @@
 </template>
 
 <script>
+import { BButton, BCard } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 
-export default {
+export default { components: { BButton, BCard },
   metaInfo: {
     title: "Store Banner Form"
   },

@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Inventory_Valuation')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper" v-else>
      
@@ -69,6 +69,7 @@
 </template>
 
 <script>
+import { BButton, BCard } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -79,7 +80,7 @@ import {
   getPriceDecimals
 } from "../../../../utils/priceFormat";
 
-export default {
+export default { components: { BButton, BCard },
   metaInfo: { title: "Inventory Valuation Summary" },
 
   data() {

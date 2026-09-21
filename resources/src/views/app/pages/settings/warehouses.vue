@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb page="Almacenes / CD" :folder="$t('Settings')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <template v-else>
       <b-card class="mb-3">
@@ -12,7 +12,7 @@
             <p class="text-muted mb-0">Un almacén/CD es una instalación logística independiente. Las bodegas internas de una sucursal se crean como ubicaciones de inventario dentro de esa sucursal y no consumen otro almacén del plan.</p>
           </div>
           <b-button @click="New_Warehouse" class="btn-rounded mt-2 mt-md-0" variant="primary">
-            <lucide-icon name="plus" class="mr-1" /> Nuevo almacén / CD
+            <lucide-icon name="plus" class="me-1" /> Nuevo almacén / CD
           </b-button>
         </div>
       </b-card>
@@ -36,7 +36,7 @@
               {{ props.row.default_inventory_location ? props.row.default_inventory_location.name : 'Pendiente de inicializar' }}
             </span>
             <span v-else-if="props.column.field === 'actions'">
-              <a @click="Edit_Warehouse(props.row)" title="Editar" v-b-tooltip.hover class="mr-2 cursor-pointer">
+              <a @click="Edit_Warehouse(props.row)" title="Editar" v-b-tooltip.hover class="me-2 cursor-pointer">
                 <lucide-icon class="text-25 text-success" name="pencil" />
               </a>
               <a title="Desactivar" v-b-tooltip.hover @click="Remove_Warehouse(props.row.id)" class="cursor-pointer">
@@ -68,9 +68,9 @@
             <b-col md="6"><b-form-group label="Ciudad"><b-form-input v-model.trim="warehouse.city" /></b-form-group></b-col>
             <b-col md="6"><b-form-group label="Correo"><b-form-input type="email" v-model.trim="warehouse.email" /></b-form-group></b-col>
             <b-col md="6"><b-form-group label="Código postal"><b-form-input v-model.trim="warehouse.zip" /></b-form-group></b-col>
-            <b-col md="12" class="mt-3 text-right">
-              <b-button variant="outline-secondary" class="mr-2" @click="$modals.hide('New_Warehouse')">Cancelar</b-button>
-              <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="mr-1" name="check" /> Guardar</b-button>
+            <b-col md="12" class="mt-3 text-end">
+              <b-button variant="outline-secondary" class="me-2" @click="$modals.hide('New_Warehouse')">Cancelar</b-button>
+              <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="me-1" name="check" /> Guardar</b-button>
               <div v-if="SubmitProcessing" class="spinner sm spinner-primary mt-3"></div>
             </b-col>
           </b-row>
@@ -82,10 +82,10 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip, BModal } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BAlert, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default { components: { BModal }, directives: { 'b-tooltip': vBTooltip },
+export default { components: { BAlert, BButton, BCard, BCol, BRow, BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: { title: "Almacenes / CD" },
   data() {
     return {

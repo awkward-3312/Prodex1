@@ -143,10 +143,11 @@
 </template>
 
 <script>
+import { BDropdown } from "@/platform/bootstrap";
 import Util from "./../../../utils";
 import { mapGetters, mapActions } from "vuex";
 
-export default {
+export default { components: { BDropdown },
   name: "VerticalTopNav",
 
   data() {

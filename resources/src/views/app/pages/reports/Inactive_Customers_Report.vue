@@ -68,11 +68,12 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 // axios assumed globally available as in your current code
 
-export default {
+export default { components: { BBadge, BButton, BCard },
   metaInfo: {
     title: "Inactive Customers Report"
   },

@@ -235,13 +235,13 @@
 </template>
 
 <script>
-import { BModal } from "@/platform/bootstrap";
+import { BModal, BAlert, BButton, BCol, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import CustomFieldsForm from "../../../../components/CustomFieldsForm.vue";
 
 export default {
-  components: { BModal,
+  components: { BAlert, BButton, BCol, BRow, BModal,
     CustomFieldsForm
   },
   metaInfo: {

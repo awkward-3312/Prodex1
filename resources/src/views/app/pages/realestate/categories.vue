@@ -40,10 +40,10 @@
 </template>
 
 <script>
-import { vBTooltip, BModal } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BButton, BCard } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
-export default { components: { BModal }, directives: { 'b-tooltip': vBTooltip },
+export default { components: { BButton, BCard, BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: { title: "Categorías de propiedades" },
   data() { return { isLoading: true, saving: false, editMode: false, serverParams: { sort: { field: "id", type: "desc" }, page: 1, perPage: 10 }, totalRows: "", search: "", limit: "10", categories: [], imageFile: null, imagePreview: null, form: { id: null, name: "", description: "" } }; },
   computed: { columns() { return [ { label: this.$t("Image"), field: "image", sortable: false, tdClass: "text-start", thClass: "text-start" }, { label: this.$t("Name"), field: "name", tdClass: "text-start", thClass: "text-start" }, { label: this.$t("Properties"), field: "properties_count", sortable: false, tdClass: "text-start", thClass: "text-start" }, { label: this.$t("Action"), field: "actions", sortable: false, tdClass: "text-start", thClass: "text-start" } ]; } },

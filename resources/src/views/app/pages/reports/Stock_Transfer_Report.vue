@@ -6,7 +6,7 @@
     <b-card class="toolbar-card shadow-soft mb-3 border-0">
       <div class="d-flex flex-wrap align-items-center">
         <!-- Date range (responsive) -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('DateRange')}}</label>
           <date-range-picker
             v-model="dateRange"
@@ -24,7 +24,7 @@
             <!-- Vue 2.6+ slot syntax (v-slot) -->
             <template v-slot:input="picker">
               <b-button variant="light" class="btn-pill">
-                <lucide-icon class="mr-1" name="calendar-days" />
+                <lucide-icon class="me-1" name="calendar-days" />
                 {{ isMobile
                     ? (fmtShort(picker.startDate) + ' - ' + fmtShort(picker.endDate))
                     : (fmt(picker.startDate)      + ' - ' + fmt(picker.endDate))
@@ -35,7 +35,7 @@
         </div>
 
         <!-- Quick ranges -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
           <div class="btn-group quick-ranges">
             <b-button size="sm" variant="outline-primary" @click="quick('7d')">7D</b-button>
@@ -47,7 +47,7 @@
         </div>
 
         <!-- Warehouse (single) -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
           <v-select class="w-280"
             v-model="warehouse_id"
@@ -60,7 +60,7 @@
         </div>
 
         <!-- Direction -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('Direction')}}</label>
           <b-button-group size="sm">
             <b-button :variant="direction==='all'?'primary':'outline-primary'" @click="direction='all'; fetchReport()">{{$t('All')}}</b-button>
@@ -69,16 +69,16 @@
           </b-button-group>
         </div>
 
-        <div class="ml-auto mb-2">
-          <b-button variant="primary" class="btn-pill mr-2" @click="fetchReport">
-            <lucide-icon class="mr-1" name="refresh-cw" />{{$t('Refresh')}}
+        <div class="ms-auto mb-2">
+          <b-button variant="primary" class="btn-pill me-2" @click="fetchReport">
+            <lucide-icon class="me-1" name="refresh-cw" />{{$t('Refresh')}}
           </b-button>
-          <b-button variant="outline-secondary" class="btn-pill mr-2" @click="printTableOnly()">
-            <lucide-icon class="mr-1" name="printer" />{{$t('print')}}
+          <b-button variant="outline-secondary" class="btn-pill me-2" @click="printTableOnly()">
+            <lucide-icon class="me-1" name="printer" />{{$t('print')}}
           </b-button>
           <!-- Export PDF -->
           <b-button variant="danger" class="btn-pill" @click="exportPDF">
-            <lucide-icon class="mr-1" name="file-text" />{{$t('Export_PDF')}}
+            <lucide-icon class="me-1" name="file-text" />{{$t('Export_PDF')}}
           </b-button>
         </div>
       </div>
@@ -171,6 +171,7 @@
 </template>
 
 <script>
+import { BButton, BButtonGroup, BCard, BCol, BRow } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import VueApexCharts from "vue-apexcharts";
@@ -194,7 +195,7 @@ const StatTile = {
 
 export default {
   metaInfo: { title: "Stock Transfer Report" },
-  components: { apexchart: VueApexCharts, "date-range-picker": DateRangePicker, StatTile },
+  components: { BButton, BButtonGroup, BCard, BCol, BRow, apexchart: VueApexCharts, "date-range-picker": DateRangePicker, StatTile },
   data() {
     const end = new Date(); const start = new Date(); start.setDate(end.getDate()-6);
     return {

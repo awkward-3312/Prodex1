@@ -2,7 +2,7 @@
   <div class="main-content">
   <breadcumb :page="$t('Edit_Collection')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="px-0">
       <b-form @submit.prevent="update">
@@ -55,7 +55,7 @@
                 <div class="card-body">
                   <div class="d-grid gap-2">
                     <b-button :disabled="saving" type="submit" variant="btn btn-primary btn-block">
-                      <span v-if="saving" class="spinner-border spinner-border-sm mr-2"></span>
+                      <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
                       <lucide-icon name="check" /> {{ $t('Save') }}
                     </b-button>
                     <b-button :disabled="saving" variant="btn btn-outline-secondary btn-block" @click="updateAndClose">
@@ -103,7 +103,7 @@
                           />
                           <b-input-group-append>
                             <b-button :disabled="searching" variant="outline-secondary" @click="searchProducts">
-                              <span v-if="searching" class="spinner-border spinner-border-sm mr-1"></span>
+                              <span v-if="searching" class="spinner-border spinner-border-sm me-1"></span>
                               <lucide-icon name="search" v-else />
                             </b-button>
                           </b-input-group-append>
@@ -170,7 +170,7 @@
                             <tr>
                               <th style="width:60px">#</th>
                               <th>{{ $t('Product') }}</th>
-                              <th class="text-right" style="width:220px">{{ $t('Actions') }}</th>
+                              <th class="text-end" style="width:220px">{{ $t('Actions') }}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -178,7 +178,7 @@
                               <td><code class="small">{{ idx+1 }}</code></td>
                               <td>
                                 <div class="d-flex align-items-center">
-                                  <div class="thumb mr-2" v-if="item.thumb">
+                                  <div class="thumb me-2" v-if="item.thumb">
                                     <img :src="item.thumb" alt="thumb" />
                                   </div>
                                   <div>
@@ -188,7 +188,7 @@
                                 </div>
                               </td>
                             
-                              <td class="text-right">
+                              <td class="text-end">
                                 <div class="btn-group btn-group-sm">
                                   <b-button variant="outline-secondary" :disabled="idx===0" @click="move(idx,-1)">↑</b-button>
                                   <b-button variant="outline-secondary" :disabled="idx===selected.length-1" @click="move(idx,1)">↓</b-button>
@@ -224,9 +224,10 @@
 </template>
 
 <script>
+import { BButton, BCard } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 
-export default {
+export default { components: { BButton, BCard },
   metaInfo: {
     title: "Store Collections Edit"
   },

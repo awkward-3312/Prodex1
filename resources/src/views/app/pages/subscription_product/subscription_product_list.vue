@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Subscription_Product')" :folder="$t('Subscriptions')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
 
        <b-alert show variant="info">
@@ -50,7 +50,7 @@
             <span class="ul-btn__icon">
               <lucide-icon name="plus" />
             </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
+            <span class="ul-btn__text ms-1">{{$t('Add')}}</span>
           </router-link>
 
         </div></template>
@@ -72,7 +72,7 @@
           </span>
 
           <div v-else-if="props.column.field == 'status'">
-            <label class="switch switch-primary mr-3">
+            <label class="switch switch-primary me-3">
               <input @change="isChecked(props.row)" type="checkbox" v-model="props.row.status">
               <span class="slider"></span>
             </label>
@@ -87,11 +87,11 @@
 
 
 <script>
-import { vBTooltip } from "@/platform/bootstrap";
+import { vBTooltip, BAlert, BCard } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { directives: { 'b-tooltip': vBTooltip },
+export default { components: { BAlert, BCard }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Subscriptions"
   },

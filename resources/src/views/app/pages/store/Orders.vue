@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Orders')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="wrapper">
       <!-- Errors -->
@@ -14,12 +14,12 @@
         class="mb-3"
       >
         <!-- Only show a heading when the backend gave us one -->
-        <div v-if="errorTitle" class="font-weight-bold mb-2">
+        <div v-if="errorTitle" class="fw-bold mb-2">
           {{ errorTitle }}
         </div>
 
         <!-- Item/field errors list -->
-        <ul v-if="errors.length" class="mb-0 pl-3">
+        <ul v-if="errors.length" class="mb-0 ps-3">
           <li v-for="(e, i) in errors" :key="i">{{ e }}</li>
         </ul>
       </b-alert>
@@ -67,7 +67,7 @@
           <!-- Status -->
           <span v-if="props.column.field === 'status'">
             <b-badge :variant="badgeVariant(props.row.status)">{{ props.row.status }}</b-badge>
-            <b-badge v-if="props.row.has_preorder_items" variant="warning" class="ml-1">
+            <b-badge v-if="props.row.has_preorder_items" variant="warning" class="ms-1">
               {{ $t('PreOrder') }}
             </b-badge>
           </span>
@@ -137,10 +137,10 @@
 
 <script>
 import { notifications } from "@/platform";
-import { vBTooltip } from "@/platform/bootstrap";
+import { vBTooltip, BAlert, BBadge, BButton, BCard } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 
-export default { directives: { 'b-tooltip': vBTooltip },  
+export default { components: { BAlert, BBadge, BButton, BCard }, directives: { 'b-tooltip': vBTooltip },  
   metaInfo: { title: 'Store Orders' },
   data () {
     return {

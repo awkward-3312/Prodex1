@@ -1352,7 +1352,7 @@
                 </tbody>
               </table>
 
-              <div id="legalcopy" class="ml-2">
+              <div id="legalcopy" class="ms-2">
                 <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                   {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
                 </p>
@@ -1559,7 +1559,7 @@
                 </tbody>
               </table>
 
-              <div id="legalcopy" class="ml-2">
+              <div id="legalcopy" class="ms-2">
                 <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                   {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
                 </p>
@@ -1748,7 +1748,7 @@
                 </tbody>
               </table>
 
-              <div id="legalcopy" class="ml-2">
+              <div id="legalcopy" class="ms-2">
                 <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                   {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
                 </p>
@@ -1945,7 +1945,7 @@
                 </tbody>
               </table>
 
-              <div id="legalcopy" class="ml-2">
+              <div id="legalcopy" class="ms-2">
                 <div v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;">
                   {{$t('sale_note')}} / ملاحظة البيع: {{invoice_pos.sale.notes}}
                 </div>
@@ -2143,7 +2143,7 @@
             <td>{{ d.client_name }}</td>
             <td class="text-right">{{ formatNumber(d.GrandTotal, 2) }}</td>
             <td class="text-right">
-              <b-button size="sm" variant="outline-success" class="mr-2" @click="loadDraftSale(d.id)" :disabled="openingDraftId === d.id" :title="openingDraftId === d.id ? $t('Loading') : $t('Open')">
+              <b-button size="sm" variant="outline-success" class="me-2" @click="loadDraftSale(d.id)" :disabled="openingDraftId === d.id" :title="openingDraftId === d.id ? $t('Loading') : $t('Open')">
                 <template v-if="openingDraftId === d.id">
                   <span class="spinner sm spinner-primary"></span>
                 </template>
@@ -2199,7 +2199,7 @@
                     v-model="detail.Unit_price"
                     :state="getValidationState(validationContext)"
                     aria-describedby="Price-feedback"
-                    class="mr-2"
+                    class="me-2"
                   ></b-form-input>
                   <select
                     class="form-control pos-price-select"
@@ -2323,7 +2323,7 @@
 
           <b-col md="12">
             <b-form-group class="d-flex justify-content-end mt-2">
-              <b-button variant="secondary" class="mr-2" @click="$modals.hide('form_Update_Detail')">{{ $t('Cancel') }}</b-button>
+              <b-button variant="secondary" class="me-2" @click="$modals.hide('form_Update_Detail')">{{ $t('Cancel') }}</b-button>
               <b-button variant="primary" type="submit">{{ $t('Save') }}</b-button>
             </b-form-group>
           </b-col>
@@ -2387,7 +2387,7 @@
         </b-col>
 
         <b-col cols="12" class="d-flex justify-content-end">
-        <b-button variant="secondary" class="mr-2" @click="$modals.hide('New_Customer')">{{ $t('Close') }}</b-button>
+        <b-button variant="secondary" class="me-2" @click="$modals.hide('New_Customer')">{{ $t('Close') }}</b-button>
         <b-button variant="primary" type="submit">{{ $t('Save') }}</b-button>
         </b-col>
       </b-row>
@@ -2520,8 +2520,8 @@
           </b-col>
 
           <b-col md="12" class="mt-3 d-flex justify-content-end align-items-center">
-            <div v-if="SubmitProcessing" class="spinner sm spinner-primary mr-3"></div>
-            <b-button variant="secondary" class="mr-2" @click="$modals.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
+            <div v-if="SubmitProcessing" class="spinner sm spinner-primary me-3"></div>
+            <b-button variant="secondary" class="me-2" @click="$modals.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
             <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{ $t('Save') }}</b-button>
           </b-col>
 
@@ -2918,7 +2918,7 @@
         <textarea class="form-control" v-model="registerForm.notes"></textarea>
       </div>
       <div class="text-right">
-        <b-button variant="secondary" class="mr-2" @click="$modals.hide('OpenRegisterModal')">{{$t('Cancel')}}</b-button>
+        <b-button variant="secondary" class="me-2" @click="$modals.hide('OpenRegisterModal')">{{$t('Cancel')}}</b-button>
         <b-button variant="success" @click="submitOpenRegister" :disabled="registerBusy">{{$t('Open Register')}}</b-button>
       </div>
     </b-modal>
@@ -3080,7 +3080,7 @@
             </div>
           </div>
           <div class="text-right">
-            <b-button variant="secondary" class="mr-2" @click="$modals.hide('CloseRegisterModal')">{{$t('Cancel')}}</b-button>
+            <b-button variant="secondary" class="me-2" @click="$modals.hide('CloseRegisterModal')">{{$t('Cancel')}}</b-button>
             <b-button variant="danger" @click="submitCloseRegister" :disabled="registerBusy">Cerrar caja</b-button>
           </div>
         </div>
@@ -3104,7 +3104,7 @@
         {{ $t('pos.ActiveCheckoutReloadQuestion') || 'You have an active checkout. Would you like to reload the page now or after completing the sale?' }}
       </p>
       <div class="d-flex justify-content-end">
-        <b-button variant="outline-primary" class="mr-2" @click="onOnlineReloadAfterSale">
+        <b-button variant="outline-primary" class="me-2" @click="onOnlineReloadAfterSale">
           {{ $t('pos.ReloadAfterSale') || 'After this sale' }}
         </b-button>
         <b-button variant="primary" @click="onOnlineReloadNow">
@@ -3575,7 +3575,7 @@
 </template>
 
 <script>
-import { BModal } from "@/platform/bootstrap";
+import { BModal, BButton, BCol, BDropdown, BPagination, BRow } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
@@ -3591,7 +3591,7 @@ import CustomFieldsForm from "../../../components/CustomFieldsForm.vue";
 import posKeyboardShortcutsMixin, { POS_SHORTCUTS } from "../../../mixins/posKeyboardShortcuts";
 
 export default {
-  components: { BModal,
+  components: { BButton, BCol, BDropdown, BPagination, BRow, BModal,
     vueEasyPrint,
     barcode: VueBarcode,
     ModernPaymentModal,

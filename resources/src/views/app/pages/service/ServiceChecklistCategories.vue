@@ -64,8 +64,9 @@
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
-export default {
+export default { components: { BButton, BCard, BCol, BRow },
   name: 'ServiceChecklistCategories',
   data() {
     return {

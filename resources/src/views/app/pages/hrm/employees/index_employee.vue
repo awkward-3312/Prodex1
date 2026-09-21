@@ -169,14 +169,14 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput, vBTooltip, BSidebar, vBToggle } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, vBTooltip, BSidebar, vBToggle, BButton, BCol, BRow } from "@/platform/bootstrap";
 import { confirmDialog } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default { components: { BSidebar, BFormGroup, BFormInput }, directives: { 'b-toggle': vBToggle, 'b-tooltip': vBTooltip },
+export default { components: { BButton, BCol, BRow, BSidebar, BFormGroup, BFormInput }, directives: { 'b-toggle': vBToggle, 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Employee"
   },

@@ -86,11 +86,11 @@
 </template>
 
 <script>
-import { vBTooltip, BModal } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { components: { BModal }, directives: { 'b-tooltip': vBTooltip },
+export default { components: { BCard, BCol, BRow, BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: { title: "Property Inquiries" },
   data() {
     return {

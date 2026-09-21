@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Pending_Customers')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="wrapper">
       <!-- Actions Bar -->
@@ -16,7 +16,7 @@
             @input="debounceFetch"
           />
           <b-button v-if="customers.length" size="sm" variant="success" @click="approveAll" :disabled="saving">
-            <lucide-icon class="mr-1" name="check" />{{ $t('Approve_All') }}
+            <lucide-icon class="me-1" name="check" />{{ $t('Approve_All') }}
           </b-button>
         </div>
       </b-card>
@@ -39,7 +39,7 @@
                 <th>{{ $t('Phone') }}</th>
                 <th>{{ $t('Invite_Code_Used') }}</th>
                 <th>{{ $t('Registered') }}</th>
-                <th class="text-right">{{ $t('Actions') }}</th>
+                <th class="text-end">{{ $t('Actions') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -54,12 +54,12 @@
                   <span v-else class="text-muted">—</span>
                 </td>
                 <td>{{ formatDate(c.created_at) }}</td>
-                <td class="text-right">
-                  <b-button size="sm" variant="success" class="mr-1" :disabled="saving" @click="approve(c)">
-                    <lucide-icon class="mr-1" name="check" />{{ $t('Approve') }}
+                <td class="text-end">
+                  <b-button size="sm" variant="success" class="me-1" :disabled="saving" @click="approve(c)">
+                    <lucide-icon class="me-1" name="check" />{{ $t('Approve') }}
                   </b-button>
                   <b-button size="sm" variant="outline-danger" :disabled="saving" @click="reject(c)">
-                    <lucide-icon class="mr-1" name="x" />{{ $t('Reject') }}
+                    <lucide-icon class="me-1" name="x" />{{ $t('Reject') }}
                   </b-button>
                 </td>
               </tr>
@@ -80,8 +80,9 @@
 </template>
 
 <script>
+import { BButton, BCard } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default {
+export default { components: { BButton, BCard },
   metaInfo: { title: 'Pending Customers' },
   data () {
     return {

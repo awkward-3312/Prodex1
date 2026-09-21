@@ -136,11 +136,11 @@
 
 <script>
 import { notifications } from "@/platform";
-import { BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormInvalidFeedback, BAlert, BBadge, BButton, BCard, BCardText, BCol, BRow } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
 import moment from 'moment';
 
-export default { components: { BFormGroup, BFormInput, BFormInvalidFeedback },
+export default { components: { BAlert, BBadge, BButton, BCard, BCardText, BCol, BRow, BFormGroup, BFormInput, BFormInvalidFeedback },
   data() {
     return {
       connecting: false,

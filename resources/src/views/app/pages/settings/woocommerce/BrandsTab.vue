@@ -141,8 +141,9 @@
 </template>
 
 <script>
+import { BButton, BCard, BTab, BTabs } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default {
+export default { components: { BButton, BCard, BTab, BTabs },
   data() {
     return {
       activeMiniTab: 0,

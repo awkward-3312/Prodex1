@@ -741,13 +741,13 @@
 </template>
 
 <script>
-import { BModal } from "@/platform/bootstrap";
+import { BModal, BAlert, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 
-export default { components: { BModal },
+export default { components: { BAlert, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Editar venta"
   },

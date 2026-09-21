@@ -29,17 +29,17 @@
         <div v-if="!groups(product).length" class="inventory-empty py-3">Este producto todavía no tiene existencias por ubicación.</div>
         <div v-for="group in groups(product)" :key="group.key" class="owner-block" :class="{ current: group.current }">
           <div class="owner-head">
-            <div><strong>{{ group.name }}</strong><span v-if="group.current" class="badge badge-info ml-2">MI SUCURSAL</span></div>
+            <div><strong>{{ group.name }}</strong><span v-if="group.current" class="badge badge-info ms-2">MI SUCURSAL</span></div>
             <strong>{{ fmt(group.available) }} disponible</strong>
           </div>
           <div class="table-responsive">
             <table class="table table-sm mb-0">
-              <thead><tr><th>Ubicación</th><th>Variante</th><th class="text-right">Disponible</th><th class="text-right">Físico</th><th class="text-right">Reservado</th></tr></thead>
+              <thead><tr><th>Ubicación</th><th>Variante</th><th class="text-end">Disponible</th><th class="text-end">Físico</th><th class="text-end">Reservado</th></tr></thead>
               <tbody>
                 <tr v-for="row in group.rows" :key="row.inventory_location_id + ':' + (row.product_variant_id || 0)">
-                  <td>{{ row.location_name }} <span v-if="row.is_quarantine" class="badge badge-warning ml-1">Cuarentena</span></td>
+                  <td>{{ row.location_name }} <span v-if="row.is_quarantine" class="badge badge-warning ms-1">Cuarentena</span></td>
                   <td>{{ row.variant_name || '—' }}</td>
-                  <td class="text-right">{{ fmt(row.available) }}</td><td class="text-right">{{ fmt(row.physical) }}</td><td class="text-right">{{ fmt(row.reserved) }}</td>
+                  <td class="text-end">{{ fmt(row.available) }}</td><td class="text-end">{{ fmt(row.physical) }}</td><td class="text-end">{{ fmt(row.reserved) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -52,7 +52,8 @@
 </template>
 
 <script>
-export default {
+import { BButton, BCard } from "@/platform/bootstrap";
+export default { components: { BButton, BCard },
   name: 'InventoryLocationStock',
   data() { return { query: '', products: [], loading: false, searched: false, error: '' }; },
   methods: {

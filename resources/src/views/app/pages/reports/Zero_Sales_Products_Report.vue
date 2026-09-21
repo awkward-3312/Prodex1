@@ -2,14 +2,14 @@
   <div class="main-content">
     <breadcumb :page="$t('Zero_Sales_Products_Report')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper print-table-only" v-if="!isLoading">
       <!-- Toolbar -->
       <div class="d-flex flex-wrap align-items-center mb-2">
         <!-- Period filter -->
-        <div class="d-flex align-items-center mr-3 mb-2">
-          <label class="mb-0 mr-2">{{ $t('Period') }}:</label>
+        <div class="d-flex align-items-center me-3 mb-2">
+          <label class="mb-0 me-2">{{ $t('Period') }}:</label>
           <b-form-select
             v-model="period"
             :options="periodOptions"
@@ -19,12 +19,12 @@
           />
         </div>
 
-        <div class="ml-auto mb-2">
-          <b-button size="sm" variant="outline-secondary" class="btn-pill mr-2" @click="printTableOnly()">
-            <lucide-icon class="mr-1" name="printer" />{{$t('print')}}
+        <div class="ms-auto mb-2">
+          <b-button size="sm" variant="outline-secondary" class="btn-pill me-2" @click="printTableOnly()">
+            <lucide-icon class="me-1" name="printer" />{{$t('print')}}
           </b-button>
           <b-button size="sm" variant="danger" class="btn-pill" @click="exportPdf">
-            <lucide-icon class="mr-1" name="file-text" /> Export PDF
+            <lucide-icon class="me-1" name="file-text" /> Export PDF
           </b-button>
         </div>
       </div>
@@ -75,6 +75,7 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
@@ -85,7 +86,7 @@ import {
 } from "../../../../utils/priceFormat";
 // axios assumed globally available
 
-export default {
+export default { components: { BBadge, BButton, BCard },
   metaInfo: { title: "Zero Sales Products Report" },
   data() {
     return {

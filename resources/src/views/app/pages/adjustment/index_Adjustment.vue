@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('ListAdjustments')" :folder="$t('Adjustment')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <vue-good-table
         mode="remote"
@@ -52,7 +52,7 @@
             <span class="ul-btn__icon">
               <lucide-icon name="plus" />
             </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
+            <span class="ul-btn__text ms-1">{{$t('Add')}}</span>
           </router-link>
         </div></template>
 
@@ -148,13 +148,13 @@
 </template>
 
 <script>
-import { BSidebar, vBToggle, vBTooltip } from "@/platform/bootstrap";
+import { BSidebar, vBToggle, vBTooltip, BButton, BCol, BRow } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BSidebar },
+export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BButton, BCol, BRow, BSidebar },
   metaInfo: {
     title: "Adjustment"
   },

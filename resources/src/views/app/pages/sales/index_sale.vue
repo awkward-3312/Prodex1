@@ -487,7 +487,7 @@
               </tbody>
             </table>
 
-            <div id="legalcopy" class="ml-2">
+            <div id="legalcopy" class="ms-2">
               <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                 {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
               </p>
@@ -709,7 +709,7 @@
               </tbody>
             </table>
 
-            <div id="legalcopy" class="ml-2">
+            <div id="legalcopy" class="ms-2">
               <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                 {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
               </p>
@@ -916,7 +916,7 @@
               </tbody>
             </table>
 
-            <div id="legalcopy" class="ml-2">
+            <div id="legalcopy" class="ms-2">
               <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                 {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
               </p>
@@ -1122,7 +1122,7 @@
               </tbody>
             </table>
 
-            <div id="legalcopy" class="ml-2">
+            <div id="legalcopy" class="ms-2">
               <div v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;">
                 {{$t('sale_note')}} / ملاحظة البيع: {{invoice_pos.sale.notes}}
               </div>
@@ -1350,7 +1350,7 @@
                 </tr>
                 <tr v-for="document in documents" :key="document.id">
                   <td>
-                    <lucide-icon class="mr-1" name="file" />
+                    <lucide-icon class="me-1" name="file" />
                     {{document.name}}
                   </td>
                   <td>{{formatFileSize(document.size)}}</td>
@@ -1384,6 +1384,7 @@
 </template>
 
 <script>
+import { BButton, BCol, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
@@ -1412,7 +1413,7 @@ import PxTextarea from "@/components/px-next/PxTextarea.vue";
 import PxModal from "@/components/px-next/PxModal.vue";
 import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 export default {
-  components: {
+  components: { BButton, BCol, BRow,
     vueEasyPrint,
     barcode: VueBarcode,
     PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu,

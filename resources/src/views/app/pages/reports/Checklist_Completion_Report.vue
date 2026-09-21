@@ -59,7 +59,8 @@
 </template>
 
 <script>
-export default {
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+export default { components: { BButton, BCard, BCol, BRow },
   name: 'ChecklistCompletionReport',
   data() {
     return {

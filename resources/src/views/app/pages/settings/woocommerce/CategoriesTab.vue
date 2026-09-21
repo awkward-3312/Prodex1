@@ -141,10 +141,11 @@
 </template>
 
 <script>
+import { BButton, BCard, BTab, BTabs } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import moment from 'moment';
 
-export default {
+export default { components: { BButton, BCard, BTab, BTabs },
   data() {
     return {
       activeMiniTab: 0,

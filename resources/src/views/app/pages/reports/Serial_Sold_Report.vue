@@ -30,8 +30,9 @@
 </template>
 
 <script>
+import { BCard } from "@/platform/bootstrap";
 import NProgress from "nprogress";
-export default {
+export default { components: { BCard },
   metaInfo: { title: "Informe de números de serie vendidos" },
   data() { return { isLoading: true, serverParams: { sort: { field: "id", type: "desc" }, page: 1, perPage: 10 }, limit: "10", search: "", totalRows: "", reports: [], warehouses: [], warehouse_id: "" }; },
   computed: {

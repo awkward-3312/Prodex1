@@ -9,14 +9,14 @@
           <p class="text-muted mb-0">Revisa mercancía en camino hacia tus bodegas. Una transferencia solo aumenta tu inventario cuando un usuario autorizado confirma la recepción física.</p>
         </div>
         <div class="mt-2 mt-md-0">
-          <b-button variant="outline-secondary" class="mr-2" @click="openManual"><lucide-icon name="book-open" class="mr-1"/> Ver manual</b-button>
-          <b-button variant="outline-primary" class="mr-2" @click="load"><lucide-icon name="refresh-cw" class="mr-1"/> Actualizar</b-button>
-          <b-button variant="primary" @click="openScanner"><lucide-icon name="scan-line" class="mr-1"/> Escanear QR</b-button>
+          <b-button variant="outline-secondary" class="me-2" @click="openManual"><lucide-icon name="book-open" class="me-1"/> Ver manual</b-button>
+          <b-button variant="outline-primary" class="me-2" @click="load"><lucide-icon name="refresh-cw" class="me-1"/> Actualizar</b-button>
+          <b-button variant="primary" @click="openScanner"><lucide-icon name="scan-line" class="me-1"/> Escanear QR</b-button>
         </div>
       </div>
     </b-card>
 
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <template v-else>
       <b-row class="mb-3">
@@ -56,7 +56,7 @@
 
         <div v-else class="table-responsive">
           <table class="table table-hover align-middle mb-0">
-            <thead><tr><th>Referencia</th><th>Origen</th><th>Destino</th><th>Estado</th><th>Despachada</th><th class="text-right">Acción</th></tr></thead>
+            <thead><tr><th>Referencia</th><th>Origen</th><th>Destino</th><th>Estado</th><th>Despachada</th><th class="text-end">Acción</th></tr></thead>
             <tbody>
               <tr v-for="transfer in filteredIncoming" :key="transfer.id">
                 <td><strong>{{ transfer.reference }}</strong><div class="text-muted text-11">{{ transfer.items }} artículo(s)</div></td>
@@ -64,7 +64,7 @@
                 <td>{{ transfer.to_warehouse || '—' }}</td>
                 <td><span class="badge" :class="transfer.logistics_status === 'partially_received' ? 'badge-warning' : 'badge-info'">{{ statusLabel(transfer.logistics_status) }}</span></td>
                 <td>{{ formatDate(transfer.dispatched_at) }}</td>
-                <td class="text-right">
+                <td class="text-end">
                   <b-button size="sm" variant="primary" @click="receive(transfer)">Revisar y recibir</b-button>
                 </td>
               </tr>
@@ -82,7 +82,7 @@
         </b-form-group>
         <div v-if="scanError" class="alert alert-danger">{{ scanError }}</div>
         <div class="d-flex justify-content-end">
-          <b-button variant="outline-secondary" class="mr-2" @click="$modals.hide('manual-scan-modal')">Cancelar</b-button>
+          <b-button variant="outline-secondary" class="me-2" @click="$modals.hide('manual-scan-modal')">Cancelar</b-button>
           <b-button type="submit" variant="primary">Abrir transferencia</b-button>
         </div>
       </b-form>
@@ -91,9 +91,9 @@
 </template>
 
 <script>
-import { BModal } from "@/platform/bootstrap";
+import { BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { modals } from "@/platform";
-export default { components: { BModal },
+export default { components: { BButton, BCard, BCol, BRow, BModal },
   metaInfo: { title: 'Ingreso de stock' },
   data() {
     return { loading:true, incoming:[], notifications:[], unread:0, search:'', manualToken:'', scanError:'' };

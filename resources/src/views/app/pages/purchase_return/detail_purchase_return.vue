@@ -29,19 +29,19 @@
       <div class="invoice" id="print_Invoice">
         <div class="invoice-print">
           <b-row class="justify-content-md-center">
-            <h4 class="font-weight-bold">{{$t('ReturnDetail')}} : {{purchase_return.Ref}}</h4>
+            <h4 class="fw-bold">{{$t('ReturnDetail')}} : {{purchase_return.Ref}}</h4>
           </b-row>
           <hr>
           <b-row class="mt-5">
             <b-col lg="4" md="4" sm="12" class="mb-4">
-              <h5 class="font-weight-bold">{{$t('Supplier_Info')}}</h5>
+              <h5 class="fw-bold">{{$t('Supplier_Info')}}</h5>
               <div>{{purchase_return.supplier_name}}</div>
               <div>{{purchase_return.supplier_email}}</div>
               <div>{{purchase_return.supplier_phone}}</div>
               <div>{{purchase_return.supplier_adr}}</div>
             </b-col>
             <b-col lg="4" md="4" sm="12" class="mb-4">
-              <h5 class="font-weight-bold">{{$t('Company_Info')}}</h5>
+              <h5 class="fw-bold">{{$t('Company_Info')}}</h5>
 
               <div>{{company.CompanyName}}</div>
               <div>{{company.email}}</div>
@@ -49,7 +49,7 @@
               <div>{{company.CompanyAdress}}</div>
             </b-col>
             <b-col lg="4" md="4" sm="12" class="mb-4">
-              <h5 class="font-weight-bold">{{$t('Return_Info')}}</h5>
+              <h5 class="fw-bold">{{$t('Return_Info')}}</h5>
 
               <div>{{$t('Reference')}} : {{purchase_return.Ref}}</div>
               <div>{{$t('Purchase_Ref')}} : {{purchase_return.purchase_ref}}</div>
@@ -78,7 +78,7 @@
           </b-row>
           <b-row class="mt-3">
             <b-col md="12">
-              <h5 class="font-weight-bold">{{$t('list_product_returns')}}</h5>
+              <h5 class="fw-bold">{{$t('list_product_returns')}}</h5>
               <div class="alert alert-danger">{{$t('products_refunded_alert')}}</div>
               <div class="table-responsive">
                 <table class="table table-hover table-md">
@@ -98,7 +98,7 @@
                       <tr>
                         <td><span>{{detail.code}} ({{detail.name}})</span>
                           <p v-show="detail.is_imei && detail.imei_number !==null ">{{$t('IMEI_SN')}} : {{detail.imei_number}}</p>
-                          <span v-if="detail.is_batch_tracked" class="badge ml-1" style="background:#eef2ff; color:#4f46e5; font-weight:600; letter-spacing:0.3px;">
+                          <span v-if="detail.is_batch_tracked" class="badge ms-1" style="background:#eef2ff; color:#4f46e5; font-weight:600; letter-spacing:0.3px;">
                             <lucide-icon name="package" style="margin-right:3px;" />{{ $t('Batches') || 'Batches' }}
                           </span>
                         </td>
@@ -192,31 +192,31 @@
                   </tr>
                   <tr>
                     <td>
-                      <span class="font-weight-bold">{{$t('Total')}}</span>
+                      <span class="fw-bold">{{$t('Total')}}</span>
                     </td>
                     <td>
                       <span
-                        class="font-weight-bold"
+                        class="fw-bold"
                       >{{ formatPriceWithSymbol(currentUser.currency, purchase_return.GrandTotal, 2) }}</span>
                     </td>
                   </tr>
                   <tr>
                     <td>
-                      <span class="font-weight-bold">{{$t('Paid')}}</span>
+                      <span class="fw-bold">{{$t('Paid')}}</span>
                     </td>
                     <td>
                       <span
-                        class="font-weight-bold"
+                        class="fw-bold"
                       >{{ formatPriceWithSymbol(currentUser.currency, purchase_return.paid_amount, 2) }}</span>
                     </td>
                   </tr>
                   <tr>
                     <td>
-                      <span class="font-weight-bold">{{$t('Due')}}</span>
+                      <span class="fw-bold">{{$t('Due')}}</span>
                     </td>
                     <td>
                       <span
-                        class="font-weight-bold"
+                        class="fw-bold"
                       >{{ formatPriceWithSymbol(currentUser.currency, purchase_return.due, 2) }}</span>
                     </td>
                   </tr>
@@ -237,6 +237,7 @@
 </template>
 
 <script>
+import { BCol, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
@@ -250,7 +251,7 @@ import {
 } from "../../../../utils/priceFormat";
 
 export default {
-  components: { PxPageHeader, PxCard, PxButton },
+  components: { BCol, BRow, PxPageHeader, PxCard, PxButton },
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
     // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.

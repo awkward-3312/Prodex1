@@ -109,8 +109,8 @@
 </template>
 
 <script>
-import { BFormGroup, BFormSelect, BFormSelectOption } from "@/platform/bootstrap";
-export default { components: { BFormGroup, BFormSelect, BFormSelectOption },
+import { BFormGroup, BFormSelect, BFormSelectOption, BCard, BCol, BProgress, BProgressBar, BRow } from "@/platform/bootstrap";
+export default { components: { BCard, BCol, BProgress, BProgressBar, BRow, BFormGroup, BFormSelect, BFormSelectOption },
   metaInfo: { title: "Informes de reclutamiento" },
   data() {
     return {

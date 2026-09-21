@@ -2,14 +2,14 @@
   <div class="main-content">
     <breadcumb :page="$t('Dead_Stock_Report')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper" v-else>
       <!-- Filters -->
       <div class="d-flex flex-wrap align-items-center mb-2">
         <!-- Period -->
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{ $t('Period') }}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{ $t('Period') }}:</label>
           <b-form-select
             v-model="period"
             :options="periodOptions"
@@ -21,17 +21,17 @@
 
         <!-- (Optional) extra filters kept for parity; plug your own pickers here -->
         <!--
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <b-form-select v-model="warehouse_id" :options="warehouses" size="sm" class="w-auto" @change="resetToFirstPageAndFetch" />
         </div>
         -->
 
         <!-- Export buttons -->
-        <div class="ml-auto mb-2">
+        <div class="ms-auto mb-2">
           <b-button
             size="sm"
             variant="outline-primary"
-            class="mr-2"
+            class="me-2"
             :disabled="disableExport"
             @click="exportPdf"
           >
@@ -97,12 +97,13 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
 import { notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 // axios assumed globally available
 
-export default {
+export default { components: { BBadge, BButton, BCard },
   metaInfo: { title: 'Dead Stock Report' },
 
   data() {

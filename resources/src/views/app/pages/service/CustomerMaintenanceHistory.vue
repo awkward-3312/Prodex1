@@ -23,7 +23,8 @@
 </template>
 
 <script>
-export default {
+import { BCol, BRow } from "@/platform/bootstrap";
+export default { components: { BCol, BRow },
   name: 'CustomerMaintenanceHistory',
   data() {
     return {

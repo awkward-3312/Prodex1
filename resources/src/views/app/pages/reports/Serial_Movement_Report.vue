@@ -50,8 +50,9 @@
 </template>
 
 <script>
+import { BCard } from "@/platform/bootstrap";
 import NProgress from "nprogress";
-export default {
+export default { components: { BCard },
   metaInfo: { title: "Serial Movement Report" },
   data() {
     return {

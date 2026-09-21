@@ -1,14 +1,14 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('TransferDetail')" :folder="$t('ListTransfers')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-if="!isLoading" class="shadow-sm">
       <b-row>
         <b-col md="12" class="mb-3">
           <router-link
             :to="{ name: 'index_transfer' }"
-            class="btn btn-secondary btn-icon ripple btn-sm mr-2"
+            class="btn btn-secondary btn-icon ripple btn-sm me-2"
           >
             <lucide-icon name="arrow-left" />
             <span>{{$t('Back')}}</span>
@@ -16,24 +16,24 @@
           <router-link
             v-if="currentUserPermissions && currentUserPermissions.includes('transfer_edit')"
             title="Edit"
-            class="btn btn-success btn-icon ripple btn-sm mr-2"
+            class="btn btn-success btn-icon ripple btn-sm me-2"
             :to="{ name:'edit_transfer', params: { id: $route.params.id } }"
           >
             <lucide-icon name="pencil" />
             <span>{{$t('Edit')}}</span>
           </router-link>
-          <button @click="Print_Transfer_PDF()" class="btn btn-primary btn-icon ripple btn-sm mr-2">
+          <button @click="Print_Transfer_PDF()" class="btn btn-primary btn-icon ripple btn-sm me-2">
             <lucide-icon name="file-text" />
             {{$t('PDF')}}
           </button>
-          <button @click="print()" class="btn btn-warning btn-icon ripple btn-sm mr-2">
+          <button @click="print()" class="btn btn-warning btn-icon ripple btn-sm me-2">
             <lucide-icon name="receipt" />
             {{$t('print')}}
           </button>
           <button
             v-if="transfer.approval_status === 'pending' && currentUserPermissions && currentUserPermissions.includes('transfer_edit')"
             @click="Approve_Transfer()"
-            class="btn btn-info btn-icon ripple btn-sm mr-2"
+            class="btn btn-info btn-icon ripple btn-sm me-2"
           >
             <lucide-icon name="check" />
             {{$t('Approve')}}
@@ -52,15 +52,15 @@
       <div class="invoice mt-5" id="print_Invoice">
         <div class="invoice-print">
           <b-row class="justify-content-md-center mb-4">
-            <h4 class="font-weight-bold">{{$t('TransferDetail')}} : {{transfer.Ref}}</h4>
+            <h4 class="fw-bold">{{$t('TransferDetail')}} : {{transfer.Ref}}</h4>
           </b-row>
           <hr>
 
           <b-row class="mt-5">
             <b-col lg="4" md="6" sm="12" class="mb-4">
               <b-card class="h-100 shadow-sm">
-                <h5 class="font-weight-bold mb-3 text-primary">
-                  <lucide-icon class="mr-2" name="home" />{{$t('FromWarehouse')}}
+                <h5 class="fw-bold mb-3 text-primary">
+                  <lucide-icon class="me-2" name="home" />{{$t('FromWarehouse')}}
                 </h5>
                 <div class="transfer-info">
                   <p class="mb-2"><strong>{{transfer.from_warehouse}}</strong></p>
@@ -69,8 +69,8 @@
             </b-col>
             <b-col lg="4" md="6" sm="12" class="mb-4">
               <b-card class="h-100 shadow-sm">
-                <h5 class="font-weight-bold mb-3 text-success">
-                  <lucide-icon class="mr-2" name="home" />{{$t('ToWarehouse')}}
+                <h5 class="fw-bold mb-3 text-success">
+                  <lucide-icon class="me-2" name="home" />{{$t('ToWarehouse')}}
                 </h5>
                 <div class="transfer-info">
                   <p class="mb-2"><strong>{{transfer.to_warehouse}}</strong></p>
@@ -79,8 +79,8 @@
             </b-col>
             <b-col lg="4" md="6" sm="12" class="mb-4">
               <b-card class="h-100 shadow-sm">
-                <h5 class="font-weight-bold mb-3 text-info">
-                  <lucide-icon class="mr-2" name="file-text" />{{$t('Transfer_Info')}}
+                <h5 class="fw-bold mb-3 text-info">
+                  <lucide-icon class="me-2" name="file-text" />{{$t('Transfer_Info')}}
                 </h5>
                 <div class="transfer-info">
                   <p class="mb-2">
@@ -93,27 +93,27 @@
                     <strong>{{$t('Status')}}:</strong>
                     <span
                       v-if="transfer.statut == 'completed'"
-                      class="badge badge-outline-success ml-2"
+                      class="badge badge-outline-success ms-2"
                     >{{$t('complete')}}</span>
                     <span
                       v-else-if="transfer.statut == 'sent'"
-                      class="badge badge-outline-warning ml-2"
+                      class="badge badge-outline-warning ms-2"
                     >{{$t('Sent')}}</span>
-                    <span v-else class="badge badge-outline-danger ml-2">{{$t('Pending')}}</span>
+                    <span v-else class="badge badge-outline-danger ms-2">{{$t('Pending')}}</span>
                   </p>
                   <p class="mb-2">
                     <strong>{{$t('Approval')}}:</strong>
                     <span
                       v-if="!transfer.approval_status || transfer.approval_status === 'approved'"
-                      class="badge badge-outline-success ml-2"
+                      class="badge badge-outline-success ms-2"
                     >{{ $t('Approved') }}</span>
                     <span
                       v-else-if="transfer.approval_status === 'pending'"
-                      class="badge badge-outline-warning ml-2"
+                      class="badge badge-outline-warning ms-2"
                     >{{ $t('Pending_Approval') }}</span>
                     <span
                       v-else-if="transfer.approval_status === 'rejected'"
-                      class="badge badge-outline-danger ml-2"
+                      class="badge badge-outline-danger ms-2"
                     >{{ $t('Rejected') }}</span>
                   </p>
                 </div>
@@ -123,25 +123,25 @@
 
           <b-row class="mt-4">
             <b-col md="12">
-              <h5 class="font-weight-bold mb-3">
-                <lucide-icon class="mr-2" name="package" />{{$t('Order_Summary')}}
+              <h5 class="fw-bold mb-3">
+                <lucide-icon class="me-2" name="package" />{{$t('Order_Summary')}}
               </h5>
               <div class="table-responsive">
                 <table class="table table-hover table-bordered">
                   <thead class="bg-light">
                     <tr>
-                      <th scope="col" class="text-left">{{$t('ProductName')}}</th>
+                      <th scope="col" class="text-start">{{$t('ProductName')}}</th>
                       <th scope="col" class="text-center">{{$t('CodeProduct')}}</th>
                       <th scope="col" class="text-center">{{$t('Quantity')}}</th>
-                      <th scope="col" class="text-right">{{$t('SubTotal')}}</th>
+                      <th scope="col" class="text-end">{{$t('SubTotal')}}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <template v-for="(detail, index) in details" :key="'r-' + index">
                       <tr>
-                        <td class="text-left">
-                          <span class="font-weight-bold">{{detail.name}}</span>
-                          <span v-if="detail.is_batch_tracked" class="badge ml-1" style="background:#eef2ff; color:#4f46e5; font-weight:600; letter-spacing:0.3px;">
+                        <td class="text-start">
+                          <span class="fw-bold">{{detail.name}}</span>
+                          <span v-if="detail.is_batch_tracked" class="badge ms-1" style="background:#eef2ff; color:#4f46e5; font-weight:600; letter-spacing:0.3px;">
                             <lucide-icon name="package" style="margin-right:3px;" />{{ $t('Batches') || 'Batches' }}
                           </span>
                         </td>
@@ -149,7 +149,7 @@
                         <td class="text-center">
                           <span class="badge badge-primary">{{formatNumber(detail.quantity, 2)}} {{detail.unit}}</span>
                         </td>
-                        <td class="text-right font-weight-bold">
+                        <td class="text-end fw-bold">
                           {{currentUser.currency}} {{formatNumber(detail.total, priceDecimals)}}
                         </td>
                       </tr>
@@ -210,18 +210,18 @@
           </b-row>
 
           <b-row class="mt-4">
-            <b-col md="12" class="text-right">
+            <b-col md="12" class="text-end">
               <div class="offset-md-8 col-md-4">
                 <table class="table table-striped table-sm">
                   <tbody>
                     <tr>
-                      <td class="font-weight-bold">{{$t('Items')}}:</td>
-                      <td class="text-right">{{transfer.items}}</td>
+                      <td class="fw-bold">{{$t('Items')}}:</td>
+                      <td class="text-end">{{transfer.items}}</td>
                     </tr>
                     <tr>
-                      <td class="font-weight-bold">{{$t('Total')}}:</td>
-                      <td class="text-right">
-                        <span class="font-weight-bold text-primary" style="font-size: 1.2em">
+                      <td class="fw-bold">{{$t('Total')}}:</td>
+                      <td class="text-end">
+                        <span class="fw-bold text-primary" style="font-size: 1.2em">
                           {{currentUser.currency}} {{formatNumber(transfer.GrandTotal, 2)}}
                         </span>
                       </td>
@@ -235,8 +235,8 @@
           <hr v-if="transfer.note" class="mt-4">
           <b-row v-if="transfer.note" class="mt-4">
             <b-col md="12">
-              <h5 class="font-weight-bold mb-2">
-                <lucide-icon class="mr-2" name="sticky-note" />{{$t('Note')}}
+              <h5 class="fw-bold mb-2">
+                <lucide-icon class="me-2" name="sticky-note" />{{$t('Note')}}
               </h5>
               <div class="p-3 bg-light rounded">
                 <p class="mb-0">{{transfer.note}}</p>
@@ -250,12 +250,13 @@
 </template>
 
 <script>
+import { BCard, BCol, BRow } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import Util from '../../../../utils';
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default {
+export default { components: { BCard, BCol, BRow },
   computed: {
     ...mapGetters(["currentUserPermissions", "currentUser"]),
     // Monetary precision (2 or 3) driven by the "Enable 3 Decimal Pricing" setting.

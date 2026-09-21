@@ -7,23 +7,29 @@
 // BootstrapVueNext es Vue 3 puro. Bajo @vue/compat MODE 2 hay que excluirlo de los comportamientos de Vue 2
 // (`v-model` value/input, class/style de atributos, `$listeners`…): cada componente exportado (y los que usa por dentro) se marca
 // `compatConfig: { MODE: 3 }`. Es configuración del propio componente, no un parche de su lógica; desaparece al quitar compat.
-import { h, ref } from 'vue';
+import { h, ref, nextTick, getCurrentInstance, cloneVNode, Fragment } from 'vue';
 import { bootstrapPlugin } from './plugin.js';
 import { vBTooltip as _vBTooltip, vBToggle as _vBToggle, vBPopover as _vBPopover } from 'bootstrap-vue-next/directives';
 import { BOffcanvas as _BOffcanvas } from 'bootstrap-vue-next/components/BOffcanvas';
 import { BModal as _BModal } from 'bootstrap-vue-next/components/BModal';
 import { BTable as _BTable, BTableSimple as _BTableSimple, BThead as _BThead, BTbody as _BTbody, BTr as _BTr, BTh as _BTh, BTd as _BTd } from 'bootstrap-vue-next/components/BTable';
-import { BButton as _BButton, BCloseButton } from 'bootstrap-vue-next/components/BButton';
+import { BButton as _BButton, BButtonGroup as _BButtonGroup, BCloseButton } from 'bootstrap-vue-next/components/BButton';
 import { BBadge as _BBadge } from 'bootstrap-vue-next/components/BBadge';
 import { BAlert as _BAlert } from 'bootstrap-vue-next/components/BAlert';
 import { BSpinner as _BSpinner } from 'bootstrap-vue-next/components/BSpinner';
 import { BLink } from 'bootstrap-vue-next/components/BLink';
+import { BListGroup as _BListGroup, BListGroupItem as _BListGroupItem } from 'bootstrap-vue-next/components/BListGroup';
+import { BImg as _BImg } from 'bootstrap-vue-next/components/BImg';
+import { BAvatar as _BAvatar } from 'bootstrap-vue-next/components/BAvatar';
+import { BTabs as _BTabs, BTab as _BTab } from 'bootstrap-vue-next/components/BTabs';
+import { BDropdown as _BDropdown, BDropdownItem as _BDropdownItem, BDropdownDivider as _BDropdownDivider, BDropdownHeader as _BDropdownHeader, BDropdownForm as _BDropdownForm } from 'bootstrap-vue-next/components/BDropdown';
+import { BPagination as _BPagination } from 'bootstrap-vue-next/components/BPagination';
 import { BContainer as _BContainer, BRow as _BRow, BCol as _BCol } from 'bootstrap-vue-next/components/BContainer';
 import {
   BCard as _BCard, BCardBody as _BCardBody, BCardHeader as _BCardHeader, BCardFooter as _BCardFooter,
   BCardText as _BCardText, BCardTitle as _BCardTitle, BCardSubtitle as _BCardSubtitle,
 } from 'bootstrap-vue-next/components/BCard';
-import { BProgress, BProgressBar } from 'bootstrap-vue-next/components/BProgress';
+import { BProgress as _BProgress, BProgressBar as _BProgressBar } from 'bootstrap-vue-next/components/BProgress';
 import { BFormGroup as _BFormGroup } from 'bootstrap-vue-next/components/BFormGroup';
 import { BFormInput as _BFormInput } from 'bootstrap-vue-next/components/BFormInput';
 import { BFormTextarea as _BFormTextarea } from 'bootstrap-vue-next/components/BFormTextarea';
@@ -40,12 +46,22 @@ function pure(component) {
 }
 
 // Los componentes internos de la familia (BLink, BCloseButton, BProgress…) también deben quedar en MODE 3.
-[BLink, BCloseButton, BProgress, BProgressBar].forEach(pure);
+[BLink, BCloseButton].forEach(pure);
 
-export const BAlert = pure(_BAlert);
 export const BSpinner = pure(_BSpinner);
 export const BContainer = pure(_BContainer);
-export const BRow = pure(_BRow);
+// Fila: `no-gutters` de BS4 (clase `.no-gutters`, que la base estila); BVN lo traduce a `g-0`, que la hoja BS4 no tiene.
+export const BRow = pure({
+  name: 'BRow',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots }) {
+    return () => {
+      const { noGutters, 'no-gutters': noGuttersKebab, ...rest } = attrs;
+      const off = noGutters !== undefined ? noGutters : noGuttersKebab;
+      return h(_BRow, { ...rest, class: [rest.class, off === '' || off === true ? 'no-gutters' : null] }, slots);
+    };
+  },
+});
 export const BCol = pure(_BCol);
 export const BCard = pure(_BCard);
 export const BCardBody = pure(_BCardBody);
@@ -69,13 +85,17 @@ const wrapper = (name, component, extraProps, extraClass) => pure({
   },
 });
 
+// `target="_blank"` sin `rel`: BootstrapVue 2 añadía `rel="noopener"`; BootstrapVueNext no.
 export const BButton = wrapper('BButton', _BButton, { block: { type: Boolean, default: false } }, (props, attrs) => ({
   class: [attrs.class, props.block ? 'btn-block' : null],
+  ...(attrs.target === '_blank' && !attrs.rel ? { rel: 'noopener' } : {}),
 }));
+export const BButtonGroup = pure(_BButtonGroup);
 
-export const BBadge = wrapper('BBadge', _BBadge, { variant: { type: String, default: 'secondary' } }, (props, attrs) => ({
+// `pill`: BootstrapVue 2 (BS4) emite `badge-pill`; BootstrapVueNext, `rounded-pill` (sin el relleno horizontal de `.badge-pill`).
+export const BBadge = wrapper('BBadge', _BBadge, { variant: { type: String, default: 'secondary' }, pill: { type: Boolean, default: false } }, (props, attrs) => ({
   variant: null,
-  class: [`badge-${props.variant}`, attrs.class],
+  class: [`badge-${props.variant}`, props.pill ? 'badge-pill' : null, attrs.class],
 }));
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -262,5 +282,141 @@ export const vBToggle = _vBToggle;
 
 /** `v-b-popover` de BootstrapVueNext. Uso local: `directives: { 'b-popover': vBPopover }`. */
 export const vBPopover = _vBPopover;
+
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Primitives y navegación (fase 5A). Contrato de BootstrapVue 2 (subconjunto usado, auditado por AST) sobre BootstrapVueNext:
+//   - BAlert: `show` (booleano o número de segundos) ↔ `modelValue`; `@dismissed` ↔ `close` (clic en la cruz); el cuerpo queda en `.alert-body` (BVN) y el puente lo
+//     hace crecer. Sigue aceptando `model-value` (las vistas migradas en la fase 2).
+//   - BProgress / BProgressBar: la variante se pinta con `bg-<v>` (BS4), no con `text-bg-<v>` (BS5, otro color de texto).
+//   - BTabs: `lazy` implica `unmountLazy` en cada BTab (BV2 destruye la pestaña inactiva); `v-model` = índice de la pestaña (BVN usa el id en `modelValue` y el índice en `index`); `@input` (BV2) ↔ `update:index`.
+//   - BDropdown: `right` → `placement="bottom-end"`, `dropup` → `top-start`; envoltorio propio con la identidad de BV2 (`div#id.b-dropdown.btn-group`, botón `#id__BV_toggle_`) y
+//     eventos de raíz `bv::dropdown::show|hide`.
+//   - BPagination: `align` left/right ↔ start/end; `@change` (solo por interacción del usuario) ↔ `page-click`. BV2 emitía `change` ANTES de actualizar el
+//     v-model (un manejador que leía `this.page` veía la página anterior); aquí se emite con el v-model ya actualizado (corrige ese desfase).
+// Quitar estas traducciones cuando las vistas hablen el contrato de BVN.
+// ---------------------------------------------------------------------------------------------------------------------------------
+const truthyAttr = (v) => v === '' || v === true;
+const toList = (fn) => (Array.isArray(fn) ? fn : fn ? [fn] : []);
+
+export const BAlert = pure({
+  name: 'BAlert',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots }) {
+    return () => {
+      const { show, modelValue, onDismissed, ...rest } = attrs;
+      let visible = false;
+      if (modelValue !== undefined) visible = modelValue;
+      else if (typeof show === 'number') visible = show > 0 ? show * 1000 : false;
+      else if (truthyAttr(show) || show === true) visible = true;
+      else visible = !!show;
+      return h(_BAlert, { ...rest, modelValue: visible, onClose: [...toList(rest.onClose), ...toList(onDismissed)] }, slots);
+    };
+  },
+});
+
+export const BProgress = pure(_BProgress);
+export const BProgressBar = pure({
+  name: 'BProgressBar',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots }) {
+    return () => {
+      const { variant, ...rest } = attrs;
+      return h(_BProgressBar, { ...rest, class: [rest.class, variant ? `bg-${variant}` : null] }, slots);
+    };
+  },
+});
+
+export const BTab = pure(_BTab);
+
+// BVN solo reconoce como pestañas los hijos cuyo `type` es EXACTAMENTE su BTab (`tab.type === BTab`): un BTab envuelto no se registra y la primera pestaña
+// no se activa. Por eso `BTab` se exporta tal cual y `lazy` → `unmountLazy` (BV2 destruye la pestaña inactiva; en BVN es una prop de cada BTab) se aplica desde
+// BTabs clonando los vnodes hijos.
+const withUnmountLazy = (vnodes) => vnodes.map((vnode) => {
+  if (!vnode || typeof vnode !== 'object') return vnode;
+  if (vnode.type === _BTab) return vnode.props && vnode.props.unmountLazy !== undefined ? vnode : cloneVNode(vnode, { unmountLazy: true });
+  if (vnode.type === Fragment && Array.isArray(vnode.children)) return h(Fragment, { key: vnode.key }, withUnmountLazy(vnode.children));
+  return vnode;
+});
+
+export const BTabs = pure({
+  name: 'BTabs',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots }) {
+    return () => {
+      const { modelValue, 'onUpdate:modelValue': onUpdate, onInput, ...rest } = attrs;
+      const props = { ...rest };
+      if (typeof modelValue === 'number') props.index = modelValue;
+      if (onUpdate || onInput) props['onUpdate:index'] = (i) => { toList(onUpdate).forEach((f) => f(i)); toList(onInput).forEach((f) => f(i)); };
+      const lazy = truthyAttr(rest.lazy) || rest.lazy === true;
+      const tabSlots = lazy && slots.default ? { ...slots, default: (...args) => withUnmountLazy(slots.default(...args)) } : slots;
+      return h(_BTabs, props, tabSlots);
+    };
+  },
+});
+
+export const BDropdown = pure({
+  name: 'BDropdown',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots }) {
+    // Eventos de raíz de BV2 (`this.$root.$on('bv::dropdown::show|hide')`): las listas con acciones por fila los usan para dar altura a la tabla
+    // mientras el menú está abierto (`showDropdown`). Se emiten con el mismo nombre.
+    const instance = getCurrentInstance();
+    const root = () => instance && instance.proxy && instance.proxy.$root;
+    const relay = (name) => (event) => { const r = root(); if (r && typeof r.$emit === 'function') r.$emit(name, event); };
+    return () => {
+      const { right, dropup, id, class: cls, style, ...rest } = attrs;
+      const end = truthyAttr(right) || right === true;
+      const up = truthyAttr(dropup) || dropup === true;
+      // Identidad de BV2 (`div#id.b-dropdown.btn-group.dropdown` > `button#id__BV_toggle_` + `ul.dropdown-menu`): el CSS de la barra superior y del
+      // POS engancha `#lang-dd`, `#user-dd`, `#lang-dd__BV_toggle_`… BVN pone el id en el botón y su envoltorio no lo lleva, así que el envoltorio
+      // es propio (`noWrapper`) y BVN recibe el id del botón.
+      // Posicionamiento `absolute` (por defecto de BVN): con `fixed` el menú se descolocaba dentro de la cabecera del POS (ancestros con transform/filter
+      // crean el bloque contenedor). El recorte por `overflow` de las tablas ya lo resolvían las vistas con `showDropdown` (eventos `bv::dropdown::*`).
+      // `boundary` de BV2: 'scrollParent' | 'viewport' | 'window' (o un elemento); BVN: 'clippingAncestors' | 'viewport' | 'document' | elemento.
+      const BOUNDARY = { window: 'viewport', scrollParent: 'clippingAncestors' };
+      const props = { ...rest, noWrapper: true };
+      if (typeof rest.boundary === 'string' && BOUNDARY[rest.boundary]) props.boundary = BOUNDARY[rest.boundary];
+      props.onShow = [relay('bv::dropdown::show'), ...toList(rest.onShow)];
+      props.onHide = [relay('bv::dropdown::hide'), ...toList(rest.onHide)];
+      if (id !== undefined) props.id = `${id}__BV_toggle_`;
+      if (rest.placement === undefined) props.placement = `${up ? 'top' : 'bottom'}-${end ? 'end' : 'start'}`;
+      return h('div', { id, class: ['b-dropdown', 'btn-group', up ? 'dropup' : 'dropdown', cls], style }, [h(_BDropdown, props, slots)]);
+    };
+  },
+});
+export const BDropdownItem = pure(_BDropdownItem);
+export const BDropdownDivider = pure(_BDropdownDivider);
+export const BDropdownHeader = pure(_BDropdownHeader);
+export const BDropdownForm = pure(_BDropdownForm);
+
+const PAGINATION_ALIGN = { left: 'start', right: 'end' };
+export const BPagination = pure({
+  name: 'BPagination',
+  inheritAttrs: false,
+  setup(_props, { attrs, slots }) {
+    return () => {
+      const { onChange, onInput, align, value, ...rest } = attrs;
+      const props = { ...rest };
+      if (align !== undefined) props.align = PAGINATION_ALIGN[align] || align;
+      // BV2 dibuja siempre al menos la página 1 (también con 0 filas); BVN no dibuja ninguna.
+      const rows = props.totalRows !== undefined ? props.totalRows : props['total-rows'];
+      if (!(Number(rows) >= 1)) { delete props['total-rows']; props.totalRows = 1; }
+      // BV2: `value`/`@input` (también con `:value` + `@input`, sin v-model) ↔ `modelValue`/`update:modelValue`.
+      if (value !== undefined && props.modelValue === undefined) props.modelValue = value;
+      if (onInput) props['onUpdate:modelValue'] = [...toList(rest['onUpdate:modelValue']), ...toList(onInput)];
+      // `change` de BV2: solo por clic del usuario. Se emite tras actualizar el v-model (BVN emite `page-click` antes de actualizarlo).
+      props.onPageClick = [...toList(rest.onPageClick), (_event, page) => nextTick(() => toList(onChange).forEach((f) => f(page)))];
+      return h(_BPagination, props, slots);
+    };
+  },
+});
+
+export { BLink };
+export const BListGroup = pure(_BListGroup);
+export const BListGroupItem = pure(_BListGroupItem);
+export const BImg = pure(_BImg);
+export const BAvatar = pure(_BAvatar);
+
 
 export { bootstrapPlugin };

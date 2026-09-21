@@ -56,9 +56,9 @@
 </template>
 
 <script>
-import { BFormGroup } from "@/platform/bootstrap";
+import { BFormGroup, BButton, BCard } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
-export default { components: { BFormGroup },
+export default { components: { BButton, BCard, BFormGroup },
   props: {
     employeeId: { type: [Number, String], required: true }
   },

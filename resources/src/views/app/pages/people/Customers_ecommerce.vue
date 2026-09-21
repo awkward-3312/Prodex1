@@ -149,12 +149,12 @@
 </template>
 
 <script>
-import { BModal } from "@/platform/bootstrap";
+import { BModal, BAlert, BButton, BCol, BRow } from "@/platform/bootstrap";
 import { modals, notifications, confirmDialog } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 
-export default { components: { BModal },
+export default { components: { BAlert, BButton, BCol, BRow, BModal },
   metaInfo: {
     title: "Online Store Accounts",
   },

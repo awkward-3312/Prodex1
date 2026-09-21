@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb page="Inventario por números de serie" :folder="$t('Reports')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -29,8 +29,9 @@
 </template>
 
 <script>
+import { BCard } from "@/platform/bootstrap";
 import NProgress from "nprogress";
-export default {
+export default { components: { BCard },
   metaInfo: { title: "Informe de inventario por números de serie" },
   data() { return { isLoading: true, serverParams: { page: 1, perPage: 10 }, limit: "10", search: "", totalRows: "", reports: [], warehouses: [], warehouse_id: "" }; },
   computed: {

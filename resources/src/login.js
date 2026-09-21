@@ -7,8 +7,8 @@ import Vue from "vue";
 patchBootstrapVueForCompat(Vue);
 import router, { setupRouterGuards } from "./router";
 import { installValidation } from './platform/validation';
-import BootstrapVue from 'bootstrap-vue/dist/bootstrap-vue.esm';
-Vue.use(BootstrapVue);
+import BootstrapVueRemaining from './platform/compat/bootstrap-vue-forms';
+Vue.use(BootstrapVueRemaining);
 
 Vue.component(
   "large-sidebar",

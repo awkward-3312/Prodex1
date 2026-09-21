@@ -1835,7 +1835,7 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip, BModal } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow } from "@/platform/bootstrap";
 import VueTagsInput from "@johmun/vue-tags-input";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
@@ -1963,7 +1963,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
     };
   },
 
-  components: { BModal,
+  components: { BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BModal,
     VueTagsInput,
     draggable
   },

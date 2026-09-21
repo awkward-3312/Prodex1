@@ -603,12 +603,12 @@
 
 
 <script>
-import { BModal } from "@/platform/bootstrap";
+import { BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 
-export default { components: { BModal },
+export default { components: { BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Nueva venta"
   },

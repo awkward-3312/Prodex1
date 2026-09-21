@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Stock_Inventory_Valuation')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="mb-3 text-center">
       <date-range-picker 
@@ -100,6 +100,7 @@
 </template>
 
 <script>
+import { BButton, BCard } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -115,7 +116,7 @@ import {
 
 export default {
   metaInfo: { title: "Stock Inventory Valuation Report" },
-  components: { DateRangePicker },
+  components: { BButton, BCard, DateRangePicker },
 
   data() {
     return {

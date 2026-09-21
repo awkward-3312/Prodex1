@@ -1026,7 +1026,7 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { BSpinner, BSidebar, vBToggle, BModal } from "@/platform/bootstrap";
+import { BSpinner, BSidebar, vBToggle, BModal, BAlert, BButton, BCard, BCol, BDropdown, BDropdownItem, BRow } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
@@ -1037,7 +1037,7 @@ import {
 } from "../../../../utils/priceFormat";
 
 export default { directives: { 'b-toggle': vBToggle },
-  components: { BModal, BSidebar, BSpinner },
+  components: { BAlert, BButton, BCard, BCol, BDropdown, BDropdownItem, BRow, BModal, BSidebar, BSpinner },
   metaInfo: {
     title: "Customer"
   },

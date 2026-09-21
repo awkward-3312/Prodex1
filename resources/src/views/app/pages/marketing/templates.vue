@@ -84,11 +84,11 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput, BFormTextarea, BFormInvalidFeedback, vBTooltip, BModal } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormTextarea, BFormInvalidFeedback, vBTooltip, BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { directives: { 'b-tooltip': vBTooltip }, components: { BModal, BFormGroup, BFormInput, BFormTextarea, BFormInvalidFeedback },
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BButton, BCard, BCol, BRow, BModal, BFormGroup, BFormInput, BFormTextarea, BFormInvalidFeedback },
   metaInfo: { title: "Templates" },
   data() {
     return {

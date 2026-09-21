@@ -2,7 +2,7 @@
 // propios `on: { change }`. En Vue 3 esa directiva instala un listener `change` que llama a `el[assignKey]`, y `assignKey` solo
 // existe si el vnode trae `onUpdate:modelValue`; sin él cada cambio lanza "el[assignKey] is not a function". Se añade un
 // asignador vacío a esos elementos (BootstrapVue ya actualiza su valor con su `change`). Desaparece al migrar BootstrapVue.
-import { BFormSelect, BFormCheckbox, BFormRadio, BFormTags, VBVisible, VBHover } from 'bootstrap-vue/dist/bootstrap-vue.esm.js';
+import { BFormSelect, BFormCheckbox, BFormRadio, VBVisible, VBHover } from 'bootstrap-vue/dist/bootstrap-vue.esm.js';
 
 const noop = () => {};
 
@@ -36,7 +36,7 @@ function addVue3DirectiveHooks(directive) {
 export function patchBootstrapVueForCompat(Vue) {
   if (!Vue || !String(Vue.version).startsWith('3')) return;
   [VBVisible, VBHover].forEach(addVue3DirectiveHooks);
-  [BFormSelect, BFormCheckbox, BFormRadio, BFormTags].forEach((Component) => {
+  [BFormSelect, BFormCheckbox, BFormRadio].forEach((Component) => {
     const options = Component && (Component.options || Component);
     if (!options || typeof options.render !== 'function' || options.render.__pxCompatPatched) return;
     const original = options.render;

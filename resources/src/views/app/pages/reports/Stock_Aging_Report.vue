@@ -2,13 +2,13 @@
   <div class="main-content">
     <breadcumb :page="$t('Stock_Aging_Report')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper print-table-only" v-if="!isLoading">
       <!-- Filters -->
       <div class="d-flex flex-wrap align-items-center mb-3">
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{$t('Dimension')}}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{$t('Dimension')}}:</label>
           <b-form-select
             v-model="dimension"
             :options="dimensionOptions"
@@ -18,8 +18,8 @@
           />
         </div>
 
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{$t('warehouse')}}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{$t('warehouse')}}:</label>
           <b-form-select
             v-model="warehouse_id"
             :options="warehouseOptions"
@@ -29,8 +29,8 @@
           />
         </div>
 
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{$t('Buckets')}}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{$t('Buckets')}}:</label>
           <b-form-input
             v-model="bucketsInput"
             size="sm"
@@ -43,8 +43,8 @@
           </small>
         </div>
 
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{$t('Brand')}}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{$t('Brand')}}:</label>
           <b-form-select
             v-model="brand_id"
             :options="brandOptions"
@@ -54,8 +54,8 @@
           />
         </div>
 
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{$t('Category')}}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{$t('Category')}}:</label>
           <b-form-select
             v-model="category_id"
             :options="categoryOptions"
@@ -108,10 +108,11 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 
-export default {
+export default { components: { BBadge, BButton, BCard },
   metaInfo: { title: "Stock Aging Report" },
   data() {
     return {

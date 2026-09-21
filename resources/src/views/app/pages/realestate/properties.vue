@@ -100,11 +100,11 @@
 </template>
 
 <script>
-import { vBTooltip } from "@/platform/bootstrap";
+import { vBTooltip, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { directives: { 'b-tooltip': vBTooltip },
+export default { components: { BButton, BCard, BCol, BRow }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: { title: "Properties" },
   data() {
     return {

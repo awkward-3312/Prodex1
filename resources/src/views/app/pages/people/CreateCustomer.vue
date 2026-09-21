@@ -297,11 +297,12 @@
 </template>
 
 <script>
+import { BButton, BCol, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import CustomFieldsForm from "../../../../components/CustomFieldsForm.vue";
 
 export default {
-  components: {
+  components: { BButton, BCol, BRow,
     CustomFieldsForm
   },
   metaInfo: {

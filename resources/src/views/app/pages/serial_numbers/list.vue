@@ -55,9 +55,10 @@
 </template>
 
 <script>
+import { BButton, BCard } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BButton, BCard },
   metaInfo: { title: "Serial Numbers" },
   data() {
     return {

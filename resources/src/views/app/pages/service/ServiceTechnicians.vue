@@ -95,8 +95,9 @@
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { confirmDialog } from "@/platform";
-export default {
+export default { components: { BButton, BCard, BCol, BRow },
   name: 'ServiceTechnicians',
   data() {
     return {

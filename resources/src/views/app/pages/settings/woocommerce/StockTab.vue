@@ -26,28 +26,28 @@
 
     <b-card class="action-card shadow-sm">
       <div class="d-flex flex-wrap align-items-center">
-        <b-button variant="primary" class="btn-action-primary mr-3 mb-2 d-inline-flex align-items-center" @click="syncStock" :disabled="syncing">
+        <b-button variant="primary" class="btn-action-primary me-3 mb-2 d-inline-flex align-items-center" @click="syncStock" :disabled="syncing">
           <template v-if="!syncing">
-            <lucide-icon class="mr-2" name="play" />
+            <lucide-icon class="me-2" name="play" />
             {{ $t('Sync_Stock_Now') }}
           </template>
           <template v-else>
-            <span class="mini-spinner mr-2"></span>
+            <span class="mini-spinner me-2"></span>
             {{ $t('Syncing') }}
           </template>
         </b-button>
-        <b-button v-if="syncing && token" variant="warning" size="sm" class="btn-action-warning mr-2 mb-2" :disabled="stopping" @click="stopStock">
-          <lucide-icon class="mr-1" name="square" />
+        <b-button v-if="syncing && token" variant="warning" size="sm" class="btn-action-warning me-2 mb-2" :disabled="stopping" @click="stopStock">
+          <lucide-icon class="me-1" name="square" />
           <span v-if="!stopping">{{ $t('Stop') || 'Stop' }}</span>
           <span v-else>{{ $t('Stopping') || 'Stopping' }}...</span>
         </b-button>
-        <b-button variant="danger" size="sm" class="btn-action-danger mr-2 mb-2" :disabled="resetting" @click="resetSync">
-          <lucide-icon class="mr-1" name="refresh-ccw" />
+        <b-button variant="danger" size="sm" class="btn-action-danger me-2 mb-2" :disabled="resetting" @click="resetSync">
+          <lucide-icon class="me-1" name="refresh-ccw" />
           <span v-if="!resetting">{{ $t('Reset_Sync_State') }}</span>
           <span v-else>{{ $t('Resetting') }}...</span>
         </b-button>
-        <b-button variant="outline-secondary" class="ml-auto mb-2 btn-action-refresh" size="sm" @click="$emit('refreshed')">
-          <lucide-icon class="mr-1" name="refresh-cw" />
+        <b-button variant="outline-secondary" class="ms-auto mb-2 btn-action-refresh" size="sm" @click="$emit('refreshed')">
+          <lucide-icon class="me-1" name="refresh-cw" />
           {{ $t('Refresh') }}
         </b-button>
       </div>
@@ -55,8 +55,8 @@
 
     <b-card v-if="syncing && !progress.finished" class="progress-card shadow-sm">
       <div class="progress-header mb-3">
-        <h6 class="mb-0 font-weight-bold">
-          <lucide-icon class="mr-2 text-primary" name="loader" />
+        <h6 class="mb-0 fw-bold">
+          <lucide-icon class="me-2 text-primary" name="loader" />
           {{ $t('Syncing_Products') }}
         </h6>
       </div>
@@ -68,10 +68,10 @@
       </b-progress>
       <div class="progress-details" v-if="progress.failed_products > 0">
         <div class="progress-detail-item">
-          <lucide-icon class="mr-2 text-danger" name="x" />
+          <lucide-icon class="me-2 text-danger" name="x" />
           <span class="text-danger">{{ $t('Errors') }}: {{ progress.failed_products }}</span>
-          <b-link @click="$emit('view-logs')" class="ml-2">
-            <lucide-icon class="mr-1" name="clipboard-list" />
+          <b-link @click="$emit('view-logs')" class="ms-2">
+            <lucide-icon class="me-1" name="clipboard-list" />
             {{ $t('View_Logs') }}
           </b-link>
         </div>
@@ -81,9 +81,10 @@
 </template>
 
 <script>
+import { BButton, BCard, BLink, BProgress } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import moment from 'moment';
-export default {
+export default { components: { BButton, BCard, BLink, BProgress },
   data() {
     return {
       syncing: false,

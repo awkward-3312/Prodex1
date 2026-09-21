@@ -220,11 +220,12 @@
 </template>
 
 <script>
+import { BAlert, BButton, BCard, BCol, BProgress, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from 'nprogress';
 // axios assumed globally available
 
-export default {
+export default { components: { BAlert, BButton, BCard, BCol, BProgress, BRow },
   name: 'ImportCustomersPage',
   data: function () {
     return {

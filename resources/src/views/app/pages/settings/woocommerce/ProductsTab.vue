@@ -4,7 +4,7 @@
       <!-- Stocky -> WooCommerce -->
       <b-tab active>
         <template #title>
-          <lucide-icon class="mr-2" name="arrow-right" />
+          <lucide-icon class="me-2" name="arrow-right" />
           Stocky → WooCommerce
         </template>
 
@@ -55,38 +55,38 @@
 
         <b-card class="action-card shadow-sm mb-4">
           <div class="d-flex flex-wrap align-items-center">
-            <b-button variant="info" class="btn-action-primary mr-3 mb-2 d-inline-flex align-items-center" @click="manualSync('push', syncOnlyUnsynced)" :disabled="isSyncActive">
+            <b-button variant="info" class="btn-action-primary me-3 mb-2 d-inline-flex align-items-center" @click="manualSync('push', syncOnlyUnsynced)" :disabled="isSyncActive">
               <template v-if="!isSyncActive">
-                <lucide-icon class="mr-2" name="play" />
+                <lucide-icon class="me-2" name="play" />
                 {{ $t('Run_Manual_Sync_Now') }}
               </template>
               <template v-else>
-                <span class="mini-spinner mr-2"></span>
+                <span class="mini-spinner me-2"></span>
                 {{ $t('Syncing') }}
               </template>
             </b-button>
-            <b-button v-if="showStopSync" variant="warning" size="sm" class="btn-action-warning mr-2 mb-2" :disabled="stopping" @click="stopSync">
-              <lucide-icon class="mr-1" name="square" />
+            <b-button v-if="showStopSync" variant="warning" size="sm" class="btn-action-warning me-2 mb-2" :disabled="stopping" @click="stopSync">
+              <lucide-icon class="me-1" name="square" />
               <span v-if="!stopping">Stop Sync</span>
               <span v-else>Stopping...</span>
             </b-button>
-            <b-button v-if="isSyncActive" variant="outline-secondary" size="sm" class="btn-action-refresh mr-2 mb-2" :disabled="refreshing" @click="fetchProgress">
-              <lucide-icon class="mr-1" name="refresh-cw" />
+            <b-button v-if="isSyncActive" variant="outline-secondary" size="sm" class="btn-action-refresh me-2 mb-2" :disabled="refreshing" @click="fetchProgress">
+              <lucide-icon class="me-1" name="refresh-cw" />
               <span v-if="!refreshing">{{ $t('Refresh') }}</span>
               <span v-else>{{ $t('Refresh') }}...</span>
             </b-button>
-            <b-button variant="danger" size="sm" class="btn-action-danger mr-2 mb-2" :disabled="resetting" @click="resetSync">
-              <lucide-icon class="mr-1" name="refresh-ccw" />
+            <b-button variant="danger" size="sm" class="btn-action-danger me-2 mb-2" :disabled="resetting" @click="resetSync">
+              <lucide-icon class="me-1" name="refresh-ccw" />
               <span v-if="!resetting">{{ $t('Reset_Sync_State') }}</span>
               <span v-else>{{ $t('Resetting') }}...</span>
             </b-button>
-            <b-button variant="secondary" size="sm" class="mr-2 mb-2" :disabled="fixingCategories" @click="fixProductCategories">
+            <b-button variant="secondary" size="sm" class="me-2 mb-2" :disabled="fixingCategories" @click="fixProductCategories">
               <template v-if="!fixingCategories">
-                <lucide-icon class="mr-1" name="folder" />
+                <lucide-icon class="me-1" name="folder" />
                 Fix Uncategorized Products
               </template>
               <template v-else>
-                <span class="mini-spinner mr-2"></span>
+                <span class="mini-spinner me-2"></span>
                 Fixing...
               </template>
             </b-button>
@@ -95,8 +95,8 @@
 
         <b-card v-if="isSyncActive && syncMode === 'push' && !progress.finished" class="progress-card shadow-sm">
           <div class="progress-header mb-3">
-            <h6 class="mb-0 font-weight-bold">
-              <lucide-icon class="mr-2 text-primary" name="loader" />
+            <h6 class="mb-0 fw-bold">
+              <lucide-icon class="me-2 text-primary" name="loader" />
               {{ $t('Syncing_Products') }}
             </h6>
           </div>
@@ -108,29 +108,29 @@
           </b-progress>
           <div class="progress-details">
             <div class="progress-detail-item mb-2" v-if="displayTotal > 0">
-              <lucide-icon class="mr-2 text-primary" name="info" />
+              <lucide-icon class="me-2 text-primary" name="info" />
               <span class="text-muted">Progress:</span>
-              <strong class="ml-1">{{ displayProcessed }}/{{ displayTotal }} products</strong>
+              <strong class="ms-1">{{ displayProcessed }}/{{ displayTotal }} products</strong>
             </div>
             <div class="progress-detail-item mb-2" v-if="progress.current_sku || progress.current_product_id">
-              <lucide-icon class="mr-2 text-primary" name="barcode" />
+              <lucide-icon class="me-2 text-primary" name="barcode" />
               <span class="text-muted">{{ $t('Product') }}:</span>
-              <strong class="ml-1">{{ progress.current_sku || `#${progress.current_product_id}` }}</strong>
+              <strong class="ms-1">{{ progress.current_sku || `#${progress.current_product_id}` }}</strong>
             </div>
             <div class="progress-detail-item mb-2" v-if="progress.stage">
-              <lucide-icon class="mr-2 text-info" name="info" />
+              <lucide-icon class="me-2 text-info" name="info" />
               <span class="text-muted">Stage:</span>
-              <strong class="ml-1">{{ progress.stage }}</strong>
+              <strong class="ms-1">{{ progress.stage }}</strong>
             </div>
             <div class="progress-detail-item mb-2" v-if="stopping">
-              <lucide-icon class="mr-2 text-warning" name="info" />
+              <lucide-icon class="me-2 text-warning" name="info" />
               <span class="text-warning">Stopping… current item will finish then the sync will stop.</span>
             </div>
             <div class="progress-detail-item" v-if="progress.failed_products > 0">
-              <lucide-icon class="mr-2 text-danger" name="x-circle" />
+              <lucide-icon class="me-2 text-danger" name="x-circle" />
               <span class="text-danger">{{ $t('Errors') }}: {{ progress.failed_products }}</span>
-              <b-link @click="$emit('view-logs')" class="ml-2">
-                <lucide-icon class="mr-1" name="clipboard-list" />
+              <b-link @click="$emit('view-logs')" class="ms-2">
+                <lucide-icon class="me-1" name="clipboard-list" />
                 {{ $t('View_Logs') }}
               </b-link>
             </div>
@@ -141,7 +141,7 @@
       <!-- WooCommerce -> Stocky -->
       <b-tab>
         <template #title>
-          <lucide-icon class="mr-2" name="arrow-left" />
+          <lucide-icon class="me-2" name="arrow-left" />
           WooCommerce → Stocky
         </template>
 
@@ -182,28 +182,28 @@
 
         <b-card class="action-card shadow-sm mb-4">
           <div class="d-flex flex-wrap align-items-center">
-            <b-button variant="success" class="btn-action-secondary mr-3 mb-2 d-inline-flex align-items-center" @click="manualSync('pull', false)" :disabled="isSyncActive">
+            <b-button variant="success" class="btn-action-secondary me-3 mb-2 d-inline-flex align-items-center" @click="manualSync('pull', false)" :disabled="isSyncActive">
               <template v-if="!isSyncActive">
-                <lucide-icon class="mr-2" name="play" />
+                <lucide-icon class="me-2" name="play" />
                 Sync Products from WooCommerce
               </template>
               <template v-else>
-                <span class="mini-spinner mr-2"></span>
+                <span class="mini-spinner me-2"></span>
                 {{ $t('Syncing') }}
               </template>
             </b-button>
-            <b-button v-if="showStopSync" variant="warning" size="sm" class="btn-action-warning mr-2 mb-2" :disabled="stopping" @click="stopSync">
-              <lucide-icon class="mr-1" name="square" />
+            <b-button v-if="showStopSync" variant="warning" size="sm" class="btn-action-warning me-2 mb-2" :disabled="stopping" @click="stopSync">
+              <lucide-icon class="me-1" name="square" />
               <span v-if="!stopping">Stop Sync</span>
               <span v-else>Stopping...</span>
             </b-button>
-            <b-button v-if="isSyncActive" variant="outline-secondary" size="sm" class="btn-action-refresh mr-2 mb-2" :disabled="refreshing" @click="fetchProgress">
-              <lucide-icon class="mr-1" name="refresh-cw" />
+            <b-button v-if="isSyncActive" variant="outline-secondary" size="sm" class="btn-action-refresh me-2 mb-2" :disabled="refreshing" @click="fetchProgress">
+              <lucide-icon class="me-1" name="refresh-cw" />
               <span v-if="!refreshing">{{ $t('Refresh') }}</span>
               <span v-else>{{ $t('Refresh') }}...</span>
             </b-button>
-            <b-button variant="danger" size="sm" class="btn-action-danger mr-2 mb-2" :disabled="resetting" @click="resetSync">
-              <lucide-icon class="mr-1" name="refresh-ccw" />
+            <b-button variant="danger" size="sm" class="btn-action-danger me-2 mb-2" :disabled="resetting" @click="resetSync">
+              <lucide-icon class="me-1" name="refresh-ccw" />
               <span v-if="!resetting">{{ $t('Reset_Sync_State') }}</span>
               <span v-else>{{ $t('Resetting') }}...</span>
             </b-button>
@@ -212,37 +212,37 @@
           <hr class="my-3" />
 
           <div class="text-muted small mb-2">
-            <lucide-icon class="mr-1" name="alert-triangle" />
+            <lucide-icon class="me-1" name="alert-triangle" />
             Order import troubleshooting
           </div>
           <div class="d-flex flex-wrap align-items-center">
-            <b-button variant="primary" size="sm" class="mr-2 mb-2" :disabled="pullingOrders || isSyncActive" @click="pullOrders">
+            <b-button variant="primary" size="sm" class="me-2 mb-2" :disabled="pullingOrders || isSyncActive" @click="pullOrders">
               <template v-if="!pullingOrders">
-                <lucide-icon class="mr-1" name="shopping-cart" />
+                <lucide-icon class="me-1" name="shopping-cart" />
                 Sync Orders from WooCommerce
               </template>
               <template v-else>
-                <span class="mini-spinner mr-2"></span>
+                <span class="mini-spinner me-2"></span>
                 Pulling orders...
               </template>
             </b-button>
-            <b-button variant="info" size="sm" class="mr-2 mb-2" :disabled="autoLinking || isSyncActive" @click="autoLinkBySku">
+            <b-button variant="info" size="sm" class="me-2 mb-2" :disabled="autoLinking || isSyncActive" @click="autoLinkBySku">
               <template v-if="!autoLinking">
-                <lucide-icon class="mr-1" name="link" />
+                <lucide-icon class="me-1" name="link" />
                 Auto-Link Products by SKU
               </template>
               <template v-else>
-                <span class="mini-spinner mr-2"></span>
+                <span class="mini-spinner me-2"></span>
                 Linking...
               </template>
             </b-button>
-            <b-button variant="outline-secondary" size="sm" class="mr-2 mb-2" :disabled="loadingUnmapped" @click="openUnmappedModal">
+            <b-button variant="outline-secondary" size="sm" class="me-2 mb-2" :disabled="loadingUnmapped" @click="openUnmappedModal">
               <template v-if="!loadingUnmapped">
-                <lucide-icon class="mr-1" name="clipboard-list" />
+                <lucide-icon class="me-1" name="clipboard-list" />
                 View Unmapped Items
               </template>
               <template v-else>
-                <span class="mini-spinner mr-2"></span>
+                <span class="mini-spinner me-2"></span>
                 Loading...
               </template>
             </b-button>
@@ -251,7 +251,7 @@
 
         <b-modal v-model="unmappedModal" size="xl" title="Unmapped Items Report" hide-footer scrollable>
           <div v-if="!unmappedReport" class="text-center text-muted py-4">
-            <span class="mini-spinner mr-2"></span> Loading...
+            <span class="mini-spinner me-2"></span> Loading...
           </div>
           <div v-else>
             <p class="text-muted small">
@@ -259,10 +259,10 @@
               Use <em>Auto-Link Products by SKU</em> first to fix the easy ones, then sync products from WooCommerce to import what's still missing.
             </p>
 
-            <h6 class="mt-3 font-weight-bold">
-              <lucide-icon class="mr-1" name="x-circle" />
+            <h6 class="mt-3 fw-bold">
+              <lucide-icon class="me-1" name="x-circle" />
               Failed order line items
-              <b-badge variant="danger" class="ml-1">{{ unmappedReport.order_failures.length }}</b-badge>
+              <b-badge variant="danger" class="ms-1">{{ unmappedReport.order_failures.length }}</b-badge>
             </h6>
             <div v-if="!unmappedReport.order_failures.length" class="text-muted small mb-3">No recent failures.</div>
             <b-table v-else small striped responsive
@@ -271,10 +271,10 @@
               class="mb-3"
             />
 
-            <h6 class="mt-4 font-weight-bold">
-              <lucide-icon class="mr-1" name="package" />
+            <h6 class="mt-4 fw-bold">
+              <lucide-icon class="me-1" name="package" />
               Stocky products without WooCommerce link
-              <b-badge variant="warning" class="ml-1">{{ unmappedReport.unlinked_products.total }}</b-badge>
+              <b-badge variant="warning" class="ms-1">{{ unmappedReport.unlinked_products.total }}</b-badge>
             </h6>
             <div class="text-muted small">Showing latest {{ unmappedReport.unlinked_products.sample.length }} of {{ unmappedReport.unlinked_products.total }}.</div>
             <b-table v-if="unmappedReport.unlinked_products.sample.length" small striped responsive
@@ -283,10 +283,10 @@
               class="mb-3"
             />
 
-            <h6 class="mt-4 font-weight-bold">
-              <lucide-icon class="mr-1" name="layers" />
+            <h6 class="mt-4 fw-bold">
+              <lucide-icon class="me-1" name="layers" />
               Stocky variants without WooCommerce link
-              <b-badge variant="warning" class="ml-1">{{ unmappedReport.unlinked_variants.total }}</b-badge>
+              <b-badge variant="warning" class="ms-1">{{ unmappedReport.unlinked_variants.total }}</b-badge>
             </h6>
             <div class="text-muted small">Showing latest {{ unmappedReport.unlinked_variants.sample.length }} of {{ unmappedReport.unlinked_variants.total }}.</div>
             <b-table v-if="unmappedReport.unlinked_variants.sample.length" small striped responsive
@@ -296,12 +296,12 @@
             />
 
             <div class="d-flex justify-content-end mt-3">
-              <b-button variant="outline-secondary" size="sm" class="mr-2" @click="loadUnmappedReport">
-                <lucide-icon class="mr-1" name="refresh-cw" />
+              <b-button variant="outline-secondary" size="sm" class="me-2" @click="loadUnmappedReport">
+                <lucide-icon class="me-1" name="refresh-cw" />
                 Refresh
               </b-button>
               <b-button variant="info" size="sm" :disabled="autoLinking" @click="autoLinkBySku">
-                <lucide-icon class="mr-1" name="link" />
+                <lucide-icon class="me-1" name="link" />
                 Auto-Link by SKU
               </b-button>
             </div>
@@ -310,8 +310,8 @@
 
         <b-card v-if="isSyncActive && syncMode === 'pull' && !progress.finished" class="progress-card shadow-sm">
           <div class="progress-header mb-3">
-            <h6 class="mb-0 font-weight-bold">
-              <lucide-icon class="mr-2 text-primary" name="loader" />
+            <h6 class="mb-0 fw-bold">
+              <lucide-icon class="me-2 text-primary" name="loader" />
               Syncing Products (Woo → Stocky)
             </h6>
           </div>
@@ -323,24 +323,24 @@
           </b-progress>
           <div class="progress-details">
             <div class="progress-detail-item mb-2" v-if="progress.current_sku || progress.current_woocommerce_id">
-              <lucide-icon class="mr-2 text-primary" name="barcode" />
+              <lucide-icon class="me-2 text-primary" name="barcode" />
               <span class="text-muted">{{ $t('Product') }}:</span>
-              <strong class="ml-1">{{ progress.current_sku || `#${progress.current_woocommerce_id}` }}</strong>
+              <strong class="ms-1">{{ progress.current_sku || `#${progress.current_woocommerce_id}` }}</strong>
             </div>
             <div class="progress-detail-item mb-2" v-if="progress.stage">
-              <lucide-icon class="mr-2 text-info" name="info" />
+              <lucide-icon class="me-2 text-info" name="info" />
               <span class="text-muted">Stage:</span>
-              <strong class="ml-1">{{ progress.stage }}</strong>
+              <strong class="ms-1">{{ progress.stage }}</strong>
             </div>
             <div class="progress-detail-item mb-2" v-if="stopping">
-              <lucide-icon class="mr-2 text-warning" name="info" />
+              <lucide-icon class="me-2 text-warning" name="info" />
               <span class="text-warning">Stopping… current item will finish then the sync will stop.</span>
             </div>
             <div class="progress-detail-item" v-if="progress.failed_products > 0">
-              <lucide-icon class="mr-2 text-danger" name="x-circle" />
+              <lucide-icon class="me-2 text-danger" name="x-circle" />
               <span class="text-danger">{{ $t('Errors') }}: {{ progress.failed_products }}</span>
-              <b-link @click="$emit('view-logs')" class="ml-2">
-                <lucide-icon class="mr-1" name="clipboard-list" />
+              <b-link @click="$emit('view-logs')" class="ms-2">
+                <lucide-icon class="me-1" name="clipboard-list" />
                 {{ $t('View_Logs') }}
               </b-link>
             </div>
@@ -352,11 +352,11 @@
 </template>
 
 <script>
-import { BModal, BTable } from "@/platform/bootstrap";
+import { BModal, BTable, BBadge, BButton, BCard, BLink, BProgress, BTab, BTabs } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import moment from 'moment';
 
-export default { components: { BTable, BModal },
+export default { components: { BBadge, BButton, BCard, BLink, BProgress, BTab, BTabs, BTable, BModal },
   data() {
     return {
       activeMiniTab: 0,

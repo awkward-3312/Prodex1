@@ -576,6 +576,7 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import moment from "moment";
@@ -604,7 +605,7 @@ export default {
   metaInfo: {
     title: "AI Reports"
   },
-  components: {
+  components: { BBadge, BButton, BCard, BCol, BRow,
     StatTile,
     apexchart: VueApexCharts
   },

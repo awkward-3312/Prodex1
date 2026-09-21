@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('ListTransfers')" :folder="$t('StockTransfers')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <vue-good-table
         mode="remote"
@@ -60,7 +60,7 @@
             <span class="ul-btn__icon">
               <lucide-icon name="plus" />
             </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
+            <span class="ul-btn__text ms-1">{{$t('Add')}}</span>
           </router-link>
         </div></template>
 
@@ -89,7 +89,7 @@
                   title="PDF"
                   @click="download_transfer_pdf(props.row, props.row.id)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="file-text" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="file-text" />
                   {{$t('DownloadPdf')}}
                 </b-dropdown-item>
 
@@ -97,7 +97,7 @@
                   title="View"
                   :to="{ name: 'detail_transfer', params: { id: props.row.id } }"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="eye" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="eye" />
                   {{$t('View')}}
                 </b-dropdown-item>
 
@@ -106,7 +106,7 @@
                   title="Edit"
                   :to="{ name:'edit_transfer', params: { id: props.row.id } }"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="pencil" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="pencil" />
                   {{$t('Edit')}}
                 </b-dropdown-item>
 
@@ -115,7 +115,7 @@
                   title="Approve"
                   @click="Approve_Transfer(props.row.id)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="check" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="check" />
                   {{$t('Approve')}}
                 </b-dropdown-item>
 
@@ -124,7 +124,7 @@
                   title="Delete"
                   @click="Remove_Transfer(props.row.id)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="x" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="x" />
                   {{$t('Delete')}}
                 </b-dropdown-item>
               </b-dropdown>
@@ -236,7 +236,7 @@
 </template>
 
 <script>
-import { BSidebar, vBToggle } from "@/platform/bootstrap";
+import { BSidebar, vBToggle, BButton, BCol, BDropdown, BDropdownItem, BRow } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import NProgress from "nprogress";
@@ -244,7 +244,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Util from '../../../../utils';
 
-export default { directives: { 'b-toggle': vBToggle }, components: { BSidebar },
+export default { directives: { 'b-toggle': vBToggle }, components: { BButton, BCol, BDropdown, BDropdownItem, BRow, BSidebar },
   metaInfo: {
     title: "Transfer"
   },

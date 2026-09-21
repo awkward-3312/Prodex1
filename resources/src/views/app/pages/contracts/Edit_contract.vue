@@ -150,12 +150,12 @@
 
 <script>
 import { notifications } from "@/platform";
-import { BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import RichTextEditor from "@/components/RichTextEditor.vue";
 
 export default {
   metaInfo: { title: "Edit Contract" },
-  components: { BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback,
+  components: { BButton, BCard, BCol, BRow, BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback,
     RichTextEditor,
   },
   data() {

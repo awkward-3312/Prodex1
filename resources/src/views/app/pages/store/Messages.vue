@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Messages')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="wrapper">
 
@@ -63,7 +63,7 @@
             <a
               v-b-tooltip.hover
               :title="$t('Delete')"
-              class="ml-2"
+              class="ms-2"
               @click="remove(props.row.id)"
             >
               <lucide-icon class="text-20 text-danger" name="x" />
@@ -124,10 +124,10 @@
 </template>
 
 <script>
-import { vBTooltip, BModal } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BBadge, BButton, BCard } from "@/platform/bootstrap";
 import { modals } from "@/platform";
 
-export default { components: { BModal }, directives: { 'b-tooltip': vBTooltip },
+export default { components: { BBadge, BButton, BCard, BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Store Messages"
   },

@@ -256,10 +256,10 @@ const ListToolbar = {
   },
   template: `<div class="toolbar">
     <b-form-input class="me-2" :value="value" :placeholder="placeholder" @input="v => $emit('input', v)" @keyup="e => { if (e.key === 'Enter') emitSearch() }" />
-    <b-button class="me-2 mt-2" size="sm" variant="primary" @click="emitSearch">{{ $parent.$t('Search') }}</b-button>
-    <b-button class="me-2 mt-2" size="sm" variant="outline-secondary" @click="emitReset">{{ $parent.$t('Reset') }}</b-button>
+    <b-button class="me-2 mt-2" size="sm" variant="primary" @click="emitSearch">{{ $t('Search') }}</b-button>
+    <b-button class="me-2 mt-2" size="sm" variant="outline-secondary" @click="emitReset">{{ $t('Reset') }}</b-button>
     <div class="ms-auto d-flex align-items-center">
-      <span class="me-2 small text-muted">{{ $parent.$t('Per_page') }}</span>
+      <span class="me-2 small text-muted">{{ $t('Per_page') }}</span>
       <b-form-select class="w-auto" :value="limit" :options="perPageOptions" size="sm" @input="v => $emit('update:limit', v)" />
     </div>
   </div>`
@@ -276,12 +276,15 @@ const Pager = {
     totalPages() { return Math.max(1, Math.ceil((this.totalRows||0) / (this.limit||10))) }
   },
   template: `<div class="pager">
-    <small class="text-muted">{{ $parent.$t('Page') }} {{ page }} {{ $parent.$t('Of') }} {{ totalPages }}</small>
+    <small class="text-muted">{{ $t('Page') }} {{ page }} {{ $t('Of') }} {{ totalPages }}</small>
     <b-pagination :value="page" :total-rows="totalRows" :per-page="limit" size="sm" align="right" @input="v => { $emit('update:page', v); onInput() }" />
   </div>`
 }
 
-import { BSpinner, BTable } from "@/platform/bootstrap";
+import { BSpinner, BTable, BBadge, BButton, BCard, BCol, BRow, BTab, BTabs, BPagination } from "@/platform/bootstrap";
+// Los dos componentes en línea (plantilla en cadena) usan b-button / b-pagination: se registran los wrappers de BVN (no hay registro global de BV2 para ellos).
+ListToolbar.components = { BButton };
+Pager.components = { BPagination };
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting
@@ -289,7 +292,7 @@ import {
 
 export default {
   name: 'CustomerLedgerRefactored',
-  components: { BTable, BSpinner, ListToolbar, Pager },
+  components: { BBadge, BButton, BCard, BCol, BRow, BTab, BTabs, BTable, BSpinner, BPagination, ListToolbar, Pager },
   props: { id: [String, Number] },
   metaInfo () { return { title: this.$t('Customer_Ledger') } },
   data(){

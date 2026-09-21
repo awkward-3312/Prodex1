@@ -1,0 +1,1063 @@
+{
+ "files": 73,
+ "tables": 86,
+ "features": {
+  "pagination": 85,
+  "row style class": 3,
+  "slot #table-row": 80,
+  "mode remote (server)": 74,
+  "search": 73,
+  "sort (@on-sort-change)": 56,
+  "page change (@on-page-change)": 74,
+  "per page change (@on-per-page-change)": 74,
+  "slot #table-actions": 48,
+  "selection (select-options)": 9,
+  "slot #selected-row-actions": 10,
+  "slot #table-actions-bottom": 2,
+  "grouping (group-options)": 16,
+  "sort-options": 2,
+  "rtl": 2,
+  "slot #emptystate": 1
+ },
+ "list": [
+  {
+   "file": "views/app/dashboard/dashboard.vue",
+   "features": [
+    "pagination",
+    "row style class",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/dashboard/dashboard.vue",
+   "features": [
+    "pagination",
+    "row style class",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/dashboard/dashboard.vue",
+   "features": [
+    "pagination",
+    "row style class",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/adjustment/index_Adjustment.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/assets/due_assets.vue",
+   "features": [
+    "pagination",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/assets/index_asset.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/assets/index_asset_category.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/bookings/index_booking.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/contracts/index_contract.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/damage/index_Damage.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/hrm/employees/employee_details.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/hrm/employees/employee_details.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/hrm/employees/index_employee.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "selection (select-options)",
+    "slot #selected-row-actions",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/hrm/payrolls.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #selected-row-actions",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/marketing/campaigns.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "selection (select-options)",
+    "slot #selected-row-actions",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/marketing/segments.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/marketing/templates.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/meeting/meetings.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "selection (select-options)",
+    "slot #selected-row-actions",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/people/Customers_ecommerce.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/people/Customers_without_ecommerce.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/people/customers.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "selection (select-options)",
+    "slot #selected-row-actions",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/people/providers.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "selection (select-options)",
+    "slot #selected-row-actions",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/products/batches.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/products/count_stock.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/products/index_products.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "selection (select-options)",
+    "slot #selected-row-actions",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/projects/index_project.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/realestate/categories.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/realestate/inquiries.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "selection (select-options)",
+    "slot #selected-row-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/realestate/properties.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "selection (select-options)",
+    "slot #selected-row-actions",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/AI_Reports.vue",
+   "features": [
+    "pagination",
+    "search",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/AI_Reports.vue",
+   "features": [
+    "pagination",
+    "search",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Batch_Register_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Checklist_Completion_Report.vue",
+   "features": [
+    "pagination",
+    "slot #table-actions"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Customer_Loyalty_Points_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-actions-bottom"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Dead_Stock_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Draft_Invoices_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row",
+    "slot #table-actions-bottom"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Inactive_Customers_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Negative_Stock_Report.vue",
+   "features": [
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Serial_Available_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Serial_Inventory_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Serial_Movement_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Serial_Sold_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Service_Jobs_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Stock_Adjustment_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Stock_Aging_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Stock_Transfer_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Warranty_Guarantee_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/Zero_Sales_Products_Report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/internal_location_report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/inventory_valuation_summary.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/payments/payments_purchases_returns.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-row",
+    "slot #table-actions"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/payments/payments_sales_returns.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-row",
+    "slot #table-actions"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/report_error_logs.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/stock_inventory_valuation.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/stock_report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/warehouse_report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/warehouse_report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/warehouse_report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/warehouse_report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/warehouse_report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/reports/warehouse_report.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "grouping (group-options)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/serial_numbers/list.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/service/CustomerMaintenanceHistory.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/service/ServiceChecklistCategories.vue",
+   "features": [
+    "pagination",
+    "search",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/service/ServiceChecklists.vue",
+   "features": [
+    "pagination",
+    "search",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/service/ServiceJobsList.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/service/ServiceTechnicians.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/settings/system_settings.vue",
+   "features": [
+    "mode remote (server)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/settings/system_settings.vue",
+   "features": [
+    "pagination",
+    "search",
+    "sort-options",
+    "rtl",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/settings/system_settings.vue",
+   "features": [
+    "pagination",
+    "search",
+    "sort-options",
+    "rtl",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/settings/warehouse_locations.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/settings/warehouses.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/settings/woocommerce/CustomersTab.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/settings/woocommerce/CustomersTab.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/settings/woocommerce/CustomersTab.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/settings/woocommerce/OrdersTab.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/store/Banners.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/store/Messages.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/store/Orders.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/store/Subscribers.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/subscription_product/subscription_product_list.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/support/TicketsList.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #emptystate",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/tasks/index_task.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/transfers/index_transfer.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "search",
+    "sort (@on-sort-change)",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "selection (select-options)",
+    "slot #selected-row-actions",
+    "slot #table-actions",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/whatsapp/Logs.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  },
+  {
+   "file": "views/app/pages/whatsapp/templates/index.vue",
+   "features": [
+    "mode remote (server)",
+    "pagination",
+    "page change (@on-page-change)",
+    "per page change (@on-per-page-change)",
+    "slot #table-row"
+   ]
+  }
+ ]
+}

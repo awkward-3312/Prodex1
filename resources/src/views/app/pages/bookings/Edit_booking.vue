@@ -204,10 +204,11 @@
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BButton, BCard, BCol, BRow },
   metaInfo: {
     title: "Edit Booking"
   },

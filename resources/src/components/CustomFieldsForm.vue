@@ -7,7 +7,7 @@
       <b-row>
         <b-col md="12" class="mb-3">
           <h6 class="text-primary">
-            <lucide-icon class="mr-2" name="database-zap" />
+            <lucide-icon class="me-2" name="database-zap" />
             {{ $t('CustomFields') }}
           </h6>
           <hr />
@@ -93,7 +93,8 @@
 </template>
 
 <script>
-export default {
+import { BCol, BRow } from "@/platform/bootstrap";
+export default { components: { BCol, BRow },
   name: "CustomFieldsForm",
   props: {
     entityType: {

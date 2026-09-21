@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Invite_Codes')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="wrapper">
       <b-card class="shadow-sm mb-3" no-body>
@@ -16,8 +16,8 @@
             </b-form-select>
           </div>
           <div class="d-flex" style="gap:.5rem">
-            <b-button size="sm" variant="outline-primary" @click="showBatchModal = true"><lucide-icon class="mr-1" name="plus" />{{ $t('Generate_Batch') }}</b-button>
-            <b-button size="sm" variant="primary" @click="openCreate"><lucide-icon class="mr-1" name="plus" />{{ $t('Create_Code') }}</b-button>
+            <b-button size="sm" variant="outline-primary" @click="showBatchModal = true"><lucide-icon class="me-1" name="plus" />{{ $t('Generate_Batch') }}</b-button>
+            <b-button size="sm" variant="primary" @click="openCreate"><lucide-icon class="me-1" name="plus" />{{ $t('Create_Code') }}</b-button>
           </div>
         </div>
       </b-card>
@@ -25,14 +25,14 @@
       <b-card class="shadow-sm" no-body>
         <div class="table-responsive">
           <table class="table table-hover mb-0 invite-codes-table">
-            <thead><tr><th>{{ $t('Code') }}</th><th>{{ $t('Status') }}</th><th>{{ $t('Uses') }}</th><th>{{ $t('Max_Uses') }}</th><th>{{ $t('Expires') }}</th><th>{{ $t('Created') }}</th><th class="text-right">{{ $t('Actions') }}</th></tr></thead>
+            <thead><tr><th>{{ $t('Code') }}</th><th>{{ $t('Status') }}</th><th>{{ $t('Uses') }}</th><th>{{ $t('Max_Uses') }}</th><th>{{ $t('Expires') }}</th><th>{{ $t('Created') }}</th><th class="text-end">{{ $t('Actions') }}</th></tr></thead>
             <tbody>
               <tr v-if="!codes.length"><td colspan="7" class="text-center text-muted py-4">{{ $t('No_invite_codes_yet') }}</td></tr>
               <tr v-for="code in codes" :key="code.id">
-                <td><code class="text-dark font-weight-bold">{{ code.code }}</code><b-button size="sm" variant="link" class="p-0 ml-1" @click="copyCode(code.code)" :title="$t('Copy')"><lucide-icon class="text-muted" name="copy" /></b-button></td>
+                <td><code class="text-dark fw-bold">{{ code.code }}</code><b-button size="sm" variant="link" class="p-0 ms-1" @click="copyCode(code.code)" :title="$t('Copy')"><lucide-icon class="text-muted" name="copy" /></b-button></td>
                 <td><b-badge :variant="codeStatusVariant(code)" pill>{{ codeStatusLabel(code) }}</b-badge></td>
                 <td>{{ code.times_used }}</td><td>{{ code.max_uses != null ? code.max_uses : '∞' }}</td><td>{{ code.expires_at ? formatDate(code.expires_at) : '—' }}</td><td>{{ formatDate(code.created_at) }}</td>
-                <td class="text-right"><b-button size="sm" variant="outline-secondary" class="mr-1" @click="openEdit(code)" title="Editar"><lucide-icon name="pencil" /></b-button><b-button size="sm" variant="outline-danger" @click="deleteCode(code)" title="Eliminar"><lucide-icon name="x" /></b-button></td>
+                <td class="text-end"><b-button size="sm" variant="outline-secondary" class="me-1" @click="openEdit(code)" title="Editar"><lucide-icon name="pencil" /></b-button><b-button size="sm" variant="outline-danger" @click="deleteCode(code)" title="Eliminar"><lucide-icon name="x" /></b-button></td>
               </tr>
             </tbody>
           </table>
@@ -49,7 +49,7 @@
           <b-form-group :label="$t('Max_Uses')" :description="$t('Leave_blank_for_unlimited')"><b-form-input v-model.number="codeForm.max_uses" type="number" min="1" placeholder="∞"/></b-form-group>
           <b-form-group :label="$t('Expires_At')"><b-form-input v-model="codeForm.expires_at" type="datetime-local"/></b-form-group>
           <b-form-group :label="$t('Active')"><b-form-checkbox v-model="codeForm.is_active" switch>{{ codeForm.is_active ? $t('Yes') : $t('No') }}</b-form-checkbox></b-form-group>
-          <div class="d-flex justify-content-end" style="gap:.5rem"><b-button variant="light" @click="showModal = false">{{ $t('Cancel') }}</b-button><b-button variant="primary" type="submit" :disabled="saving"><span v-if="saving" class="spinner-border spinner-border-sm mr-1"></span>{{ editingCode ? $t('Update') : $t('Create') }}</b-button></div>
+          <div class="d-flex justify-content-end" style="gap:.5rem"><b-button variant="light" @click="showModal = false">{{ $t('Cancel') }}</b-button><b-button variant="primary" type="submit" :disabled="saving"><span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>{{ editingCode ? $t('Update') : $t('Create') }}</b-button></div>
         </b-form>
       </b-modal>
 
@@ -58,7 +58,7 @@
           <b-form-group :label="$t('Number_of_codes')"><b-form-input v-model.number="batchForm.count" type="number" min="1" max="50" required/></b-form-group>
           <b-form-group :label="$t('Max_Uses_Per_Code')" :description="$t('Leave_blank_for_unlimited')"><b-form-input v-model.number="batchForm.max_uses" type="number" min="1" placeholder="∞"/></b-form-group>
           <b-form-group :label="$t('Expires_At')"><b-form-input v-model="batchForm.expires_at" type="datetime-local"/></b-form-group>
-          <div class="d-flex justify-content-end" style="gap:.5rem"><b-button variant="light" @click="showBatchModal = false">{{ $t('Cancel') }}</b-button><b-button variant="primary" type="submit" :disabled="saving"><span v-if="saving" class="spinner-border spinner-border-sm mr-1"></span>{{ $t('Generate') }}</b-button></div>
+          <div class="d-flex justify-content-end" style="gap:.5rem"><b-button variant="light" @click="showBatchModal = false">{{ $t('Cancel') }}</b-button><b-button variant="primary" type="submit" :disabled="saving"><span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>{{ $t('Generate') }}</b-button></div>
         </b-form>
       </b-modal>
     </div>
@@ -66,9 +66,9 @@
 </template>
 
 <script>
-import { BModal } from "@/platform/bootstrap";
+import { BModal, BBadge, BButton, BCard } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default { components: { BModal },
+export default { components: { BBadge, BButton, BCard, BModal },
   metaInfo: { title: 'Códigos de invitación' },
   data () { return { isLoading: true, saving: false, search: '', filterStatus: '', codes: [], pagination: { current_page: 1, last_page: 1 }, showModal: false, showBatchModal: false, editingCode: null, codeForm: { code: '', max_uses: null, expires_at: '', is_active: true }, batchForm: { count: 5, max_uses: null, expires_at: '' }, debounceTimer: null } },
   mounted () { this.fetchCodes() },

@@ -115,8 +115,9 @@
 </template>
 
 <script>
+import { BButton, BCol, BRow } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
-export default {
+export default { components: { BButton, BCol, BRow },
   name: 'ServiceJobsList',
   data() {
     return {

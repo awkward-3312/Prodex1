@@ -166,11 +166,11 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default { components: { BFormGroup, BFormInput },
+export default { components: { BButton, BCard, BCol, BRow, BFormGroup, BFormInput },
   metaInfo: { title: "Marketing Reports" },
   data() {
     return {

@@ -1,0 +1,184 @@
+[
+ {
+  "name": "dashboard",
+  "url": "/app/dashboard"
+ },
+ {
+  "name": "dashboard-langdd",
+  "url": "/app/dashboard",
+  "click": "css:#lang-dd__BV_toggle_, button#lang-dd",
+  "wait": 700,
+  "viewportOnly": true
+ },
+ {
+  "name": "sistema-general",
+  "url": "/app/settings/System_settings"
+ },
+ {
+  "name": "producto-nuevo",
+  "url": "/app/products/store-classic"
+ },
+ {
+  "name": "producto-editar",
+  "url": "/app/products/edit-classic/1"
+ },
+ {
+  "name": "productos-lista",
+  "url": "/app/products/list-classic"
+ },
+ {
+  "name": "empleado-detalle",
+  "url": "/app/hrm/employees/detail/1"
+ },
+ {
+  "name": "empleado-editar",
+  "url": "/app/hrm/employees/edit/1"
+ },
+ {
+  "name": "empleado-nuevo",
+  "url": "/app/hrm/employees/store"
+ },
+ {
+  "name": "clientes",
+  "url": "/app/People/Customers"
+ },
+ {
+  "name": "clientes-dropdown",
+  "url": "/app/People/Customers",
+  "click": "css:table .dropdown-toggle, .vgt-table .dropdown-toggle, .b-dropdown .btn",
+  "wait": 700,
+  "viewportOnly": true
+ },
+ {
+  "name": "cliente-detalle",
+  "url": "/app/People/customers/1/details"
+ },
+ {
+  "name": "cliente-detalle-pagos",
+  "url": "/app/People/customers/1/details",
+  "click": "css:.nav-tabs li:nth-child(2) a, .nav-tabs li:nth-child(2) button"
+ },
+ {
+  "name": "cliente-editar",
+  "url": "/app/People/Customers/edit/1"
+ },
+ {
+  "name": "cliente-nuevo",
+  "url": "/app/People/Customers/create"
+ },
+ {
+  "name": "proveedores",
+  "url": "/app/People/Suppliers"
+ },
+ {
+  "name": "traslado-nuevo",
+  "url": "/app/transfers/store-classic"
+ },
+ {
+  "name": "traslado-editar",
+  "url": "/app/transfers/edit-classic/1"
+ },
+ {
+  "name": "traslados-lista",
+  "url": "/app/transfers/list-classic"
+ },
+ {
+  "name": "ajuste-nuevo",
+  "url": "/app/adjustments/store-classic"
+ },
+ {
+  "name": "ajustes-lista",
+  "url": "/app/adjustments/list"
+ },
+ {
+  "name": "merma-nueva",
+  "url": "/app/damages/store-classic"
+ },
+ {
+  "name": "mermas-lista",
+  "url": "/app/damages/list-classic"
+ },
+ {
+  "name": "pos",
+  "url": "/app/pos"
+ },
+ {
+  "name": "pos-langdd",
+  "url": "/app/pos",
+  "click": "css:#lang-dd__BV_toggle_, button#lang-dd",
+  "wait": 700,
+  "viewportOnly": true
+ },
+ {
+  "name": "sucursales",
+  "url": "/app/organization/branches"
+ },
+ {
+  "name": "planillas",
+  "url": "/app/hrm/payrolls"
+ },
+ {
+  "name": "lotes",
+  "url": "/app/products/Batches-classic"
+ },
+ {
+  "name": "almacenes",
+  "url": "/app/settings/Warehouses-classic"
+ },
+ {
+  "name": "reunion",
+  "url": "/app/meeting/meetings"
+ },
+ {
+  "name": "tienda-invitaciones",
+  "url": "/app/Store/InviteCodes"
+ },
+ {
+  "name": "tienda-ajustes",
+  "url": "/app/Store/Settings"
+ },
+ {
+  "name": "whatsapp",
+  "url": "/app/whatsapp/settings"
+ },
+ {
+  "name": "marketing-ajustes",
+  "url": "/app/marketing/settings"
+ },
+ {
+  "name": "inmueble-nuevo",
+  "url": "/app/realestate/properties/create"
+ },
+ {
+  "name": "consultas",
+  "url": "/app/realestate/inquiries"
+ },
+ {
+  "name": "informe-traslados",
+  "url": "/app/reports/stock_transfer_report-classic"
+ },
+ {
+  "name": "servicio-nuevo",
+  "url": "/app/service/jobs/create"
+ },
+ {
+  "name": "suscripcion-nueva",
+  "url": "/app/subscription_product/store"
+ },
+ {
+  "name": "reserva-nueva",
+  "url": "/app/bookings/store"
+ },
+ {
+  "name": "acceso-empleados",
+  "url": "/app/organization/employee-access"
+ },
+ {
+  "name": "woocommerce-guia",
+  "url": "/app/woocommerce"
+ },
+ {
+  "name": "cuentas-perfil",
+  "url": "/app/profile"
+ }
+]

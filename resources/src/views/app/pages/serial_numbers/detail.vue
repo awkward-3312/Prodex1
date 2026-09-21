@@ -65,11 +65,12 @@
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 
-export default {
+export default { components: { BButton, BCard, BCol, BRow },
   metaInfo: { title: "Serial Detail" },
   data() {
     return {

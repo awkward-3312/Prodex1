@@ -3,16 +3,16 @@
     <breadcumb :page="$t('Order')" :folder="$t('Store')"/>
 
 
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="wrapper">
         <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0">{{ code }}</h5>
         <div class="d-flex align-items-center">
-          <b-badge :variant="badgeVariant(order.status)" class="mr-2 text-uppercase">
+          <b-badge :variant="badgeVariant(order.status)" class="me-2 text-uppercase">
             {{ order.status }}
           </b-badge>
-          <b-badge v-if="order.has_preorder_items" variant="warning" class="mr-2">
+          <b-badge v-if="order.has_preorder_items" variant="warning" class="me-2">
             {{ $t('HasPreorderItems') }}
           </b-badge>
         </div>
@@ -29,20 +29,20 @@
                     <th>{{ $t('Product') }}</th>
                     <th>{{ $t('Qty') }}</th>
                     <th>{{ $t('Price') }}</th>
-                    <th class="text-right">{{ $t('Total') }}</th>
+                    <th class="text-end">{{ $t('Total') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="it in order.items" :key="it.id">
                     <td>
                       {{ it.name }}
-                      <b-badge v-if="it.is_preorder" variant="warning" class="ml-1">
+                      <b-badge v-if="it.is_preorder" variant="warning" class="ms-1">
                         {{ $t('PreOrder') }}
                       </b-badge>
                     </td>
                     <td>{{ it.qty }}</td>
                     <td>{{ currency(it.price) }}</td>
-                    <td class="text-right">{{ currency(it.price * it.qty) }}</td>
+                    <td class="text-end">{{ currency(it.price * it.qty) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -117,10 +117,11 @@
 </template>
 
 <script>
+import { BBadge, BCard } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 
-export default {
+export default { components: { BBadge, BCard },
   metaInfo: { title: 'Store Order' },
   props:{ id:{type:[String,Number], required:true} },
   data(){ return {

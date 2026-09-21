@@ -48,9 +48,10 @@
 </template>
 
 <script>
+import { BCol, BRow } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BCol, BRow },
   metaInfo: {
     title: "Internal Location Report"
   },

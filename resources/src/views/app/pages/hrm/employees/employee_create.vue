@@ -137,13 +137,14 @@
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from 'nprogress';
 import Datepicker from 'vuejs-datepicker';
 
 export default {
   metaInfo: { title: 'Create Employee' },
-  components: { Datepicker },
+  components: { BButton, BCard, BCol, BRow, Datepicker },
   data() {
     return {
       isLoading: true,

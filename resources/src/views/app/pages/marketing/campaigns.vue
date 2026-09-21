@@ -85,11 +85,11 @@
 </template>
 
 <script>
-import { BFormGroup, BFormSelect, BFormSelectOption, vBTooltip } from "@/platform/bootstrap";
+import { BFormGroup, BFormSelect, BFormSelectOption, vBTooltip, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { directives: { 'b-tooltip': vBTooltip }, components: { BFormGroup, BFormSelect, BFormSelectOption },
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BButton, BCard, BCol, BRow, BFormGroup, BFormSelect, BFormSelectOption },
   metaInfo: { title: "Campaigns" },
   data() {
     return {

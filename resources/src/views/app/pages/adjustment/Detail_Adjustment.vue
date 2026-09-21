@@ -2,30 +2,30 @@
   <div class="main-content">
     <breadcumb :page="$t('AdjustmentDetail') || 'Adjustment Detail'" :folder="$t('ListAdjustments') || 'Adjustments'" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-if="!isLoading">
       <!-- Top action bar -->
       <div class="d-flex flex-wrap align-items-center mb-3">
-        <b-button size="sm" variant="outline-secondary" class="btn-pill mr-2" @click="$router.push({ name: 'index_adjustment' })">
-          <lucide-icon class="mr-1" name="arrow-left" />{{ $t('back') || 'Back' }}
+        <b-button size="sm" variant="outline-secondary" class="btn-pill me-2" @click="$router.push({ name: 'index_adjustment' })">
+          <lucide-icon class="me-1" name="arrow-left" />{{ $t('back') || 'Back' }}
         </b-button>
 
-        <div class="ml-auto">
+        <div class="ms-auto">
           <b-button
             v-if="currentUserPermissions && currentUserPermissions.includes('adjustment_edit')"
             size="sm"
             variant="outline-success"
-            class="btn-pill mr-2"
+            class="btn-pill me-2"
             :to="{ name: 'edit_adjustment', params: { id: $route.params.id } }"
           >
-            <lucide-icon class="mr-1" name="pencil" />{{ $t('Edit') || 'Edit' }}
+            <lucide-icon class="me-1" name="pencil" />{{ $t('Edit') || 'Edit' }}
           </b-button>
-          <b-button size="sm" variant="outline-primary" class="btn-pill mr-2" @click="downloadPdf()">
-            <lucide-icon class="mr-1" name="file-text" />PDF
+          <b-button size="sm" variant="outline-primary" class="btn-pill me-2" @click="downloadPdf()">
+            <lucide-icon class="me-1" name="file-text" />PDF
           </b-button>
           <b-button size="sm" variant="outline-secondary" class="btn-pill" @click="printTable()">
-            <lucide-icon class="mr-1" name="printer" />{{ $t('print') || 'Print' }}
+            <lucide-icon class="me-1" name="printer" />{{ $t('print') || 'Print' }}
           </b-button>
         </div>
       </div>
@@ -95,7 +95,7 @@
       <b-card>
         <h5 class="mb-3">{{ $t('Products') || 'Products' }}</h5>
         <div v-if="!details.length" class="text-center py-4 text-muted">
-          <lucide-icon class="mr-1" name="info" />{{ $t('NodataAvailable') || 'No data available' }}
+          <lucide-icon class="me-1" name="info" />{{ $t('NodataAvailable') || 'No data available' }}
         </div>
 
         <div v-else class="table-responsive">
@@ -116,7 +116,7 @@
                     {{ detail.name }}
                     <span
                       v-if="detail.is_batch_tracked"
-                      class="badge ml-1"
+                      class="badge ms-1"
                       style="background:#eef2ff; color:#4f46e5; font-weight:600; letter-spacing:0.3px;"
                     >
                       <lucide-icon name="package" style="margin-right:3px;" />{{ $t('Batches') || 'Batches' }}
@@ -199,11 +199,12 @@
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default {
+export default { components: { BButton, BCard, BCol, BRow },
   metaInfo: { title: "Adjustment Detail" },
 
   computed: {

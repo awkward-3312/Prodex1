@@ -89,12 +89,12 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput, BFormInvalidFeedback, vBTooltip, BModal } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormInvalidFeedback, vBTooltip, BModal, BButton, BCol, BRow } from "@/platform/bootstrap";
 import { confirmDialog, modals, notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
 
-export default { directives: { 'b-tooltip': vBTooltip }, components: { BModal, BFormGroup, BFormInput, BFormInvalidFeedback },
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BButton, BCol, BRow, BModal, BFormGroup, BFormInput, BFormInvalidFeedback },
   name: 'AssetCategoryIndex',
   data() {
     return {

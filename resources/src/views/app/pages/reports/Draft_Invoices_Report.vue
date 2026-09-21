@@ -7,7 +7,7 @@
       <div class="d-flex flex-wrap align-items-center">
 
         <!-- Date range (responsive) -->
-        <div class="filter-block date-range-filter mr-3 mb-2 d-flex flex-column">
+        <div class="filter-block date-range-filter me-3 mb-2 d-flex flex-column">
           <label class="mb-1 d-block text-muted">{{ $t('DateRange') }}</label>
           <date-range-picker
             v-model="dateRange"
@@ -20,7 +20,7 @@
           >
             <template v-slot:input="picker">
               <b-button variant="light" class="btn-pill date-btn" :class="{ 'w-100': isMobile }">
-                <lucide-icon class="mr-1" name="calendar-days" />
+                <lucide-icon class="me-1" name="calendar-days" />
                 <span class="d-none d-sm-inline">
                   {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
                 </span>
@@ -33,7 +33,7 @@
         </div>
 
         <!-- Quick ranges -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
           <div class="btn-group quick-ranges">
             <b-button size="sm" variant="outline-primary" @click="quick('7d')">7D</b-button>
@@ -45,7 +45,7 @@
         </div>
 
         <!-- Warehouse -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
           <b-form-select
             v-model="warehouse_id"
@@ -56,12 +56,12 @@
           />
         </div>
 
-        <div class="ml-auto mb-2 d-flex">
-          <b-button variant="success" class="btn-pill mr-2" @click="exportPDF">
-            <lucide-icon class="mr-1" name="file-text" /> {{$t('Export_PDF')}}
+        <div class="ms-auto mb-2 d-flex">
+          <b-button variant="success" class="btn-pill me-2" @click="exportPDF">
+            <lucide-icon class="me-1" name="file-text" /> {{$t('Export_PDF')}}
           </b-button>
           <b-button variant="primary" class="btn-pill" @click="fetchDrafts">
-            <lucide-icon class="mr-1" name="refresh-cw" /> {{$t('Refresh')}}
+            <lucide-icon class="me-1" name="refresh-cw" /> {{$t('Refresh')}}
           </b-button>
         </div>
       </div>
@@ -121,12 +121,12 @@
         <!-- Footer totals -->
         <template #table-actions-bottom>
           <div class="d-flex justify-content-end w-100 pt-2">
-            <div class="font-weight-bold">
+            <div class="fw-bold">
               {{$t('Totals')}}:
-              <span class="ml-2">{{$t('Amount')}} = {{ money(sumField(rows[0], 'GrandTotal')) }}</span>
-              <span class="ml-3">{{$t('Tax')}} = {{ money(sumField(rows[0], 'TaxNet')) }}</span>
-              <span class="ml-3">{{$t('Discount')}} = {{ money(sumField(rows[0], 'discount')) }}</span>
-              <span class="ml-3">{{$t('Shipping')}} = {{ money(sumField(rows[0], 'shipping')) }}</span>
+              <span class="ms-2">{{$t('Amount')}} = {{ money(sumField(rows[0], 'GrandTotal')) }}</span>
+              <span class="ms-3">{{$t('Tax')}} = {{ money(sumField(rows[0], 'TaxNet')) }}</span>
+              <span class="ms-3">{{$t('Discount')}} = {{ money(sumField(rows[0], 'discount')) }}</span>
+              <span class="ms-3">{{$t('Shipping')}} = {{ money(sumField(rows[0], 'shipping')) }}</span>
             </div>
           </div>
         </template>
@@ -136,6 +136,7 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import moment from "moment";
@@ -151,7 +152,7 @@ import {
 
 export default {
   metaInfo: { title: "Draft Invoices Report" },
-  components: { "date-range-picker": DateRangePicker },
+  components: { BBadge, BButton, BCard, BCol, BRow, "date-range-picker": DateRangePicker },
 
   data() {
     const end = new Date(); const start = new Date(); start.setDate(end.getDate() - 29);

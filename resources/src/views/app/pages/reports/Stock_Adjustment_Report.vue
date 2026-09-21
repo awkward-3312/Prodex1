@@ -7,7 +7,7 @@
       <div class="d-flex flex-wrap align-items-center">
 
         <!-- Date range -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('DateRange')}}</label>
           <date-range-picker
             v-model="dateRange"
@@ -22,7 +22,7 @@
           >
             <template v-slot:input="picker">
               <b-button variant="light" class="btn-pill">
-                <lucide-icon class="mr-1" name="calendar-days" />
+                <lucide-icon class="me-1" name="calendar-days" />
                 {{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}
               </b-button>
             </template>
@@ -30,7 +30,7 @@
         </div>
 
         <!-- Warehouse -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
           <v-select class="w-250"
             v-model="warehouse_id"
@@ -42,15 +42,15 @@
           />
         </div>
 
-        <div class="ml-auto mb-2 d-flex">
-          <b-button @click="printTableOnly()" variant="outline-secondary" class="btn-pill mr-2">
-            <lucide-icon class="mr-1" name="printer" /> {{ $t("print") }}
+        <div class="ms-auto mb-2 d-flex">
+          <b-button @click="printTableOnly()" variant="outline-secondary" class="btn-pill me-2">
+            <lucide-icon class="me-1" name="printer" /> {{ $t("print") }}
           </b-button>
-          <b-button variant="primary" class="btn-pill mr-2" @click="fetchReport">
-            <lucide-icon class="mr-1" name="refresh-cw" /> {{$t('Refresh')}}
+          <b-button variant="primary" class="btn-pill me-2" @click="fetchReport">
+            <lucide-icon class="me-1" name="refresh-cw" /> {{$t('Refresh')}}
           </b-button>
           <b-button variant="danger" class="btn-pill" @click="exportPDF">
-            <lucide-icon class="mr-1" name="file-text" /> {{$t('Export_PDF')}}
+            <lucide-icon class="me-1" name="file-text" /> {{$t('Export_PDF')}}
           </b-button>
         </div>
       </div>
@@ -162,6 +162,7 @@
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import DateRangePicker from "vue2-daterange-picker";
@@ -185,7 +186,7 @@ const StatTile = {
 
 export default {
   metaInfo: { title: "Stock Adjustment Report" },
-  components: {
+  components: { BButton, BCard, BCol, BRow,
     apexchart: VueApexCharts,
     "date-range-picker": DateRangePicker,
     StatTile

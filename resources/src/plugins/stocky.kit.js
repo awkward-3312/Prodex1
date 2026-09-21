@@ -1,4 +1,4 @@
-import BootstrapVue from 'bootstrap-vue/dist/bootstrap-vue.esm';
+import BootstrapVueRemaining from '../platform/compat/bootstrap-vue-forms';
 import VueGoodTablePlugin from "vue-good-table";
 import "./../assets/styles/sass/themes/lite-purple.scss";
 import "./sweetalert2.js";
@@ -430,7 +430,7 @@ function installFriendlyNavigation(Vue) {
 
 export default {
   install(Vue) {
-    Vue.use(BootstrapVue);
+    Vue.use(BootstrapVueRemaining);
     Vue.component("large-sidebar", () => import(/* webpackChunkName: "largeSidebar" */ "../containers/layouts/largeSidebar"));
     // Milestone 3 — layout px-next persistente para /app/* (opt-in local).
     Vue.component("px-shell-layout", () => import(/* webpackChunkName: "px-next-shell" */ "../containers/layouts/PxShellLayout.vue"));
