@@ -24,7 +24,7 @@ on:
     # La rama de estabilización se lista aquí porque GitHub solo permite lanzar workflow_dispatch de un workflow que ya
     # existe en la rama por defecto. Mientras este archivo no esté en main, el job e2e corre con los push a las ramas de modernización listadas aquí.
     # Cuando llegue a main se puede quitar esa rama y usar solo workflow_dispatch.
-    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening, spike/vue3-compat-runtime, refactor/vue-router-4, refactor/vue3-own-code-cleanup, refactor/vue-meta-to-unhead, refactor/remove-vue-clickaway, refactor/bootstrap5-bootstrapvue-next-phase1, refactor/bootstrap5-bootstrapvue-next-phase2, refactor/bootstrap5-bootstrapvue-next-phase3, refactor/bootstrap5-bootstrapvue-next-phase4, refactor/bootstrap5-bootstrapvue-next-phase5a ]
+    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening, spike/vue3-compat-runtime, refactor/vue-router-4, refactor/vue3-own-code-cleanup, refactor/vue-meta-to-unhead, refactor/remove-vue-clickaway, refactor/bootstrap5-bootstrapvue-next-phase1, refactor/bootstrap5-bootstrapvue-next-phase2, refactor/bootstrap5-bootstrapvue-next-phase3, refactor/bootstrap5-bootstrapvue-next-phase4, refactor/bootstrap5-bootstrapvue-next-phase5a, refactor/bootstrap5-bootstrapvue-next-phase5b ]
   workflow_dispatch:
 
 jobs:
