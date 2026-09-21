@@ -55,6 +55,11 @@ input[type="color"].form-control:disabled { background-color: #adb5bd; opacity: 
 }
 .b-form-btn-label-control.form-control > .dropdown-menu { padding: 0.5rem;
 }
+// El menú del calendario no pasa por Floating UI: BS4 lo colocaba con `.dropdown-menu { top: 100%; left: 0; margin: .125rem 0 0 }`; BS5 no fija `top` / `left` y, dentro del flex del control, el menú se pegaba a su borde superior y tapaba el campo.
+.b-form-btn-label-control.form-control > .dropdown-menu { top: 100%; left: 0; margin: 0.125rem 0 0; }
+.b-form-btn-label-control.form-control > .dropdown-menu.dropdown-menu-end { right: 0; left: auto; }
+[dir="rtl"] .b-form-btn-label-control.form-control > .dropdown-menu { right: 0; left: auto; }
+[dir="rtl"] .b-form-btn-label-control.form-control > .dropdown-menu.dropdown-menu-end { right: auto; left: 0; }
 .b-form-btn-label-control.form-control > .form-control { height: auto; min-height: calc(calc(1.5em + 0.75rem + 2px) - 2px); padding-left: 0.25rem; margin: 0; border: 0; outline: 0; background: transparent; word-break: break-word; font-size: inherit; white-space: normal; cursor: pointer;
 }
 .b-form-btn-label-control.form-control > .form-control.form-control-sm { min-height: calc(calc(1.5em + 0.5rem + 2px) - 2px);
@@ -116,6 +121,11 @@ input[type="color"].form-control:disabled { background-color: #adb5bd; opacity: 
     &::after { border-color: $custom-file-focus-border-color; }
   }
   &:disabled ~ .custom-file-label { background-color: $custom-file-disabled-bg; }
+  // Validación (`form-validation` de BS4): borde y foco del `label` según el estado del `input`.
+  &.is-valid ~ .custom-file-label { border-color: $form-feedback-valid-color; }
+  &.is-invalid ~ .custom-file-label { border-color: $form-feedback-invalid-color; }
+  &.is-valid:focus ~ .custom-file-label { border-color: $form-feedback-valid-color; box-shadow: 0 0 0 $input-focus-width rgba($form-feedback-valid-color, .25); }
+  &.is-invalid:focus ~ .custom-file-label { border-color: $form-feedback-invalid-color; box-shadow: 0 0 0 $input-focus-width rgba($form-feedback-invalid-color, .25); }
 }
 .custom-file-label {
   position: absolute;

@@ -28,6 +28,10 @@ $px-check-input: ".form-check-input.px-bvn-check, .px-bvn-group > .form-check > 
 // Igual que `.custom-control-label { margin-bottom: 0 }` de BS4: especificidad mínima para que la capa de diseño (`.form-group label`) siga mandando.
 :where(.form-check:has(> .form-check-input.px-bvn-check), .px-bvn-group > .form-check) > .form-check-label { margin-bottom: 0; }
 
+// El RTL generado de Bootstrap 5 (`[dir="rtl"] .form-check .form-check-input { float: right; margin-right: -1.5em }`) tiene más especificidad que el bloque de abajo y sacaba el indicador
+// 1.5em fuera de su caja; en RTL solo hay que repetir el mismo reset (el desplazamiento lo hace `inset-inline-start`).
+[dir="rtl"] #{$px-check-input} { float: none; margin: 0; }
+
 #{$px-check-input} {
   position: absolute;
   top: $px-check-top;
@@ -61,10 +65,12 @@ $px-check-input: ".form-check-input.px-bvn-check, .px-bvn-group > .form-check > 
   }
   &:focus { outline: 0; box-shadow: $custom-control-indicator-focus-box-shadow; }
   &:active { background-color: $custom-control-indicator-active-bg; @include box-shadow($custom-control-indicator-active-box-shadow); }
+  // BS5 atenúa además el control (`opacity: .5`) y su etiqueta; los colores de BS4 de abajo ya expresan el estado deshabilitado, así que no se apilan.
   &:disabled {
+    opacity: 1;
     background-color: $custom-control-indicator-disabled-bg;
     &:checked { background-color: $custom-control-indicator-checked-disabled-bg; }
-    & ~ .form-check-label { color: $custom-control-label-disabled-color; }
+    & ~ .form-check-label { color: $custom-control-label-disabled-color; opacity: 1; }
   }
   // BS4 (`form-validation-state`): sin marcar → fondo claro del color de error; texto de la etiqueta en rojo.
   &.is-invalid:not(:checked) { background-color: lighten($form-feedback-invalid-color, 25%); }
