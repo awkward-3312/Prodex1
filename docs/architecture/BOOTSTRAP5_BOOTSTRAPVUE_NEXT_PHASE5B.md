@@ -128,3 +128,27 @@ Por aviso en BV2: `PRIVATE_APIS`, `RENDER_FUNCTION`, `INSTANCE_SCOPED_SLOTS`, `C
 4. **RTL**: el corte a BS5 sustituye `bootstrap-rtl.scss`; los wrappers ya usan propiedades lógicas.
 5. Clases BS4 de las pantallas críticas (lista de 17) y `pos.vue`.
 6. `vue-good-table` (73 archivos), vee-validate 3, vue-i18n 8, Vuex 3: fuera de alcance de 5B.
+
+## 14. Métricas de salida
+
+| Medida | 5A | 5B |
+|---|---:|---:|
+| Etiquetas BV2 (AST) | 2.140 | **0** |
+| — de formularios | 2.136 | **0** |
+| — `b-skeleton-img` | 4 | **0** |
+| Archivos con etiquetas BV2 | 144 | **0** |
+| Etiquetas BVN (AST) | 3.564 | 5.665 (formularios 2.590, `other` 26) |
+| Archivos con BVN | 171 | 195 |
+| Selectores de fecha / archivos / grupos de entrada / marcadores de carga en wrappers de PRODEX | 0 | 6 / 16 / 63 / 4 |
+| Registros globales de BV2 (`Vue.use`) | 1 (11 plugins) | **0** |
+| Parches de compat de BV2 (`bootstrap-vue.js`) | 3 | **0** (copia solo en la sonda de desarrollo) |
+| `$bv*` en código propio | 0 | 0 |
+| Clases BS4 direccionales en plantillas (métrica global) | 761 (59 archivos) | 757 (60 archivos) |
+
+## 15. Validación
+
+- `npm run test:frontend`: 132/132. PHPUnit Unit 1.328; Feature 934 (+3 omitidas); snapshot de rutas 474 tenant / 20 portal.
+- E2E completo sobre el build de desarrollo: 335 pruebas (baseline 5A: 257 + 1 omitida; nuevas: 53 paridad, 13 validación, 15 dominios críticos) — 0 fallos, 1 omitida; igual tras `E2E_RESET=1`.
+- Builds: desarrollo OK (42 avisos de compilación, los de siempre); producción OK; `npm ci` en un clon limpio + `npm run production` con los mismos bytes.
+- Humo con el build de producción: 134 pruebas (login, panel, navegación, POS, idiomas, cabecera, servicios, directivas/offcanvas, matriz de modales, dominios críticos de servicios y de formularios) pasan; las 35 de `32-bvn-layout-primitives` necesitan la sonda (solo desarrollo) y no aplican, igual que en 5A.
+- CI (PHP 8.4, un solo proceso, sin `continue-on-error`, sin diagnósticos de crash): `route-snapshot` + `e2e` verdes en el push del contenido final; la spec `16-entrypoints › customer-display` no falló en local ni en CI.
