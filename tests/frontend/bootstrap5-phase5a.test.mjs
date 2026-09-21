@@ -53,7 +53,7 @@ test('contrato de los wrappers de la fase 5A (traducciones de BV2 que no deben p
   assert.match(src, /bv::dropdown::show/, 'BDropdown: eventos de raíz de BV2');
   assert.match(src, /onPageClick/, 'BPagination: change por interacción');
   assert.match(src, /onUpdate:index/, 'BTabs: v-model = índice');
-  assert.match(src, /export const BTab = pure\(_BTab\)/, 'BTab sin envolver: BVN solo registra hijos cuyo type es su BTab');
+  assert.match(src, /export const BTab = (?:\/\*#__PURE__\*\/ )?pure\(_BTab\)/, 'BTab sin envolver: BVN solo registra hijos cuyo type es su BTab');
   assert.match(src, /target === '_blank'[\s\S]*noopener/, 'BButton: rel noopener');
 });
 
@@ -86,4 +86,12 @@ test('plantillas en cadena (`template: `...`` dentro de <script>) con etiquetas 
   const ledger = fs.readFileSync(path.join(SRC, 'views/app/pages/people/CustomerLedger.vue'), 'utf8');
   assert.match(ledger, /ListToolbar\.components = \{ BButton \}/);
   assert.match(ledger, /Pager\.components = \{ BPagination \}/);
+});
+
+test('platform/bootstrap sin efectos laterales al importar (cada entrypoint solo arrastra los componentes que usa)', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(SRC, 'platform/bootstrap/package.json'), 'utf8'));
+  assert.equal(pkg.sideEffects, false);
+  const src = fs.readFileSync(path.join(SRC, 'platform/bootstrap/index.js'), 'utf8');
+  const bare = src.split('\n').filter((l) => /^(?:export )?const \w+ = (?:pure|wrapper|checkWrapper)\(/.test(l));
+  assert.deepEqual(bare, [], 'toda llamada de nivel superior a pure()/wrapper() debe llevar /*#__PURE__*/');
 });

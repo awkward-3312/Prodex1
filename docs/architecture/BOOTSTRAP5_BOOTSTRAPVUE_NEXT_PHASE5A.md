@@ -17,9 +17,9 @@ Cero confirmado: `$bvToast` 0, `$bvModal` 0, `<b-modal>` BV2 0, `<b-table>` BV2 
 ## 2. Método: auditoría antes de migrar, contrato probado sobre las dos implementaciones
 
 1. **Auditoría de uso real** (AST): por cada etiqueta BV2, qué atributos, eventos, slots y directivas se usan (`inventory --json` → `attrs`). Solo se migra lo que se usa: `b-col` (`md` 1.298, `sm` 570, `lg` 455, `cols` 14, `col` 1), `b-row` (`no-gutters` 1), `b-card` (`no-body` 20, `title` 31, `header` 5, `header-bg-variant` 2), `b-button` (`variant`, `size`, `block` 35, `type`, `:disabled`, `:to` 1, `href`, `tag` 1), `b-badge` (`pill` 11), `b-alert` (`show` 46, `dismissible` 4, `@dismissed` 2), `b-progress` (`height`, `value`, `max`, `show-progress`, `animated`), `b-tabs` (`v-model` 9, `content-class` 9, `lazy` 2, `pills` 1, `@input` 1, `active-nav-item-class` 2), `b-dropdown` (`right` 13, `no-caret` 13, `toggle-class` 13, `menu-class` 3, `offset`, `boundary`, `dropup`, slot `#button-content`), `b-pagination` (`v-model` 7, `@change` 6, `align` 3, `:value`+`@input` 1).
-2. **Sonda de contratos** (solo desarrollo, `/app/_ui?probe=bv`): monta la MISMA plantilla con los `b-*` de BV2 (registrados localmente solo en la sonda) y con los wrappers de `platform/bootstrap` (registro local, como las vistas). `tests/e2e/specs/32-bvn-layout-primitives.spec.js` (38 pruebas) exige el mismo DOM normalizado donde el marcado debe coincidir y **el mismo comportamiento con las mismas aserciones sobre BV2 y BVN** (una sola emisión, teclado, clic fuera, ESC, RTL, móvil).
+2. **Sonda de contratos** (solo desarrollo, `/app/_ui?probe=bv`): monta la MISMA plantilla con los `b-*` de BV2 (registrados localmente solo en la sonda) y con los wrappers de `platform/bootstrap` (registro local, como las vistas). `tests/e2e/specs/32-bvn-layout-primitives.spec.js` (35 pruebas) exige el mismo DOM normalizado donde el marcado debe coincidir y **el mismo comportamiento con las mismas aserciones sobre BV2 y BVN** (una sola emisión, teclado, clic fuera, ESC, RTL, móvil).
 3. **Migración con codemod verificado** (`resources/src/views|components|containers`): 156 archivos, 608 registros locales; las plantillas no cambian (`<b-col>` resuelve al registro local). Las plantillas en cadena dentro de `<script>` se buscaron aparte (solo `CustomerLedger`: dos componentes en línea).
-4. **Captura visual** antes/después (39 pantallas × LTR/RTL/móvil) y **E2E completo**.
+4. **Captura visual** antes/después (43 pantallas × LTR/RTL/móvil) y **E2E completo**.
 
 ## 3. Layout migrado (BV2 1.979 → 0)
 
@@ -90,25 +90,25 @@ En RTL, `ml-auto` (que BS4 no invierte: la hoja solo invierte `ml-0…5`) pasa a
 
 ## 10. Avisos de `@vue/compat`
 
-Suite completa (250 tests con avisos; fase 4: 213): **33.136 mensajes, 34 únicos → 132,5 por test** (fase 4: 32.019 / 150,3; **−11,8 % por test**). Ningún aviso silenciado.
+Suite completa tras `E2E_RESET=1` (252 tests con avisos; fase 4: 213): **32.061 mensajes, 35 únicos → 127,2 por test** (fase 4: 32.019 / 150,3; **−15,4 % por test**). Ningún aviso silenciado.
 
 | Aviso | Fase 4 (total / por test) | Fase 5A (total / por test) |
 |---|---:|---:|
-| `PRIVATE_APIS` | 7.589 / 35,6 | 8.190 / 32,8 |
-| `RENDER_FUNCTION` | 2.743 / 12,9 | 2.445 / 9,8 |
-| `COMPONENT_FUNCTIONAL` | 1.103 / 5,2 | 572 / 2,3 |
-| `OPTIONS_BEFORE_DESTROY` | 9.325 / 43,8 | 11.518 / 46,1 |
-| `INSTANCE_EVENT_HOOKS` | 79 / 0,37 | 79 / 0,32 |
-| `INSTANCE_EVENT_EMITTER` | 236 / 1,11 | 220 / 0,88 |
+| `PRIVATE_APIS` | 7.589 / 35,6 | 7.963 / 31,6 |
+| `RENDER_FUNCTION` | 2.743 / 12,9 | 2.420 / 9,6 |
+| `COMPONENT_FUNCTIONAL` | 1.103 / 5,2 | 544 / 2,2 |
+| `OPTIONS_BEFORE_DESTROY` | 9.325 / 43,8 | 11.143 / 44,2 |
+| `INSTANCE_EVENT_HOOKS` | 79 / 0,37 | 79 / 0,31 |
+| `INSTANCE_EVENT_EMITTER` | 236 / 1,11 | 220 / 0,87 |
 | `CUSTOM_DIR` / `PLUGIN_VUE2_ONLY` | 0 / 0 | 0 / 0 |
 
-`OPTIONS_BEFORE_DESTROY` sube por test porque ahora hay muchos más componentes de BVN por pantalla y **cada componente** (BVN incluido) recibe el mixin global de `vue-i18n` 8 con `beforeDestroy`; ningún componente de BVN lo declara.
+`OPTIONS_BEFORE_DESTROY` se mantiene por test porque **cada componente** (BVN incluido, ahora muchos más por pantalla) recibe el mixin global de `vue-i18n` 8 con `beforeDestroy`; ningún componente de BVN lo declara.
 
-**Atribución exacta por instancia** (`tests/e2e/scripts/warnings-by-origin.js`: `app.config.warnHandler` con la instancia que emite cada aviso, mismas 39 pantallas, árbol de la fase 4 vs este):
+**Atribución exacta por instancia** (`tests/e2e/scripts/warnings-by-origin.js`: `app.config.warnHandler` con la instancia que emite cada aviso, las mismas 39 rutas de las pantallas de la fase, árbol de la fase 4 vs este):
 
 | | Fase 4 | Fase 5A |
 |---|---:|---:|
-| Total de avisos en las 39 pantallas | 728 | 687 |
+| Total de avisos en las 39 rutas | 728 | 687 |
 | Atribuidos a **BV2** | **93** | **57 (−39 %)** — solo formularios (`BFormInput/Group/Select/Checkbox/Radio(Group)/Textarea/File`) y `BAspect` |
 | Atribuidos a BVN (mixin de i18n) | 20 | 40 |
 | Propios / sin instancia | 588 / 27 | 576 / 14 |
@@ -117,16 +117,25 @@ Por aviso (BV2): `PRIVATE_APIS` 17 → 10, `RENDER_FUNCTION` 17 → 10, `INSTANC
 
 ## 11. Visual QA
 
-39 pantallas (layout, tarjetas, tablas de lista, formularios largos, pestañas, paginación, desplegables abiertos, POS, detalle de empleado/cliente/proveedor, ajustes de sistema…) × LTR / RTL / móvil = **129 capturas**, fase 4 vs 5A (`tests/e2e/visual/screens-phase5a.json`, `capture.js`, `compare.js`, tolerancia de canal 12).
+43 pantallas (layout, tarjetas, tablas de lista, formularios largos, pestañas, paginación, desplegables abiertos, POS, detalle de empleado/cliente, ajustes…) × LTR / RTL / móvil = **129 capturas**, fase 4 vs 5A (`tests/e2e/visual/screens-phase5a.json`, `capture.js`, `compare.js`, tolerancia de canal 12). Las 13 pantallas con datos volátiles (los E2E crean ventas entre las dos capturas: dashboard y detalle de cliente mostraban datos, no interfaz) se recapturaron sobre el estado actual de la base con el árbol de la fase 4.
 
-- **110 de 129 idénticas (≤ 0,05 %)**; con las 13 pantallas de datos volátiles recapturadas sobre el estado actual de la base (la primera comparación mezclaba las ventas que crea el E2E entre las dos capturas: dashboard y detalle de cliente mostraban datos, no interfaz).
-- Diferencias reales corregidas por la captura: **pestañas** (letra del enlace-botón; ninguna pestaña activa en `employee_details` → 6,5 %), **paginación con 0 filas** (faltaba la página 1), **menú de idiomas del POS** (ancho), **cabecera de tablas del libro mayor**. Todas cubiertas después con una prueba de contrato.
-- Diferencias aceptadas: (1) menú de idiomas del POS/topbar alineado al borde del botón (1,8 % escritorio, 7 % móvil; §6); (2) informes con `ml-auto` en RTL (1,7 %; §9); (3) sub-0,4 % de 1 px de texto en `servicio-nuevo`, `almacenes` RTL.
-- Los cambios ya aceptados en la fase 4 (traducción de algunas etiquetas de tablas por `spanishUiGuard`, 1 px de texto en modales) no empeoran: las capturas de modales y tablas de la fase 4 siguen pasando.
+- **118 de 129 ≤ 0,07 %** (el 0,063 % es el contador de notificaciones de la cabecera). Las 11 restantes:
+
+| Captura | Diferencia | Causa |
+|---|---:|---|
+| `pos-langdd` móvil / RTL / LTR | 7,0 / 1,9 / 1,8 % | menú de idiomas alineado al borde del botón (§6) |
+| `informe-traslados` RTL | 1,7 % | `ml-auto` → `ms-auto` (§9) |
+| `clientes-dropdown` móvil / RTL | 0,41 / 0,22 % | menú alineado al botón; barra de cabecera |
+| `dashboard-langdd` RTL | 0,22 % | igual |
+| `almacenes` RTL | 0,34 % | logotipo del menú lateral (carga) |
+| `servicio-nuevo` móvil / RTL / LTR | 0,28 / 0,13 / 0,13 % | color de las pestañas (anti-aliasing del `<button>`; el color calculado es idéntico, medido en la sonda con `pills`) |
+
+- Diferencias reales que las capturas destaparon y quedaron corregidas y probadas: pestañas (letra y color del enlace-botón; **ninguna pestaña activa** en `employee_details`: 6,5 %), paginación con 0 filas, ancho del menú de idiomas del POS, tabla del libro mayor.
+- Los cambios ya aceptados en la fase 4 (traducción de etiquetas de tablas por `spanishUiGuard`, 1 px de texto en modales) no empeoran: las specs 29 y 31 siguen pasando.
 
 ## 12. Formularios: aislados como siguiente bloque (no migrados)
 
-2.136 etiquetas BV2 en 128 archivos son lo único que queda de BV2 (más 4 `b-skeleton-img`). Bloqueos exactos (AST + `v-model` modifiers):
+2.136 etiquetas BV2 en 144 archivos son lo único que queda de BV2 (más 4 `b-skeleton-img`). Bloqueos exactos (AST + `v-model` modifiers):
 
 | Patrón | Uso | Motivo |
 |---|---:|---|
@@ -174,7 +183,7 @@ Por aviso (BV2): `PRIVATE_APIS` 17 → 10, `RENDER_FUNCTION` 17 → 10, `INSTANC
 
 - Frontend **131/131** (124 + 7: inventario por AST con las familias migradas a 0, registro reducido, exportaciones y contrato de los wrappers, plantillas en cadena, inventario de `vue-good-table`).
 - Unit **1.328/1.328**, Feature **934 OK (3 skipped)**, rutas **474 / 20** (el snapshot cambia una línea: el componente de la ruta de desarrollo `/app/_ui`, que ahora sirve también la sonda con `?probe=bv`; no existe en producción).
-- E2E completo **@@E2E@@**, también tras `E2E_RESET=1`. Nuevos: `32-bvn-layout-primitives` (38): DOM idéntico BV2 vs BVN (17 casos), progreso, alerta (visibilidad, `:show`, `@dismissed` una vez, RTL), botón/enlace/`:to` (una emisión), pestañas (v-model, `@input`, deshabilitada, lazy y destrucción, primera activa sin `active`, tipografía), desplegable (clic, ítem, fuera, ESC, teclado, `:to`, `right`, eventos de raíz), paginación (`@change` una vez con el modelo actualizado, programático sin `@change`, 0 filas, `:value`+`@input`), grid responsive y RTL.
+- E2E completo: **257 pasan, 1 skipped preexistente (popover BVN), 0 fallos** tras `E2E_RESET=1`. En la pasada anterior sin reinicio falló una vez `16-entrypoints › pantalla del cliente` (256 pasan): pasa aislada y en la pasada con `E2E_RESET=1`; se vigila (depende del estado de la caja POS entre tests). Nuevos: `32-bvn-layout-primitives` (35): DOM idéntico BV2 vs BVN (17 casos), progreso, alerta (visibilidad, `:show`, `@dismissed` una vez, RTL), botón/enlace/`:to` (una emisión), pestañas (v-model, `@input`, deshabilitada, lazy y destrucción, primera activa sin `active`, tipografía), desplegable (clic, ítem, fuera, ESC, teclado, `:to`, `right`, eventos de raíz), paginación (`@change` una vez con el modelo actualizado, programático sin `@change`, 0 filas, `:value`+`@input`), grid responsive y RTL.
 - Builds: desarrollo OK (42 avisos de compilación, los de siempre), producción OK, `npm ci` limpio.
 
 ## 16. Métricas antes (fase 4, AST) → después
@@ -194,7 +203,14 @@ Por aviso (BV2): `PRIVATE_APIS` 17 → 10, `RENDER_FUNCTION` 17 → 10, `INSTANC
 | clases BS4 direccionales / `font-weight-*` (plantillas) | 575 / 95 | 194 / 52 |
 | avisos por test (suite) | 150,3 | 132,5 |
 | avisos atribuidos a BV2 (39 pantallas) | 93 | 57 |
-| @@BUNDLE_ROWS@@ |
+| `main.min.js` prod | 2.782.924 B | **2.523.520 B (−259.404, −9,3 %)** |
+| `login.min.js` prod | 1.083.825 B | 1.191.934 B (+108.109, +10,0 %) — ver nota |
+| `portal` / `customer-display` / `storefront` | 308.871 / 361.738 / 82.249 | igual |
+| Archivos JS (chunks) | 455 (427 en `bundle/`) | 455 (427) |
+
+Bundle: `platform/bootstrap` ahora declara `sideEffects: false` y todas las llamadas de nivel superior a `pure()`/`wrapper()` llevan `/*#__PURE__*/`, de modo que cada entrypoint solo arrastra los componentes que importa (`main` −9,3 %; un test lo guarda). `login.min.js` sube respecto a la fase 4: el registro reducido de BV2 le ahorra 98 KB (medido: con el registro completo serían 1.290.352 B), pero `signIn.vue` importa `BButton` del módulo de wrappers y el orquestador/registros de BVN del plugin ya estaban en el entrypoint; pendiente para la 5B (partir el módulo de wrappers por familia).
+
+Prueba de humo con el build de producción (15 specs: login, panel, navegación, POS, idiomas, cabecera, servicios, formularios/offcanvas/directivas de BVN, matriz de modales, dominios críticos): 124 pasan; las specs `23-bvn-forms` (`v-model.number`) y `31-tables-matrix` inspeccionan instancias de componente (`__vueParentComponent`, datos) y solo son válidas sobre el build de desarrollo, que es el que usa el CI (`npx mix`).
 
 ## 17. CI
 
@@ -202,7 +218,7 @@ PHP 8.4, servidor embebido de un solo proceso, sin bucle de reinicio y sin `cont
 
 ## 18. Superficie restante de BV2, blockers exactos y plan de la fase 5B
 
-**Superficie**: 2.136 etiquetas de formulario en 128 archivos (§12) + 4 `b-skeleton-img`; `v-b-visible`/`v-b-hover` internos; `@vue/compat` por `vue-good-table`, `vee-validate` 3, `vue-i18n` 8, `vue-select`, `vue2-daterange-picker`, `lucide-vue`.
+**Superficie**: 2.136 etiquetas de formulario en 144 archivos (§12) + 4 `b-skeleton-img`; `v-b-visible`/`v-b-hover` internos; `@vue/compat` por `vue-good-table`, `vee-validate` 3, `vue-i18n` 8, `vue-select`, `vue2-daterange-picker`, `lucide-vue`.
 
 **Blockers para desinstalar BV2**: los formularios, `b-skeleton-img` (o sustituirlo por `BPlaceholder`), y quitar el registro de `platform/compat/bootstrap-vue-forms.js` con el último formulario.
 

@@ -48,10 +48,10 @@ function pure(component) {
 // Los componentes internos de la familia (BLink, BCloseButton, BProgress…) también deben quedar en MODE 3.
 [BLink, BCloseButton].forEach(pure);
 
-export const BSpinner = pure(_BSpinner);
-export const BContainer = pure(_BContainer);
+export const BSpinner = /*#__PURE__*/ pure(_BSpinner);
+export const BContainer = /*#__PURE__*/ pure(_BContainer);
 // Fila: `no-gutters` de BS4 (clase `.no-gutters`, que la base estila); BVN lo traduce a `g-0`, que la hoja BS4 no tiene.
-export const BRow = pure({
+export const BRow = /*#__PURE__*/ pure({
   name: 'BRow',
   inheritAttrs: false,
   setup(_props, { attrs, slots }) {
@@ -62,14 +62,14 @@ export const BRow = pure({
     };
   },
 });
-export const BCol = pure(_BCol);
-export const BCard = pure(_BCard);
-export const BCardBody = pure(_BCardBody);
-export const BCardHeader = pure(_BCardHeader);
-export const BCardFooter = pure(_BCardFooter);
-export const BCardText = pure(_BCardText);
-export const BCardTitle = pure(_BCardTitle);
-export const BCardSubtitle = pure(_BCardSubtitle);
+export const BCol = /*#__PURE__*/ pure(_BCol);
+export const BCard = /*#__PURE__*/ pure(_BCard);
+export const BCardBody = /*#__PURE__*/ pure(_BCardBody);
+export const BCardHeader = /*#__PURE__*/ pure(_BCardHeader);
+export const BCardFooter = /*#__PURE__*/ pure(_BCardFooter);
+export const BCardText = /*#__PURE__*/ pure(_BCardText);
+export const BCardTitle = /*#__PURE__*/ pure(_BCardTitle);
+export const BCardSubtitle = /*#__PURE__*/ pure(_BCardSubtitle);
 
 // Wrappers PRODEX (vista → wrapper → BootstrapVueNext) que conservan el marcado que la base Bootstrap 4 y la capa de diseño PRODEX
 // ya estilan, para que migrar de familia no cambie el aspecto:
@@ -86,14 +86,14 @@ const wrapper = (name, component, extraProps, extraClass) => pure({
 });
 
 // `target="_blank"` sin `rel`: BootstrapVue 2 añadía `rel="noopener"`; BootstrapVueNext no.
-export const BButton = wrapper('BButton', _BButton, { block: { type: Boolean, default: false } }, (props, attrs) => ({
+export const BButton = /*#__PURE__*/ wrapper('BButton', _BButton, { block: { type: Boolean, default: false } }, (props, attrs) => ({
   class: [attrs.class, props.block ? 'btn-block' : null],
   ...(attrs.target === '_blank' && !attrs.rel ? { rel: 'noopener' } : {}),
 }));
-export const BButtonGroup = pure(_BButtonGroup);
+export const BButtonGroup = /*#__PURE__*/ pure(_BButtonGroup);
 
 // `pill`: BootstrapVue 2 (BS4) emite `badge-pill`; BootstrapVueNext, `rounded-pill` (sin el relleno horizontal de `.badge-pill`).
-export const BBadge = wrapper('BBadge', _BBadge, { variant: { type: String, default: 'secondary' }, pill: { type: Boolean, default: false } }, (props, attrs) => ({
+export const BBadge = /*#__PURE__*/ wrapper('BBadge', _BBadge, { variant: { type: String, default: 'secondary' }, pill: { type: Boolean, default: false } }, (props, attrs) => ({
   variant: null,
   class: [`badge-${props.variant}`, props.pill ? 'badge-pill' : null, attrs.class],
 }));
@@ -111,7 +111,7 @@ export const BBadge = wrapper('BBadge', _BBadge, { variant: { type: String, defa
 //   - BFormCheckbox / BFormRadio: clase `px-bvn-check` en el input para que el puente pinte la casilla/radio como el `custom-control` de BS4.
 // Quitar estas clases cuando la hoja base pase a Bootstrap 5.
 // ---------------------------------------------------------------------------------------------------------------------------------
-export const BFormGroup = pure({
+export const BFormGroup = /*#__PURE__*/ pure({
   name: 'BFormGroup',
   inheritAttrs: false,
   setup(_props, { attrs, slots }) {
@@ -124,12 +124,12 @@ export const BFormGroup = pure({
     };
   },
 });
-export const BFormInput = pure(_BFormInput);
-export const BFormTextarea = pure(_BFormTextarea);
-export const BFormInvalidFeedback = pure(_BFormInvalidFeedback);
-export const BFormSelectOption = pure(_BFormSelectOption);
+export const BFormInput = /*#__PURE__*/ pure(_BFormInput);
+export const BFormTextarea = /*#__PURE__*/ pure(_BFormTextarea);
+export const BFormInvalidFeedback = /*#__PURE__*/ pure(_BFormInvalidFeedback);
+export const BFormSelectOption = /*#__PURE__*/ pure(_BFormSelectOption);
 
-export const BFormSelect = pure({
+export const BFormSelect = /*#__PURE__*/ pure({
   name: 'BFormSelect',
   inheritAttrs: false,
   setup(_props, { attrs, slots }) {
@@ -149,8 +149,8 @@ const checkWrapper = (name, component, mark) => pure({
     return () => h(component, mark(attrs), slots);
   },
 });
-export const BFormCheckbox = checkWrapper('BFormCheckbox', _BFormCheckbox, (attrs) => ({ ...attrs, inputClass: [attrs.inputClass, attrs['input-class'], 'px-bvn-check'] }));
-export const BFormRadio = checkWrapper('BFormRadio', _BFormRadio, (attrs) => ({ ...attrs, class: [attrs.class, 'px-bvn-check'] }));
+export const BFormCheckbox = /*#__PURE__*/ checkWrapper('BFormCheckbox', _BFormCheckbox, (attrs) => ({ ...attrs, inputClass: [attrs.inputClass, attrs['input-class'], 'px-bvn-check'] }));
+export const BFormRadio = /*#__PURE__*/ checkWrapper('BFormRadio', _BFormRadio, (attrs) => ({ ...attrs, class: [attrs.class, 'px-bvn-check'] }));
 
 // Directiva `v-b-tooltip` de BootstrapVueNext (Floating UI). Se registra localmente (`directives: { 'b-tooltip': vBTooltip }`); la global de
 // BootstrapVue 2 sigue en las vistas no migradas. Hooks de Vue 3 (`mounted/updated/beforeUnmount`): no depende de `CUSTOM_DIR`.
@@ -163,7 +163,7 @@ export const vBTooltip = _vBTooltip;
 // cruz. Se abre/cierra con `v-b-toggle.<id>` (directiva de BVN, `vBToggle`) o por id. No cierra por cambio de ruta: el componente se
 // desmonta con la vista.
 // ---------------------------------------------------------------------------------------------------------------------------------
-export const BSidebar = pure({
+export const BSidebar = /*#__PURE__*/ pure({
   name: 'BSidebar',
   inheritAttrs: false,
   props: {
@@ -220,7 +220,7 @@ const MODAL_RENAMED = {
   static: 'teleportDisabled',
 };
 
-export const BModal = pure({
+export const BModal = /*#__PURE__*/ pure({
   name: 'BModal',
   inheritAttrs: false,
   setup(_props, { attrs, slots, expose }) {
@@ -251,7 +251,7 @@ export const BModal = pure({
 // `hover`, `bordered`, `responsive`, `show-empty`, `empty-text`, `thead-class`, slots `#cell(x)`, `#table-busy`, orden local con `sortable`) es
 // el mismo. Única diferencia de marcado: `head-variant="light|dark"`. BootstrapVue 2 (BS4) pintaba `thead.thead-light`, que estila la base
 // (`.thead-light th`); BootstrapVueNext emite `table-light` (fila de color, otro gris). Se emite la clase de BS4 y no se pasa `headVariant`.
-export const BTable = pure({
+export const BTable = /*#__PURE__*/ pure({
   name: 'BTable',
   inheritAttrs: false,
   setup(_props, { attrs, slots, expose }) {
@@ -270,12 +270,12 @@ export const BTable = pure({
     };
   },
 });
-export const BTableSimple = pure(_BTableSimple);
-export const BThead = pure(_BThead);
-export const BTbody = pure(_BTbody);
-export const BTr = pure(_BTr);
-export const BTh = pure(_BTh);
-export const BTd = pure(_BTd);
+export const BTableSimple = /*#__PURE__*/ pure(_BTableSimple);
+export const BThead = /*#__PURE__*/ pure(_BThead);
+export const BTbody = /*#__PURE__*/ pure(_BTbody);
+export const BTr = /*#__PURE__*/ pure(_BTr);
+export const BTh = /*#__PURE__*/ pure(_BTh);
+export const BTd = /*#__PURE__*/ pure(_BTd);
 
 /** `v-b-toggle` de BootstrapVueNext (hooks de Vue 3). Uso local: `directives: { 'b-toggle': vBToggle }`. */
 export const vBToggle = _vBToggle;
@@ -299,7 +299,7 @@ export const vBPopover = _vBPopover;
 const truthyAttr = (v) => v === '' || v === true;
 const toList = (fn) => (Array.isArray(fn) ? fn : fn ? [fn] : []);
 
-export const BAlert = pure({
+export const BAlert = /*#__PURE__*/ pure({
   name: 'BAlert',
   inheritAttrs: false,
   setup(_props, { attrs, slots }) {
@@ -315,8 +315,8 @@ export const BAlert = pure({
   },
 });
 
-export const BProgress = pure(_BProgress);
-export const BProgressBar = pure({
+export const BProgress = /*#__PURE__*/ pure(_BProgress);
+export const BProgressBar = /*#__PURE__*/ pure({
   name: 'BProgressBar',
   inheritAttrs: false,
   setup(_props, { attrs, slots }) {
@@ -327,7 +327,7 @@ export const BProgressBar = pure({
   },
 });
 
-export const BTab = pure(_BTab);
+export const BTab = /*#__PURE__*/ pure(_BTab);
 
 // BVN solo reconoce como pestañas los hijos cuyo `type` es EXACTAMENTE su BTab (`tab.type === BTab`): un BTab envuelto no se registra y la primera pestaña
 // no se activa. Por eso `BTab` se exporta tal cual y `lazy` → `unmountLazy` (BV2 destruye la pestaña inactiva; en BVN es una prop de cada BTab) se aplica desde
@@ -339,7 +339,7 @@ const withUnmountLazy = (vnodes) => vnodes.map((vnode) => {
   return vnode;
 });
 
-export const BTabs = pure({
+export const BTabs = /*#__PURE__*/ pure({
   name: 'BTabs',
   inheritAttrs: false,
   setup(_props, { attrs, slots }) {
@@ -355,7 +355,7 @@ export const BTabs = pure({
   },
 });
 
-export const BDropdown = pure({
+export const BDropdown = /*#__PURE__*/ pure({
   name: 'BDropdown',
   inheritAttrs: false,
   setup(_props, { attrs, slots }) {
@@ -385,13 +385,13 @@ export const BDropdown = pure({
     };
   },
 });
-export const BDropdownItem = pure(_BDropdownItem);
-export const BDropdownDivider = pure(_BDropdownDivider);
-export const BDropdownHeader = pure(_BDropdownHeader);
-export const BDropdownForm = pure(_BDropdownForm);
+export const BDropdownItem = /*#__PURE__*/ pure(_BDropdownItem);
+export const BDropdownDivider = /*#__PURE__*/ pure(_BDropdownDivider);
+export const BDropdownHeader = /*#__PURE__*/ pure(_BDropdownHeader);
+export const BDropdownForm = /*#__PURE__*/ pure(_BDropdownForm);
 
 const PAGINATION_ALIGN = { left: 'start', right: 'end' };
-export const BPagination = pure({
+export const BPagination = /*#__PURE__*/ pure({
   name: 'BPagination',
   inheritAttrs: false,
   setup(_props, { attrs, slots }) {
@@ -413,10 +413,10 @@ export const BPagination = pure({
 });
 
 export { BLink };
-export const BListGroup = pure(_BListGroup);
-export const BListGroupItem = pure(_BListGroupItem);
-export const BImg = pure(_BImg);
-export const BAvatar = pure(_BAvatar);
+export const BListGroup = /*#__PURE__*/ pure(_BListGroup);
+export const BListGroupItem = /*#__PURE__*/ pure(_BListGroupItem);
+export const BImg = /*#__PURE__*/ pure(_BImg);
+export const BAvatar = /*#__PURE__*/ pure(_BAvatar);
 
 
 export { bootstrapPlugin };
