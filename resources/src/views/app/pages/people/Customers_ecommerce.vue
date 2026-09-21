@@ -149,12 +149,12 @@
 </template>
 
 <script>
-import { BModal, BAlert, BButton, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BAlert, BButton, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormCheckbox } from "@/platform/bootstrap";
 import { modals, notifications, confirmDialog } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 
-export default { components: { BAlert, BButton, BCol, BRow, BModal },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormCheckbox, BAlert, BButton, BCol, BRow, BModal },
   metaInfo: {
     title: "Online Store Accounts",
   },

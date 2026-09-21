@@ -159,7 +159,7 @@
 </template>
 
 <script>
-import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import Datepicker from 'vuejs-datepicker';
@@ -167,7 +167,7 @@ import AttendanceIdentifiersCard from './AttendanceIdentifiersCard.vue';
 
 export default {
   metaInfo: { title: "Editar empleado" },
-  components: { BButton, BCard, BCol, BRow, Datepicker, AttendanceIdentifiersCard },
+  components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BButton, BCard, BCol, BRow, Datepicker, AttendanceIdentifiersCard },
   data() {
     return {
       isLoading: true,

@@ -123,10 +123,10 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip, BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BButton, BCard, BCol, BRow, BFormGroup, BFormSelect, BForm, BFormInvalidFeedback, BFormInput, BFormCheckbox } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default { components: { BButton, BCard, BCol, BRow, BModal }, directives: { 'b-tooltip': vBTooltip },
+export default { components: { BFormGroup, BFormSelect, BForm, BFormInvalidFeedback, BFormInput, BFormCheckbox, BButton, BCard, BCol, BRow, BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Warehouse Locations"
   },

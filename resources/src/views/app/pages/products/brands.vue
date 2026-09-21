@@ -102,6 +102,7 @@
 </template>
 
 <script>
+import { BForm, BFormTextarea } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
@@ -116,7 +117,7 @@ import PxInput from "@/components/px-next/PxInput.vue";
 import PxModal from "@/components/px-next/PxModal.vue";
 
 export default {
-  components: { PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxField, PxInput, PxModal },
+  components: { BForm, BFormTextarea, PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxField, PxInput, PxModal },
   metaInfo: {
     title: "Marcas"
   },

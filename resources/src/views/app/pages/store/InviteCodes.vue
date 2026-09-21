@@ -66,9 +66,9 @@
 </template>
 
 <script>
-import { BModal, BBadge, BButton, BCard } from "@/platform/bootstrap";
+import { BModal, BBadge, BButton, BCard, BFormInput, BFormSelect, BForm, BFormGroup, BFormCheckbox } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default { components: { BBadge, BButton, BCard, BModal },
+export default { components: { BFormInput, BFormSelect, BForm, BFormGroup, BFormCheckbox, BBadge, BButton, BCard, BModal },
   metaInfo: { title: 'Códigos de invitación' },
   data () { return { isLoading: true, saving: false, search: '', filterStatus: '', codes: [], pagination: { current_page: 1, last_page: 1 }, showModal: false, showBatchModal: false, editingCode: null, codeForm: { code: '', max_uses: null, expires_at: '', is_active: true }, batchForm: { count: 5, max_uses: null, expires_at: '' }, debounceTimer: null } },
   mounted () { this.fetchCodes() },

@@ -12,7 +12,7 @@
 
       <b-input-group class="mt-3 mb-4">
         <b-form-input v-model.trim="query" placeholder="Buscar producto por nombre o código" @keyup.enter="search" />
-        <b-input-group-append><b-button variant="primary" :disabled="loading || query.length < 2" @click="search">Buscar</b-button></b-input-group-append>
+        <b-button variant="primary" :disabled="loading || query.length < 2" @click="search">Buscar</b-button>
       </b-input-group>
 
       <div v-if="query.length < 2 && !searched" class="inventory-empty">Escribe al menos 2 caracteres para consultar existencias.</div>
@@ -52,8 +52,8 @@
 </template>
 
 <script>
-import { BButton, BCard } from "@/platform/bootstrap";
-export default { components: { BButton, BCard },
+import { BButton, BCard, BInputGroup, BFormInput } from "@/platform/bootstrap";
+export default { components: { BInputGroup, BFormInput, BButton, BCard },
   name: 'InventoryLocationStock',
   data() { return { query: '', products: [], loading: false, searched: false, error: '' }; },
   methods: {

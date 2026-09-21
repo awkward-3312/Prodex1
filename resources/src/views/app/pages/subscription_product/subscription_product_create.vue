@@ -87,14 +87,12 @@
                           :state="!validationContext.errors.length"
                           aria-describedby="totalCycles-feedback"
                         ></b-form-input>
-                        <b-input-group-append>
                           <!-- Cycle Type Dropdown -->
                           <b-form-select v-model="form.cycle_type">
                             <option value="monthly">Months</option>
                             <option value="weekly">Weeks</option>
                             <option value="yearly">Years</option>
                           </b-form-select>
-                        </b-input-group-append>
                       </b-input-group>
                       <b-form-invalid-feedback id="totalCycles-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
@@ -192,11 +190,11 @@
 </template>
 
 <script>
-import { vBTooltip, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { vBTooltip, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { components: { BButton, BCard, BCol, BRow }, directives: { 'b-tooltip': vBTooltip },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect, BButton, BCard, BCol, BRow }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Create Subscription"
   },

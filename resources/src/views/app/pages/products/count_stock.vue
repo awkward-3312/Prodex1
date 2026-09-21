@@ -119,11 +119,11 @@
 
 
 <script>
-import { BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { components: { BButton, BCard, BCol, BRow, BModal },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Count Stock"
   },

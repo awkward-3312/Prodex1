@@ -75,7 +75,7 @@
 </template>
 
 <script>
-import { BBadge, BButton, BCard } from "@/platform/bootstrap";
+import { BBadge, BButton, BCard, BFormSelect } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
@@ -86,7 +86,7 @@ import {
 } from "../../../../utils/priceFormat";
 // axios assumed globally available
 
-export default { components: { BBadge, BButton, BCard },
+export default { components: { BFormSelect, BBadge, BButton, BCard },
   metaInfo: { title: "Zero Sales Products Report" },
   data() {
     return {

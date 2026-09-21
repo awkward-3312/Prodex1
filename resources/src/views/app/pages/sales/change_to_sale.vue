@@ -154,12 +154,10 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend>
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </b-input-group-prepend>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
@@ -167,12 +165,10 @@
                                   :max="detail.stock"
                                   v-model.number="detail.quantity"
                                 >
-                                <b-input-group-append>
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </b-input-group-append>
                               </b-input-group>
                             </div>
                           </td>
@@ -603,12 +599,12 @@
 
 
 <script>
-import { BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 
-export default { components: { BButton, BCard, BCol, BRow, BModal },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Nueva venta"
   },

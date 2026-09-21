@@ -255,6 +255,7 @@
 </template>
 
 <script>
+import { BFormCheckbox } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import VueClockPicker from '@pencilpix/vue2-clock-picker';
 import NProgress from "nprogress";
@@ -273,7 +274,7 @@ import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: "Turnos de oficina" },
-  components: {
+  components: { BFormCheckbox,
     VueClockPicker,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
     PxInput, PxEmptyState, PxModal, PxSkeleton, "v-field": VField, "vs-px": VsPx

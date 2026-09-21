@@ -75,10 +75,10 @@
 </template>
 
 <script>
-import { BButton, BCard } from "@/platform/bootstrap";
+import { BButton, BCard, BForm, BFormGroup, BFormInput, BFormSelect, BFormCheckbox, BFormFile } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 
-export default { components: { BButton, BCard },
+export default { components: { BFormFile, BForm, BFormGroup, BFormInput, BFormSelect, BFormCheckbox, BButton, BCard },
   metaInfo: {
     title: "Store Banner Form"
   },

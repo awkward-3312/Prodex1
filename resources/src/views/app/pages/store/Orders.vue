@@ -137,10 +137,10 @@
 
 <script>
 import { notifications } from "@/platform";
-import { vBTooltip, BAlert, BBadge, BButton, BCard } from "@/platform/bootstrap";
+import { vBTooltip, BAlert, BBadge, BButton, BCard, BFormInput, BFormSelect, BFormDatepicker } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 
-export default { components: { BAlert, BBadge, BButton, BCard }, directives: { 'b-tooltip': vBTooltip },  
+export default { components: { BFormDatepicker, BFormInput, BFormSelect, BAlert, BBadge, BButton, BCard }, directives: { 'b-tooltip': vBTooltip },  
   metaInfo: { title: 'Store Orders' },
   data () {
     return {

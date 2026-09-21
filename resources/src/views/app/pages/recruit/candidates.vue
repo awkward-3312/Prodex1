@@ -303,6 +303,7 @@
 </template>
 
 <script>
+import { BFormFile } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -326,7 +327,7 @@ const SOURCES = ["website", "referral", "linkedin", "job_board", "agency", "walk
 export default {
   name: "RecruitCandidatesNext",
   metaInfo: { title: "Candidates" },
-  components: {
+  components: { BFormFile,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
     PxField, PxInput, PxTextarea, PxSelect, PxTag, PxEmptyState, PxModal,
     PxSkeleton, "v-field": VField

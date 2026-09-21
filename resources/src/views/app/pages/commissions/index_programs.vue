@@ -92,6 +92,7 @@
 </template>
 
 <script>
+import { BForm } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
@@ -111,7 +112,7 @@ import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
   metaInfo: { title: 'Commission Programs' },
-  components: {
+  components: { BForm,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxBadge,
     PxField, PxInput, PxTextarea, PxCheck, PxModal, PxEmptyState
   },

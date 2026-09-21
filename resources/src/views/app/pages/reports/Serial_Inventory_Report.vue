@@ -29,9 +29,9 @@
 </template>
 
 <script>
-import { BCard } from "@/platform/bootstrap";
+import { BCard, BFormGroup } from "@/platform/bootstrap";
 import NProgress from "nprogress";
-export default { components: { BCard },
+export default { components: { BFormGroup, BCard },
   metaInfo: { title: "Informe de inventario por números de serie" },
   data() { return { isLoading: true, serverParams: { page: 1, perPage: 10 }, limit: "10", search: "", totalRows: "", reports: [], warehouses: [], warehouse_id: "" }; },
   computed: {

@@ -1,14 +1,10 @@
 import './platform/vue-compat';
-import { patchBootstrapVueForCompat } from './platform/compat/bootstrap-vue';
 import { mountWithRouter } from './platform/compat/vue-router';
 import { head, installHead } from './platform/head';
 import store from "./store";
 import Vue from "vue";
-patchBootstrapVueForCompat(Vue);
 import router, { setupRouterGuards } from "./router";
 import { installValidation } from './platform/validation';
-import BootstrapVueRemaining from './platform/compat/bootstrap-vue-forms';
-Vue.use(BootstrapVueRemaining);
 
 Vue.component(
   "large-sidebar",

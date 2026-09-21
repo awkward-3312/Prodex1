@@ -108,11 +108,11 @@
 </template>
 
 <script>
-import { BBadge, BButton, BCard } from "@/platform/bootstrap";
+import { BBadge, BButton, BCard, BFormSelect, BFormInput } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 
-export default { components: { BBadge, BButton, BCard },
+export default { components: { BFormSelect, BFormInput, BBadge, BButton, BCard },
   metaInfo: { title: "Stock Aging Report" },
   data() {
     return {

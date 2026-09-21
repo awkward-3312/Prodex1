@@ -55,9 +55,7 @@
                           :placeholder="$t('Choose_Customer')"
                           :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
                         />
-                        <b-input-group-append
-                          v-if="currentUserPermissions && currentUserPermissions.includes('Customers_add')"
-                        >
+                        <template v-if="currentUserPermissions && currentUserPermissions.includes('Customers_add')">
                           <b-button
                             variant="primary"
                             @click="Quick_Add_Client"
@@ -66,7 +64,7 @@
                           >
                             <lucide-icon name="plus" />
                           </b-button>
-                        </b-input-group-append>
+                        </template>
                       </b-input-group>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group></template>
@@ -237,12 +235,10 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend>
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </b-input-group-prepend>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
@@ -250,12 +246,10 @@
                                   :max="detail.stock"
                                   v-model.number="detail.quantity"
                                 >
-                                <b-input-group-append>
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </b-input-group-append>
                               </b-input-group>
                             </div>
                           </td>
@@ -1053,13 +1047,13 @@
 
 
 <script>
-import { BModal, BAlert, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BAlert, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 
-export default { components: { BAlert, BButton, BCard, BCol, BRow, BModal },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect, BAlert, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Nueva venta"
   },

@@ -82,10 +82,10 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip, BModal, BAlert, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BAlert, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default { components: { BAlert, BButton, BCard, BCol, BRow, BModal }, directives: { 'b-tooltip': vBTooltip },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BAlert, BButton, BCard, BCol, BRow, BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: { title: "Almacenes / CD" },
   data() {
     return {

@@ -423,7 +423,7 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip, BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BFormFile } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import Datepicker from 'vuejs-datepicker';
 
@@ -431,7 +431,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Payroll"
   },
-   components: { BButton, BCard, BCol, BRow, BModal,
+   components: { BFormFile, BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BButton, BCard, BCol, BRow, BModal,
     Datepicker
   },
   data() {

@@ -352,11 +352,11 @@
 </template>
 
 <script>
-import { BModal, BTable, BBadge, BButton, BCard, BLink, BProgress, BTab, BTabs } from "@/platform/bootstrap";
+import { BModal, BTable, BBadge, BButton, BCard, BLink, BProgress, BTab, BTabs, BFormCheckbox } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import moment from 'moment';
 
-export default { components: { BBadge, BButton, BCard, BLink, BProgress, BTab, BTabs, BTable, BModal },
+export default { components: { BFormCheckbox, BBadge, BButton, BCard, BLink, BProgress, BTab, BTabs, BTable, BModal },
   data() {
     return {
       activeMiniTab: 0,

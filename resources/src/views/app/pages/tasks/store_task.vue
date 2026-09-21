@@ -190,11 +190,11 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput, BFormInvalidFeedback, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormInvalidFeedback, BButton, BCard, BCol, BRow, BForm } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { components: { BButton, BCard, BCol, BRow, BFormGroup, BFormInput, BFormInvalidFeedback },
+export default { components: { BForm, BButton, BCard, BCol, BRow, BFormGroup, BFormInput, BFormInvalidFeedback },
   metaInfo: {
     title: "Create Task"
   },

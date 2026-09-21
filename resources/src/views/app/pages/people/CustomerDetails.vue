@@ -102,9 +102,7 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="salesSearch" :placeholder="$t('Search')" @input="fetchSales"></b-form-input>
-                <b-input-group-append>
                   <b-button variant="primary" @click="fetchSales">{{ $t('Search') }}</b-button>
-                </b-input-group-append>
               </b-input-group>
             </div>
             <b-table 
@@ -152,9 +150,7 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="paymentsSearch" :placeholder="$t('Search')" @input="fetchPayments"></b-form-input>
-                <b-input-group-append>
                   <b-button variant="primary" @click="fetchPayments">{{ $t('Search') }}</b-button>
-                </b-input-group-append>
               </b-input-group>
             </div>
             <b-table 
@@ -199,9 +195,7 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="returnsSearch" :placeholder="$t('Search')" @input="fetchReturns"></b-form-input>
-                <b-input-group-append>
                   <b-button variant="primary" @click="fetchReturns">{{ $t('Search') }}</b-button>
-                </b-input-group-append>
               </b-input-group>
             </div>
             <b-table 
@@ -244,9 +238,7 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="paymentReturnsSearch" :placeholder="$t('Search')" @input="fetchPaymentReturns"></b-form-input>
-                <b-input-group-append>
                   <b-button variant="primary" @click="fetchPaymentReturns">{{ $t('Search') }}</b-button>
-                </b-input-group-append>
               </b-input-group>
             </div>
             <b-table 
@@ -517,7 +509,7 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { BSpinner, BModal, BTable, BAlert, BBadge, BButton, BCard, BCol, BPagination, BRow, BTab, BTabs } from "@/platform/bootstrap";
+import { BSpinner, BModal, BTable, BAlert, BBadge, BButton, BCard, BCol, BPagination, BRow, BTab, BTabs, BInputGroup, BFormInput, BForm, BFormGroup, BFormInvalidFeedback, BFormTextarea } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import {
@@ -526,7 +518,7 @@ import {
 } from "../../../../utils/priceFormat";
 
 export default {
-  components: { BAlert, BBadge, BButton, BCard, BCol, BPagination, BRow, BTab, BTabs, BTable, BModal, BSpinner },
+  components: { BInputGroup, BFormInput, BForm, BFormGroup, BFormInvalidFeedback, BFormTextarea, BAlert, BBadge, BButton, BCard, BCol, BPagination, BRow, BTab, BTabs, BTable, BModal, BSpinner },
   metaInfo: {
     title: "Customer Details"
   },

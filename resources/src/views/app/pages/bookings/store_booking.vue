@@ -208,11 +208,11 @@
 </template>
 
 <script>
-import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInvalidFeedback, BFormInput } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { components: { BButton, BCard, BCol, BRow },
+export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BButton, BCard, BCol, BRow },
   metaInfo: {
     title: "Create Booking"
   },

@@ -16,23 +16,21 @@ test('inventario por AST: no queda layout, botones, primitives, pestañas, despl
   assert.equal((inv.families.primitive || { bv2: 0 }).bv2, 0);
 });
 
-test('lo único que queda de BootstrapVue 2 son formularios y las etiquetas sin equivalente (b-skeleton-img)', () => {
+test('fase 5B: no queda ninguna etiqueta de BootstrapVue 2 (formularios, archivos, fechas ni marcadores de carga)', () => {
   const rest = Object.entries(inv.byTag).filter(([, c]) => c.bv2 > 0).map(([t]) => t);
-  const allowed = (t) => /^b-(form|input-group)/.test(t) || t === 'b-skeleton-img';
-  assert.deepEqual(rest.filter((t) => !allowed(t)), []);
-  assert.ok(inv.tags.bv2 <= 2140, `etiquetas BV2 (${inv.tags.bv2}) no debe crecer respecto a la fase 5A`);
+  assert.deepEqual(rest, []);
+  assert.equal(inv.tags.bv2, 0);
+  assert.equal(inv.files.bv2, 0);
 });
 
-test('el registro global de BV2 (platform/compat/bootstrap-vue-forms.js) cubre exactamente las etiquetas que aún se usan', () => {
-  const covered = new Set(['b-form', 'b-form-group', 'b-form-input', 'b-form-textarea', 'b-form-select', 'b-form-select-option', 'b-form-select-option-group', 'b-form-checkbox', 'b-form-checkbox-group',
-    'b-form-radio', 'b-form-radio-group', 'b-form-file', 'b-form-datepicker', 'b-form-invalid-feedback', 'b-form-valid-feedback', 'b-form-text', 'b-form-row', 'b-input-group',
-    'b-input-group-append', 'b-input-group-prepend', 'b-input-group-text', 'b-input-group-addon', 'b-skeleton-img']);
-  const used = Object.entries(inv.byTag).filter(([, c]) => c.bv2 > 0).map(([t]) => t);
-  assert.deepEqual(used.filter((t) => !covered.has(t)), [], 'etiquetas BV2 en uso que el registro reducido no registra');
-  const kit = fs.readFileSync(path.join(SRC, 'plugins/stocky.kit.js'), 'utf8');
-  assert.match(kit, /Vue\.use\(BootstrapVueRemaining\)/);
-  assert.doesNotMatch(kit, /Vue\.use\(BootstrapVue\)/);
-  assert.doesNotMatch(fs.readFileSync(path.join(SRC, 'login.js'), 'utf8'), /Vue\.use\(BootstrapVue\)/);
+test('fase 5B: sin registro global de BootstrapVue 2 ni parches de compat (platform/compat/bootstrap-vue*.js)', () => {
+  for (const f of ['platform/compat/bootstrap-vue.js', 'platform/compat/bootstrap-vue-forms.js']) {
+    assert.equal(fs.existsSync(path.join(SRC, f)), false, `${f} debe haberse eliminado`);
+  }
+  for (const f of ['plugins/stocky.kit.js', 'login.js', 'main.js']) {
+    const text = fs.readFileSync(path.join(SRC, f), 'utf8');
+    assert.doesNotMatch(text, /BootstrapVueRemaining|patchBootstrapVueForCompat|Vue\.use\(BootstrapVue\)/, f);
+  }
 });
 
 test('el wrapper de platform/bootstrap exporta toda la familia migrada', async () => {

@@ -118,10 +118,10 @@
 
 <script>
 import { notifications } from "@/platform";
-import { BFormGroup, BFormInput, BFormSelect, BFormInvalidFeedback, BModal, BTable, BBadge, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormSelect, BFormInvalidFeedback, BModal, BTable, BBadge, BButton, BCard, BCol, BRow, BForm, BFormCheckbox } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
 
-export default { components: { BBadge, BButton, BCard, BCol, BRow, BTable, BModal, BFormGroup, BFormInput, BFormSelect, BFormInvalidFeedback },
+export default { components: { BForm, BFormCheckbox, BBadge, BButton, BCard, BCol, BRow, BTable, BModal, BFormGroup, BFormInput, BFormSelect, BFormInvalidFeedback },
   props: {
     stores: { type: Array, default: () => [] },
     warehouses: { type: Array, default: () => [] },

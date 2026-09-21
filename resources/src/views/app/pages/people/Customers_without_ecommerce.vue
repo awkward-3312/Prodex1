@@ -130,12 +130,12 @@
 </template>
 
 <script>
-import { BModal, BAlert, BButton, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BAlert, BButton, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 
-export default { components: { BAlert, BButton, BCol, BRow, BModal },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BAlert, BButton, BCol, BRow, BModal },
   metaInfo: {
     title: "Customer Without Ecommerce"
   },

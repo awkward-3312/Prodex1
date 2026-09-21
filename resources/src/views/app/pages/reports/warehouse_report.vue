@@ -518,7 +518,7 @@
 
 
 <script>
-import { BButton, BCard, BCol, BRow, BTab, BTabs } from "@/platform/bootstrap";
+import { BButton, BCard, BCol, BRow, BTab, BTabs, BFormGroup } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import VueApexCharts from "vue-apexcharts";
 import jsPDF from "jspdf";
@@ -530,7 +530,7 @@ import {
 } from "../../../../utils/priceFormat";
 
 export default {
-  components: { BButton, BCard, BCol, BRow, BTab, BTabs,
+  components: { BFormGroup, BButton, BCard, BCol, BRow, BTab, BTabs,
     apexchart: VueApexCharts,
     StatTile: {
       name: "StatTile",

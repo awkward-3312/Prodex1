@@ -1,5 +1,4 @@
 import './platform/vue-compat';
-import { patchBootstrapVueForCompat } from './platform/compat/bootstrap-vue';
 import { mountWithRouter } from './platform/compat/vue-router';
 import { head, installHead } from './platform/head';
 import { bootstrapPlugin } from './platform/bootstrap';
@@ -7,7 +6,6 @@ import { installDirectives } from './platform/directives';
 import store from "./store";
 
 import Vue from "vue";
-patchBootstrapVueForCompat(Vue);
 installHead(Vue);
 installDirectives(Vue);
 import router, { setupRouterGuards } from "./router";

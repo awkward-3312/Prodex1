@@ -236,7 +236,7 @@
 </template>
 
 <script>
-import { BSidebar, vBToggle, BButton, BCol, BDropdown, BDropdownItem, BRow } from "@/platform/bootstrap";
+import { BSidebar, vBToggle, BButton, BCol, BDropdown, BDropdownItem, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import NProgress from "nprogress";
@@ -244,7 +244,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Util from '../../../../utils';
 
-export default { directives: { 'b-toggle': vBToggle }, components: { BButton, BCol, BDropdown, BDropdownItem, BRow, BSidebar },
+export default { directives: { 'b-toggle': vBToggle }, components: { BFormGroup, BFormInput, BButton, BCol, BDropdown, BDropdownItem, BRow, BSidebar },
   metaInfo: {
     title: "Transfer"
   },

@@ -67,6 +67,7 @@
 </template>
 
 <script>
+import { BForm } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -81,7 +82,7 @@ export default {
   metaInfo: {
     title: "Create deposit"
   },
-  components: {
+  components: { BForm,
     PxPageHeader, PxCard, PxField, PxInput, PxTextarea, PxButton, "vs-px": VsPx
   },
   data() {

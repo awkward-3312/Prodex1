@@ -100,7 +100,7 @@
 </template>
 
 <script>
-import { BButton, BCard } from "@/platform/bootstrap";
+import { BButton, BCard, BFormGroup } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -116,7 +116,7 @@ import {
 
 export default {
   metaInfo: { title: "Stock Inventory Valuation Report" },
-  components: { BButton, BCard, DateRangePicker },
+  components: { BFormGroup, BButton, BCard, DateRangePicker },
 
   data() {
     return {

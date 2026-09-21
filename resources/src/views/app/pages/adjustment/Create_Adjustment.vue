@@ -145,12 +145,10 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend>
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </b-input-group-prepend>
 
                                 <input
                                   class="form-control"
@@ -159,12 +157,10 @@
                                   :max="detail.current"
                                   v-model.number="detail.quantity"
                                 >
-                                <b-input-group-append>
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </b-input-group-append>
                               </b-input-group>
                             </div>
                           </td>
@@ -352,12 +348,12 @@
 </template>
 
 <script>
-import { BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BInputGroup } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default { components: { BButton, BCard, BCol, BRow, BModal },
+export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BInputGroup, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Create Adjustment"
   },

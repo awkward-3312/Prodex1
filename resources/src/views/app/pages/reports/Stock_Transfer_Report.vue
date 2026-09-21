@@ -171,7 +171,7 @@
 </template>
 
 <script>
-import { BButton, BButtonGroup, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BButtonGroup, BCard, BCol, BRow, BSkeletonImg } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import VueApexCharts from "vue-apexcharts";
@@ -195,7 +195,7 @@ const StatTile = {
 
 export default {
   metaInfo: { title: "Stock Transfer Report" },
-  components: { BButton, BButtonGroup, BCard, BCol, BRow, apexchart: VueApexCharts, "date-range-picker": DateRangePicker, StatTile },
+  components: { BSkeletonImg, BButton, BButtonGroup, BCard, BCol, BRow, apexchart: VueApexCharts, "date-range-picker": DateRangePicker, StatTile },
   data() {
     const end = new Date(); const start = new Date(); start.setDate(end.getDate()-6);
     return {

@@ -218,12 +218,12 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BModal, BTable, BBadge, BButton, BCard, BCol, BLink, BListGroup, BListGroupItem, BRow, BTab, BTabs } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BModal, BTable, BBadge, BButton, BCard, BCol, BLink, BListGroup, BListGroupItem, BRow, BTab, BTabs, BInputGroup } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import DOMPurify from "dompurify";
 
-export default { components: { BBadge, BButton, BCard, BCol, BLink, BListGroup, BListGroupItem, BRow, BTab, BTabs, BTable, BModal, BFormGroup, BFormInput, BFormTextarea, BFormSelect },
+export default { components: { BInputGroup, BBadge, BButton, BCard, BCol, BLink, BListGroup, BListGroupItem, BRow, BTab, BTabs, BTable, BModal, BFormGroup, BFormInput, BFormTextarea, BFormSelect },
   metaInfo: { title: "View Contract" },
   data() {
     return {

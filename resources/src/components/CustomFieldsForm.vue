@@ -93,8 +93,8 @@
 </template>
 
 <script>
-import { BCol, BRow } from "@/platform/bootstrap";
-export default { components: { BCol, BRow },
+import { BCol, BRow, BFormGroup, BFormInput, BFormTextarea, BFormCheckbox, BFormInvalidFeedback, BFormDatepicker } from "@/platform/bootstrap";
+export default { components: { BFormDatepicker, BFormGroup, BFormInput, BFormTextarea, BFormCheckbox, BFormInvalidFeedback, BCol, BRow },
   name: "CustomFieldsForm",
   props: {
     entityType: {

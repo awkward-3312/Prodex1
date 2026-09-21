@@ -143,6 +143,7 @@
 </template>
 
 <script>
+import { BForm } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
@@ -162,7 +163,7 @@ import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: 'Commission Rules' },
-  components: {
+  components: { BForm,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxBadge,
     PxField, PxInput, PxCheck, PxModal, PxEmptyState, "vs-px": VsPx
   },

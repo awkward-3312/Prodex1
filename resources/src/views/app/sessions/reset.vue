@@ -92,9 +92,11 @@
 </template>
 
 <script>
+import { BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 export default {
+  components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback },
   props: ['token'],
   metaInfo: {
     // if no subcomponents specify a metaInfo.title, this title will be used

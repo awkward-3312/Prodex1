@@ -1384,7 +1384,7 @@
 </template>
 
 <script>
-import { BButton, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCol, BRow, BForm, BFormGroup, BFormFile } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
@@ -1413,7 +1413,7 @@ import PxTextarea from "@/components/px-next/PxTextarea.vue";
 import PxModal from "@/components/px-next/PxModal.vue";
 import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 export default {
-  components: { BButton, BCol, BRow,
+  components: { BFormFile, BForm, BFormGroup, BButton, BCol, BRow,
     vueEasyPrint,
     barcode: VueBarcode,
     PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu,

@@ -227,12 +227,12 @@
 
 
 <script>
-import { BButton, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapGetters, mapActions } from "vuex";
 
-export default { components: { BButton, BCol, BRow },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BButton, BCol, BRow },
   metaInfo: {
     // if no subcomponents specify a metaInfo.title, this title will be used
     title: "Profile"

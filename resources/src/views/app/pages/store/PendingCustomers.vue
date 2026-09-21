@@ -80,9 +80,9 @@
 </template>
 
 <script>
-import { BButton, BCard } from "@/platform/bootstrap";
+import { BButton, BCard, BFormInput } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default { components: { BButton, BCard },
+export default { components: { BFormInput, BButton, BCard },
   metaInfo: { title: 'Pending Customers' },
   data () {
     return {

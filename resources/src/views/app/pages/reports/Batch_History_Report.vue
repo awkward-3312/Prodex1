@@ -209,12 +209,12 @@
 </template>
 
 <script>
-import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCard, BCol, BRow, BFormSelect } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default { components: { BButton, BCard, BCol, BRow },
+export default { components: { BFormSelect, BButton, BCard, BCol, BRow },
   metaInfo: { title: "Batch History" },
 
   data() {

@@ -114,6 +114,7 @@
 
 
 <script>
+import { BForm } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
@@ -129,7 +130,7 @@ import PxSelect from "@/components/px-next/PxSelect.vue";
 import PxModal from "@/components/px-next/PxModal.vue";
 
 export default {
-  components: { PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxField, PxInput, PxSelect, PxModal },
+  components: { BForm, PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxField, PxInput, PxSelect, PxModal },
   metaInfo: {
     title: "Unidades"
   },

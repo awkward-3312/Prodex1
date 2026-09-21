@@ -195,9 +195,9 @@
 </template>
 
 <script>
-import { BModal, BBadge, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BBadge, BButton, BCard, BCol, BRow, BFormInput, BForm, BFormGroup, BFormCheckbox } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
-export default { components: { BBadge, BButton, BCard, BCol, BRow, BModal },
+export default { components: { BFormInput, BForm, BFormGroup, BFormCheckbox, BBadge, BButton, BCard, BCol, BRow, BModal },
   metaInfo: { title: 'Sucursales' },
   data() {
     return {

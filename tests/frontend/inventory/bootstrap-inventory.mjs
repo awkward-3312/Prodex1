@@ -104,7 +104,7 @@ for (const file of walkFiles(SRC).sort()) {
           if (p.type === NodeTypes.ATTRIBUTE) bump(p.name);
           else if (p.type === NodeTypes.DIRECTIVE) {
             const arg = p.arg && p.arg.type === NodeTypes.SIMPLE_EXPRESSION ? p.arg.content : p.arg ? '[dyn]' : '';
-            bump(p.name === 'bind' ? `:${arg || '(obj)'}` : p.name === 'on' ? `@${arg}` : p.name === 'slot' ? `#${arg || 'default'}` : `v-${p.name}${arg ? ':' + arg : ''}`);
+            bump(p.name === 'model' ? `v-model${(p.modifiers || []).map((m) => '.' + (m.content || m)).join('')}${arg ? ':' + arg : ''}` : p.name === 'bind' ? `:${arg || '(obj)'}` : p.name === 'on' ? `@${arg}` : p.name === 'slot' ? `#${arg || 'default'}` : `v-${p.name}${arg ? ':' + arg : ''}`);
           }
         }
       }

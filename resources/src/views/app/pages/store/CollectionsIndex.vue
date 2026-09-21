@@ -14,11 +14,9 @@
               :placeholder="$t('Search') + '…'"
               @input="onSearch"
             />
-            <b-input-group-append>
               <b-button variant="outline-secondary" @click="refresh" :disabled="busy">
                 <lucide-icon name="refresh-cw" />
               </b-button>
-            </b-input-group-append>
           </b-input-group>
         </div>
 
@@ -113,9 +111,9 @@
 
 <script>
 import { notifications } from "@/platform";
-import { vBTooltip, BButton, BCard } from "@/platform/bootstrap";
+import { vBTooltip, BButton, BCard, BInputGroup, BFormInput } from "@/platform/bootstrap";
 
-export default { components: { BButton, BCard }, directives: { 'b-tooltip': vBTooltip },
+export default { components: { BInputGroup, BFormInput, BButton, BCard }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Store Collections Index"
   },

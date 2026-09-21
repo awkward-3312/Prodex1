@@ -67,9 +67,9 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput, BFormTextarea, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormTextarea, BButton, BCard, BCol, BRow, BFormCheckbox } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default { components: { BButton, BCard, BCol, BRow, BFormGroup, BFormInput, BFormTextarea },
+export default { components: { BFormCheckbox, BButton, BCard, BCol, BRow, BFormGroup, BFormInput, BFormTextarea },
   data() {
     return {
       isLoading: true,

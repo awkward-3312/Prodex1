@@ -175,7 +175,7 @@
 
 
 <script>
-import { BSidebar, vBToggle, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BSidebar, vBToggle, BButton, BCard, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -194,7 +194,7 @@ export default { directives: { 'b-toggle': vBToggle },
   metaInfo: {
     title: "Payments Purchase returns"
   },
-  components: { BButton, BCard, BCol, BRow, BSidebar, DateRangePicker, apexchart: VueApexCharts },
+  components: { BFormGroup, BFormInput, BButton, BCard, BCol, BRow, BSidebar, DateRangePicker, apexchart: VueApexCharts },
   data() {
     return {
       isLoading: true,

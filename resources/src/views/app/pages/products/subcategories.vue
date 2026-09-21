@@ -111,6 +111,7 @@
 </template>
 
 <script>
+import { BForm, BFormTextarea } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
@@ -130,7 +131,7 @@ import PxModal from "@/components/px-next/PxModal.vue";
 const API = 'subcategories'
 
 export default {
-  components: {
+  components: { BForm, BFormTextarea,
     PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton,
     PxKebab, PxBadge, PxField, PxInput, PxSelect, PxCheck, PxModal
   },

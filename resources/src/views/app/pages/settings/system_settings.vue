@@ -3838,7 +3838,7 @@
 </template>
 
 <script>
-import { BModal, BTable, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BTab, BTabs } from "@/platform/bootstrap";
+import { BModal, BTable, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BTab, BTabs, BFormSelect, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormCheckbox, BFormRadioGroup, BFormText, BForm, BFormTextarea, BFormDatepicker } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
@@ -3848,7 +3848,7 @@ import { posShortcutsEnabled, setPosShortcutsEnabled, POS_SHORTCUTS } from "../.
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 
 export default {
-  components: { BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BTab, BTabs, BTable, BModal, draggable, PxPageHeader },
+  components: { BFormDatepicker, BFormSelect, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormCheckbox, BFormRadioGroup, BFormText, BForm, BFormTextarea, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BTab, BTabs, BTable, BModal, draggable, PxPageHeader },
   metaInfo: {
     title: "System Settings"
   },

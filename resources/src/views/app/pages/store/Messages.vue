@@ -15,12 +15,10 @@
               :placeholder="$t('Search_by_name_email_subject') + '…'"
               @input="debouncedSearch"
             />
-            <b-input-group-append>
               <b-button variant="primary" :disabled="searching" @click="fetch">
                 <span v-if="searching" class="spinner-border spinner-border-sm"></span>
                 <lucide-icon name="search" v-else />
               </b-button>
-            </b-input-group-append>
           </b-input-group>
 
           <b-form-checkbox v-model="onlyUnread" class="messages-unread" switch @change="fetch">
@@ -124,10 +122,10 @@
 </template>
 
 <script>
-import { vBTooltip, BModal, BBadge, BButton, BCard } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BBadge, BButton, BCard, BInputGroup, BFormInput, BFormCheckbox } from "@/platform/bootstrap";
 import { modals } from "@/platform";
 
-export default { components: { BBadge, BButton, BCard, BModal }, directives: { 'b-tooltip': vBTooltip },
+export default { components: { BInputGroup, BFormInput, BFormCheckbox, BBadge, BButton, BCard, BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Store Messages"
   },

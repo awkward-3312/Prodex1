@@ -41,8 +41,8 @@
 </template>
 
 <script>
-import { BModal, BButton, BCard } from "@/platform/bootstrap";
-export default { components: { BButton, BCard, BModal },
+import { BModal, BButton, BCard, BFormSelect, BFormGroup, BFormInput, BFormTextarea } from "@/platform/bootstrap";
+export default { components: { BFormSelect, BFormGroup, BFormInput, BFormTextarea, BButton, BCard, BModal },
   name: 'InventoryMissing',
   data() { return { issues: [], openCount: 0, canManage: false, resolutions: {}, loading: false, error: '', status: 'open', statusOptions: [{value:'open',text:'Abiertas'},{value:'resolved',text:'Resueltas'},{value:'',text:'Todas'}], showResolve:false, selected:null, saving:false, resolveError:'', form:{resolution_code:'',resolution_reference:'',resolution_notes:''} }; },
   computed: {

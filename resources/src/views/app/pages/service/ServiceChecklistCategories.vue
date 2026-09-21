@@ -64,9 +64,9 @@
 </template>
 
 <script>
-import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormTextarea } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
-export default { components: { BButton, BCard, BCol, BRow },
+export default { components: { BForm, BFormGroup, BFormInput, BFormTextarea, BButton, BCard, BCol, BRow },
   name: 'ServiceChecklistCategories',
   data() {
     return {

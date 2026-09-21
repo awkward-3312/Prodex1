@@ -81,10 +81,10 @@
 </template>
 
 <script>
-import { BAlert, BBadge, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BAlert, BBadge, BButton, BCard, BCol, BRow, BFormCheckbox } from "@/platform/bootstrap";
 import syncRunner from './syncRunner';
 
-export default { components: { BAlert, BBadge, BButton, BCard, BCol, BRow },
+export default { components: { BFormCheckbox, BAlert, BBadge, BButton, BCard, BCol, BRow },
   mixins: [syncRunner],
   props: { store: { type: Object, required: true } },
   data() {

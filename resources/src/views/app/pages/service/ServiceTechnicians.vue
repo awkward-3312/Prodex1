@@ -95,9 +95,9 @@
 </template>
 
 <script>
-import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormTextarea, BFormCheckbox } from "@/platform/bootstrap";
 import { confirmDialog } from "@/platform";
-export default { components: { BButton, BCard, BCol, BRow },
+export default { components: { BForm, BFormGroup, BFormInput, BFormTextarea, BFormCheckbox, BButton, BCard, BCol, BRow },
   name: 'ServiceTechnicians',
   data() {
     return {

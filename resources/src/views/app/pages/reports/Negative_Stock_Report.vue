@@ -22,9 +22,7 @@
             <label class="mb-1 d-block text-muted">{{$t('Search')}}</label>
             <b-input-group class="search-input">
               <b-form-input v-model="search" :placeholder="$t('Search_this_table')" @keyup.enter="fetchRows(1)" />
-              <b-input-group-append>
                 <b-button variant="primary" class="btn-pill" @click="fetchRows(1)">{{$t('Search')}}</b-button>
-              </b-input-group-append>
             </b-input-group>
           </div>
 
@@ -80,7 +78,7 @@
   </template>
 
 <script>
-import { BButton, BCard } from "@/platform/bootstrap";
+import { BButton, BCard, BInputGroup, BFormInput } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -88,7 +86,7 @@ import VueApexCharts from 'vue-apexcharts';
 
 export default {
   metaInfo: { title: 'Negative Stock Report' },
-  components: { BButton, BCard, apexchart: VueApexCharts },
+  components: { BInputGroup, BFormInput, BButton, BCard, apexchart: VueApexCharts },
   data(){
     return {
       warehouses: [],

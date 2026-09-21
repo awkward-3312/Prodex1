@@ -386,6 +386,7 @@
 </template>
 
 <script>
+import { BFormFile } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import VueClockPicker from '@pencilpix/vue2-clock-picker';
 import NProgress from "nprogress";
@@ -408,7 +409,7 @@ import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 export default {
   name: "HrmAttendanceNext",
   metaInfo: { title: "Attendance" },
-  components: {
+  components: { BFormFile,
     VueClockPicker,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
     PxField, PxInput, PxSelect, PxBadge, PxEmptyState, PxModal, PxSkeleton,

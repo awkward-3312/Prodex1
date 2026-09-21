@@ -125,9 +125,7 @@
             </div>
             <b-input-group>
               <b-form-input v-model="amenityInput" :placeholder="$t('Add_Amenity')" @keydown.enter.prevent="addAmenity" />
-              <b-input-group-append>
                 <b-button variant="primary" @click="addAmenity">{{ $t('Add') }}</b-button>
-              </b-input-group-append>
             </b-input-group>
           </b-card>
 
@@ -204,9 +202,9 @@
 </template>
 
 <script>
-import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormSelect, BFormSelectOption, BFormTextarea, BInputGroup, BFormCheckbox, BFormFile } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default { components: { BButton, BCard, BCol, BRow },
+export default { components: { BFormFile, BForm, BFormGroup, BFormInput, BFormSelect, BFormSelectOption, BFormTextarea, BInputGroup, BFormCheckbox, BButton, BCard, BCol, BRow },
   metaInfo: { title: "Property Form" },
   data() {
     return {

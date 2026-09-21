@@ -23,8 +23,8 @@
 </template>
 
 <script>
-import { BCol, BRow } from "@/platform/bootstrap";
-export default { components: { BCol, BRow },
+import { BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
+export default { components: { BFormGroup, BFormInput, BCol, BRow },
   name: 'CustomerMaintenanceHistory',
   data() {
     return {

@@ -87,6 +87,7 @@
 </template>
 
 <script>
+import { BForm } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
@@ -106,7 +107,7 @@ export default {
   metaInfo: {
     title: "Expense Category"
   },
-  components: {
+  components: { BForm,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
     PxField, PxInput, PxTextarea, PxModal, PxEmptyState
   },

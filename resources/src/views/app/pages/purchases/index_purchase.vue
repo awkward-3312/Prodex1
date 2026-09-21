@@ -287,6 +287,7 @@
 </template>
 
 <script>
+import { BForm, BFormGroup, BFormFile } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
@@ -318,7 +319,7 @@ export default {
     title: "Purchases"
   },
 
-  components: {
+  components: { BFormFile, BForm, BFormGroup,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxKebab,
     PxBadge, PxField, PxInput, PxTextarea, PxModal, PxEmptyState, "vs-px": VsPx
   },

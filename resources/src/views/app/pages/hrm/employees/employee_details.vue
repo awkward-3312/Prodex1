@@ -834,7 +834,7 @@
 
 
 <script>
-import { vBTooltip, BModal, BButton, BCard, BCol, BRow, BTab, BTabs } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BButton, BCard, BCol, BRow, BTab, BTabs, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormTextarea } from "@/platform/bootstrap";
 import { confirmDialog, modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import Datepicker from "vuejs-datepicker";
@@ -844,7 +844,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Details Employee"
   },
-  components: { BButton, BCard, BCol, BRow, BTab, BTabs, BModal,
+  components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormTextarea, BButton, BCard, BCol, BRow, BTab, BTabs, BModal,
     Datepicker
   },
   data() {

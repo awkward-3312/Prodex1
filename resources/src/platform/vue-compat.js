@@ -12,8 +12,7 @@ import { compatModeFor } from './compat/bvn-mode.js';
 // CUSTOM_DIR: false. Los hooks de directivas de Vue 2 (bind/inserted/componentUpdated/unbind) están DESACTIVADOS a propósito: ya no queda ningún
 // consumidor. Las directivas de BootstrapVue 2 (`v-b-tooltip`, `v-b-toggle`, `v-b-popover`) se sustituyeron por las de BootstrapVueNext
 // (registro local por vista), `v-append-to-body` de vue-select / vue2-daterange-picker por directivas de Vue 3 en wrappers
-// (platform/directives/append-to-body.js, platform/compat/*) y las dos directivas internas de BV2 (`v-b-visible`, `v-b-hover`) reciben hooks
-// de Vue 3 (platform/compat/bootstrap-vue.js). Si aparece un aviso CUSTOM_DIR, es un consumidor nuevo. Ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE3.md.
+// (platform/directives/append-to-body.js, platform/compat/*). Ya no queda ninguna directiva ni componente de BootstrapVue 2 en la aplicación (fase 5B). Si aparece un aviso CUSTOM_DIR, es un consumidor nuevo. Ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE3.md.
 //
 // MODE por componente: BootstrapVueNext es Vue 3 puro y se compone de componentes internos NO exportados (p. ej. BFormSelect ->
 // BFormSelectPlain). `compatConfig` solo se puede fijar en los exportados (platform/bootstrap); en los internos compat aplicaría el

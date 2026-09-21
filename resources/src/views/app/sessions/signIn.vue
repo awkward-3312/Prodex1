@@ -74,12 +74,12 @@
   </div>
 </template>
 <script>
-import { BButton } from "@/platform/bootstrap";
+import { BButton, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapGetters, mapActions } from "vuex";
 import NProgress from "nprogress";
 
-export default { components: { BButton },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BButton },
   metaInfo: {
     title: "SignIn"
   },

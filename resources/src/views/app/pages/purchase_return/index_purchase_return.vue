@@ -237,6 +237,7 @@
 </template>
 
 <script>
+import { BForm } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
@@ -268,7 +269,7 @@ export default {
     title: "Return Purchase"
   },
 
-  components: {
+  components: { BForm,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxKebab,
     PxBadge, PxField, PxInput, PxTextarea, PxModal, PxEmptyState, "vs-px": VsPx
   },

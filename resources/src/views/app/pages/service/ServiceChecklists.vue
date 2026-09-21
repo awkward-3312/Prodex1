@@ -121,9 +121,9 @@
 </template>
 
 <script>
-import { BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormSelect, BFormSelectOption, BFormInvalidFeedback, BFormInput } from "@/platform/bootstrap";
 import { confirmDialog, modals, notifications } from "@/platform";
-export default { components: { BButton, BCard, BCol, BRow, BModal },
+export default { components: { BForm, BFormGroup, BFormSelect, BFormSelectOption, BFormInvalidFeedback, BFormInput, BButton, BCard, BCol, BRow, BModal },
   name: 'ServiceChecklists',
   data() {
     return {

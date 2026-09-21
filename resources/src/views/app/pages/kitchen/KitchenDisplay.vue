@@ -273,11 +273,11 @@
 </template>
 
 <script>
-import { BModal, BTableSimple, BThead, BTbody, BTr, BTh, BTd, BBadge, BButton } from "@/platform/bootstrap";
+import { BModal, BTableSimple, BThead, BTbody, BTr, BTh, BTd, BBadge, BButton, BFormSelect, BFormDatepicker } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 
-export default { components: { BBadge, BButton, BTableSimple, BThead, BTbody, BTr, BTh, BTd, BModal },
+export default { components: { BFormDatepicker, BFormSelect, BBadge, BButton, BTableSimple, BThead, BTbody, BTr, BTh, BTd, BModal },
   metaInfo: { title: "Kitchen Display" },
   data() {
     return {

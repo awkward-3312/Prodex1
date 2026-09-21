@@ -108,11 +108,11 @@
 </template>
 
 <script>
-import { BFormTextarea, BBadge, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BFormTextarea, BBadge, BButton, BCard, BCol, BRow, BForm, BFormFile } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { components: { BBadge, BButton, BCard, BCol, BRow, BFormTextarea },
+export default { components: { BFormFile, BForm, BBadge, BButton, BCard, BCol, BRow, BFormTextarea },
   metaInfo: { title: "Support Ticket" },
   data() {
     return {

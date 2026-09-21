@@ -147,13 +147,13 @@
 </template>
 
 <script>
-import { BButton, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import CustomFieldsForm from "../../../../components/CustomFieldsForm.vue";
 
 export default {
-  components: { BButton, BCol, BRow,
+  components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BButton, BCol, BRow,
     CustomFieldsForm
   },
   metaInfo: {

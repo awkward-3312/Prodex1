@@ -136,7 +136,7 @@
 </template>
 
 <script>
-import { BBadge, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BBadge, BButton, BCard, BCol, BRow, BFormSelect, BSkeletonImg } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import moment from "moment";
@@ -152,7 +152,7 @@ import {
 
 export default {
   metaInfo: { title: "Draft Invoices Report" },
-  components: { BBadge, BButton, BCard, BCol, BRow, "date-range-picker": DateRangePicker },
+  components: { BSkeletonImg, BFormSelect, BBadge, BButton, BCard, BCol, BRow, "date-range-picker": DateRangePicker },
 
   data() {
     const end = new Date(); const start = new Date(); start.setDate(end.getDate() - 29);

@@ -69,7 +69,7 @@
 </template>
 
 <script>
-import { BButton, BCard } from "@/platform/bootstrap";
+import { BButton, BCard, BFormGroup } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -80,7 +80,7 @@ import {
   getPriceDecimals
 } from "../../../../utils/priceFormat";
 
-export default { components: { BButton, BCard },
+export default { components: { BFormGroup, BButton, BCard },
   metaInfo: { title: "Inventory Valuation Summary" },
 
   data() {

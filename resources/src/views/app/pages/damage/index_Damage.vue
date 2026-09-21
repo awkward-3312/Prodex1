@@ -185,13 +185,13 @@
 
 <script>
 import { modals } from "@/platform";
-import { BSidebar, vBToggle, vBTooltip, BModal, BButton, BCol, BRow } from "@/platform/bootstrap";
+import { BSidebar, vBToggle, vBTooltip, BModal, BButton, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BButton, BCol, BRow, BModal, BSidebar },
+export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BFormGroup, BFormInput, BButton, BCol, BRow, BModal, BSidebar },
   metaInfo: { title: "Damage" },
   data() {
     return {

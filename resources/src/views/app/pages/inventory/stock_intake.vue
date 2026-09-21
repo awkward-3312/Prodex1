@@ -91,9 +91,9 @@
 </template>
 
 <script>
-import { BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BButton, BCard, BCol, BRow, BFormInput, BForm, BFormGroup } from "@/platform/bootstrap";
 import { modals } from "@/platform";
-export default { components: { BButton, BCard, BCol, BRow, BModal },
+export default { components: { BFormInput, BForm, BFormGroup, BButton, BCard, BCol, BRow, BModal },
   metaInfo: { title: 'Ingreso de stock' },
   data() {
     return { loading:true, incoming:[], notifications:[], unread:0, search:'', manualToken:'', scanError:'' };

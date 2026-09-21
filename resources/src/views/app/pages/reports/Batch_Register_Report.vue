@@ -181,12 +181,12 @@
 </template>
 
 <script>
-import { BButton, BCard } from "@/platform/bootstrap";
+import { BButton, BCard, BFormSelect, BFormInput } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default { components: { BButton, BCard },
+export default { components: { BFormSelect, BFormInput, BButton, BCard },
   metaInfo: { title: "Batch Register" },
 
   data() {

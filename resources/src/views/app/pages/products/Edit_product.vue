@@ -1579,11 +1579,9 @@
                         v-model="tag"
                         class="form-control-modern"
                       ></b-form-input>
-                      <b-input-group-append>
                         <b-button variant="primary" @click="add_variant(tag)">
                           <lucide-icon name="plus" />{{ $t('Add') }}
                         </b-button>
-                      </b-input-group-append>
                     </b-input-group>
                   </b-form-group>
                 </div>
@@ -1676,7 +1674,7 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip, BModal, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BForm, BFormGroup, BFormSelect, BFormInvalidFeedback, BFormInput, BInputGroup, BFormCheckbox, BFormTextarea } from "@/platform/bootstrap";
 import VueTagsInput from "@johmun/vue-tags-input";
 import draggable from "vuedraggable";
 import NProgress from "nprogress";
@@ -1781,7 +1779,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
     };
   },
 
-  components: { BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BModal,
+  components: { BForm, BFormGroup, BFormSelect, BFormInvalidFeedback, BFormInput, BInputGroup, BFormCheckbox, BFormTextarea, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BModal,
     VueTagsInput,
     draggable
   },

@@ -3575,7 +3575,7 @@
 </template>
 
 <script>
-import { BModal, BButton, BCol, BDropdown, BPagination, BRow } from "@/platform/bootstrap";
+import { BModal, BButton, BCol, BDropdown, BPagination, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormCheckbox, BFormRadioGroup, BFormSelect } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
@@ -3591,7 +3591,7 @@ import CustomFieldsForm from "../../../components/CustomFieldsForm.vue";
 import posKeyboardShortcutsMixin, { POS_SHORTCUTS } from "../../../mixins/posKeyboardShortcuts";
 
 export default {
-  components: { BButton, BCol, BDropdown, BPagination, BRow, BModal,
+  components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormCheckbox, BFormRadioGroup, BFormSelect, BButton, BCol, BDropdown, BPagination, BRow, BModal,
     vueEasyPrint,
     barcode: VueBarcode,
     ModernPaymentModal,

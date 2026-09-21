@@ -401,10 +401,10 @@
 </template>
 
 <script>
-import { BBadge, BButton, BCard, BCol } from "@/platform/bootstrap";
+import { BBadge, BButton, BCard, BCol, BForm, BFormGroup, BFormCheckbox, BFormInput, BFormSelect, BFormSelectOption, BFormTextarea, BFormFile } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 
-export default { components: { BBadge, BButton, BCard, BCol },
+export default { components: { BFormFile, BForm, BFormGroup, BFormCheckbox, BFormInput, BFormSelect, BFormSelectOption, BFormTextarea, BBadge, BButton, BCard, BCol },
   metaInfo: {
     title: "Store Settings"
   },

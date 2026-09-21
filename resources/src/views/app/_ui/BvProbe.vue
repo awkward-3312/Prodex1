@@ -12,6 +12,42 @@
 import * as bootstrap from "@/platform/bootstrap";
 // BV2 completo (solo esta sonda de desarrollo): el registro global de la app ya solo tiene formularios; el lado "BV2" registra aquí todos los `b-*`.
 import * as BV2 from "bootstrap-vue/dist/bootstrap-vue.esm.js";
+import Vue from "vue";
+
+// BV2 corre aquí bajo @vue/compat y necesita dos adaptaciones que ya NO existen en la aplicación (fase 5B las retiró con el último formulario de BV2):
+//  - BFormSelect / BFormCheckbox / BFormRadio pintan `<select>` / `<input>` con `directives: [{ name: 'model' }]`: en Vue 3 esa directiva exige
+//    `onUpdate:modelValue` en el vnode ("el[assignKey] is not a function"); se añade un asignador vacío (BV2 ya actualiza su valor con su `change`).
+//  - `v-b-visible` (BFormTextarea con `max-rows`) y `v-b-hover` (BFormDatepicker) traen hooks de Vue 2 (`bind/componentUpdated/unbind`).
+const noop = () => {};
+function markModelInputs(vnode) {
+  if (!vnode || typeof vnode !== "object") return;
+  if (Array.isArray(vnode)) { vnode.forEach(markModelInputs); return; }
+  if (typeof vnode.type === "string" && vnode.dirs) {
+    vnode.props = vnode.props || {};
+    if (!vnode.props["onUpdate:modelValue"]) vnode.props["onUpdate:modelValue"] = noop;
+  }
+  if (Array.isArray(vnode.children)) vnode.children.forEach(markModelInputs);
+}
+let patched = false;
+function patchBootstrapVue2ForProbe() {
+  if (patched || !String(Vue.version).startsWith("3")) return;
+  patched = true;
+  [BV2.VBVisible, BV2.VBHover].forEach((directive) => {
+    if (!directive || directive.mounted) return;
+    directive.mounted = directive.bind;
+    directive.updated = directive.componentUpdated;
+    directive.unmounted = directive.unbind;
+    delete directive.bind; delete directive.componentUpdated; delete directive.unbind;
+  });
+  [BV2.BFormSelect, BV2.BFormCheckbox, BV2.BFormRadio].forEach((Component) => {
+    const options = Component && (Component.options || Component);
+    if (!options || typeof options.render !== "function" || options.render.__pxCompatPatched) return;
+    const original = options.render;
+    options.render = function patchedRender(h) { const vnode = original.call(this, h); markModelInputs(vnode); return vnode; };
+    options.render.__pxCompatPatched = true;
+  });
+}
+patchBootstrapVue2ForProbe();
 
 const isComponent = (v) => v && typeof v === "object" && (v.name || v.__name || v.setup || v.render);
 
@@ -21,7 +57,7 @@ export default {
     return { def: null, n: 0 };
   },
   mounted() {
-    window.__pxProbe = async (template, { bvn = false, data = {}, methods = {}, created = null, wait = 80 } = {}) => {
+    window.__pxProbe = async (template, { bvn = false, data = {}, methods = {}, watch = {}, created = null, wait = 80 } = {}) => {
       const components = {};
       const directives = {};
       if (!bvn) {
@@ -44,6 +80,7 @@ export default {
         data: () => state,
         methods: Object.fromEntries(Object.entries(methods).map(([k, src]) => [k, new Function(`return (${src})`)()])),
       };
+      if (Object.keys(watch).length) this.def.watch = Object.fromEntries(Object.entries(watch).map(([k, src]) => [k, new Function(`return (${src})`)()]));
       if (created) this.def.created = new Function(`return (${created})`)();
       this.n += 1;
       await this.$nextTick();

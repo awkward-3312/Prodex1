@@ -46,17 +46,20 @@ test('vee-validate: detecta el campo con el contrato de Vue 3 (modelValue) y con
   assert.equal(describeField({ type: { name: 'PxButton' }, props: { label: 'x' } }), null);
 });
 
-test('wrappers de formularios: contrato explícito y documentado (platform/bootstrap)', () => {
-  const src = read('platform/bootstrap/index.js');
+test('wrappers de formularios: contrato explícito y documentado (platform/bootstrap/forms.js)', () => {
+  const src = read('platform/bootstrap/forms.js');
+  const index = read('platform/bootstrap/index.js');
   for (const name of ['BFormGroup', 'BFormInput', 'BFormTextarea', 'BFormSelect', 'BFormSelectOption', 'BFormCheckbox', 'BFormRadio', 'BFormInvalidFeedback']) {
     assert.match(src, new RegExp(`export const ${name}\\b`), name);
   }
   assert.match(src, /labelFor: ''/, 'BFormGroup mantiene fieldset+legend de BV2');
   assert.match(src, /'custom-select'/, 'BFormSelect emite custom-select (BS4)');
   assert.match(src, /px-bvn-check/);
-  assert.match(src, /export const vBTooltip/);
-  // documentación del cambio de contrato en la propia cabecera
-  assert.match(src, /`@input` \/ `@change`.*eventos NATIVOS/s);
+  assert.match(index, /export \* from '\.\/forms\.js'/);
+  assert.match(index, /export const vBTooltip/);
+  // contrato de BootstrapVue 2 medido (fase 5B): los eventos entregan el VALOR, no el Event nativo
+  assert.match(src, /`@input` \/ `@change` reciben el VALOR/);
+  assert.match(src, /`v-model\.trim`/);
 });
 
 test('vistas migradas a formularios BVN: registro local coherente (cada b-form-* BVN está importado y registrado)', () => {
@@ -133,28 +136,19 @@ test('sin claves duplicadas `components` / `directives` en el objeto de opciones
   assert.deepEqual(offenders, []);
 });
 
-test('patrones de BootstrapVue 2 que NO se migran a BVN (blockers documentados): v-model.trim, :value/:checked, @input en select, switch, multiple', () => {
-  const tag = (name) => new RegExp(`<${name}(?=[\\s>/])((?:"[^"]*"|'[^']*'|[^>"'])*)>`, 'g');
+test('patrones que en la fase 2 eran blockers (v-model.trim, :value, switch, multiple, @input) los resuelve el wrapper (fase 5B), no cada vista', () => {
+  const forms = read('platform/bootstrap/forms.js');
+  // .trim: el modelo se recorta en cada evento y el campo conserva el texto que escribe el usuario (BVN recortaba el DOM al perder el foco)
+  assert.match(forms, /const trim = !!\(modelModifiers && modelModifiers\.trim\)/);
+  assert.match(forms, /const \{ trim: _trim, \.\.\.others \} = modelModifiers/, 'el modificador `trim` no llega a BVN');
+  // `:value` sin v-model, `@input`/`@change` con el valor (no el Event), `unchecked-value` = false
+  assert.match(forms, /props\.modelValue === undefined && value !== undefined/);
+  assert.match(forms, /uncheckedValue: false/);
+  assert.match(forms, /nextTick\(\(\) => toList\(onChange\)/, 'change en el siguiente tick, con el modelo ya actualizado');
+  // ninguna vista trae ya su propia traducción de esos patrones
   const offenders = [];
   walk(path.join(SRC, 'views'), (file) => {
-    if (!file.endsWith('.vue')) return;
-    const text = fs.readFileSync(file, 'utf8');
-    const m = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap["']/.exec(text);
-    if (!m) return;
-    const bvn = new Set(m[1].split(',').map((s) => s.trim()));
-    const tpl = /<template>([\s\S]*)<\/template>/.exec(text);
-    const body = tpl ? tpl[1] : text;
-    const rel = path.relative(SRC, file);
-    const check = (comp, name, rx, why) => {
-      if (!bvn.has(comp)) return;
-      for (const t of body.matchAll(tag(name))) if (rx.test(t[1])) offenders.push(`${rel}: <${name}> ${why}`);
-    };
-    for (const [comp, name] of [['BFormInput', 'b-form-input'], ['BFormTextarea', 'b-form-textarea'], ['BFormSelect', 'b-form-select'], ['BFormCheckbox', 'b-form-checkbox'], ['BFormRadio', 'b-form-radio']]) {
-      check(comp, name, /v-model\.[a-z.]*trim/, 'v-model.trim (BVN recorta al perder el foco, no al escribir)');
-      check(comp, name, /(?<![\w:-]):value=|v-bind:value/, ':value (usar :model-value)');
-    }
-    check('BFormCheckbox', 'b-form-checkbox', /(?<![\w-])switch(?![\w-])|:checked/, 'switch/:checked (sin CSS de custom-switch en BS4)');
-    check('BFormSelect', 'b-form-select', /@input|(?<![\w-])multiple/, '@input/multiple');
+    if (file.endsWith('.vue') && /BvProbe|model-value=.*\.trim/.test(fs.readFileSync(file, 'utf8'))) offenders.push(path.relative(SRC, file));
   });
-  assert.deepEqual(offenders, []);
+  assert.deepEqual(offenders.filter((f) => !f.includes('_ui')), []);
 });

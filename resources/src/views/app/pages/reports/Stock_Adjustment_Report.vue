@@ -162,7 +162,7 @@
 </template>
 
 <script>
-import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCard, BCol, BRow, BSkeletonImg } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import DateRangePicker from "vue2-daterange-picker";
@@ -186,7 +186,7 @@ const StatTile = {
 
 export default {
   metaInfo: { title: "Stock Adjustment Report" },
-  components: { BButton, BCard, BCol, BRow,
+  components: { BSkeletonImg, BButton, BCard, BCol, BRow,
     apexchart: VueApexCharts,
     "date-range-picker": DateRangePicker,
     StatTile

@@ -29,7 +29,7 @@
 
                 <b-form-group :label="$t('Slug')">
                   <b-input-group>
-                    <b-input-group-prepend is-text>/collections/</b-input-group-prepend>
+                    <b-input-group-text>/collections/</b-input-group-text>
                     <b-form-input v-model.trim="form.slug" required />
                   </b-input-group>
                 </b-form-group>
@@ -103,12 +103,10 @@
                             :placeholder="$t('Search_products') + '…'"
                             @input="debouncedSearch"
                           />
-                          <b-input-group-append>
                             <b-button :disabled="searching" variant="outline-secondary" @click="searchProducts">
                               <span v-if="searching" class="spinner-border spinner-border-sm me-1"></span>
                               <lucide-icon name="search" v-else />
                             </b-button>
-                          </b-input-group-append>
                         </b-input-group>
                       </div>
 
@@ -228,10 +226,10 @@
 </template>
 
 <script>
-import { BBadge, BButton, BCard } from "@/platform/bootstrap";
+import { BBadge, BButton, BCard, BForm, BFormGroup, BFormInput, BInputGroup, BInputGroupText, BFormTextarea } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 
-export default { components: { BBadge, BButton, BCard },
+export default { components: { BForm, BFormGroup, BFormInput, BInputGroup, BInputGroupText, BFormTextarea, BBadge, BButton, BCard },
   metaInfo: {
     title: "Store Collections Create"
   },

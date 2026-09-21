@@ -148,13 +148,13 @@
 </template>
 
 <script>
-import { BSidebar, vBToggle, vBTooltip, BButton, BCol, BRow } from "@/platform/bootstrap";
+import { BSidebar, vBToggle, vBTooltip, BButton, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BButton, BCol, BRow, BSidebar },
+export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BFormGroup, BFormInput, BButton, BCol, BRow, BSidebar },
   metaInfo: {
     title: "Adjustment"
   },

@@ -135,7 +135,7 @@
 </template>
 
 <script>
-import { BButton, BCard } from "@/platform/bootstrap";
+import { BButton, BCard, BFormSelect } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import moment from 'moment'
@@ -147,7 +147,7 @@ import Util from '../../../../utils'
 
 export default {
   metaInfo: { title: 'Warranty / Guarantee Report' },
-  components: { BButton, BCard, 'date-range-picker': DateRangePicker },
+  components: { BFormSelect, BButton, BCard, 'date-range-picker': DateRangePicker },
   data() {
     return {
       isLoading: true,

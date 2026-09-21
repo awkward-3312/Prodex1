@@ -124,11 +124,11 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback, vBTooltip, BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback, vBTooltip, BModal, BButton, BCard, BCol, BRow, BForm } from "@/platform/bootstrap";
 import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { directives: { 'b-tooltip': vBTooltip }, components: { BButton, BCard, BCol, BRow, BModal, BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback },
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BForm, BButton, BCard, BCol, BRow, BModal, BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback },
   metaInfo: { title: "Customer Segments" },
   data() {
     return {

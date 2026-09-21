@@ -106,13 +106,13 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend v-if="detail.product_type != 'is_combo'">
+                                <template v-if="detail.product_type != 'is_combo'">
                                   <span class="btn btn-primary btn-sm" @click="decrement(detail ,detail.detail_id)">-</span>
-                                </b-input-group-prepend>
+                                </template>
                                 <input class="form-control" @keyup="Verified_Qty(detail,detail.detail_id)" :min="0.00" :max="detail.current" v-model.number="detail.quantity" :disabled="detail.product_type == 'is_combo' || detail.del === 1">
-                                <b-input-group-append v-if="detail.product_type != 'is_combo'">
+                                <template v-if="detail.product_type != 'is_combo'">
                                   <span class="btn btn-primary btn-sm" @click="increment(detail ,detail.detail_id)">+</span>
-                                </b-input-group-append>
+                                </template>
                               </b-input-group>
                             </div>
                           </td>
@@ -263,11 +263,11 @@
 </template>
 
 <script>
-import { BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BInputGroup } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default { components: { BButton, BCard, BCol, BRow, BModal },
+export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BInputGroup, BButton, BCard, BCol, BRow, BModal },
   metaInfo: { title: "Edit Damage" },
   data() {
     return {

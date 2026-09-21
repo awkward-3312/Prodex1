@@ -110,9 +110,9 @@
 </template>
 
 <script>
-import { BFormGroup, BFormInput, BFormRadio, BFormSelect, BFormSelectOption, BFormInvalidFeedback, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BFormGroup, BFormInput, BFormRadio, BFormSelect, BFormSelectOption, BFormInvalidFeedback, BButton, BCard, BCol, BRow, BForm, BFormTextarea, BFormFile } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-export default { components: { BButton, BCard, BCol, BRow, BFormGroup, BFormInput, BFormRadio, BFormSelect, BFormSelectOption, BFormInvalidFeedback },
+export default { components: { BFormFile, BForm, BFormTextarea, BButton, BCard, BCol, BRow, BFormGroup, BFormInput, BFormRadio, BFormSelect, BFormSelectOption, BFormInvalidFeedback },
   metaInfo: { title: "Create Campaign" },
   data() {
     return {

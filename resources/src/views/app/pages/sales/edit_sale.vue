@@ -204,12 +204,10 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend>
                                   <span v-show="detail.no_unit !== 0 || detail.product_type == 'is_service'"
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </b-input-group-prepend>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
@@ -218,12 +216,10 @@
                                   v-model.number="detail.quantity"
                                   :disabled="detail.del === 1 || (detail.no_unit === 0 && detail.product_type != 'is_service')"
                                 >
-                                <b-input-group-append>
                                   <span v-show="detail.no_unit !== 0 || detail.product_type == 'is_service'"
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </b-input-group-append>
                               </b-input-group>
                             </div>
                           </td>
@@ -741,13 +737,13 @@
 </template>
 
 <script>
-import { BModal, BAlert, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BAlert, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 
-export default { components: { BAlert, BButton, BCard, BCol, BRow, BModal },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect, BAlert, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Editar venta"
   },

@@ -115,9 +115,9 @@
 </template>
 
 <script>
-import { BButton, BCol, BRow } from "@/platform/bootstrap";
+import { BButton, BCol, BRow, BFormGroup, BFormSelect, BFormInput } from "@/platform/bootstrap";
 import { confirmDialog, notifications } from "@/platform";
-export default { components: { BButton, BCol, BRow },
+export default { components: { BFormGroup, BFormSelect, BFormInput, BButton, BCol, BRow },
   name: 'ServiceJobsList',
   data() {
     return {

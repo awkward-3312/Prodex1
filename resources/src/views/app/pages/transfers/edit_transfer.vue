@@ -148,24 +148,20 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend>
                                   <span v-show="detail.no_unit !== 0"
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </b-input-group-prepend>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
                                   v-model.number="detail.quantity"
                                   :disabled="detail.del === 1 || detail.no_unit === 0"
                                 >
-                                <b-input-group-append>
                                   <span v-show="detail.no_unit !== 0"
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </b-input-group-append>
                               </b-input-group>
                             </div>
                           </td>
@@ -580,13 +576,13 @@
 </template>
 
 <script>
-import { BModal, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup } from "@/platform/bootstrap";
 import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import NProgress from "nprogress";
 
-export default { components: { BButton, BCard, BCol, BRow, BModal },
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Update Transfer"
   },

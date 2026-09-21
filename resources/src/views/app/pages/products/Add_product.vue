@@ -529,7 +529,7 @@
                             v-model="product.assigned_category_ids"
                             :options="categories.map(c => ({ label: c.name, value: c.id }))"
                           />
-                          <b-input-group-append v-if="currentUserPermissions && currentUserPermissions.includes('category')">
+                          <template v-if="currentUserPermissions && currentUserPermissions.includes('category')">
                             <b-button
                               variant="primary"
                               @click="openQuickCategoryModal"
@@ -538,7 +538,7 @@
                             >
                               <lucide-icon name="plus" />
                             </b-button>
-                          </b-input-group-append>
+                          </template>
                         </b-input-group>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                       </b-form-group></template>
@@ -600,7 +600,7 @@
                           v-model="product.brand_id"
                           :options="brands.map(brands => ({label: brands.name, value: brands.id}))"
                         />
-                        <b-input-group-append v-if="currentUserPermissions && currentUserPermissions.includes('brand')">
+                        <template v-if="currentUserPermissions && currentUserPermissions.includes('brand')">
                           <b-button
                             variant="primary"
                             @click="openQuickBrandModal"
@@ -609,7 +609,7 @@
                           >
                             <lucide-icon name="plus" />
                           </b-button>
-                        </b-input-group-append>
+                        </template>
                       </b-input-group>
                     </b-form-group>
                   </b-col>
@@ -774,7 +774,7 @@
                             :reduce="label => label.value"
                             :options="units.map(units => ({label: units.name, value: units.id}))"
                           />
-                          <b-input-group-append v-if="currentUserPermissions && currentUserPermissions.includes('unit')">
+                          <template v-if="currentUserPermissions && currentUserPermissions.includes('unit')">
                             <b-button
                               variant="primary"
                               @click="openQuickUnitModal"
@@ -783,7 +783,7 @@
                             >
                               <lucide-icon name="plus" />
                             </b-button>
-                          </b-input-group-append>
+                          </template>
                         </b-input-group>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                       </b-form-group></template>
@@ -1737,11 +1737,9 @@
                         v-model="tag"
                         class="form-control-modern"
                       ></b-form-input>
-                      <b-input-group-append>
                         <b-button variant="primary" @click="add_variant(tag)">
                           <lucide-icon name="plus" />{{ $t('Add') }}
                         </b-button>
-                      </b-input-group-append>
                     </b-input-group>
                   </b-form-group>
                 </div>
@@ -1835,7 +1833,7 @@
 
 <script>
 import { modals, notifications } from "@/platform";
-import { vBTooltip, BModal, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow } from "@/platform/bootstrap";
+import { vBTooltip, BModal, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormTextarea, BFormSelect, BInputGroup, BFormCheckbox } from "@/platform/bootstrap";
 import VueTagsInput from "@johmun/vue-tags-input";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
@@ -1963,7 +1961,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
     };
   },
 
-  components: { BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BModal,
+  components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormTextarea, BFormSelect, BInputGroup, BFormCheckbox, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BModal,
     VueTagsInput,
     draggable
   },

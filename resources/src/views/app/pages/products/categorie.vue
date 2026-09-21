@@ -118,6 +118,7 @@
 </template>
 
 <script>
+import { BForm } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import 'bootstrap-icons/font/bootstrap-icons.css'
@@ -160,7 +161,7 @@ const makeBiOptions = (noneLabel) => [
 ];
 
 export default {
-  components: {
+  components: { BForm,
     PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton,
     PxKebab, PxBadge, PxField, PxInput, PxSelect, PxCheck, PxModal
   },
