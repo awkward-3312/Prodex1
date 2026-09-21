@@ -118,3 +118,6 @@ select.form-control { appearance: auto; }
 button.btn:disabled,
 input.btn:disabled,
 fieldset:disabled button.btn { pointer-events: auto; }
+
+// Texto de ayuda: BS4 lo dejaba en bloque y a `80%`; BS5 lo sube a `.875em` y no fija `display`, así que un `<small class="form-text">` queda en línea y gana alto.
+.form-text { display: block; font-size: 80%; }

@@ -46,6 +46,8 @@ input[type="color"].form-control:disabled { background-color: #adb5bd; opacity: 
 .b-form-btn-label-control.form-control { display: flex; align-items: stretch; height: auto; padding: 0; background-image: none;
 }
 .b-form-btn-label-control.form-control > .btn { line-height: 1; font-size: inherit; box-shadow: none !important; border: 0;
+  // BS4 no daba fondo ni color a `.btn` sin variante: el botón mostraba el aspecto nativo (`buttonface`). BS5 lo deja transparente; se conserva el aspecto aprobado.
+  background-color: buttonface; color: buttontext;
 }
 .b-form-btn-label-control.form-control > .btn:disabled { pointer-events: none;
 }
