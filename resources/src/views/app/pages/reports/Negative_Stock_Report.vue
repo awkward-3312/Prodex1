@@ -22,9 +22,7 @@
             <label class="mb-1 d-block text-muted">{{$t('Search')}}</label>
             <b-input-group class="search-input">
               <b-form-input v-model="search" :placeholder="$t('Search_this_table')" @keyup.enter="fetchRows(1)" />
-              <div class="input-group-append">
                 <b-button variant="primary" class="btn-pill" @click="fetchRows(1)">{{$t('Search')}}</b-button>
-              </div>
             </b-input-group>
           </div>
 

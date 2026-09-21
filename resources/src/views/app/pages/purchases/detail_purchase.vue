@@ -439,7 +439,7 @@
 
           <!-- Additional Information (custom fields) -->
           <div v-if="purchase.custom_fields && purchase.custom_fields.length" class="mt-3">
-            <h6 class="font-weight-bold">Additional Information</h6>
+            <h6 class="fw-bold">Additional Information</h6>
             <table class="table table-sm table-borderless mb-0">
               <tbody>
                 <tr v-for="(field, index) in purchase.custom_fields" :key="'custom_field_' + index">

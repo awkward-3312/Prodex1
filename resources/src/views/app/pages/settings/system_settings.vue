@@ -333,7 +333,7 @@
                                 When enabled, a Customize button appears at the bottom-right of every page so users can quickly change theme, layout, primary color and language.
                               </div>
                             </div>
-                            <label class="switch switch-primary ml-3 mb-0">
+                            <label class="switch switch-primary ms-3 mb-0">
                               <input
                                 type="checkbox"
                                 v-model="appearance_settings.customize_button_visible"
@@ -352,7 +352,7 @@
                                 {{ $t('hide_site_name_hint') }}
                               </div>
                             </div>
-                            <label class="switch switch-primary ml-3 mb-0">
+                            <label class="switch switch-primary ms-3 mb-0">
                               <input
                                 type="checkbox"
                                 v-model="appearance_settings.hide_site_name"
@@ -432,7 +432,7 @@
                             >
                               <div class="d-flex align-items-center mb-2" v-if="pwa_settings.icon_192_url">
                                 <img :src="pwa_settings.icon_192_url" alt="PWA 192" style="width:64px;height:64px;border-radius:8px;border:1px solid #e2e8f0;object-fit:cover;" />
-                                <small class="text-muted ml-2">{{ $t('Current_Icon') || 'Current icon' }}</small>
+                                <small class="text-muted ms-2">{{ $t('Current_Icon') || 'Current icon' }}</small>
                               </div>
                               <input
                                 :state="errors[0] ? false : (valid ? true : null)"
@@ -456,7 +456,7 @@
                             >
                               <div class="d-flex align-items-center mb-2" v-if="pwa_settings.icon_512_url">
                                 <img :src="pwa_settings.icon_512_url" alt="PWA 512" style="width:96px;height:96px;border-radius:12px;border:1px solid #e2e8f0;object-fit:cover;" />
-                                <small class="text-muted ml-2">{{ $t('Current_Icon') || 'Current icon' }}</small>
+                                <small class="text-muted ms-2">{{ $t('Current_Icon') || 'Current icon' }}</small>
                               </div>
                               <input
                                 :state="errors[0] ? false : (valid ? true : null)"
@@ -621,7 +621,7 @@
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('Show_Languages')">
                           <!-- Match POS Settings toggle style -->
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{$t('Show_Languages')}}
                             <input type="checkbox" v-model="setting.show_language">
                             <span class="slider"></span>
@@ -642,7 +642,7 @@
                       <!-- Dark Mode -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('DarkMode') || 'Dark Mode'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{$t('DarkMode') || 'Dark Mode'}}
                             <input type="checkbox" v-model="setting.dark_mode">
                             <span class="slider"></span>
@@ -653,7 +653,7 @@
                       <!-- RTL (Right-to-Left) -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('RTL') || 'RTL (Right-to-Left)'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{$t('RTL') || 'RTL (Right-to-Left)'}}
                             <input type="checkbox" v-model="setting.rtl">
                             <span class="slider"></span>
@@ -678,7 +678,7 @@
                       <!-- 3 Decimal Pricing -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('Enable_3_Decimal_Pricing') || 'Enable 3 Decimal Pricing'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Enable_3_Decimal_Pricing') || 'Enable 3 Decimal Pricing' }}
                             <input type="checkbox" v-model="setting.enable_3_decimal_pricing">
                             <span class="slider"></span>
@@ -692,7 +692,7 @@
                       <!-- Kitchen Display -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('EnableKitchenDisplay') || 'Enable Kitchen Display'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('EnableKitchenDisplay') || 'Enable Kitchen Display' }}
                             <input type="checkbox" v-model="setting.enable_kitchen_display">
                             <span class="slider"></span>
@@ -706,7 +706,7 @@
                       <!-- Show Product Barcode (GTIN / UPC / EAN / ISBN) field -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('Show_Product_GTIN') || 'Show Barcode (GTIN, UPC, EAN, ISBN)'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Show_Product_GTIN') || 'Show Barcode (GTIN, UPC, EAN, ISBN)' }}
                             <input type="checkbox" v-model="setting.show_product_gtin">
                             <span class="slider"></span>
@@ -720,7 +720,7 @@
                       <!-- Serial / IMEI tracking master switch -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('Serial_Numbers') || 'Serial Numbers / IMEI'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Track_Serial_IMEI') || 'Track Serial Number / IMEI' }}
                             <input type="checkbox" v-model="setting.show_serial_tracking">
                             <span class="slider"></span>
@@ -734,7 +734,7 @@
                       <!-- Multi-Pack Selling master switch -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('Multi_Pack_Selling') || 'Multi-Pack Selling'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Enable_Multi_Pack_Selling') || 'Enable Multi-Pack Selling' }}
                             <input type="checkbox" v-model="setting.enable_multi_pack_selling">
                             <span class="slider"></span>
@@ -748,7 +748,7 @@
                       <!-- Accounting: automatic vs manual journal entries -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('Accounting_Journals') || 'Accounting Journals'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Auto_Generate_Journals') || 'Automatic Journal Entries' }}
                             <input type="checkbox" v-model="setting.accounting_auto_generate_journals">
                             <span class="slider"></span>
@@ -762,7 +762,7 @@
                       <!-- POS Offline Sync -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('Offline_Sync') || 'Offline Sync'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Offline_Sync') || 'Offline Sync' }}
                             <input type="checkbox" v-model="setting.offline_sync_enabled">
                             <span class="slider"></span>
@@ -914,7 +914,7 @@
                       <!-- Purchase Extra Charges section toggle -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('Add_Other_Charges') || 'Add More Shipping And Other Charge'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Enable_Purchase_Extra_Charges') || 'Enable Extra Charges on Purchases' }}
                             <input type="checkbox" v-model="setting.purchase_extra_charges_enabled">
                             <span class="slider"></span>
@@ -928,7 +928,7 @@
                       <!-- Purchase Custom Fields section toggle -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('Additional_Fields') || 'Additional Fields (Weight / Text / Number)'">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Enable_Purchase_Custom_Fields') || 'Enable Additional Fields on Purchases' }}
                             <input type="checkbox" v-model="setting.purchase_custom_fields_enabled">
                             <span class="slider"></span>
@@ -942,7 +942,7 @@
                       <!-- Quotation with Stock (moved from Invoice tab) -->
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <b-form-group :label="$t('Create_Quotation_with_Stock')">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Create_Quotation_with_Stock') }}
                             <input type="checkbox" v-model="setting.quotation_with_stock">
                             <span class="slider"></span>
@@ -999,7 +999,7 @@
                         <div class="dashboard-settings-card p-4 rounded">
                           <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
                             <div>
-                              <h5 class="mb-1 font-weight-bold">{{ $t('Default_Dashboard_Widget_Order') || 'Default dashboard widget order' }}</h5>
+                              <h5 class="mb-1 fw-bold">{{ $t('Default_Dashboard_Widget_Order') || 'Default dashboard widget order' }}</h5>
                               <p class="text-muted small mb-0">{{ $t('Dashboard_Widget_Order_Help') || 'Drag and drop to reorder sections on the default dashboard.' }}</p>
                             </div>
                             <b-button
@@ -1008,7 +1008,7 @@
                               class="mt-2 mt-md-0"
                               @click="resetDashboardSectionOrder"
                             >
-                              <lucide-icon class="mr-1" name="refresh-cw" />{{ $t('Reset_to_Default') || 'Reset to default' }}
+                              <lucide-icon class="me-1" name="refresh-cw" />{{ $t('Reset_to_Default') || 'Reset to default' }}
                             </b-button>
                           </div>
                           <draggable
@@ -1669,7 +1669,7 @@
 
                         <!-- Headers rows -->
                         <b-col md="12">
-                          <label class="font-weight-bold mt-2">{{ $t('Custom_SMS_Headers') }}</label>
+                          <label class="fw-bold mt-2">{{ $t('Custom_SMS_Headers') }}</label>
                           <b-row
                             v-for="(row, idx) in sms_settings.customHeaderRows"
                             :key="'sys-h-'+idx"
@@ -1700,7 +1700,7 @@
 
                         <!-- Payload rows -->
                         <b-col md="12">
-                          <label class="font-weight-bold mt-2">{{ $t('Custom_SMS_Payload') }}</label>
+                          <label class="fw-bold mt-2">{{ $t('Custom_SMS_Payload') }}</label>
                           <p class="text-muted small">{{ $t('Custom_SMS_Payload_Hint') }}</p>
                           <b-row
                             v-for="(row, idx) in sms_settings.customPayloadRows"
@@ -1802,7 +1802,7 @@
                       <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">Receipt preview</h6>
                         <b-button size="sm" variant="outline-primary" @click="printPosDemo">
-                          <lucide-icon class="mr-1" name="receipt" /> Print demo receipt
+                          <lucide-icon class="me-1" name="receipt" /> Print demo receipt
                         </b-button>
                       </div>
                       <div class="pos-receipt-demo" id="pos-receipt-demo">
@@ -2393,7 +2393,7 @@
                       </b-col>
                       <!-- Show Logo -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Logo')}}
                           <input type="checkbox" v-model="pos_settings.show_logo">
                           <span class="slider"></span>
@@ -2402,7 +2402,7 @@
 
                       <!-- Show Store Name -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Store_Name')}}
                           <input type="checkbox" v-model="pos_settings.show_store_name">
                           <span class="slider"></span>
@@ -2411,7 +2411,7 @@
 
                       <!-- Show Reference -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Reference')}}
                           <input type="checkbox" v-model="pos_settings.show_reference">
                           <span class="slider"></span>
@@ -2420,7 +2420,7 @@
 
                       <!-- Show Date -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Date')}}
                           <input type="checkbox" v-model="pos_settings.show_date">
                           <span class="slider"></span>
@@ -2429,7 +2429,7 @@
 
                       <!-- Show Seller -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Seller')}}
                           <input type="checkbox" v-model="pos_settings.show_seller">
                           <span class="slider"></span>
@@ -2438,7 +2438,7 @@
 
                       <!-- Show Phone -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Phone')}}
                           <input type="checkbox" v-model="pos_settings.show_phone">
                           <span class="slider"></span>
@@ -2447,7 +2447,7 @@
 
                       <!-- Show Address -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Address')}}
                           <input type="checkbox" v-model="pos_settings.show_address">
                           <span class="slider"></span>
@@ -2456,7 +2456,7 @@
 
                       <!-- Show Email -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Email')}}
                           <input type="checkbox" v-model="pos_settings.show_email">
                           <span class="slider"></span>
@@ -2465,7 +2465,7 @@
 
                       <!-- Show Customer -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Customer')}}
                           <input type="checkbox" v-model="pos_settings.show_customer">
                           <span class="slider"></span>
@@ -2474,7 +2474,7 @@
 
                       <!-- Show Warehouse -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Warehouse')}}
                           <input type="checkbox" v-model="pos_settings.show_Warehouse">
                           <span class="slider"></span>
@@ -2483,7 +2483,7 @@
 
                       <!-- Show Tax -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Tax')}}
                           <input type="checkbox" v-model="pos_settings.show_tax">
                           <span class="slider"></span>
@@ -2492,7 +2492,7 @@
 
                       <!-- Show Discount -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Discount')}}
                           <input type="checkbox" v-model="pos_settings.show_discount">
                           <span class="slider"></span>
@@ -2501,7 +2501,7 @@
 
                       <!-- Show Product Discount (per-line) -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Product_Discount')}}
                           <input
                             type="checkbox"
@@ -2515,7 +2515,7 @@
 
                       <!-- Show Shipping -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Shipping')}}
                           <input type="checkbox" v-model="pos_settings.show_shipping">
                           <span class="slider"></span>
@@ -2524,7 +2524,7 @@
 
                       <!-- Show Barcode -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_barcode')}}
                           <input type="checkbox" v-model="pos_settings.show_barcode">
                           <span class="slider"></span>
@@ -2533,7 +2533,7 @@
 
                       <!-- Show Note to Customer -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Note_to_customer')}}
                           <input type="checkbox" v-model="pos_settings.show_note">
                           <span class="slider"></span>
@@ -2542,7 +2542,7 @@
 
                       <!-- Show Paid line -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Paid_Line')}}
                           <input type="checkbox" v-model="pos_settings.show_paid">
                           <span class="slider"></span>
@@ -2551,7 +2551,7 @@
 
                       <!-- Show Due line -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Due_Line')}}
                           <input type="checkbox" v-model="pos_settings.show_due">
                           <span class="slider"></span>
@@ -2560,7 +2560,7 @@
 
                       <!-- Show Payments table -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Payments_Table')}}
                           <input type="checkbox" v-model="pos_settings.show_payments">
                           <span class="slider"></span>
@@ -2569,7 +2569,7 @@
 
                       <!-- Show ZATCA QR -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_ZATCA_QR')}}
                           <input type="checkbox" v-model="pos_settings.show_zatca_qr">
                           <span class="slider"></span>
@@ -2643,7 +2643,7 @@
                     <b-row>
                       <!-- Quick Add Customer -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Quick_Add_Customer')}}
                           <input type="checkbox" v-model="pos_settings.quick_add_customer">
                           <span class="slider"></span>
@@ -2653,7 +2653,7 @@
 
                       <!-- Barcode Scanning Sound -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Barcode_Scanning_Sound')}}
                           <input type="checkbox" v-model="pos_settings.barcode_scanning_sound">
                           <span class="slider"></span>
@@ -2663,7 +2663,7 @@
 
                       <!-- Show Product Images in POS -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Product_Images_in_POS')}}
                           <input type="checkbox" v-model="pos_settings.show_product_images">
                           <span class="slider"></span>
@@ -2673,7 +2673,7 @@
 
                       <!-- Show Stock Quantity in POS -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Stock_Quantity_in_POS')}}
                           <input type="checkbox" v-model="pos_settings.show_stock_quantity">
                           <span class="slider"></span>
@@ -2683,7 +2683,7 @@
 
                       <!-- Enable Print Invoice automatically -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Enable_Print_Invoice')}}
                           <input type="checkbox" v-model="pos_settings.is_printable">
                           <span class="slider"></span>
@@ -2695,7 +2695,7 @@
 
                       <!-- Enable Hold Sales -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Enable_Hold_Sales')}}
                           <input type="checkbox" v-model="pos_settings.enable_hold_sales">
                           <span class="slider"></span>
@@ -2705,7 +2705,7 @@
 
                       <!-- Enable Customer Points in POS -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Enable_Customer_Points_in_POS')}}
                           <input type="checkbox" v-model="pos_settings.enable_customer_points">
                           <span class="slider"></span>
@@ -2715,7 +2715,7 @@
 
                       <!-- Show Categories in POS -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Categories_in_POS')}}
                           <input type="checkbox" v-model="pos_settings.show_categories">
                           <span class="slider"></span>
@@ -2725,7 +2725,7 @@
 
                       <!-- Show Brands in POS -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Show_Brands_in_POS')}}
                           <input type="checkbox" v-model="pos_settings.show_brands">
                           <span class="slider"></span>
@@ -2737,7 +2737,7 @@
                            even when stock is zero or negative. When OFF (default), strict
                            stock checks remain in effect. -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Allow_Overselling') || 'Allow Overselling'}}
                           <input type="checkbox" v-model="pos_settings.allow_overselling">
                           <span class="slider"></span>
@@ -2749,14 +2749,14 @@
 
                       <!-- Enable Keyboard Shortcuts in POS (per-device, stored in localStorage) -->
                       <b-col md="4" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{$t('Enable_Keyboard_Shortcuts') || 'Enable Keyboard Shortcuts'}}
                           <input type="checkbox" v-model="enable_keyboard_shortcuts" @change="onToggleKeyboardShortcuts">
                           <span class="slider"></span>
                         </label>
                         <small class="text-muted d-block mt-2">
                           {{$t('Enable_Keyboard_Shortcuts_Help') || 'Per-device setting. In the POS press Shift + ? at any time to view shortcuts.'}}
-                          <a href="#" class="ml-1" @click.prevent="$modals.show('pos-shortcuts-guide')">
+                          <a href="#" class="ms-1" @click.prevent="$modals.show('pos-shortcuts-guide')">
                             <lucide-icon name="info" />
                             {{$t('View_Shortcuts') || 'View shortcuts'}}
                           </a>
@@ -2788,7 +2788,7 @@
                         </b-alert>
                       </b-col>
                       <b-col md="6" class="mt-3 mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{ $t('Cash_Drawer_Auto_Open') }}
                           <input
                             type="checkbox"
@@ -2831,7 +2831,7 @@
                         </b-alert>
                       </b-col>
                       <b-col md="6" class="mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{ $t('Cash_Drawer_Auto_Open') }}
                           <input
                             type="checkbox"
@@ -2870,7 +2870,7 @@
                       </b-col>
 
                       <b-col md="6" class="mb-3">
-                        <label class="switch switch-primary mr-3">
+                        <label class="switch switch-primary me-3">
                           {{ $t('Enable_Direct_Network_Printing') || 'Enable Direct Network Printing' }}
                           <input
                             type="checkbox"
@@ -3268,7 +3268,7 @@
                           <h6 class="alert-heading">Backup Configuration Required</h6>
                           <p class="mb-2"><strong>mysqldump not found.</strong> Please configure DUMP_PATH in your .env file.</p>
                           <p class="mb-2"><strong>For Laragon on Windows:</strong></p>
-                          <ol class="mb-2 pl-3">
+                          <ol class="mb-2 ps-3">
                             <li>Open your <code>.env</code> file in the project root</li>
                             <li>Find your MySQL version folder in <code>C:\laragon\bin\mysql\</code></li>
                             <li>Add this line (replace with your actual version):</li>
@@ -3324,7 +3324,7 @@
                               </p>
                             </div>
                             <div class="d-flex">
-                              <b-button variant="outline-primary" class="mr-2" @click="LoadSecuritySessions()" :disabled="securitySessionsLoading || securitySessionsActionLoading">
+                              <b-button variant="outline-primary" class="me-2" @click="LoadSecuritySessions()" :disabled="securitySessionsLoading || securitySessionsActionLoading">
                                 Refresh
                               </b-button>
                               <b-button variant="danger" @click="LogoutAllOtherDevices()" :disabled="securitySessionsLoading || securitySessionsActionLoading || !hasOtherSessions">
@@ -3334,7 +3334,7 @@
                           </div>
 
                           <div v-if="securitySessionsLoading" class="py-4 text-center text-muted">
-                            <div class="spinner spinner-primary mr-3"></div>
+                            <div class="spinner spinner-primary me-3"></div>
                           </div>
 
                           <b-table
@@ -3409,7 +3409,7 @@
                           <p class="text-muted small">
                             {{ $t('Track_Batches_Expiry_Help') }}
                           </p>
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Track_Batches_Expiry') }}
                             <input type="checkbox" v-model="setting.pharmacy_mode">
                             <span class="slider"></span>
@@ -3432,7 +3432,7 @@
 
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <div class="system-actions-card">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Block_Expired_Sale') }}
                             <input
                               type="checkbox"
@@ -3449,7 +3449,7 @@
 
                       <b-col lg="6" md="6" sm="12" class="mb-3">
                         <div class="system-actions-card">
-                          <label class="switch switch-primary mr-3">
+                          <label class="switch switch-primary me-3">
                             {{ $t('Print_Expiry_On_Receipt') }}
                             <input
                               type="checkbox"
@@ -3523,7 +3523,7 @@
                                 variant="outline-primary"
                                 size="sm"
                                 @click="Edit_CustomField(props.row)"
-                                class="mr-2"
+                                class="me-2"
                               >
                                 <lucide-icon name="pencil" />
                               </b-button>
@@ -3590,7 +3590,7 @@
                                 variant="outline-primary"
                                 size="sm"
                                 @click="Edit_CustomField(props.row)"
-                                class="mr-2"
+                                class="me-2"
                               >
                                 <lucide-icon name="pencil" />
                               </b-button>
@@ -3724,12 +3724,12 @@
                                 type="submit"
                                 :disabled="customFieldSubmitProcessing"
                               >
-                                <lucide-icon class="font-weight-bold" name="check" /> {{ $t('submit') }}
+                                <lucide-icon class="fw-bold" name="check" /> {{ $t('submit') }}
                               </b-button>
                               <b-button
                                 variant="secondary"
                                 @click="reset_CustomField_Form"
-                                class="ml-2"
+                                class="ms-2"
                               >
                                 {{ $t('Cancel') }}
                               </b-button>
@@ -3795,7 +3795,7 @@
                       </b-col>
                       <b-col lg="12" class="mb-3">
                         <b-button variant="primary" :disabled="calendarSaving" @click="Submit_Calendar_Settings()">
-                          <span v-if="calendarSaving" class="spinner-border spinner-border-sm mr-2"></span>
+                          <span v-if="calendarSaving" class="spinner-border spinner-border-sm me-2"></span>
                           <lucide-icon name="check" /> {{ $t('Save') }}
                         </b-button>
                       </b-col>
@@ -4303,11 +4303,11 @@ export default {
 
     securitySessionFields() {
       return [
-        { key: 'device', label: 'Device / Browser', tdClass: 'text-left', thClass: 'text-left' },
-        { key: 'ip_address', label: 'IP Address', tdClass: 'text-left', thClass: 'text-left' },
-        { key: 'login_at', label: 'Login date & time', tdClass: 'text-left', thClass: 'text-left' },
-        { key: 'last_activity_at', label: 'Last activity', tdClass: 'text-left', thClass: 'text-left' },
-        { key: 'actions', label: 'Action', tdClass: 'text-right', thClass: 'text-right' }
+        { key: 'device', label: 'Device / Browser', tdClass: 'text-start', thClass: 'text-start' },
+        { key: 'ip_address', label: 'IP Address', tdClass: 'text-start', thClass: 'text-start' },
+        { key: 'login_at', label: 'Login date & time', tdClass: 'text-start', thClass: 'text-start' },
+        { key: 'last_activity_at', label: 'Last activity', tdClass: 'text-start', thClass: 'text-start' },
+        { key: 'actions', label: 'Action', tdClass: 'text-end', thClass: 'text-end' }
       ];
     },
 
@@ -4316,20 +4316,20 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Filesize"),
           field: "size",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -4372,14 +4372,14 @@ export default {
         {
           label: this.$t("FieldName") || "Field Name",
           field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("FieldType") || "Field Type",
           field: "field_type",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Required") || "Required",
@@ -4396,8 +4396,8 @@ export default {
         {
           label: this.$t("Action") || "Action",
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -6385,11 +6385,6 @@ export default {
   transform: translateY(0);
 }
 
-/* Custom Checkbox Switch Styling */
-.custom-switch {
-  padding-left: 2.5rem;
-}
-
 /* Mobile Tab Selector */
 .mobile-tab-selector {
   padding: 1rem;
@@ -6447,7 +6442,7 @@ export default {
 }
 
 /* Fix for Bootstrap select dropdown */
-.mobile-tab-selector .custom-select,
+.mobile-tab-selector .form-select,
 .mobile-tab-selector select {
   background-image: none;
   background-position: right 0.75rem center;
@@ -6812,13 +6807,13 @@ export default {
     width: 100%;
   }
 
-  .tab-content .btn-group-toggle.btn-group {
+  .tab-content .btn-group.px-bvn-group {
     display: flex;
     flex-wrap: wrap;
     width: 100%;
   }
 
-  .tab-content .btn-group-toggle.btn-group .btn {
+  .tab-content .btn-group.px-bvn-group .btn {
     flex: 1;
     min-width: 0;
     font-size: 0.875rem;
@@ -6841,11 +6836,11 @@ export default {
 
 @media (max-width: 480px) {
   /* Stack layout buttons vertically on small screens */
-  .tab-content .btn-group-toggle.btn-group {
+  .tab-content .btn-group.px-bvn-group {
     flex-direction: column;
   }
 
-  .tab-content .btn-group-toggle.btn-group .btn {
+  .tab-content .btn-group.px-bvn-group .btn {
     width: 100%;
     margin-bottom: 4px;
     border-radius: 0.25rem !important;
@@ -6855,7 +6850,7 @@ export default {
     word-wrap: break-word;
   }
 
-  .tab-content .btn-group-toggle.btn-group .btn:last-child {
+  .tab-content .btn-group.px-bvn-group .btn:last-child {
     margin-bottom: 0;
   }
 

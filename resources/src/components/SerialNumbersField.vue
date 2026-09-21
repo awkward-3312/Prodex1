@@ -25,7 +25,6 @@
           :disabled="disabled"
           @keyup.enter.prevent="addFromScan"
         />
-        <div class="input-group-append">
           <button type="button" class="btn btn-primary" :disabled="disabled" @click="addFromScan">
             {{ $t('Add_Serial') }}
           </button>
@@ -35,7 +34,6 @@
           <button type="button" class="btn btn-outline-secondary" :disabled="disabled" @click="triggerFile">
             <lucide-icon name="file-up" style="width:14px;height:14px;" /> {{ $t('Import_Serials_CSV') }}
           </button>
-        </div>
       </div>
 
       <div v-if="showBulk" class="mb-2">
@@ -65,11 +63,9 @@
           :disabled="disabled"
           @keyup.enter.prevent="selectFromScan"
         />
-        <div class="input-group-append">
           <button type="button" class="btn btn-primary" :disabled="disabled" @click="selectFromScan">
             {{ $t('Add_Serial') }}
           </button>
-        </div>
       </div>
 
       <div v-if="loadingAvailable" class="text-muted" style="font-size: 12px;">…</div>
@@ -97,7 +93,7 @@
       <span
         v-for="(serial, idx) in serials"
         :key="serial"
-        class="badge badge-pill badge-light"
+        class="badge rounded-pill badge-light"
         style="border:1px solid #cbd5e1; font-size: 12px; padding: 6px 10px;"
       >
         {{ serial }}

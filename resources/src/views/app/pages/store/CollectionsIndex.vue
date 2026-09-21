@@ -14,11 +14,9 @@
               :placeholder="$t('Search') + '…'"
               @input="onSearch"
             />
-            <div class="input-group-append">
               <b-button variant="outline-secondary" @click="refresh" :disabled="busy">
                 <lucide-icon name="refresh-cw" />
               </b-button>
-            </div>
           </b-input-group>
         </div>
 
@@ -32,7 +30,7 @@
       <!-- Table -->
       <div class="table-responsive">
         <table class="table table-hover align-middle">
-          <thead class="thead-light">
+          <thead class="table-light">
             <tr>
               <th style="width: 70px">#</th>
               <th>{{ $t('Title') }}</th>
@@ -65,7 +63,7 @@
               </td>
 
               <td class="text-center d-none d-lg-table-cell">
-                <span class="badge badge-pill badge-light">
+                <span class="badge rounded-pill badge-light">
                   {{ c.products_count != null ? c.products_count : '—' }}
                 </span>
               </td>

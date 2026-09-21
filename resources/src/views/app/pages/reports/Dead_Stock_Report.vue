@@ -148,11 +148,11 @@ export default { components: { BFormSelect, BBadge, BButton, BCard },
 
     columns() {
       return [
-        { label: this.$t('Code'), field: 'code', sortable: true, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Product'), field: 'product_name', sortable: true, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('OnHand'), field: 'on_hand', type: 'number', headerField: this.sumOnHand, sortable: true, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('LastMovement'), field: 'last_movement_at', sortable: true, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('DaysSinceLastMovement'), field: 'days_since_last_movement', type: 'number', sortable: true, tdClass: 'text-left', thClass: 'text-left' },
+        { label: this.$t('Code'), field: 'code', sortable: true, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Product'), field: 'product_name', sortable: true, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('OnHand'), field: 'on_hand', type: 'number', headerField: this.sumOnHand, sortable: true, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('LastMovement'), field: 'last_movement_at', sortable: true, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('DaysSinceLastMovement'), field: 'days_since_last_movement', type: 'number', sortable: true, tdClass: 'text-start', thClass: 'text-start' },
       ];
     },
 

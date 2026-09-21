@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="result-page text-center">
       <div class="result-icon result-failed">
@@ -11,30 +11,30 @@
         {{ $t('Payment_failed_desc') || "We couldn't process your payment. You can try again or choose a different method." }}
       </p>
 
-      <div v-if="payment" class="billing-card text-left mx-auto mb-4 result-detail-card">
+      <div v-if="payment" class="billing-card text-start mx-auto mb-4 result-detail-card">
         <div class="billing-card-body">
           <div class="detail-row"><span class="text-muted">{{ $t('Plan') || 'Plan' }}</span><span>{{ payment.plan_name }}</span></div>
           <div class="detail-row"><span class="text-muted">{{ $t('Amount') || 'Amount' }}</span><span>{{ currencySymbol }}{{ payment.amount.toFixed(2) }} {{ payment.currency }}</span></div>
           <div class="detail-row"><span class="text-muted">{{ $t('Gateway') || 'Gateway' }}</span><span>{{ payment.gateway_label }}</span></div>
           <div class="detail-row">
             <span class="text-muted">{{ $t('Status') || 'Status' }}</span>
-            <span class="badge-billing badge-failed"><lucide-icon name="x" class="mr-1" />{{ $t('Failed') || 'Failed' }}</span>
+            <span class="badge-billing badge-failed"><lucide-icon name="x" class="me-1" />{{ $t('Failed') || 'Failed' }}</span>
           </div>
         </div>
       </div>
 
       <div class="d-flex gap-3 justify-content-center flex-wrap">
         <router-link v-if="payment" :to="'/app/billing/checkout/' + payment.plan_id + '?cycle=' + payment.billing_cycle" class="btn btn-primary">
-          <lucide-icon name="rotate-cw" class="mr-1" /> {{ $t('Try_Again') || 'Try Again' }}
+          <lucide-icon name="rotate-cw" class="me-1" /> {{ $t('Try_Again') || 'Try Again' }}
         </router-link>
         <router-link to="/app/billing/change-plan" class="btn btn-outline-secondary">
-          <lucide-icon name="boxes" class="mr-1" /> {{ $t('View_Plans') || 'View Plans' }}
+          <lucide-icon name="boxes" class="me-1" /> {{ $t('View_Plans') || 'View Plans' }}
         </router-link>
       </div>
 
-      <div class="tips-box mt-4 text-left mx-auto">
-        <p class="small"><lucide-icon name="info" class="mr-1" />{{ $t('Common_reasons') || 'Common reasons for payment failure:' }}</p>
-        <ul class="small text-muted mb-0 pl-3">
+      <div class="tips-box mt-4 text-start mx-auto">
+        <p class="small"><lucide-icon name="info" class="me-1" />{{ $t('Common_reasons') || 'Common reasons for payment failure:' }}</p>
+        <ul class="small text-muted mb-0 ps-3">
           <li>{{ $t('Insufficient_funds') || 'Insufficient funds in your account' }}</li>
           <li>{{ $t('Card_declined') || 'Card was declined by your bank' }}</li>
           <li>{{ $t('Payment_cancelled') || 'Payment was cancelled before completing' }}</li>

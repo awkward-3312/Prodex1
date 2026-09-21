@@ -51,7 +51,7 @@
                   <b-button
                     type="submit"
                     tag="button"
-                    class="btn-rounded btn-block mt-2"
+                    class="btn-rounded d-block w-100 mt-2"
                     variant="primary mt-2"
                     :disabled="loading"
                   >{{$t('SignIn')}}</b-button>

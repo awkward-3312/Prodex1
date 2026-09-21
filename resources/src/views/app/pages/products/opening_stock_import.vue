@@ -92,7 +92,7 @@
               </p>
               <div class="table-responsive">
                 <table class="table table-sm table-bordered example-table">
-                  <thead class="thead-light">
+                  <thead class="table-light">
                     <tr>
                       <th class="req">product_code</th>
                       <th class="req">qty</th>
@@ -123,7 +123,7 @@
               </p>
               <div class="table-responsive">
                 <table class="table table-sm table-bordered example-table">
-                  <thead class="thead-light">
+                  <thead class="table-light">
                     <tr>
                       <th class="req">product_code</th>
                       <th class="req">variant_code</th>
@@ -639,7 +639,7 @@ export default { components: { BAlert, BButton, BButtonGroup, BCard, BCol, BProg
 .dark-theme .import-products .example-table {
   color: #d8d8d8;
 }
-.dark-theme .import-products .example-table thead.thead-light th {
+.dark-theme .import-products .example-table thead.table-light th {
   background: #292929;
   color: #d8d8d8;
   border-color: #2a2a2a;

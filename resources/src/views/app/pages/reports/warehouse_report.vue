@@ -651,42 +651,42 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           headerField: this.sumQuotationsGrandTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -696,66 +696,66 @@ export default {
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           headerField: this.sumSalesGrandTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Paid"),
           field: "paid_amount",
           headerField: this.sumSalesPaidAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Due"),
           field: "due",
           headerField: this.sumSalesDue,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
          {
           label: this.$t("Shipping_status"),
           field: "shipping_status",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
       ];
     },
@@ -764,65 +764,65 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Supplier"),
           field: "provider_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           headerField: this.sumPurchasesGrandTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Paid"),
           field: "paid_amount",
           headerField: this.sumPurchasesPaidAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Due"),
           field: "due",
           headerField: this.sumPurchasesDue,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -832,66 +832,66 @@ export default {
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Sale_Ref"),
           field: "sale_ref",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
        
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           headerField: this.sumReturnsSaleGrandTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Paid"),
           field: "paid_amount",
           headerField: this.sumReturnsSalePaidAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Due"),
           field: "due",
           headerField: this.sumReturnsSaleDue,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
          {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -901,66 +901,66 @@ export default {
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Supplier"),
           field: "provider_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Purchase_Ref"),
           field: "purchase_ref",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           headerField: this.sumReturnsPurchaseGrandTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Paid"),
           field: "paid_amount",
           headerField: this.sumReturnsPurchasePaidAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Due"),
           field: "due",
           headerField: this.sumReturnsPurchaseDue,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -970,43 +970,43 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Details"),
           field: "details",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Amount"),
           field: "amount",
           headerField: this.sumExpenseAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Categorie"),
           field: "category_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

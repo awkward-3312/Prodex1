@@ -103,12 +103,12 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
   computed: {
     columns() {
       return [
-        { label: "Nombre", field: "name", tdClass: "text-left", thClass: "text-left" },
-        { label: "Ciudad", field: "city", tdClass: "text-left", thClass: "text-left" },
-        { label: "País", field: "country", tdClass: "text-left", thClass: "text-left" },
+        { label: "Nombre", field: "name", tdClass: "text-start", thClass: "text-start" },
+        { label: "Ciudad", field: "city", tdClass: "text-start", thClass: "text-start" },
+        { label: "País", field: "country", tdClass: "text-start", thClass: "text-start" },
         { label: "Inventario principal", field: "default_inventory_location", sortable: false },
-        { label: "Correo", field: "email", tdClass: "text-left", thClass: "text-left" },
-        { label: "Acciones", field: "actions", sortable: false, tdClass: "text-left", thClass: "text-left" }
+        { label: "Correo", field: "email", tdClass: "text-start", thClass: "text-start" },
+        { label: "Acciones", field: "actions", sortable: false, tdClass: "text-start", thClass: "text-start" }
       ];
     }
   },

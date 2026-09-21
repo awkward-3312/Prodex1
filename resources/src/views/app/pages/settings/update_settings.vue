@@ -203,7 +203,7 @@
                           :class="{ 'border-bottom pb-3 mb-3': idx < changelog.length - 1 }"
                         >
                           <div class="d-flex align-items-center mb-2">
-                            <span class="badge badge-pill me-2" :class="entry.version === latestVersion ? 'badge-primary' : 'badge-light'">
+                            <span class="badge rounded-pill me-2" :class="entry.version === latestVersion ? 'badge-primary' : 'badge-light'">
                               v{{ entry.version }}
                             </span>
                             <span class="text-muted small" v-if="entry.date">{{ entry.date }}</span>
@@ -243,7 +243,7 @@
                             <tr v-for="(h, idx) in updateHistory" :key="idx">
                               <td class="fw-bold">v{{ h.version }}</td>
                               <td>
-                                <span class="badge badge-pill" :class="h.status === 'success' ? 'badge-success' : 'badge-danger'">
+                                <span class="badge rounded-pill" :class="h.status === 'success' ? 'badge-success' : 'badge-danger'">
                                   {{ h.status }}
                                 </span>
                               </td>

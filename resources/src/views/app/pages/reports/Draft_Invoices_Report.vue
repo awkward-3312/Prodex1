@@ -194,17 +194,17 @@ export default {
     currency(){ return (this.currentUser && this.currentUser.currency) || "USD"; },
     columns() {
       return [
-        { label: this.$t("date"),       field: "date",       sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Number"),     field: "Ref",        sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Customer"),   field: "client",     sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("warehouse"),  field: "warehouse",  sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("User"),       field: "user",       sortable: true, tdClass: "text-left", thClass: "text-left" },
+        { label: this.$t("date"),       field: "date",       sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Number"),     field: "Ref",        sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Customer"),   field: "client",     sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("warehouse"),  field: "warehouse",  sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("User"),       field: "user",       sortable: true, tdClass: "text-start", thClass: "text-start" },
         { label: this.$t("Amount"),     field: "GrandTotal", type: "number", headerField: this.sumAmount,   sortable: true },
         { label: this.$t("Tax"),        field: "TaxNet",     type: "number", headerField: this.sumTax,      sortable: true },
         { label: this.$t("Discount"),   field: "discount",   type: "number", headerField: this.sumDiscount, sortable: true },
         { label: this.$t("Shipping"),   field: "shipping",   type: "number", headerField: this.sumShipping, sortable: true },
         { label: this.$t("AgeDays"),    field: "age_days",   type: "number", sortable: true },
-        { label: this.$t("Action"),     field: "actions",    sortable: false, tdClass: "text-left", thClass: "text-left" },
+        { label: this.$t("Action"),     field: "actions",    sortable: false, tdClass: "text-start", thClass: "text-start" },
       ];
     },
   },

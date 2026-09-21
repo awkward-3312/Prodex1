@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="billing-page">
       <div class="row mb-3">
@@ -10,7 +10,7 @@
             <p class="text-muted mb-0">{{ $t('View_payments') || 'View your subscription payments and invoices.' }}</p>
           </div>
           <router-link to="/app/billing/current-plan" class="btn btn-outline-secondary btn-sm">
-            <lucide-icon name="arrow-left" class="mr-1" /> {{ $t('Current_Plan') || 'Current Plan' }}
+            <lucide-icon name="arrow-left" class="me-1" /> {{ $t('Current_Plan') || 'Current Plan' }}
           </router-link>
         </div>
       </div>
@@ -18,7 +18,7 @@
       <!-- Payment history table -->
       <div class="billing-card">
         <div class="billing-card-header d-flex align-items-center justify-content-between">
-          <span><lucide-icon name="clock" class="mr-2" />{{ $t('Payment_History') || 'Payment History' }}</span>
+          <span><lucide-icon name="clock" class="me-2" />{{ $t('Payment_History') || 'Payment History' }}</span>
           <span class="text-muted small">{{ total }} {{ $t('transactions') || 'transaction(s)' }}</span>
         </div>
 
@@ -48,13 +48,13 @@
                 <td class="td-billing">
                   <button v-if="p.status === 'failed'" @click="retryPayment(p)" :disabled="p._retrying"
                      class="btn btn-outline-primary btn-sm action-btn">
-                    <span v-if="p._retrying" class="spinner-border spinner-border-sm mr-1"></span>
-                    <lucide-icon v-else name="rotate-cw" class="mr-1" />{{ $t('Retry') || 'Retry' }}
+                    <span v-if="p._retrying" class="spinner-border spinner-border-sm me-1"></span>
+                    <lucide-icon v-else name="rotate-cw" class="me-1" />{{ $t('Retry') || 'Retry' }}
                   </button>
                   <button v-if="p.status === 'paid'" @click="downloadInvoice(p)" :disabled="p._downloading"
                      class="btn btn-outline-secondary btn-sm action-btn">
-                    <span v-if="p._downloading" class="spinner-border spinner-border-sm mr-1"></span>
-                    <lucide-icon v-else name="download" class="mr-1" />{{ $t('PDF') || 'PDF' }}
+                    <span v-if="p._downloading" class="spinner-border spinner-border-sm me-1"></span>
+                    <lucide-icon v-else name="download" class="me-1" />{{ $t('PDF') || 'PDF' }}
                   </button>
                 </td>
               </tr>

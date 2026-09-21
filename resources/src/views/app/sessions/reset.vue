@@ -71,7 +71,7 @@
                   <button
                     type="submit"
                     :disabled="loading"
-                    class="btn btn-primary btn-block btn-rounded mt-3"
+                    class="btn btn-primary d-block w-100 btn-rounded mt-3"
                   >{{$t('submit')}}</button>
                   <div v-once class="typo__p" v-if="loading">
                     <div class="spinner sm spinner-primary mt-3"></div>

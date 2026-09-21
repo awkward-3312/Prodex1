@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="billing-page current-plan-page">
       <div class="row mb-4">
@@ -16,7 +16,7 @@
         <h4 class="mt-3">{{ $t('No_active_subscription') || 'No Active Subscription' }}</h4>
         <p class="text-muted">{{ $t('Choose_plan_to_start') || 'Choose a plan to start using the application.' }}</p>
         <router-link to="/app/billing/change-plan" class="btn btn-primary mt-2">
-          <lucide-icon name="arrow-right" class="mr-1" /> {{ $t('Choose_a_Plan') || 'Choose a Plan' }}
+          <lucide-icon name="arrow-right" class="me-1" /> {{ $t('Choose_a_Plan') || 'Choose a Plan' }}
         </router-link>
       </div>
 
@@ -37,7 +37,7 @@
           <strong>{{ formatDate(subscription.ends_at) }}</strong>
         </div>
         <router-link to="/app/billing/change-plan" class="btn btn-primary btn-lg mt-2">
-          <lucide-icon name="arrow-right" class="mr-1" /> {{ $t('Resubscribe_Now') || 'Resubscribe Now' }}
+          <lucide-icon name="arrow-right" class="me-1" /> {{ $t('Resubscribe_Now') || 'Resubscribe Now' }}
         </router-link>
       </div>
 
@@ -63,7 +63,7 @@
             <button @click="showCancelUpgradeModal = true"
               class="btn btn-outline-danger btn-sm flex-shrink-0"
               :disabled="cancelUpgradeLoading">
-              <lucide-icon name="x" class="mr-1" /> {{ $t('Cancel_Upgrade') || 'Cancel Upgrade' }}
+              <lucide-icon name="x" class="me-1" /> {{ $t('Cancel_Upgrade') || 'Cancel Upgrade' }}
             </button>
           </div>
         </div>
@@ -116,50 +116,50 @@
 
                 <!-- Pending notice -->
                 <div v-if="subscription.status === 'pending'" class="pending-notice mt-3">
-                  <lucide-icon name="info" class="mr-1" />
+                  <lucide-icon name="info" class="me-1" />
                   {{ $t('Subscription_pending_notice') || 'Your subscription is currently pending approval.' }}
                 </div>
 
                 <!-- Cancelled notice -->
                 <div v-if="subscription.is_cancelled" class="cancelled-notice mt-3">
-                  <lucide-icon name="alert-triangle" class="mr-1" />
+                  <lucide-icon name="alert-triangle" class="me-1" />
                   {{ $t('Subscription_cancelled_notice') || 'Your subscription is cancelled and will expire on' }}
                   {{ formatDate(subscription.ends_at) }}.
                 </div>
 
                 <!-- Pending cancellation notice (still active, scheduled to end at period end) -->
                 <div v-if="subscription.is_pending_cancellation" class="pending-cancellation-notice mt-3">
-                  <lucide-icon name="alert-triangle" class="mr-1" />
+                  <lucide-icon name="alert-triangle" class="me-1" />
                   {{ $t('Subscription_pending_cancellation_notice') || 'Your subscription is scheduled to cancel on' }}
                   {{ formatDate(subscription.ends_at) }}.
                 </div>
 
                 <div class="mt-3 d-flex gap-2 flex-wrap">
                   <router-link v-if="subscription.status !== 'pending' && !pendingUpgrade" to="/app/billing/change-plan" class="btn btn-primary btn-sm">
-                    <lucide-icon name="arrow-up" class="mr-1" /> {{ $t('Change_Plan') || 'Change Plan' }}
+                    <lucide-icon name="arrow-up" class="me-1" /> {{ $t('Change_Plan') || 'Change Plan' }}
                   </router-link>
                   <span v-else-if="pendingUpgrade" class="btn btn-outline-secondary btn-sm disabled" style="pointer-events: none; opacity: 0.6;">
-                    <lucide-icon name="clock" class="mr-1" /> {{ $t('Upgrade_Pending') || 'Upgrade Pending' }}
+                    <lucide-icon name="clock" class="me-1" /> {{ $t('Upgrade_Pending') || 'Upgrade Pending' }}
                   </span>
                   <router-link to="/app/billing/history" class="btn btn-outline-secondary btn-sm">
-                    <lucide-icon name="clock" class="mr-1" /> {{ $t('Billing_History') || 'Billing History' }}
+                    <lucide-icon name="clock" class="me-1" /> {{ $t('Billing_History') || 'Billing History' }}
                   </router-link>
                   <router-link to="/app/billing/invoices" class="btn btn-outline-secondary btn-sm">
-                    <lucide-icon name="file" class="mr-1" /> {{ $t('Invoices') || 'Invoices' }}
+                    <lucide-icon name="file" class="me-1" /> {{ $t('Invoices') || 'Invoices' }}
                   </router-link>
 
                   <!-- Cancel button (shown when active and not already scheduled to cancel) -->
                   <button v-if="subscription.status === 'active' && !subscription.is_pending_cancellation" @click="showCancelModal = true"
                     class="btn btn-outline-danger btn-sm">
-                    <lucide-icon name="x" class="mr-1" /> {{ $t('Cancel_Subscription') || 'Cancel Subscription' }}
+                    <lucide-icon name="x" class="me-1" /> {{ $t('Cancel_Subscription') || 'Cancel Subscription' }}
                   </button>
 
                   <!-- Resume button (shown when cancelled, or scheduled to cancel, but still within period) -->
                   <button v-if="subscription.can_resume" @click="resumeSubscription"
                     :disabled="resumeLoading"
                     class="btn btn-success btn-sm">
-                    <span v-if="resumeLoading" class="spinner-border spinner-border-sm mr-1"></span>
-                    <lucide-icon v-else name="rotate-cw" class="mr-1" />
+                    <span v-if="resumeLoading" class="spinner-border spinner-border-sm me-1"></span>
+                    <lucide-icon v-else name="rotate-cw" class="me-1" />
                     {{ $t('Resume_Subscription') || 'Resume Subscription' }}
                   </button>
                 </div>
@@ -248,7 +248,7 @@
               {{ $t('Keep_Subscription') || 'Keep Subscription' }}
             </button>
             <button @click="cancelSubscription" :disabled="cancelLoading" class="btn btn-danger">
-              <span v-if="cancelLoading" class="spinner-border spinner-border-sm mr-1"></span>
+              <span v-if="cancelLoading" class="spinner-border spinner-border-sm me-1"></span>
               {{ $t('Confirm_Cancel') || 'Yes, Cancel' }}
             </button>
           </div>
@@ -272,7 +272,7 @@
               {{ $t('Keep_Upgrade') || 'Keep Upgrade' }}
             </button>
             <button @click="cancelPendingUpgrade" :disabled="cancelUpgradeLoading" class="btn btn-danger">
-              <span v-if="cancelUpgradeLoading" class="spinner-border spinner-border-sm mr-1"></span>
+              <span v-if="cancelUpgradeLoading" class="spinner-border spinner-border-sm me-1"></span>
               {{ $t('Confirm_Cancel_Upgrade') || 'Yes, Cancel Upgrade' }}
             </button>
           </div>

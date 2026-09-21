@@ -1780,7 +1780,7 @@ export default { components: { BButton, BCol, BRow, BSidebar, BFormGroup, BFormI
       padding: 1.5rem;
       border-bottom: 2px solid #f1f5f9;
 
-      .close {
+      .btn-close {
         font-size: 1.5rem;
         opacity: 0.5;
         transition: opacity 0.3s ease;

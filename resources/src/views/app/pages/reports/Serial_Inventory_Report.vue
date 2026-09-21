@@ -37,14 +37,14 @@ export default { components: { BFormGroup, BCard },
   computed: {
     columns() {
       return [
-        { label: "Producto", field: "product_name", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Código del producto", field: "product_code", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Disponibles", field: "available", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Vendidos", field: "sold", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Devueltos al proveedor", field: "returned_supplier", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Dañados", field: "damaged", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Reservados", field: "reserved", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Total", field: "total", thClass: "text-left", tdClass: "text-left", sortable: false }
+        { label: "Producto", field: "product_name", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Código del producto", field: "product_code", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Disponibles", field: "available", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Vendidos", field: "sold", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Devueltos al proveedor", field: "returned_supplier", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Dañados", field: "damaged", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Reservados", field: "reserved", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Total", field: "total", thClass: "text-start", tdClass: "text-start", sortable: false }
       ];
     }
   },

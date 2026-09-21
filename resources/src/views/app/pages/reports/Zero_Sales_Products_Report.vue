@@ -128,11 +128,11 @@ export default { components: { BFormSelect, BBadge, BButton, BCard },
     },
     columns() {
       return [
-        { label: this.$t("Code"),   field: "code",   tdClass: "text-left", thClass: "text-left", sortable: true },
-        { label: this.$t("Product"),field: "name",   tdClass: "text-left", thClass: "text-left", sortable: true },
-        { label: this.$t("Price"),  field: "price",  headerField: this.sumPrice, tdClass: "text-left", thClass: "text-left", sortable: true },
-        { label: this.$t("LastSale"), field: "last_sale_at", tdClass: "text-left", thClass: "text-left", sortable: true },
-        { label: this.$t("DaysSinceLastSale"), field: "days_since_last_sale", type: "number", tdClass: "text-left", thClass: "text-left", sortable: true },
+        { label: this.$t("Code"),   field: "code",   tdClass: "text-start", thClass: "text-start", sortable: true },
+        { label: this.$t("Product"),field: "name",   tdClass: "text-start", thClass: "text-start", sortable: true },
+        { label: this.$t("Price"),  field: "price",  headerField: this.sumPrice, tdClass: "text-start", thClass: "text-start", sortable: true },
+        { label: this.$t("LastSale"), field: "last_sale_at", tdClass: "text-start", thClass: "text-start", sortable: true },
+        { label: this.$t("DaysSinceLastSale"), field: "days_since_last_sale", type: "number", tdClass: "text-start", thClass: "text-start", sortable: true },
       ];
     },
   },

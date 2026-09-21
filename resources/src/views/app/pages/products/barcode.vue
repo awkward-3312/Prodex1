@@ -196,7 +196,7 @@
             <div v-for="(page, pageIndex) in pages" :key="pageIndex">
               <div :class="class_type_page">
                 <div class="barcode-item" :class="class_sheet" v-for="(bc, index) in page" :key="index">
-                  <div class="head_barcode text-left" style="padding-left: 10px; font-weight: bold;font-size: 10px;">
+                  <div class="head_barcode text-start" style="padding-left: 10px; font-weight: bold;font-size: 10px;">
                     <span class="barcode-name">{{ bc.name }}</span>
                     <span class="barcode-price" v-if="show_price">{{ currentUser.currency }} {{ bc.Net_price }}</span>
                   </div>

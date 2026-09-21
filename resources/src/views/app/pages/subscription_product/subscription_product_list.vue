@@ -121,61 +121,61 @@ export default { components: { BAlert, BCard }, directives: { 'b-tooltip': vBToo
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
          label: this.$t("product_name"),
           field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("Billing_Cycle"),
           field: "billing_cycle",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("total_cycles"),
           field: "total_cycles",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("remaining_cycles"),
           field: "remaining_cycles",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("next_billing_date"),
           field: "next_billing_date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Status"),
           field: "status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

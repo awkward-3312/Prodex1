@@ -47,11 +47,11 @@
                 @input="fetchData"
               >
                 <template v-slot:option="option">
-                  <lucide-icon class="mr-2" name="home" />
+                  <lucide-icon class="me-2" name="home" />
                   {{ option.label }}
                 </template>
                 <template v-slot:selected-option="option">
-                  <lucide-icon class="mr-2" name="home" />
+                  <lucide-icon class="me-2" name="home" />
                   {{ option ? option.label : $t('Filter_by_warehouse') }}
                 </template>
               </v-select>
@@ -67,7 +67,7 @@
               >
                 <template v-slot:input="picker">
                   <button type="button" class="date-picker-header-btn">
-                    <lucide-icon class="mr-2" name="calendar-days" />
+                    <lucide-icon class="me-2" name="calendar-days" />
                     <span>{{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}</span>
                   </button>
                 </template>

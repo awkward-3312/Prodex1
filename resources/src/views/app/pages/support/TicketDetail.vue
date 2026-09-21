@@ -97,7 +97,7 @@
               <li><span>{{ $t('ticket_number') }}</span><strong>{{ ticket.ticket_number }}</strong></li>
               <li><span>{{ $t('opened_on') }}</span><strong>{{ formatDateTime(ticket.created_at) }}</strong></li>
             </ul>
-            <router-link to="/app/support/tickets" class="btn btn-outline-secondary btn-block btn-sm mt-3">
+            <router-link to="/app/support/tickets" class="btn btn-outline-secondary d-block w-100 btn-sm mt-3">
               <lucide-icon name="arrow-left" /> {{ $t('back_to_tickets') }}
             </router-link>
           </b-card>

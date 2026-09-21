@@ -111,12 +111,12 @@ export default { components: { BFormGroup, BButton, BCard },
 
     columns() {
       return [
-        { label: this.$t("ITEM_NAME"), field: "name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("SKU"),       field: "code", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Variant_NAME"), field: "variant_name", tdClass: "text-left pre", thClass: "text-left", sortable: false },
-        { label: this.$t("STOCK_ON_HAND"), field: "stock_hand", headerField: this.sumStockHand, tdClass: "text-left pre", thClass: "text-left", sortable: false },
-        { label: this.$t("Cost"), field: "cost", tdClass: "text-left pre", thClass: "text-left", sortable: false },
-        { label: this.$t("ASSET_VALUE"), field: "inventory_value", headerField: this.sumInventoryValue, tdClass: "text-left pre", thClass: "text-left", sortable: false },
+        { label: this.$t("ITEM_NAME"), field: "name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("SKU"),       field: "code", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Variant_NAME"), field: "variant_name", tdClass: "text-start pre", thClass: "text-start", sortable: false },
+        { label: this.$t("STOCK_ON_HAND"), field: "stock_hand", headerField: this.sumStockHand, tdClass: "text-start pre", thClass: "text-start", sortable: false },
+        { label: this.$t("Cost"), field: "cost", tdClass: "text-start pre", thClass: "text-start", sortable: false },
+        { label: this.$t("ASSET_VALUE"), field: "inventory_value", headerField: this.sumInventoryValue, tdClass: "text-start pre", thClass: "text-start", sortable: false },
       ];
     }
   },

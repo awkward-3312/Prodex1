@@ -238,7 +238,7 @@ export default {
     labelRange(){ return `${this.fmt(this.dateRange.startDate)} - ${this.fmt(this.dateRange.endDate)}`; },
     columns(){
       return [
-        { label: this.$t('ID'), field:'transfer_id', sortable:true, tdClass:'text-left', thClass:'text-left' },
+        { label: this.$t('ID'), field:'transfer_id', sortable:true, tdClass:'text-start', thClass:'text-start' },
         { label: this.$t('date'), field:'date_time',  sortable:true },
         { label: this.$t('From'), field:'from',       sortable:true },
         { label: this.$t('to'),   field:'to',         sortable:true },

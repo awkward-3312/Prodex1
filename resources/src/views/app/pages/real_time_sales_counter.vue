@@ -114,7 +114,7 @@
                     <tr>
                       <th>{{ $t('Reference') }}</th>
                       <th>{{ $t('Customer') }}</th>
-                      <th class="text-right">{{ $t('Total') }}</th>
+                      <th class="text-end">{{ $t('Total') }}</th>
                       <th>{{ $t('payment_status') }}</th>
                       <th>{{ $t('Time') }}</th>
                     </tr>
@@ -126,7 +126,7 @@
                         {{ sale.ref || '-' }}
                       </td>
                       <td>{{ sale.client_name || '-' }}</td>
-                      <td class="text-right">{{ formatPriceWithSymbol(currencySymbol, sale.grand_total, 2) }}</td>
+                      <td class="text-end">{{ formatPriceWithSymbol(currencySymbol, sale.grand_total, 2) }}</td>
                       <td>
                         <span class="rts-status-pill" :class="paymentClass(sale.payment_status)">
                           {{ $t(sale.payment_status) || sale.payment_status }}
@@ -175,18 +175,18 @@
                     <tr>
                       <th class="rts-loc-sn">S/N</th>
                       <th>{{ $t('Name') }}</th>
-                      <th class="text-right">{{ $t('Total_Invoice') }}</th>
-                      <th class="text-right">{{ $t('Amount') }}</th>
-                      <th class="text-right">{{ $t('Last_Sale') }}</th>
+                      <th class="text-end">{{ $t('Total_Invoice') }}</th>
+                      <th class="text-end">{{ $t('Amount') }}</th>
+                      <th class="text-end">{{ $t('Last_Sale') }}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="(loc, idx) in salesByLocation" :key="loc.warehouse_id || idx">
                       <td class="rts-loc-sn">{{ idx + 1 }}</td>
                       <td class="rts-loc-name">{{ loc.name }}</td>
-                      <td class="text-right">{{ loc.total_invoice }}</td>
-                      <td class="text-right">{{ formatPriceWithSymbol(currencySymbol, loc.amount, 2) }}</td>
-                      <td class="text-right rts-time-cell">{{ formatDateTime(loc.last_sale) }}</td>
+                      <td class="text-end">{{ loc.total_invoice }}</td>
+                      <td class="text-end">{{ formatPriceWithSymbol(currencySymbol, loc.amount, 2) }}</td>
+                      <td class="text-end rts-time-cell">{{ formatDateTime(loc.last_sale) }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1161,7 +1161,7 @@ export default {
   100% { background: rgba(74, 222, 128, 0.08); }
 }
 
-.text-right { text-align: right; }
+.text-end { text-align: right; }
 
 .rts-ref { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; color: #1f2937; }
 .rts-pos-pill {

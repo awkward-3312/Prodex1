@@ -295,58 +295,58 @@ export default { directives: { 'b-toggle': vBToggle }, components: { BFormGroup,
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("FromWarehouse"),
           field: "from_warehouse",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("ToWarehouse"),
           field: "to_warehouse",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Items"),
           field: "items",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Approval"),
           field: "approval_status",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

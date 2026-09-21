@@ -75,11 +75,9 @@
                 class="form-control due-cron-input font-monospace"
                 :value="scheduleInfo.cron_line"
               >
-              <div class="input-group-append">
                 <b-button variant="primary" size="sm" @click="copyCronLine" class="due-cron-copy-btn">
                   <lucide-icon class="me-1" name="files" />{{ $t('Copy') || 'Copy' }}
-                </b-button>
-              </div>
+                </b-button>
             </div>
           </div>
           <p class="small text-muted mb-3">

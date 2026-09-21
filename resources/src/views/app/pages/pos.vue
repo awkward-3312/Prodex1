@@ -2129,8 +2129,8 @@
             <th>{{ $t('date') }}</th>
             <th>{{ $t('Reference') }}</th>
             <th>{{ $t('Customer') }}</th>
-            <th class="text-right">{{ $t('Total') }}</th>
-            <th class="text-right">{{ $t('Action') }}</th>
+            <th class="text-end">{{ $t('Total') }}</th>
+            <th class="text-end">{{ $t('Action') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -2141,8 +2141,8 @@
             <td>{{ d.date }}</td>
             <td>{{ d.Ref }}</td>
             <td>{{ d.client_name }}</td>
-            <td class="text-right">{{ formatNumber(d.GrandTotal, 2) }}</td>
-            <td class="text-right">
+            <td class="text-end">{{ formatNumber(d.GrandTotal, 2) }}</td>
+            <td class="text-end">
               <b-button size="sm" variant="outline-success" class="me-2" @click="loadDraftSale(d.id)" :disabled="openingDraftId === d.id" :title="openingDraftId === d.id ? $t('Loading') : $t('Open')">
                 <template v-if="openingDraftId === d.id">
                   <span class="spinner sm spinner-primary"></span>
@@ -2917,7 +2917,7 @@
         <label>{{$t('notes')}}</label>
         <textarea class="form-control" v-model="registerForm.notes"></textarea>
       </div>
-      <div class="text-right">
+      <div class="text-end">
         <b-button variant="secondary" class="me-2" @click="$modals.hide('OpenRegisterModal')">{{$t('Cancel')}}</b-button>
         <b-button variant="success" @click="submitOpenRegister" :disabled="registerBusy">{{$t('Open Register')}}</b-button>
       </div>
@@ -3079,7 +3079,7 @@
               Esperado {{ formatRegisterMoney(closeSummary.expected_cash || 0) }} · Contado {{ formatRegisterMoney(countedDenominationsTotal) }} · {{ cashCloseStatus.label }}
             </div>
           </div>
-          <div class="text-right">
+          <div class="text-end">
             <b-button variant="secondary" class="me-2" @click="$modals.hide('CloseRegisterModal')">{{$t('Cancel')}}</b-button>
             <b-button variant="danger" @click="submitCloseRegister" :disabled="registerBusy">Cerrar caja</b-button>
           </div>
@@ -4488,37 +4488,37 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
        
         {
           label: this.$t("Total"),
           field: "GrandTotal",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
 
@@ -4526,8 +4526,8 @@ export default {
           label: this.$t("Action"),
           field: "actions",
           html: true,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
      
@@ -12469,10 +12469,6 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 8px;
   }
 
-  .custom-control-label {
-    user-select: none;
-  }
-
   .loyalty-eligible-row {
     display: flex;
     flex-direction: column;
@@ -13001,7 +12997,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     flex-direction: column;
     align-items: stretch;
   }
-  .cr-footer .text-right {
+  .cr-footer .text-end {
     text-align: left !important;
   }
 }
@@ -19204,7 +19200,6 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
   font-weight: var(--pxn-fw-semibold);
   color: var(--pxn-ink);
 }
-.modal.px-next .modal-header .close,
 .modal.px-next .modal-header .btn-close {
   color: var(--pxn-ink-3);
   opacity: 1;
@@ -19212,7 +19207,6 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
   font-weight: 400;
   transition: color var(--pxn-dur-1) var(--pxn-ease);
 }
-.modal.px-next .modal-header .close:hover,
 .modal.px-next .modal-header .btn-close:hover { color: var(--pxn-ink); opacity: 1; }
 .modal.px-next .modal-body {
   padding: var(--pxn-space-5) var(--pxn-space-6);
@@ -19225,14 +19219,14 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
   gap: var(--pxn-space-4);
 }
 .modal.px-next .modal-body .form-control,
-.modal.px-next .modal-body .custom-select {
+.modal.px-next .modal-body .form-select {
   border: 1px solid var(--pxn-border-control);
   border-radius: var(--pxn-radius-md);
   color: var(--pxn-ink);
   background: var(--pxn-surface);
 }
 .modal.px-next .modal-body .form-control:focus,
-.modal.px-next .modal-body .custom-select:focus {
+.modal.px-next .modal-body .form-select:focus {
   border-color: var(--pxn-primary);
   box-shadow: 0 0 0 3px var(--pxn-focus-ring);
 }
@@ -19274,7 +19268,7 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
 }
 .modal.px-next .modal-body .form-control,
 .modal.px-next .modal-body textarea.form-control,
-.modal.px-next .modal-body .custom-select {
+.modal.px-next .modal-body .form-select {
   height: auto;
   min-height: var(--pxn-control-h-md);
   padding: var(--pxn-space-3) var(--pxn-space-4);
@@ -19298,13 +19292,6 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
 }
 .modal.px-next .modal-body .loyalty-help,
 .modal.px-next .modal-body .loyalty-eligible-row small { color: var(--pxn-ink-3); font-size: var(--pxn-fs-xs); }
-.modal.px-next .modal-body .custom-control-label { color: var(--pxn-ink); font-weight: var(--pxn-fw-medium); }
-.modal.px-next .modal-body .custom-control-input:checked ~ .custom-control-label::before {
-  background: var(--pxn-primary);
-  border-color: var(--pxn-primary);
-}
-.modal.px-next .modal-body .custom-switch .custom-control-label::before { border-color: var(--pxn-border-control); }
-
 /* Buttons row footer inside body */
 .modal.px-next .modal-body .btn {
   height: auto;

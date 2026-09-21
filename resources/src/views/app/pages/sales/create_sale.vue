@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('AddSale')" :folder="$t('ListSales')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="create_sale" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Sale">
@@ -55,7 +55,7 @@
                           :placeholder="$t('Choose_Customer')"
                           :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
                         />
-                        <div class="input-group-append" v-if="currentUserPermissions && currentUserPermissions.includes('Customers_add')">
+                        <template v-if="currentUserPermissions && currentUserPermissions.includes('Customers_add')">
                           <b-button
                             variant="primary"
                             @click="Quick_Add_Client"
@@ -64,7 +64,7 @@
                           >
                             <lucide-icon name="plus" />
                           </b-button>
-                        </div>
+                        </template>
                       </b-input-group>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group></template>
@@ -196,7 +196,7 @@
                           </td>
                           <td>
                             <div class="d-flex align-items-center">
-                              <div class="mr-2">
+                              <div class="me-2">
                                 <span>{{currentUser.currency}} {{formatNumber(detail.Net_price, 3)}}</span>
                                 <small
                                   v-if="detail.min_price && detail.Net_price < detail.min_price"
@@ -204,7 +204,7 @@
                                 >{{ $t('Price_below_min_not_allowed') }}</small>
                               </div>
                               <v-select
-                                class="ml-2"
+                                class="ms-2"
                                 :options="[
                                   {label: $t('Retail Price'), value: 'retail'},
                                   {label: $t('Wholesale Price'), value: 'wholesale'}
@@ -216,7 +216,7 @@
                               />
                               <select
                                 v-if="detail.packs && detail.packs.length"
-                                class="form-control form-control-sm ml-2"
+                                class="form-control form-control-sm ms-2"
                                 style="min-width: 160px"
                                 v-model="detail.product_pack_id"
                                 @change="onChangePack(detail)"
@@ -235,12 +235,10 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <div class="input-group-prepend">
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </div>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
@@ -248,12 +246,10 @@
                                   :max="detail.stock"
                                   v-model.number="detail.quantity"
                                 >
-                                <div class="input-group-append">
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </div>
                               </b-input-group>
                             </div>
                           </td>
@@ -436,11 +432,11 @@
                       </tr>
                       <tr>
                         <td>
-                          <span class="font-weight-bold">{{$t('Total')}}</span>
+                          <span class="fw-bold">{{$t('Total')}}</span>
                         </td>
                         <td>
                           <span
-                            class="font-weight-bold"
+                            class="fw-bold"
                           >{{currentUser.currency}} {{GrandTotal.toFixed(2)}}</span>
                         </td>
                       </tr>
@@ -754,7 +750,7 @@
 
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" :disabled="paymentProcessing || hasMinPriceViolation || (sale.statut === 'completed' && hasBatchValidationErrors)" @click="Submit_Sale"><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" :disabled="paymentProcessing || hasMinPriceViolation || (sale.statut === 'completed' && hasBatchValidationErrors)" @click="Submit_Sale"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                     <div v-once class="typo__p" v-if="paymentProcessing">
                     <div class="spinner sm spinner-primary mt-3"></div>
                   </div>
@@ -876,7 +872,7 @@
             </b-col>
 
             <b-col md="12" class="mt-3">
-              <b-button variant="secondary" class="mr-2" @click="$modals.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
+              <b-button variant="secondary" class="me-2" @click="$modals.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{$t('submit')}}</b-button>
               <div v-once class="typo__p" v-if="SubmitProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
@@ -1036,7 +1032,7 @@
                   variant="primary"
                   type="submit"
                   :disabled="Submit_Processing_detail || detailHasMinPriceViolation"
-                ><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                ><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                 <div v-once class="typo__p" v-if="Submit_Processing_detail">
                   <div class="spinner sm spinner-primary mt-3"></div>
                 </div>
@@ -3043,10 +3039,6 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
   .input-group.category-input-group .v-select .vs__dropdown-toggle {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-  }
-
-  .input-group.category-input-group .input-group-append {
-    align-items: stretch;
   }
 
   .input-group.category-input-group .category-add-btn {

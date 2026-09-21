@@ -15,12 +15,10 @@
               :placeholder="$t('Search_by_name_email_subject') + '…'"
               @input="debouncedSearch"
             />
-            <div class="input-group-append">
               <b-button variant="primary" :disabled="searching" @click="fetch">
                 <span v-if="searching" class="spinner-border spinner-border-sm"></span>
                 <lucide-icon name="search" v-else />
               </b-button>
-            </div>
           </b-input-group>
 
           <b-form-checkbox v-model="onlyUnread" class="messages-unread" switch @change="fetch">
@@ -339,23 +337,5 @@ export default { components: { BInputGroup, BFormInput, BFormCheckbox, BBadge, B
   font-size: 13px;
   color: #1f2937;
   user-select: none;
-}
-
-.messages-unread.custom-switch {
-  padding-left: 2.25rem;
-}
-
-.messages-unread .custom-control-label {
-  cursor: pointer;
-  line-height: 36px; /* match search input height */
-}
-
-.messages-unread .custom-control-input:checked ~ .custom-control-label::before {
-  background-color: #4f46e5;
-  border-color: #4f46e5;
-}
-
-.messages-unread .custom-control-input:focus ~ .custom-control-label::before {
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
 }
 </style>

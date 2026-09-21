@@ -90,7 +90,7 @@
               <span v-if="props.row.dosage_form"> · {{ props.row.dosage_form }}</span>
             </small>
             <div v-if="props.row.variant_name">
-              <span class="badge badge-pill" style="background:#ede9fe; color:#6d28d9;">{{ props.row.variant_name }}</span>
+              <span class="badge rounded-pill" style="background:#ede9fe; color:#6d28d9;">{{ props.row.variant_name }}</span>
             </div>
           </span>
 
@@ -228,17 +228,17 @@ export default { components: { BFormSelect, BFormInput, BButton, BCard },
 
     columns() {
       return [
-        { label: this.$t('Product'), field: 'product', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Batch_No'), field: 'batch_no', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Warehouse'), field: 'warehouse_name', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Mfg_Date'), field: 'mfg_date', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Expiry_Date'), field: 'expiry_date', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Quantity'), field: 'qty', tdClass: 'text-right', thClass: 'text-right' },
-        { label: this.$t('Unit_Cost') || 'Unit Cost', field: 'unit_cost', sortable: false, tdClass: 'text-right', thClass: 'text-right' },
-        { label: this.$t('Value'), field: 'value', sortable: false, tdClass: 'text-right', thClass: 'text-right' },
-        { label: this.$t('Status'), field: 'status', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Purchase_Ref') || 'Purchase Ref', field: 'origin_purchase_ref', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Supplier') || 'Supplier', field: 'origin_supplier_name', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
+        { label: this.$t('Product'), field: 'product', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Batch_No'), field: 'batch_no', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Warehouse'), field: 'warehouse_name', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Mfg_Date'), field: 'mfg_date', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Expiry_Date'), field: 'expiry_date', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Quantity'), field: 'qty', tdClass: 'text-end', thClass: 'text-end' },
+        { label: this.$t('Unit_Cost') || 'Unit Cost', field: 'unit_cost', sortable: false, tdClass: 'text-end', thClass: 'text-end' },
+        { label: this.$t('Value'), field: 'value', sortable: false, tdClass: 'text-end', thClass: 'text-end' },
+        { label: this.$t('Status'), field: 'status', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Purchase_Ref') || 'Purchase Ref', field: 'origin_purchase_ref', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Supplier') || 'Supplier', field: 'origin_supplier_name', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
         { label: '', field: 'actions', sortable: false, tdClass: 'text-center', thClass: 'text-center' }
       ];
     }

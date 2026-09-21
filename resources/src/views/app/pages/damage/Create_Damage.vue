@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Create_Damage')" :folder="$t('Damages')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="Create_damage" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Damage">
@@ -108,13 +108,9 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <div class="input-group-prepend">
                                   <span class="btn btn-primary btn-sm" @click="decrement(detail ,detail.detail_id)">-</span>
-                                </div>
                                 <input class="form-control" @keyup="Verified_Qty(detail,detail.detail_id)" :min="0.00" :max="detail.current" v-model.number="detail.quantity">
-                                <div class="input-group-append">
                                   <span class="btn btn-primary btn-sm" @click="increment(detail ,detail.detail_id)">+</span>
-                                </div>
                               </b-input-group>
                             </div>
                           </td>
@@ -249,7 +245,7 @@
 
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" :disabled="SubmitProcessing || hasBatchValidationErrors" @click="Submit_Damage"><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" :disabled="SubmitProcessing || hasBatchValidationErrors" @click="Submit_Damage"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                     <div v-once class="typo__p" v-if="SubmitProcessing"><div class="spinner sm spinner-primary mt-3"></div></div>
                   </b-form-group>
                 </b-col>

@@ -7,7 +7,7 @@
     <b-card v-else class="px-0">
       <b-form @submit.prevent="save">
         <!-- ROW 1: Header + Sticky side -->
-        <div class="row no-gutters">
+        <div class="row g-0">
           <!-- LEFT: Collection header only -->
           <div class="col-lg-8 p-3 p-lg-4">
             <!-- Collection Header Card -->
@@ -29,7 +29,7 @@
 
                 <b-form-group :label="$t('Slug')">
                   <b-input-group>
-                    <div class="input-group-prepend"><div class="input-group-text">/collections/</div></div>
+<div class="input-group-text">/collections/</div>
                     <b-form-input v-model.trim="form.slug" required />
                   </b-input-group>
                 </b-form-group>
@@ -62,7 +62,7 @@
                     <b-button :disabled="saving" variant="btn btn-outline-secondary btn-block" @click="saveAndClose">
                       <lucide-icon name="check" /> {{ $t('Save_and_Close') }}
                     </b-button>
-                    <router-link :to="{ name:'StoreCollections' }" class="btn btn-outline-dark btn-block">
+                    <router-link :to="{ name:'StoreCollections' }" class="btn btn-outline-dark d-block w-100">
                       {{ $t('Cancel') }}
                     </router-link>
                   </div>
@@ -103,12 +103,10 @@
                             :placeholder="$t('Search_products') + '…'"
                             @input="debouncedSearch"
                           />
-                          <div class="input-group-append">
                             <b-button :disabled="searching" variant="outline-secondary" @click="searchProducts">
                               <span v-if="searching" class="spinner-border spinner-border-sm me-1"></span>
                               <lucide-icon name="search" v-else />
                             </b-button>
-                          </div>
                         </b-input-group>
                       </div>
 
@@ -442,7 +440,7 @@ export default { components: { BForm, BFormGroup, BFormInput, BInputGroup, BForm
 
 /* Sticky side */
 .side { top: 88px; }
-.btn-block { width: 100%; }
+.d-block w-100 { width: 100%; }
 
 /* Helpers */
 .fw-600 { font-weight: 600; }

@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('EditTransfer')" :folder="$t('ListTransfers')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="Edit_transfer" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Transfer">
@@ -148,24 +148,20 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <div class="input-group-prepend">
                                   <span v-show="detail.no_unit !== 0"
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </div>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
                                   v-model.number="detail.quantity"
                                   :disabled="detail.del === 1 || detail.no_unit === 0"
                                 >
-                                <div class="input-group-append">
                                   <span v-show="detail.no_unit !== 0"
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </div>
                               </b-input-group>
                             </div>
                           </td>
@@ -323,11 +319,11 @@
                       </tr>
                       <tr>
                         <td>
-                          <span class="font-weight-bold">{{$t('Total')}}</span>
+                          <span class="fw-bold">{{$t('Total')}}</span>
                         </td>
                         <td>
                           <span
-                            class="font-weight-bold"
+                            class="fw-bold"
                           >{{currentUser.currency}} {{GrandTotal.toFixed(priceDecimals)}}</span>
                         </td>
                       </tr>
@@ -448,7 +444,7 @@
 
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" @click="Submit_Transfer" :disabled="SubmitProcessing || hasBatchValidationErrors"><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" @click="Submit_Transfer" :disabled="SubmitProcessing || hasBatchValidationErrors"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                     <div v-once class="typo__p" v-if="SubmitProcessing">
                       <div class="spinner sm spinner-primary mt-3"></div>
                     </div>
@@ -569,7 +565,7 @@
 
             <b-col md="12">
               <b-form-group>
-                <b-button variant="primary" type="submit"><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                <b-button variant="primary" type="submit"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
               </b-form-group>
             </b-col>
           </b-row>

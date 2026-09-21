@@ -1640,10 +1640,6 @@ export default {
     border-bottom-right-radius: 0;
   }
 
-  .input-group.category-input-group .input-group-append {
-    align-items: stretch;
-  }
-
   .input-group.category-input-group .category-add-btn {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;

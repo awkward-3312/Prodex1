@@ -8,10 +8,11 @@
 //     el usuario (los espacios internos y finales siguen ahí mientras escribe y al salir). BVN recorta el DOM al perder el foco: se implementa
 //     aquí y no se le pasa el modificador.
 //   - `:value` + `@input` (sin v-model), `unchecked-value` por defecto `false` (BVN: `undefined`).
-// Marcado de BS4 que la base y la capa de diseño ya estilan: `custom-select`, `form-group` con fieldset/legend, y en casillas/radios/interruptores
-// las clases `px-bvn-check` / `px-bvn-group` que el puente (`bootstrap5/_bridge.scss`) pinta como el `custom-control` de BS4.
+// Marcado: el de Bootstrap 5 de BootstrapVueNext (`form-select`, `form-check`, `input-group-text`…). Marcas propias de PRODEX: `form-group` (contrato de la capa
+// de diseño, con fieldset/legend como BV2) y, en casillas/radios/interruptores, `px-bvn-check` / `px-bvn-group` (`prodex/_controls.scss` pinta el indicador
+// de la aplicación sobre `form-check`).
 import { h, nextTick } from 'vue';
-import { pure, toList, truthyAttr } from './core.js';
+import { pure, toList } from './core.js';
 import { BFormCheckbox as _BFormCheckbox, BFormCheckboxGroup as _BFormCheckboxGroup } from 'bootstrap-vue-next/components/BFormCheckbox';
 import { BFormRadio as _BFormRadio, BFormRadioGroup as _BFormRadioGroup } from 'bootstrap-vue-next/components/BFormRadio';
 import { BFormSelect as _BFormSelect, BFormSelectOption as _BFormSelectOption, BFormSelectOptionGroup as _BFormSelectOptionGroup } from 'bootstrap-vue-next/components/BFormSelect';
@@ -42,14 +43,8 @@ const typedControl = (name, Component, tune) => pure({
   },
 });
 
-// `custom-select` (+ `-sm` / `-lg`): lo que estila la base BS4 y el tema; BVN emite `form-select`.
-export const BFormSelect = /*#__PURE__*/ typedControl('BFormSelect', _BFormSelect, {
-  valueIsModel: true,
-  props: (props, attrs) => {
-    const size = attrs.size === 'sm' || attrs.size === 'lg' ? attrs.size : null;
-    return { ...props, class: [attrs.class, 'custom-select', size ? `custom-select-${size}` : null] };
-  },
-});
+// Select: BVN emite `form-select` (+ `form-select-sm|lg`), el contrato de Bootstrap 5.
+export const BFormSelect = /*#__PURE__*/ typedControl('BFormSelect', _BFormSelect, { valueIsModel: true });
 
 // Casilla: BFormCheckbox aplica `class` al contenedor; la marca `px-bvn-check` va en el input (`inputClass`). `unchecked-value` = `false` por
 // defecto (BV2). El valor marcado es `value` (`true` por defecto); BV2 ignora `checked-value`, BVN también: el atributo pasa tal cual.
@@ -65,7 +60,7 @@ export const BFormRadio = /*#__PURE__*/ typedControl('BFormRadio', _BFormRadio, 
   props: (props, attrs) => ({ ...props, class: [attrs.class, 'px-bvn-check'] }),
 });
 // Grupos: el contenedor lleva `px-bvn-group` (BVN crea las casillas por dentro, sin pasar por estos wrappers).
-const groupClass = (attrs) => [attrs.class, 'px-bvn-group', truthyAttr(attrs.buttons) ? 'btn-group-toggle' : null];
+const groupClass = (attrs) => [attrs.class, 'px-bvn-group'];
 export const BFormCheckboxGroup = /*#__PURE__*/ typedControl('BFormCheckboxGroup', _BFormCheckboxGroup, {
   props: (props, attrs) => ({ ...props, class: groupClass(attrs) }),
 });

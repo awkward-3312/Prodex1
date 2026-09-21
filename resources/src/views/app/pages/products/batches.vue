@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Batches')" :folder="$t('Products')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper" v-if="!isLoading">
       <!-- Filters row -->
@@ -68,7 +68,7 @@
           <span v-if="props.column.field == 'product'">
             <div>
               <strong>{{ props.row.product_name }}</strong>
-              <small v-if="props.row.product_code" class="text-muted ml-1">[{{ props.row.product_code }}]</small>
+              <small v-if="props.row.product_code" class="text-muted ms-1">[{{ props.row.product_code }}]</small>
             </div>
             <small v-if="props.row.generic_name" class="text-muted">
               {{ props.row.generic_name }}
@@ -221,7 +221,7 @@
 
             <b-col md="12" class="mt-2">
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="font-weight-bold" name="check" /> {{ $t('submit') }}
+                <lucide-icon class="fw-bold" name="check" /> {{ $t('submit') }}
               </b-button>
               <div v-once class="typo__p" v-if="SubmitProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
@@ -328,14 +328,14 @@ export default { components: { BFormGroup, BFormSelect, BForm, BFormInput, BForm
     },
     columns() {
       return [
-        { label: this.$t('Product'), field: 'product', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Batch_No'), field: 'batch_no', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Warehouse'), field: 'warehouse_name', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Expiry_Date'), field: 'expiry_date', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Quantity'), field: 'qty', tdClass: 'text-right', thClass: 'text-right' },
-        { label: this.$t('UnitCost'), field: 'unit_cost', tdClass: 'text-right', thClass: 'text-right' },
-        { label: this.$t('Status'), field: 'status', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Action'), field: 'actions', sortable: false, tdClass: 'text-left', thClass: 'text-left' }
+        { label: this.$t('Product'), field: 'product', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Batch_No'), field: 'batch_no', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Warehouse'), field: 'warehouse_name', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Expiry_Date'), field: 'expiry_date', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Quantity'), field: 'qty', tdClass: 'text-end', thClass: 'text-end' },
+        { label: this.$t('UnitCost'), field: 'unit_cost', tdClass: 'text-end', thClass: 'text-end' },
+        { label: this.$t('Status'), field: 'status', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Action'), field: 'actions', sortable: false, tdClass: 'text-start', thClass: 'text-start' }
       ];
     }
   },

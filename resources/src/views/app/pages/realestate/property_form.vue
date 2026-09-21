@@ -125,9 +125,7 @@
             </div>
             <b-input-group>
               <b-form-input v-model="amenityInput" :placeholder="$t('Add_Amenity')" @keydown.enter.prevent="addAmenity" />
-              <div class="input-group-append">
                 <b-button variant="primary" @click="addAmenity">{{ $t('Add') }}</b-button>
-              </div>
             </b-input-group>
           </b-card>
 

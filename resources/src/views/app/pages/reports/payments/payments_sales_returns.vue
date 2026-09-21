@@ -256,38 +256,38 @@ export default { directives: { 'b-toggle': vBToggle },
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Return"),
           field: "Ref_return",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("ModePaiement"),
           field: "payment_method",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Account"),
           field: "account_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
@@ -295,14 +295,14 @@ export default { directives: { 'b-toggle': vBToggle },
           field: "montant",
           // Let headerField return a formatted string; avoid vue-good-table's decimal re-formatting.
           headerField: this.sumCount,
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("AddedBy"),
           field: "user_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

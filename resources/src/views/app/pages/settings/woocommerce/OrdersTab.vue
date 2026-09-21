@@ -156,14 +156,14 @@ export default { components: { BAlert, BBadge, BButton, BCard },
   computed: {
     wooColumns() {
       return [
-        { label: 'ID', field: 'id', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Número', field: 'number', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Estado', field: 'status', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Fecha', field: 'date_created', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Total', field: 'total', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Cliente', field: 'customer_display', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Correo', field: 'billing_email', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Artículos', field: 'items_count', tdClass: 'text-left', thClass: 'text-left' },
+        { label: 'ID', field: 'id', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Número', field: 'number', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Estado', field: 'status', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Fecha', field: 'date_created', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Total', field: 'total', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Cliente', field: 'customer_display', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Correo', field: 'billing_email', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Artículos', field: 'items_count', tdClass: 'text-start', thClass: 'text-start' },
         { label: 'Estado de sincronización', field: 'sync_status', tdClass: 'text-center', thClass: 'text-center', sortable: false },
         { label: 'Acciones', field: 'actions', tdClass: 'text-center', thClass: 'text-center', sortable: false },
       ];

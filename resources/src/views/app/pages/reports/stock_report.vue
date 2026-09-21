@@ -113,35 +113,35 @@ export default { components: { BFormGroup, BButton, BCard },
         {
           label: this.$t("ProductCode"),
           field: "code",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Name_product"),
           field: "name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Categorie"),
           field: "category",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
       
         {
           label: this.$t("Current_stock"),
           field: "quantity",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

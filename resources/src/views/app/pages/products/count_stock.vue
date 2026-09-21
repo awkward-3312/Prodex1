@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('CountStock')" :folder="$t('Products')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -40,7 +40,7 @@
         <template #table-row="props">
           <span v-if="props.column.field == 'file_stock'">
             <a :href="$imgUrl('count_stock', props.row.file_stock)" >
-                <span class="ul-btn__text ml-1"> {{$t('Download')}}</span>
+                <span class="ul-btn__text ms-1"> {{$t('Download')}}</span>
             </a>
           </span>
         </template>
@@ -104,7 +104,7 @@
                 </b-col>
 
              <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                   <div v-once class="typo__p" v-if="SubmitProcessing">
                     <div class="spinner sm spinner-primary mt-3"></div>
                   </div>
@@ -162,28 +162,28 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
          {
           label: this.$t("Categorie"),
           field: "category_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("file"),
           field: "file_stock",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

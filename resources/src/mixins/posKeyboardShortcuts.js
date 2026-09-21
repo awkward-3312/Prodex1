@@ -80,27 +80,6 @@ function ensurePosAuxiliaryStyles() {
       font-weight: 700 !important;
       letter-spacing: -.01em;
     }
-    #OpenRegisterModal___BV_modal_header .close,
-    #CloseRegisterModal___BV_modal_header .close,
-    #Quick_Add_Customer___BV_modal_header .close {
-      width: 32px;
-      height: 32px;
-      padding: 0 !important;
-      margin: -4px -4px -4px auto !important;
-      border-radius: 8px;
-      color: #6b6b7d;
-      opacity: 1;
-      font-size: 22px;
-      font-weight: 400;
-      line-height: 30px;
-      transition: background .12s ease,color .12s ease;
-    }
-    #OpenRegisterModal___BV_modal_header .close:hover,
-    #CloseRegisterModal___BV_modal_header .close:hover,
-    #Quick_Add_Customer___BV_modal_header .close:hover {
-      background: #f5f3fd;
-      color: #6f53d9;
-    }
     #OpenRegisterModal___BV_modal_body,
     #CloseRegisterModal___BV_modal_body,
     #Quick_Add_Customer___BV_modal_body {
@@ -126,11 +105,11 @@ function ensurePosAuxiliaryStyles() {
       text-transform: none;
     }
     #OpenRegisterModal .form-control,
-    #OpenRegisterModal .custom-select,
+    #OpenRegisterModal .form-select,
     #CloseRegisterModal .form-control,
-    #CloseRegisterModal .custom-select,
+    #CloseRegisterModal .form-select,
     #Quick_Add_Customer .form-control,
-    #Quick_Add_Customer .custom-select,
+    #Quick_Add_Customer .form-select,
     #Quick_Add_Customer .vs__dropdown-toggle,
     .prodex-sar-popup .swal2-input {
       min-height: 40px !important;
@@ -151,19 +130,19 @@ function ensurePosAuxiliaryStyles() {
       resize: vertical;
     }
     #OpenRegisterModal .form-control:focus,
-    #OpenRegisterModal .custom-select:focus,
+    #OpenRegisterModal .form-select:focus,
     #CloseRegisterModal .form-control:focus,
-    #CloseRegisterModal .custom-select:focus,
+    #CloseRegisterModal .form-select:focus,
     #Quick_Add_Customer .form-control:focus,
-    #Quick_Add_Customer .custom-select:focus,
+    #Quick_Add_Customer .form-select:focus,
     #Quick_Add_Customer .vs__dropdown-toggle:focus-within,
     .prodex-sar-popup .swal2-input:focus {
       border-color: #8b73e7 !important;
       box-shadow: 0 0 0 3px rgba(111,83,217,.10) !important;
       outline: 0 !important;
     }
-    #OpenRegisterModal .text-right,
-    #CloseRegisterModal .text-right,
+    #OpenRegisterModal .text-end,
+    #CloseRegisterModal .text-end,
     #Quick_Add_Customer .mt-3.col-md-12 {
       display: flex !important;
       justify-content: flex-end !important;

@@ -217,11 +217,11 @@ export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, c
     ...mapGetters(["currentUserPermissions"]),
     columns() {
       return [
-        { label: this.$t("date"), field: "date", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Reference"), field: "Ref", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("TotalProducts"), field: "items", type: "decimal", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("date"), field: "date", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Reference"), field: "Ref", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("TotalProducts"), field: "items", type: "decimal", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },

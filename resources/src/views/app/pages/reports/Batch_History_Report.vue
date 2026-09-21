@@ -34,7 +34,7 @@
               <span v-if="batch.dosage_form"> · {{ batch.dosage_form }}</span>
             </div>
             <div v-if="batch.variant_name" class="mt-1">
-              <span class="badge badge-pill" style="background:#ede9fe; color:#6d28d9;">{{ batch.variant_name }}</span>
+              <span class="badge rounded-pill" style="background:#ede9fe; color:#6d28d9;">{{ batch.variant_name }}</span>
             </div>
             <div class="mt-2"><strong>{{ $t('Warehouse') }}:</strong> {{ batch.warehouse_name }}</div>
             <div><strong>{{ $t('Status') }}:</strong>

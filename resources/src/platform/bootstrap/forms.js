@@ -8,8 +8,9 @@
 //     el usuario (los espacios internos y finales siguen ahí mientras escribe y al salir). BVN recorta el DOM al perder el foco: se implementa
 //     aquí y no se le pasa el modificador.
 //   - `:value` + `@input` (sin v-model), `unchecked-value` por defecto `false` (BVN: `undefined`).
-// Marcado de BS4 que la base y la capa de diseño ya estilan: `custom-select`, `form-group` con fieldset/legend, y en casillas/radios/interruptores
-// las clases `px-bvn-check` / `px-bvn-group` que el puente (`bootstrap5/_bridge.scss`) pinta como el `custom-control` de BS4.
+// Marcado: el de Bootstrap 5 de BootstrapVueNext (`form-select`, `form-check`, `input-group-text`…). Marcas propias de PRODEX: `form-group` (contrato de la capa
+// de diseño, con fieldset/legend como BV2) y, en casillas/radios/interruptores, `px-bvn-check` / `px-bvn-group` (`prodex/_controls.scss` pinta el indicador
+// de la aplicación sobre `form-check`).
 // Repartido en dos módulos para el tree-shaking por entrypoint (fase 5B): `form-text.js` (form, grupo, input, textarea, feedback, grupo de entrada: lo que usa
 // el login) y `form-choice.js` (select, casilla, radio y sus grupos).
 export * from './form-text.js';

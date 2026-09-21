@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Warehouse_Locations')" :folder="$t('Settings')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper" v-if="!isLoading">
       <b-row class="mb-3">
@@ -100,7 +100,7 @@
             </b-col>
 
             <b-col md="6" class="d-flex align-items-center">
-              <label class="switch switch-primary mr-3">
+              <label class="switch switch-primary me-3">
                 <span>{{ $t('Active') }}</span>
               </label>
               <b-form-checkbox v-model="location.is_active" switch />
@@ -108,7 +108,7 @@
 
             <b-col md="12" class="mt-3">
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}
+                <lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}
               </b-button>
               <div v-once class="typo__p" v-if="SubmitProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
@@ -162,11 +162,11 @@ export default { components: { BFormGroup, BFormSelect, BForm, BFormInvalidFeedb
   computed: {
     columns() {
       return [
-        { label: this.$t("Warehouses"), field: "warehouse", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Rack_Location_Code"), field: "code", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Location_Name"), field: "name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Status"), field: "is_active", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", html: true, sortable: false, tdClass: "text-left", thClass: "text-left" }
+        { label: this.$t("Warehouses"), field: "warehouse", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Rack_Location_Code"), field: "code", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Location_Name"), field: "name", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Status"), field: "is_active", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", html: true, sortable: false, tdClass: "text-start", thClass: "text-start" }
       ];
     },
 

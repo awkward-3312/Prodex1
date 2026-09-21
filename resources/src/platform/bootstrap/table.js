@@ -7,8 +7,7 @@ import { BTable as _BTable, BTableSimple as _BTableSimple, BThead as _BThead, BT
 
 // Tabla (fase 4): `b-table` de BootstrapVue 2 → BTable de BootstrapVueNext. El contrato de props usado (`items`, `fields`, `busy`, `small`, `striped`,
 // `hover`, `bordered`, `responsive`, `show-empty`, `empty-text`, `thead-class`, slots `#cell(x)`, `#table-busy`, orden local con `sortable`) es
-// el mismo. Única diferencia de marcado: `head-variant="light|dark"`. BootstrapVue 2 (BS4) pintaba `thead.thead-light`, que estila la base
-// (`.thead-light th`); BootstrapVueNext emite `table-light` (fila de color, otro gris). Se emite la clase de BS4 y no se pasa `headVariant`.
+// el mismo. `head-variant="light|dark"` produce `table-light|dark` (Bootstrap 5).
 export const BTable = /*#__PURE__*/ pure({
   name: 'BTable',
   inheritAttrs: false,
@@ -16,14 +15,8 @@ export const BTable = /*#__PURE__*/ pure({
     const inner = ref(null);
     expose({ refresh: () => inner.value && inner.value.refresh && inner.value.refresh() });
     return () => {
-      const { headVariant, 'head-variant': headVariantKebab, ...rest } = attrs;
-      const variant = headVariant || headVariantKebab;
-      const theadClass = rest.theadClass !== undefined ? rest.theadClass : rest['thead-class'];
-      const merged = variant === 'light' || variant === 'dark' ? [theadClass, `thead-${variant}`] : theadClass;
-      const props = { ...rest, ref: inner };
-      delete props['thead-class'];
-      if (variant && variant !== 'light' && variant !== 'dark') props.headVariant = variant;
-      if (merged !== undefined) props.theadClass = merged;
+      const props = { ...attrs, ref: inner };
+      if (props['thead-class'] !== undefined && props.theadClass === undefined) { props.theadClass = props['thead-class']; delete props['thead-class']; }
       return h(_BTable, props, slots);
     };
   },

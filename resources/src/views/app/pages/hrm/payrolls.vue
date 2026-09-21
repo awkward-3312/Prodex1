@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Payroll')" :folder="$t('hrm')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -239,7 +239,7 @@
                       </tr>
                       <tr v-for="(file, index) in pendingFiles" :key="'pending_' + index">
                         <td>
-                          <lucide-icon class="mr-1" name="file" />
+                          <lucide-icon class="me-1" name="file" />
                           {{file.name}}
                         </td>
                         <td>{{formatFileSize(file.size)}}</td>
@@ -257,7 +257,7 @@
                       </tr>
                       <tr v-for="document in documents" :key="document.id">
                         <td>
-                          <lucide-icon class="mr-1" name="file" />
+                          <lucide-icon class="me-1" name="file" />
                           {{document.name}}
                         </td>
                         <td>{{formatFileSize(document.size)}}</td>
@@ -289,7 +289,7 @@
               </b-col>
 
             <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                   <div v-once class="typo__p" v-if="SubmitProcessing">
                     <div class="spinner sm spinner-primary mt-3"></div>
                   </div>
@@ -355,7 +355,7 @@
                   <div v-else>
                     <div v-for="document in documents" :key="document.id" class="mb-1">
                       <a class="cursor-pointer text-info" @click="Download_Document(document)">
-                        <lucide-icon class="mr-1" name="file" />
+                        <lucide-icon class="me-1" name="file" />
                         {{document.name}}
                       </a>
                     </div>
@@ -387,7 +387,7 @@
             <tr v-for="document in documents" :key="document.id">
               <td>
                 <a class="cursor-pointer" @click="Download_Document(document)">
-                  <lucide-icon class="mr-1" name="file" />
+                  <lucide-icon class="me-1" name="file" />
                   {{document.name}}
                 </a>
               </td>
@@ -479,65 +479,65 @@ export default { directives: { 'b-tooltip': vBTooltip },
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Employee"),
           field: "employee_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Account"),
           field: "account_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Amount"),
           field: "amount",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("ModePaiement"),
           field: "payment_method",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Documents"),
           field: "documents",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

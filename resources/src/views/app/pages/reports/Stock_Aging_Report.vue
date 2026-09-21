@@ -152,17 +152,17 @@ export default { components: { BFormSelect, BFormInput, BBadge, BButton, BCard }
     ...mapGetters(["currentUser"]),
     columns() {
       const base = [
-        { label: this.$t("Code"), field: "code", sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Product"), field: "product_name", sortable: true, tdClass: "text-left", thClass: "text-left" },
+        { label: this.$t("Code"), field: "code", sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Product"), field: "product_name", sortable: true, tdClass: "text-start", thClass: "text-start" },
       ];
       if (this.dimension === "variant") {
-        base.push({ label: this.$t("Variant"), field: "variant_name", sortable: true, tdClass: "text-left", thClass: "text-left" });
+        base.push({ label: this.$t("Variant"), field: "variant_name", sortable: true, tdClass: "text-start", thClass: "text-start" });
       }
       base.push(
-        { label: this.$t("OnHand"), field: "on_hand", headerField: this.sumOnHand, sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("LastInbound"), field: "last_inbound_at", sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("AgeDays"), field: "age_days", type: "number", sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Bucket"), field: "age_bucket", sortable: true, tdClass: "text-left", thClass: "text-left" },
+        { label: this.$t("OnHand"), field: "on_hand", headerField: this.sumOnHand, sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("LastInbound"), field: "last_inbound_at", sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("AgeDays"), field: "age_days", type: "number", sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Bucket"), field: "age_bucket", sortable: true, tdClass: "text-start", thClass: "text-start" },
       );
       return base;
     },

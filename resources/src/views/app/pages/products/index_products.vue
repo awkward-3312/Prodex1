@@ -244,7 +244,7 @@
             </b-col>
 
             <b-col md="6" sm="12">
-              <a :href="'/import/exemples/import_products.xlsx'" class="btn btn-info btn-sm btn-block">
+              <a :href="'/import/exemples/import_products.xlsx'" class="btn btn-info btn-sm d-block w-100">
                 {{ $t("Download_exemple") }}
               </a>
             </b-col>
@@ -306,17 +306,17 @@ export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, c
     },
     columns() {
       return [
-        { label: this.$t("image"), field: "image", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("type"), field: "type", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Name_product"), field: "name", tdClass: "text-left pre", thClass: "text-left" },
-        { label: this.$t("Code"), field: "code", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Brand"), field: "brand", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Categorie"), field: "category", tdClass: "text-left pre", thClass: "text-left" },
-        { label: this.$t("Cost"), field: "cost", tdClass: "text-left pre", thClass: "text-left" },
-        { label: this.$t("Price"), field: "price", tdClass: "text-left pre", thClass: "text-left" },
-        { label: this.$t("Unit"), field: "unit", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Quantity"), field: "quantity", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("image"), field: "image", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("type"), field: "type", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Name_product"), field: "name", tdClass: "text-start pre", thClass: "text-start" },
+        { label: this.$t("Code"), field: "code", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Brand"), field: "brand", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Categorie"), field: "category", tdClass: "text-start pre", thClass: "text-start" },
+        { label: this.$t("Cost"), field: "cost", tdClass: "text-start pre", thClass: "text-start" },
+        { label: this.$t("Price"), field: "price", tdClass: "text-start pre", thClass: "text-start" },
+        { label: this.$t("Unit"), field: "unit", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Quantity"), field: "quantity", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     },
     excelColumns() {

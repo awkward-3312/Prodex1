@@ -8,8 +8,9 @@
 //     el usuario (los espacios internos y finales siguen ahí mientras escribe y al salir). BVN recorta el DOM al perder el foco: se implementa
 //     aquí y no se le pasa el modificador.
 //   - `:value` + `@input` (sin v-model), `unchecked-value` por defecto `false` (BVN: `undefined`).
-// Marcado de BS4 que la base y la capa de diseño ya estilan: `custom-select`, `form-group` con fieldset/legend, y en casillas/radios/interruptores
-// las clases `px-bvn-check` / `px-bvn-group` que el puente (`bootstrap5/_bridge.scss`) pinta como el `custom-control` de BS4.
+// Marcado: el de Bootstrap 5 de BootstrapVueNext (`form-select`, `form-check`, `input-group-text`…). Marcas propias de PRODEX: `form-group` (contrato de la capa
+// de diseño, con fieldset/legend como BV2) y, en casillas/radios/interruptores, `px-bvn-check` / `px-bvn-group` (`prodex/_controls.scss` pinta el indicador
+// de la aplicación sobre `form-check`).
 import { h } from 'vue';
 import { pure, toList } from './core.js';
 import { BFormGroup as _BFormGroup } from 'bootstrap-vue-next/components/BFormGroup';
@@ -28,24 +29,8 @@ export const BFormInvalidFeedback = /*#__PURE__*/ pure(_BFormInvalidFeedback);
 export const BFormValidFeedback = /*#__PURE__*/ pure(_BFormValidFeedback);
 export const BInputGroupText = /*#__PURE__*/ pure(_BInputGroupText);
 
-// Grupo de entrada. BV2 pintaba `prepend` / `append` (props) como `div.input-group-prepend|append > div.input-group-text`, y el tema, la hoja RTL y el CSS
-// de muchas vistas apuntan a esas clases (`.input-group > .input-group-append > .btn`…); BootstrapVueNext pone `span.input-group-text` directo. Se emite
-// el marcado de BV2 (las vistas escriben además `div.input-group-prepend|append` planos). Desaparece con el corte a BS5 (fase 5C).
-export const BInputGroup = /*#__PURE__*/ pure({
-  name: 'BInputGroup',
-  inheritAttrs: false,
-  props: { prepend: { type: [String, Number], default: undefined }, append: { type: [String, Number], default: undefined } },
-  setup(props, { attrs, slots }) {
-    const addon = (kind, text) => h('div', { class: `input-group-${kind}` }, [h('div', { class: 'input-group-text' }, String(text))]);
-    return () => h(_BInputGroup, attrs, {
-      default: () => [
-        props.prepend !== undefined && props.prepend !== '' ? addon('prepend', props.prepend) : null,
-        ...(slots.default ? slots.default() : []),
-        props.append !== undefined && props.append !== '' ? addon('append', props.append) : null,
-      ],
-    });
-  },
-});
+// Grupo de entrada: BVN (Bootstrap 5) pone los addons (`prepend` / `append`, botones, textos) como hijos directos de `.input-group`.
+export const BInputGroup = /*#__PURE__*/ pure(_BInputGroup);
 
 // BootstrapVue 2 sin `label-for` pintaba `fieldset.form-group > legend.col-form-label.pt-0`, marcado que la capa de diseño ya estila (también dentro
 // de modales). BootstrapVueNext localizaría el input hijo y emitiría `label.form-label`; `label-for=""` (no es nulo) mantiene el marcado de BV2.

@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <!-- Capture in progress -->
     <div v-else-if="capturing" class="result-page text-center">
@@ -23,7 +23,7 @@
         {{ $t('Subscription_activated') || 'Your subscription has been activated. You\'re all set!' }}
       </p>
 
-      <div class="billing-card text-left mx-auto mb-4 result-detail-card">
+      <div class="billing-card text-start mx-auto mb-4 result-detail-card">
         <div class="billing-card-body">
           <div class="detail-row"><span class="text-muted">{{ $t('Invoice') || 'Invoice' }}</span><span>{{ payment.invoice_number }}</span></div>
           <div class="detail-row"><span class="text-muted">{{ $t('Plan') || 'Plan' }}</span><span>{{ payment.plan_name }}</span></div>
@@ -32,7 +32,7 @@
           <div class="detail-row"><span class="text-muted">{{ $t('Gateway') || 'Gateway' }}</span><span>{{ payment.gateway_label }}</span></div>
           <div class="detail-row">
             <span class="text-muted">{{ $t('Status') || 'Status' }}</span>
-            <span class="badge-billing badge-paid"><lucide-icon name="check" class="mr-1" />{{ $t('Paid') || 'Paid' }}</span>
+            <span class="badge-billing badge-paid"><lucide-icon name="check" class="me-1" />{{ $t('Paid') || 'Paid' }}</span>
           </div>
           <div v-if="subscription && subscription.ends_at" class="detail-row">
             <span class="text-muted">{{ $t('Valid_Until') || 'Valid Until' }}</span>
@@ -43,10 +43,10 @@
 
       <div class="d-flex gap-3 justify-content-center">
         <router-link to="/app/dashboard" class="btn btn-primary">
-          <lucide-icon name="arrow-right" class="mr-1" /> {{ $t('Go_to_Dashboard') || 'Go to Dashboard' }}
+          <lucide-icon name="arrow-right" class="me-1" /> {{ $t('Go_to_Dashboard') || 'Go to Dashboard' }}
         </router-link>
         <router-link to="/app/billing/history" class="btn btn-outline-secondary">
-          <lucide-icon name="clock" class="mr-1" /> {{ $t('Billing_History') || 'Billing History' }}
+          <lucide-icon name="clock" class="me-1" /> {{ $t('Billing_History') || 'Billing History' }}
         </router-link>
       </div>
     </div>
@@ -61,7 +61,7 @@
         {{ $t('Payment_being_verified') || 'Your payment is being verified. This page will update automatically.' }}
       </p>
       <router-link to="/app/billing/current-plan" class="btn btn-outline-secondary mt-3">
-        <lucide-icon name="arrow-left" class="mr-1" /> {{ $t('Back_to_plan') || 'Back to Current Plan' }}
+        <lucide-icon name="arrow-left" class="me-1" /> {{ $t('Back_to_plan') || 'Back to Current Plan' }}
       </router-link>
     </div>
 
@@ -75,7 +75,7 @@
         {{ $t('Payment_submitted') || 'Your payment has been submitted.' }}
       </p>
       <router-link to="/app/billing/current-plan" class="btn btn-primary">
-        <lucide-icon name="arrow-right" class="mr-1" /> {{ $t('View_Plan') || 'View Current Plan' }}
+        <lucide-icon name="arrow-right" class="me-1" /> {{ $t('View_Plan') || 'View Current Plan' }}
       </router-link>
     </div>
   </div>

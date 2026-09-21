@@ -163,7 +163,7 @@ export const BFormDatepicker = /*#__PURE__*/ pure({
         const day = addDays(new Date(2021, 7, 1), (i + Number(props.startWeekday)) % 7);
         return h('small', { class: 'col text-truncate', title: fmt({ weekday: 'long' }).format(day), 'aria-label': fmt({ weekday: 'long' }).format(day) }, fmt({ weekday: 'short' }).format(day));
       });
-      const body = cells.value.map((row) => h('div', { class: 'row no-gutters' }, row.map((date) => {
+      const body = cells.value.map((row) => h('div', { class: 'row g-0' }, row.map((date) => {
         const ymd = toYmd(date);
         const outside = date.getMonth() !== active.value.getMonth();
         const isSel = !!selected.value && ymd === toYmd(selected.value);
@@ -178,7 +178,7 @@ export const BFormDatepicker = /*#__PURE__*/ pure({
           'aria-label': `${longLabel(date)}${isSel ? ' (Selected date)' : ''}${isNow && !isSel ? ' (Today)' : ''}`,
           'aria-selected': isSel ? 'true' : undefined, 'aria-current': isSel ? 'date' : undefined,
           onClick: () => { active.value = date; choose(date); },
-        }, [h('span', { class: ['btn border-0 rounded-circle text-nowrap', isActive && isSel ? 'focus active' : null, tone, text, outside ? null : 'font-weight-bold', off ? 'disabled' : null] }, String(date.getDate()))]);
+        }, [h('span', { class: ['btn border-0 rounded-circle text-nowrap', isActive && isSel ? 'focus active' : null, tone, text, outside ? null : 'fw-bold', off ? 'disabled' : null] }, String(date.getDate()))]);
       })));
       const buttons = [];
       if (props.todayButton) buttons.push(h('button', { class: 'btn btn-outline-primary btn-sm', type: 'button', 'aria-label': props.labelTodayButton, onClick: () => { const d = today(); active.value = d; choose(d); } }, props.labelTodayButton));
@@ -188,7 +188,7 @@ export const BFormDatepicker = /*#__PURE__*/ pure({
         h('div', { dir: 'ltr', lang: lang.value, role: 'group', class: 'b-calendar-inner', style: { width: '270px' } }, [
           props.hideHeader ? null : h('header', { class: 'b-calendar-header', title: 'Selected date' }, [
             h('output', { class: 'form-control form-control-sm text-center', role: 'status', tabindex: '-1', 'data-selected': value.value || undefined, 'aria-live': 'polite', 'aria-atomic': 'true' }, [
-              h('bdi', { class: 'sr-only' }, ' (Selected date) '),
+              h('bdi', { class: 'visually-hidden' }, ' (Selected date) '),
               h('bdi', selected.value ? longLabel(selected.value) : props.labelNoDateSelected),
             ]),
           ]),
@@ -200,8 +200,8 @@ export const BFormDatepicker = /*#__PURE__*/ pure({
             navButton('Next year', 'Alt+PageUp', iconChevron2(true), () => move(addMonths(active.value, 12))),
           ]),
           h('div', { ref: grid, role: 'application', tabindex: '0', 'data-month': `${active.value.getFullYear()}-${pad(active.value.getMonth() + 1)}`, 'aria-roledescription': 'Calendar', class: 'b-calendar-grid form-control h-auto text-center', onKeydown: onGridKey }, [
-            h('div', { class: 'b-calendar-grid-caption text-center font-weight-bold', 'aria-live': 'polite', 'aria-atomic': 'true' }, fmt({ year: 'numeric', month: 'long' }).format(active.value)),
-            h('div', { 'aria-hidden': 'true', class: 'b-calendar-grid-weekdays row no-gutters border-bottom' }, weekdays),
+            h('div', { class: 'b-calendar-grid-caption text-center fw-bold', 'aria-live': 'polite', 'aria-atomic': 'true' }, fmt({ year: 'numeric', month: 'long' }).format(active.value)),
+            h('div', { 'aria-hidden': 'true', class: 'b-calendar-grid-weekdays row g-0 border-bottom' }, weekdays),
             h('div', { class: 'b-calendar-grid-body' }, body),
             h('div', { class: 'b-calendar-grid-help border-top small text-muted text-center bg-light' }, [h('div', { class: 'small' }, 'Use cursor keys to navigate calendar dates')]),
           ]),
@@ -234,7 +234,7 @@ export const BFormDatepicker = /*#__PURE__*/ pure({
           disabled: props.disabled || undefined, onClick: () => (open.value ? hide(false) : show()),
         }, [open.value ? iconCalendarFill() : iconCalendar()]),
         props.name ? h('input', { type: 'hidden', name: props.name, value: value.value || '' }) : null,
-        h('div', { class: ['dropdown-menu', open.value ? 'show' : null, props.right ? 'dropdown-menu-right' : null], role: 'dialog', tabindex: '-1', 'aria-modal': 'false', id: `${baseId.value}__dialog_`, 'aria-labelledby': `${baseId.value}__value_` }, open.value ? [renderCalendar()] : []),
+        h('div', { class: ['dropdown-menu', open.value ? 'show' : null, props.right ? 'dropdown-menu-end' : null], role: 'dialog', tabindex: '-1', 'aria-modal': 'false', id: `${baseId.value}__dialog_`, 'aria-labelledby': `${baseId.value}__value_` }, open.value ? [renderCalendar()] : []),
         h('label', { class: ['form-control', sizeClass, stateClass, selected.value ? null : 'text-muted'], 'aria-invalid': props.state === false ? 'true' : undefined, id: `${baseId.value}__value_`, for: baseId.value }, label),
       ]);
     };

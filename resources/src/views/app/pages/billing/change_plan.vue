@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="billing-page change-plan-page">
       <div class="row mb-3">
@@ -10,7 +10,7 @@
             <p class="text-muted mb-0">{{ $t('Select_plan_fits') || 'Select the plan that fits your business.' }}</p>
           </div>
           <router-link to="/app/billing/current-plan" class="btn btn-outline-secondary btn-sm">
-            <lucide-icon name="arrow-left" class="mr-1" /> {{ $t('Back') || 'Back' }}
+            <lucide-icon name="arrow-left" class="me-1" /> {{ $t('Back') || 'Back' }}
           </router-link>
         </div>
       </div>
@@ -29,7 +29,7 @@
               {{ $t('Pending_upgrade_wait') || 'Please wait for admin approval before submitting another request.' }}
             </p>
             <router-link to="/app/billing/current-plan" class="btn btn-outline-secondary btn-sm">
-              <lucide-icon name="arrow-left" class="mr-1" /> {{ $t('Back_to_plan') || 'Back to Current Plan' }}
+              <lucide-icon name="arrow-left" class="me-1" /> {{ $t('Back_to_plan') || 'Back to Current Plan' }}
             </router-link>
           </div>
         </div>
@@ -90,21 +90,21 @@
 
             <div class="mt-4">
               <button v-if="plan.is_current" class="btn btn-outline-secondary w-100" disabled>
-                <lucide-icon name="check" class="mr-1" /> {{ $t('Current_Plan') || 'Current Plan' }}
+                <lucide-icon name="check" class="me-1" /> {{ $t('Current_Plan') || 'Current Plan' }}
               </button>
               <button v-else-if="pendingUpgrade" class="btn btn-outline-secondary w-100" disabled>
-                <lucide-icon name="clock" class="mr-1" /> {{ $t('Upgrade_Pending') || 'Upgrade Pending' }}
+                <lucide-icon name="clock" class="me-1" /> {{ $t('Upgrade_Pending') || 'Upgrade Pending' }}
               </button>
               <router-link v-else :to="'/app/billing/checkout/' + plan.id + '?cycle=' + cycle"
                 class="btn btn-primary w-100">
                 <template v-if="hasActive && currentPlanPrice !== null && plan.price > currentPlanPrice">
-                  <lucide-icon name="arrow-up" class="mr-1" /> {{ $t('Upgrade') || 'Upgrade' }}
+                  <lucide-icon name="arrow-up" class="me-1" /> {{ $t('Upgrade') || 'Upgrade' }}
                 </template>
                 <template v-else-if="hasActive">
-                  <lucide-icon name="arrow-down" class="mr-1" /> {{ $t('Switch') || 'Switch' }}
+                  <lucide-icon name="arrow-down" class="me-1" /> {{ $t('Switch') || 'Switch' }}
                 </template>
                 <template v-else>
-                  <lucide-icon name="arrow-right" class="mr-1" /> {{ $t('Get_Started') || 'Get Started' }}
+                  <lucide-icon name="arrow-right" class="me-1" /> {{ $t('Get_Started') || 'Get Started' }}
                 </template>
               </router-link>
             </div>

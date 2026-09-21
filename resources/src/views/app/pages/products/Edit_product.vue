@@ -1,7 +1,7 @@
 <template>
   <div class="main-content product-create-page">
     <breadcumb :page="'Update Product'" :folder="$t('Products')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="Edit_Product" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Product" enctype="multipart/form-data">
@@ -95,7 +95,7 @@
                     type="submit"
                     :disabled="quickWarehouseLocationSubmitting"
                   >
-                    <lucide-icon class="font-weight-bold" name="check" /> {{ $t('submit') }}
+                    <lucide-icon class="fw-bold" name="check" /> {{ $t('submit') }}
                   </b-button>
                   <div v-if="quickWarehouseLocationSubmitting" class="spinner-inline">
                     <div class="spinner sm spinner-primary mt-2"></div>
@@ -210,11 +210,9 @@
                           </span>
                         </template>
                         <div class="input-group modern-input-group">
-                          <div class="input-group-prepend">
                             <button type="button" class="btn-icon-scan" @click="showModal" title="Scan">
                               <img src="/assets_setup/scan.png" alt="Scan" class="scan-icon" />
                             </button>
-                          </div>
                           <b-form-input
                             :class="{'is-invalid': !!errors.length}"
                             :state="errors[0] ? false : (valid ? true : null)"
@@ -223,11 +221,9 @@
                             v-model="product.code"
                             :placeholder="$t('Enter_Product_Code')"
                           ></b-form-input>
-                          <div class="input-group-append">
                             <button type="button" class="btn-icon-gen" @click="generateNumber()" title="Generate">
                               <lucide-icon name="barcode" />
                             </button>
-                          </div>
                         </div>
                         <b-alert
                           show
@@ -285,7 +281,7 @@
                             </span>
                           </span>
                         </template>
-                        <b-form-input v-model="product.category_id" class="sr-only" tabindex="-1" aria-hidden="true" />
+                        <b-form-input v-model="product.category_id" class="visually-hidden" tabindex="-1" aria-hidden="true" />
                         <v-select
                           multiple
                           :close-on-select="false"
@@ -919,8 +915,8 @@
                       <tr>
                         <th>{{ $t('ProductName') }}</th>
                         <th>{{ $t('Quantity') }}</th>
-                        <th class="text-right">{{ $t('Cost') }}</th>
-                        <th class="text-right">{{ $t('SubTotal') }}</th>
+                        <th class="text-end">{{ $t('Cost') }}</th>
+                        <th class="text-end">{{ $t('SubTotal') }}</th>
                         <th class="text-center" style="width: 50px;"></th>
                       </tr>
                     </thead>
@@ -947,8 +943,8 @@
                             ></b-form-input>
                           </b-input-group>
                         </td>
-                        <td class="text-right">{{ currentUser.currency }} {{ materiel.cost }}</td>
-                        <td class="text-right font-weight-bold">{{ currentUser.currency }} {{ formatNumber(materiel.cost * materiel.quantity, priceDecimals) }}</td>
+                        <td class="text-end">{{ currentUser.currency }} {{ materiel.cost }}</td>
+                        <td class="text-end fw-bold">{{ currentUser.currency }} {{ formatNumber(materiel.cost * materiel.quantity, priceDecimals) }}</td>
                         <td class="text-center">
                           <b-button
                             variant="danger"
@@ -1076,7 +1072,7 @@
                         </div>
                         <b-button
                           variant="outline-primary"
-                          class="ml-2"
+                          class="ms-2"
                           size="sm"
                           @click="openQuickWarehouseLocationModal(wh.id)"
                           v-b-tooltip.hover
@@ -1313,10 +1309,10 @@
                       <tr>
                         <th>{{ $t('warehouse') }}</th>
                         <th v-if="openingHasVariants">{{ $t('Variant') }}</th>
-                        <th class="text-right">{{ $t('CurrentStock') }}</th>
-                        <th class="text-right">{{ $t('In_Batches') }}</th>
-                        <th class="text-right">{{ $t('Unbatched_Stock') }}</th>
-                        <th class="text-right"></th>
+                        <th class="text-end">{{ $t('CurrentStock') }}</th>
+                        <th class="text-end">{{ $t('In_Batches') }}</th>
+                        <th class="text-end">{{ $t('Unbatched_Stock') }}</th>
+                        <th class="text-end"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1324,14 +1320,14 @@
                         <tr>
                           <td>{{ row.warehouse_name }}</td>
                           <td v-if="openingHasVariants">{{ row.variant_name || '-' }}</td>
-                          <td class="text-right">{{ row.stock_qty }}</td>
-                          <td class="text-right">{{ row.batched_qty }}</td>
-                          <td class="text-right">
-                            <span :class="row.unbatched_qty > 0 ? 'text-danger font-weight-bold' : 'text-success'">
+                          <td class="text-end">{{ row.stock_qty }}</td>
+                          <td class="text-end">{{ row.batched_qty }}</td>
+                          <td class="text-end">
+                            <span :class="row.unbatched_qty > 0 ? 'text-danger fw-bold' : 'text-success'">
                               {{ row.unbatched_qty }}
                             </span>
                           </td>
-                          <td class="text-right">
+                          <td class="text-end">
                             <b-button
                               v-if="row.unbatched_qty > 0"
                               size="sm"
@@ -1389,13 +1385,13 @@
                                   + {{ $t('Add') }}
                                 </b-button>
                                 <div class="d-flex align-items-center">
-                                  <span class="mr-3" :class="openingRemaining < 0 ? 'text-danger' : 'text-muted'">
+                                  <span class="me-3" :class="openingRemaining < 0 ? 'text-danger' : 'text-muted'">
                                     {{ $t('Remaining_To_Assign') }}: {{ openingRemaining }}
                                   </span>
                                   <b-button
                                     size="sm"
                                     variant="primary"
-                                    class="mr-2"
+                                    class="me-2"
                                     :disabled="openingSaveDisabled"
                                     @click="saveOpeningBatches"
                                   >{{ $t('submit') }}</b-button>
@@ -1579,11 +1575,9 @@
                         v-model="tag"
                         class="form-control-modern"
                       ></b-form-input>
-                      <div class="input-group-append">
                         <b-button variant="primary" @click="add_variant(tag)">
                           <lucide-icon name="plus" />{{ $t('Add') }}
                         </b-button>
-                      </div>
                     </b-input-group>
                   </b-form-group>
                 </div>
@@ -3373,7 +3367,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
 
   /* ===== Form Controls ===== */
   .product-create-page .form-control,
-  .product-create-page .custom-select,
+  .product-create-page .form-select,
   .product-create-page textarea.form-control {
     border-radius: 9px;
     border: 1.5px solid var(--pc-border);
@@ -3381,7 +3375,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   }
 
   .product-create-page .form-control:focus,
-  .product-create-page .custom-select:focus,
+  .product-create-page .form-select:focus,
   .product-create-page textarea.form-control:focus {
     border-color: var(--pc-primary);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
@@ -3493,12 +3487,6 @@ export default { directives: { 'b-tooltip': vBTooltip },
   .modern-input-group:focus-within {
     border-color: var(--pc-primary);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
-  }
-
-  .modern-input-group .input-group-prepend,
-  .modern-input-group .input-group-append {
-    display: flex;
-    align-items: stretch;
   }
 
   .modern-input-group .form-control {
@@ -3734,12 +3722,6 @@ export default { directives: { 'b-tooltip': vBTooltip },
     background: #f5f7ff;
   }
 
-  .product-create-page .options-grid .custom-control-label {
-    font-weight: 500;
-    color: var(--pc-text);
-    font-size: 0.88rem;
-  }
-
   /* ===== Form Actions ===== */
   .product-create-page .form-actions {
     display: flex;
@@ -3754,7 +3736,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   }
 
   /* ===== Generic input-group border / radius fix =====
-     The 1.5px border + 9px radius I put on .form-control/.custom-select
+     The 1.5px border + 9px radius I put on .form-control/.form-select
      above doesn't match Bootstrap's default 1px / 0.25rem on
      .input-group-text and .btn inside append/prepend, which produces a
      mismatched seam where they meet. Unify border thickness, color and
@@ -3764,11 +3746,11 @@ export default { directives: { 'b-tooltip': vBTooltip },
   }
 
   .product-create-page .input-group > .form-control,
-  .product-create-page .input-group > .custom-select,
-  .product-create-page .input-group > .input-group-prepend > .input-group-text,
-  .product-create-page .input-group > .input-group-append > .input-group-text,
-  .product-create-page .input-group > .input-group-prepend > .btn,
-  .product-create-page .input-group > .input-group-append > .btn {
+  .product-create-page .input-group > .form-select,
+  .product-create-page .input-group > .input-group-text:first-child,
+  .product-create-page .input-group > .input-group-text:last-child,
+  .product-create-page .input-group > .btn:first-child,
+  .product-create-page .input-group > .btn:last-child {
     border: 1.5px solid var(--pc-border);
   }
 
@@ -3776,19 +3758,19 @@ export default { directives: { 'b-tooltip': vBTooltip },
      :not(.modern-input-group) guard avoids fighting the prepend+append
      barcode group which has its own wrapper border. */
   .product-create-page .input-group:not(.modern-input-group) > .form-control:not(:first-child),
-  .product-create-page .input-group:not(.modern-input-group) > .custom-select:not(:first-child) {
+  .product-create-page .input-group:not(.modern-input-group) > .form-select:not(:first-child) {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
   }
 
   .product-create-page .input-group:not(.modern-input-group) > .form-control:not(:last-child),
-  .product-create-page .input-group:not(.modern-input-group) > .custom-select:not(:last-child) {
+  .product-create-page .input-group:not(.modern-input-group) > .form-select:not(:last-child) {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
   }
 
-  .product-create-page .input-group:not(.modern-input-group) > .input-group-prepend > .input-group-text,
-  .product-create-page .input-group:not(.modern-input-group) > .input-group-prepend > .btn {
+  .product-create-page .input-group:not(.modern-input-group) > .input-group-text:first-child,
+  .product-create-page .input-group:not(.modern-input-group) > .btn:first-child {
     border-top-left-radius: 9px;
     border-bottom-left-radius: 9px;
     border-top-right-radius: 0;
@@ -3796,8 +3778,8 @@ export default { directives: { 'b-tooltip': vBTooltip },
     border-right-width: 0;
   }
 
-  .product-create-page .input-group:not(.modern-input-group) > .input-group-append > .input-group-text,
-  .product-create-page .input-group:not(.modern-input-group) > .input-group-append > .btn {
+  .product-create-page .input-group:not(.modern-input-group) > .input-group-text:last-child,
+  .product-create-page .input-group:not(.modern-input-group) > .btn:last-child {
     border-top-right-radius: 9px;
     border-bottom-right-radius: 9px;
     border-top-left-radius: 0;
@@ -3806,8 +3788,8 @@ export default { directives: { 'b-tooltip': vBTooltip },
   }
 
   /* Append/prepend appearance */
-  .product-create-page .input-group > .input-group-append > .input-group-text,
-  .product-create-page .input-group > .input-group-prepend > .input-group-text {
+  .product-create-page .input-group > .input-group-text:last-child,
+  .product-create-page .input-group > .input-group-text:first-child {
     background: #f8fafc;
     color: var(--pc-text-soft);
     font-weight: 600;
@@ -3815,11 +3797,11 @@ export default { directives: { 'b-tooltip': vBTooltip },
 
   /* Unified focus ring across the whole group */
   .product-create-page .input-group:focus-within > .form-control,
-  .product-create-page .input-group:focus-within > .custom-select,
-  .product-create-page .input-group:focus-within > .input-group-prepend > .input-group-text,
-  .product-create-page .input-group:focus-within > .input-group-append > .input-group-text,
-  .product-create-page .input-group:focus-within > .input-group-prepend > .btn,
-  .product-create-page .input-group:focus-within > .input-group-append > .btn {
+  .product-create-page .input-group:focus-within > .form-select,
+  .product-create-page .input-group:focus-within > .input-group-text:first-child,
+  .product-create-page .input-group:focus-within > .input-group-text:last-child,
+  .product-create-page .input-group:focus-within > .btn:first-child,
+  .product-create-page .input-group:focus-within > .btn:last-child {
     border-color: var(--pc-primary);
   }
 
@@ -3829,7 +3811,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
 
   /* Don't double-up the focus ring inside the group. */
   .product-create-page .input-group > .form-control:focus,
-  .product-create-page .input-group > .custom-select:focus {
+  .product-create-page .input-group > .form-select:focus {
     box-shadow: none;
   }
 
@@ -3931,15 +3913,15 @@ export default { directives: { 'b-tooltip': vBTooltip },
   }
 
   /* Input group append/prepend */
-  .dark-theme .product-create-page .input-group > .input-group-append > .input-group-text,
-  .dark-theme .product-create-page .input-group > .input-group-prepend > .input-group-text {
+  .dark-theme .product-create-page .input-group > .input-group-text:last-child,
+  .dark-theme .product-create-page .input-group > .input-group-text:first-child {
     background: #292929;
     color: var(--pc-text-soft);
   }
 
   /* Form fields */
   .dark-theme .product-create-page .form-control,
-  .dark-theme .product-create-page .custom-select,
+  .dark-theme .product-create-page .form-select,
   .dark-theme .product-create-page textarea.form-control,
   .dark-theme .product-create-page .form-control-modern,
   .dark-theme .product-create-page .autocomplete-input {

@@ -33,7 +33,7 @@
             <b-form-select
               v-model="selectedQuestionId"
               :options="questionOptions"
-              class="custom-select"
+              class="form-select"
             >
               <template #first>
                 <b-form-select-option :value="null" disabled>Select a question...</b-form-select-option>
@@ -48,7 +48,7 @@
             <b-form-select
               v-model="warehouse_id"
               :options="warehouseOptions"
-              class="custom-select"
+              class="form-select"
             >
               <template #first>
                 <b-form-select-option :value="null">All Warehouses</b-form-select-option>
@@ -1786,7 +1786,7 @@ export default {
   font-weight: 600;
 }
 
-.custom-select {
+.form-select {
   border-radius: 0.5rem;
 }
 

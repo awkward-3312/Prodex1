@@ -160,19 +160,19 @@ export default {
 
     columns() {
       return [
-        { label: this.$t("SKU"), field: "sku", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("product_name"), field: "product_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Variant"), field: "variant", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Category"), field: "category", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Warehouse"), field: "warehouse", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Selling_Price_Unit"), field: "selling_price", headerField: this.sumSellingPrice, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Current_Quantity"), field: "current_quantity", headerField: this.sumCurrentQuantity, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Stock_Value_Cost"), field: "stock_value_cost", headerField: this.sumStockValueCost, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Stock_Value_Selling"), field: "stock_value_selling", headerField: this.sumStockValueSelling, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Potential_Profit"), field: "potential_profit", headerField: this.sumPotentialProfit, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Total_Units_Sold"), field: "total_units_sold", headerField: this.sumTotalUnitsSold, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Total_Units_Transferred"), field: "total_units_transferred", headerField: this.sumTotalUnitsTransferred, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Total_Units_Adjusted"), field: "total_units_adjusted", headerField: this.sumTotalUnitsAdjusted, tdClass: "text-right", thClass: "text-right", sortable: false },
+        { label: this.$t("SKU"), field: "sku", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("product_name"), field: "product_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Variant"), field: "variant", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Category"), field: "category", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Warehouse"), field: "warehouse", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Selling_Price_Unit"), field: "selling_price", headerField: this.sumSellingPrice, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Current_Quantity"), field: "current_quantity", headerField: this.sumCurrentQuantity, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Stock_Value_Cost"), field: "stock_value_cost", headerField: this.sumStockValueCost, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Stock_Value_Selling"), field: "stock_value_selling", headerField: this.sumStockValueSelling, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Potential_Profit"), field: "potential_profit", headerField: this.sumPotentialProfit, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Total_Units_Sold"), field: "total_units_sold", headerField: this.sumTotalUnitsSold, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Total_Units_Transferred"), field: "total_units_transferred", headerField: this.sumTotalUnitsTransferred, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Total_Units_Adjusted"), field: "total_units_adjusted", headerField: this.sumTotalUnitsAdjusted, tdClass: "text-end", thClass: "text-end", sortable: false },
       ];
     },
 
