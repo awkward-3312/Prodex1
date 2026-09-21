@@ -102,7 +102,9 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="salesSearch" :placeholder="$t('Search')" @input="fetchSales"></b-form-input>
+                <div class="input-group-append">
                   <b-button variant="primary" @click="fetchSales">{{ $t('Search') }}</b-button>
+                </div>
               </b-input-group>
             </div>
             <b-table 
@@ -150,7 +152,9 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="paymentsSearch" :placeholder="$t('Search')" @input="fetchPayments"></b-form-input>
+                <div class="input-group-append">
                   <b-button variant="primary" @click="fetchPayments">{{ $t('Search') }}</b-button>
+                </div>
               </b-input-group>
             </div>
             <b-table 
@@ -195,7 +199,9 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="returnsSearch" :placeholder="$t('Search')" @input="fetchReturns"></b-form-input>
+                <div class="input-group-append">
                   <b-button variant="primary" @click="fetchReturns">{{ $t('Search') }}</b-button>
+                </div>
               </b-input-group>
             </div>
             <b-table 
@@ -238,7 +244,9 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="paymentReturnsSearch" :placeholder="$t('Search')" @input="fetchPaymentReturns"></b-form-input>
+                <div class="input-group-append">
                   <b-button variant="primary" @click="fetchPaymentReturns">{{ $t('Search') }}</b-button>
+                </div>
               </b-input-group>
             </div>
             <b-table 

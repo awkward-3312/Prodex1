@@ -529,7 +529,7 @@
                             v-model="product.assigned_category_ids"
                             :options="categories.map(c => ({ label: c.name, value: c.id }))"
                           />
-                          <template v-if="currentUserPermissions && currentUserPermissions.includes('category')">
+                          <div class="input-group-append" v-if="currentUserPermissions && currentUserPermissions.includes('category')">
                             <b-button
                               variant="primary"
                               @click="openQuickCategoryModal"
@@ -538,7 +538,7 @@
                             >
                               <lucide-icon name="plus" />
                             </b-button>
-                          </template>
+                          </div>
                         </b-input-group>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                       </b-form-group></template>
@@ -600,7 +600,7 @@
                           v-model="product.brand_id"
                           :options="brands.map(brands => ({label: brands.name, value: brands.id}))"
                         />
-                        <template v-if="currentUserPermissions && currentUserPermissions.includes('brand')">
+                        <div class="input-group-append" v-if="currentUserPermissions && currentUserPermissions.includes('brand')">
                           <b-button
                             variant="primary"
                             @click="openQuickBrandModal"
@@ -609,7 +609,7 @@
                           >
                             <lucide-icon name="plus" />
                           </b-button>
-                        </template>
+                        </div>
                       </b-input-group>
                     </b-form-group>
                   </b-col>
@@ -774,7 +774,7 @@
                             :reduce="label => label.value"
                             :options="units.map(units => ({label: units.name, value: units.id}))"
                           />
-                          <template v-if="currentUserPermissions && currentUserPermissions.includes('unit')">
+                          <div class="input-group-append" v-if="currentUserPermissions && currentUserPermissions.includes('unit')">
                             <b-button
                               variant="primary"
                               @click="openQuickUnitModal"
@@ -783,7 +783,7 @@
                             >
                               <lucide-icon name="plus" />
                             </b-button>
-                          </template>
+                          </div>
                         </b-input-group>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                       </b-form-group></template>
@@ -1737,9 +1737,11 @@
                         v-model="tag"
                         class="form-control-modern"
                       ></b-form-input>
+                      <div class="input-group-append">
                         <b-button variant="primary" @click="add_variant(tag)">
                           <lucide-icon name="plus" />{{ $t('Add') }}
                         </b-button>
+                      </div>
                     </b-input-group>
                   </b-form-group>
                 </div>

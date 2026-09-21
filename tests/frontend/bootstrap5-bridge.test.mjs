@@ -9,6 +9,10 @@ import { createRequire } from 'node:module';
 // docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE1.md.
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
 const SRC = path.join(ROOT, 'resources/src');
+// Los wrappers viven en módulos por familia (fase 5B): las comprobaciones de contrato leen el conjunto.
+const bootstrapSource = () => ['index', 'core', 'layout', 'buttons', 'forms', 'file', 'datepicker', 'skeleton', 'feedback', 'nav', 'table', 'overlay']
+  .map((m) => fs.readFileSync(path.join(SRC, `platform/bootstrap/${m}.js`), 'utf8')).join('\n');
+
 const require = createRequire(import.meta.url);
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 
@@ -59,7 +63,7 @@ test('theme: el puente se importa después de bootstrap-rtl y antes de globals (
 });
 
 test('platform/bootstrap: envoltorios de BVN marcados MODE 3, BButton acepta `block` y BBadge conserva `badge-<variante>`', async () => {
-  const src = fs.readFileSync(path.join(SRC, 'platform/bootstrap/index.js'), 'utf8');
+  const src = bootstrapSource();
   assert.match(src, /compatConfig\s*[:=]\s*\{\s*MODE:\s*3/);
   assert.match(src, /btn-block/);
   assert.match(src, /badge-\$\{/);

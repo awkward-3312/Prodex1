@@ -74,7 +74,8 @@
   </div>
 </template>
 <script>
-import { BButton, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
+import { BButton } from "@/platform/bootstrap/buttons";
+import { BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap/forms";
 import { notifications } from "@/platform";
 import { mapGetters, mapActions } from "vuex";
 import NProgress from "nprogress";

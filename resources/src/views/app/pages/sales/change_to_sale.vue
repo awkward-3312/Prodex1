@@ -154,10 +154,12 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
+                                <div class="input-group-prepend">
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
+                                </div>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
@@ -165,10 +167,12 @@
                                   :max="detail.stock"
                                   v-model.number="detail.quantity"
                                 >
+                                <div class="input-group-append">
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
+                                </div>
                               </b-input-group>
                             </div>
                           </td>

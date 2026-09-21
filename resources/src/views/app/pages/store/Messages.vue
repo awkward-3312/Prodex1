@@ -15,10 +15,12 @@
               :placeholder="$t('Search_by_name_email_subject') + '…'"
               @input="debouncedSearch"
             />
+            <div class="input-group-append">
               <b-button variant="primary" :disabled="searching" @click="fetch">
                 <span v-if="searching" class="spinner-border spinner-border-sm"></span>
                 <lucide-icon name="search" v-else />
               </b-button>
+            </div>
           </b-input-group>
 
           <b-form-checkbox v-model="onlyUnread" class="messages-unread" switch @change="fetch">

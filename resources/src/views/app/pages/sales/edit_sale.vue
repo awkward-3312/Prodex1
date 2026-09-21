@@ -204,10 +204,12 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
+                                <div class="input-group-prepend">
                                   <span v-show="detail.no_unit !== 0 || detail.product_type == 'is_service'"
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
+                                </div>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
@@ -216,10 +218,12 @@
                                   v-model.number="detail.quantity"
                                   :disabled="detail.del === 1 || (detail.no_unit === 0 && detail.product_type != 'is_service')"
                                 >
+                                <div class="input-group-append">
                                   <span v-show="detail.no_unit !== 0 || detail.product_type == 'is_service'"
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
+                                </div>
                               </b-input-group>
                             </div>
                           </td>

@@ -87,12 +87,14 @@
                           :state="!validationContext.errors.length"
                           aria-describedby="totalCycles-feedback"
                         ></b-form-input>
+                        <div class="input-group-append">
                           <!-- Cycle Type Dropdown -->
                           <b-form-select v-model="form.cycle_type">
                             <option value="monthly">Months</option>
                             <option value="weekly">Weeks</option>
                             <option value="yearly">Years</option>
                           </b-form-select>
+                        </div>
                       </b-input-group>
                       <b-form-invalid-feedback id="totalCycles-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>

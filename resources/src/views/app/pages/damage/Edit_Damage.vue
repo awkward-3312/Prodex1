@@ -106,13 +106,13 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <template v-if="detail.product_type != 'is_combo'">
+                                <div class="input-group-prepend" v-if="detail.product_type != 'is_combo'">
                                   <span class="btn btn-primary btn-sm" @click="decrement(detail ,detail.detail_id)">-</span>
-                                </template>
+                                </div>
                                 <input class="form-control" @keyup="Verified_Qty(detail,detail.detail_id)" :min="0.00" :max="detail.current" v-model.number="detail.quantity" :disabled="detail.product_type == 'is_combo' || detail.del === 1">
-                                <template v-if="detail.product_type != 'is_combo'">
+                                <div class="input-group-append" v-if="detail.product_type != 'is_combo'">
                                   <span class="btn btn-primary btn-sm" @click="increment(detail ,detail.detail_id)">+</span>
-                                </template>
+                                </div>
                               </b-input-group>
                             </div>
                           </td>

@@ -154,7 +154,11 @@ $bs5-spacers: map-merge($spacers, (auto: auto));
 $px-check-line: $font-size-base * $line-height-base;
 $px-check-top: ($px-check-line - $custom-control-indicator-size) / 2;
 
-.form-check:has(> .form-check-input.px-bvn-check) {
+// Las casillas sueltas llevan `px-bvn-check` (wrapper); las de un grupo las crea BVN por dentro, así que el grupo lleva `px-bvn-group`.
+$px-check-box: ".form-check:has(> .form-check-input.px-bvn-check), .px-bvn-group > .form-check";
+$px-check-input: ".form-check-input.px-bvn-check, .px-bvn-group > .form-check > .form-check-input";
+
+#{$px-check-box} {
   position: relative;
   display: block;
   min-height: $px-check-line;
@@ -163,12 +167,11 @@ $px-check-top: ($px-check-line - $custom-control-indicator-size) / 2;
   margin-bottom: 0;
 
   &.form-check-inline { display: inline-flex; margin-inline-end: $custom-control-spacer-x; }
-
 }
 // Igual que `.custom-control-label { margin-bottom: 0 }` de BS4: especificidad mínima para que la capa de diseño (`.form-group label`) siga mandando.
-:where(.form-check:has(> .form-check-input.px-bvn-check)) > .form-check-label { margin-bottom: 0; }
+:where(.form-check:has(> .form-check-input.px-bvn-check), .px-bvn-group > .form-check) > .form-check-label { margin-bottom: 0; }
 
-.form-check-input.px-bvn-check {
+#{$px-check-input} {
   position: absolute;
   top: $px-check-top;
   inset-inline-start: 0;
@@ -183,7 +186,7 @@ $px-check-top: ($px-check-line - $custom-control-indicator-size) / 2;
   background-position: center center;
   background-size: $custom-control-indicator-bg-size;
   border: 0;
-  box-shadow: $custom-control-indicator-box-shadow;
+  @include box-shadow($custom-control-indicator-box-shadow);
   print-color-adjust: exact;
 
   &[type="checkbox"] { border-radius: $custom-checkbox-indicator-border-radius; }
@@ -191,7 +194,7 @@ $px-check-top: ($px-check-line - $custom-control-indicator-size) / 2;
 
   &:checked {
     background-color: $custom-control-indicator-checked-bg;
-    box-shadow: $custom-control-indicator-checked-box-shadow;
+    @include box-shadow($custom-control-indicator-checked-box-shadow);
     &[type="checkbox"] { background-image: $custom-checkbox-indicator-icon-checked; }
     &[type="radio"] { background-image: $custom-radio-indicator-icon-checked; }
   }
@@ -200,13 +203,72 @@ $px-check-top: ($px-check-line - $custom-control-indicator-size) / 2;
     background-image: $custom-checkbox-indicator-icon-indeterminate;
   }
   &:focus { outline: 0; box-shadow: $custom-control-indicator-focus-box-shadow; }
-  &:active { background-color: $custom-control-indicator-active-bg; box-shadow: $custom-control-indicator-active-box-shadow; }
+  &:active { background-color: $custom-control-indicator-active-bg; @include box-shadow($custom-control-indicator-active-box-shadow); }
   &:disabled {
     background-color: $custom-control-indicator-disabled-bg;
     &:checked { background-color: $custom-control-indicator-checked-disabled-bg; }
     & ~ .form-check-label { color: $custom-control-label-disabled-color; }
   }
+  // BS4 (`form-validation-state`): sin marcar → fondo claro del color de error; texto de la etiqueta en rojo.
+  &.is-invalid:not(:checked) { background-color: lighten($form-feedback-invalid-color, 25%); }
   &.is-invalid ~ .form-check-label { color: $form-feedback-invalid-color; }
+}
+
+// Interruptor (`switch`). En BS4 `.custom-switch` NO tiene reglas base en esta hoja (solo las variantes `b-custom-control-sm|lg` de bootstrap-vue.css),
+// así que en BootstrapVue 2 un interruptor se ve como una casilla plana, cuadrada y sin marca. Se conserva EXACTAMENTE ese aspecto (sin cambio visual).
+.form-check.form-switch:has(> .form-check-input.px-bvn-check),
+.px-bvn-group > .form-check.form-switch {
+  > .form-check-input {
+    border-radius: 0;
+    &:checked { background-image: none; }
+  }
+}
+
+// Botones de radio / casilla (`buttons`): `.btn-group > input.btn-check + label.btn` (BS5) con el aspecto de `.btn-group-toggle > label.btn.active` de BS4.
+.btn-check {
+  position: absolute;
+  clip: rect(0, 0, 0, 0);
+  pointer-events: none;
+}
+.btn-check:disabled + .btn,
+.btn-check[disabled] + .btn { pointer-events: none; opacity: $btn-disabled-opacity; }
+// BS4 (`.btn-group-toggle > .btn`): las etiquetas del grupo no llevan el margen inferior de `label`.
+.btn-group > .btn-check + .btn { margin-bottom: 0; }
+// La etiqueta del primer botón no es `:first-child` (el <input> va antes): se restituye el redondeo y el margen que BS4 quita a los demás.
+// El radio del botón es el de la capa de diseño (`.prodex-ui .btn` = --px-radius-md, `.btn-sm` = --px-radius-sm), no el de BS4.
+.btn-group > .btn-check:first-child + .btn {
+  margin-inline-start: 0;
+  border-start-start-radius: $btn-border-radius;
+  border-end-start-radius: $btn-border-radius;
+}
+.btn-group-sm > .btn-check:first-child + .btn { border-start-start-radius: $btn-border-radius-sm; border-end-start-radius: $btn-border-radius-sm; }
+.btn-group-lg > .btn-check:first-child + .btn { border-start-start-radius: $btn-border-radius-lg; border-end-start-radius: $btn-border-radius-lg; }
+.prodex-ui .btn-group > .btn-check:first-child + .btn { border-start-start-radius: var(--px-radius-md); border-end-start-radius: var(--px-radius-md); }
+.prodex-ui .btn-group-sm > .btn-check:first-child + .btn { border-start-start-radius: var(--px-radius-sm); border-end-start-radius: var(--px-radius-sm); }
+.btn-group > .btn-check:checked + .btn,
+.btn-group > .btn-check:focus + .btn { z-index: 1; }
+.btn-group > .btn-check:not(:first-child) + .btn { margin-inline-start: -$btn-border-width; }
+.btn-group > .btn-check + .btn:not(:last-child) { border-start-end-radius: 0; border-end-end-radius: 0; }
+@each $color, $value in $theme-colors {
+  $solid-active: darken($value, 10%);
+  $solid-border: darken($value, 12.5%);
+  .btn-check:checked + .btn-#{$color},
+  .btn-check:active + .btn-#{$color} {
+    color: color-yiq($solid-active);
+    background-color: $solid-active;
+    border-color: $solid-border;
+  }
+  // Los botones de contorno usan el aspecto unificado del tema (`globals/components/_button.scss`: fondo suave + color y borde de la variante).
+  .btn-check:checked + .btn-outline-#{$color},
+  .btn-check:active + .btn-outline-#{$color},
+  .btn-check:focus + .btn-outline-#{$color} {
+    color: $value;
+    background: #f9fafb;
+    border-color: $value;
+    box-shadow: none;
+    outline: none;
+  }
+  .btn-check:focus + .btn-#{$color} { box-shadow: 0 0 0 $btn-focus-width rgba($value, .5); }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

@@ -12,7 +12,7 @@
 
       <b-input-group class="mt-3 mb-4">
         <b-form-input v-model.trim="query" placeholder="Buscar producto por nombre o código" @keyup.enter="search" />
-        <b-button variant="primary" :disabled="loading || query.length < 2" @click="search">Buscar</b-button>
+        <div class="input-group-append"><b-button variant="primary" :disabled="loading || query.length < 2" @click="search">Buscar</b-button></div>
       </b-input-group>
 
       <div v-if="query.length < 2 && !searched" class="inventory-empty">Escribe al menos 2 caracteres para consultar existencias.</div>

@@ -422,7 +422,9 @@
                       <td>
                         <b-input-group size="sm">
                           <b-form-input v-model.number="row.discount" type="number" min="0" step="0.01" @input="recomputeRow(row)" />
+                          <div class="input-group-append">
                             <b-form-select v-model="row.discount_method" :options="[{value:'1',text:currencySymbol},{value:'2',text:'%'}]" @change="recomputeRow(row)" />
+                          </div>
                         </b-input-group>
                       </td>
                       <td>
@@ -719,7 +721,7 @@ import { BModal, BBadge, BButton, BCol, BRow, BTab, BTabs, BForm, BFormGroup, BF
 import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 
-export default { components: { BFormFile, BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BFormSelect, BFormCheckboxGroup, BFormTextarea, BInputGroup, BBadge, BButton, BCol, BRow, BTab, BTabs, BModal },
+export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BFormSelect, BFormCheckboxGroup, BFormTextarea, BInputGroup, BFormFile, BBadge, BButton, BCol, BRow, BTab, BTabs, BModal },
   name: 'ServiceJobForm',
   data() {
     return {

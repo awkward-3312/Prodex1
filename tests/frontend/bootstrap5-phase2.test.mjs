@@ -56,7 +56,7 @@ test('wrappers de formularios: contrato explícito y documentado (platform/boots
   assert.match(src, /'custom-select'/, 'BFormSelect emite custom-select (BS4)');
   assert.match(src, /px-bvn-check/);
   assert.match(index, /export \* from '\.\/forms\.js'/);
-  assert.match(index, /export const vBTooltip/);
+  assert.match(read('platform/bootstrap/overlay.js'), /export const vBTooltip/);
   // contrato de BootstrapVue 2 medido (fase 5B): los eventos entregan el VALOR, no el Event nativo
   assert.match(src, /`@input` \/ `@change` reciben el VALOR/);
   assert.match(src, /`v-model\.trim`/);
@@ -67,7 +67,7 @@ test('vistas migradas a formularios BVN: registro local coherente (cada b-form-*
   walk(path.join(SRC, 'views'), (file) => {
     if (!file.endsWith('.vue')) return;
     const text = fs.readFileSync(file, 'utf8');
-    const m = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap["']/.exec(text);
+    const m = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap(?:\/[a-z]+)?["']/.exec(text);
     if (!m) return;
     for (const name of m[1].split(',').map((s) => s.trim()).filter(Boolean)) {
       const directive = { vBTooltip: 'b-tooltip', vBToggle: 'b-toggle', vBPopover: 'b-popover' }[name];

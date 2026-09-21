@@ -1579,9 +1579,11 @@
                         v-model="tag"
                         class="form-control-modern"
                       ></b-form-input>
+                      <div class="input-group-append">
                         <b-button variant="primary" @click="add_variant(tag)">
                           <lucide-icon name="plus" />{{ $t('Add') }}
                         </b-button>
+                      </div>
                     </b-input-group>
                   </b-form-group>
                 </div>

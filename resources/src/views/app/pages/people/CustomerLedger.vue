@@ -281,9 +281,9 @@ const Pager = {
   </div>`
 }
 
-import { BSpinner, BTable, BBadge, BButton, BCard, BCol, BRow, BTab, BTabs, BPagination } from "@/platform/bootstrap";
-// Los dos componentes en línea (plantilla en cadena) usan b-button / b-pagination: se registran los wrappers de BVN (no hay registro global de BV2 para ellos).
-ListToolbar.components = { BButton };
+import { BSpinner, BTable, BBadge, BButton, BCard, BCol, BRow, BTab, BTabs, BPagination, BFormInput, BFormSelect } from "@/platform/bootstrap";
+// Los dos componentes en línea (plantilla en cadena) usan b-button / b-form-input / b-form-select / b-pagination: se registran los wrappers de BVN (no hay registro global de BV2 para ellos).
+ListToolbar.components = { BButton, BFormInput, BFormSelect };
 Pager.components = { BPagination };
 import {
   formatPriceDisplay as formatPriceDisplayHelper,

@@ -45,6 +45,8 @@ export const BFormDatepicker = /*#__PURE__*/ pure({
   inheritAttrs: false,
   props: {
     modelValue: { type: [String, Date], default: '' },
+    // BV2: `:value` (sin v-model) es el valor inicial
+    value: { type: [String, Date], default: '' },
     id: { type: String, default: undefined },
     name: { type: String, default: undefined },
     placeholder: { type: String, default: undefined },
@@ -79,7 +81,7 @@ export const BFormDatepicker = /*#__PURE__*/ pure({
     const button = ref(null);
     const grid = ref(null);
     const open = ref(false);
-    const value = ref(props.modelValue || '');
+    const value = ref(props.modelValue || props.value || '');
     const selected = computed(() => parseYmd(value.value));
     const today = () => parseYmd(new Date());
     const active = ref(selected.value || today());
@@ -92,7 +94,7 @@ export const BFormDatepicker = /*#__PURE__*/ pure({
     const fmt = (options) => new Intl.DateTimeFormat(lang.value, options);
     const longLabel = (date) => fmt({ year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(date);
 
-    watch(() => props.modelValue, (v) => {
+    watch(() => props.modelValue || props.value, (v) => {
       value.value = v || '';
       const d = parseYmd(value.value);
       if (d) active.value = d;

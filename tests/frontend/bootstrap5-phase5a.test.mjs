@@ -7,6 +7,10 @@ import { collectInventory } from './inventory/bootstrap-inventory.mjs';
 // Fase 5A: layout y primitives de BootstrapVue 2 → BootstrapVueNext, medidos por AST (no por regex).
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
 const SRC = path.join(ROOT, 'resources/src');
+// Los wrappers viven en módulos por familia (fase 5B): las comprobaciones de contrato leen el conjunto.
+const bootstrapSource = () => ['index', 'core', 'layout', 'buttons', 'forms', 'file', 'datepicker', 'skeleton', 'feedback', 'nav', 'table', 'overlay']
+  .map((m) => fs.readFileSync(path.join(SRC, `platform/bootstrap/${m}.js`), 'utf8')).join('\n');
+
 const inv = collectInventory(ROOT);
 
 test('inventario por AST: no queda layout, botones, primitives, pestañas, desplegables ni paginación de BootstrapVue 2', () => {
@@ -34,7 +38,7 @@ test('fase 5B: sin registro global de BootstrapVue 2 ni parches de compat (platf
 });
 
 test('el wrapper de platform/bootstrap exporta toda la familia migrada', async () => {
-  const src = fs.readFileSync(path.join(SRC, 'platform/bootstrap/index.js'), 'utf8');
+  const src = bootstrapSource();
   for (const name of ['BRow', 'BCol', 'BContainer', 'BCard', 'BCardBody', 'BCardHeader', 'BCardFooter', 'BCardTitle', 'BCardText', 'BButton', 'BButtonGroup', 'BBadge', 'BAlert', 'BSpinner',
     'BProgress', 'BProgressBar', 'BLink', 'BListGroup', 'BListGroupItem', 'BImg', 'BAvatar', 'BTabs', 'BTab', 'BDropdown', 'BDropdownItem', 'BDropdownDivider', 'BDropdownHeader', 'BDropdownForm', 'BPagination']) {
     assert.match(src, new RegExp(`export (?:const ${name}\\b|\\{[^}]*\\b${name}\\b)`), `${name} exportado`);
@@ -42,7 +46,7 @@ test('el wrapper de platform/bootstrap exporta toda la familia migrada', async (
 });
 
 test('contrato de los wrappers de la fase 5A (traducciones de BV2 que no deben perderse)', () => {
-  const src = fs.readFileSync(path.join(SRC, 'platform/bootstrap/index.js'), 'utf8');
+  const src = bootstrapSource();
   assert.match(src, /'no-gutters'/, 'BRow: no-gutters → clase');
   assert.match(src, /badge-pill/, 'BBadge: pill → badge-pill');
   assert.match(src, /bg-\$\{variant\}/, 'BProgressBar: variante bg-*');
@@ -89,7 +93,7 @@ test('plantillas en cadena (`template: `...`` dentro de <script>) con etiquetas 
 test('platform/bootstrap sin efectos laterales al importar (cada entrypoint solo arrastra los componentes que usa)', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(SRC, 'platform/bootstrap/package.json'), 'utf8'));
   assert.equal(pkg.sideEffects, false);
-  const src = fs.readFileSync(path.join(SRC, 'platform/bootstrap/index.js'), 'utf8');
+  const src = bootstrapSource();
   const bare = src.split('\n').filter((l) => /^(?:export )?const \w+ = (?:pure|wrapper|checkWrapper)\(/.test(l));
   assert.deepEqual(bare, [], 'toda llamada de nivel superior a pure()/wrapper() debe llevar /*#__PURE__*/');
 });

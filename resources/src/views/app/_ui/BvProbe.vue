@@ -92,11 +92,14 @@ export default {
     // datos REACTIVOS de la plantilla montada (contadores que muta la plantilla; también se pueden escribir desde el test)
     window.__pxProbeData = () => this.$refs.inner && this.$refs.inner.$data;
     window.__pxProbeVm = () => this.$el.querySelector(".probe-root");
+    // instancia de la plantilla montada (para llamar a sus métodos: `$refs.obs.validate()`, `setErrors`…)
+    window.__pxProbeInner = () => this.$refs.inner;
   },
   beforeUnmount() {
     delete window.__pxProbe;
     delete window.__pxProbeVm;
     delete window.__pxProbeData;
+    delete window.__pxProbeInner;
   },
 };
 </script>

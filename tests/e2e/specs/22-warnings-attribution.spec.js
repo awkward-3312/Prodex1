@@ -70,8 +70,8 @@ test.describe('Atribución de avisos de compat: BootstrapVueNext vs BootstrapVue
     // OPTIONS_BEFORE_DESTROY sobre BVN: el componente no declara `beforeDestroy` -> mixin global (vue-i18n 8)
     const declared = bvn.filter((w) => w.kind === 'bvn' && w.key === 'OPTIONS_BEFORE_DESTROY' && w.ownBeforeDestroy);
     expect(declared, 'BVN declarando beforeDestroy').toEqual([]);
-    // Y BootstrapVue 2 sí produce los avisos de contrato (control del método).
+    // Fase 5B: ya no queda BootstrapVue 2 en ninguna página, así que no puede atribuírsele ningún aviso de contrato.
     const bv2Total = KEYS.reduce((n, k) => n + (report.bv2Pages[k] ? report.bv2Pages[k].bv2 : 0), 0);
-    expect(bv2Total, 'avisos atribuidos a BootstrapVue 2 en páginas con BV2').toBeGreaterThan(0);
+    expect(bv2Total, 'avisos atribuidos a BootstrapVue 2 (no queda BV2 en la aplicación)').toBe(0);
   });
 });

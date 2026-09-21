@@ -11,7 +11,7 @@
 // Marcado de BS4 que la base y la capa de diseño ya estilan: `custom-select`, `form-group` con fieldset/legend, y en casillas/radios/interruptores
 // las clases `px-bvn-check` / `px-bvn-group` que el puente (`bootstrap5/_bridge.scss`) pinta como el `custom-control` de BS4.
 import { h, nextTick } from 'vue';
-import { pure, toList } from './core.js';
+import { pure, toList, truthyAttr } from './core.js';
 import { BFormGroup as _BFormGroup } from 'bootstrap-vue-next/components/BFormGroup';
 import { BFormInput as _BFormInput } from 'bootstrap-vue-next/components/BFormInput';
 import { BFormTextarea as _BFormTextarea } from 'bootstrap-vue-next/components/BFormTextarea';
@@ -31,8 +31,26 @@ export const BFormInvalidFeedback = /*#__PURE__*/ pure(_BFormInvalidFeedback);
 export const BFormValidFeedback = /*#__PURE__*/ pure(_BFormValidFeedback);
 export const BFormSelectOption = /*#__PURE__*/ pure(_BFormSelectOption);
 export const BFormSelectOptionGroup = /*#__PURE__*/ pure(_BFormSelectOptionGroup);
-export const BInputGroup = /*#__PURE__*/ pure(_BInputGroup);
 export const BInputGroupText = /*#__PURE__*/ pure(_BInputGroupText);
+
+// Grupo de entrada. BV2 pintaba `prepend` / `append` (props) como `div.input-group-prepend|append > div.input-group-text`, y el tema, la hoja RTL y el CSS
+// de muchas vistas apuntan a esas clases (`.input-group > .input-group-append > .btn`…); BootstrapVueNext pone `span.input-group-text` directo. Se emite
+// el marcado de BV2 (las vistas escriben además `div.input-group-prepend|append` planos). Desaparece con el corte a BS5 (fase 5C).
+export const BInputGroup = /*#__PURE__*/ pure({
+  name: 'BInputGroup',
+  inheritAttrs: false,
+  props: { prepend: { type: [String, Number], default: undefined }, append: { type: [String, Number], default: undefined } },
+  setup(props, { attrs, slots }) {
+    const addon = (kind, text) => h('div', { class: `input-group-${kind}` }, [h('div', { class: 'input-group-text' }, String(text))]);
+    return () => h(_BInputGroup, attrs, {
+      default: () => [
+        props.prepend !== undefined && props.prepend !== '' ? addon('prepend', props.prepend) : null,
+        ...(slots.default ? slots.default() : []),
+        props.append !== undefined && props.append !== '' ? addon('append', props.append) : null,
+      ],
+    });
+  },
+});
 
 // BootstrapVue 2 sin `label-for` pintaba `fieldset.form-group > legend.col-form-label.pt-0`, marcado que la capa de diseño ya estila (también dentro
 // de modales). BootstrapVueNext localizaría el input hijo y emitiría `label.form-label`; `label-for=""` (no es nulo) mantiene el marcado de BV2.
@@ -124,9 +142,10 @@ export const BFormRadio = /*#__PURE__*/ typedControl('BFormRadio', _BFormRadio, 
   props: (props, attrs) => ({ ...props, class: [attrs.class, 'px-bvn-check'] }),
 });
 // Grupos: el contenedor lleva `px-bvn-group` (BVN crea las casillas por dentro, sin pasar por estos wrappers).
+const groupClass = (attrs) => [attrs.class, 'px-bvn-group', truthyAttr(attrs.buttons) ? 'btn-group-toggle' : null];
 export const BFormCheckboxGroup = /*#__PURE__*/ typedControl('BFormCheckboxGroup', _BFormCheckboxGroup, {
-  props: (props, attrs) => ({ ...props, class: [attrs.class, 'px-bvn-group'] }),
+  props: (props, attrs) => ({ ...props, class: groupClass(attrs) }),
 });
 export const BFormRadioGroup = /*#__PURE__*/ typedControl('BFormRadioGroup', _BFormRadioGroup, {
-  props: (props, attrs) => ({ ...props, class: [attrs.class, 'px-bvn-group'] }),
+  props: (props, attrs) => ({ ...props, class: groupClass(attrs) }),
 });

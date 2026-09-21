@@ -6,6 +6,10 @@ import path from 'node:path';
 // Fase 4: modales y tablas de BootstrapVue 2 migrados a los wrappers de platform/bootstrap (BModal / BTable / BTableSimple…).
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
 const SRC = path.join(ROOT, 'resources/src');
+// Los wrappers viven en módulos por familia (fase 5B): las comprobaciones de contrato leen el conjunto.
+const bootstrapSource = () => ['index', 'core', 'layout', 'buttons', 'forms', 'file', 'datepicker', 'skeleton', 'feedback', 'nav', 'table', 'overlay']
+  .map((m) => fs.readFileSync(path.join(SRC, `platform/bootstrap/${m}.js`), 'utf8')).join('\n');
+
 
 function walk(dir, fn) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -26,7 +30,7 @@ const parts = (text) => {
   return { template: text.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, ''), script: script ? script[1] : '' };
 };
 const importsFromPlatform = (script, name) => {
-  const m = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap["']/g;
+  const m = /import\s*\{([^}]*)\}\s*from\s*["']@\/platform\/bootstrap(?:\/[a-z]+)?["']/g;
   let x;
   while ((x = m.exec(script))) if (x[1].split(',').map((s) => s.trim()).includes(name)) return true;
   return false;
@@ -74,8 +78,8 @@ test('el driver de modales resuelve por el registro de BootstrapVueNext (sin fal
 });
 
 test('BModal conserva el ciclo de vida de BootstrapVue 2 (lazy + unmountLazy) y traduce hide-footer/hide-header/hide-header-close/static', () => {
-  const src = fs.readFileSync(path.join(SRC, 'platform/bootstrap/index.js'), 'utf8');
-  const block = src.slice(src.indexOf('const MODAL_RENAMED'), src.indexOf('// Tabla (fase 4)'));
+  const src = bootstrapSource();
+  const block = src.slice(src.indexOf('const MODAL_RENAMED'), src.indexOf('const MODAL_RENAMED') + 3000);
   assert.match(block, /lazy: true, unmountLazy: true/);
   for (const [from, to] of [['hide-footer', 'noFooter'], ['hide-header', 'noHeader'], ['hide-header-close', 'noHeaderClose'], ['static', 'teleportDisabled']]) {
     assert.match(block, new RegExp(`['"]?${from}['"]?:\\s*'${to}'`));
@@ -84,14 +88,14 @@ test('BModal conserva el ciclo de vida de BootstrapVue 2 (lazy + unmountLazy) y 
 });
 
 test('BModal conserva la regla de foco de BootstrapVue 2: sin foco inicial de BVN y foco en `shown` solo si no está ya dentro', () => {
-  const src = fs.readFileSync(path.join(SRC, 'platform/bootstrap/index.js'), 'utf8');
-  const block = src.slice(src.indexOf('const MODAL_RENAMED'), src.indexOf('// Tabla (fase 4)'));
+  const src = bootstrapSource();
+  const block = src.slice(src.indexOf('const MODAL_RENAMED'), src.indexOf('const MODAL_RENAMED') + 3000);
   assert.match(block, /focus: false/);
   assert.match(block, /contains\(document\.activeElement\)/);
   assert.match(block, /props\.onShown = \[focusIfOutside/);
 });
 
 test('BTable traduce head-variant light/dark a la clase thead-* de BS4', () => {
-  const src = fs.readFileSync(path.join(SRC, 'platform/bootstrap/index.js'), 'utf8');
+  const src = bootstrapSource();
   assert.match(src, /`thead-\$\{variant\}`/);
 });

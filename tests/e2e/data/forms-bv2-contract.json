@@ -1,0 +1,1954 @@
+{
+ "input: escribir, focus/input/change/blur en orden y v-model string": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "a"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\""
+    ],
+    [
+     "input",
+     "string",
+     "ab"
+    ],
+    [
+     "watch",
+     "string",
+     "\"ab\""
+    ],
+    [
+     "change",
+     "string",
+     "ab"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "ab",
+   "modelType": "string",
+   "dom": "ab",
+   "html": null
+  }
+ },
+ "input: borrar con Backspace": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "hol"
+    ],
+    [
+     "watch",
+     "string",
+     "\"hol\""
+    ],
+    [
+     "input",
+     "string",
+     "ho"
+    ],
+    [
+     "watch",
+     "string",
+     "\"ho\""
+    ],
+    [
+     "change",
+     "string",
+     "ho"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "ho",
+   "modelType": "string",
+   "dom": "ho",
+   "html": null
+  }
+ },
+ "input: pegar (fill) y valor inicial numérico sin .number": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "pegado"
+    ],
+    [
+     "watch",
+     "string",
+     "\"pegado\""
+    ],
+    [
+     "change",
+     "string",
+     "pegado"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "pegado",
+   "modelType": "string",
+   "dom": "pegado",
+   "html": null
+  }
+ },
+ "input: cambio programático del modelo actualiza el DOM sin emitir input/change": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "string",
+     "\"zzz\""
+    ]
+   ],
+   "model": "zzz",
+   "modelType": "string",
+   "dom": "zzz",
+   "html": null
+  }
+ },
+ "input: disabled y readonly no aceptan escritura": {
+  "BV2": {
+   "log": [],
+   "model": "x",
+   "modelType": "string",
+   "dom": [
+    "x",
+    "x"
+   ],
+   "html": null
+  }
+ },
+ "input: maxlength": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "a"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\""
+    ],
+    [
+     "input",
+     "string",
+     "ab"
+    ],
+    [
+     "watch",
+     "string",
+     "\"ab\""
+    ],
+    [
+     "input",
+     "string",
+     "abc"
+    ],
+    [
+     "watch",
+     "string",
+     "\"abc\""
+    ],
+    [
+     "change",
+     "string",
+     "abc"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "abc",
+   "modelType": "string",
+   "dom": "abc",
+   "html": null
+  }
+ },
+ "input: :value + @input sin v-model (una vía)": {
+  "BV2": {
+   "log": [
+    [
+     "input",
+     "string",
+     "iniX"
+    ]
+   ],
+   "model": "ini",
+   "modelType": "string",
+   "dom": "iniX",
+   "html": null
+  }
+ },
+ "trim: \"San Pedro Sula\" — el espacio no desaparece mientras se escribe": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "S"
+    ],
+    [
+     "watch",
+     "string",
+     "\"S\""
+    ],
+    [
+     "input",
+     "string",
+     "Sa"
+    ],
+    [
+     "watch",
+     "string",
+     "\"Sa\""
+    ],
+    [
+     "input",
+     "string",
+     "San"
+    ],
+    [
+     "watch",
+     "string",
+     "\"San\""
+    ],
+    [
+     "input",
+     "string",
+     "San "
+    ],
+    [
+     "input",
+     "string",
+     "San P"
+    ],
+    [
+     "watch",
+     "string",
+     "\"San P\""
+    ],
+    [
+     "input",
+     "string",
+     "San Pe"
+    ],
+    [
+     "watch",
+     "string",
+     "\"San Pe\""
+    ],
+    [
+     "input",
+     "string",
+     "San Ped"
+    ],
+    [
+     "watch",
+     "string",
+     "\"San Ped\""
+    ],
+    [
+     "input",
+     "string",
+     "San Pedr"
+    ],
+    [
+     "watch",
+     "string",
+     "\"San Pedr\""
+    ],
+    [
+     "input",
+     "string",
+     "San Pedro"
+    ],
+    [
+     "watch",
+     "string",
+     "\"San Pedro\""
+    ],
+    [
+     "input",
+     "string",
+     "San Pedro "
+    ],
+    [
+     "input",
+     "string",
+     "San Pedro S"
+    ],
+    [
+     "watch",
+     "string",
+     "\"San Pedro S\""
+    ],
+    [
+     "input",
+     "string",
+     "San Pedro Su"
+    ],
+    [
+     "watch",
+     "string",
+     "\"San Pedro Su\""
+    ],
+    [
+     "input",
+     "string",
+     "San Pedro Sul"
+    ],
+    [
+     "watch",
+     "string",
+     "\"San Pedro Sul\""
+    ],
+    [
+     "input",
+     "string",
+     "San Pedro Sula"
+    ],
+    [
+     "watch",
+     "string",
+     "\"San Pedro Sula\""
+    ],
+    [
+     "dom-mid",
+     "San ",
+     "San Pedro "
+    ],
+    [
+     "change",
+     "string",
+     "San Pedro Sula"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "San Pedro Sula",
+   "modelType": "string",
+   "dom": "San Pedro Sula",
+   "html": null
+  }
+ },
+ "trim: espacios alrededor, pegar y salir": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "  hola mundo  "
+    ],
+    [
+     "watch",
+     "string",
+     "\"hola mundo\""
+    ],
+    [
+     "change",
+     "string",
+     "hola mundo"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "hola mundo",
+   "modelType": "string",
+   "dom": "hola mundo",
+   "html": null
+  }
+ },
+ "trim: vacío y solo espacios": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "   "
+    ],
+    [
+     "watch",
+     "string",
+     "\"\""
+    ],
+    [
+     "change",
+     "string",
+     ""
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "",
+   "modelType": "string",
+   "dom": "",
+   "html": null
+  }
+ },
+ "trim: espacios entre palabras": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "a"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\""
+    ],
+    [
+     "input",
+     "string",
+     "a "
+    ],
+    [
+     "input",
+     "string",
+     "a  "
+    ],
+    [
+     "input",
+     "string",
+     "a  b"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a  b\""
+    ],
+    [
+     "input",
+     "string",
+     "a  b "
+    ],
+    [
+     "input",
+     "string",
+     "a  b  "
+    ],
+    [
+     "input",
+     "string",
+     "a  b   "
+    ],
+    [
+     "input",
+     "string",
+     "a  b   c"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a  b   c\""
+    ],
+    [
+     "change",
+     "string",
+     "a  b   c"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "a  b   c",
+   "modelType": "string",
+   "dom": "a  b   c",
+   "html": null
+  }
+ },
+ "number: 1.5": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "1"
+    ],
+    [
+     "watch",
+     "number",
+     "1"
+    ],
+    [
+     "input",
+     "string",
+     "1."
+    ],
+    [
+     "input",
+     "string",
+     "1.5"
+    ],
+    [
+     "watch",
+     "number",
+     "1.5"
+    ],
+    [
+     "change",
+     "string",
+     "1.5"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": 1.5,
+   "modelType": "number",
+   "dom": "1.5",
+   "html": null
+  }
+ },
+ "number: punto decimal parcial \"1.\"": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "1"
+    ],
+    [
+     "watch",
+     "number",
+     "1"
+    ],
+    [
+     "input",
+     "string",
+     "1."
+    ],
+    [
+     "change",
+     "string",
+     "1."
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": 1,
+   "modelType": "number",
+   "dom": "1.",
+   "html": null
+  }
+ },
+ "number: texto inválido \"12ab\"": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "1"
+    ],
+    [
+     "watch",
+     "number",
+     "1"
+    ],
+    [
+     "input",
+     "string",
+     "12"
+    ],
+    [
+     "watch",
+     "number",
+     "12"
+    ],
+    [
+     "input",
+     "string",
+     "12a"
+    ],
+    [
+     "input",
+     "string",
+     "12ab"
+    ],
+    [
+     "change",
+     "string",
+     "12ab"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": 12,
+   "modelType": "number",
+   "dom": "12ab",
+   "html": null
+  }
+ },
+ "number: negativo, borrar y vacío": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "-"
+    ],
+    [
+     "watch",
+     "string",
+     "\"-\""
+    ],
+    [
+     "input",
+     "string",
+     "-5"
+    ],
+    [
+     "watch",
+     "number",
+     "-5"
+    ],
+    [
+     "input",
+     "string",
+     "-"
+    ],
+    [
+     "watch",
+     "string",
+     "\"-\""
+    ],
+    [
+     "input",
+     "string",
+     ""
+    ],
+    [
+     "watch",
+     "string",
+     "\"\""
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "",
+   "modelType": "string",
+   "dom": "",
+   "html": null
+  }
+ },
+ "number: cero": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "0"
+    ],
+    [
+     "watch",
+     "number",
+     "0"
+    ],
+    [
+     "change",
+     "string",
+     "0"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": 0,
+   "modelType": "number",
+   "dom": "0",
+   "html": null
+  }
+ },
+ "number: type=\"number\" step min": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "2"
+    ],
+    [
+     "watch",
+     "number",
+     "2"
+    ],
+    [
+     "input",
+     "string",
+     "2"
+    ],
+    [
+     "input",
+     "string",
+     "2.5"
+    ],
+    [
+     "watch",
+     "number",
+     "2.5"
+    ],
+    [
+     "change",
+     "string",
+     "2.5"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": 2.5,
+   "modelType": "number",
+   "dom": "2.5",
+   "html": null
+  }
+ },
+ "number: pegar \"  7 \"": {
+  "BV2": {
+   "log": [
+    [
+     "focus",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "7"
+    ],
+    [
+     "watch",
+     "number",
+     "7"
+    ],
+    [
+     "change",
+     "string",
+     "7"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": 7,
+   "modelType": "number",
+   "dom": "7",
+   "html": null
+  }
+ },
+ "select: options tipadas (string, número, booleano, null, objeto) — input(valor) → modelo → change(valor)": {
+  "BV2": {
+   "log": [
+    [
+     "input",
+     "number",
+     3
+    ],
+    [
+     "watch",
+     "number",
+     "3"
+    ],
+    [
+     "change",
+     "number",
+     3
+    ],
+    [
+     "input",
+     "boolean",
+     true
+    ],
+    [
+     "watch",
+     "boolean",
+     "true"
+    ],
+    [
+     "change",
+     "boolean",
+     true
+    ],
+    [
+     "input",
+     "object",
+     null
+    ],
+    [
+     "watch",
+     "object",
+     "null"
+    ],
+    [
+     "change",
+     "object",
+     null
+    ],
+    [
+     "input",
+     "object",
+     {
+      "id": 1
+     }
+    ],
+    [
+     "watch",
+     "object",
+     "{\"id\":1}"
+    ],
+    [
+     "change",
+     "object",
+     {
+      "id": 1
+     }
+    ]
+   ],
+   "model": {
+    "id": 1
+   },
+   "modelType": "object",
+   "dom": 5,
+   "html": null
+  }
+ },
+ "select: opciones declarativas, null deshabilitada como placeholder": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "string",
+     "\"x\""
+    ],
+    [
+     "change",
+     "string",
+     "x"
+    ],
+    [
+     "watch",
+     "number",
+     "5"
+    ],
+    [
+     "change",
+     "number",
+     5
+    ]
+   ],
+   "model": 5,
+   "modelType": "number",
+   "dom": 2,
+   "html": null
+  }
+ },
+ "select: value-field / text-field y opción deshabilitada": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "number",
+     "3"
+    ],
+    [
+     "change",
+     "number",
+     3
+    ]
+   ],
+   "model": 3,
+   "modelType": "number",
+   "dom": [
+    2,
+    [
+     false,
+     true,
+     false
+    ]
+   ],
+   "html": null
+  }
+ },
+ "select: :value + @change sin v-model": {
+  "BV2": {
+   "log": [
+    [
+     "change",
+     "number",
+     25
+    ]
+   ],
+   "model": 10,
+   "modelType": "number",
+   "dom": 1,
+   "html": null
+  }
+ },
+ "textarea: multilínea, eventos y max-rows (altura)": {
+  "BV2": {
+   "log": [
+    [
+     "input",
+     "string",
+     "a"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\""
+    ],
+    [
+     "input",
+     "string",
+     "a\n"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\n\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\n"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\n\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\n"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\n\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl2"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl2\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl2\n"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl2\\n\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl2\nl"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl2\\nl\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl2\nl3"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl2\\nl3\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl2\nl3\n"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl2\\nl3\\n\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl2\nl3\nl"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl2\\nl3\\nl\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl2\nl3\nl4"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl2\\nl3\\nl4\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl2\nl3\nl4\n"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl2\\nl3\\nl4\\n\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl2\nl3\nl4\nl"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl2\\nl3\\nl4\\nl\""
+    ],
+    [
+     "input",
+     "string",
+     "a\nl0\nl1\nl2\nl3\nl4\nl5"
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\\nl0\\nl1\\nl2\\nl3\\nl4\\nl5\""
+    ],
+    [
+     "change",
+     "string",
+     "a\nl0\nl1\nl2\nl3\nl4\nl5"
+    ],
+    [
+     "blur",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "a\nl0\nl1\nl2\nl3\nl4\nl5",
+   "modelType": "string",
+   "dom": {
+    "h": "93px",
+    "sh": 149,
+    "ch": 91
+   },
+   "html": null
+  }
+ },
+ "textarea: .trim y reset por modelo": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "string",
+     "\"con espacios  \\n dos\""
+    ],
+    [
+     "watch",
+     "string",
+     "\"\""
+    ]
+   ],
+   "model": "",
+   "modelType": "string",
+   "dom": "",
+   "html": null
+  }
+ },
+ "checkbox: booleano (true/false, no undefined)": {
+  "BV2": {
+   "log": [
+    [
+     "input",
+     "boolean",
+     true
+    ],
+    [
+     "watch",
+     "boolean",
+     "true"
+    ],
+    [
+     "change",
+     "boolean",
+     true
+    ],
+    [
+     "input",
+     "boolean",
+     false
+    ],
+    [
+     "watch",
+     "boolean",
+     "false"
+    ],
+    [
+     "change",
+     "boolean",
+     false
+    ]
+   ],
+   "model": false,
+   "modelType": "boolean",
+   "dom": null,
+   "html": null
+  }
+ },
+ "checkbox: unchecked-value personalizado": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "boolean",
+     "true"
+    ],
+    [
+     "change",
+     "boolean",
+     true
+    ],
+    [
+     "watch",
+     "string",
+     "\"no\""
+    ],
+    [
+     "change",
+     "string",
+     "no"
+    ]
+   ],
+   "model": "no",
+   "modelType": "string",
+   "dom": null,
+   "html": null
+  }
+ },
+ "checkbox: :checked-value se ignora igual que en BV2 (el valor marcado es `true`)": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "boolean",
+     "true"
+    ],
+    [
+     "change",
+     "boolean",
+     true
+    ],
+    [
+     "watch",
+     "string",
+     "\"no\""
+    ],
+    [
+     "change",
+     "string",
+     "no"
+    ]
+   ],
+   "model": "no",
+   "modelType": "string",
+   "dom": null,
+   "html": null
+  }
+ },
+ "checkbox: array con :value (alta, baja y orden)": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "object",
+     "[\"b\"]"
+    ],
+    [
+     "watch",
+     "object",
+     "[\"b\",\"a\"]"
+    ],
+    [
+     "change",
+     "object",
+     [
+      "b",
+      "a"
+     ]
+    ],
+    [
+     "watch",
+     "object",
+     "[\"a\"]"
+    ]
+   ],
+   "model": [
+    "a"
+   ],
+   "modelType": "object",
+   "dom": null,
+   "html": null
+  }
+ },
+ "checkbox: disabled no cambia": {
+  "BV2": {
+   "log": [],
+   "model": false,
+   "modelType": "boolean",
+   "dom": null,
+   "html": null
+  }
+ },
+ "switch: teclado (Espacio) y modelo": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "boolean",
+     "true"
+    ],
+    [
+     "change",
+     "boolean",
+     true
+    ],
+    [
+     "watch",
+     "boolean",
+     "false"
+    ],
+    [
+     "change",
+     "boolean",
+     false
+    ],
+    [
+     "watch",
+     "boolean",
+     "true"
+    ],
+    [
+     "change",
+     "boolean",
+     true
+    ]
+   ],
+   "model": true,
+   "modelType": "boolean",
+   "dom": null,
+   "html": null
+  }
+ },
+ "checkbox-group: array de opciones (orden de alta)": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "object",
+     "[\"b\",\"c\"]"
+    ],
+    [
+     "change",
+     "object",
+     [
+      "b",
+      "c"
+     ]
+    ],
+    [
+     "watch",
+     "object",
+     "[\"b\",\"c\",\"a\"]"
+    ],
+    [
+     "change",
+     "object",
+     [
+      "b",
+      "c",
+      "a"
+     ]
+    ],
+    [
+     "watch",
+     "object",
+     "[\"c\",\"a\"]"
+    ],
+    [
+     "change",
+     "object",
+     [
+      "c",
+      "a"
+     ]
+    ]
+   ],
+   "model": [
+    "c",
+    "a"
+   ],
+   "modelType": "object",
+   "dom": null,
+   "html": null
+  }
+ },
+ "radio: v-model exclusivo y nombre común": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "string",
+     "\"b\""
+    ],
+    [
+     "watch",
+     "string",
+     "\"a\""
+    ],
+    [
+     "change",
+     "string",
+     "a"
+    ]
+   ],
+   "model": "a",
+   "modelType": "string",
+   "dom": [
+    true,
+    false
+   ],
+   "html": null
+  }
+ },
+ "radio-group: botones, valores primitivos (string, número, booleano)": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "number",
+     "2"
+    ],
+    [
+     "change",
+     "number",
+     2
+    ],
+    [
+     "watch",
+     "boolean",
+     "true"
+    ],
+    [
+     "change",
+     "boolean",
+     true
+    ]
+   ],
+   "model": true,
+   "modelType": "boolean",
+   "dom": null,
+   "html": null
+  }
+ },
+ "radio-group: teclado (flechas) recorre las opciones": {
+  "BV2": {
+   "log": [
+    [
+     "watch",
+     "string",
+     "\"b\""
+    ],
+    [
+     "watch",
+     "string",
+     "\"c\""
+    ]
+   ],
+   "model": "c",
+   "modelType": "string",
+   "dom": null,
+   "html": null
+  }
+ },
+ "file: un archivo — change(Event) → input(File) → modelo File; marcado custom-file": {
+  "BV2": {
+   "log": [
+    [
+     "change",
+     "object",
+     "EVENT"
+    ],
+    [
+     "input",
+     "object",
+     "a.txt"
+    ],
+    [
+     "watch",
+     "File",
+     "a.txt"
+    ]
+   ],
+   "model": "File:a.txt",
+   "modelType": "string",
+   "dom": [
+    1,
+    "a.txt"
+   ],
+   "html": "<div><div class=\"b-form-file custom-file f\"><input class=\"custom-file-input\" style=\"z-index: -5;\" type=\"file\"><label class=\"custom-file-label\" data-browse=\"Browse\"><span class=\"d-block form-file-text\" style=\"pointer-events: none;\">a.txt</span></label></div></div>"
+  }
+ },
+ "file: multiple — arreglo (también con un solo archivo)": {
+  "BV2": {
+   "log": [
+    [
+     "change",
+     "object",
+     "EVENT"
+    ],
+    [
+     "input",
+     "array",
+     "a.txt|b.png"
+    ],
+    [
+     "watch",
+     "array",
+     "a.txt|b.png"
+    ],
+    [
+     "change",
+     "object",
+     "EVENT"
+    ],
+    [
+     "input",
+     "array",
+     "b.png"
+    ],
+    [
+     "watch",
+     "array",
+     "b.png"
+    ]
+   ],
+   "model": [
+    "File:b.png"
+   ],
+   "modelType": "object",
+   "dom": [
+    1,
+    "b.png"
+   ],
+   "html": "<div><div class=\"b-form-file custom-file f\"><input class=\"custom-file-input\" multiple=\"\" style=\"z-index: -5;\" type=\"file\"><label class=\"custom-file-label\" data-browse=\"Browse\"><span class=\"d-block form-file-text\" style=\"pointer-events: none;\">b.png</span></label></div></div>"
+  }
+ },
+ "file: vaciar la selección y reset por modelo (input(null) de vuelta)": {
+  "BV2": {
+   "log": [
+    [
+     "change",
+     "object",
+     "EVENT"
+    ],
+    [
+     "input",
+     "object",
+     "a.txt"
+    ],
+    [
+     "watch",
+     "File",
+     "a.txt"
+    ],
+    [
+     "change",
+     "object",
+     "EVENT"
+    ],
+    [
+     "input",
+     "null",
+     null
+    ],
+    [
+     "watch",
+     "null",
+     null
+    ],
+    [
+     "change",
+     "object",
+     "EVENT"
+    ],
+    [
+     "input",
+     "object",
+     "b.png"
+    ],
+    [
+     "watch",
+     "File",
+     "b.png"
+    ],
+    [
+     "watch",
+     "null",
+     null
+    ],
+    [
+     "input",
+     "null",
+     null
+    ]
+   ],
+   "model": null,
+   "modelType": "object",
+   "dom": [
+    0,
+    "No file chosen"
+   ],
+   "html": null
+  }
+ },
+ "file: placeholder, drop-placeholder y browse-text": {
+  "BV2": {
+   "log": [],
+   "model": null,
+   "modelType": "object",
+   "dom": null,
+   "html": "<div><div class=\"b-form-file custom-file f\"><input class=\"custom-file-input\" style=\"z-index: -5;\" type=\"file\"><label class=\"custom-file-label\" data-browse=\"Ex\"><span class=\"d-block form-file-text\" style=\"pointer-events: none;\">Elegir</span></label></div></div>"
+  }
+ },
+ "file: accept, disabled, state, size, required y name": {
+  "BV2": {
+   "log": [],
+   "model": null,
+   "modelType": "object",
+   "dom": null,
+   "html": "<div><div class=\"b-custom-control-sm b-form-file custom-file f is-invalid\"><input accept=\"image/*\" aria-required=\"true\" class=\"custom-file-input is-invalid\" disabled=\"\" name=\"n1\" required=\"\" style=\"z-index: -5;\" type=\"file\"><label class=\"custom-file-label\" data-browse=\"Browse\"><span class=\"d-block form-file-text\" style=\"pointer-events: none;\">No file chosen</span></label></div></div>"
+  }
+ },
+ "file: sin v-model, solo @change": {
+  "BV2": {
+   "log": [
+    [
+     "change",
+     "object",
+     "EVENT"
+    ]
+   ],
+   "model": null,
+   "modelType": "object",
+   "dom": [
+    1,
+    "b.png"
+   ],
+   "html": null
+  }
+ },
+ "file: soltar archivos (drop) filtra por accept y emite change → input": {
+  "BV2": {
+   "log": [
+    [
+     "change",
+     "object",
+     "EVENT"
+    ],
+    [
+     "input",
+     "array",
+     "uno.txt"
+    ],
+    [
+     "watch",
+     "array",
+     "uno.txt"
+    ],
+    [
+     "dragging-label",
+     "Drop files here"
+    ]
+   ],
+   "model": [
+    "File:uno.txt"
+   ],
+   "modelType": "object",
+   "dom": [
+    1,
+    "uno.txt"
+   ],
+   "html": null
+  }
+ },
+ "datepicker: cerrado con fecha y con placeholder": {
+  "BV2": {
+   "log": [],
+   "model": "2026-09-15",
+   "modelType": "string",
+   "dom": null,
+   "html": "<div style=\"width: 320px;\"><div class=\"b-form-btn-label-control b-form-datepicker dp dropdown form-control form-control-sm\" lang=\"es-ES\" role=\"group\"><button aria-expanded=\"false\" aria-haspopup=\"dialog\" class=\"btn btn-sm h-auto\" type=\"button\"><svg aria-hidden=\"true\" aria-label=\"calendar\" class=\"b-icon bi bi-calendar\" fill=\"currentColor\" focusable=\"false\" height=\"1em\" role=\"img\" viewBox=\"0 0 16 16\" width=\"1em\" xmlns=\"http://www.w3.org/2000/svg\"><g><path d=\"M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z\"></path></g></svg></button><div aria-modal=\"false\" class=\"dropdown-menu\" role=\"dialog\" tabindex=\"-1\"></div><label class=\"form-control form-control-sm\">martes, 15 de septiembre de 2026</label></div></div>"
+  }
+ },
+ "datepicker: cerrado sin fecha (placeholder)": {
+  "BV2": {
+   "log": [],
+   "model": "",
+   "modelType": "string",
+   "dom": null,
+   "html": "<div style=\"width: 320px;\"><div class=\"b-form-btn-label-control b-form-datepicker dp dropdown form-control\" lang=\"es-ES\" role=\"group\"><button aria-expanded=\"false\" aria-haspopup=\"dialog\" class=\"btn h-auto\" type=\"button\"><svg aria-hidden=\"true\" aria-label=\"calendar\" class=\"b-icon bi bi-calendar\" fill=\"currentColor\" focusable=\"false\" height=\"1em\" role=\"img\" viewBox=\"0 0 16 16\" width=\"1em\" xmlns=\"http://www.w3.org/2000/svg\"><g><path d=\"M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z\"></path></g></svg></button><div aria-modal=\"false\" class=\"dropdown-menu\" role=\"dialog\" tabindex=\"-1\"></div><label class=\"form-control text-muted\">Desde</label></div></div>"
+  }
+ },
+ "datepicker: abierto (cabecera, navegación, rejilla, pie)": {
+  "BV2": {
+   "log": [
+    [
+     "shown",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "2026-09-15",
+   "modelType": "string",
+   "dom": null,
+   "html": "<div style=\"width: 320px;\"><div class=\"b-form-btn-label-control b-form-datepicker dp dropdown form-control show\" lang=\"es-ES\" role=\"group\"><button aria-expanded=\"true\" aria-haspopup=\"dialog\" class=\"btn h-auto\" type=\"button\"><svg aria-hidden=\"true\" aria-label=\"calendar fill\" class=\"b-icon bi bi-calendar-fill\" fill=\"currentColor\" focusable=\"false\" height=\"1em\" role=\"img\" viewBox=\"0 0 16 16\" width=\"1em\" xmlns=\"http://www.w3.org/2000/svg\"><g><path d=\"M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V5h16V4H0V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5z\"></path></g></svg></button><div aria-modal=\"false\" class=\"dropdown-menu show\" role=\"dialog\" tabindex=\"-1\"><div class=\"b-calendar b-form-date-calendar w-100\"><div class=\"b-calendar-inner\" dir=\"ltr\" lang=\"es-ES\" role=\"group\" style=\"width: 270px;\"><header class=\"b-calendar-header\" title=\"Selected date\"><output aria-atomic=\"true\" aria-live=\"polite\" class=\"form-control form-control-sm text-center\" data-selected=\"2026-09-15\" role=\"status\" tabindex=\"-1\"><bdi class=\"sr-only\"> (Selected date) </bdi><bdi>martes, 15 de septiembre de 2026</bdi></output></header><div aria-label=\"Calendar navigation\" class=\"b-calendar-nav d-flex\" role=\"group\"><button aria-keyshortcuts=\"Alt+PageDown\" aria-label=\"Previous year\" class=\"border-0 btn btn-outline-secondary btn-sm flex-fill\" title=\"Previous year\" type=\"button\"><div aria-hidden=\"true\"><svg aria-label=\"chevron double left\" class=\"b-icon bi bi-chevron-double-left\" fill=\"currentColor\" focusable=\"false\" height=\"1em\" role=\"img\" viewBox=\"0 0 16 16\" width=\"1em\" xmlns=\"http://www.w3.org/2000/svg\"><g transform=\"translate(0 -0.5)\"><g><path d=\"M8.354 1.646a.5.5 0 0 1 0 .708L2.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z\" fill-rule=\"evenodd\"></path><path d=\"M12.354 1.646a.5.5 0 0 1 0 .708L6.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z\" fill-rule=\"evenodd\"></path></g></g></svg></div></button><button aria-keyshortcuts=\"PageDown\" aria-label=\"Previous month\" class=\"border-0 btn btn-outline-secondary btn-sm flex-fill\" title=\"Previous month\" type=\"button\"><div aria-hidden=\"true\"><svg aria-label=\"chevron left\" class=\"b-icon bi bi-chevron-left\" fill=\"currentColor\" focusable=\"false\" height=\"1em\" role=\"img\" viewBox=\"0 0 16 16\" width=\"1em\" xmlns=\"http://www.w3.org/2000/svg\"><g transform=\"translate(0 -0.5)\"><g><path d=\"M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z\" fill-rule=\"evenodd\"></path></g></g></svg></div></button><button aria-keyshortcuts=\"Home\" aria-label=\"Current month\" class=\"border-0 btn btn-outline-secondary btn-sm flex-fill\" title=\"Current month\" type=\"button\"><div aria-hidden=\"true\"><svg aria-label=\"circle fill\" class=\"b-icon bi bi-circle-fill\" fill=\"currentColor\" focusable=\"false\" height=\"1em\" role=\"img\" viewBox=\"0 0 16 16\" width=\"1em\" xmlns=\"http://www.w3.org/2000/svg\"><g transform=\"translate(0 -0.5)\"><g><circle cx=\"8\" cy=\"8\" r=\"8\"></circle></g></g></svg></div></button><button aria-keyshortcuts=\"PageUp\" aria-label=\"Next month\" class=\"border-0 btn btn-outline-secondary btn-sm flex-fill\" title=\"Next month\" type=\"button\"><div aria-hidden=\"true\"><svg aria-label=\"chevron left\" class=\"b-icon bi bi-chevron-left\" fill=\"currentColor\" focusable=\"false\" height=\"1em\" role=\"img\" viewBox=\"0 0 16 16\" width=\"1em\" xmlns=\"http://www.w3.org/2000/svg\"><g transform=\"translate(0 -0.5)\"><g transform=\"translate(8 8) scale(-1 1) translate(-8 -8)\"><path d=\"M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z\" fill-rule=\"evenodd\"></path></g></g></svg></div></button><button aria-keyshortcuts=\"Alt+PageUp\" aria-label=\"Next year\" class=\"border-0 btn btn-outline-secondary btn-sm flex-fill\" title=\"Next year\" type=\"button\"><div aria-hidden=\"true\"><svg aria-label=\"chevron double left\" class=\"b-icon bi bi-chevron-double-left\" fill=\"currentColor\" focusable=\"false\" height=\"1em\" role=\"img\" viewBox=\"0 0 16 16\" width=\"1em\" xmlns=\"http://www.w3.org/2000/svg\"><g transform=\"translate(0 -0.5)\"><g transform=\"translate(8 8) scale(-1 1) translate(-8 -8)\"><path d=\"M8.354 1.646a.5.5 0 0 1 0 .708L2.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z\" fill-rule=\"evenodd\"></path><path d=\"M12.354 1.646a.5.5 0 0 1 0 .708L6.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z\" fill-rule=\"evenodd\"></path></g></g></svg></div></button></div><div aria-roledescription=\"Calendar\" class=\"b-calendar-grid form-control h-auto text-center\" data-month=\"2026-09\" role=\"application\" tabindex=\"0\"><div aria-atomic=\"true\" aria-live=\"polite\" class=\"b-calendar-grid-caption font-weight-bold text-center\">septiembre de 2026</div><div aria-hidden=\"true\" class=\"b-calendar-grid-weekdays border-bottom no-gutters row\"><small aria-label=\"domingo\" class=\"col text-truncate\" title=\"domingo\">dom</small><small aria-label=\"lunes\" class=\"col text-truncate\" title=\"lunes\">lun</small><small aria-label=\"martes\" class=\"col text-truncate\" title=\"martes\">mar</small><small aria-label=\"miércoles\" class=\"col text-truncate\" title=\"miércoles\">mié</small><small aria-label=\"jueves\" class=\"col text-truncate\" title=\"jueves\">jue</small><small aria-label=\"viernes\" class=\"col text-truncate\" title=\"viernes\">vie</small><small aria-label=\"sábado\" class=\"col text-truncate\" title=\"sábado\">sáb</small></div><div class=\"b-calendar-grid-body\"><div class=\"no-gutters row\"><div aria-hidden=\"true\" aria-label=\"domingo, 30 de agosto de 2026\" class=\"col p-0\" data-date=\"2026-08-30\" role=\"button\"><span class=\"border-0 btn btn-outline-light rounded-circle text-muted text-nowrap\">30</span></div><div aria-hidden=\"true\" aria-label=\"lunes, 31 de agosto de 2026\" class=\"col p-0\" data-date=\"2026-08-31\" role=\"button\"><span class=\"border-0 btn btn-outline-light rounded-circle text-muted text-nowrap\">31</span></div><div aria-label=\"martes, 1 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-01\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">1</span></div><div aria-label=\"miércoles, 2 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-02\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">2</span></div><div aria-label=\"jueves, 3 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-03\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">3</span></div><div aria-label=\"viernes, 4 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-04\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">4</span></div><div aria-label=\"sábado, 5 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-05\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">5</span></div></div><div class=\"no-gutters row\"><div aria-label=\"domingo, 6 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-06\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">6</span></div><div aria-label=\"lunes, 7 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-07\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">7</span></div><div aria-label=\"martes, 8 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-08\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">8</span></div><div aria-label=\"miércoles, 9 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-09\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">9</span></div><div aria-label=\"jueves, 10 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-10\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">10</span></div><div aria-label=\"viernes, 11 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-11\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">11</span></div><div aria-label=\"sábado, 12 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-12\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">12</span></div></div><div class=\"no-gutters row\"><div aria-label=\"domingo, 13 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-13\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">13</span></div><div aria-label=\"lunes, 14 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-14\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">14</span></div><div aria-current=\"date\" aria-label=\"martes, 15 de septiembre de 2026 (Selected date)\" aria-selected=\"true\" class=\"col p-0\" data-date=\"2026-09-15\" role=\"button\"><span class=\"active border-0 btn btn-primary focus font-weight-bold rounded-circle text-nowrap\">15</span></div><div aria-label=\"miércoles, 16 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-16\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">16</span></div><div aria-label=\"jueves, 17 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-17\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">17</span></div><div aria-label=\"viernes, 18 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-18\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">18</span></div><div aria-label=\"sábado, 19 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-19\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">19</span></div></div><div class=\"no-gutters row\"><div aria-label=\"domingo, 20 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-20\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">20</span></div><div aria-label=\"lunes, 21 de septiembre de 2026 (Today)\" class=\"col p-0\" data-date=\"2026-09-21\" role=\"button\"><span class=\"border-0 btn btn-outline-primary font-weight-bold rounded-circle text-nowrap\">21</span></div><div aria-label=\"martes, 22 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-22\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">22</span></div><div aria-label=\"miércoles, 23 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-23\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">23</span></div><div aria-label=\"jueves, 24 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-24\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">24</span></div><div aria-label=\"viernes, 25 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-25\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">25</span></div><div aria-label=\"sábado, 26 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-26\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">26</span></div></div><div class=\"no-gutters row\"><div aria-label=\"domingo, 27 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-27\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">27</span></div><div aria-label=\"lunes, 28 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-28\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">28</span></div><div aria-label=\"martes, 29 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-29\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">29</span></div><div aria-label=\"miércoles, 30 de septiembre de 2026\" class=\"col p-0\" data-date=\"2026-09-30\" role=\"button\"><span class=\"border-0 btn btn-outline-light font-weight-bold rounded-circle text-dark text-nowrap\">30</span></div><div aria-hidden=\"true\" aria-label=\"jueves, 1 de octubre de 2026\" class=\"col p-0\" data-date=\"2026-10-01\" role=\"button\"><span class=\"border-0 btn btn-outline-light rounded-circle text-muted text-nowrap\">1</span></div><div aria-hidden=\"true\" aria-label=\"viernes, 2 de octubre de 2026\" class=\"col p-0\" data-date=\"2026-10-02\" role=\"button\"><span class=\"border-0 btn btn-outline-light rounded-circle text-muted text-nowrap\">2</span></div><div aria-hidden=\"true\" aria-label=\"sábado, 3 de octubre de 2026\" class=\"col p-0\" data-date=\"2026-10-03\" role=\"button\"><span class=\"border-0 btn btn-outline-light rounded-circle text-muted text-nowrap\">3</span></div></div></div><div class=\"b-calendar-grid-help bg-light border-top small text-center text-muted\"><div class=\"small\">Use cursor keys to navigate calendar dates</div></div></div><footer class=\"b-calendar-footer\"><div class=\"b-form-date-controls d-flex flex-wrap justify-content-between\"><button aria-label=\"Select today\" class=\"btn btn-outline-primary btn-sm\" type=\"button\">Select today</button><button aria-label=\"Reset\" class=\"btn btn-outline-danger btn-sm\" type=\"button\">Reset</button><button aria-label=\"Cerrar\" class=\"btn btn-outline-secondary btn-sm\" type=\"button\">Cerrar</button></div></footer></div></div></div><label class=\"form-control\">martes, 15 de septiembre de 2026</label></div></div>"
+  }
+ },
+ "datepicker: elegir un día cierra y emite input(YYYY-MM-DD)": {
+  "BV2": {
+   "log": [
+    [
+     "shown",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "2026-09-20"
+    ],
+    [
+     "watch",
+     "string",
+     "\"2026-09-20\""
+    ],
+    [
+     "hidden",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "2026-09-20",
+   "modelType": "string",
+   "dom": [
+    "domingo, 20 de septiembre de 2026",
+    0
+   ],
+   "html": null
+  }
+ },
+ "datepicker: Restablecer vacía el modelo": {
+  "BV2": {
+   "log": [
+    [
+     "shown",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     ""
+    ],
+    [
+     "watch",
+     "string",
+     "\"\""
+    ],
+    [
+     "hidden",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "",
+   "modelType": "string",
+   "dom": "No date selected",
+   "html": null
+  }
+ },
+ "datepicker: teclado (flechas + Enter) y navegación de mes": {
+  "BV2": {
+   "log": [
+    [
+     "shown",
+     "undefined",
+     null
+    ],
+    [
+     "input",
+     "string",
+     "2026-08-23"
+    ],
+    [
+     "watch",
+     "string",
+     "\"2026-08-23\""
+    ],
+    [
+     "hidden",
+     "undefined",
+     null
+    ]
+   ],
+   "model": "2026-08-23",
+   "modelType": "string",
+   "dom": "domingo, 23 de agosto de 2026",
+   "html": null
+  }
+ },
+ "datepicker: min/max deshabilitan días": {
+  "BV2": {
+   "log": [],
+   "model": "2026-09-15",
+   "modelType": "string",
+   "dom": "sábado, 12 de septiembre de 2026",
+   "html": null
+  }
+ },
+ "datepicker: disabled y state inválido": {
+  "BV2": {
+   "log": [],
+   "model": "2026-09-15",
+   "modelType": "string",
+   "dom": null,
+   "html": "<div style=\"width: 320px;\"><div aria-disabled=\"true\" aria-invalid=\"true\" class=\"b-form-btn-label-control b-form-datepicker dp dropdown form-control is-invalid\" lang=\"es-ES\" role=\"group\"><button aria-expanded=\"false\" aria-haspopup=\"dialog\" aria-invalid=\"true\" class=\"btn h-auto\" disabled=\"\" type=\"button\"><svg aria-hidden=\"true\" aria-label=\"calendar\" class=\"b-icon bi bi-calendar\" fill=\"currentColor\" focusable=\"false\" height=\"1em\" role=\"img\" viewBox=\"0 0 16 16\" width=\"1em\" xmlns=\"http://www.w3.org/2000/svg\"><g><path d=\"M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z\"></path></g></svg></button><div aria-modal=\"false\" class=\"dropdown-menu\" role=\"dialog\" tabindex=\"-1\"></div><label aria-invalid=\"true\" class=\"form-control is-invalid\">martes, 15 de septiembre de 2026</label></div></div>"
+  }
+ },
+ "skeleton-img: marcado, tamaño, aspecto y animación idénticos": {
+  "BV2": {
+   "log": [],
+   "modelType": "undefined",
+   "dom": [
+    [
+     300,
+     110,
+     "rgba(0, 0, 0, 0.12)",
+     "0px",
+     "none"
+    ],
+    [
+     100,
+     50,
+     "rgba(0, 0, 0, 0.12)",
+     "0px",
+     "b-skeleton-animate-fade"
+    ]
+   ],
+   "html": "<div style=\"width: 300px;\"><div class=\"b-aspect d-flex\"><div class=\"b-aspect-sizer flex-grow-1\" style=\"padding-bottom: 56.25%; height: 0px;\"></div><div class=\"b-aspect-content flex-grow-1 mw-100 w-100\" style=\"margin-left: -100%;\"><div class=\"b-skeleton b-skeleton-animate-wave b-skeleton-img rounded-xl shadow-soft\" style=\"height: 110px;\"></div></div></div><div class=\"b-aspect d-flex\"><div class=\"b-aspect-sizer flex-grow-1\" style=\"padding-bottom: 56.25%; height: 0px;\"></div><div class=\"b-aspect-content flex-grow-1 mw-100 w-100\" style=\"margin-left: -100%;\"><div class=\"b-skeleton b-skeleton-animate-fade b-skeleton-img\" style=\"width: 100px; height: 50px;\"></div></div></div></div>"
+  }
+ },
+ "form: Enter y botón submit emiten UN submit cada uno": {
+  "BV2": {
+   "log": [
+    [
+     "submit",
+     "number",
+     1
+    ],
+    [
+     "submit",
+     "number",
+     1
+    ]
+   ],
+   "model": "",
+   "modelType": "string",
+   "dom": null,
+   "html": null
+  }
+ }
+}

@@ -14,9 +14,11 @@
               :placeholder="$t('Search') + '…'"
               @input="onSearch"
             />
+            <div class="input-group-append">
               <b-button variant="outline-secondary" @click="refresh" :disabled="busy">
                 <lucide-icon name="refresh-cw" />
               </b-button>
+            </div>
           </b-input-group>
         </div>
 
