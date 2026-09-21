@@ -47,8 +47,8 @@ test('el wrapper de platform/bootstrap exporta toda la familia migrada', async (
 
 test('contrato de los wrappers de la fase 5A (traducciones de BV2 que no deben perderse)', () => {
   const src = bootstrapSource();
-  assert.match(src, /'no-gutters'/, 'BRow: no-gutters → clase');
-  assert.match(src, /badge-pill/, 'BBadge: pill → badge-pill');
+  assert.match(src, /export const BRow = (?:\/\*#__PURE__\*\/ )?pure\(_BRow\)/, 'BRow: BVN traduce no-gutters a g-0 (Bootstrap 5)');
+  assert.match(src, /rounded-pill/, 'BBadge: pill → rounded-pill');
   assert.match(src, /bg-\$\{variant\}/, 'BProgressBar: variante bg-*');
   assert.match(src, /noWrapper: true/, 'BDropdown: envoltorio propio con el id de BV2');
   assert.match(src, /__BV_toggle_/, 'BDropdown: id del botón como en BV2');

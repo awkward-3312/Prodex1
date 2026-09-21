@@ -1,0 +1,19 @@
+{
+ "row + col (sm/md/lg)": "<div class=\"row\"><div class=\"col-lg-12-md-6-sm-12\">a</div><div class=\"col-md-6\">b</div></div>",
+ "col cols, col, auto, :md": "<div class=\"row\"><div class=\"col-12\">a</div><div class=\"col\">b</div><div class=\"col-auto\">c</div><div class=\"col-md-4\">d</div></div>",
+ "col sin props y con class": "<div class=\"row\"><div class=\"col\">a</div><div class=\"col x y\">b</div></div>",
+ "row no-gutters": "<div class=\"no-gutters r row\"><div class=\"col\">a</div></div>",
+ "container fluid": "<div class=\"c container-fluid\"><div class=\"row\"><div class=\"col\">a</div></div></div>",
+ "card simple + card-text": "<div class=\"card mb-3\"><div class=\"card-body\"><p class=\"card-text\">t</p>cuerpo</div></div>",
+ "card title": "<div class=\"c card\"><div class=\"card-body\"><h4 class=\"card-title\">Titulo</h4>cuerpo</div></div>",
+ "card header + header-bg-variant": "<div class=\"card\"><div class=\"bg-light card-header\">Cabecera</div><div class=\"card-body\">cuerpo</div></div>",
+ "card no-body con header/body/footer": "<div class=\"card\"><div class=\"card-header\">H</div><div class=\"card-body\">B</div><div class=\"card-footer\">F</div></div>",
+ "card slot header": "<div class=\"card\"><div class=\"card-header\"><b>H</b></div><div class=\"card-body\">x</div></div>",
+ "button variant/size/block": "<button class=\"btn btn-block btn-primary btn-sm m\" type=\"button\">Ok</button>",
+ "button submit disabled": "<button class=\"btn btn-outline-secondary disabled\" disabled=\"\" type=\"submit\">x</button>",
+ "button group": "<div class=\"btn-group btn-group-sm g\"><button class=\"btn btn-primary\" type=\"button\">a</button><button class=\"btn btn-secondary\" type=\"button\">b</button></div>",
+ "badge variant, pill, dinámica": "<span class=\"badge badge-pill badge-success x\">1</span><span class=\"badge badge-danger\">2</span><span class=\"badge badge-secondary\">3</span>",
+ "list group": "<div class=\"list-group list-group-flush\"><div class=\"i list-group-item\">a</div><div class=\"list-group-item\">b</div></div>",
+ "img thumbnail fluid": "<img alt=\"x\" class=\"img-fluid img-thumbnail\" height=\"40\" src=\"/images/x.png\" width=\"40\">",
+ "progress: barra, animada, con barras": "<div class=\"p progress\" style=\"height: 8px;\"><div class=\"progress-bar\" style=\"width: 40%;\"></div></div><div class=\"progress\"><div class=\"progress-bar progress-bar-animated progress-bar-striped\" style=\"width: 60%;\">60</div></div>"
+}

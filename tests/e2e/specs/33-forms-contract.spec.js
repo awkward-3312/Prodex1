@@ -3,11 +3,11 @@ const path = require('path');
 const { test, expect } = require('../support/fixtures');
 const { env, waitForApp } = require('../support/helpers');
 
-// Matriz de paridad de formularios (fase 5B). Cada escenario monta la MISMA plantilla con los `b-form-*` de BootstrapVue 2 y con los wrappers de
-// `platform/bootstrap` (sonda dev `/app/_ui?probe=bv`), ejecuta las mismas acciones de usuario y compara, sobre AMBAS implementaciones:
-//   - el registro ORDENADO de eventos y observadores (nombre, tipo JS del valor, valor),
-//   - el modelo final y su tipo, y el estado real del DOM (valor, seleccionado, altura…).
-// El contrato queda además volcado en tests/e2e/.artifacts/forms-contract.json (adjunto del test) para la documentación.
+// Contrato de formularios (fase 5B, congelado en la 5C). En la 5B cada escenario se ejecutó sobre BootstrapVue 2 y sobre los wrappers de
+// `platform/bootstrap` y se comparó el registro ORDENADO de eventos y observadores (nombre, tipo JS del valor, valor), el modelo final y su tipo,
+// el estado real del DOM y, en los componentes propios (archivo, selector de fecha, marcador de carga), el marcado normalizado. El comportamiento de
+// BootstrapVue 2 quedó grabado en tests/e2e/data/forms-bv2-contract.json y el paquete ya no existe: este archivo exige que los wrappers sigan
+// cumpliendo EXACTAMENTE ese contrato.
 
 test.use({ storageState: path.join(env.authDir, 'admin.json') });
 test.setTimeout(90_000);
@@ -17,12 +17,12 @@ const EV = 'function (n, v) { this.log.push([n, typeof v, (v && v.target) ? "EVE
 const root = (page) => page.locator('.probe-root');
 
 async function open(page) {
-  await page.goto('/app/_ui?probe=bv');
+  await page.goto('/app/_ui?probe=ui');
   await waitForApp(page);
   await page.waitForFunction(() => typeof window.__pxProbe === 'function', undefined, { timeout: 30_000 });
 }
-async function record(page, sc, bvn) {
-  const r = await page.evaluate(([t, o]) => window.__pxProbe(t, o), [sc.tpl, { bvn, data: { log: [], ...(sc.data || {}) }, methods: { ev: EV, ...(sc.methods || {}) }, watch: sc.watch || {} }]);
+async function record(page, sc) {
+  const r = await page.evaluate(([t, o]) => window.__pxProbe(t, o), [sc.tpl, { data: { log: [], ...(sc.data || {}) }, methods: { ev: EV, ...(sc.methods || {}) }, watch: sc.watch || {} }]);
   expect(r.missing, 'etiquetas sin wrapper BVN').toEqual([]);
   await sc.actions(page);
   await page.waitForTimeout(200);
@@ -51,12 +51,10 @@ async function normHtml(page, selector = '.probe-root') {
     return clone.innerHTML.replace(/\s+/g, ' ').replace(/> </g, '><');
   }, selector);
 }
-const recorded = {};
-test.afterAll(() => {
-  const dir = path.join(__dirname, '..', '.artifacts');
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'forms-contract.json'), JSON.stringify(recorded, null, 1));
-});
+const contract = require('../data/forms-bv2-contract.json');
+// Cambios de nombre de clase de Bootstrap 4 → 5 en los componentes propios (el marcado grabado es el de BV2 sobre BS4).
+const BS5_CLASS = { 'no-gutters': 'g-0', 'sr-only': 'visually-hidden', 'font-weight-bold': 'fw-bold', 'dropdown-menu-right': 'dropdown-menu-end' };
+const bs5 = (html) => (html == null ? html : html.replace(/class="([^"]*)"/g, (m, c) => `class="${c.split(/\s+/).filter(Boolean).map((t) => BS5_CLASS[t] || t).sort().join(' ')}"`));
 
 
 // ---- archivos / fechas ----
@@ -166,22 +164,23 @@ const SCENARIOS = {
   'form: Enter y botón submit emiten UN submit cada uno': { tpl: '<div><b-form @submit.prevent="ev(\'submit\', 1)"><b-form-input v-model="v" class="i"></b-form-input><b-button type="submit" class="b">ok</b-button></b-form></div>', data: { v: '' }, actions: async (p) => { await root(p).locator('.i').click(); await p.keyboard.press('Enter'); await root(p).locator('.b').click(); } },
 };
 
-test.describe('Paridad de formularios BV2 vs BVN @smoke', () => {
+test.describe('Contrato de formularios (grabado de BootstrapVue 2) @smoke', () => {
   test.beforeEach(async ({ page }) => open(page));
 
   for (const [name, sc] of Object.entries(SCENARIOS)) {
     test(name, async ({ page }) => {
-      const bv2 = await record(page, sc, false);
-      const bvn = await record(page, sc, true);
-      recorded[name] = { BV2: bv2 };
+      const bv2 = contract[name] && contract[name].BV2;
+      expect(bv2, 'escenario grabado en forms-bv2-contract.json').toBeTruthy();
+      const bvn = await record(page, sc);
       expect(bvn.log, 'eventos y observadores, en orden').toEqual(bv2.log);
       expect(bvn.model, 'modelo final').toEqual(bv2.model);
       expect(bvn.modelType, 'tipo del modelo').toBe(bv2.modelType);
       expect(bvn.dom, 'estado del DOM').toEqual(bv2.dom);
-      if (sc.html && bvn.html !== bv2.html) {
+      if (sc.html && bvn.html !== bs5(bv2.html)) {
+        const want = bs5(bv2.html);
         let i = 0;
-        while (i < bv2.html.length && bv2.html[i] === bvn.html[i]) i += 1;
-        throw new Error(`marcado distinto en ${i}:\n  BV2: …${bv2.html.slice(Math.max(0, i - 120), i + 260)}\n  BVN: …${bvn.html.slice(Math.max(0, i - 120), i + 260)}`);
+        while (i < want.length && want[i] === bvn.html[i]) i += 1;
+        throw new Error(`marcado distinto en ${i}:\n  grabado: …${want.slice(Math.max(0, i - 120), i + 260)}\n  actual:  …${bvn.html.slice(Math.max(0, i - 120), i + 260)}`);
       }
     });
   }

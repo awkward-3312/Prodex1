@@ -2,7 +2,7 @@ const { test, expect } = require('../support/fixtures');
 
 /**
  * Equivalencia real de slots: se renderiza en el navegador, con las MISMAS librerías que usa el producto (Vue 2.7,
- * BootstrapVue 2.23, vue-good-table 2.21), la sintaxis antigua (`slot` / `slot-scope`) y la nueva (`v-slot` / `#slot`) y se
+ * vue-good-table 2.21), la sintaxis antigua (`slot` / `slot-scope`) y la nueva (`v-slot` / `#slot`) y se
  * exige HTML idéntico. No necesita servidor ni base de datos: cubre las transformaciones que se hicieron en ~100 vistas.
  */
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -13,26 +13,6 @@ const VUE_UMD_ID = IS_COMPAT ? '@vue/compat/dist/vue.global.js' : 'vue/dist/vue.
 const VUE_UMD = require.resolve(VUE_UMD_ID);
 
 const CASES = {
-  'b-table: slot de celda con scope (cell(x))': {
-    old: `<b-table id="t" :items="items" :fields="fields"><template slot="cell(a)" slot-scope="d">A:{{ d.value }}</template><template slot="cell(b)" slot-scope="{ item }"><i>B:{{ item.b }}</i></template></b-table>`,
-    neu: `<b-table id="t" :items="items" :fields="fields"><template #cell(a)="d">A:{{ d.value }}</template><template #cell(b)="{ item }"><i>B:{{ item.b }}</i></template></b-table>`,
-    expects: ['A:1', 'B:2'],
-  },
-  'b-dropdown: slot sin scope (button-content) en un elemento': {
-    old: `<b-dropdown id="d" text="x"><span slot="button-content">CONTENIDO</span><b-dropdown-item>i</b-dropdown-item></b-dropdown>`,
-    neu: `<b-dropdown id="d" text="x"><template #button-content><span>CONTENIDO</span></template><b-dropdown-item>i</b-dropdown-item></b-dropdown>`,
-    expects: ['CONTENIDO'],
-  },
-  'b-tabs: slot title en <template>': {
-    old: `<b-tabs id="tabs"><b-tab id="tab1" active><template slot="title"><b>TITULO</b></template>cuerpo</b-tab></b-tabs>`,
-    neu: `<b-tabs id="tabs"><b-tab id="tab1" active><template #title><b>TITULO</b></template>cuerpo</b-tab></b-tabs>`,
-    expects: ['TITULO', 'cuerpo'],
-  },
-  'b-modal: slots de cabecera y pie': {
-    old: `<b-modal id="m" static visible><div slot="modal-title">TIT</div><div slot="modal-footer">PIE</div>cuerpo</b-modal>`,
-    neu: `<b-modal id="m" static visible><template #modal-title><div>TIT</div></template><template #modal-footer><div>PIE</div></template>cuerpo</b-modal>`,
-    expects: ['TIT', 'PIE', 'cuerpo'],
-  },
   'vue-good-table: table-row, table-actions y emptystate': {
     old: `<vue-good-table :columns="cols" :rows="rows"><template slot="table-row" slot-scope="props"><span>R:{{ props.row.a }}</span></template><div slot="table-actions" class="x">ACT</div></vue-good-table>`,
     neu: `<vue-good-table :columns="cols" :rows="rows"><template #table-row="props"><span>R:{{ props.row.a }}</span></template><template #table-actions><div class="x">ACT</div></template></vue-good-table>`,
@@ -60,13 +40,12 @@ const normalize = (html) => html.replace(/__BVID__\d+/g, '__BVID__').replace(/z-
 test.describe('Slots: sintaxis antigua y v-slot renderizan lo mismo @smoke', () => {
   test.beforeEach(async ({ page }) => {
     await page.setContent('<!doctype html><html><body><div id="host"></div></body></html>');
-    for (const lib of [VUE_UMD_ID, 'bootstrap-vue/dist/bootstrap-vue.js', 'vue-good-table/dist/vue-good-table.js']) {
+    for (const lib of [VUE_UMD_ID, 'vue-good-table/dist/vue-good-table.js']) {
       await page.addScriptTag({ path: require.resolve(lib) });
     }
     await page.evaluate(() => {
       window.Vue.config.productionTip = false;
       window.Vue.config.devtools = false;
-      window.Vue.use(window.bootstrapVue.BootstrapVue || window.BootstrapVue);
       const vgt = window['vue-good-table'];
       window.Vue.use(vgt.default || vgt);
     });

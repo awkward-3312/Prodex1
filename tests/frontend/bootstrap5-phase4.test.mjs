@@ -95,7 +95,8 @@ test('BModal conserva la regla de foco de BootstrapVue 2: sin foco inicial de BV
   assert.match(block, /props\.onShown = \[focusIfOutside/);
 });
 
-test('BTable traduce head-variant light/dark a la clase thead-* de BS4', () => {
+test('BTable ya no traduce head-variant a clases de BS4 (Bootstrap 5: `table-light|dark`)', () => {
   const src = bootstrapSource();
-  assert.match(src, /`thead-\$\{variant\}`/);
+  assert.doesNotMatch(src, /`thead-\$\{variant\}`/);
+  assert.match(src, /export const BTable = /);
 });

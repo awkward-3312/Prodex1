@@ -47,7 +47,9 @@ const VIEWPORTS = [
   for (const [vpName, viewport, rtl] of VIEWPORTS) {
     for (const [name, url, user = 'admin', extra = {}] of SCREENS) {
       if (ONLY.length && !ONLY.includes(name)) continue;
-      const ctx = await browser.newContext({ baseURL: env.baseURL, viewport, storageState: path.join(env.authDir, `${user}.json`), locale: 'es-ES', reducedMotion: 'reduce' });
+      // SHARD=i/n reparte las pantallas entre procesos (el servidor PHP es de un solo proceso, pero casi todo el tiempo es espera del cliente)
+      if (process.env.SHARD) { const [i, n] = process.env.SHARD.split('/').map(Number); if (SCREENS.findIndex((x) => x[0] === name) % n !== i) continue; }
+      const ctx = await browser.newContext({ baseURL: env.baseURL, viewport, storageState: user === 'none' ? undefined : path.join(env.authDir, `${user}.json`), locale: 'es-ES', reducedMotion: 'reduce' });
       const page = await ctx.newPage();
       page.on('pageerror', (e) => console.log(`  pageerror ${name}/${vpName}: ${e.message.slice(0, 120)}`));
       try {
@@ -70,6 +72,8 @@ const VIEWPORTS = [
         if (extra.hover) { await page.locator(extra.hover).first().hover(); await page.waitForTimeout(700); }
         if (extra.wait) await page.waitForTimeout(extra.wait);
         if (extra.waitFor) await page.waitForSelector(extra.waitFor, { timeout: 10_000 });
+        // datos estables: sin peticiones pendientes (los esqueletos de carga no son una diferencia de estilos)
+        await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
         await page.waitForTimeout(1500);
         await page.screenshot({ path: path.join(OUT, `${name}__${vpName}.png`), fullPage: extra.viewportOnly ? false : true });
         console.log('ok', name, vpName);

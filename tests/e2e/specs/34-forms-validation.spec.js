@@ -43,14 +43,14 @@ const methods = {
 
 test.describe('Validación con los controles de BootstrapVueNext @smoke', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/app/_ui?probe=bv');
+    await page.goto('/app/_ui?probe=ui');
     await waitForApp(page);
     await page.waitForFunction(() => typeof window.__pxProbe === 'function', undefined, { timeout: 30_000 });
   });
 
   for (const [name, c] of Object.entries(CONTROLS)) {
     test(`${name}: required → mensaje → corrige → envía una vez → reset limpia`, async ({ page }) => {
-      const r = await page.evaluate(([t, o]) => window.__pxProbe(t, o), [tpl(c.ctl, c.rules), { bvn: true, data: { v: c.v, init: c.v, sent: 0, result: null }, methods }]);
+      const r = await page.evaluate(([t, o]) => window.__pxProbe(t, o), [tpl(c.ctl, c.rules), { data: { v: c.v, init: c.v, sent: 0, result: null }, methods }]);
       expect(r.missing).toEqual([]);
 
       // submit inválido: no envía, muestra el mensaje y marca el estado
@@ -76,7 +76,7 @@ test.describe('Validación con los controles de BootstrapVueNext @smoke', () => 
   }
 
   test('observer.validate() y setErrors() (errores de servidor) con un input', async ({ page }) => {
-    await page.evaluate(([t, o]) => window.__pxProbe(t, o), [tpl(CONTROLS.input.ctl), { bvn: true, data: { v: '', sent: 0, result: null }, methods }]);
+    await page.evaluate(([t, o]) => window.__pxProbe(t, o), [tpl(CONTROLS.input.ctl), { data: { v: '', sent: 0, result: null }, methods }]);
     // validate() sin valor → false y mensaje
     expect(await page.evaluate(() => window.__pxProbeInner().validateAll())).toBe(false);
     await expect(root(page).locator('.fb')).toContainText(/.+/);

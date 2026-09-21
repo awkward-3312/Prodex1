@@ -233,7 +233,7 @@
   ],
   "responsive": "table-responsive",
   "thead": [
-   "thead-light"
+   "table-light"
   ],
   "ths": [
    "Fecha",
@@ -260,7 +260,7 @@
   ],
   "responsive": "table-responsive",
   "thead": [
-   "thead-light"
+   "table-light"
   ],
   "ths": [
    "Fecha",
@@ -284,7 +284,7 @@
   ],
   "responsive": "table-responsive",
   "thead": [
-   "thead-light"
+   "table-light"
   ],
   "ths": [
    "Fecha",
@@ -307,7 +307,7 @@
   ],
   "responsive": "table-responsive",
   "thead": [
-   "thead-light"
+   "table-light"
   ],
   "ths": [
    "Ref. de la devolución",

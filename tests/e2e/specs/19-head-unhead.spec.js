@@ -110,13 +110,13 @@ test.describe('Head con Unhead — app (administrador) @smoke', () => {
     let a = await attrs();
     expect(a.lang).toBe('es');
     expect(a.dir).toBe('ltr');
-    expect(a.body).toContain('text-left');
+    expect(a.body).toContain('text-start');
     expect(new Set(a.body).size).toBe(a.body.length);
     await spaGo(page, '/app/sales/list');
     await expect(page).toHaveTitle(/Ventas/);
     a = await attrs();
     expect(a.lang).toBe('es');
-    expect(a.body).toContain('text-left');
+    expect(a.body).toContain('text-start');
     expect(new Set(a.body).size).toBe(a.body.length);
   });
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Matriz visual de formularios (fase 5B): la MISMA plantilla montada con BootstrapVue 2 y con los wrappers de platform/bootstrap en la sonda
- * `/app/_ui?probe=bv`, capturada en LTR, RTL y móvil, con el % de píxeles distintos por caso (tolerancia de canal 12).
- *   node tests/e2e/visual/forms-matrix.js [filtro] [--out=/ruta] [--all]     (--all guarda también las capturas sin diferencia)
- * Requiere el servidor de E2E y un build de desarrollo (igual que probe-diff.js). Salida: <out>/{bv2,bvn,diff}/<caso>-<modo>.png
+ * Matriz visual de formularios (fase 5C, sin BootstrapVue 2): captura los controles de platform/bootstrap montados en la sonda de desarrollo
+ * `/app/_ui?probe=ui` en LTR, RTL y móvil y los compara con una captura anterior (antes/después del corte a Bootstrap 5).
+ *   node tests/e2e/visual/forms-matrix.js capture <carpeta> [filtro]        # guarda <carpeta>/<caso>-<modo>.png
+ *   node tests/e2e/visual/forms-matrix.js compare <antes> <después> [salida]  # % de píxeles distintos (tolerancia de canal 12)
  */
 const fs = require('fs');
 const path = require('path');
@@ -12,9 +12,13 @@ const { PNG } = require('playwright-core/lib/utilsBundle');
 const env = require('../support/env');
 
 const args = process.argv.slice(2);
-const filter = args.find((a) => !a.startsWith('--')) ? new RegExp(args.find((a) => !a.startsWith('--')), 'i') : null;
-const out = path.resolve((args.find((a) => a.startsWith('--out=')) || '--out=/tmp/forms-visual').slice(6));
-const keepAll = args.includes('--all');
+const command = args[0];
+const dirA = path.resolve(args[1] || '/tmp/forms-visual');
+const filter = command === 'capture' && args[2] ? new RegExp(args[2], 'i') : null;
+// FM_MARKUP=new usa `tplNew` (marcado de Bootstrap 5, sin `input-group-prepend|append`) cuando el caso lo define.
+const NEW_MARKUP = process.env.FM_MARKUP === 'new';
+// FM_PROBE=bv solo para capturar el árbol anterior al corte (5B), cuya sonda montaba también BootstrapVue 2 (`?probe=bv`, `bvn: true`).
+const PROBE = process.env.FM_PROBE || 'ui';
 
 const grp = (label, inner, attrs = '') => `<b-form-group label="${label}" description="Texto de ayuda" ${attrs}>${inner}</b-form-group>`;
 const CASES = [
@@ -31,8 +35,8 @@ const CASES = [
   },
   {
     name: 'input-group-botones',
-    bv2: '<div class="p-3" style="width:400px"><b-input-group class="mb-2"><b-form-input value="Buscar"></b-form-input><b-input-group-append><b-button variant="primary">Ir</b-button></b-input-group-append></b-input-group><b-input-group class="mb-2"><b-input-group-prepend><span class="btn btn-primary btn-sm">-</span></b-input-group-prepend><input class="form-control" value="1"><b-input-group-append><span class="btn btn-primary btn-sm">+</span></b-input-group-append></b-input-group><b-input-group class="mb-2"><b-input-group-prepend is-text>@</b-input-group-prepend><b-form-input value="usuario"></b-form-input><b-input-group-append><b-button variant="outline-secondary">Copiar</b-button></b-input-group-append></b-input-group><b-input-group size="sm"><b-form-input value="sm"></b-form-input><b-input-group-append><b-button variant="primary">Ir</b-button></b-input-group-append></b-input-group></div>',
-    bvn: '<div class="p-3" style="width:400px"><b-input-group class="mb-2"><b-form-input value="Buscar"></b-form-input><div class="input-group-append"><b-button variant="primary">Ir</b-button></div></b-input-group><b-input-group class="mb-2"><div class="input-group-prepend"><span class="btn btn-primary btn-sm">-</span></div><input class="form-control" value="1"><div class="input-group-append"><span class="btn btn-primary btn-sm">+</span></div></b-input-group><b-input-group class="mb-2"><div class="input-group-prepend"><div class="input-group-text">@</div></div><b-form-input value="usuario"></b-form-input><div class="input-group-append"><b-button variant="outline-secondary">Copiar</b-button></div></b-input-group><b-input-group size="sm"><b-form-input value="sm"></b-form-input><div class="input-group-append"><b-button variant="primary">Ir</b-button></div></b-input-group></div>',
+    tpl: '<div class="p-3" style="width:400px"><b-input-group class="mb-2"><b-form-input value="Buscar"></b-form-input><div class="input-group-append"><b-button variant="primary">Ir</b-button></div></b-input-group><b-input-group class="mb-2"><div class="input-group-prepend"><span class="btn btn-primary btn-sm">-</span></div><input class="form-control" value="1"><div class="input-group-append"><span class="btn btn-primary btn-sm">+</span></div></b-input-group><b-input-group class="mb-2"><div class="input-group-prepend"><div class="input-group-text">@</div></div><b-form-input value="usuario"></b-form-input><div class="input-group-append"><b-button variant="outline-secondary">Copiar</b-button></div></b-input-group><b-input-group size="sm"><b-form-input value="sm"></b-form-input><div class="input-group-append"><b-button variant="primary">Ir</b-button></div></b-input-group></div>',
+    tplNew: '<div class="p-3" style="width:400px"><b-input-group class="mb-2"><b-form-input value="Buscar"></b-form-input><b-button variant="primary">Ir</b-button></b-input-group><b-input-group class="mb-2"><span class="btn btn-primary btn-sm">-</span><input class="form-control" value="1"><span class="btn btn-primary btn-sm">+</span></b-input-group><b-input-group class="mb-2"><b-input-group-text>@</b-input-group-text><b-form-input value="usuario"></b-form-input><b-button variant="outline-secondary">Copiar</b-button></b-input-group><b-input-group size="sm"><b-form-input value="sm"></b-form-input><b-button variant="primary">Ir</b-button></b-input-group></div>',
   },
   { name: 'file', tpl: '<div class="p-3" style="width:400px"><b-form-file placeholder="Elegir archivo"></b-form-file><b-form-file class="mt-2" size="sm" :state="false"></b-form-file><b-form-file class="mt-2" disabled></b-form-file></div>' },
   { name: 'datepicker-cerrado', tpl: '<div class="p-3" style="width:360px"><b-form-datepicker v-model="v" placeholder="Desde" reset-button></b-form-datepicker><b-form-datepicker class="mt-2" size="sm" value="2026-01-05"></b-form-datepicker><b-form-datepicker class="mt-2" :state="false" value="2026-01-05"></b-form-datepicker></div>', data: { v: '' } },
@@ -60,42 +64,47 @@ function compare(a, b) {
   return { pct: (100 * n) / (A.width * A.height), diff: n ? PNG.sync.write(diff) : null };
 }
 
-(async () => {
-  for (const d of ['bv2', 'bvn', 'diff']) fs.mkdirSync(path.join(out, d), { recursive: true });
+async function capture() {
+  fs.mkdirSync(dirA, { recursive: true });
   const browser = await chromium.launch();
-  const rows = [];
   for (const mode of MODES) {
     const ctx = await browser.newContext({ baseURL: env.baseURL, storageState: path.join(env.authDir, 'admin.json'), viewport: mode.viewport });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => console.log('PAGEERROR', e.message.slice(0, 160)));
-    await page.goto('/app/_ui?probe=bv');
+    await page.goto(`/app/_ui?probe=${PROBE}`);
     await page.waitForFunction(() => typeof window.__pxProbe === 'function', undefined, { timeout: 30000 });
     await page.evaluate((rtl) => { document.documentElement.setAttribute('dir', rtl ? 'rtl' : 'ltr'); document.body.classList.toggle('rtl', rtl); }, mode.rtl);
     for (const c of CASES) {
       if (filter && !filter.test(c.name)) continue;
-      const shots = {};
-      for (const bvn of [false, true]) {
-        const tpl = (bvn ? c.bvn : c.bv2) || c.tpl;
-        const r = await page.evaluate(([t, o]) => window.__pxProbe(t, o), [tpl, { bvn, data: c.data || {}, wait: 150 }]);
-        if (r.missing && r.missing.length) console.log(`  (${c.name}) sin wrapper BVN: ${r.missing.join(', ')}`);
-        if (c.act) await c.act(page);
-        await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); document.body.style.caretColor = 'transparent'; });
-        await page.waitForTimeout(150);
-        shots[bvn ? 'bvn' : 'bv2'] = await page.locator('.probe-root').screenshot({ animations: 'disabled' });
-      }
-      const id = `${c.name}-${mode.name}`;
-      const cmp = compare(shots.bv2, shots.bvn);
-      rows.push([id, cmp.pct, cmp.note]);
-      if (cmp.pct > 0 || keepAll) {
-        fs.writeFileSync(path.join(out, 'bv2', `${id}.png`), shots.bv2);
-        fs.writeFileSync(path.join(out, 'bvn', `${id}.png`), shots.bvn);
-        if (cmp.diff) fs.writeFileSync(path.join(out, 'diff', `${id}.png`), cmp.diff);
-      }
+      const tpl = (NEW_MARKUP && c.tplNew) || c.tpl || c.bvn;
+      const r = await page.evaluate(([t, o]) => window.__pxProbe(t, o), [tpl, { ...(PROBE === 'bv' ? { bvn: true } : {}), data: c.data || {}, wait: 150 }]);
+      if (r.missing && r.missing.length) console.log(`  (${c.name}) sin wrapper: ${r.missing.join(', ')}`);
+      if (c.act) await c.act(page);
+      await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); document.body.style.caretColor = 'transparent'; });
+      await page.waitForTimeout(150);
+      fs.writeFileSync(path.join(dirA, `${c.name}-${mode.name}.png`), await page.locator('.probe-root').screenshot({ animations: 'disabled' }));
     }
     await ctx.close();
   }
   await browser.close();
-  rows.forEach(([id, pct, note]) => console.log(`${pct === 0 ? '=' : pct <= 0.05 ? '~' : '≠'} ${id.padEnd(34)} ${pct.toFixed(3)} %${note ? ` ${note}` : ''}`));
-  const bad = rows.filter((r) => r[1] > 0.05);
-  console.log(`\n${rows.length} capturas; con diferencia > 0.05 %: ${bad.length}  →  ${out}`);
-})();
+  console.log(`capturas en ${dirA}`);
+}
+
+function compareDirs() {
+  const dirB = path.resolve(args[2]);
+  const outDir = path.resolve(args[3] || '/tmp/forms-visual-diff');
+  fs.mkdirSync(outDir, { recursive: true });
+  const rows = [];
+  for (const f of fs.readdirSync(dirA).filter((x) => x.endsWith('.png')).sort()) {
+    if (!fs.existsSync(path.join(dirB, f))) { rows.push([f, 100, 'falta en después']); continue; }
+    const cmp = compare(fs.readFileSync(path.join(dirA, f)), fs.readFileSync(path.join(dirB, f)));
+    rows.push([f.replace('.png', ''), cmp.pct, cmp.note]);
+    if (cmp.diff) fs.writeFileSync(path.join(outDir, f), cmp.diff);
+  }
+  rows.forEach(([id, pct, note]) => console.log(`${pct === 0 ? '=' : pct <= 0.1 ? '~' : '≠'} ${id.padEnd(34)} ${pct.toFixed(3)} %${note ? ` ${note}` : ''}`));
+  console.log(`\n${rows.length} capturas; idénticas ${rows.filter((r) => r[1] === 0).length}; <= 0,1 % ${rows.filter((r) => r[1] > 0 && r[1] <= 0.1).length}; 0,1–1 % ${rows.filter((r) => r[1] > 0.1 && r[1] <= 1).length}; > 1 % ${rows.filter((r) => r[1] > 1).length}`);
+}
+
+if (command === 'capture') capture();
+else if (command === 'compare') compareDirs();
+else console.log('uso: forms-matrix.js capture <carpeta> [filtro] | compare <antes> <después> [salida]');

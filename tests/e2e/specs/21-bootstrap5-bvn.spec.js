@@ -26,24 +26,24 @@ const styleOf = (page, className, props, { dir = 'ltr' } = {}) =>
 test.describe('Bootstrap 5 + BootstrapVueNext @smoke', () => {
   test.use({ storageState: path.join(env.authDir, 'admin.json') });
 
-  test('utilidades lógicas del puente: ms/me/ps/pe/text-end en LTR', async ({ page }) => {
+  test('utilidades de Bootstrap 5: ms/me/ps/pe/text-end en LTR', async ({ page }) => {
     await page.goto('/app/organization/role-templates');
     await waitForApp(page);
     expect(await styleOf(page, 'ms-2', ['margin-left', 'margin-right'])).toEqual({ 'margin-left': '8px', 'margin-right': '0px' });
     expect(await styleOf(page, 'me-3', ['margin-left', 'margin-right'])).toEqual({ 'margin-left': '0px', 'margin-right': '16px' });
     expect(await styleOf(page, 'ps-1', ['padding-left', 'padding-right'])).toEqual({ 'padding-left': '4px', 'padding-right': '0px' });
     expect(await styleOf(page, 'pe-4', ['padding-left', 'padding-right'])).toEqual({ 'padding-left': '0px', 'padding-right': '24px' });
-    expect((await styleOf(page, 'text-end', ['text-align']))['text-align']).toBe('end');
+    expect(['right', 'end']).toContain((await styleOf(page, 'text-end', ['text-align']))['text-align']);
     expect((await styleOf(page, 'fw-bold', ['font-weight']))['font-weight']).toBe('700');
   });
 
-  test('utilidades lógicas del puente se invierten en RTL (equivale a bootstrap-rtl de BS4)', async ({ page }) => {
+  test('utilidades de Bootstrap 5 se invierten en RTL (reglas generadas con postcss-rtlcss, equivalen a bootstrap-rtl de BS4)', async ({ page }) => {
     await page.goto('/app/organization/role-templates');
     await waitForApp(page);
     expect(await styleOf(page, 'ms-2', ['margin-left', 'margin-right'], { dir: 'rtl' })).toEqual({ 'margin-left': '0px', 'margin-right': '8px' });
     expect(await styleOf(page, 'me-3', ['margin-left', 'margin-right'], { dir: 'rtl' })).toEqual({ 'margin-left': '16px', 'margin-right': '0px' });
     expect(await styleOf(page, 'ps-1', ['padding-left', 'padding-right'], { dir: 'rtl' })).toEqual({ 'padding-left': '0px', 'padding-right': '4px' });
-    // float-start es lógico (`inline-start`): en RTL el elemento queda pegado al borde derecho del contenedor
+    // float-start en RTL: el elemento queda pegado al borde derecho del contenedor
     const side = await page.evaluate(() => {
       document.documentElement.setAttribute('dir', 'rtl');
       const wrap = document.createElement('div');
@@ -58,10 +58,10 @@ test.describe('Bootstrap 5 + BootstrapVueNext @smoke', () => {
     expect(side.itemRight).toBe(side.wrapRight);
   });
 
-  test('el puente NO define gap-* (las vistas existentes usan ese nombre con estilos propios: regresión detectada en dashboard)', async ({ page }) => {
+  test('gap-*: utilidad de Bootstrap 5 (en la fase 1 era un no-op deliberado; con el corte, `gap-2` = .5rem)', async ({ page }) => {
     await page.goto('/app/organization/role-templates');
     await waitForApp(page);
-    expect((await styleOf(page, 'gap-2', ['gap']))['gap']).toBe('normal');
+    expect((await styleOf(page, 'gap-2', ['gap']))['gap']).toBe('8px');
   });
 
   test('BButton de BootstrapVueNext: variantes y emisión única del click (calendario)', async ({ page }) => {
@@ -146,15 +146,15 @@ test.describe('Bootstrap 5 + BootstrapVueNext @smoke', () => {
     await expect(page.locator('.modal-backdrop')).toHaveCount(0);
   });
 
-  test('BVN no lleva su CSS global: `.container`, `.card-deck` y `.table-responsive` conservan las reglas de BS4', async ({ page }) => {
+  test('BVN no lleva su CSS global y Bootstrap 4 no está: `.card-deck` ya no existe; `.container` conserva el gutter de la aplicación', async ({ page }) => {
     await page.goto('/app/organization/role-templates');
     await waitForApp(page);
     const rules = await page.evaluate(() => {
       const probe = (cls) => { const el = document.createElement('div'); el.className = cls; document.body.appendChild(el); const cs = getComputedStyle(el); const r = { display: cs.display, paddingLeft: cs.paddingLeft }; el.remove(); return r; };
       return { deck: probe('card-deck'), container: probe('container') };
     });
-    expect(rules.deck.display).toBe('flex'); // .card-deck existe en BS4 y desaparece en BS5
-    expect(rules.container.paddingLeft).toBe('15px'); // gutter de BS4 (BS5 = 12px)
+    expect(rules.deck.display).toBe('block'); // .card-deck existía en BS4 y desaparece en BS5
+    expect(rules.container.paddingLeft).toBe('15px'); // `$grid-gutter-width` de la aplicación (30px), no el 24px de BS5
   });
 });
 

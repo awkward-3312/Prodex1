@@ -37,7 +37,7 @@ test.describe('Formularios de dominios críticos sobre BootstrapVueNext @smoke',
         await field.blur();
       }
       // cambiar la primera lista desplegable con más de una opción
-      const selects = page.locator('select.custom-select:not([disabled]):visible');
+      const selects = page.locator('select.form-select:not([disabled]):visible');
       if (await selects.count()) {
         const sel = selects.first();
         if ((await sel.locator('option').count()) > 1) await sel.selectOption({ index: 1 });

@@ -53,7 +53,7 @@ test('wrappers de formularios: contrato explícito y documentado (platform/boots
     assert.match(src, new RegExp(`export const ${name}\\b`), name);
   }
   assert.match(src, /labelFor: ''/, 'BFormGroup mantiene fieldset+legend de BV2');
-  assert.match(src, /'custom-select'/, 'BFormSelect emite custom-select (BS4)');
+  assert.doesNotMatch(src.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n'), /custom-select/, 'BFormSelect emite `form-select` de BS5 (sin custom-select de BS4)');
   assert.match(src, /px-bvn-check/);
   assert.match(index, /export \* from '\.\/forms\.js'/);
   assert.match(read('platform/bootstrap/overlay.js'), /export const vBTooltip/);
@@ -80,19 +80,6 @@ test('vistas migradas a formularios BVN: registro local coherente (cada b-form-*
     }
   });
   assert.deepEqual(offenders, []);
-});
-
-test('clases BS5 latentes: en pantallas críticas el puente NO las activa (neutralizadas y registradas)', () => {
-  const BS5 = /(?<![A-Za-z0-9_-])(m[se]-(?:(?:sm|md|lg|xl)-)?(?:\d|auto)|p[se]-(?:(?:sm|md|lg|xl)-)?\d|text-(?:(?:sm|md|lg|xl)-)?(?:start|end)|float-(?:(?:sm|md|lg|xl)-)?(?:start|end)|fw-(?:bold|bolder|normal|light|lighter|semibold))(?![A-Za-z0-9_-])/;
-  const recorded = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/frontend/latent-bs5-neutralized.json'), 'utf8'));
-  assert.ok(recorded.length > 60, 'registro de clases neutralizadas');
-  const files = [...new Set(recorded.map((r) => r.file))];
-  for (const f of files) {
-    assert.match(f, CRITICAL, `${f} debe ser una pantalla crítica`);
-    const lines = fs.readFileSync(path.join(SRC, f), 'utf8').split('\n');
-    const bad = lines.map((l, i) => (BS5.test(l) ? `${f}:${i + 1}` : null)).filter(Boolean);
-    assert.deepEqual(bad, [], `clases BS5 en ${f}: al migrar la pantalla se reponen desde tests/frontend/latent-bs5-neutralized.json`);
-  }
 });
 
 // Fase 4: `$bvToast` / `$bvModal` a 0 en TODO el código propio (vistas, componentes, contenedores, mixins, utilidades), incluidos POS, caja,

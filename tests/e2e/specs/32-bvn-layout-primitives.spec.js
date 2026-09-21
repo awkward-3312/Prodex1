@@ -3,10 +3,10 @@ const { test, expect } = require('../support/fixtures');
 const { env, waitForApp } = require('../support/helpers');
 const { normalizeHtml } = require('../support/probe');
 
-// Fase 5A: layout y primitives (row/col/container/card, button, badge, alert, progress, link, list-group, img, tabs, dropdown, pagination) de
-// BootstrapVue 2 → BootstrapVueNext. La sonda dev (`/app/_ui?probe=bv`) monta la MISMA plantilla con los `b-*` globales de BV2 y con los
-// wrappers de `platform/bootstrap` (registro local, como las vistas) y el test exige el mismo DOM (donde el marcado debe coincidir) y el
-// mismo comportamiento: cada prueba de comportamiento se ejecuta sobre las DOS implementaciones con las mismas aserciones.
+// Layout y primitives (fase 5A; congelado en la 5C, sin BootstrapVue 2): row/col/container/card, button, badge, alert, progress, link, list-group, img, tabs,
+// dropdown y paginación sobre BootstrapVueNext y Bootstrap 5. La sonda dev (`/app/_ui?probe=ui`) monta la plantilla con los wrappers de
+// `platform/bootstrap` (registro local, como las vistas). El marcado que BootstrapVue 2 producía quedó grabado en tests/e2e/data/bv2-layout-markup.json:
+// el test lo exige idéntico salvo los cambios deliberados de Bootstrap 4 → 5 (`btn-block` → `d-block w-100`, `badge-pill` → `rounded-pill`…).
 
 test.use({ storageState: path.join(env.authDir, 'admin.json') });
 
@@ -19,13 +19,16 @@ const sortAttrs = (html) => html.replace(/<([a-z0-9-]+)((?:\s+[a-z:@_.-]+(?:="[^
 const strip = (html) => sortAttrs(normalizeHtml(html)).replace(new RegExp(`\\s(?:${DROP_ATTRS.join('|')})(?:="[^"]*")?`, 'g'), '').replace(/\sclass="b-img /, ' class="').replace(/ class="([^"]*)\bb-img\b ?/g, ' class="$1');
 
 async function open(page) {
-  await page.goto('/app/_ui?probe=bv');
+  await page.goto('/app/_ui?probe=ui');
   await waitForApp(page);
   await page.waitForFunction(() => typeof window.__pxProbe === 'function', undefined, { timeout: 30_000 });
 }
 const mount = (page, template, opts = {}) => page.evaluate(([t, o]) => window.__pxProbe(t, o), [template, opts]);
 const state = (page) => page.evaluate(() => JSON.parse(JSON.stringify(window.__pxProbeData())));
-const IMPLS = [['BV2', false], ['BVN', true]];
+const IMPLS = [['BVN', true]];
+const LAYOUT_BV2 = require('../data/bv2-layout-markup.json');
+const BS5_CLASS = { 'no-gutters': 'g-0', 'btn-block': 'd-block w-100', 'badge-pill': 'rounded-pill', 'thead-light': 'table-light', 'thead-dark': 'table-dark' };
+const bs5 = (html) => html.replace(/class="([^"]*)"/g, (m, c) => `class="${c.split(/\s+/).filter(Boolean).flatMap((t) => (BS5_CLASS[t] || t).split(' ')).sort().join(' ')}"`);
 
 test.describe('Layout y primitives: mismo DOM que BootstrapVue 2 @smoke', () => {
   test.beforeEach(async ({ page }) => open(page));
@@ -52,10 +55,10 @@ test.describe('Layout y primitives: mismo DOM que BootstrapVue 2 @smoke', () => 
   for (const [name, template] of Object.entries(SAME)) {
     test(name, async ({ page }) => {
       const data = { v: 'danger' };
-      const before = strip((await mount(page, template, { bvn: false, data })).html);
-      const rb = await mount(page, template, { bvn: true, data });
+      const rb = await mount(page, template, { data });
       expect(rb.missing, 'etiquetas sin wrapper BVN').toEqual([]);
-      expect(sortAttrs(strip(rb.html))).toBe(sortAttrs(before));
+      expect(LAYOUT_BV2[name], 'marcado grabado').toBeTruthy();
+      expect(sortAttrs(strip(rb.html))).toBe(sortAttrs(bs5(LAYOUT_BV2[name])));
     });
   }
 
@@ -289,18 +292,17 @@ test.describe('Comportamiento idéntico en BV2 y BVN: una sola emisión @smoke',
     }
   });
 
-  test('pestañas: el enlace conserva tipografía (font/letter-spacing), color y subrayado al pasar el ratón como el <a> de BV2', async ({ page }) => {
-    const fonts = {};
-    for (const [name, bvn] of IMPLS) {
-      await mount(page, '<b-tabs pills><b-tab title="Devoluciones" active>a</b-tab><b-tab title="Otra">b</b-tab></b-tabs>', { bvn });
-      await page.mouse.move(0, 0);
-      const link = page.locator('.probe-root .nav-link').nth(1); // pestaña inactiva: el color viene de `a`
-      fonts[name] = await link.evaluate((e) => { const c = getComputedStyle(e); return [c.fontFamily, c.fontSize, c.fontWeight, c.letterSpacing, c.backgroundColor, c.color].join('|'); });
-      await link.hover();
-      fonts[`${name}-hover`] = await link.evaluate((e) => getComputedStyle(e).textDecorationLine);
-    }
-    expect(fonts.BVN).toBe(fonts.BV2);
-    expect(fonts['BVN-hover']).toBe(fonts['BV2-hover']);
+  test('pestañas: el enlace conserva tipografía (font/letter-spacing), color y subrayado al pasar el ratón como un <a> (BV2 los medía en su <a>)', async ({ page }) => {
+    await mount(page, '<div><b-tabs pills><b-tab title="Devoluciones" active>a</b-tab><b-tab title="Otra">b</b-tab></b-tabs><ul class="nav nav-pills ref"><li class="nav-item"><a class="nav-link" href="#">Otra</a></li></ul></div>', {});
+    await page.mouse.move(0, 0);
+    const read = (loc) => loc.evaluate((e) => { const c = getComputedStyle(e); return [c.fontFamily, c.fontSize, c.fontWeight, c.letterSpacing, c.backgroundColor, c.color].join('|'); });
+    const button = page.locator('.probe-root .nav-link').nth(1); // pestaña inactiva: el color viene de `a`
+    const anchor = page.locator('.probe-root .ref .nav-link');
+    expect(await read(button)).toBe(await read(anchor));
+    await button.hover();
+    const buttonHover = await button.evaluate((e) => getComputedStyle(e).textDecorationLine);
+    await anchor.hover();
+    expect(buttonHover).toBe(await anchor.evaluate((e) => getComputedStyle(e).textDecorationLine));
   });
 
   test('paginación con :value + @input (sin v-model), como el libro mayor', async ({ page }) => {
