@@ -103,22 +103,10 @@ jobs:
           echo "E2E_RESTRICTED_PASSWORD=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
       - name: Provisionar tenant demo aislado
         run: bash tests/e2e/scripts/setup.sh
-      - name: Preparar diagnóstico del servidor PHP (volcado de núcleo, extensiones)
-        run: |
-          sudo apt-get install -y gdb >/dev/null
-          php -v; php -m | tr '\n' ' '; php -i | grep -iE 'opcache.jit|opcache.enable_cli|memory_limit' || true
-          sudo sysctl -w kernel.core_pattern=/tmp/core.%e.%p
+      - name: Versión de PHP del servidor E2E
+        run: php -v | head -1
       - name: Ejecutar E2E
-        run: |
-          ulimit -c unlimited
-          npm run test:e2e
-      - name: Diagnóstico del servidor PHP tras el E2E (backtrace si murió por una señal)
-        if: always()
-        continue-on-error: true
-        run: |
-          sudo dmesg | grep -iE 'segfault|oom|killed process|general protection' | tail -20 || true
-          free -m; ls -la /tmp | grep -i core || true
-          for c in /tmp/core.*; do [ -f "$c" ] && gdb -batch -ex 'bt 30' -ex 'info sharedlibrary' "$(which php)" "$c" 2>&1 | head -80; done || true
+        run: npm run test:e2e
       - name: Avisos de @vue/compat agrupados (resumen del job)
         if: always()
         continue-on-error: true
