@@ -86,4 +86,63 @@ Medidas comparando estilos calculados antes/después (`/tmp/csagg.js`): margen i
 
 `pos.vue`: 4 clases direccionales de plantilla y un selector local (`.cr-footer .text-right`) migrados juntos; sin `input-group-*`, `custom-*`, `btn-block`, `form-row` ni `close` en su plantilla; sus reglas `.custom-select` (registro de caja) y `.close` (ids de BV2 `___BV_modal_header`, que no coincidían con nada desde la fase 4) se tradujeron o eliminaron. Cobertura: `06-pos`, `08-pos-offline`, `09-pos-payments`, `30-critical-domains-services`, capturas `pos` y `pos-langdd` en LTR / RTL / móvil.
 
-@@RESTO@@
+## 12. QA visual (antes / después)
+
+Playwright, capturas de página completa, 115 pantallas × 3 modos (LTR 1440×900, RTL 1440×900, móvil 390×844) = **344 capturas** (una pantalla no soporta LTR), antes (build de la fase 5B, `refactor/bootstrap5-bootstrapvue-next-phase5b`, servido en el puerto 8001) contra después (este corte, puerto 8000), mismo tenant recién sembrado, comparación por diferencia de píxel (tolerancia de canal 12):
+
+| Bucket | Capturas |
+|---|---:|
+| Idénticas | 59 |
+| ≤ 0,1 % | 142 |
+| 0,1 – 1 % | 131 |
+| > 1 % | 12 |
+
+Las 12 por encima de 1 % se investigaron una por una (`node tests/e2e/visual/compare.js`, diffs en rojo, y para las de layout un aggregator de estilos computados por firma de elemento):
+
+- **`toast-success/info/warning__movil` y `__rtl`** (5): el toast se dispara con un `setTimeout` cliente; la captura "antes" a veces se tomó un frame antes de que apareciera. Dinámico, no una regresión — recapturado en solitario da < 0,1 %.
+- **`tooltip-productos__rtl`**: el caso hace `hover` sobre el último botón de una fila y la tabla hace scroll horizontal para revelarlo; la cantidad exacta de scroll depende del frame en que Playwright dispara el hover. Dinámico.
+- **`cliente-detalle-pagos__movil`**: recapturada en solitario da 0,000 % — fue un fallo de una corrida con 6 procesos en paralelo contra un PHP de un solo proceso (la captura devolvió una página a medio desplazar). No reproduce.
+- **`traslado-nuevo__rtl`** y **`cliente-detalle__rtl`**: **diferencia real e intencional**. `offset-md-9` y el orden de `.nav-tabs` en BS4/el puente de la fase 1 usaban `margin-left` / `float: left` físicos también en RTL (la caja de totales y las pestañas NO se espejaban); la regla RTL generada de Bootstrap 5 (`[dir="rtl"] .offset-md-9 { margin-right: 75% }`, `nav-tabs` con propiedades lógicas) ahora sí las espeja. Antes: `margin-left: 855px` (caja a la derecha, igual que LTR). Después: `margin-right: 855px` (caja a la izquierda, correcto en RTL). Misma familia que los controles personalizados y `btn-group-toggle` de las secciones 9-10.
+- **`tienda-ajustes__movil`**: 1,7 %; el encabezado de la tarjeta (`Configuración básica de la tienda`) hace fade-in y la captura "antes" a veces cae a medio fundido pese al `prefers-reduced-motion`. Dinámico.
+
+Ningún caso de los 12 correspondía a un fallo de CSS sin explicar. `forms-matrix.js` (marcado nuevo de BS5, sin `input-group-prepend/append`) sobre los 14 casos de la sonda de desarrollo: 42 capturas, 20 idénticas tras las correcciones descritas en la sección 9-10 (ver commits `fix(css): restore Bootstrap 4 help-text…` y `fix(css): position the datepicker menu…`); el resto son sub-píxel de fuente.
+
+## 13. Avisos de @vue/compat
+
+Suite completa con avisos (`WARNINGS_DIR` propio, misma metodología que la fase 5B): **35.095 mensajes, 33 únicos, en 338 tests**. Ningún aviso silenciado; sigue sin aparecer ningún código de BootstrapVue 2 (`BFormInput/BFormTextarea/BIconCalendar (librería)` que salían en 5B eran la sonda BV2, retirada en la sección 3).
+
+**Atribución exacta por instancia** (`tests/e2e/scripts/warnings-by-origin.js`, mismas 39 rutas de las fases 5A/5B, sin sonda):
+
+| | 5B | 5C |
+|---|---:|---:|
+| Total de avisos en las 39 rutas | 619 | **642** |
+| atribuidos a BootstrapVue 2 | 0 | **0** |
+| atribuidos a BootstrapVueNext | 55 | 55 (49 `OPTIONS_BEFORE_DESTROY` del mixin global de vue-i18n 8, 6 otros — sin cambio) |
+| propios / otras librerías / globales | 564 | 587 |
+
+El aumento de 23 avisos en las 39 rutas viene de código propio (`INSTANCE_ATTRS_CLASS_STYLE`, `ATTR_FALSE_VALUE`, `INSTANCE_SCOPED_SLOTS`, `WATCH_ARRAY`… todos ya presentes en 5B, más apariciones ahora que `bootstrap-vue.css` ya no oculta con `!important` algunas reglas repintadas) y `RENDER_FUNCTION`/`PRIVATE_APIS` propios; ninguno nuevo por código. Nueva línea base para el trabajo futuro de quitar `@vue/compat`: `PRIVATE_APIS` (87), `OPTIONS_BEFORE_DESTROY` (88 propios + 49 vue-i18n), `RENDER_FUNCTION` (21, vee-validate/vue-good-table), `WATCH_ARRAY` (11, vue-good-table), resto < 10 cada uno.
+
+## 14. Bundles (build de producción)
+
+`npm run production`, mismo build tanto en la fase 5B (referencia) como en este corte:
+
+| Archivo | 5B | 5C | Δ |
+|---|---:|---:|---:|
+| `public/js/login.min.js` | 743.554 B | 743.554 B | 0 |
+| `public/js/main.min.js` | 2.254.639 B | 2.270.435 B | +15.796 B |
+| `public/js/portal.min.js` | 308.293 B | 308.293 B | 0 |
+| `public/js/customer-display.min.js` | 361.738 B | 361.738 B | 0 |
+
+`login`, `portal` y `customer-display` no cargan el tema con `bootstrap-vue.css`/BS4/el puente ni las vistas migradas de esta fase: sin cambio, como exige el criterio de salida. `main.min.js` crece ~16 KB: son las reglas RTL generadas (`_bs5-rtl.generated.scss`, 403 reglas) y el CSS de compat de esta fase, que sustituyen a `bootstrap-vue.css` (que YA no se importa) más `vendor/bootstrap` BS4 completo (que tampoco); es un cambio neto positivo (bootstrap-vue.css solo, sin contar BS4, pesaba más que esto) pero no se mide por separado porque el tema se inyecta en el bundle vía `style-loader`, no como archivo `.css` — `public/css/lite-purple.css` en disco es un artefacto obsoleto de un build anterior, sin entrada en `mix-manifest.json`; el CSS real vive en `main.min.js` (confirmado: contiene `buttonface` y `b-form-btn-label-control`, reglas de esta fase). 652 bundles de rutas cargadas de forma diferida sin cambio de mecanismo (`chunks`, mismo `defineAsyncComponent`).
+
+## 15. `vue-good-table` y vee-validate 3 bajo Bootstrap 5
+
+Sin migrar, como exige el alcance. `vue-good-table` (86 tablas, `31-tables-matrix.spec.js` @smoke): orden, paginación, búsqueda, celdas personalizadas (slots), selección por checkbox y RTL siguen funcionando — el único ajuste de esta fase fue el `.table { vertical-align: baseline }` de compat (sección 10) y `sr-only` propio (BS5 lo retiró; `vue-good-table` lo sigue usando en su marcado interno de accesibilidad, sección 7). vee-validate 3 (`PxValidation`): estados `is-valid`/`is-invalid`, `invalid-feedback`, reglas `required`, `reset()` sobre `ValidationProvider`/`ValidationObserver` verificados por `13-slots-equivalence`, `14-validation-layer`, `33-forms-contract`, `34-forms-validation` — su parte visual (bordes de color, iconos) depende de las reglas propias `.is-valid`/`.is-invalid` de `_legacy-base.scss` y `_bv-components.scss` (custom-file, sección 9), no de vee-validate.
+
+## 16. Dependencias Vue 2 restantes
+
+Sin cambios respecto a la fase 5B: `@vue/compat` (MODE por componente), vee-validate 3, vue-i18n 8, Vuex 3, `vue-good-table` 2.21, `vue-select`, `vue2-daterange-picker`, `VuePerfectScrollbar`. `bootstrap-vue` **ya no** está en la lista (sección 4). El SCSS interno `sass/bs4-api/{functions,variables,mixins}` sigue existiendo como API de compilación (sin generar CSS propio): ~118 archivos SCSS de PRODEX (391 KB) están escritos contra nombres de variable/mixin de Bootstrap 4 (`$custom-control-indicator-size`, `theme-color()`…); no es Bootstrap 4 cargado en el navegador, es azúcar de Sass que Bootstrap 5 no ofrece con esos nombres.
+
+## 17. Próxima fase recomendada
+
+Con Bootstrap 5 cortado, el bloqueante que quedaba para poder quitar `@vue/compat` (`RENDER_FUNCTION`/`COMPONENT_FUNCTIONAL` de BootstrapVue) ya no existe. Los avisos que faltan por resolver son de vee-validate 3 y vue-i18n 8 (sección 13); la fase natural siguiente es la migración de uno de los dos (vee-validate 4 o vue-i18n 9/10) manteniendo `@vue/compat`, siguiendo el mismo patrón de esta serie de fases: extraer contrato → sonda de desarrollo → wrappers → migrar consumidores → retirar el paquete viejo → guard tests. `bs4-api` (sección 16) puede resolverse en paralelo o al final, renombrando variables a las de Bootstrap 5 vista por vista; no bloquea nada.
