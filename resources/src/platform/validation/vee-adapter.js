@@ -23,16 +23,23 @@ const RESET_TOKEN = Symbol('pxValidationResetToken');
 // se aplican todos los valores de golpe y el formulario solo se re-renderiza una vez.
 let pendingInitialSyncs = [];
 let initialSyncFlushScheduled = false;
+// Un formulario con muchos campos (Add_product.vue, 60) hecho de una sola vez sigue siendo una ráfaga larga de
+// trabajo síncrono (cada sync son un `field.validate()` interno de vee-validate y un re-render del `<b-form-group>`
+// que lo envuelve); en un navegador bajo presión eso puede tardar segundos en vez de milisegundos. Se reparte en
+// tandas pequeñas entre `nextTick`s sucesivos: cada tanda sigue resolviendo TODA la mutación de golpe (nada de
+// recursión durante el render, la razón original del batch), pero dan más oportunidades de que el hilo respire.
+const INITIAL_SYNC_CHUNK = 12;
 function scheduleInitialSync(fn) {
   pendingInitialSyncs.push(fn);
   if (initialSyncFlushScheduled) return;
   initialSyncFlushScheduled = true;
-  nextTick(() => {
-    const batch = pendingInitialSyncs;
-    pendingInitialSyncs = [];
-    initialSyncFlushScheduled = false;
-    batch.forEach((run) => run());
-  });
+  const flushChunk = () => {
+    const chunk = pendingInitialSyncs.splice(0, INITIAL_SYNC_CHUNK);
+    chunk.forEach((run) => run());
+    if (pendingInitialSyncs.length) nextTick(flushChunk);
+    else initialSyncFlushScheduled = false;
+  };
+  nextTick(flushChunk);
 }
 
 const MESSAGES_ES = {
