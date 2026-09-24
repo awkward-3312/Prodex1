@@ -63,7 +63,10 @@ jobs:
       github.ref == 'refs/heads/refactor/bootstrap5-final-cutover' ||
       github.ref == 'refs/heads/refactor/vee-validate-4'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # 45 min alcanzaba antes de esta rama; un fallo conocido y sin resolver (ver VEE_VALIDATE_4_MIGRATION.md §6:
+    # /app/products/store-classic se queda sin memoria bajo navegación secuencial intensiva) tarda ~15 min en
+    # reportarse y CI lo reintenta una vez (`retries: isCI ? 1 : 0`), sumando ~30 min extra al total.
+    timeout-minutes: 90
     services:
       mysql:
         image: mysql:8.4
