@@ -35,7 +35,7 @@ test('compat: BootstrapVueNext (SFC con __name B…) corre en MODE 3; BootstrapV
 });
 
 test('vee-validate: detecta el campo con el contrato de Vue 3 (modelValue) y conserva el de Vue 2 (value)', async () => {
-  const { describeField } = await import('../../resources/src/platform/validation/vee-compat-provider.js');
+  const { describeField } = await import('../../resources/src/platform/validation/vee-field-bridge.js');
   const fn = () => {};
   assert.deepEqual(describeField({ type: { __name: 'BFormInput' }, props: { modelValue: 'abc', 'onUpdate:modelValue': fn } }), { value: 'abc', event: 'update:modelValue', native: false, checkable: false });
   assert.equal(describeField({ type: {}, props: { 'onUpdate:modelValue': fn } }).event, 'update:modelValue');
