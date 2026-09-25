@@ -60,7 +60,7 @@ Con la corrida completa (348 pruebas, 2 fallos por el problema de memoria de la 
 - `npm run production`: compila limpio. `login.min.js` 743.554 → 746.938 B (+3.384; las pantallas de sesión usan `validation-provider`, así que sí cargan la librería — esperado, es la 4 en vez de la 3, no un aumento de superficie). `main.min.js` 2.270.435 → 2.275.113 B (+4.678).
 - `npm ci` desde un clon limpio: correcto (con `.npmrc`, sección 7). `npm ls vee-validate @vee-validate/rules`: 4.15.1, sin ningún `vee-validate@3.x` en el árbol.
 - Smoke de producción (specs `@smoke`, sin las de sonda de desarrollo 32/33/34/36): 220 ejecutadas, 10 fallos — 8 son la dependencia de orden preexistente de `31-tables-matrix.spec.js` (documentada en la fase 5C, reproduce igual antes de esta migración), 2 son el problema de memoria de la sección 6.
-- Acciones de GitHub: pendiente confirmar dos corridas verdes consecutivas tras el último push (ver el reporte final de la conversación para el estado exacto).
+- Acciones de GitHub: **no está en verde.** Corrida `36071676110` (job `e2e`, 67 min, presupuesto subido a 90 min — ver §6): 325 pasaron, 3 fallaron, 1 omitida — los mismos tres fallos de siempre (el problema de memoria de la sección 6, dos veces, y la fixture de fecha preexistente); `route-snapshot` verde. No se declara el criterio de dos corridas verdes consecutivas cumplido: el fallo es real y reproducible, no un problema de infraestructura.
 
 ## 10. Fuera de alcance (sin tocar)
 
