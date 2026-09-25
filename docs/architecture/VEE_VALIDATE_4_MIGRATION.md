@@ -37,11 +37,61 @@ Ninguno estaba en el contrato v3 documentado; los cuatro aparecieron al ejercita
 
 ## 5. Formularios y pantallas verificados
 
-`14-validation-layer.spec.js` y `34-forms-validation.spec.js` (los mismos specs congelados en el paso 2) pasan íntegros contra el bundle de producción. `33-forms-contract.spec.js` (grabado de BootstrapVue 2, 53 casos) pasa salvo el caso `datepicker: abierto` — una fecha "(Today)" grabada en un día distinto al de ejecución, deriva del fixture ajena a la validación. `36-bootstrap5-cutover.spec.js` (BS4 retirado, hoja BS5, utilidades) sin regresión. Las 65 pantallas con alias legacy y las ~285 restantes migradas comparten el mismo `installValidation()`, sin distinción de código entre ellas.
+`14-validation-layer.spec.js` y `34-forms-validation.spec.js` (los mismos specs congelados en el paso 2) pasan íntegros contra el bundle de producción (16/16). `33-forms-contract.spec.js` (grabado de BootstrapVue 2, 53 casos) pasa salvo el caso `datepicker: abierto` — una fecha "(Today)" grabada en un día distinto al de ejecución, deriva del fixture ajena a la validación y a esta fase (preexistente, ver §9). `36-bootstrap5-cutover.spec.js` (BS4 retirado, hoja BS5, utilidades) sin regresión. Las 65 pantallas con alias legacy y las ~285 restantes migradas comparten el mismo `installValidation()`, sin distinción de código entre ellas.
 
-## 6. Rendimiento en formularios grandes (seguimiento pendiente)
+## 6. Colapso de memoria bajo navegación secuencial intensiva — RESUELTO
 
-`Add_product.vue` (60 campos) carga en ~150–200 ms de forma aislada (navegación directa, contexto de navegador nuevo) sin ningún error — confirmado repetidamente. Bajo la prueba E2E `15-slot-converted-pages.spec.js` (83 rutas navegadas en secuencia dentro de la MISMA pestaña) y `29-modals-matrix.spec.js` (patrón similar), esa misma ruta hace que la pestaña se quede sin memoria y la página colapse (`page.goto: Page crashed` / `Test timeout of 180000ms exceeded`) — un patrón que **no** reproduce en uso aislado ni con un puñado de navegaciones previas (verificado con 5 navegaciones seguidas: sigue en ~1,4 s). Se aplicó una mitigación (repartir el sync inicial de todos los campos en tandas de 12 entre varios `nextTick` en vez de un solo lote síncrono; ver bug 3 arriba) que bajó el caso aislado lento de 30 s a 1,4 s, pero **no elimina el colapso** bajo la prueba completa de 83 navegaciones seguidas. Sigue el único fallo real conocido de esta fase — no bloquea el uso normal de la pantalla, pero queda como seguimiento: perfilar memoria de Chrome a través de ~80 navegaciones completas seguidas para aislar si el origen es el conteo de campos de esta vista en particular, la propia prueba (patrón de estrés poco realista) o un problema más general de esta versión de Bootstrap/BootstrapVueNext bajo presión de memoria.
+### Causa raíz
+
+`bindField()` en `vee-adapter.js` tenía DOS rutas de escritura del valor de un campo: la del sync inicial (ya diferida a `nextTick` desde el bug 3 de §4) y la de **estado estable** (cambios posteriores al montaje, detectados en cada pasada de `processVNodes`). La segunda escribía `field.value.value = newValue` de forma **síncrona, dentro del propio render de `<PxValidationObserver>`**:
+
+```js
+// ANTES (bug):
+if (mounted) {
+  onFieldValue(described.value, false);   // escribe formValues YA, durante el render
+}
+```
+
+`field.value.value` tiene un setter de vee-validate 4 que escribe directamente en `formValues` — una dependencia reactiva que el observer **ya leyó** al empezar a renderizar, antes de invocar el slot que (a través de cada provider) llama a `bindField`. Mutar esa dependencia desde dentro del propio render reprograma el efecto de render del observer sobre sí mismo. Vue lo corta a los ~100 ciclos con `"Maximum recursive updates exceeded in component <PxValidationObserver>"`.
+
+En navegación aislada (una sola carga de `/app/products/store-classic`) esto no se veía: rara vez hay un campo cuyo valor "vivo" difiera del ya almacenado en la primera pasada tras el montaje. Bajo navegación secuencial intensiva (83 rutas en la misma pestaña, `15-slot-converted-pages.spec.js`/`29-modals-matrix.spec.js`), el campo `category` de `Add_product.vue` (un input oculto sentinel `product.category_id` compartiendo slot con un `<v-select multiple>` real no atado a la validación) entraba en esta ruta cientos de veces por segundo, saturando el hilo principal hasta el colapso (`Page crashed` / timeout) — no una fuga de memoria acumulada entre navegaciones, sino un patrón de mutar-durante-el-propio-render que Vue detecta y penaliza con reintentos masivos de render antes de cortar.
+
+### Fix aplicado
+
+`resources/src/platform/validation/vee-adapter.js`: la ruta de estado-estable ahora encola la escritura por el mismo mecanismo de batching que ya diferían los syncs iniciales (renombrado `scheduleInitialSync` → `scheduleFormWrite`, ya que ahora sirve a ambos casos), con una guarda `deepEqual` previa para no encolar jobs sin cambio real:
+
+```js
+if (mounted) {
+  if (!deepEqual(field.value.value, described.value)) {
+    scheduleFormWrite(() => onFieldValue(described.value, false));
+  }
+}
+```
+
+Ninguna escritura de `formValues` ocurre ya de forma síncrona dentro del render del observer, ni en el sync inicial ni en cambios posteriores.
+
+### Auditoría de retenciones (§3/§7 del encargo)
+
+- `vee-field-bridge.js` (sospechoso prioritario): completamente stateless — sin Maps/Sets de módulo, sin caché de VNodes, sin timers propios; `describeField`/`processVNodes`/`addListener` operan solo sobre el VNode/lista recibidos por parámetro. El único cierre creado en cada render (`wrappedSlot`) vive solo en el árbol de VNodes transitorio que Vue ya gestiona — no hay retención más allá de eso. Confirmado limpio, nunca fue el origen de la fuga.
+- `vee-adapter.js`: la única estructura módulo-nivel es `pendingFormWrites` (array de `{ fn }`), con cancelación explícita en `onBeforeUnmount` del provider (`cancelPendingInitialSync()`, pone `fn = null`) — ningún VNode ni instancia de componente se guarda ahí, solo closures que se anulan al desmontar antes de su turno. `provide`/`inject` (token de reset) usa el propio mecanismo de Vue, limpiado por el framework al desmontar. Ningún `useField`/`useForm` se crea más de una vez por componente. `keepValueOnUnmount`/`keepValues` no se usan en ningún punto (verificado, §5 del encargo).
+- Contadores dev-only (`__pxCounters`, expuestos como `window.__pxValidationCounters` solo fuera de producción): `providersMounted`/`Unmounted`, `observersMounted`/`Unmounted`, `pendingSyncJobs`, `pendingSyncJobsCancelled`. Confirmado ausente del bundle de producción (`grep -rl __pxValidationCounters public/js/` sin resultados tras `npm run production`).
+
+### Medición de memoria (§9 del encargo)
+
+CDP (`Performance.getMetrics` tras `HeapProfiler.collectGarbage` ×4), 3 ciclos de las 83 rutas de `slot-converted-routes.json`, midiendo en `/app/products/store-classic` y al final de cada ciclo:
+
+| ciclo | punto | heap JS (bytes) | nodos DOM | providers | observers | pendingSyncJobs |
+|---|---|---|---|---|---|---|
+| 0 | store-classic | 29.019.148 | 3125 | 22 | 5 | 0 |
+| 0 | fin de ciclo | 19.724.456 | 3203 | 0 | 3 | 0 |
+| 1 | store-classic | 29.091.748 | 3133 | 22 | 5 | 0 |
+| 1 | fin de ciclo | 19.713.052 | 3203 | 0 | 3 | 0 |
+| 2 | store-classic | 29.092.440 | 3133 | 22 | 5 | 0 |
+| 2 | fin de ciclo | 18.950.060 | 3189 | 0 | 3 | 0 |
+
+Heap en `store-classic` prácticamente plano entre ciclos (+72.600 B ciclo 0→1, +692 B ciclo 1→2 — no lineal, no creciente). `pendingSyncJobs` en 0 en cada medición: sin jobs colgados. Cada `page.goto` en este entorno es una navegación real de Playwright (recarga completa), por eso el conteo de providers es idéntico en cada ciclo en vez de acumularse — el criterio real (§9 del encargo) es que no colapse y el heap no crezca de forma acumulada, y ambos se cumplen: `CRASHED: false`, 3/3 ciclos completos.
+
+Reproducción directa con los specs reales (misma pestaña, 83 navegaciones seguidas): `15-slot-converted-pages.spec.js` — verde, 4,9 min (antes: colapso). `29-modals-matrix.spec.js` (39 casos, incluye `Add_product` con 5 modales) — verde, 39/39, `store-classic` en 14,9–17,2 s por corrida.
 
 ## 7. vee-validate 3 retirado
 
@@ -49,18 +99,21 @@ Ninguno estaba en el contrato v3 documentado; los cuatro aparecieron al ejercita
 
 ## 8. Avisos de @vue/compat
 
-Con la corrida completa (348 pruebas, 2 fallos por el problema de memoria de la sección 6 que cortan esas pruebas antes de terminar de capturar avisos): **28.043 mensajes, 32 únicos, en 319 tests** con avisos capturados. `vee-validate` ya no aparece como origen `RENDER_FUNCTION`/`PRIVATE_APIS` vía la clase `ValidationProvider` de la 3 (su render ahora es un componente de composición normal de Vue 3, sin necesitar el modo de compatibilidad de render de Vue 2 que sí usaba `extends`). Comparación exacta por instancia (atribución `warnings-by-origin.js`, sin sonda) quedó pendiente de esta corrida por tiempo — el número total baja de forma consistente con quitar una clase que forzaba `RENDER_FUNCTION`+`PRIVATE_APIS` en cada campo.
+Con el fix de la sección 6, la corrida completa ya no corta pruebas a mitad por el colapso de memoria: **30.680 mensajes, 31 únicos, en 338 tests** con avisos capturados (antes del fix: 28.043 mensajes, 32 únicos, en 319 tests — 19 tests menos porque el colapso cortaba esas pruebas antes de terminar de capturar avisos). `vee-validate` ya no aparece como origen `RENDER_FUNCTION`/`PRIVATE_APIS`: esos orígenes ahora se atribuyen solo a `VuePerfectScrollbar`/`VueGoodTable`/`VSelect`/`LucideIcon`, ninguno a la clase `ValidationProvider` de la 3 (eliminada, sección 7).
+
+Un aviso nuevo, no presente con la 3: `injection "Symbol(vee-validate-form-context)" not found` (170 ocurrencias, origen `PxValidationProvider`, riesgo "comportamiento"). Es el propio `useFormContext()` de vee-validate 4 avisando cuando un provider se usa sin un observer que lo envuelva — un patrón que el contrato de PRODEX sí soporta (providers independientes). Vee-validate 3 no emitía este aviso porque su `inject` interno no pasaba por el mecanismo de warning de Vue. Benigno, sin efecto funcional (confirmado: `runValidate`/`reset`/`setErrors` funcionan igual con o sin observer envolvente, specs de §5 y §9). Queda anotado para una limpieza cosmética futura (pasar `{ optional: true }` o silenciarlo explícitamente donde el patrón es intencional), fuera del alcance de esta fase.
 
 ## 9. Validación
 
 - `npm run test:frontend`: 135/0 (131 previos + 4 nuevos de esta fase).
-- PHP `Unit` 1328, `Feature` 934+3 skipped (sin cambio frente a la línea base).
+- PHP `Unit` 1328 OK (solo deprecaciones, sin fallos). `Feature` 934 OK + 3 skipped (sin cambio frente a la línea base).
 - `npm run test:e2e:routes`: 474 rutas tenant / 20 portal, sin cambio.
-- E2E completo (`E2E_RESET=1`): 348 ejecutadas, 3 fallos — 1 preexistente (fixture de fecha, sección 5), 2 por el problema de memoria de la sección 6. El resto, incluidos los dos specs dedicados a validación y el de contrato grabado de BV2, verde.
-- `npm run production`: compila limpio. `login.min.js` 743.554 → 746.938 B (+3.384; las pantallas de sesión usan `validation-provider`, así que sí cargan la librería — esperado, es la 4 en vez de la 3, no un aumento de superficie). `main.min.js` 2.270.435 → 2.275.113 B (+4.678).
-- `npm ci` desde un clon limpio: correcto (con `.npmrc`, sección 7). `npm ls vee-validate @vee-validate/rules`: 4.15.1, sin ningún `vee-validate@3.x` en el árbol.
-- Smoke de producción (specs `@smoke`, sin las de sonda de desarrollo 32/33/34/36): 220 ejecutadas, 10 fallos — 8 son la dependencia de orden preexistente de `31-tables-matrix.spec.js` (documentada en la fase 5C, reproduce igual antes de esta migración), 2 son el problema de memoria de la sección 6.
-- Acciones de GitHub: **no está en verde.** Corrida `36071676110` (job `e2e`, 67 min, presupuesto subido a 90 min — ver §6): 325 pasaron, 3 fallaron, 1 omitida — los mismos tres fallos de siempre (el problema de memoria de la sección 6, dos veces, y la fixture de fecha preexistente); `route-snapshot` verde. No se declara el criterio de dos corridas verdes consecutivas cumplido: el fallo es real y reproducible, no un problema de infraestructura.
+- E2E completo, limpio (sin builds concurrentes): 348 ejecutadas, **346 pasaron**, 1 fallo (preexistente, fixture de fecha del datepicker, sección 5 — ajeno a esta fase), 1 omitida (preexistente). **0 fallos por memoria.**
+- `E2E_RESET=1` (tenant/contenedor recreados desde cero) + smoke (`--grep @smoke`, 334 casos): **332 pasaron**, el mismo único fallo preexistente de fecha, 1 omitida. Mismo resultado que la corrida limpia — reproducible en un entorno recién provisionado.
+- `npm run production`: compila limpio (8,9 min). `__pxValidationCounters` (instrumentación dev/test de la sección 6) confirmado ausente del bundle (`grep -rl __pxValidationCounters public/js/` sin resultados).
+- `npm ci` desde un clon limpio: correcto (con `.npmrc`, sección 7). `npm ls vee-validate @vee-validate/rules`: 4.15.1, sin ningún `vee-validate@3.x` en el árbol, sin conflictos de peer dependency sin resolver.
+- Reproducción directa del colapso (`15-slot-converted-pages.spec.js`, `29-modals-matrix.spec.js`): ambos verdes — ver tabla de memoria y tiempos en la sección 6.
+- CI: `timeout-minutes` restaurado de 90 a 45 en `.github/workflows/frontend-safety-net.yml` (la corrida local completa tarda ~31 min sin el colapso; 45 min deja margen razonable, igual que antes de esta rama).
 
 ## 10. Fuera de alcance (sin tocar)
 
@@ -68,4 +121,6 @@ vue-i18n 8, Vuex 3, vue-good-table, vue-select, vue2-daterange-picker, VuePerfec
 
 ## 11. Próxima fase recomendada
 
-Con vee-validate ya en la 4 (composición de Vue 3, sin `extends`), el bloqueante de validación para retirar `@vue/compat` queda resuelto; el trabajo pendiente de la fase anterior (Bootstrap 5) apuntaba a vue-i18n 8 o vee-validate 3 como los dos bloqueantes restantes — con este quitado, sigue vue-i18n 8. Antes de esa migración, conviene cerrar el seguimiento de rendimiento de la sección 6 (perfilar la causa exacta del colapso de memoria bajo navegación secuencial intensiva).
+Con vee-validate ya en la 4 (composición de Vue 3, sin `extends`) y el colapso de memoria de la sección 6 resuelto, esta fase queda cerrada sin seguimientos pendientes propios. El bloqueante de validación para retirar `@vue/compat` queda resuelto; el trabajo pendiente de la fase anterior (Bootstrap 5) apuntaba a vue-i18n 8 o vee-validate 3 como los dos bloqueantes restantes — con este quitado, sigue **vue-i18n 8** como próxima migración.
+
+Pendientes menores fuera del alcance de esta fase (no bloquean el cierre): la limpieza cosmética del aviso `injection "Symbol(vee-validate-form-context)" not found` (sección 8) y la fixture de fecha del datepicker en `33-forms-contract.spec.js` (preexistente, ajena a vee-validate — el fixture `forms-bv2-contract.json` graba el HTML de un día concreto marcado "(Today)"; se desalinea según pasa el calendario).

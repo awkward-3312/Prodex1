@@ -63,10 +63,10 @@ jobs:
       github.ref == 'refs/heads/refactor/bootstrap5-final-cutover' ||
       github.ref == 'refs/heads/refactor/vee-validate-4'
     runs-on: ubuntu-latest
-    # 45 min alcanzaba antes de esta rama; un fallo conocido y sin resolver (ver VEE_VALIDATE_4_MIGRATION.md §6:
-    # /app/products/store-classic se queda sin memoria bajo navegación secuencial intensiva) tarda ~15 min en
-    # reportarse y CI lo reintenta una vez (`retries: isCI ? 1 : 0`), sumando ~30 min extra al total.
-    timeout-minutes: 90
+    # El fallo de memoria de esta rama (ver VEE_VALIDATE_4_MIGRATION.md §6: `/app/products/store-classic` se
+    # quedaba sin responder bajo navegación secuencial intensiva) está resuelto — causa raíz y fix documentados
+    # ahí. Restaurado a 45 min: la suite completa local tarda ~31 min sin el fallo.
+    timeout-minutes: 45
     services:
       mysql:
         image: mysql:8.4

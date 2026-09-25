@@ -6,7 +6,7 @@
 // marcado (`<b-form-input v-model="x">` dentro del slot por defecto), así que aquí se reimplementa el mismo contrato
 // observable de la versión 3 sobre las funciones de composición de la 4 (`useField`, `useForm`), reutilizando la
 // detección de campos por VNode de `./vee-field-bridge.js` (independiente de la librería).
-import { defineComponent, computed, h, provide, inject, ref, nextTick } from 'vue';
+import { defineComponent, computed, h, provide, inject, ref, nextTick, onBeforeUnmount } from 'vue';
 import { useField, useForm, useFormContext, defineRule, configure } from 'vee-validate';
 import * as veeRules from '@vee-validate/rules';
 import { debounce, deepEqual, processVNodes, addListener, flatten } from './vee-field-bridge.js';
@@ -15,32 +15,57 @@ import { debounce, deepEqual, processVNodes, addListener, flatten } from './vee-
 // vee-validate 3). Sirve para descartar una validación que ya estaba en curso cuando llegó el reset (ver más abajo).
 const RESET_TOKEN = Symbol('pxValidationResetToken');
 
-// Sincroniza el valor inicial de TODOS los providers que monten en el mismo tick en un solo `nextTick`, no uno por
-// campo. Cada sync inicial muta `formValues` (una dependencia de `form.meta`); si cada provider programa su propio
-// `nextTick`, un formulario con muchos campos (60+ en Add_product.vue) encadena esa cantidad de re-renders
-// COMPLETOS del formulario uno detrás de otro (cada `nextTick` ve el DOM que dejó el anterior) y la página se queda
-// sin responder minutos enteros re-diffing listas largas (`patchKeyedChildren`) una y otra vez. Con un solo flush
-// se aplican todos los valores de golpe y el formulario solo se re-renderiza una vez.
-let pendingInitialSyncs = [];
-let initialSyncFlushScheduled = false;
+// Difiere CUALQUIER escritura en `formValues` (inicial O de estado-estable, tras el mount) a un `nextTick` en vez
+// de escribir de forma síncrona. `formValues` es dependencia de `form.meta`; escribirla de forma síncrona DENTRO
+// del propio render de `<PxValidationObserver>` (p.ej. porque `processVNodes` detectó un cambio de valor mientras
+// recorre los VNodes) muta una dependencia que el observer ya leyó en ese mismo render — dispara el propio guard de
+// Vue de "Maximum recursive updates exceeded" (mutar tu propia dependencia reactiva durante tu render). Encolar
+// TODAS las escrituras (mount inicial Y estado-estable) rompe ese ciclo síncrono-durante-render.
+//
+// Además, batchear varios providers en un solo `nextTick` (no uno por campo) evita que un formulario con muchos
+// campos (60+ en Add_product.vue) encadene esa cantidad de re-renders COMPLETOS del formulario uno detrás de otro
+// (cada `nextTick` ve el DOM que dejó el anterior) y se quede sin responder minutos enteros re-diffing listas
+// largas (`patchKeyedChildren`) una y otra vez. Con un solo flush se aplican todos los valores de golpe.
+let pendingFormWrites = [];
+let formWriteFlushScheduled = false;
 // Un formulario con muchos campos (Add_product.vue, 60) hecho de una sola vez sigue siendo una ráfaga larga de
 // trabajo síncrono (cada sync son un `field.validate()` interno de vee-validate y un re-render del `<b-form-group>`
 // que lo envuelve); en un navegador bajo presión eso puede tardar segundos en vez de milisegundos. Se reparte en
 // tandas pequeñas entre `nextTick`s sucesivos: cada tanda sigue resolviendo TODA la mutación de golpe (nada de
 // recursión durante el render, la razón original del batch), pero dan más oportunidades de que el hilo respire.
-const INITIAL_SYNC_CHUNK = 12;
-function scheduleInitialSync(fn) {
-  pendingInitialSyncs.push(fn);
-  if (initialSyncFlushScheduled) return;
-  initialSyncFlushScheduled = true;
-  const flushChunk = () => {
-    const chunk = pendingInitialSyncs.splice(0, INITIAL_SYNC_CHUNK);
-    chunk.forEach((run) => run());
-    if (pendingInitialSyncs.length) nextTick(flushChunk);
-    else initialSyncFlushScheduled = false;
-  };
-  nextTick(flushChunk);
+//
+// Cada entrada es un objeto `{ fn }`, no la función directa: así `cancelPendingInitialSync` (llamado en
+// `onBeforeUnmount`, ver el provider) puede anular el job poniendo `fn = null` sin tener que recorrer/mutar el
+// array a mitad de un `splice` — si el componente se desmonta ANTES de que le toque su tanda, no queda una closure
+// viva con `field`/`enclosingForm` de un componente ya destruido esperando su turno.
+const FORM_WRITE_CHUNK = 12;
+function scheduleFormWrite(fn) {
+  const entry = { fn };
+  pendingFormWrites.push(entry);
+  __pxCounters.pendingSyncJobs = pendingFormWrites.length;
+  if (!formWriteFlushScheduled) {
+    formWriteFlushScheduled = true;
+    const flushChunk = () => {
+      const chunk = pendingFormWrites.splice(0, FORM_WRITE_CHUNK);
+      chunk.forEach((e) => e.fn && e.fn());
+      __pxCounters.pendingSyncJobs = pendingFormWrites.length;
+      if (pendingFormWrites.length) nextTick(flushChunk);
+      else formWriteFlushScheduled = false;
+    };
+    nextTick(flushChunk);
+  }
+  return () => { entry.fn = null; __pxCounters.pendingSyncJobsCancelled += 1; };
 }
+
+// Contadores solo para diagnóstico (dev/E2E): sin esto no hay forma de comprobar desde fuera si un provider/observer
+// que se desmontó de verdad se limpió, o de distinguir "el heap creció" de "el heap creció Y ADEMÁS hay N providers
+// vivos que no deberían estarlo". No se usan para nada del comportamiento — leerlos o no da exactamente el mismo
+// resultado. Expuestos en `window.__pxValidationCounters` solo bajo `APP_ENV=e2e` (ver `installValidation`).
+const __pxCounters = {
+  providersMounted: 0, providersUnmounted: 0,
+  observersMounted: 0, observersUnmounted: 0,
+  pendingSyncJobs: 0, pendingSyncJobsCancelled: 0,
+};
 
 const MESSAGES_ES = {
   required: 'Este campo es obligatorio',
@@ -118,6 +143,7 @@ export const PxValidationProvider = defineComponent({
     slim: { type: Boolean, default: false },
   },
   setup(props, { slots, expose }) {
+    __pxCounters.providersMounted += 1;
     const anonId = `field_${++uid}`;
     const fieldName = computed(() => props.vid || props.name || anonId);
     const rulesRef = computed(() => props.rules);
@@ -133,10 +159,20 @@ export const PxValidationProvider = defineComponent({
     let mounted = false;
     let initialSyncPending = false;
     let initialFieldValue;
+    let cancelPendingInitialSync = null;
     const observerResetToken = inject(RESET_TOKEN, null);
     const enclosingForm = useFormContext();
     let ownOpToken = 0;
     let lastManualErrors = null; // último `setErrors(...)` recibido, para reaplicarlo si una validación tardía lo pisa
+
+    // Si el componente se desmonta con su sync inicial aún en la cola (formulario grande, navegación rápida antes de
+    // que le toque su tanda), sin esto la closure de `scheduleFormWrite` queda viva en el array MÓDULO-nivel hasta
+    // que le toque el turno, reteniendo `field`/`enclosingForm`/`fieldName` de un componente ya destruido. `useField`
+    // se limpia solo de la FORM (vee-validate llama a su propio `onBeforeUnmount`), pero ese job pendiente es nuestro.
+    onBeforeUnmount(() => {
+      __pxCounters.providersUnmounted += 1;
+      if (cancelPendingInitialSync) cancelPendingInitialSync();
+    });
 
     // Si el observer (o el propio provider) resetea el formulario, o alguien llama a `setErrors`/`validate` de forma
     // manual, MIENTRAS esta validación automática está en curso (promesa aún sin resolver), el resultado llega tarde
@@ -158,7 +194,27 @@ export const PxValidationProvider = defineComponent({
     // comparación es contra `field.value.value` (no una copia propia): así un reset disparado por el observer —
     // que ya deja `field.value.value` en el valor inicial antes de que el control vuelva a renderizar — no se lee
     // como "el usuario cambió el campo" y no reabre el mensaje de error que el propio reset acaba de limpiar.
+    let oscillationCount = 0;
+    let oscillationWarned = false;
     function onFieldValue(newValue, isInitial) {
+      // Guarda contra una oscilación real del valor detectado (no un `deepEqual` roto: valores genuinamente
+      // distintos en cada pasada — visto en Add_product.vue, campo "category" —, cientos de veces por segundo,
+      // alternando entre el valor real y `undefined`, sin que medie ninguna interacción, `bindField`, `onInput`/
+      // `onBlur` ni `observer.reset()`; la causa exacta no se aisló — ver docs/architecture/VEE_VALIDATE_4_MIGRATION.md
+      // §6). Sin este freno el campo nunca deja de revalidar y el hilo principal se satura por completo. Se corta
+      // tras un número de cambios detectados imposible en uso normal dentro de una ráfaga; un input/blur real (que
+      // reinicia el contador) lo reactiva.
+      oscillationCount += 1;
+      if (oscillationCount > 200) {
+        if (!oscillationWarned) {
+          oscillationWarned = true;
+          if (process.env.NODE_ENV !== 'production') {
+            // eslint-disable-next-line no-console
+            console.warn(`[PxValidationProvider] "${fieldName.value}": más de 200 cambios de valor detectados sin interacción real; se deja de auto-revalidar este campo (sigue respondiendo a input/blur reales). Ver docs/architecture/VEE_VALIDATE_4_MIGRATION.md §6.`);
+          }
+        }
+        return;
+      }
       const changed = !deepEqual(field.value.value, newValue);
       // Solo se escribe cuando de verdad cambia el CONTENIDO: un array/objeto "igual" pero con otra referencia (p. ej.
       // un multi-select recalculando sus opciones en cada render) igual dispara la reactividad de vee-validate —
@@ -181,11 +237,17 @@ export const PxValidationProvider = defineComponent({
       //
       // Diferido a `nextTick`: escribir el valor de un campo del formulario (`field.value.value = x`) muta
       // `formValues`, una dependencia de `form.meta` — y el observer YA leyó `form.meta.value` al empezar A
-      // RENDERIZAR, antes de invocar el slot que (a través de cada provider) acaba llamando a `bindField`. En un
-      // formulario con muchos campos, esa mutación durante el propio render del observer lo reprograma sobre sí
-      // mismo una vez por campo y Vue lo corta como "Maximum recursive updates exceeded"; fuera del render no pasa.
+      // RENDERIZAR, antes de invocar el slot que (a través de cada provider) acaba llamando a `bindField`. Esto
+      // aplica TANTO al primer valor (el sync inicial, más abajo) COMO a cualquier cambio posterior detectado
+      // durante un render: si el campo sigue cambiando en cada pasada (un valor "vivo" que difiere del que ya
+      // tenemos — un multi-select recalculando sus opciones cuenta, aunque el CONTENIDO real no cambie, porque la
+      // referencia sí), escribirlo SÍNCRONAMENTE aquí reprograma al observer sobre sí mismo una y otra vez y Vue
+      // lo corta como "Maximum recursive updates exceeded". Los cambios que llegan por un evento real del DOM
+      // (`onInput`/`onBlur`, abajo) no tienen este problema: ocurren FUERA de cualquier render, se escriben ya.
       if (mounted) {
-        onFieldValue(described.value, false);
+        if (!deepEqual(field.value.value, described.value)) {
+          scheduleFormWrite(() => onFieldValue(described.value, false));
+        }
       } else if (!initialSyncPending) {
         // Solo el primer render de todos los que puedan llegar antes de que corra el `nextTick` programa el sync
         // inicial; `mounted` no se marca hasta que de verdad corre — así un render intermedio (p. ej. disparado por
@@ -193,18 +255,26 @@ export const PxValidationProvider = defineComponent({
         // aún no se ha escrito) como si fuera un cambio del usuario.
         initialSyncPending = true;
         initialFieldValue = described.value;
-        scheduleInitialSync(() => {
+        cancelPendingInitialSync = scheduleFormWrite(() => {
           mounted = true;
           initialSyncPending = false;
+          cancelPendingInitialSync = null;
           onFieldValue(initialFieldValue, true);
-          if (enclosingForm) enclosingForm.stageInitialValue(fieldName.value, initialFieldValue, true);
+          // `stageInitialValue` (probado antes) escribe TAMBIÉN el valor VIVO del campo (`setInPath(formValues,
+          // path, value)`), no solo "a qué volver": pisa lo que este mismo campo (o cualquier otro, ver más abajo)
+          // ya haya escrito después de este punto. `setFieldInitialValue` es la versión que SOLO toca el valor de
+          // reset (`initialValues`/`originalInitialValues`), que es lo único que se necesitaba — arregla el mismo
+          // "reset() vuelve a undefined" sin la escritura de más que causaba la reescritura fantasma del §3.
+          if (enclosingForm) enclosingForm.setFieldInitialValue(fieldName.value, initialFieldValue, true);
         });
       }
       const onInput = (e) => {
+        // Interacción real del usuario: reinicia el freno de oscilación de `onFieldValue` (arriba) para este campo.
+        oscillationCount = 0;
         const raw = e && typeof e === 'object' && 'target' in e ? (isCheckable ? e.target.checked : e.target.value) : e;
         onFieldValue(raw);
       };
-      const onBlur = () => field.handleBlur();
+      const onBlur = () => { oscillationCount = 0; field.handleBlur(); };
       addListener(vnode, described.event, onInput);
       addListener(vnode, 'blur', onBlur);
     }
@@ -280,6 +350,8 @@ export const PxValidationObserver = defineComponent({
     slim: { type: Boolean, default: false },
   },
   setup(props, { slots, expose }) {
+    __pxCounters.observersMounted += 1;
+    onBeforeUnmount(() => { __pxCounters.observersUnmounted += 1; });
     const form = useForm();
     let validated = false;
     const resetToken = ref(0);
@@ -334,6 +406,12 @@ export const PxValidationObserver = defineComponent({
  * (POS, caja, pagos, inventario crítico, facturación).
  */
 export function installValidation(Vue, { legacyAliases = true, extraRules = {} } = {}) {
+  // Solo fuera de producción (webpack elimina esta rama del bundle de prod vía `process.env.NODE_ENV`): contadores
+  // de diagnóstico para comprobar desde un test que un provider/observer desmontado de verdad se limpió, sin tener
+  // que adivinarlo a partir del tamaño del heap. Nunca se usan para nada del comportamiento de validación.
+  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+    window.__pxValidationCounters = __pxCounters;
+  }
   Object.keys(veeRules).forEach((rule) => {
     if (typeof veeRules[rule] === 'function') defineRule(rule, veeRules[rule]);
   });
