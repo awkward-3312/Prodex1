@@ -56,6 +56,26 @@ const contract = require('../data/forms-bv2-contract.json');
 const BS5_CLASS = { 'no-gutters': 'g-0', 'sr-only': 'visually-hidden', 'font-weight-bold': 'fw-bold', 'dropdown-menu-right': 'dropdown-menu-end' };
 const bs5 = (html) => (html == null ? html : html.replace(/class="([^"]*)"/g, (m, c) => `class="${c.split(/\s+/).filter(Boolean).map((t) => BS5_CLASS[t] || t).sort().join(' ')}"`));
 
+// El grid del datepicker marca la celda de "hoy" según la fecha real del reloj del sistema (BootstrapVueNext calcula
+// esto con `new Date()`, no con una prop): el fixture BV2 (grabado un día fijo) trae la marca en ESA celda, y una
+// corrida en otro día la trae en otra distinta. BootstrapVue 2 ya no existe (ver cabecera del archivo), así que el
+// fixture no se puede regrabar contra la librería original para "actualizarlo" al día de hoy — solo se puede
+// normalizar el dato no determinista antes de comparar. Dos cosas dependen de qué día sea "hoy", en cualquier lado
+// de la comparación (grabado o en vivo), y solo esas dos:
+//   1. El sufijo " (Today)" en el `aria-label` de esa celda (agregado por BootstrapVueNext solo a la celda de hoy).
+//   2. Las clases de su `<span>`: `btn-outline-primary` sin `text-dark` en vez de `btn-outline-light … text-dark`
+//      (el mismo componente cambia la variante visual de "hoy" respecto a un día normal).
+// Ninguna otra celda, atributo, clase, texto de fecha/día de semana, estructura del grid, navegación ni pie cambia
+// con la fecha — la fecha seleccionada ("2026-09-15") es fija por dato del escenario, no por reloj. Se normaliza
+// solo esa marca, dondequiera que caiga, a una forma canónica (día "hoy" ⇒ tratado como un día normal), igual en
+// ambos lados de la comparación — no se afloja nada más del contrato.
+function normToday(html) {
+  if (html == null) return html;
+  return html
+    .replace(/ \(Today\)"/g, '"')
+    .replace(/class="border-0 btn btn-outline-primary fw-bold rounded-circle text-nowrap"/g, 'class="border-0 btn btn-outline-light fw-bold rounded-circle text-dark text-nowrap"');
+}
+
 
 // ---- archivos / fechas ----
 const fs2 = require('fs');
@@ -176,11 +196,14 @@ test.describe('Contrato de formularios (grabado de BootstrapVue 2) @smoke', () =
       expect(bvn.model, 'modelo final').toEqual(bv2.model);
       expect(bvn.modelType, 'tipo del modelo').toBe(bv2.modelType);
       expect(bvn.dom, 'estado del DOM').toEqual(bv2.dom);
-      if (sc.html && bvn.html !== bs5(bv2.html)) {
-        const want = bs5(bv2.html);
-        let i = 0;
-        while (i < want.length && want[i] === bvn.html[i]) i += 1;
-        throw new Error(`marcado distinto en ${i}:\n  grabado: …${want.slice(Math.max(0, i - 120), i + 260)}\n  actual:  …${bvn.html.slice(Math.max(0, i - 120), i + 260)}`);
+      if (sc.html) {
+        const want = normToday(bs5(bv2.html));
+        const got = normToday(bvn.html);
+        if (got !== want) {
+          let i = 0;
+          while (i < want.length && want[i] === got[i]) i += 1;
+          throw new Error(`marcado distinto en ${i}:\n  grabado: …${want.slice(Math.max(0, i - 120), i + 260)}\n  actual:  …${got.slice(Math.max(0, i - 120), i + 260)}`);
+        }
       }
     });
   }
