@@ -1,8 +1,6 @@
-// `v-append-to-body` de vue-select con hooks de Vue 3 (mounted/unmounted). La librería trae su propia directiva
-// con hooks de Vue 2 (`inserted`/`unbind`, `vnode.context`), que solo funcionaban con `CUSTOM_DIR` de @vue/compat. NO se parchea `node_modules`:
-// `platform/compat/vue-select.js` extiende el componente de la librería y sustituye SOLO esta
-// directiva. La lógica es la de la librería (mover el desplegable a <body> y posicionarlo con `calculatePosition`; deshacerlo al desmontar).
-// `binding.instance` es la instancia del componente de la librería (lo que era `vnode.context`).
+// `v-append-to-body` con hooks de Vue 3 (mounted/unmounted) para el desplegable de `components/VSelect.vue`
+// (mueve el nodo a <body> y lo posiciona con `calculatePosition`; lo deshace al desmontar).
+// `binding.instance` es la instancia del componente que usa la directiva (equivalente al `vnode.context` de Vue 2).
 // vue2-daterange-picker (que también usaba esta directiva) fue reemplazado por `components/DateRangePicker.vue`
 // sobre `@vuepic/vue-datepicker`, que se posiciona solo — su equivalente de esta directiva ya no hace falta.
 
@@ -21,7 +19,7 @@ function restore(el, context) {
   if (el.parentNode) el.parentNode.removeChild(el);
 }
 
-/** vue-select: `{ width, left, top }` como cadenas con px. */
+/** `{ width, left, top }` como cadenas con px. */
 export const vSelectAppendToBody = {
   mounted: (el, binding) => move(el, binding.instance, (r, sx, sy) => ({ width: `${r.width}px`, left: `${sx + r.left}px`, top: `${sy + r.top + r.height}px` })),
   unmounted: (el, binding) => restore(el, binding.instance),

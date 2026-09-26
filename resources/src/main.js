@@ -125,9 +125,8 @@ axios.interceptors.response.use(response => { decrementPending(response && respo
 
 installSarInvoiceBridge(window.axios);
 installPosOperationalLocationBridge(window.axios);
-import vSelect from './platform/compat/vue-select.js';
+import vSelect from './components/VSelect.vue';
 Vue.component('v-select', vSelect);
-import 'vue-select/dist/vue-select.css';
 // Bus de eventos global: `window.Fire` es un adaptador temporal de compatibilidad sobre el bus de plataforma (ya no es una
 // instancia de Vue). El código nuevo importa `events` desde "@/platform".
 window.Fire = events;

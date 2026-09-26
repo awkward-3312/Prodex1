@@ -98,15 +98,20 @@ test('servicios de plataforma: ningún archivo propio usa $bvToast / $bvModal (n
   assert.deepEqual(offenders, []);
 });
 
-test('CUSTOM_DIR eliminado: vue-select usa un wrapper con directivas de Vue 3 (sin parchear node_modules)', () => {
+test('CUSTOM_DIR eliminado: v-select es un componente Vue 3 nativo de PRODEX con directivas de Vue 3 (sin parchear node_modules, sin el paquete vue-select)', () => {
   const dir = read('platform/directives/append-to-body.js');
   assert.match(dir, /mounted:/);
   assert.match(dir, /unmounted:/);
   assert.doesNotMatch(dir.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n'), /\b(inserted|unbind|componentUpdated)\b/);
-  assert.match(read('platform/compat/vue-select.js'), /appendToBody:\s*vSelectAppendToBody/);
-  assert.match(read('main.js'), /import vSelect from '\.\/platform\/compat\/vue-select\.js'/);
+  assert.match(read('components/VSelect.vue'), /appendToBody:\s*vSelectAppendToBody/);
+  assert.match(read('main.js'), /import vSelect from '\.\/components\/VSelect\.vue'/);
+  assert.ok(!fs.existsSync(path.join(SRC, 'platform/compat/vue-select.js')));
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.ok(!pkg.dependencies || !pkg.dependencies['vue-select']);
+  assert.ok(!pkg.devDependencies || !pkg.devDependencies['vue-select']);
   // vue2-daterange-picker fue reemplazado por components/DateRangePicker.vue sobre @vuepic/vue-datepicker (nativo
-  // Vue 3, se posiciona solo): sin `platform/compat/daterange-picker.js`, sin alias de webpack, sin `daterangeAppendToBody`.
+  // Vue 3, se posiciona solo): sin `platform/compat/daterange-picker.js`, sin alias de webpack, sin la directiva
+  // de anclado equivalente (la de `<v-select>` de arriba sigue haciendo falta para el desplegable de VSelect.vue).
   assert.ok(!fs.existsSync(path.join(SRC, 'platform/compat/daterange-picker.js')));
   assert.doesNotMatch(dir, /daterangeAppendToBody/);
   assert.doesNotMatch(fs.readFileSync(path.join(ROOT, 'webpack.mix.js'), 'utf8'), /vue2-daterange-picker/);
