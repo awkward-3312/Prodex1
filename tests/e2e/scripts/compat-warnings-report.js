@@ -32,7 +32,7 @@ const KNOWN = {
   GLOBAL_SET: ['benigno', '`Vue.set`: en Vue 3 basta la asignación directa.'],
   GLOBAL_EXTEND: ['migrar', '`Vue.extend` (BootstrapVue, vee-validate, vue-select…): `defineComponent`.'],
   GLOBAL_MOUNT: ['migrar', '`new Vue({ el }) / $mount` en los 4 entrypoints: `createApp(...).mount()`.'],
-  GLOBAL_PROTOTYPE: ['migrar', '`Vue.prototype.$x` (plugins: vue-i18n 8, vue-cookies…): `app.config.globalProperties`.'],
+  GLOBAL_PROTOTYPE: ['migrar', '`Vue.prototype.$x` (plugins: vue-cookies…): `app.config.globalProperties`.'],
   GLOBAL_PRIVATE_UTIL: ['bloquea', '`Vue.util` (vue-meta 2, vue-clickaway, vue-router 3): utilidades internas de Vue 2 sin equivalente.'],
   CONFIG_OPTION_MERGE_STRATS: ['migrar', '`config.optionMergeStrategies` (vuex/vue-i18n/BootstrapVue).'],
   CONFIG_SILENT: ['benigno', '`Vue.config.silent = true` (main.js): no existe en Vue 3; ver docs (los avisos NO se silencian).'],

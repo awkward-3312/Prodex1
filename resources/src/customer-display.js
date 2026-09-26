@@ -11,8 +11,6 @@ window.axios.defaults.withCredentials = true;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 // i18n setup (reuse shared loader)
-import VueI18n from 'vue-i18n';
-Vue.use(VueI18n);
 import { loadI18n } from './plugins/i18n.loader';
 import { createEventBus } from './platform/events.js';
 
@@ -20,10 +18,12 @@ import { createEventBus } from './platform/events.js';
 window.CD = createEventBus();
 
 loadI18n().then((i18n) => {
-  new Vue({
-    i18n,
-    render: h => h(CustomerDisplay),
-  }).$mount('#customer-display');
+  // Sin `mountWithRouter` (esta pantalla no usa router): vue-i18n 11 se instala con `app.use(i18n)` sobre la app
+  // real de Vue 3 que hay detrás de la instancia de compat (`root.$.appContext.app`), igual que en `mountWithRouter`
+  // (ver `platform/compat/vue-router.js`) — pasar `i18n` como opción raíz de `new Vue({...})` ya no lo instala.
+  const root = new Vue({ render: h => h(CustomerDisplay) });
+  root.$.appContext.app.use(i18n);
+  root.$mount('#customer-display');
 });
 
 

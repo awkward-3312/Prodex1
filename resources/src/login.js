@@ -63,9 +63,6 @@ Vue.config.productionTip = true;
 Vue.config.silent = true;
 Vue.config.devtools = false;
 
-import VueI18n from 'vue-i18n';
-Vue.use(VueI18n);
-
 import { loadI18n } from './plugins/i18n.loader';
 import { events, installVue2Platform } from './platform';
 import { bootstrapPlugin } from './platform/bootstrap/plugin.js';
@@ -76,7 +73,7 @@ loadI18n().then(i18n => {
 
   try { store.dispatch('config/initPrimaryColor'); } catch (e) {}
 
-  const app = mountWithRouter({ store, i18n }, router, '#login', [head, bootstrapPlugin]);
+  const app = mountWithRouter({ store }, router, '#login', [head, bootstrapPlugin, i18n]);
   installVue2Platform(app);
 });
 

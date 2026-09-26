@@ -139,8 +139,6 @@ window.Fire = events;
 Vue.prototype.$uploadPath = window.__uploadPath || 'images';
 Vue.prototype.$imgUrl = function(subfolder, filename) { return '/' + this.$uploadPath + '/' + subfolder + '/' + filename; };
 import Breadcumb from "./components/breadcumb";
-import VueI18n from 'vue-i18n';
-Vue.use(VueI18n);
 Vue.component("breadcumb", Breadcumb);
 Vue.config.productionTip = true;
 Vue.config.silent = true;
@@ -154,7 +152,7 @@ loadI18n().then(i18n => {
   setupRouterGuards(i18n);
   installNavigationPerformance(window.axios, router);
   try { setupGlobalOfflineSync(); } catch (e) {}
-  const app = mountWithRouter({ store, VueCookie, i18n, render: h => h(App) }, router, '#app', [head, bootstrapPlugin]);
+  const app = mountWithRouter({ store, VueCookie, render: h => h(App) }, router, '#app', [head, bootstrapPlugin, i18n]);
   // Conecta notificaciones, confirmaciones y modales por id (servicios de plataforma) con BootstrapVue/SweetAlert2.
   installVue2Platform(app);
   // Puente explícito para los scripts sueltos prodex-*.js (sustituye a leer la instancia interna de Vue del DOM).
