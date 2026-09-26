@@ -24,7 +24,7 @@ on:
     # La rama de estabilización se lista aquí porque GitHub solo permite lanzar workflow_dispatch de un workflow que ya
     # existe en la rama por defecto. Mientras este archivo no esté en main, el job e2e corre con los push a las ramas de modernización listadas aquí.
     # Cuando llegue a main se puede quitar esa rama y usar solo workflow_dispatch.
-    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening, spike/vue3-compat-runtime, refactor/vue-router-4, refactor/vue3-own-code-cleanup, refactor/vue-meta-to-unhead, refactor/remove-vue-clickaway, refactor/bootstrap5-bootstrapvue-next-phase1, refactor/bootstrap5-bootstrapvue-next-phase2, refactor/bootstrap5-bootstrapvue-next-phase3, refactor/bootstrap5-bootstrapvue-next-phase4, refactor/bootstrap5-bootstrapvue-next-phase5a, refactor/bootstrap5-bootstrapvue-next-phase5b, refactor/bootstrap5-final-cutover, refactor/vee-validate-4, refactor/vue-i18n-11 ]
+    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening, spike/vue3-compat-runtime, refactor/vue-router-4, refactor/vue3-own-code-cleanup, refactor/vue-meta-to-unhead, refactor/remove-vue-clickaway, refactor/bootstrap5-bootstrapvue-next-phase1, refactor/bootstrap5-bootstrapvue-next-phase2, refactor/bootstrap5-bootstrapvue-next-phase3, refactor/bootstrap5-bootstrapvue-next-phase4, refactor/bootstrap5-bootstrapvue-next-phase5a, refactor/bootstrap5-bootstrapvue-next-phase5b, refactor/bootstrap5-final-cutover, refactor/vee-validate-4, refactor/vue-i18n-11, refactor/vue3-legacy-dependency-audit ]
   workflow_dispatch:
 
 jobs:
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - run: npm ci
       - name: Route snapshot (generado desde el código fuente)
@@ -62,7 +62,8 @@ jobs:
       github.ref == 'refs/heads/refactor/bootstrap5-bootstrapvue-next-phase5b' ||
       github.ref == 'refs/heads/refactor/bootstrap5-final-cutover' ||
       github.ref == 'refs/heads/refactor/vee-validate-4' ||
-      github.ref == 'refs/heads/refactor/vue-i18n-11'
+      github.ref == 'refs/heads/refactor/vue-i18n-11' ||
+      github.ref == 'refs/heads/refactor/vue3-legacy-dependency-audit'
     runs-on: ubuntu-latest
     # El fallo de memoria de esta rama (ver VEE_VALIDATE_4_MIGRATION.md §6: `/app/products/store-classic` se
     # quedaba sin responder bajo navegación secuencial intensiva) está resuelto — causa raíz y fix documentados
@@ -96,7 +97,7 @@ jobs:
       - run: composer install --no-interaction --prefer-dist --no-progress
       - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - run: npm ci
       - name: Build de desarrollo (los E2E prueban el SPA compilado desde este árbol)
