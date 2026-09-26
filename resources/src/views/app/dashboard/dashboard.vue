@@ -408,8 +408,7 @@
 import { BRow, BCol } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
 import VueApexCharts from "vue3-apexcharts";
-import DateRangePicker from "vue2-daterange-picker";
-import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
+import DateRangePicker from "@/components/DateRangePicker.vue";
 import moment from "moment";
 
 const MOBILE_MQ = "(max-width: 767px)";

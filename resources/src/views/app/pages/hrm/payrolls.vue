@@ -425,7 +425,7 @@
 import { modals, notifications } from "@/platform";
 import { vBTooltip, BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BFormFile } from "@/platform/bootstrap";
 import NProgress from "nprogress";
-import Datepicker from 'vuejs-datepicker';
+import Datepicker from '@/components/Datepicker.vue';
 
 export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {

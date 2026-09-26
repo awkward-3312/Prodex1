@@ -240,8 +240,7 @@
 import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import moment from 'moment'
-import DateRangePicker from 'vue2-daterange-picker'
-import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import Util from '../../../../utils'
 import { formatPriceDisplay as formatPriceDisplayHelper, getPriceFormatSetting, getPriceDecimals } from '../../../../utils/priceFormat'
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";

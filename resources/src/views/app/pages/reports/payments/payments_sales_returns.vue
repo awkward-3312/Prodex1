@@ -179,9 +179,8 @@ import { BSidebar, vBToggle, BButton, BCard, BCol, BRow, BFormGroup, BFormInput 
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import DateRangePicker from 'vue2-daterange-picker'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 //you need to import the CSS manually
-import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
 import moment from 'moment'
 import VueApexCharts from "vue3-apexcharts";
 import {

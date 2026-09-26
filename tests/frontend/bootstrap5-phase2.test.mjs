@@ -98,15 +98,18 @@ test('servicios de plataforma: ningún archivo propio usa $bvToast / $bvModal (n
   assert.deepEqual(offenders, []);
 });
 
-test('CUSTOM_DIR eliminado: vue-select y vue2-daterange-picker usan wrappers con directivas de Vue 3 (sin parchear node_modules)', () => {
+test('CUSTOM_DIR eliminado: vue-select usa un wrapper con directivas de Vue 3 (sin parchear node_modules)', () => {
   const dir = read('platform/directives/append-to-body.js');
   assert.match(dir, /mounted:/);
   assert.match(dir, /unmounted:/);
   assert.doesNotMatch(dir.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n'), /\b(inserted|unbind|componentUpdated)\b/);
   assert.match(read('platform/compat/vue-select.js'), /appendToBody:\s*vSelectAppendToBody/);
-  assert.match(read('platform/compat/daterange-picker.js'), /appendToBody:\s*daterangeAppendToBody/);
   assert.match(read('main.js'), /import vSelect from '\.\/platform\/compat\/vue-select\.js'/);
-  assert.match(fs.readFileSync(path.join(ROOT, 'webpack.mix.js'), 'utf8'), /'vue2-daterange-picker\$'/);
+  // vue2-daterange-picker fue reemplazado por components/DateRangePicker.vue sobre @vuepic/vue-datepicker (nativo
+  // Vue 3, se posiciona solo): sin `platform/compat/daterange-picker.js`, sin alias de webpack, sin `daterangeAppendToBody`.
+  assert.ok(!fs.existsSync(path.join(SRC, 'platform/compat/daterange-picker.js')));
+  assert.doesNotMatch(dir, /daterangeAppendToBody/);
+  assert.doesNotMatch(fs.readFileSync(path.join(ROOT, 'webpack.mix.js'), 'utf8'), /vue2-daterange-picker/);
 });
 
 test('sin claves duplicadas `components` / `directives` en el objeto de opciones de una vista (la última pisaría a la primera)', () => {

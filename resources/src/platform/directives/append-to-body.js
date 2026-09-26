@@ -1,8 +1,10 @@
-// `v-append-to-body` de vue-select y vue2-daterange-picker con hooks de Vue 3 (mounted/unmounted). Las dos librerías traen la misma directiva
+// `v-append-to-body` de vue-select con hooks de Vue 3 (mounted/unmounted). La librería trae su propia directiva
 // con hooks de Vue 2 (`inserted`/`unbind`, `vnode.context`), que solo funcionaban con `CUSTOM_DIR` de @vue/compat. NO se parchea `node_modules`:
-// `platform/compat/vue-select.js` y `platform/compat/daterange-picker.js` extienden el componente de la librería y sustituyen SOLO esta
+// `platform/compat/vue-select.js` extiende el componente de la librería y sustituye SOLO esta
 // directiva. La lógica es la de la librería (mover el desplegable a <body> y posicionarlo con `calculatePosition`; deshacerlo al desmontar).
 // `binding.instance` es la instancia del componente de la librería (lo que era `vnode.context`).
+// vue2-daterange-picker (que también usaba esta directiva) fue reemplazado por `components/DateRangePicker.vue`
+// sobre `@vuepic/vue-datepicker`, que se posiciona solo — su equivalente de esta directiva ya no hace falta.
 
 function move(el, context, position) {
   if (!context || !context.appendToBody) return;
@@ -22,11 +24,5 @@ function restore(el, context) {
 /** vue-select: `{ width, left, top }` como cadenas con px. */
 export const vSelectAppendToBody = {
   mounted: (el, binding) => move(el, binding.instance, (r, sx, sy) => ({ width: `${r.width}px`, left: `${sx + r.left}px`, top: `${sy + r.top + r.height}px` })),
-  unmounted: (el, binding) => restore(el, binding.instance),
-};
-
-/** vue2-daterange-picker: `{ width, top, left, right }` numéricos. */
-export const daterangeAppendToBody = {
-  mounted: (el, binding) => move(el, binding.instance, (r, sx, sy) => ({ width: r.width, top: sy + r.top + r.height, left: sx + r.left, right: r.right })),
   unmounted: (el, binding) => restore(el, binding.instance),
 };

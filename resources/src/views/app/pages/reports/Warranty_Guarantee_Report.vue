@@ -139,8 +139,7 @@ import { BButton, BCard, BFormSelect } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import moment from 'moment'
-import DateRangePicker from 'vue2-daterange-picker'
-import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Util from '../../../../utils'

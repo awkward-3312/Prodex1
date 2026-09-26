@@ -105,8 +105,7 @@ import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import VueApexCharts from "vue3-apexcharts";
-import DateRangePicker from 'vue2-daterange-picker'
-import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import moment from 'moment'
 import { mapGetters } from "vuex";
 import {

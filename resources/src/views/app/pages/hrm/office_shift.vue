@@ -257,7 +257,7 @@
 <script>
 import { BFormCheckbox } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
-import VueClockPicker from '@pencilpix/vue2-clock-picker';
+import VueClockPicker from '@/components/ClockPicker.vue';
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxToolbar from "@/components/px-next/PxToolbar.vue";

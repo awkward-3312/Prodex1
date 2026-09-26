@@ -3,7 +3,8 @@ const { test, expect } = require('../support/fixtures');
 const { env, waitForApp } = require('../support/helpers');
 
 // Directivas migradas a Vue 3 (sin CUSTOM_DIR): v-b-tooltip / v-b-popover de BootstrapVueNext en pantallas críticas y no críticas, y el
-// `append-to-body` de vue-select y vue2-daterange-picker (wrappers PRODEX con hooks de Vue 3).
+// `append-to-body` de vue-select (wrapper PRODEX con hooks de Vue 3). El date-range-picker (antes vue2-daterange-picker,
+// ahora components/DateRangePicker.vue sobre @vuepic/vue-datepicker) se posiciona solo, sin directiva propia.
 
 test.describe('Tooltips y popover @smoke', () => {
   test.use({ storageState: path.join(env.authDir, 'admin.json') });
@@ -97,19 +98,19 @@ test.describe('append-to-body de terceros (sin CUSTOM_DIR)', () => {
     expect(Math.abs((after.m.y - after.t.y) - (before.m.y - before.t.y))).toBeLessThan(4);
   });
 
-  test('vue2-daterange-picker (wrapper): abre el calendario, se cierra y se desmonta sin dejar nodos ni errores', async ({ page }) => {
+  test('DateRangePicker (@vuepic/vue-datepicker, wrapper): abre el calendario, se cierra y se desmonta sin dejar nodos ni errores', async ({ page }) => {
     await page.goto('/app/reports/sales_report');
     await waitForApp(page);
-    const input = page.locator('.reportrange-text, .daterangepicker-input, .form-control.reportrange-text').first();
+    const input = page.locator('.pxrl__daterange').first();
     await input.click();
-    const cal = page.locator('.daterangepicker');
+    const cal = page.locator('.dp--menu');
     await expect(cal).toHaveCount(1);
     await expect(cal).toBeVisible();
     await page.mouse.click(5, 300);
-    await expect(page.locator('.daterangepicker')).toBeHidden();
+    await expect(page.locator('.dp--menu')).toHaveCount(0);
     await input.click();
-    await expect(page.locator('.daterangepicker')).toBeVisible();
+    await expect(page.locator('.dp--menu')).toBeVisible();
     await page.evaluate(() => document.querySelector('#app').__vue_app__.config.globalProperties.$router.push('/app/meeting/calendar'));
-    await expect(page.locator('.daterangepicker')).toHaveCount(0);
+    await expect(page.locator('.dp--menu')).toHaveCount(0);
   });
 });

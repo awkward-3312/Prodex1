@@ -162,7 +162,7 @@
 import { BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from "nprogress";
-import Datepicker from 'vuejs-datepicker';
+import Datepicker from '@/components/Datepicker.vue';
 import AttendanceIdentifiersCard from './AttendanceIdentifiersCard.vue';
 
 export default {

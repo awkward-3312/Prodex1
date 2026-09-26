@@ -207,8 +207,7 @@ import axios from "axios";
 import moment from "moment";
 import { mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../utils/priceFormat";
-import DateRangePicker from "vue2-daterange-picker";
-import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
+import DateRangePicker from "@/components/DateRangePicker.vue";
 
 let echartsLib = null;
 
