@@ -1,4 +1,3 @@
-import VueGoodTablePlugin from "vue-good-table";
 import "./../assets/styles/sass/themes/lite-purple.scss";
 import "./sweetalert2.js";
 import { makeHtmlToPaper } from '../platform/htmlToPaper';
@@ -434,7 +433,7 @@ export default {
     Vue.component("px-shell-layout", () => import(/* webpackChunkName: "px-next-shell" */ "../containers/layouts/PxShellLayout.vue"));
     Vue.component("customizer", () => import(/* webpackChunkName: "customizer" */ "../components/common/customizer.vue"));
     Vue.component("vue-perfect-scrollbar", () => import(/* webpackChunkName: "vue-perfect-scrollbar" */ "../components/VuePerfectScrollbar.vue"));
-    Vue.use(VueGoodTablePlugin);
+    Vue.component("vue-good-table", () => import(/* webpackChunkName: "vue-good-table" */ "../components/VueGoodTable.vue"));
     Vue.prototype.$htmlToPaper = makeHtmlToPaper(options);
     installReceiptPresentationEnhancer(Vue);
     installFriendlyNavigation(Vue);

@@ -59,13 +59,25 @@ test('contrato de los wrappers de la fase 5A (traducciones de BV2 que no deben p
   assert.match(src, /target === '_blank'[\s\S]*noopener/, 'BButton: rel noopener');
 });
 
-test('inventario de vue-good-table registrado (fase 5C): 73 archivos / 86 tablas, sin cambios de implementación', () => {
+test('inventario de <vue-good-table> sin cambios en las vistas (fase vue3-legacy-ui-dependencies: el paquete se sustituyó por components/VueGoodTable.vue, pero la etiqueta/contrato por archivo es idéntico)', () => {
   const file = path.join(ROOT, 'tests/frontend/inventory/vue-good-table.json');
   const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.equal(inv.vgt.tables, saved.tables, 'nº de tablas');
   assert.equal(inv.vgt.files, saved.files, 'nº de archivos');
   assert.deepEqual(inv.vgt.features, saved.features, 'funciones usadas');
   assert.deepEqual(inv.vgt.list, saved.list, 'inventario por archivo (regenerar con `node tests/frontend/inventory/bootstrap-inventory.mjs --vgt`)');
+});
+
+test('vue-good-table (paquete) eliminado: <vue-good-table> es un componente Vue 3 nativo de PRODEX registrado globalmente', () => {
+  const kit = fs.readFileSync(path.join(SRC, 'plugins/stocky.kit.js'), 'utf8');
+  assert.doesNotMatch(kit, /VueGoodTablePlugin/);
+  assert.doesNotMatch(kit, /from ["']vue-good-table["']/);
+  assert.match(kit, /Vue\.component\("vue-good-table",[\s\S]*?components\/VueGoodTable\.vue["']\)\)/);
+  assert.ok(fs.existsSync(path.join(SRC, 'components/VueGoodTable.vue')));
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.ok(!pkg.dependencies || !pkg.dependencies['vue-good-table']);
+  assert.ok(!pkg.devDependencies || !pkg.devDependencies['vue-good-table']);
+  assert.doesNotMatch(fs.readFileSync(path.join(SRC, 'assets/styles/sass/themes/lite-purple.scss'), 'utf8'), /vue-good-table/);
 });
 
 test('plantillas en cadena (`template: `...`` dentro de <script>) con etiquetas b-*: cada una registra sus wrappers (no hay registro global de BV2 para layout/primitives)', () => {

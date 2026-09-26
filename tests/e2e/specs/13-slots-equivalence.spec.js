@@ -1,9 +1,11 @@
 const { test, expect } = require('../support/fixtures');
 
 /**
- * Equivalencia real de slots: se renderiza en el navegador, con las MISMAS librerías que usa el producto (Vue 2.7,
- * vue-good-table 2.21), la sintaxis antigua (`slot` / `slot-scope`) y la nueva (`v-slot` / `#slot`) y se
- * exige HTML idéntico. No necesita servidor ni base de datos: cubre las transformaciones que se hicieron en ~100 vistas.
+ * Equivalencia real de slots (sintaxis antigua `slot`/`slot-scope` vs nueva `v-slot`/`#slot`) para los patrones
+ * `.sync`/`.native` de px-next. Las 4 comprobaciones históricas que usaban el paquete `vue-good-table` como
+ * librería de referencia se retiraron: ese paquete ya no existe en la app (ver components/VueGoodTable.vue,
+ * fase vue3-legacy-ui-dependencies) y su slot #table-row/#table-actions/#emptystate/#selected-row-actions se
+ * prueba de forma funcional contra el componente real en tests/e2e/specs/27-btable-pilot.spec.js y similares.
  */
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -11,82 +13,6 @@ test.use({ storageState: { cookies: [], origins: [] } });
 const IS_COMPAT = String(require('vue/package.json').version).startsWith('3');
 const VUE_UMD_ID = IS_COMPAT ? '@vue/compat/dist/vue.global.js' : 'vue/dist/vue.js';
 const VUE_UMD = require.resolve(VUE_UMD_ID);
-
-const CASES = {
-  'vue-good-table: table-row, table-actions y emptystate': {
-    old: `<vue-good-table :columns="cols" :rows="rows"><template slot="table-row" slot-scope="props"><span>R:{{ props.row.a }}</span></template><div slot="table-actions" class="x">ACT</div></vue-good-table>`,
-    neu: `<vue-good-table :columns="cols" :rows="rows"><template #table-row="props"><span>R:{{ props.row.a }}</span></template><template #table-actions><div class="x">ACT</div></template></vue-good-table>`,
-    expects: ['R:7', 'ACT'],
-  },
-  'vue-good-table: emptystate': {
-    old: `<vue-good-table :columns="cols" :rows="[]"><div slot="emptystate">VACIO</div></vue-good-table>`,
-    neu: `<vue-good-table :columns="cols" :rows="[]"><template #emptystate><div>VACIO</div></template></vue-good-table>`,
-    expects: ['VACIO'],
-  },
-  'vue-good-table: selected-row-actions con v-if (la condición pasa al wrapper)': {
-    old: `<vue-good-table :columns="cols" :rows="rows" :select-options="{ enabled: true }"><div slot="selected-row-actions" v-if="show">SEL</div></vue-good-table>`,
-    neu: `<vue-good-table :columns="cols" :rows="rows" :select-options="{ enabled: true }"><template v-if="show" #selected-row-actions><div>SEL</div></template></vue-good-table>`,
-    expects: [],
-  },
-  'vue-good-table: dos elementos contiguos en el mismo slot se fusionan': {
-    old: `<vue-good-table :columns="cols" :rows="rows"><div slot="table-actions" class="p">UNO</div><div slot="table-actions" class="q">DOS</div></vue-good-table>`,
-    neu: `<vue-good-table :columns="cols" :rows="rows"><template #table-actions><div class="p">UNO</div><div class="q">DOS</div></template></vue-good-table>`,
-    expects: ['UNO', 'DOS'],
-  },
-};
-
-const normalize = (html) => html.replace(/__BVID__\d+/g, '__BVID__').replace(/z-index: \d+/g, 'z-index: N').replace(/\s+/g, ' ').trim();
-
-test.describe('Slots: sintaxis antigua y v-slot renderizan lo mismo @smoke', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.setContent('<!doctype html><html><body><div id="host"></div></body></html>');
-    for (const lib of [VUE_UMD_ID, 'vue-good-table/dist/vue-good-table.js']) {
-      await page.addScriptTag({ path: require.resolve(lib) });
-    }
-    await page.evaluate(() => {
-      window.Vue.config.productionTip = false;
-      window.Vue.config.devtools = false;
-      const vgt = window['vue-good-table'];
-      window.Vue.use(vgt.default || vgt);
-    });
-  });
-
-  for (const [name, c] of Object.entries(CASES)) {
-    test(name, async ({ page }) => {
-      const render = (template) =>
-        page.evaluate(async (tpl) => {
-          const el = document.createElement('div');
-          document.getElementById('host').appendChild(el);
-          const vm = new window.Vue({
-            el,
-            template: `<div>${tpl}</div>`,
-            data: () => ({
-              items: [{ a: 1, b: 2 }],
-              fields: ['a', 'b'],
-              cols: [{ label: 'A', field: 'a' }],
-              rows: [{ a: 7 }],
-              show: true,
-            }),
-          });
-          await vm.$nextTick();
-          await new Promise((r) => setTimeout(r, 50));
-          return vm.$el.innerHTML;
-        }, template);
-
-      const after = normalize(await render(c.neu));
-      for (const fragment of c.expects) expect(after).toContain(fragment);
-      if (IS_COMPAT) {
-        // Bajo @vue/compat la sintaxis antigua (`slot` / `slot-scope`) se descarta en silencio: solo se exige que la nueva funcione.
-        const before = normalize(await render(c.old));
-        test.info().annotations.push({ type: 'sintaxis antigua bajo compat', description: before === after ? 'igual' : 'distinta (esperado)' });
-        return;
-      }
-      const before = normalize(await render(c.old));
-      for (const fragment of c.expects) expect(before).toContain(fragment);
-      expect(after).toBe(before);
-    });
-  }
-});
 
 // `.sync` y `.native` sobre componentes propios del patrón px-next (PxPagination / PxInput / PxButton): la forma explícita
 // que se usa ahora (`:x="v" @update:x="v = $event"`, `@keyup.enter`) debe comportarse igual que la antigua.
