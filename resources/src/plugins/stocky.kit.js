@@ -1,7 +1,7 @@
 import VueGoodTablePlugin from "vue-good-table";
 import "./../assets/styles/sass/themes/lite-purple.scss";
 import "./sweetalert2.js";
-import VueHtmlToPaper from 'vue-html-to-paper';
+import { makeHtmlToPaper } from '../platform/htmlToPaper';
 
 const options = {
   name: '_blank',
@@ -433,9 +433,9 @@ export default {
     // Milestone 3 — layout px-next persistente para /app/* (opt-in local).
     Vue.component("px-shell-layout", () => import(/* webpackChunkName: "px-next-shell" */ "../containers/layouts/PxShellLayout.vue"));
     Vue.component("customizer", () => import(/* webpackChunkName: "customizer" */ "../components/common/customizer.vue"));
-    Vue.component("vue-perfect-scrollbar", () => import(/* webpackChunkName: "vue-perfect-scrollbar" */ "vue-perfect-scrollbar"));
+    Vue.component("vue-perfect-scrollbar", () => import(/* webpackChunkName: "vue-perfect-scrollbar" */ "../components/VuePerfectScrollbar.vue"));
     Vue.use(VueGoodTablePlugin);
-    Vue.use(VueHtmlToPaper, options);
+    Vue.prototype.$htmlToPaper = makeHtmlToPaper(options);
     installReceiptPresentationEnhancer(Vue);
     installFriendlyNavigation(Vue);
   }

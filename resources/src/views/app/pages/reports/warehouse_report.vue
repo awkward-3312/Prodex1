@@ -520,7 +520,7 @@
 <script>
 import { BButton, BCard, BCol, BRow, BTab, BTabs, BFormGroup } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {

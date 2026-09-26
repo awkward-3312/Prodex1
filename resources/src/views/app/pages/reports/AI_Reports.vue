@@ -580,7 +580,7 @@ import { BBadge, BButton, BCard, BCol, BRow, BFormGroup, BFormSelect, BFormSelec
 import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import moment from "moment";
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {

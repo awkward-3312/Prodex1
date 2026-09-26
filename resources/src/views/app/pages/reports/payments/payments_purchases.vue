@@ -133,7 +133,7 @@ import autoTable from "jspdf-autotable";
 import DateRangePicker from "vue2-daterange-picker";
 import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
 import moment from "moment";
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting,

@@ -407,7 +407,7 @@
 <script>
 import { BRow, BCol } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import DateRangePicker from "vue2-daterange-picker";
 import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
 import moment from "moment";

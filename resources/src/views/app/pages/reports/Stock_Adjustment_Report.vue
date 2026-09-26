@@ -170,7 +170,7 @@ import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
 import moment from "moment";
 
 /* Charts: VueApexCharts replacement for ECharts */
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 
 /* PDF export */
 import jsPDF from "jspdf";

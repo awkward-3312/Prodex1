@@ -174,7 +174,7 @@
 import { BButton, BButtonGroup, BCard, BCol, BRow, BSkeletonImg } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import DateRangePicker from "vue2-daterange-picker";
 import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
 import moment from "moment";

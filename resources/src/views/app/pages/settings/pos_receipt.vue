@@ -729,7 +729,7 @@
 import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
-import VueBarcode from "vue-barcode";
+import VueBarcode from "@/components/Barcode.vue";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
 import PxCard from "@/components/px-next/PxCard.vue";

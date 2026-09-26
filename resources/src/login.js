@@ -18,7 +18,7 @@ Vue.component(
   () => import(/* webpackChunkName: "customizer" */ "./components/common/customizer.vue")
 );
 Vue.component("vue-perfect-scrollbar", () =>
-  import(/* webpackChunkName: "vue-perfect-scrollbar" */ "vue-perfect-scrollbar")
+  import(/* webpackChunkName: "vue-perfect-scrollbar" */ "./components/VuePerfectScrollbar.vue")
 );
 installHead(Vue);
 

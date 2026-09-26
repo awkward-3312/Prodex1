@@ -1390,8 +1390,7 @@ import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import vueEasyPrint from "vue-easy-print";
-import VueBarcode from "vue-barcode";
+import VueBarcode from "@/components/Barcode.vue";
 import Util from "../../../../utils";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
@@ -1414,7 +1413,6 @@ import PxModal from "@/components/px-next/PxModal.vue";
 import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 export default {
   components: { BFormFile, BForm, BFormGroup, BButton, BCol, BRow,
-    vueEasyPrint,
     barcode: VueBarcode,
     PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu,
     PxKebab, PxBadge, PxField, PxInput, PxTextarea, PxModal, "vs-px": VsPx

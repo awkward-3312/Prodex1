@@ -444,7 +444,7 @@
                         <div class="input-group modern-input-group">
                             <button type="button" class="btn-icon-scan" @click="showModal" title="Scan">
                               <img src="/assets_setup/scan.png" alt="Scan" class="scan-icon" />
-                            </button>
+                            </button>
                           <b-form-input
                             :class="{'is-invalid': !!errors.length}"
                             :state="errors[0] ? false : (valid ? true : null)"
@@ -455,7 +455,7 @@
                           ></b-form-input>
                             <button type="button" class="btn-icon-gen" @click="generateNumber()" title="Generate">
                               <lucide-icon name="barcode" />
-                            </button>
+                            </button>
                         </div>
                         <b-alert
                           show
@@ -1735,7 +1735,7 @@
                       ></b-form-input>
                         <b-button variant="primary" @click="add_variant(tag)">
                           <lucide-icon name="plus" />{{ $t('Add') }}
-                        </b-button>
+                        </b-button>
                     </b-input-group>
                   </b-form-group>
                 </div>
@@ -1830,7 +1830,6 @@
 <script>
 import { modals, notifications } from "@/platform";
 import { vBTooltip, BModal, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormTextarea, BFormSelect, BInputGroup, BFormCheckbox } from "@/platform/bootstrap";
-import VueTagsInput from "@johmun/vue-tags-input";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
 import draggable from "vuedraggable";
@@ -1958,7 +1957,6 @@ export default { directives: { 'b-tooltip': vBTooltip },
   },
 
   components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormTextarea, BFormSelect, BInputGroup, BFormCheckbox, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BModal,
-    VueTagsInput,
     draggable
   },
 

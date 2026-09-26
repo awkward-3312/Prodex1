@@ -50,7 +50,7 @@ import {
   PackageSearch, Percent, Rocket, ScanLine, SearchX, ServerCog, ShieldPlus,
   Truck, WalletCards, Webhook, ZoomIn,
   Shapes, ChevronsDown, ImageOff
-} from 'lucide-vue';
+} from '@lucide/vue';
 
 const REGISTRY = {
   // navigation
@@ -274,12 +274,17 @@ const REGISTRY = {
 
 // Componente con estado mínimo escrito con la API de Vue 3 (`setup` + `h` de vue): sustituye al antiguo componente
 // `functional: true` con `render(h, ctx)`. Los atributos (class, style, data-*, aria-*, listeners) se reenvían tal cual al icono.
-// El componente es Vue 3 puro (MODE 3: no le aplican los hooks/mixins de Vue 2 de las librerías); solo se habilita
-// COMPONENT_FUNCTIONAL porque los iconos de `lucide-vue` son componentes funcionales de Vue 2 que únicamente compat sabe renderizar.
+// `@lucide/vue` (sucesor Vue-3-nativo de `lucide-vue`) exporta cada icono como una función simple `(props, {slots})
+// => vnode` (componente funcional idiomático de Vue 3, no `functional:true` de Vue 2) — pero bajo `@vue/compat` con
+// `COMPONENT_ASYNC` habilitado (el MODE:2 global del proyecto), Vue trata CUALQUIER función pasada a `h()` como
+// candidata a ser una fábrica de componente asíncrono de Vue 2 y la invoca con `(resolve, reject)` en vez de
+// `(props, {slots})` — de ahí "Cannot read properties of undefined (reading 'default')" al leer `slots.default`
+// con `slots` en realidad siendo la función `reject`. `MODE: 3` aquí desactiva ese chequeo solo para este
+// componente (el que hace `h(Icon, ...)`), sin afectar al resto de la app que sigue en MODE 2.
 export default {
   name: 'LucideIcon',
   inheritAttrs: false,
-  compatConfig: { MODE: 3, COMPONENT_FUNCTIONAL: true },
+  compatConfig: { MODE: 3 },
   props: {
     name: { type: String, required: true },
     size: { type: [Number, String], default: 18 },

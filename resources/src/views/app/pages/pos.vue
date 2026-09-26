@@ -3579,8 +3579,7 @@ import { BModal, BButton, BCol, BDropdown, BPagination, BRow, BForm, BFormGroup,
 import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
-import vueEasyPrint from "vue-easy-print";
-import VueBarcode from "vue-barcode";
+import VueBarcode from "@/components/Barcode.vue";
 import Util from "../../../utils";
 import { formatPriceDisplay, getPriceFormatSetting, getPriceDecimals } from "../../../utils/priceFormat";
 import { openCashDrawer } from "../../../utils/cashDrawerQz";
@@ -3592,7 +3591,6 @@ import posKeyboardShortcutsMixin, { POS_SHORTCUTS } from "../../../mixins/posKey
 
 export default {
   components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormCheckbox, BFormRadioGroup, BFormSelect, BButton, BCol, BDropdown, BPagination, BRow, BModal,
-    vueEasyPrint,
     barcode: VueBarcode,
     ModernPaymentModal,
     PosReturnModal,

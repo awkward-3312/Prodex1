@@ -65,10 +65,6 @@ import StockyKit from "./plugins/stocky.kit";
 Vue.use(StockyKit);
 import FriendlyNavigation from "./plugins/friendlyNavigation";
 Vue.use(FriendlyNavigation);
-import VueCookies from 'vue-cookies';
-Vue.use(VueCookies);
-var VueCookie = require('vue-cookie');
-Vue.use(VueCookie);
 
 import ExcelExport from "./components/ExcelExport.vue";
 Vue.component('vue-excel-xlsx', ExcelExport);
@@ -132,7 +128,6 @@ installPosOperationalLocationBridge(window.axios);
 import vSelect from './platform/compat/vue-select.js';
 Vue.component('v-select', vSelect);
 import 'vue-select/dist/vue-select.css';
-import '@trevoreyre/autocomplete-vue/dist/style.css';
 // Bus de eventos global: `window.Fire` es un adaptador temporal de compatibilidad sobre el bus de plataforma (ya no es una
 // instancia de Vue). El código nuevo importa `events` desde "@/platform".
 window.Fire = events;
@@ -152,7 +147,7 @@ loadI18n().then(i18n => {
   setupRouterGuards(i18n);
   installNavigationPerformance(window.axios, router);
   try { setupGlobalOfflineSync(); } catch (e) {}
-  const app = mountWithRouter({ store, VueCookie, render: h => h(App) }, router, '#app', [head, bootstrapPlugin, i18n]);
+  const app = mountWithRouter({ store, render: h => h(App) }, router, '#app', [head, bootstrapPlugin, i18n]);
   // Conecta notificaciones, confirmaciones y modales por id (servicios de plataforma) con BootstrapVue/SweetAlert2.
   installVue2Platform(app);
   // Puente explícito para los scripts sueltos prodex-*.js (sustituye a leer la instancia interna de Vue del DOM).

@@ -734,7 +734,7 @@
 
 
 <script>
-import VueBarcode from "vue-barcode";
+import VueBarcode from "@/components/Barcode.vue";
 import { mapActions, mapGetters } from "vuex";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,

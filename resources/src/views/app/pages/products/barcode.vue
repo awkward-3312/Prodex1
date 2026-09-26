@@ -222,7 +222,7 @@
 
 <script>
 import { notifications } from "@/platform";
-import VueBarcode from "vue-barcode";
+import VueBarcode from "@/components/Barcode.vue";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";

@@ -82,7 +82,7 @@ import { BButton, BCard, BInputGroup, BFormInput } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import VueApexCharts from 'vue-apexcharts';
+import VueApexCharts from 'vue3-apexcharts';
 
 export default {
   metaInfo: { title: 'Negative Stock Report' },

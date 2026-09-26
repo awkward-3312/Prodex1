@@ -118,7 +118,7 @@
 import { confirmDialog, notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
-import VueApexCharts from 'vue-apexcharts';
+import VueApexCharts from 'vue3-apexcharts';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
 import PxStat from "@/components/px-next/PxStat.vue";

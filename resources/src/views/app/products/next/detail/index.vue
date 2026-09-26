@@ -326,7 +326,7 @@
 <script>
 import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
-import VueBarcode from "vue-barcode";
+import VueBarcode from "@/components/Barcode.vue";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxBadge from "@/components/px-next/PxBadge.vue";
 import PxButton from "@/components/px-next/PxButton.vue";

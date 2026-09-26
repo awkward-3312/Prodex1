@@ -1671,7 +1671,6 @@
 <script>
 import { modals, notifications } from "@/platform";
 import { vBTooltip, BModal, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BForm, BFormGroup, BFormSelect, BFormInvalidFeedback, BFormInput, BInputGroup, BFormCheckbox, BFormTextarea } from "@/platform/bootstrap";
-import VueTagsInput from "@johmun/vue-tags-input";
 import draggable from "vuedraggable";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
@@ -1776,7 +1775,6 @@ export default { directives: { 'b-tooltip': vBTooltip },
   },
 
   components: { BForm, BFormGroup, BFormSelect, BFormInvalidFeedback, BFormInput, BInputGroup, BFormCheckbox, BFormTextarea, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BModal,
-    VueTagsInput,
     draggable
   },
 
