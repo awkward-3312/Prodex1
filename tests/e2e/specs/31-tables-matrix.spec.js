@@ -18,26 +18,6 @@ const FILE = path.join(__dirname, '..', 'data', 'tables-baseline.json');
 const baseline = !RECORD && fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, 'utf8')) : {};
 const results = {};
 
-// Asigna una propiedad de datos a la primera instancia de componente que la declara (recorre el árbol de vnodes, incluidos teleports).
-const setVm = (page, prop, value) =>
-  page.evaluate(([p, v]) => {
-    // instancia raíz: se sube por `__vueParentComponent` desde cualquier elemento pintado por un componente
-    let root = null;
-    for (const el of document.body.querySelectorAll('*')) { if (el.__vueParentComponent) { root = el.__vueParentComponent; break; } }
-    while (root && root.parent) root = root.parent;
-    const walk = (vnode) => {
-      if (!vnode || typeof vnode !== 'object') return false;
-      if (vnode.component) {
-        const inst = vnode.component;
-        if (inst.data && Object.prototype.hasOwnProperty.call(inst.data, p)) { inst.proxy[p] = v; return true; }
-        if (walk(inst.subTree)) return true;
-      }
-      if (Array.isArray(vnode.children)) for (const c of vnode.children) if (walk(c)) return true;
-      return false;
-    };
-    return root ? walk(root.subTree) : false;
-  }, [prop, value]);
-
 // Firma del <table> (se ejecuta en el navegador sobre el elemento o su envoltorio).
 // `spanishUiGuard` (utils) traduce los nodos de texto que cuelgan directamente de un <th>: BootstrapVue 2 los anidaba en un <div> y no los tocaba,
 // BootstrapVueNext los pone en el <th> y se traducen. Se normaliza ese efecto (English → Spanish del propio diccionario del guard) y el texto
@@ -89,12 +69,13 @@ const goApp = async (page, url) => { await page.goto(url); await waitForApp(page
 // Cada caso devuelve la lista de [nombre, selector CSS del <table> o de su envoltorio].
 const CASES = [
   {
+    // Tab real (nav "Seguridad", icono shield-check): el propio watcher de `activeTab` llama a
+    // `LoadSecuritySessions()` (GET security/sessions, ya interceptada), como haría un usuario real.
     name: 'system_settings: sesiones (small, responsive="sm", cell slots, acciones)',
     run: async (page) => {
       await page.route('**/security/sessions', (r) => r.fulfill(json({ sessions: SESSIONS })));
       await goApp(page, '/app/settings/System_settings');
-      await setVm(page, 'activeTab', 'security');
-      await setVm(page, 'securitySessions', SESSIONS);
+      await page.locator('.settings-nav-item:has(.lucide-shield-check)').click();
       await page.waitForTimeout(600);
       return [['sesiones', '.system-actions-card table.b-table, .system-actions-card table.table']];
     },
@@ -104,20 +85,24 @@ const CASES = [
     run: async (page) => {
       await page.route('**/security/sessions', (r) => r.fulfill(json({ sessions: [] })));
       await goApp(page, '/app/settings/System_settings');
-      await setVm(page, 'activeTab', 'security');
-      await setVm(page, 'securitySessions', []);
+      await page.locator('.settings-nav-item:has(.lucide-shield-check)').click();
       await page.waitForTimeout(600);
       return [['sesiones-vacio', '.system-actions-card table.b-table, .system-actions-card table.table']];
     },
   },
   {
+    // Botón real "View Unmapped Items" (ProductsTab.vue): abre el modal y dispara `loadUnmappedReport()`
+    // (GET woocommerce/products/unmapped-report, ya interceptada), como haría un usuario real.
     name: 'woocommerce: informe de no mapeados (small + striped + responsive dentro de un modal)',
     run: async (page) => {
+      await page.route('**/woocommerce/products/unmapped-report**', (r) => r.fulfill(json({ ok: true, ...REPORT })));
       await goApp(page, '/app/woocommerce');
       await page.locator('.pxcfg__tab').nth(1).click();
       await page.waitForTimeout(800);
-      await setVm(page, 'unmappedReport', REPORT);
-      await setVm(page, 'unmappedModal', true);
+      // ProductsTab.vue trae su propia mini-pestaña interna ("WooCommerce → Stocky"): el botón vive ahí, no en
+      // la primera ("Stocky → WooCommerce", activa por defecto).
+      await page.getByRole('tab', { name: /WooCommerce → Stocky/ }).click();
+      await page.getByRole('button', { name: 'View Unmapped Items' }).click();
       await page.locator('.modal.show table').first().waitFor({ timeout: 10_000 });
       await page.waitForTimeout(500);
       return [['woo-fallos', '.modal.show table >> nth=0'], ['woo-productos', '.modal.show table >> nth=1'], ['woo-variantes', '.modal.show table >> nth=2']];
@@ -136,43 +121,76 @@ const CASES = [
     },
   },
   {
+    // CustomerDetails.vue carga sales/payments/returns/payment_returns en un único batch (Promise.allSettled en
+    // created()) contra las rutas reales, ya interceptadas; cada pestaña real (b-tabs, "lazy") solo decide cuál
+    // de las 4 tablas ya cargadas se ve. Sin setVm: se hace clic en la pestaña real (role=tab) como un usuario.
     name: 'cliente: detalle (striped + hover + responsive + busy, slot #table-busy)',
     run: async (page) => {
-      await goApp(page, '/app/People/customers/1/details');
       const row = (i) => ({ id: i, Ref: `REF-${i}`, Sale_Ref: `SL-${i}`, date: '2026-03-01', GrandTotal: 100 * i, paid_amount: 50 * i, due: i === 1 ? 50 : 0, payment_status: i === 1 ? 'partial' : 'paid', payment_type: 'Cash', montant: 25 * i, statut: 'completed', Reglement: 'Cash' });
       const rows = [row(1), row(2)];
-      const tab = (n, prop) => async () => { await setVm(page, 'activeTab', n); await setVm(page, prop, rows); await page.waitForTimeout(700); };
+      await page.route('**/clients/1', (r) => (r.request().method() === 'GET' ? r.fulfill(json({ client: { id: 1, name: 'Cliente demo' }, payment_methods: [], accounts: [] })) : r.continue()));
+      await page.route('**/custom-fields**', (r) => r.fulfill(json({ custom_fields: [] })));
+      await page.route('**/custom-field-values**', (r) => r.fulfill(json({ success: true, values: {} })));
+      await page.route('**/sales_client**', (r) => r.fulfill(json({ sales: rows, totalRows: rows.length })));
+      await page.route('**/payments_client**', (r) => r.fulfill(json({ payments: rows, totalRows: rows.length })));
+      await page.route('**/returns_client**', (r) => r.fulfill(json({ returns: rows, totalRows: rows.length })));
+      await page.route('**/payment_returns_client**', (r) => r.fulfill(json({ payment_returns: rows, totalRows: rows.length })));
+      await goApp(page, '/app/People/customers/1/details');
+      await page.waitForTimeout(700);
+      const tab = (n) => async () => { await page.getByRole('tab').nth(n).click(); await page.waitForTimeout(500); };
       return [
-        ['cliente-ventas', 'table', tab(0, 'sales')],
-        ['cliente-pagos', 'table', tab(1, 'payments')],
-        ['cliente-devoluciones', 'table', tab(2, 'returns')],
-        ['cliente-pagos-devol', 'table', tab(3, 'paymentReturns')],
-        ['cliente-ventas-ocupada', 'table', async () => { await setVm(page, 'activeTab', 0); await setVm(page, 'salesLoading', true); await page.waitForTimeout(700); }],
+        ['cliente-ventas', 'table', tab(0)],
+        ['cliente-pagos', 'table', tab(1)],
+        ['cliente-devoluciones', 'table', tab(2)],
+        ['cliente-pagos-devol', 'table', tab(3)],
+        // Ocupada: `fetchSales()` (re-búsqueda real, @input del campo) se retrasa indefinidamente en la propia
+        // red — `:busy` real, no un flag inyectado. CustomerDetails solo carga una vez en created(): hace
+        // falta disparar una petición nueva para observar el estado ocupado.
+        ['cliente-ventas-ocupada', 'table', async () => {
+          await page.getByRole('tab').nth(0).click();
+          await page.unroute('**/sales_client**');
+          await page.route('**/sales_client**', () => new Promise(() => {}));
+          await page.locator('table').first().locator('xpath=ancestor::*[@role="tabpanel"]').locator('input').first().pressSequentially('x');
+          await page.waitForTimeout(400);
+        }],
       ];
     },
   },
   {
+    // CustomerLedger.vue: mismo patrón — created() carga sales/payments/quotations/returns de una vez contra
+    // las rutas reales; se hace clic en la pestaña real para ver cada tabla ya cargada.
     name: 'cliente: libro mayor (striped + hover + small + head-variant="light" + class="table-modern")',
     run: async (page) => {
-      await goApp(page, '/app/People/customers/1/ledger');
       const row = (i) => ({ id: i, Ref: `REF-${i}`, Sale_Ref: `SL-${i}`, date: '2026-03-01', GrandTotal: 100 * i, paid_amount: 50 * i, due: i === 1 ? 50 : 0, payment_status: i === 1 ? 'partial' : 'paid', payment_type: 'Cash', montant: 25 * i, statut: 'completed' });
-      const list = { loading: false, items: [row(1), row(2)], totalRows: 2, page: 1, limit: 10, search: '', totals: {}, pageTotal: 0 };
-      const tab = (n, prop) => async () => { await setVm(page, 'activeTab', n); await setVm(page, prop, list); await page.waitForTimeout(700); };
+      const rows = [row(1), row(2)];
+      await page.route('**/clients/1/brief', (r) => r.fulfill(json({ name: 'Cliente demo' })));
+      await page.route('**/sales_client**', (r) => r.fulfill(json({ sales: rows, totalRows: rows.length })));
+      await page.route('**/payments_client**', (r) => r.fulfill(json({ payments: rows, totalRows: rows.length })));
+      await page.route('**/quotations_client**', (r) => r.fulfill(json({ quotations: rows, totalRows: rows.length })));
+      await page.route('**/returns_client**', (r) => r.fulfill(json({ returns_customer: rows, totalRows: rows.length })));
+      await goApp(page, '/app/People/customers/1/ledger');
+      await page.waitForTimeout(700);
+      const tab = (n) => async () => { await page.getByRole('tab').nth(n).click(); await page.waitForTimeout(500); };
       return [
-        ['mayor-ventas', 'table', tab(0, 'sales')],
-        ['mayor-pagos', 'table', tab(1, 'payments')],
-        ['mayor-cotizaciones', 'table', tab(2, 'quotations')],
-        ['mayor-devoluciones', 'table', tab(3, 'returns')],
+        ['mayor-ventas', 'table', tab(0)],
+        ['mayor-pagos', 'table', tab(1)],
+        ['mayor-cotizaciones', 'table', tab(2)],
+        ['mayor-devoluciones', 'table', tab(3)],
       ];
     },
   },
   {
+    // GET /kitchen/orders (ya interceptada) puebla el tablero real; el botón "Details" de la tarjeta del pedido
+    // dispara `openDetails(order)`, que abre el modal con exactamente ese pedido — igual que un usuario real.
     name: 'cocina: detalle del pedido (b-table-simple + b-thead/b-tbody/b-tr/b-th/b-td)',
     run: async (page) => {
+      const order = { id: 1, ref: 'K-1', sale_id: 1, status: 'pending', customer_name: 'Cliente demo', created_at: '2026-03-01 10:00:00', items: [{ id: 1, name: 'Hamburguesa', quantity: 2, unit: 'u' }, { id: 2, name: 'Papas', quantity: 1, unit: '' }] };
+      await page.route('**/kitchen/orders*', (r) => (r.request().method() === 'GET' ? r.fulfill(json({ grouped: { pending: [order], preparing: [], completed: [], on_hold: [] }, warehouses: [] })) : r.continue()));
+      await page.route('**/kitchen/orders/poll*', (r) => r.fulfill(json({ grouped: { pending: [order], preparing: [], completed: [], on_hold: [] } })));
       await goApp(page, '/app/kitchen-display');
-      await setVm(page, 'selected', { id: 1, items: [{ id: 1, name: 'Hamburguesa', quantity: 2, unit: 'u' }, { id: 2, name: 'Papas', quantity: 1, unit: '' }] });
-      await setVm(page, 'detailsOpen', true);
-      await page.waitForTimeout(900);
+      await page.waitForTimeout(700);
+      await page.locator('.t-btn.t-ghost.t-icon').first().click();
+      await page.waitForTimeout(500);
       return [['cocina', '.modal.show table']];
     },
   },
@@ -184,7 +202,8 @@ const CASES = [
       await page.route('**/contracts-templates', (r) => r.fulfill(json({ templates: [{ id: 1, name: 'Plantilla A' }, { id: 2, name: 'Plantilla B' }] })));
       await page.route('**/contracts/merge-fields', (r) => r.fulfill(json({ merge_fields: [] })));
       await goApp(page, '/app/contracts/view/1');
-      const tab = (n) => async () => { await setVm(page, 'tabIndex', n); await page.waitForTimeout(600); };
+      // Pestaña real (role=tab): Contract/Attachments/Comments/Renewal History/Tasks/Notes/Templates, orden fijo del template.
+      const tab = (n) => async () => { await page.getByRole('tab').nth(n).click(); await page.waitForTimeout(600); };
       return [['contrato-tareas', '.tab-pane.active table', tab(4)], ['contrato-plantillas', '.tab-pane.active table', tab(6)]];
     },
   },
@@ -221,10 +240,15 @@ test.describe('Tablas BootstrapVue por patrón @smoke', () => {
 
   // Comportamiento (no firma): orden local por columna con `sortable: true`, sin `sort-by` externo. Ascendente → descendente, con aria-sort.
   test('orden local: clic en la cabecera ordena asc/desc y marca aria-sort (fields sortable)', async ({ page }) => {
-    await goApp(page, '/app/People/customers/1/details');
     const rows = ['B', 'A', 'C'].map((r, i) => ({ id: i + 1, Ref: `REF-${r}`, date: `2026-03-0${i + 1}`, GrandTotal: 10 * (i + 1), paid_amount: 0, due: 0, payment_status: 'paid', statut: 'completed' }));
-    await setVm(page, 'activeTab', 0);
-    await setVm(page, 'sales', rows);
+    await page.route('**/clients/1', (r) => (r.request().method() === 'GET' ? r.fulfill(json({ client: { id: 1, name: 'Cliente demo' }, payment_methods: [], accounts: [] })) : r.continue()));
+    await page.route('**/custom-fields**', (r) => r.fulfill(json({ custom_fields: [] })));
+    await page.route('**/custom-field-values**', (r) => r.fulfill(json({ success: true, values: {} })));
+    await page.route('**/sales_client**', (r) => r.fulfill(json({ sales: rows, totalRows: rows.length })));
+    await page.route('**/payments_client**', (r) => r.fulfill(json({ payments: [], totalRows: 0 })));
+    await page.route('**/returns_client**', (r) => r.fulfill(json({ returns: [], totalRows: 0 })));
+    await page.route('**/payment_returns_client**', (r) => r.fulfill(json({ payment_returns: [], totalRows: 0 })));
+    await goApp(page, '/app/People/customers/1/details');
     await page.waitForTimeout(700);
     const table = page.locator('table').first();
     const firstCol = () => table.locator('tbody tr td:first-child').allInnerTexts().then((l) => l.map((t) => t.trim()));

@@ -190,22 +190,39 @@ test.describe('BootstrapVueNext — formularios simples @smoke', () => {
 test.describe('BootstrapVueNext — v-model con modificadores', () => {
   test.use({ storageState: path.join(env.authDir, 'admin.json') });
 
-  test('v-model.number: escribe "12.5" y el modelo es el número 12.5 (contrato nuevo)', async ({ page }) => {
+  // El efecto de `.number` es invisible en el propio DOM (el <input type=number> siempre es texto): la consecuencia
+  // pública real es el tipo que viaja en el payload de red al enviar. Se rellena el formulario real (mínimo
+  // necesario para que `validate()` deje pasar el envío) y se inspecciona el POST real, sin instancia de Vue.
+  test('v-model.number: escribe "12.5" y el payload de red envía el número 12.5, no el texto', async ({ page }) => {
+    await page.route('**/contracts/create', (r) => r.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ clients: [{ id: 1, name: 'Cliente E2E' }], employees: [], projects: [], next_contract_number: 'C-E2E' }),
+    }));
+    let posted = null;
+    await page.route('**/contracts', (r) => {
+      if (r.request().method() === 'POST') { posted = r.request().postDataJSON(); return r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }); }
+      return r.continue();
+    });
     await page.goto('/app/contracts/store');
     await waitForApp(page);
+
     const input = page.locator('input[type=number][step="0.01"]').first();
     await expect(input).toHaveAttribute('id', /BootstrapVueNext/);
     await input.fill('12.5');
-    const model = await input.evaluate((el) => {
-      let c = el.__vueParentComponent;
-      while (c) {
-        const d = c.proxy && c.proxy.$data;
-        if (d && d.contract) return { type: typeof d.contract.value, value: d.contract.value };
-        c = c.parent;
-      }
-      return null;
-    });
-    expect(model).toEqual({ type: 'number', value: 12.5 });
+
+    // resto de campos obligatorios (party_type/status ya traen valor por defecto): cliente, asunto, fechas
+    await page.locator('.v-select').first().click();
+    await page.getByText('Cliente E2E').click();
+    // único <input type=text> editable del formulario (Contract # es readonly, Party Type son radios): Subject.
+    await page.locator('input[type=text]:not([readonly])').first().fill('E2E contrato');
+    const dates = page.locator('input[type=date]');
+    await dates.nth(0).fill('2026-01-01');
+    await dates.nth(1).fill('2026-12-31');
+
+    await page.locator('form').evaluate((f) => f.requestSubmit());
+    await expect.poll(() => posted).not.toBeNull();
+    expect(typeof posted.value).toBe('number');
+    expect(posted.value).toBe(12.5);
   });
 });
 

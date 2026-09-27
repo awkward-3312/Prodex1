@@ -39,52 +39,39 @@ test.describe('Capa de validación @smoke', () => {
     expect(posts).toEqual([]);
   });
 
-  // Solo en pruebas: sube desde un nodo del DOM hasta el componente de validación y devuelve su instancia pública
-  // (Vue 3 / @vue/compat: `__vueParentComponent`; Vue 2: `__vue__`).
-  const findComponent = (page, selector, componentName) =>
-    page.evaluateHandle(
-      ({ selector: sel, name }) => {
-        const el = document.querySelector(sel);
-        let vm = el && (el.__vueParentComponent ? el.__vueParentComponent.proxy : el.__vue__);
-        while (vm) {
-          const own = (vm.$options && vm.$options.name) || (vm.$ && vm.$.type && vm.$.type.name);
-          if (own === name) return vm;
-          vm = vm.$parent;
-        }
-        return null;
-      },
-      { selector, name: componentName }
-    );
-
   const withText = (modal) => modal.locator('.invalid-feedback').filter({ hasText: /\S/ });
 
-  test('API del contrato: setErrors (errores del servidor) y reset sobre provider y observer', async ({ page }) => {
+  // `observer.setErrors`/`provider.setErrors` (errores del servidor por campo) no tienen hoy ningún llamador real
+  // en PRODEX — ninguna pantalla los invoca (0 resultados en el repo) — así que no hay un flujo de UI/red público
+  // que los dispare; el contrato en sí (normaliza a arrays, no revienta sin observer) ya se prueba de verdad
+  // contra el módulo real en tests/frontend/validation-contract.test.mjs, sin instancia de Vue de por medio.
+  // `observer.reset()` (real: Cancelar + reabrir) y `observer.validate()` (real: envío vacío bloqueado) sí tienen
+  // llamador de producción y ya se cubren con UI real — aquí, en un formulario válido a medias, sin instancia.
+  test('validate() real: formulario válido a medias (un campo lleno, otro vacío) sigue bloqueando el envío', async ({ page }) => {
+    const posts = [];
+    page.on('request', (r) => {
+      if (r.method() === 'POST' && /marketing\/templates/.test(r.url())) posts.push(r.url());
+    });
     await page.goto('/app/marketing/templates/email');
     await waitForApp(page);
     await page.getByRole('button', { name: /Nueva plantilla/ }).click();
     const modal = page.locator('.modal.show');
     await expect(modal).toContainText(/Nueva plantilla/);
-    await modal.locator('input').first().fill('E2E servidor');
+
+    // solo el primer campo (name) se llena; content queda vacío — igual que un usuario a medio formulario
+    await modal.locator('input').first().fill('E2E parcial');
     await expect(withText(modal)).toHaveCount(0);
 
-    // provider.setErrors: el mensaje del servidor se pinta con el mismo slot prop `errors`
-    const provider = await findComponent(page, '.modal.show input', 'PxValidationProvider');
-    expect(await provider.evaluate((vm) => Boolean(vm))).toBe(true);
-    await provider.evaluate((vm) => vm.setErrors(['Ya existe una plantilla con ese nombre']));
-    await expect(withText(modal).first()).toHaveText('Ya existe una plantilla con ese nombre');
-    await expect(modal.locator('input.is-invalid')).toHaveCount(1);
-
-    // observer.reset: limpia errores y flags de todos los campos; el v-model se conserva
-    const observer = await findComponent(page, '.modal.show input', 'PxValidationObserver');
-    await observer.evaluate((vm) => vm.reset());
-    await expect(withText(modal)).toHaveCount(0);
-    await expect(modal.locator('input.is-invalid')).toHaveCount(0);
-    await expect(modal.locator('input').first()).toHaveValue('E2E servidor');
-
-    // observer.validate() sobre un formulario válido a medias devuelve false y marca el campo pendiente
-    const ok = await observer.evaluate((vm) => vm.validate());
-    expect(ok).toBe(false);
+    // handleSubmit(fn) real del <form>: valida todos los campos, bloquea porque `content` sigue vacío
+    await modal.locator('form').evaluate((f) => f.requestSubmit());
     await expect(modal.locator('textarea.is-invalid')).toHaveCount(1);
+    await expect(withText(modal)).toHaveCount(1);
+    expect(posts).toEqual([]);
+
+    // completar el campo pendiente deja el formulario válido, listo para un envío real
+    await modal.locator('textarea').first().fill('E2E contenido');
+    await expect(withText(modal)).toHaveCount(0);
+    await expect(modal.locator('input.is-invalid, textarea.is-invalid')).toHaveCount(0);
   });
 
   // Pantalla que sigue en la lista de excepciones (<validation-observer> / <validation-provider> con nombres antiguos):
